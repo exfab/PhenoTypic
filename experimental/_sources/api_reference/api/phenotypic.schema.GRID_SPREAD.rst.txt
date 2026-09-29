@@ -17,7 +17,7 @@ phenotypic.schema.GRID\_SPREAD
       :nosignatures:
    
       ~GRID_SPREAD.kind
-      ~GRID_SPREAD.category
+      ~GRID_SPREAD.metric_family
       ~GRID_SPREAD.tier
       ~GRID_SPREAD.rembi_module
       ~GRID_SPREAD.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.GRID\_SPREAD
 
    .. autosummary::
    
-      ~GRID_SPREAD.CATEGORY
+      ~GRID_SPREAD.METRIC_FAMILY
       ~GRID_SPREAD.resolved_kind
       ~GRID_SPREAD.resolved_tier
       ~GRID_SPREAD.resolved_rembi_module
       ~GRID_SPREAD.use_label
       ~GRID_SPREAD.use_badge
+      ~GRID_SPREAD.category_badges
       ~GRID_SPREAD.OBJECT_SPREAD
       ~GRID_SPREAD.label
       ~GRID_SPREAD.desc
@@ -101,5 +102,6 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.derivation_type
       ~GRID_SPREAD.derives_from
       ~GRID_SPREAD.rembi_module_override
+      ~GRID_SPREAD.categories
    
    

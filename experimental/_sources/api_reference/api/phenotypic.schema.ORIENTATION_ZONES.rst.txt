@@ -17,7 +17,7 @@ phenotypic.schema.ORIENTATION\_ZONES
       :nosignatures:
    
       ~ORIENTATION_ZONES.kind
-      ~ORIENTATION_ZONES.category
+      ~ORIENTATION_ZONES.metric_family
       ~ORIENTATION_ZONES.tier
       ~ORIENTATION_ZONES.rembi_module
       ~ORIENTATION_ZONES.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.ORIENTATION\_ZONES
 
    .. autosummary::
    
-      ~ORIENTATION_ZONES.CATEGORY
+      ~ORIENTATION_ZONES.METRIC_FAMILY
       ~ORIENTATION_ZONES.resolved_kind
       ~ORIENTATION_ZONES.resolved_tier
       ~ORIENTATION_ZONES.resolved_rembi_module
       ~ORIENTATION_ZONES.use_label
       ~ORIENTATION_ZONES.use_badge
+      ~ORIENTATION_ZONES.category_badges
       ~ORIENTATION_ZONES.OUTWARD_ROTATION_RAW_PEAK_OVERALL
       ~ORIENTATION_ZONES.OUTWARD_ROTATION_RAW_PEAK_DENSE
       ~ORIENTATION_ZONES.OUTWARD_ROTATION_RAW_PEAK_SPARSE
@@ -180,5 +181,6 @@ phenotypic.schema.ORIENTATION\_ZONES
       ~ORIENTATION_ZONES.derivation_type
       ~ORIENTATION_ZONES.derives_from
       ~ORIENTATION_ZONES.rembi_module_override
+      ~ORIENTATION_ZONES.categories
    
    

@@ -18,7 +18,7 @@ phenotypic.schema.Colorxy
    
       ~Colorxy.tier
       ~Colorxy.kind
-      ~Colorxy.category
+      ~Colorxy.metric_family
       ~Colorxy.rembi_module
       ~Colorxy.change_note
       ~Colorxy.header_scheme
@@ -87,12 +87,13 @@ phenotypic.schema.Colorxy
 
    .. autosummary::
    
-      ~Colorxy.CATEGORY
+      ~Colorxy.METRIC_FAMILY
       ~Colorxy.resolved_kind
       ~Colorxy.resolved_tier
       ~Colorxy.resolved_rembi_module
       ~Colorxy.use_label
       ~Colorxy.use_badge
+      ~Colorxy.category_badges
       ~Colorxy.x_MINIMUM
       ~Colorxy.x_Q1
       ~Colorxy.x_MEAN
@@ -118,5 +119,6 @@ phenotypic.schema.Colorxy
       ~Colorxy.derivation_type
       ~Colorxy.derives_from
       ~Colorxy.rembi_module_override
+      ~Colorxy.categories
    
    

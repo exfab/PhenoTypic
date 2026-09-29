@@ -229,6 +229,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -451,6 +457,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -805,6 +817,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -962,6 +976,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_carries_user_metadata.html">phenotypic.sdk_.master_carries_user_metadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.user_metadata_headers.html">phenotypic.sdk_.user_metadata_headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_measurements_parquet_path.html">phenotypic.sdk_.master_measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_category_dir.html">phenotypic.sdk_.measurements_by_category_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_feature_dir.html">phenotypic.sdk_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_csv_path.html">phenotypic.sdk_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_parquet_path.html">phenotypic.sdk_.measurements_parquet_path</a></li>
@@ -1213,6 +1228,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.candidate_medoid.html">phenotypic.util.candidate_medoid</a></li>
@@ -1308,7 +1324,7 @@ vocabulary, not a validator: arbitrary metadata columns are still accepted.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.category" title="phenotypic.schema.GENETIC.category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">category</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.metric_family" title="phenotypic.schema.GENETIC.metric_family"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metric_family</span></code></a></p></td>
 <td><p>Return the shared physical namespace for metadata columns.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.header_set" title="phenotypic.schema.GENETIC.header_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">header_set</span></code></a></p></td>
@@ -1336,10 +1352,10 @@ vocabulary, not a validator: arbitrary metadata columns are still accepted.</p>
 <td><p>Whether <em>column</em> is one of this enum's output headers.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.get_labels" title="phenotypic.schema.GENETIC.get_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_labels</span></code></a></p></td>
-<td><p>Get all measurement labels without category prefix.</p></td>
+<td><p>Get all measurement labels without metric family prefix.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.get_headers" title="phenotypic.schema.GENETIC.get_headers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_headers</span></code></a></p></td>
-<td><p>Get all measurement headers with category prefix.</p></td>
+<td><p>Get all measurement headers with metric family prefix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.rst_table" title="phenotypic.schema.GENETIC.rst_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rst_table</span></code></a></p></td>
 <td><p>Render an RST list-table of this enum's members.</p></td>
@@ -1497,8 +1513,8 @@ vocabulary, not a validator: arbitrary metadata columns are still accepted.</p>
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.CATEGORY" title="phenotypic.schema.GENETIC.CATEGORY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CATEGORY</span></code></a></p></td>
-<td><p>Get the category name for this measurement instance.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.METRIC_FAMILY" title="phenotypic.schema.GENETIC.METRIC_FAMILY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">METRIC_FAMILY</span></code></a></p></td>
+<td><p>Get the metric family name for this measurement instance.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.resolved_kind" title="phenotypic.schema.GENETIC.resolved_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolved_kind</span></code></a></p></td>
 <td><p>The coarse kind for this member (identity/quality/primary/derived).</p></td>
@@ -1515,58 +1531,64 @@ vocabulary, not a validator: arbitrary metadata columns are still accepted.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.use_badge" title="phenotypic.schema.GENETIC.use_badge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_badge</span></code></a></p></td>
 <td><p>RST sphinx-design xref badge for this member's classification.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.ORGANISM" title="phenotypic.schema.GENETIC.ORGANISM"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ORGANISM</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.category_badges" title="phenotypic.schema.GENETIC.category_badges"><code class="xref py py-obj docutils literal notranslate"><span class="pre">category_badges</span></code></a></p></td>
+<td><p>RST outline badges, one per category, linking to the Categories page.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.ORGANISM" title="phenotypic.schema.GENETIC.ORGANISM"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ORGANISM</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.STRAIN" title="phenotypic.schema.GENETIC.STRAIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STRAIN</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.STRAIN" title="phenotypic.schema.GENETIC.STRAIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STRAIN</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.GENOTYPE" title="phenotypic.schema.GENETIC.GENOTYPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GENOTYPE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.GENOTYPE" title="phenotypic.schema.GENETIC.GENOTYPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GENOTYPE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.BACKGROUND" title="phenotypic.schema.GENETIC.BACKGROUND"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BACKGROUND</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.BACKGROUND" title="phenotypic.schema.GENETIC.BACKGROUND"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BACKGROUND</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.ALLELE" title="phenotypic.schema.GENETIC.ALLELE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ALLELE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.ALLELE" title="phenotypic.schema.GENETIC.ALLELE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ALLELE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.PLASMID" title="phenotypic.schema.GENETIC.PLASMID"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PLASMID</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.PLASMID" title="phenotypic.schema.GENETIC.PLASMID"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PLASMID</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.SELECTION_MARKER" title="phenotypic.schema.GENETIC.SELECTION_MARKER"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SELECTION_MARKER</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.SELECTION_MARKER" title="phenotypic.schema.GENETIC.SELECTION_MARKER"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SELECTION_MARKER</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.MATING_TYPE" title="phenotypic.schema.GENETIC.MATING_TYPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MATING_TYPE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.MATING_TYPE" title="phenotypic.schema.GENETIC.MATING_TYPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MATING_TYPE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.PLOIDY" title="phenotypic.schema.GENETIC.PLOIDY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PLOIDY</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.PLOIDY" title="phenotypic.schema.GENETIC.PLOIDY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PLOIDY</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.label" title="phenotypic.schema.GENETIC.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.label" title="phenotypic.schema.GENETIC.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.desc" title="phenotypic.schema.GENETIC.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.desc" title="phenotypic.schema.GENETIC.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.bio_desc" title="phenotypic.schema.GENETIC.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.bio_desc" title="phenotypic.schema.GENETIC.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.image" title="phenotypic.schema.GENETIC.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.image" title="phenotypic.schema.GENETIC.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.pair" title="phenotypic.schema.GENETIC.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.pair" title="phenotypic.schema.GENETIC.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.tier_override" title="phenotypic.schema.GENETIC.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.tier_override" title="phenotypic.schema.GENETIC.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.derivation_type" title="phenotypic.schema.GENETIC.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.derivation_type" title="phenotypic.schema.GENETIC.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.derives_from" title="phenotypic.schema.GENETIC.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.derives_from" title="phenotypic.schema.GENETIC.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.rembi_module_override" title="phenotypic.schema.GENETIC.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.rembi_module_override" title="phenotypic.schema.GENETIC.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.GENETIC.categories" title="phenotypic.schema.GENETIC.categories"><code class="xref py py-obj docutils literal notranslate"><span class="pre">categories</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1629,8 +1651,8 @@ vocabulary, not a validator: arbitrary metadata columns are still accepted.</p>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.category">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.category" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.metric_family">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metric_family</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.metric_family" title="Link to this definition">#</a></dt>
 <dd><p>Return the shared physical namespace for metadata columns.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1694,8 +1716,8 @@ columns. Keep the text in <code class="docutils literal notranslate"><span class
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.header_scheme">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">header_scheme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.header_scheme" title="Link to this definition">#</a></dt>
 <dd><p>Naming scheme for this enum’s DataFrame output headers.</p>
-<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{category}_{label}</span></code>;
-<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{category}_{metric}_{label}</span></code> (growth
+<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{family}_{label}</span></code>;
+<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{family}_{metric}_{label}</span></code> (growth
 models + model metrics, where <code class="docutils literal notranslate"><span class="pre">{metric}</span></code> is a runtime value);
 <code class="docutils literal notranslate"><span class="pre">&quot;texture&quot;</span></code> → TEXTURE’s <code class="docutils literal notranslate"><span class="pre">-deg/-scale</span></code> suffix scheme.</p>
 <dl class="field-list simple">
@@ -1734,15 +1756,15 @@ models + model metrics, where <code class="docutils literal notranslate"><span c
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.CATEGORY">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.GENETIC.CATEGORY" title="Link to this definition">#</a></dt>
-<dd><p>Get the category name for this measurement instance.</p>
-<p>Provides instance-level access to the category name defined by the category()
+<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.METRIC_FAMILY">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">METRIC_FAMILY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.GENETIC.METRIC_FAMILY" title="Link to this definition">#</a></dt>
+<dd><p>Get the metric family name for this measurement instance.</p>
+<p>Provides instance-level access to the metric family defined by the metric_family()
 classmethod. This is useful when you have a measurement instance and need to know
-which category it belongs to without explicitly referencing the class.</p>
+which metric family it belongs to without explicitly referencing the class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+<dd class="field-odd"><p>The metric family name from the enum class’s metric_family() method.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -1754,12 +1776,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.__str__">
 <span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.__str__" title="Link to this definition">#</a></dt>
 <dd><p>Return the string representation of this measurement as the prefixed name.</p>
-<p>Returns the full enumeration value, which is the category-prefixed label
+<p>Returns the full enumeration value, which is the family-prefixed label
 (e.g., ‘Size_Area’). This is used when the measurement is converted to a string
 or used in string formatting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{family}_{label}’).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -1808,18 +1830,25 @@ reference table classifies every column. Returns <code class="docutils literal n
 do not classify (e.g. enums that subclass <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> directly).</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.category_badges">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category_badges</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.GENETIC.category_badges" title="Link to this definition">#</a></dt>
+<dd><p>RST outline badges, one per category, linking to the Categories page.</p>
+<p>Empty when the member has no category.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.get_labels">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.get_labels" title="Link to this definition">#</a></dt>
-<dd><p>Get all measurement labels without category prefix.</p>
-<p>Returns a list of the short labels (without category prefix) for all measurements
-defined in this enumeration. These come from each member’s <code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field.
-Useful for creating human-readable lists or column names when the category context
-is already established.</p>
+<dd><p>Get all measurement labels without metric family prefix.</p>
+<p>Returns a list of the short labels (without metric family prefix) for all
+measurements defined in this enumeration. These come from each member’s
+<code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field. Useful for creating human-readable lists or column names
+when the metric family context is already established.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the metric family prefix; to get
 prefixed names, use get_headers().</p>
 </dd>
 </dl>
@@ -1834,16 +1863,16 @@ prefixed names, use get_headers().</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.get_headers">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.get_headers" title="Link to this definition">#</a></dt>
-<dd><p>Get all measurement headers with category prefix.</p>
-<p>Returns a list of the full enumeration values (with category prefix) for all
+<dd><p>Get all measurement headers with metric family prefix.</p>
+<p>Returns a list of the full enumeration values (with metric family prefix) for all
 measurements defined in this enumeration. These strings are suitable for use as
 DataFrame column names, dictionary keys, or in any context where the full
-categorized name is needed.</p>
+prefixed name is needed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
 <dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Size_Area’, ‘Size_Perimeter’]). Each header includes the
-category prefix separated by an underscore.</p>
+metric family prefix separated by an underscore.</p>
 </dd>
 </dl>
 </p>
@@ -1858,12 +1887,13 @@ category prefix separated by an underscore.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.rst_table">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.GENETIC.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
-<p>Adds a Biology column when any member sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image
-column when any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
+<p>Adds a Categories column when any member carries a category, a
+Biology column when any sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image column when
+any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the category name.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the metric family name.</p></li>
 <li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(name_column_header,</span> <span class="pre">description_column_header)</span></code>.</p></li>
 <li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>)
 instead of the bare label (<code class="docutils literal notranslate"><span class="pre">Area</span></code>).</p></li>
@@ -1911,7 +1941,7 @@ to the target’s __doc__ attribute.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.GENETIC.__new_member__">
 <span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><span class="pre">Entry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.GENETIC.__new_member__" title="Link to this definition">#</a></dt>
 <dd><p>Create a member from an <a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema.Entry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entry</span></code></a>.</p>
-<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
+<p>The enum value is the family-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
 <code class="docutils literal notranslate"><span class="pre">label</span></code>/<code class="docutils literal notranslate"><span class="pre">desc</span></code>/<code class="docutils literal notranslate"><span class="pre">bio_desc</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> are stored as instance
 attributes. Anything other than an <code class="docutils literal notranslate"><span class="pre">Entry</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at
 class-creation time.</p>
@@ -2397,6 +2427,11 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <span class="sig-name descname"><span class="pre">rembi_module_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html#phenotypic.schema.REMBI_MODULE" title="phenotypic.schema.REMBI_MODULE"><span class="pre">REMBI_MODULE</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.schema.GENETIC.rembi_module_override" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.GENETIC.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.14)"><span class="pre">frozenset</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.CATEGORIES.html#phenotypic.schema.CATEGORIES" title="phenotypic.schema.CATEGORIES"><span class="pre">CATEGORIES</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.schema.GENETIC.categories" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </section>
@@ -2435,7 +2470,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.SELECTION_MARKER"><code class="docutils literal notranslate"><span class="pre">GENETIC.SELECTION_MARKER</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.MATING_TYPE"><code class="docutils literal notranslate"><span class="pre">GENETIC.MATING_TYPE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.PLOIDY"><code class="docutils literal notranslate"><span class="pre">GENETIC.PLOIDY</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.category"><code class="docutils literal notranslate"><span class="pre">GENETIC.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.metric_family"><code class="docutils literal notranslate"><span class="pre">GENETIC.metric_family()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.header_set"><code class="docutils literal notranslate"><span class="pre">GENETIC.header_set()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.kind"><code class="docutils literal notranslate"><span class="pre">GENETIC.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.tier"><code class="docutils literal notranslate"><span class="pre">GENETIC.tier()</span></code></a></li>
@@ -2443,13 +2478,14 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.header_scheme"><code class="docutils literal notranslate"><span class="pre">GENETIC.header_scheme()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.member_for_header"><code class="docutils literal notranslate"><span class="pre">GENETIC.member_for_header()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.owns_header"><code class="docutils literal notranslate"><span class="pre">GENETIC.owns_header()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.CATEGORY"><code class="docutils literal notranslate"><span class="pre">GENETIC.CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.METRIC_FAMILY"><code class="docutils literal notranslate"><span class="pre">GENETIC.METRIC_FAMILY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.__str__"><code class="docutils literal notranslate"><span class="pre">GENETIC.__str__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.resolved_kind"><code class="docutils literal notranslate"><span class="pre">GENETIC.resolved_kind</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.resolved_tier"><code class="docutils literal notranslate"><span class="pre">GENETIC.resolved_tier</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.resolved_rembi_module"><code class="docutils literal notranslate"><span class="pre">GENETIC.resolved_rembi_module</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.use_label"><code class="docutils literal notranslate"><span class="pre">GENETIC.use_label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.use_badge"><code class="docutils literal notranslate"><span class="pre">GENETIC.use_badge</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.category_badges"><code class="docutils literal notranslate"><span class="pre">GENETIC.category_badges</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.get_labels"><code class="docutils literal notranslate"><span class="pre">GENETIC.get_labels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.get_headers"><code class="docutils literal notranslate"><span class="pre">GENETIC.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.rst_table"><code class="docutils literal notranslate"><span class="pre">GENETIC.rst_table()</span></code></a></li>
@@ -2512,6 +2548,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.derivation_type"><code class="docutils literal notranslate"><span class="pre">GENETIC.derivation_type</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.derives_from"><code class="docutils literal notranslate"><span class="pre">GENETIC.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.rembi_module_override"><code class="docutils literal notranslate"><span class="pre">GENETIC.rembi_module_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.GENETIC.categories"><code class="docutils literal notranslate"><span class="pre">GENETIC.categories</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -601,6 +613,7 @@
   <h1>Source code for phenotypic.schema._intensity</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object grayscale intensity summary statistics.&quot;&quot;&quot;</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
 
@@ -617,14 +630,18 @@
 <span class="sd">    accumulation, and internal heterogeneity.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="INTENSITY.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.INTENSITY.html#phenotypic.schema.INTENSITY.category">[docs]</a>
+<div class="viewcode-block" id="INTENSITY.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.INTENSITY.html#phenotypic.schema.INTENSITY.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;Intensity&quot;</span></div>
 
 
-    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">)</span>
+    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">,</span>
+        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the object&#39;s intensity to the max possible &quot;</span>
                           <span class="s2">&quot;intensity of the object&quot;</span><span class="p">)</span>
     <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the objects intensity to the max &quot;</span>

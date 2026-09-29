@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -599,7 +611,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.schema._orientation_zones</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Public header schema for MeasureOrientationZones (category ``OrientZones``).</span>
+<span></span><span class="sd">&quot;&quot;&quot;Public header schema for MeasureOrientationZones (metric family ``OrientZones``).</span>
 
 <span class="sd">Existing absolute-orientation headers use</span>
 <span class="sd">``OrientZones_&lt;Metric&gt;-&lt;Variant&gt;-&lt;Zone&gt;``. Radial-relative headers use the</span>
@@ -626,10 +638,10 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">ORIENTATION_ZONE_PRIMARY</span><span class="p">(</span><span class="n">DescriptiveTrait</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Primary outward-rotation traits over resolved branch zones.&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.category">[docs]</a>
+<div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
 
 
@@ -757,10 +769,10 @@
 <span class="sd">    :class:`MeasureOrientationZones` for parameters and method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ORIENTATION_ZONE_DIAGNOSTIC.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.category">[docs]</a>
+<div class="viewcode-block" id="ORIENTATION_ZONE_DIAGNOSTIC.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
 
 

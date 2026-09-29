@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -639,10 +651,10 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="TEXTURE.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.TEXTURE.html#phenotypic.schema.TEXTURE.category">[docs]</a>
+<div class="viewcode-block" id="TEXTURE.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.TEXTURE.html#phenotypic.schema.TEXTURE.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;Texture&quot;</span></div>
 
 
@@ -759,7 +771,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">member_for_header</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Recognize TEXTURE&#39;s ``{cat}_{label}-deg###-scale##`` / ``-avg-scale##``.&quot;&quot;&quot;</span>
         <span class="n">match</span> <span class="o">=</span> <span class="n">_TEXTURE_HEADER_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;cat&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;cat&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">metric_family</span><span class="p">():</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="n">label</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">:</span>
@@ -779,12 +791,12 @@
         <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
             <span class="k">for</span> <span class="n">angle</span> <span class="ow">in</span> <span class="n">angles</span><span class="p">:</span>
                 <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-deg</span><span class="si">{</span><span class="n">angle</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">metric_family</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-deg</span><span class="si">{</span><span class="n">angle</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
 
         <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">get_labels</span><span class="p">():</span>
             <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">category</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-avg-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">metric_family</span><span class="p">()</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">member</span><span class="si">}</span><span class="s2">-avg-scale</span><span class="si">{</span><span class="n">scale</span><span class="si">:</span><span class="s2">02d</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">labels</span></div>
 </div>

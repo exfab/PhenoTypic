@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -612,17 +624,17 @@
 
 <span class="sd">    Output columns are **metric-qualified**: each header is</span>
 <span class="sd">    ``LinearLagModel_&lt;metric&gt;_&lt;parameter&gt;``, where ``&lt;metric&gt;`` records the</span>
-<span class="sd">    measurement the model was fit on (``self.on`` with its category prefix</span>
+<span class="sd">    measurement the model was fit on (``self.on`` with its metric-family prefix</span>
 <span class="sd">    stripped, e.g. ``Size_Area`` → ``Area``). For example, fitting on</span>
 <span class="sd">    ``Size_Area`` emits ``LinearLagModel_Area_v`` (post-lag growth rate) and</span>
 <span class="sd">    ``LinearLagModel_Area_s0`` (initial size). The labels below are the</span>
 <span class="sd">    ``&lt;parameter&gt;`` segment; the ``&lt;metric&gt;`` infix is filled in at fit time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="LINEAR_LAG_MODEL.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.LINEAR_LAG_MODEL.html#phenotypic.schema.LINEAR_LAG_MODEL.category">[docs]</a>
+<div class="viewcode-block" id="LINEAR_LAG_MODEL.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.LINEAR_LAG_MODEL.html#phenotypic.schema.LINEAR_LAG_MODEL.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;LinearLagModel&quot;</span></div>
 
 

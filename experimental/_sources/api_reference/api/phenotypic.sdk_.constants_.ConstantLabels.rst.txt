@@ -16,7 +16,7 @@ phenotypic.sdk\_.constants\_.ConstantLabels
    .. autosummary::
       :nosignatures:
    
-      ~ConstantLabels.category
+      ~ConstantLabels.metric_family
       ~ConstantLabels.kind
       ~ConstantLabels.tier
       ~ConstantLabels.rembi_module
@@ -85,12 +85,13 @@ phenotypic.sdk\_.constants\_.ConstantLabels
 
    .. autosummary::
    
-      ~ConstantLabels.CATEGORY
+      ~ConstantLabels.METRIC_FAMILY
       ~ConstantLabels.resolved_kind
       ~ConstantLabels.resolved_tier
       ~ConstantLabels.resolved_rembi_module
       ~ConstantLabels.use_label
       ~ConstantLabels.use_badge
+      ~ConstantLabels.category_badges
       ~ConstantLabels.label
       ~ConstantLabels.desc
       ~ConstantLabels.bio_desc
@@ -100,5 +101,6 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.derivation_type
       ~ConstantLabels.derives_from
       ~ConstantLabels.rembi_module_override
+      ~ConstantLabels.categories
    
    

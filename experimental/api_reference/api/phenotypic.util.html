@@ -229,6 +229,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -451,6 +457,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -805,6 +817,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -962,6 +976,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_carries_user_metadata.html">phenotypic.sdk_.master_carries_user_metadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.user_metadata_headers.html">phenotypic.sdk_.user_metadata_headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_measurements_parquet_path.html">phenotypic.sdk_.master_measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_category_dir.html">phenotypic.sdk_.measurements_by_category_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_feature_dir.html">phenotypic.sdk_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_csv_path.html">phenotypic.sdk_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_parquet_path.html">phenotypic.sdk_.measurements_parquet_path</a></li>
@@ -1213,6 +1228,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.candidate_medoid.html">phenotypic.util.candidate_medoid</a></li>
@@ -1305,28 +1321,31 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.split_measurements.html#phenotypic.util.split_measurements" title="phenotypic.util.split_measurements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements</span></code></a></p></td>
 <td><p>Split a measurements table into producer-specific data frames.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.robust_color_center.html#phenotypic.util.robust_color_center" title="phenotypic.util.robust_color_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">robust_color_center</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html#phenotypic.util.split_measurements_by_category" title="phenotypic.util.split_measurements_by_category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements_by_category</span></code></a></p></td>
+<td><p>Split a measurements table into one data frame per measurement category.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.robust_color_center.html#phenotypic.util.robust_color_center" title="phenotypic.util.robust_color_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">robust_color_center</span></code></a></p></td>
 <td><p>Euclidean geometric median of <code class="docutils literal notranslate"><span class="pre">points</span></code> (N, D), as a bare (D,) array.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html#phenotypic.util.medoid_ciede2000" title="phenotypic.util.medoid_ciede2000"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_ciede2000</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html#phenotypic.util.medoid_ciede2000" title="phenotypic.util.medoid_ciede2000"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_ciede2000</span></code></a></p></td>
 <td><p>ΔE2000 medoid center and per-pixel ΔE2000 distances to it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.candidate_medoid.html#phenotypic.util.candidate_medoid" title="phenotypic.util.candidate_medoid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">candidate_medoid</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.candidate_medoid.html#phenotypic.util.candidate_medoid" title="phenotypic.util.candidate_medoid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">candidate_medoid</span></code></a></p></td>
 <td><p>The delta-E 2000 medoid of <em>lab_points</em>, found deterministically.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html#phenotypic.util.delta_e2000_spread" title="phenotypic.util.delta_e2000_spread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta_e2000_spread</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html#phenotypic.util.delta_e2000_spread" title="phenotypic.util.delta_e2000_spread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta_e2000_spread</span></code></a></p></td>
 <td><p>Return (median, mean, P95) of a ΔE2000 distance array; NaNs if empty.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hsv_to_cone</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hsv_to_cone</span></code></a></p></td>
 <td><p>Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.cone_to_hsv.html#phenotypic.util.cone_to_hsv" title="phenotypic.util.cone_to_hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cone_to_hsv</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.cone_to_hsv.html#phenotypic.util.cone_to_hsv" title="phenotypic.util.cone_to_hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cone_to_hsv</span></code></a></p></td>
 <td><p>Inverse of <a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-func docutils literal notranslate"><span class="pre">hsv_to_cone()</span></code></a>; returns H,S,V in [0,1].</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html#phenotypic.util.lab_to_srgb_hex" title="phenotypic.util.lab_to_srgb_hex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lab_to_srgb_hex</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html#phenotypic.util.lab_to_srgb_hex" title="phenotypic.util.lab_to_srgb_hex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lab_to_srgb_hex</span></code></a></p></td>
 <td><p>Convert a single CIE L*a*b* (D65) color to an sRGB <code class="docutils literal notranslate"><span class="pre">#RRGGBB</span></code> string.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.decode_well_position.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.decode_well_position.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
 <td><p>Decode microplate well identifiers to 0-based linear indices.</p></td>
 </tr>
 </tbody>
@@ -2545,6 +2564,34 @@ any producer-owned enum are preserved in every split as context columns.</p>
 context columns plus that producer’s recognized measurement columns.
 Returns an empty mapping when no producer-owned measurement columns are
 present.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <em>df</em> is not a pandas or polars DataFrame.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <em>DataFrame</em> | <em>DataFrame</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">split_measurements_by_category</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">DataFrame</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_measurement_outputs.html#split_measurements_by_category"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Split a measurements table into one data frame per measurement category.</p>
+<p>Context columns are the same as <a class="reference internal" href="phenotypic.util.split_measurements.html#phenotypic.util.split_measurements" title="phenotypic.util.split_measurements"><code class="xref py py-func docutils literal notranslate"><span class="pre">split_measurements()</span></code></a>: every column
+not owned by a producer’s <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> (metadata, object label,
+grid, joined external metadata). Each category frame holds those context
+columns followed by the present columns whose member carries the category
+(see <a class="reference internal" href="phenotypic.schema.CATEGORIES.html#phenotypic.schema.CATEGORIES" title="phenotypic.schema.CATEGORIES"><code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.schema.CATEGORIES</span></code></a>), in input order. Measurement
+columns outside a category are dropped from its frame. A column in several
+categories appears in each.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>DataFrame</em><em> | </em><em>DataFrame</em>) – A pandas or polars measurements DataFrame.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Mapping of category label (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;StartingMetrics&quot;</span></code>) to a same-type
+DataFrame. Categories with no present columns are omitted.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <em>df</em> is not a pandas or polars DataFrame.</p>

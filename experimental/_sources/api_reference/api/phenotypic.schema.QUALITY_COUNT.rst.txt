@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_COUNT
       :nosignatures:
    
       ~QUALITY_COUNT.kind
-      ~QUALITY_COUNT.category
+      ~QUALITY_COUNT.metric_family
       ~QUALITY_COUNT.tier
       ~QUALITY_COUNT.rembi_module
       ~QUALITY_COUNT.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_COUNT
 
    .. autosummary::
    
-      ~QUALITY_COUNT.CATEGORY
+      ~QUALITY_COUNT.METRIC_FAMILY
       ~QUALITY_COUNT.resolved_kind
       ~QUALITY_COUNT.resolved_tier
       ~QUALITY_COUNT.resolved_rembi_module
       ~QUALITY_COUNT.use_label
       ~QUALITY_COUNT.use_badge
+      ~QUALITY_COUNT.category_badges
       ~QUALITY_COUNT.DETECTED
       ~QUALITY_COUNT.EXPECTED
       ~QUALITY_COUNT.DELTA
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_COUNT
       ~QUALITY_COUNT.derivation_type
       ~QUALITY_COUNT.derives_from
       ~QUALITY_COUNT.rembi_module_override
+      ~QUALITY_COUNT.categories
    
    

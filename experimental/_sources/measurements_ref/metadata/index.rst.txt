@@ -6,7 +6,7 @@ Metadata
 :doc:`IMAGE </api_reference/api/phenotypic.schema.IMAGE>`
 ---------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -42,7 +42,7 @@ Metadata
 :doc:`GENETIC </api_reference/api/phenotypic.schema.GENETIC>`
 -------------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -81,7 +81,7 @@ Metadata
 :doc:`SAMPLE </api_reference/api/phenotypic.schema.SAMPLE>`
 -----------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -123,7 +123,7 @@ Metadata
 :doc:`PLATE </api_reference/api/phenotypic.schema.PLATE>`
 ---------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -150,7 +150,7 @@ Metadata
 :doc:`CONDITION </api_reference/api/phenotypic.schema.CONDITION>`
 -----------------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -201,7 +201,7 @@ Metadata
 :doc:`CULTURE </api_reference/api/phenotypic.schema.CULTURE>`
 -------------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -240,7 +240,7 @@ Metadata
 :doc:`EXPERIMENT </api_reference/api/phenotypic.schema.EXPERIMENT>`
 -------------------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -267,7 +267,7 @@ Metadata
 :doc:`STUDY </api_reference/api/phenotypic.schema.STUDY>`
 ---------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label
@@ -309,7 +309,7 @@ Metadata
 :doc:`ACQUISITION </api_reference/api/phenotypic.schema.ACQUISITION>`
 ---------------------------------------------------------------------
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Metric family: **Metadata**
    :header-rows: 1
 
    * - Column label

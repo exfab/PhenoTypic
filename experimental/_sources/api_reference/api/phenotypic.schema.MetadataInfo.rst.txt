@@ -17,7 +17,7 @@ phenotypic.schema.MetadataInfo
       :nosignatures:
    
       ~MetadataInfo.kind
-      ~MetadataInfo.category
+      ~MetadataInfo.metric_family
       ~MetadataInfo.tier
       ~MetadataInfo.rembi_module
       ~MetadataInfo.change_note
@@ -86,12 +86,13 @@ phenotypic.schema.MetadataInfo
 
    .. autosummary::
    
-      ~MetadataInfo.CATEGORY
+      ~MetadataInfo.METRIC_FAMILY
       ~MetadataInfo.resolved_kind
       ~MetadataInfo.resolved_tier
       ~MetadataInfo.resolved_rembi_module
       ~MetadataInfo.use_label
       ~MetadataInfo.use_badge
+      ~MetadataInfo.category_badges
       ~MetadataInfo.label
       ~MetadataInfo.desc
       ~MetadataInfo.bio_desc
@@ -101,5 +102,6 @@ phenotypic.schema.MetadataInfo
       ~MetadataInfo.derivation_type
       ~MetadataInfo.derives_from
       ~MetadataInfo.rembi_module_override
+      ~MetadataInfo.categories
    
    

@@ -32,6 +32,8 @@
       :nosignatures:
    
       Entry
+      CATEGORIES
+      CategoryEntry
       MeasurementInfo
       MetadataInfo
       REMBI_MODULE

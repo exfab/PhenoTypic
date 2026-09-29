@@ -18,7 +18,7 @@ phenotypic.schema.ColorHSV
    
       ~ColorHSV.tier
       ~ColorHSV.kind
-      ~ColorHSV.category
+      ~ColorHSV.metric_family
       ~ColorHSV.rembi_module
       ~ColorHSV.change_note
       ~ColorHSV.header_scheme
@@ -86,12 +86,13 @@ phenotypic.schema.ColorHSV
 
    .. autosummary::
    
-      ~ColorHSV.CATEGORY
+      ~ColorHSV.METRIC_FAMILY
       ~ColorHSV.resolved_kind
       ~ColorHSV.resolved_tier
       ~ColorHSV.resolved_rembi_module
       ~ColorHSV.use_label
       ~ColorHSV.use_badge
+      ~ColorHSV.category_badges
       ~ColorHSV.HUE_ROBUST_MEAN
       ~ColorHSV.SATURATION_ROBUST_MEAN
       ~ColorHSV.VALUE_ROBUST_MEAN
@@ -105,5 +106,6 @@ phenotypic.schema.ColorHSV
       ~ColorHSV.derivation_type
       ~ColorHSV.derives_from
       ~ColorHSV.rembi_module_override
+      ~ColorHSV.categories
    
    

@@ -16,7 +16,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
    .. autosummary::
       :nosignatures:
    
-      ~GAMMA_ENCODINGS.category
+      ~GAMMA_ENCODINGS.metric_family
       ~GAMMA_ENCODINGS.kind
       ~GAMMA_ENCODINGS.tier
       ~GAMMA_ENCODINGS.rembi_module
@@ -85,12 +85,13 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
 
    .. autosummary::
    
-      ~GAMMA_ENCODINGS.CATEGORY
+      ~GAMMA_ENCODINGS.METRIC_FAMILY
       ~GAMMA_ENCODINGS.resolved_kind
       ~GAMMA_ENCODINGS.resolved_tier
       ~GAMMA_ENCODINGS.resolved_rembi_module
       ~GAMMA_ENCODINGS.use_label
       ~GAMMA_ENCODINGS.use_badge
+      ~GAMMA_ENCODINGS.category_badges
       ~GAMMA_ENCODINGS.SRGB
       ~GAMMA_ENCODINGS.LINEAR
       ~GAMMA_ENCODINGS.label
@@ -102,5 +103,6 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.derivation_type
       ~GAMMA_ENCODINGS.derives_from
       ~GAMMA_ENCODINGS.rembi_module_override
+      ~GAMMA_ENCODINGS.categories
    
    

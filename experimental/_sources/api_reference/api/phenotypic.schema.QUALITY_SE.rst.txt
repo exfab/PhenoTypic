@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_SE
       :nosignatures:
    
       ~QUALITY_SE.kind
-      ~QUALITY_SE.category
+      ~QUALITY_SE.metric_family
       ~QUALITY_SE.tier
       ~QUALITY_SE.rembi_module
       ~QUALITY_SE.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_SE
 
    .. autosummary::
    
-      ~QUALITY_SE.CATEGORY
+      ~QUALITY_SE.METRIC_FAMILY
       ~QUALITY_SE.resolved_kind
       ~QUALITY_SE.resolved_tier
       ~QUALITY_SE.resolved_rembi_module
       ~QUALITY_SE.use_label
       ~QUALITY_SE.use_badge
+      ~QUALITY_SE.category_badges
       ~QUALITY_SE.VALUE
       ~QUALITY_SE.MEAN
       ~QUALITY_SE.CV
@@ -104,5 +105,6 @@ phenotypic.schema.QUALITY\_SE
       ~QUALITY_SE.derivation_type
       ~QUALITY_SE.derives_from
       ~QUALITY_SE.rembi_module_override
+      ~QUALITY_SE.categories
    
    

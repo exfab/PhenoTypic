@@ -16,7 +16,7 @@ phenotypic.schema.CONDITION
    .. autosummary::
       :nosignatures:
    
-      ~CONDITION.category
+      ~CONDITION.metric_family
       ~CONDITION.header_set
       ~CONDITION.kind
       ~CONDITION.tier
@@ -86,12 +86,13 @@ phenotypic.schema.CONDITION
 
    .. autosummary::
    
-      ~CONDITION.CATEGORY
+      ~CONDITION.METRIC_FAMILY
       ~CONDITION.resolved_kind
       ~CONDITION.resolved_tier
       ~CONDITION.resolved_rembi_module
       ~CONDITION.use_label
       ~CONDITION.use_badge
+      ~CONDITION.category_badges
       ~CONDITION.MEDIA
       ~CONDITION.CARBON_SOURCE
       ~CONDITION.NITROGEN_SOURCE
@@ -114,5 +115,6 @@ phenotypic.schema.CONDITION
       ~CONDITION.derivation_type
       ~CONDITION.derives_from
       ~CONDITION.rembi_module_override
+      ~CONDITION.categories
    
    

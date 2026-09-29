@@ -17,7 +17,7 @@ phenotypic.schema.NEIGHBOR\_DIST
       :nosignatures:
    
       ~NEIGHBOR_DIST.kind
-      ~NEIGHBOR_DIST.category
+      ~NEIGHBOR_DIST.metric_family
       ~NEIGHBOR_DIST.tier
       ~NEIGHBOR_DIST.rembi_module
       ~NEIGHBOR_DIST.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.NEIGHBOR\_DIST
 
    .. autosummary::
    
-      ~NEIGHBOR_DIST.CATEGORY
+      ~NEIGHBOR_DIST.METRIC_FAMILY
       ~NEIGHBOR_DIST.resolved_kind
       ~NEIGHBOR_DIST.resolved_tier
       ~NEIGHBOR_DIST.resolved_rembi_module
       ~NEIGHBOR_DIST.use_label
       ~NEIGHBOR_DIST.use_badge
+      ~NEIGHBOR_DIST.category_badges
       ~NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL
       ~NEIGHBOR_DIST.LEFT_DISTANCE
       ~NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL
@@ -111,5 +112,6 @@ phenotypic.schema.NEIGHBOR\_DIST
       ~NEIGHBOR_DIST.derivation_type
       ~NEIGHBOR_DIST.derives_from
       ~NEIGHBOR_DIST.rembi_module_override
+      ~NEIGHBOR_DIST.categories
    
    

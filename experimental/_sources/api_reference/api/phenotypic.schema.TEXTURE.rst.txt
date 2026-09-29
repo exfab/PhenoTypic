@@ -18,7 +18,7 @@ phenotypic.schema.TEXTURE
    
       ~TEXTURE.tier
       ~TEXTURE.kind
-      ~TEXTURE.category
+      ~TEXTURE.metric_family
       ~TEXTURE.rembi_module
       ~TEXTURE.change_note
       ~TEXTURE.header_scheme
@@ -85,12 +85,13 @@ phenotypic.schema.TEXTURE
 
    .. autosummary::
    
-      ~TEXTURE.CATEGORY
+      ~TEXTURE.METRIC_FAMILY
       ~TEXTURE.resolved_kind
       ~TEXTURE.resolved_tier
       ~TEXTURE.resolved_rembi_module
       ~TEXTURE.use_label
       ~TEXTURE.use_badge
+      ~TEXTURE.category_badges
       ~TEXTURE.ANGULAR_SECOND_MOMENT
       ~TEXTURE.CONTRAST
       ~TEXTURE.CORRELATION
@@ -113,5 +114,6 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.derivation_type
       ~TEXTURE.derives_from
       ~TEXTURE.rembi_module_override
+      ~TEXTURE.categories
    
    

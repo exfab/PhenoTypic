@@ -18,7 +18,7 @@ phenotypic.schema.ColorComposition
    
       ~ColorComposition.tier
       ~ColorComposition.kind
-      ~ColorComposition.category
+      ~ColorComposition.metric_family
       ~ColorComposition.rembi_module
       ~ColorComposition.change_note
       ~ColorComposition.header_scheme
@@ -86,12 +86,13 @@ phenotypic.schema.ColorComposition
 
    .. autosummary::
    
-      ~ColorComposition.CATEGORY
+      ~ColorComposition.METRIC_FAMILY
       ~ColorComposition.resolved_kind
       ~ColorComposition.resolved_tier
       ~ColorComposition.resolved_rembi_module
       ~ColorComposition.use_label
       ~ColorComposition.use_badge
+      ~ColorComposition.category_badges
       ~ColorComposition.BLACK_PCT
       ~ColorComposition.WHITE_PCT
       ~ColorComposition.GRAY_PCT
@@ -113,5 +114,6 @@ phenotypic.schema.ColorComposition
       ~ColorComposition.derivation_type
       ~ColorComposition.derives_from
       ~ColorComposition.rembi_module_override
+      ~ColorComposition.categories
    
    

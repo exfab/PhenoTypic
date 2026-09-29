@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_ICC
       :nosignatures:
    
       ~QUALITY_ICC.kind
-      ~QUALITY_ICC.category
+      ~QUALITY_ICC.metric_family
       ~QUALITY_ICC.tier
       ~QUALITY_ICC.rembi_module
       ~QUALITY_ICC.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_ICC
 
    .. autosummary::
    
-      ~QUALITY_ICC.CATEGORY
+      ~QUALITY_ICC.METRIC_FAMILY
       ~QUALITY_ICC.resolved_kind
       ~QUALITY_ICC.resolved_tier
       ~QUALITY_ICC.resolved_rembi_module
       ~QUALITY_ICC.use_label
       ~QUALITY_ICC.use_badge
+      ~QUALITY_ICC.category_badges
       ~QUALITY_ICC.NUM_SUBJECTS
       ~QUALITY_ICC.NUM_RATERS
       ~QUALITY_ICC.NUM_MEMBERS
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_ICC
       ~QUALITY_ICC.derivation_type
       ~QUALITY_ICC.derives_from
       ~QUALITY_ICC.rembi_module_override
+      ~QUALITY_ICC.categories
    
    

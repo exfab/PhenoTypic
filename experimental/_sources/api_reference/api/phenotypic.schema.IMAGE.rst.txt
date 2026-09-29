@@ -16,7 +16,7 @@ phenotypic.schema.IMAGE
    .. autosummary::
       :nosignatures:
    
-      ~IMAGE.category
+      ~IMAGE.metric_family
       ~IMAGE.header_set
       ~IMAGE.kind
       ~IMAGE.tier
@@ -86,12 +86,13 @@ phenotypic.schema.IMAGE
 
    .. autosummary::
    
-      ~IMAGE.CATEGORY
+      ~IMAGE.METRIC_FAMILY
       ~IMAGE.resolved_kind
       ~IMAGE.resolved_tier
       ~IMAGE.resolved_rembi_module
       ~IMAGE.use_label
       ~IMAGE.use_badge
+      ~IMAGE.category_badges
       ~IMAGE.UUID
       ~IMAGE.IMAGE_NAME
       ~IMAGE.PARENT_IMAGE_NAME
@@ -109,5 +110,6 @@ phenotypic.schema.IMAGE
       ~IMAGE.derivation_type
       ~IMAGE.derives_from
       ~IMAGE.rembi_module_override
+      ~IMAGE.categories
    
    

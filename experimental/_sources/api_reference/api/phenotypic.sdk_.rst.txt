@@ -122,6 +122,7 @@
       master_carries_user_metadata
       user_metadata_headers
       master_measurements_parquet_path
+      measurements_by_category_dir
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path

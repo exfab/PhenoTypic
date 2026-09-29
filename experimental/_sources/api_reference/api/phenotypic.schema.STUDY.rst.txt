@@ -16,7 +16,7 @@ phenotypic.schema.STUDY
    .. autosummary::
       :nosignatures:
    
-      ~STUDY.category
+      ~STUDY.metric_family
       ~STUDY.header_set
       ~STUDY.kind
       ~STUDY.tier
@@ -86,12 +86,13 @@ phenotypic.schema.STUDY
 
    .. autosummary::
    
-      ~STUDY.CATEGORY
+      ~STUDY.METRIC_FAMILY
       ~STUDY.resolved_kind
       ~STUDY.resolved_tier
       ~STUDY.resolved_rembi_module
       ~STUDY.use_label
       ~STUDY.use_badge
+      ~STUDY.category_badges
       ~STUDY.TITLE
       ~STUDY.DESCRIPTION
       ~STUDY.PRIVATE_UNTIL_DATE
@@ -111,5 +112,6 @@ phenotypic.schema.STUDY
       ~STUDY.derivation_type
       ~STUDY.derives_from
       ~STUDY.rembi_module_override
+      ~STUDY.categories
    
    

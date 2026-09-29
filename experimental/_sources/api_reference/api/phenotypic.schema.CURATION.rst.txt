@@ -17,7 +17,7 @@ phenotypic.schema.CURATION
       :nosignatures:
    
       ~CURATION.kind
-      ~CURATION.category
+      ~CURATION.metric_family
       ~CURATION.tier
       ~CURATION.rembi_module
       ~CURATION.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.CURATION
 
    .. autosummary::
    
-      ~CURATION.CATEGORY
+      ~CURATION.METRIC_FAMILY
       ~CURATION.resolved_kind
       ~CURATION.resolved_tier
       ~CURATION.resolved_rembi_module
       ~CURATION.use_label
       ~CURATION.use_badge
+      ~CURATION.category_badges
       ~CURATION.ERROR_CATEGORY
       ~CURATION.label
       ~CURATION.desc
@@ -101,5 +102,6 @@ phenotypic.schema.CURATION
       ~CURATION.derivation_type
       ~CURATION.derives_from
       ~CURATION.rembi_module_override
+      ~CURATION.categories
    
    

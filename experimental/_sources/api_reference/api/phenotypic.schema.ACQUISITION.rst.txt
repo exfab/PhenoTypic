@@ -16,7 +16,7 @@ phenotypic.schema.ACQUISITION
    .. autosummary::
       :nosignatures:
    
-      ~ACQUISITION.category
+      ~ACQUISITION.metric_family
       ~ACQUISITION.header_set
       ~ACQUISITION.kind
       ~ACQUISITION.tier
@@ -86,12 +86,13 @@ phenotypic.schema.ACQUISITION
 
    .. autosummary::
    
-      ~ACQUISITION.CATEGORY
+      ~ACQUISITION.METRIC_FAMILY
       ~ACQUISITION.resolved_kind
       ~ACQUISITION.resolved_tier
       ~ACQUISITION.resolved_rembi_module
       ~ACQUISITION.use_label
       ~ACQUISITION.use_badge
+      ~ACQUISITION.category_badges
       ~ACQUISITION.IMAGING_DATE
       ~ACQUISITION.INSTRUMENT
       ~ACQUISITION.EXPERIMENTER
@@ -106,5 +107,6 @@ phenotypic.schema.ACQUISITION
       ~ACQUISITION.derivation_type
       ~ACQUISITION.derives_from
       ~ACQUISITION.rembi_module_override
+      ~ACQUISITION.categories
    
    

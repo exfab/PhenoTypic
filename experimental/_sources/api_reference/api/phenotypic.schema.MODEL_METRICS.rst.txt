@@ -17,7 +17,7 @@ phenotypic.schema.MODEL\_METRICS
       :nosignatures:
    
       ~MODEL_METRICS.kind
-      ~MODEL_METRICS.category
+      ~MODEL_METRICS.metric_family
       ~MODEL_METRICS.tier
       ~MODEL_METRICS.rembi_module
       ~MODEL_METRICS.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.MODEL\_METRICS
 
    .. autosummary::
    
-      ~MODEL_METRICS.CATEGORY
+      ~MODEL_METRICS.METRIC_FAMILY
       ~MODEL_METRICS.resolved_kind
       ~MODEL_METRICS.resolved_tier
       ~MODEL_METRICS.resolved_rembi_module
       ~MODEL_METRICS.use_label
       ~MODEL_METRICS.use_badge
+      ~MODEL_METRICS.category_badges
       ~MODEL_METRICS.MAE
       ~MODEL_METRICS.MSE
       ~MODEL_METRICS.RMSE
@@ -107,5 +108,6 @@ phenotypic.schema.MODEL\_METRICS
       ~MODEL_METRICS.derivation_type
       ~MODEL_METRICS.derives_from
       ~MODEL_METRICS.rembi_module_override
+      ~MODEL_METRICS.categories
    
    

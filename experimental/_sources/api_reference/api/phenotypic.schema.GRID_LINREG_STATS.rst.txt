@@ -17,7 +17,7 @@ phenotypic.schema.GRID\_LINREG\_STATS
       :nosignatures:
    
       ~GRID_LINREG_STATS.kind
-      ~GRID_LINREG_STATS.category
+      ~GRID_LINREG_STATS.metric_family
       ~GRID_LINREG_STATS.tier
       ~GRID_LINREG_STATS.rembi_module
       ~GRID_LINREG_STATS.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.GRID\_LINREG\_STATS
 
    .. autosummary::
    
-      ~GRID_LINREG_STATS.CATEGORY
+      ~GRID_LINREG_STATS.METRIC_FAMILY
       ~GRID_LINREG_STATS.resolved_kind
       ~GRID_LINREG_STATS.resolved_tier
       ~GRID_LINREG_STATS.resolved_rembi_module
       ~GRID_LINREG_STATS.use_label
       ~GRID_LINREG_STATS.use_badge
+      ~GRID_LINREG_STATS.category_badges
       ~GRID_LINREG_STATS.ROW_LINREG_M
       ~GRID_LINREG_STATS.ROW_LINREG_B
       ~GRID_LINREG_STATS.COL_LINREG_M
@@ -107,5 +108,6 @@ phenotypic.schema.GRID\_LINREG\_STATS
       ~GRID_LINREG_STATS.derivation_type
       ~GRID_LINREG_STATS.derives_from
       ~GRID_LINREG_STATS.rembi_module_override
+      ~GRID_LINREG_STATS.categories
    
    

@@ -17,7 +17,7 @@ phenotypic.schema.LINEAR\_CAP\_AND\_LAG\_MODEL
       :nosignatures:
    
       ~LINEAR_CAP_AND_LAG_MODEL.kind
-      ~LINEAR_CAP_AND_LAG_MODEL.category
+      ~LINEAR_CAP_AND_LAG_MODEL.metric_family
       ~LINEAR_CAP_AND_LAG_MODEL.tier
       ~LINEAR_CAP_AND_LAG_MODEL.rembi_module
       ~LINEAR_CAP_AND_LAG_MODEL.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.LINEAR\_CAP\_AND\_LAG\_MODEL
 
    .. autosummary::
    
-      ~LINEAR_CAP_AND_LAG_MODEL.CATEGORY
+      ~LINEAR_CAP_AND_LAG_MODEL.METRIC_FAMILY
       ~LINEAR_CAP_AND_LAG_MODEL.resolved_kind
       ~LINEAR_CAP_AND_LAG_MODEL.resolved_tier
       ~LINEAR_CAP_AND_LAG_MODEL.resolved_rembi_module
       ~LINEAR_CAP_AND_LAG_MODEL.use_label
       ~LINEAR_CAP_AND_LAG_MODEL.use_badge
+      ~LINEAR_CAP_AND_LAG_MODEL.category_badges
       ~LINEAR_CAP_AND_LAG_MODEL.v
       ~LINEAR_CAP_AND_LAG_MODEL.s0
       ~LINEAR_CAP_AND_LAG_MODEL.lam
@@ -107,5 +108,6 @@ phenotypic.schema.LINEAR\_CAP\_AND\_LAG\_MODEL
       ~LINEAR_CAP_AND_LAG_MODEL.derivation_type
       ~LINEAR_CAP_AND_LAG_MODEL.derives_from
       ~LINEAR_CAP_AND_LAG_MODEL.rembi_module_override
+      ~LINEAR_CAP_AND_LAG_MODEL.categories
    
    

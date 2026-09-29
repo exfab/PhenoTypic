@@ -18,7 +18,7 @@ phenotypic.schema.SYMMETRIC\_ZONES
    
       ~SYMMETRIC_ZONES.tier
       ~SYMMETRIC_ZONES.kind
-      ~SYMMETRIC_ZONES.category
+      ~SYMMETRIC_ZONES.metric_family
       ~SYMMETRIC_ZONES.rembi_module
       ~SYMMETRIC_ZONES.change_note
       ~SYMMETRIC_ZONES.header_scheme
@@ -85,12 +85,13 @@ phenotypic.schema.SYMMETRIC\_ZONES
 
    .. autosummary::
    
-      ~SYMMETRIC_ZONES.CATEGORY
+      ~SYMMETRIC_ZONES.METRIC_FAMILY
       ~SYMMETRIC_ZONES.resolved_kind
       ~SYMMETRIC_ZONES.resolved_tier
       ~SYMMETRIC_ZONES.resolved_rembi_module
       ~SYMMETRIC_ZONES.use_label
       ~SYMMETRIC_ZONES.use_badge
+      ~SYMMETRIC_ZONES.category_badges
       ~SYMMETRIC_ZONES.CORE_RADIUS
       ~SYMMETRIC_ZONES.SYMMETRIC_RADIUS
       ~SYMMETRIC_ZONES.MEAN_EXPANSION
@@ -110,5 +111,6 @@ phenotypic.schema.SYMMETRIC\_ZONES
       ~SYMMETRIC_ZONES.derivation_type
       ~SYMMETRIC_ZONES.derives_from
       ~SYMMETRIC_ZONES.rembi_module_override
+      ~SYMMETRIC_ZONES.categories
    
    

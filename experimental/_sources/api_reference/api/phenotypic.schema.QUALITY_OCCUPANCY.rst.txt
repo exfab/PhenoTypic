@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_OCCUPANCY
       :nosignatures:
    
       ~QUALITY_OCCUPANCY.kind
-      ~QUALITY_OCCUPANCY.category
+      ~QUALITY_OCCUPANCY.metric_family
       ~QUALITY_OCCUPANCY.tier
       ~QUALITY_OCCUPANCY.rembi_module
       ~QUALITY_OCCUPANCY.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_OCCUPANCY
 
    .. autosummary::
    
-      ~QUALITY_OCCUPANCY.CATEGORY
+      ~QUALITY_OCCUPANCY.METRIC_FAMILY
       ~QUALITY_OCCUPANCY.resolved_kind
       ~QUALITY_OCCUPANCY.resolved_tier
       ~QUALITY_OCCUPANCY.resolved_rembi_module
       ~QUALITY_OCCUPANCY.use_label
       ~QUALITY_OCCUPANCY.use_badge
+      ~QUALITY_OCCUPANCY.category_badges
       ~QUALITY_OCCUPANCY.FILLED
       ~QUALITY_OCCUPANCY.EXPECTED
       ~QUALITY_OCCUPANCY.VACANT
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_OCCUPANCY
       ~QUALITY_OCCUPANCY.derivation_type
       ~QUALITY_OCCUPANCY.derives_from
       ~QUALITY_OCCUPANCY.rembi_module_override
+      ~QUALITY_OCCUPANCY.categories
    
    

@@ -16,7 +16,7 @@ phenotypic.schema.SAMPLE
    .. autosummary::
       :nosignatures:
    
-      ~SAMPLE.category
+      ~SAMPLE.metric_family
       ~SAMPLE.header_set
       ~SAMPLE.kind
       ~SAMPLE.tier
@@ -86,12 +86,13 @@ phenotypic.schema.SAMPLE
 
    .. autosummary::
    
-      ~SAMPLE.CATEGORY
+      ~SAMPLE.METRIC_FAMILY
       ~SAMPLE.resolved_kind
       ~SAMPLE.resolved_tier
       ~SAMPLE.resolved_rembi_module
       ~SAMPLE.use_label
       ~SAMPLE.use_badge
+      ~SAMPLE.category_badges
       ~SAMPLE.SAMPLE_ID
       ~SAMPLE.BIO_REPLICATE
       ~SAMPLE.COND_REPLICATE
@@ -111,5 +112,6 @@ phenotypic.schema.SAMPLE
       ~SAMPLE.derivation_type
       ~SAMPLE.derives_from
       ~SAMPLE.rembi_module_override
+      ~SAMPLE.categories
    
    

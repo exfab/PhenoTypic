@@ -18,7 +18,7 @@ phenotypic.schema.INTENSITY
    
       ~INTENSITY.tier
       ~INTENSITY.kind
-      ~INTENSITY.category
+      ~INTENSITY.metric_family
       ~INTENSITY.rembi_module
       ~INTENSITY.change_note
       ~INTENSITY.header_scheme
@@ -85,12 +85,13 @@ phenotypic.schema.INTENSITY
 
    .. autosummary::
    
-      ~INTENSITY.CATEGORY
+      ~INTENSITY.METRIC_FAMILY
       ~INTENSITY.resolved_kind
       ~INTENSITY.resolved_tier
       ~INTENSITY.resolved_rembi_module
       ~INTENSITY.use_label
       ~INTENSITY.use_badge
+      ~INTENSITY.category_badges
       ~INTENSITY.INTEGRATED_INTENSITY
       ~INTENSITY.DENSITY
       ~INTENSITY.CONVEX_DENSITY
@@ -112,5 +113,6 @@ phenotypic.schema.INTENSITY
       ~INTENSITY.derivation_type
       ~INTENSITY.derives_from
       ~INTENSITY.rembi_module_override
+      ~INTENSITY.categories
    
    

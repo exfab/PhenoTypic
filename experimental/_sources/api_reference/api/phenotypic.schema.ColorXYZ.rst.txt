@@ -18,7 +18,7 @@ phenotypic.schema.ColorXYZ
    
       ~ColorXYZ.tier
       ~ColorXYZ.kind
-      ~ColorXYZ.category
+      ~ColorXYZ.metric_family
       ~ColorXYZ.rembi_module
       ~ColorXYZ.change_note
       ~ColorXYZ.header_scheme
@@ -88,12 +88,13 @@ phenotypic.schema.ColorXYZ
 
    .. autosummary::
    
-      ~ColorXYZ.CATEGORY
+      ~ColorXYZ.METRIC_FAMILY
       ~ColorXYZ.resolved_kind
       ~ColorXYZ.resolved_tier
       ~ColorXYZ.resolved_rembi_module
       ~ColorXYZ.use_label
       ~ColorXYZ.use_badge
+      ~ColorXYZ.category_badges
       ~ColorXYZ.X_MINIMUM
       ~ColorXYZ.X_Q1
       ~ColorXYZ.X_MEAN
@@ -127,5 +128,6 @@ phenotypic.schema.ColorXYZ
       ~ColorXYZ.derivation_type
       ~ColorXYZ.derives_from
       ~ColorXYZ.rembi_module_override
+      ~ColorXYZ.categories
    
    

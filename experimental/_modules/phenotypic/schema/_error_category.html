@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -625,16 +637,16 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">ErrorCategory</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Closed taxonomy of detection-error categories for object triage.</span>
 
-<span class="sd">    The enum *value* is the category-prefixed header (``ErrorCategory_&lt;label&gt;``)</span>
+<span class="sd">    The enum *value* is the family-prefixed header (``ErrorCategory_&lt;label&gt;``)</span>
 <span class="sd">    per the ``MeasurementInfo`` convention, but callers persist and compare on</span>
 <span class="sd">    the bare :attr:`~MeasurementInfo.label` (e.g. ``&quot;debris&quot;``). Use</span>
 <span class="sd">    :meth:`from_label` to resolve a stored token back to a member.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="ErrorCategory.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ErrorCategory.html#phenotypic.schema.ErrorCategory.category">[docs]</a>
+<div class="viewcode-block" id="ErrorCategory.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ErrorCategory.html#phenotypic.schema.ErrorCategory.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;ErrorCategory&quot;</span></div>
 
 

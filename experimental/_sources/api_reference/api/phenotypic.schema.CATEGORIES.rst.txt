@@ -1,0 +1,84 @@
+phenotypic.schema.CATEGORIES
+============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: CATEGORIES
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CATEGORIES.encode
+      ~CATEGORIES.replace
+      ~CATEGORIES.split
+      ~CATEGORIES.rsplit
+      ~CATEGORIES.join
+      ~CATEGORIES.capitalize
+      ~CATEGORIES.casefold
+      ~CATEGORIES.title
+      ~CATEGORIES.center
+      ~CATEGORIES.count
+      ~CATEGORIES.expandtabs
+      ~CATEGORIES.find
+      ~CATEGORIES.partition
+      ~CATEGORIES.index
+      ~CATEGORIES.ljust
+      ~CATEGORIES.lower
+      ~CATEGORIES.lstrip
+      ~CATEGORIES.rfind
+      ~CATEGORIES.rindex
+      ~CATEGORIES.rjust
+      ~CATEGORIES.rstrip
+      ~CATEGORIES.rpartition
+      ~CATEGORIES.splitlines
+      ~CATEGORIES.strip
+      ~CATEGORIES.swapcase
+      ~CATEGORIES.translate
+      ~CATEGORIES.upper
+      ~CATEGORIES.startswith
+      ~CATEGORIES.endswith
+      ~CATEGORIES.removeprefix
+      ~CATEGORIES.removesuffix
+      ~CATEGORIES.isascii
+      ~CATEGORIES.islower
+      ~CATEGORIES.isupper
+      ~CATEGORIES.istitle
+      ~CATEGORIES.isspace
+      ~CATEGORIES.isdecimal
+      ~CATEGORIES.isdigit
+      ~CATEGORIES.isnumeric
+      ~CATEGORIES.isalpha
+      ~CATEGORIES.isalnum
+      ~CATEGORIES.isidentifier
+      ~CATEGORIES.isprintable
+      ~CATEGORIES.zfill
+      ~CATEGORIES.format
+      ~CATEGORIES.format_map
+      ~CATEGORIES.maketrans
+      ~CATEGORIES.in_order
+      ~CATEGORIES.members
+      ~CATEGORIES.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CATEGORIES.display_name
+      ~CATEGORIES.anchor
+      ~CATEGORIES.STARTING_METRICS
+      ~CATEGORIES.label
+      ~CATEGORIES.desc
+   
+   

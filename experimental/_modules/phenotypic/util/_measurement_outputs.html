@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -609,7 +621,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <span class="n">MeasurementFrame</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span>
@@ -649,16 +661,41 @@
     <span class="n">groups</span> <span class="o">=</span> <span class="n">_producer_column_groups</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">groups</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">_split_by_groups</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">_context_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">groups</span><span class="p">),</span> <span class="n">groups</span><span class="p">)</span></div>
 
-    <span class="n">producer_columns</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="n">column</span> <span class="k">for</span> <span class="n">group_columns</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">group_columns</span>
-    <span class="p">}</span>
-    <span class="n">context_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">producer_columns</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="n">output_key</span><span class="p">:</span> <span class="n">_select_columns</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">context_columns</span> <span class="o">+</span> <span class="n">group_columns</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">output_key</span><span class="p">,</span> <span class="n">group_columns</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-    <span class="p">}</span></div>
+
+<div class="viewcode-block" id="split_measurements_by_category">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.split_measurements_by_category.html#phenotypic.util.split_measurements_by_category">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">split_measurements_by_category</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">MeasurementFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeasurementFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split a measurements table into one data frame per measurement category.</span>
+
+<span class="sd">    Context columns are the same as :func:`split_measurements`: every column</span>
+<span class="sd">    not owned by a producer&#39;s ``MeasurementInfo`` (metadata, object label,</span>
+<span class="sd">    grid, joined external metadata). Each category frame holds those context</span>
+<span class="sd">    columns followed by the present columns whose member carries the category</span>
+<span class="sd">    (see :class:`phenotypic.schema.CATEGORIES`), in input order. Measurement</span>
+<span class="sd">    columns outside a category are dropped from its frame. A column in several</span>
+<span class="sd">    categories appears in each.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: A pandas or polars measurements DataFrame.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Mapping of category label (e.g. ``&quot;StartingMetrics&quot;``) to a same-type</span>
+<span class="sd">        DataFrame. Categories with no present columns are omitted.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If *df* is not a pandas or polars DataFrame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">_columns</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="n">producer_groups</span> <span class="o">=</span> <span class="n">_producer_column_groups</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">producer_groups</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="n">_context_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">producer_groups</span><span class="p">)</span>
+    <span class="n">context_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">measured</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">context_set</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">_split_by_groups</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">_category_column_groups</span><span class="p">(</span><span class="n">measured</span><span class="p">))</span></div>
 
 
 
@@ -694,8 +731,9 @@
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
     <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-        <span class="s2">&quot;split_measurements() and generate_output_key() require a pandas &quot;</span>
-        <span class="sa">f</span><span class="s2">&quot;or polars DataFrame, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="s2">&quot;split_measurements(), split_measurements_by_category() and &quot;</span>
+        <span class="s2">&quot;generate_output_key() require a pandas or polars DataFrame, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
     <span class="p">)</span>
 
 
@@ -709,6 +747,37 @@
         <span class="s2">&quot;split_measurements() requires a pandas or polars DataFrame, &quot;</span>
         <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.&quot;</span>
     <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_context_columns</span><span class="p">(</span><span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Columns not claimed by any producer group, in input order.&quot;&quot;&quot;</span>
+    <span class="n">owned</span> <span class="o">=</span> <span class="p">{</span><span class="n">column</span> <span class="k">for</span> <span class="n">group_columns</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">group_columns</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">owned</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_split_by_groups</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">MeasurementFrame</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeasurementFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Select ``context + group`` columns for every group, preserving frame type.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">_select_columns</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">context</span> <span class="o">+</span> <span class="n">cols</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">cols</span> <span class="ow">in</span> <span class="n">groups</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_category_column_groups</span><span class="p">(</span><span class="n">columns</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map category labels to the *columns* whose member carries that category.</span>
+
+<span class="sd">    Keys follow ``CATEGORIES`` declaration order; values follow *columns* order.</span>
+<span class="sd">    Reads the module-level ``CATEGORIES`` at call time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">by_category</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">CATEGORIES</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">category</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">CATEGORIES</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+        <span class="n">member</span> <span class="o">=</span> <span class="n">_member_for_column</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">CATEGORIES</span><span class="o">.</span><span class="n">in_order</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">categories</span><span class="p">):</span>
+            <span class="n">by_category</span><span class="p">[</span><span class="n">category</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">category</span><span class="o">.</span><span class="n">label</span><span class="p">:</span> <span class="n">cols</span> <span class="k">for</span> <span class="n">category</span><span class="p">,</span> <span class="n">cols</span> <span class="ow">in</span> <span class="n">by_category</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">cols</span><span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_producer_column_groups</span><span class="p">(</span><span class="n">columns</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
@@ -845,15 +914,15 @@
 
 
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_known_categories</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;All public schema categories, sorted longest-first for prefix matching.&quot;&quot;&quot;</span>
-    <span class="n">cats</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_known_families</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;All public schema metric families, sorted longest-first for prefix matching.&quot;&quot;&quot;</span>
+    <span class="n">families</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">_iter_public_info_classes</span><span class="p">():</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">cats</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">category</span><span class="p">())</span>
+            <span class="n">families</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">metric_family</span><span class="p">())</span>
         <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>  <span class="c1"># member-less classification bases</span>
             <span class="k">continue</span>
-    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">cats</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="nb">len</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">families</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="nb">len</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_sanitize_token</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -863,14 +932,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">metric_token</span><span class="p">(</span><span class="n">on</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Derive the ``&lt;metric&gt;`` header segment from a fitter&#39;s ``on`` column.</span>
 
-<span class="sd">    Strips the longest known schema **category** prefix if present</span>
+<span class="sd">    Strips the longest known schema **metric family** prefix if present</span>
 <span class="sd">    (``Size_Area`` → ``Area``), else returns the value verbatim</span>
 <span class="sd">    (``x`` → ``x``); then removes whitespace.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">on</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">_known_categories</span><span class="p">():</span>
-        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">category</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">_sanitize_token</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">category</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:])</span>
+    <span class="k">for</span> <span class="n">family</span> <span class="ow">in</span> <span class="n">_known_families</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">family</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_sanitize_token</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">family</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:])</span>
     <span class="k">return</span> <span class="n">_sanitize_token</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 
@@ -880,16 +949,22 @@
     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">_iter_public_info_classes</span><span class="p">()</span> <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_describe_column</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve *column* to its member&#39;s ``desc`` across all schemes, or None.&quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_member_for_column</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeasurementInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve *column* to its public schema member across all header schemes.&quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">_public_info_classes</span><span class="p">():</span>
         <span class="n">member</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">member_for_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">member</span><span class="o">.</span><span class="n">desc</span>
+            <span class="k">return</span> <span class="n">member</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;generate_output_key&quot;</span><span class="p">,</span> <span class="s2">&quot;split_measurements&quot;</span><span class="p">]</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_describe_column</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve *column* to its member&#39;s ``desc`` across all schemes, or None.&quot;&quot;&quot;</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">_member_for_column</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">member</span><span class="o">.</span><span class="n">desc</span> <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;generate_output_key&quot;</span><span class="p">,</span> <span class="s2">&quot;split_measurements&quot;</span><span class="p">,</span> <span class="s2">&quot;split_measurements_by_category&quot;</span><span class="p">]</span>
 </pre></div>
 
                 </article>

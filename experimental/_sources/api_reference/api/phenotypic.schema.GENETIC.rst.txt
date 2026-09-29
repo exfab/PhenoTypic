@@ -16,7 +16,7 @@ phenotypic.schema.GENETIC
    .. autosummary::
       :nosignatures:
    
-      ~GENETIC.category
+      ~GENETIC.metric_family
       ~GENETIC.header_set
       ~GENETIC.kind
       ~GENETIC.tier
@@ -86,12 +86,13 @@ phenotypic.schema.GENETIC
 
    .. autosummary::
    
-      ~GENETIC.CATEGORY
+      ~GENETIC.METRIC_FAMILY
       ~GENETIC.resolved_kind
       ~GENETIC.resolved_tier
       ~GENETIC.resolved_rembi_module
       ~GENETIC.use_label
       ~GENETIC.use_badge
+      ~GENETIC.category_badges
       ~GENETIC.ORGANISM
       ~GENETIC.STRAIN
       ~GENETIC.GENOTYPE
@@ -110,5 +111,6 @@ phenotypic.schema.GENETIC
       ~GENETIC.derivation_type
       ~GENETIC.derives_from
       ~GENETIC.rembi_module_override
+      ~GENETIC.categories
    
    

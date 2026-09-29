@@ -17,7 +17,7 @@ phenotypic.schema.SHAPE
       :nosignatures:
    
       ~SHAPE.kind
-      ~SHAPE.category
+      ~SHAPE.metric_family
       ~SHAPE.tier
       ~SHAPE.rembi_module
       ~SHAPE.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.SHAPE
 
    .. autosummary::
    
-      ~SHAPE.CATEGORY
+      ~SHAPE.METRIC_FAMILY
       ~SHAPE.resolved_kind
       ~SHAPE.resolved_tier
       ~SHAPE.resolved_rembi_module
       ~SHAPE.use_label
       ~SHAPE.use_badge
+      ~SHAPE.category_badges
       ~SHAPE.CIRCULARITY
       ~SHAPE.ECCENTRICITY
       ~SHAPE.SOLIDITY
@@ -108,5 +109,6 @@ phenotypic.schema.SHAPE
       ~SHAPE.derivation_type
       ~SHAPE.derives_from
       ~SHAPE.rembi_module_override
+      ~SHAPE.categories
    
    

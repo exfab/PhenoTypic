@@ -17,7 +17,7 @@ phenotypic.schema.EDGE\_CORRECTION
       :nosignatures:
    
       ~EDGE_CORRECTION.kind
-      ~EDGE_CORRECTION.category
+      ~EDGE_CORRECTION.metric_family
       ~EDGE_CORRECTION.tier
       ~EDGE_CORRECTION.rembi_module
       ~EDGE_CORRECTION.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.EDGE\_CORRECTION
 
    .. autosummary::
    
-      ~EDGE_CORRECTION.CATEGORY
+      ~EDGE_CORRECTION.METRIC_FAMILY
       ~EDGE_CORRECTION.resolved_kind
       ~EDGE_CORRECTION.resolved_tier
       ~EDGE_CORRECTION.resolved_rembi_module
       ~EDGE_CORRECTION.use_label
       ~EDGE_CORRECTION.use_badge
+      ~EDGE_CORRECTION.category_badges
       ~EDGE_CORRECTION.CORRECTED_CAP
       ~EDGE_CORRECTION.NEW_VAL
       ~EDGE_CORRECTION.label
@@ -102,5 +103,6 @@ phenotypic.schema.EDGE\_CORRECTION
       ~EDGE_CORRECTION.derivation_type
       ~EDGE_CORRECTION.derives_from
       ~EDGE_CORRECTION.rembi_module_override
+      ~EDGE_CORRECTION.categories
    
    

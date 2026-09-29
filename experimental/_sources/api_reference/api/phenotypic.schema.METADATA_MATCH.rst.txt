@@ -17,7 +17,7 @@ phenotypic.schema.METADATA\_MATCH
       :nosignatures:
    
       ~METADATA_MATCH.kind
-      ~METADATA_MATCH.category
+      ~METADATA_MATCH.metric_family
       ~METADATA_MATCH.tier
       ~METADATA_MATCH.rembi_module
       ~METADATA_MATCH.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.METADATA\_MATCH
 
    .. autosummary::
    
-      ~METADATA_MATCH.CATEGORY
+      ~METADATA_MATCH.METRIC_FAMILY
       ~METADATA_MATCH.resolved_kind
       ~METADATA_MATCH.resolved_tier
       ~METADATA_MATCH.resolved_rembi_module
       ~METADATA_MATCH.use_label
       ~METADATA_MATCH.use_badge
+      ~METADATA_MATCH.category_badges
       ~METADATA_MATCH.METADATA_ONLY
       ~METADATA_MATCH.label
       ~METADATA_MATCH.desc
@@ -101,5 +102,6 @@ phenotypic.schema.METADATA\_MATCH
       ~METADATA_MATCH.derivation_type
       ~METADATA_MATCH.derives_from
       ~METADATA_MATCH.rembi_module_override
+      ~METADATA_MATCH.categories
    
    

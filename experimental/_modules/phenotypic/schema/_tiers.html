@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -632,14 +644,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Identity information owned by a concrete metadata vocabulary.</span>
 
 <span class="sd">    Every concrete owner emits the shared ``Metadata_&lt;Label&gt;`` namespace. Class</span>
-<span class="sd">    identity, rather than a category-string prefix, is the stable signal that an</span>
+<span class="sd">    identity, rather than a metric-family string prefix, is the stable signal that an</span>
 <span class="sd">    enum owns metadata.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="MetadataInfo.category">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.MetadataInfo.html#phenotypic.schema.MetadataInfo.category">[docs]</a>
+<div class="viewcode-block" id="MetadataInfo.metric_family">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.MetadataInfo.html#phenotypic.schema.MetadataInfo.metric_family">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the shared physical namespace for metadata columns.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 

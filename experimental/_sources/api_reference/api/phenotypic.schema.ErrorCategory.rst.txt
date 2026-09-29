@@ -17,7 +17,7 @@ phenotypic.schema.ErrorCategory
       :nosignatures:
    
       ~ErrorCategory.kind
-      ~ErrorCategory.category
+      ~ErrorCategory.metric_family
       ~ErrorCategory.tier
       ~ErrorCategory.rembi_module
       ~ErrorCategory.change_note
@@ -87,12 +87,13 @@ phenotypic.schema.ErrorCategory
 
    .. autosummary::
    
-      ~ErrorCategory.CATEGORY
+      ~ErrorCategory.METRIC_FAMILY
       ~ErrorCategory.resolved_kind
       ~ErrorCategory.resolved_tier
       ~ErrorCategory.resolved_rembi_module
       ~ErrorCategory.use_label
       ~ErrorCategory.use_badge
+      ~ErrorCategory.category_badges
       ~ErrorCategory.OVERSEGMENTED
       ~ErrorCategory.UNDERSEGMENTED
       ~ErrorCategory.MERGED
@@ -108,5 +109,6 @@ phenotypic.schema.ErrorCategory
       ~ErrorCategory.derivation_type
       ~ErrorCategory.derives_from
       ~ErrorCategory.rembi_module_override
+      ~ErrorCategory.categories
    
    

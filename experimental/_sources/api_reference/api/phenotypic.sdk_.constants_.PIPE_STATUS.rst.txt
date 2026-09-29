@@ -16,7 +16,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
    .. autosummary::
       :nosignatures:
    
-      ~PIPE_STATUS.category
+      ~PIPE_STATUS.metric_family
       ~PIPE_STATUS.kind
       ~PIPE_STATUS.tier
       ~PIPE_STATUS.rembi_module
@@ -85,12 +85,13 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
 
    .. autosummary::
    
-      ~PIPE_STATUS.CATEGORY
+      ~PIPE_STATUS.METRIC_FAMILY
       ~PIPE_STATUS.resolved_kind
       ~PIPE_STATUS.resolved_tier
       ~PIPE_STATUS.resolved_rembi_module
       ~PIPE_STATUS.use_label
       ~PIPE_STATUS.use_badge
+      ~PIPE_STATUS.category_badges
       ~PIPE_STATUS.PROCESSED
       ~PIPE_STATUS.MEASURED
       ~PIPE_STATUS.label
@@ -102,5 +103,6 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.derivation_type
       ~PIPE_STATUS.derives_from
       ~PIPE_STATUS.rembi_module_override
+      ~PIPE_STATUS.categories
    
    

@@ -17,7 +17,7 @@ phenotypic.schema.BBOX
       :nosignatures:
    
       ~BBOX.kind
-      ~BBOX.category
+      ~BBOX.metric_family
       ~BBOX.tier
       ~BBOX.rembi_module
       ~BBOX.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.BBOX
 
    .. autosummary::
    
-      ~BBOX.CATEGORY
+      ~BBOX.METRIC_FAMILY
       ~BBOX.resolved_kind
       ~BBOX.resolved_tier
       ~BBOX.resolved_rembi_module
       ~BBOX.use_label
       ~BBOX.use_badge
+      ~BBOX.category_badges
       ~BBOX.CENTER_RR
       ~BBOX.MIN_RR
       ~BBOX.MAX_RR
@@ -110,5 +111,6 @@ phenotypic.schema.BBOX
       ~BBOX.derivation_type
       ~BBOX.derives_from
       ~BBOX.rembi_module_override
+      ~BBOX.categories
    
    

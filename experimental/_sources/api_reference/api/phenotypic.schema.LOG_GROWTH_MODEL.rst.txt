@@ -17,7 +17,7 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       :nosignatures:
    
       ~LOG_GROWTH_MODEL.kind
-      ~LOG_GROWTH_MODEL.category
+      ~LOG_GROWTH_MODEL.metric_family
       ~LOG_GROWTH_MODEL.tier
       ~LOG_GROWTH_MODEL.rembi_module
       ~LOG_GROWTH_MODEL.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
 
    .. autosummary::
    
-      ~LOG_GROWTH_MODEL.CATEGORY
+      ~LOG_GROWTH_MODEL.METRIC_FAMILY
       ~LOG_GROWTH_MODEL.resolved_kind
       ~LOG_GROWTH_MODEL.resolved_tier
       ~LOG_GROWTH_MODEL.resolved_rembi_module
       ~LOG_GROWTH_MODEL.use_label
       ~LOG_GROWTH_MODEL.use_badge
+      ~LOG_GROWTH_MODEL.category_badges
       ~LOG_GROWTH_MODEL.R_FIT
       ~LOG_GROWTH_MODEL.K_FIT
       ~LOG_GROWTH_MODEL.N0_FIT
@@ -107,5 +108,6 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       ~LOG_GROWTH_MODEL.derivation_type
       ~LOG_GROWTH_MODEL.derives_from
       ~LOG_GROWTH_MODEL.rembi_module_override
+      ~LOG_GROWTH_MODEL.categories
    
    

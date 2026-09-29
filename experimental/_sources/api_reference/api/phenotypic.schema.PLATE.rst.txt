@@ -16,7 +16,7 @@ phenotypic.schema.PLATE
    .. autosummary::
       :nosignatures:
    
-      ~PLATE.category
+      ~PLATE.metric_family
       ~PLATE.header_set
       ~PLATE.kind
       ~PLATE.tier
@@ -86,12 +86,13 @@ phenotypic.schema.PLATE
 
    .. autosummary::
    
-      ~PLATE.CATEGORY
+      ~PLATE.METRIC_FAMILY
       ~PLATE.resolved_kind
       ~PLATE.resolved_tier
       ~PLATE.resolved_rembi_module
       ~PLATE.use_label
       ~PLATE.use_badge
+      ~PLATE.category_badges
       ~PLATE.PLATE_ID
       ~PLATE.BATCH
       ~PLATE.ARRAY_DENSITY
@@ -106,5 +107,6 @@ phenotypic.schema.PLATE
       ~PLATE.derivation_type
       ~PLATE.derives_from
       ~PLATE.rembi_module_override
+      ~PLATE.categories
    
    

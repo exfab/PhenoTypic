@@ -18,7 +18,7 @@ phenotypic.schema.SIZE
    
       ~SIZE.tier
       ~SIZE.kind
-      ~SIZE.category
+      ~SIZE.metric_family
       ~SIZE.rembi_module
       ~SIZE.change_note
       ~SIZE.header_scheme
@@ -85,12 +85,13 @@ phenotypic.schema.SIZE
 
    .. autosummary::
    
-      ~SIZE.CATEGORY
+      ~SIZE.METRIC_FAMILY
       ~SIZE.resolved_kind
       ~SIZE.resolved_tier
       ~SIZE.resolved_rembi_module
       ~SIZE.use_label
       ~SIZE.use_badge
+      ~SIZE.category_badges
       ~SIZE.AREA
       ~SIZE.INTEGRATED_INTENSITY
       ~SIZE.PERIMETER
@@ -114,5 +115,6 @@ phenotypic.schema.SIZE
       ~SIZE.derivation_type
       ~SIZE.derives_from
       ~SIZE.rembi_module_override
+      ~SIZE.categories
    
    

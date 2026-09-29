@@ -16,7 +16,7 @@ phenotypic.schema.EXPERIMENT
    .. autosummary::
       :nosignatures:
    
-      ~EXPERIMENT.category
+      ~EXPERIMENT.metric_family
       ~EXPERIMENT.header_set
       ~EXPERIMENT.kind
       ~EXPERIMENT.tier
@@ -86,12 +86,13 @@ phenotypic.schema.EXPERIMENT
 
    .. autosummary::
    
-      ~EXPERIMENT.CATEGORY
+      ~EXPERIMENT.METRIC_FAMILY
       ~EXPERIMENT.resolved_kind
       ~EXPERIMENT.resolved_tier
       ~EXPERIMENT.resolved_rembi_module
       ~EXPERIMENT.use_label
       ~EXPERIMENT.use_badge
+      ~EXPERIMENT.category_badges
       ~EXPERIMENT.EXPERIMENT_ID
       ~EXPERIMENT.PROJECT
       ~EXPERIMENT.DATASET
@@ -106,5 +107,6 @@ phenotypic.schema.EXPERIMENT
       ~EXPERIMENT.derivation_type
       ~EXPERIMENT.derives_from
       ~EXPERIMENT.rembi_module_override
+      ~EXPERIMENT.categories
    
    

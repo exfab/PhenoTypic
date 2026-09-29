@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_TUKEY
       :nosignatures:
    
       ~QUALITY_TUKEY.kind
-      ~QUALITY_TUKEY.category
+      ~QUALITY_TUKEY.metric_family
       ~QUALITY_TUKEY.tier
       ~QUALITY_TUKEY.rembi_module
       ~QUALITY_TUKEY.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_TUKEY
 
    .. autosummary::
    
-      ~QUALITY_TUKEY.CATEGORY
+      ~QUALITY_TUKEY.METRIC_FAMILY
       ~QUALITY_TUKEY.resolved_kind
       ~QUALITY_TUKEY.resolved_tier
       ~QUALITY_TUKEY.resolved_rembi_module
       ~QUALITY_TUKEY.use_label
       ~QUALITY_TUKEY.use_badge
+      ~QUALITY_TUKEY.category_badges
       ~QUALITY_TUKEY.LOWER_FENCE
       ~QUALITY_TUKEY.UPPER_FENCE
       ~QUALITY_TUKEY.NUM_OUTLIERS
@@ -104,5 +105,6 @@ phenotypic.schema.QUALITY\_TUKEY
       ~QUALITY_TUKEY.derivation_type
       ~QUALITY_TUKEY.derives_from
       ~QUALITY_TUKEY.rembi_module_override
+      ~QUALITY_TUKEY.categories
    
    

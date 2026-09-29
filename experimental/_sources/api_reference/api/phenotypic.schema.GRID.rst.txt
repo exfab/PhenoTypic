@@ -17,7 +17,7 @@ phenotypic.schema.GRID
       :nosignatures:
    
       ~GRID.kind
-      ~GRID.category
+      ~GRID.metric_family
       ~GRID.tier
       ~GRID.rembi_module
       ~GRID.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.GRID
 
    .. autosummary::
    
-      ~GRID.CATEGORY
+      ~GRID.METRIC_FAMILY
       ~GRID.resolved_kind
       ~GRID.resolved_tier
       ~GRID.resolved_rembi_module
       ~GRID.use_label
       ~GRID.use_badge
+      ~GRID.category_badges
       ~GRID.ROW_NUM
       ~GRID.ROW_INTERVAL_START
       ~GRID.ROW_INTERVAL_END
@@ -108,5 +109,6 @@ phenotypic.schema.GRID
       ~GRID.derivation_type
       ~GRID.derives_from
       ~GRID.rembi_module_override
+      ~GRID.categories
    
    

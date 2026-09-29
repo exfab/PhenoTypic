@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -446,6 +452,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -974,7 +986,7 @@
 <div class="viewcode-block" id="metadata_category_for_label">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared category for a known label, or ``None``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the shared metric family for a known label, or ``None``.</span>
 
 <span class="sd">    Deprecated:</span>
 <span class="sd">        Use :func:`metadata_owner_for_label` or</span>
@@ -987,7 +999,7 @@
         <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">owner</span> <span class="o">=</span> <span class="n">metadata_owner_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">owner</span><span class="o">.</span><span class="n">category</span><span class="p">()</span> <span class="k">if</span> <span class="n">owner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+    <span class="k">return</span> <span class="n">owner</span><span class="o">.</span><span class="n">metric_family</span><span class="p">()</span> <span class="k">if</span> <span class="n">owner</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
 
 
 

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.measurements\_by\_category\_dir
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: measurements_by_category_dir

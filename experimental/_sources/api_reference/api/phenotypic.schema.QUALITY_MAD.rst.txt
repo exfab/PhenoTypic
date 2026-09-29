@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_MAD
       :nosignatures:
    
       ~QUALITY_MAD.kind
-      ~QUALITY_MAD.category
+      ~QUALITY_MAD.metric_family
       ~QUALITY_MAD.tier
       ~QUALITY_MAD.rembi_module
       ~QUALITY_MAD.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_MAD
 
    .. autosummary::
    
-      ~QUALITY_MAD.CATEGORY
+      ~QUALITY_MAD.METRIC_FAMILY
       ~QUALITY_MAD.resolved_kind
       ~QUALITY_MAD.resolved_tier
       ~QUALITY_MAD.resolved_rembi_module
       ~QUALITY_MAD.use_label
       ~QUALITY_MAD.use_badge
+      ~QUALITY_MAD.category_badges
       ~QUALITY_MAD.MEDIAN
       ~QUALITY_MAD.MAD
       ~QUALITY_MAD.NUM_MEMBERS
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_MAD
       ~QUALITY_MAD.derivation_type
       ~QUALITY_MAD.derives_from
       ~QUALITY_MAD.rembi_module_override
+      ~QUALITY_MAD.categories
    
    

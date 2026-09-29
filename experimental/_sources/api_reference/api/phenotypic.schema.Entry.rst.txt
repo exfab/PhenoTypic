@@ -34,5 +34,6 @@ phenotypic.schema.Entry
       ~Entry.derivation_type
       ~Entry.derives_from
       ~Entry.rembi_module
+      ~Entry.categories
    
    

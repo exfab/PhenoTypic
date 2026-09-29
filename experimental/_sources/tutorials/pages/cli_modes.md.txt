@@ -85,6 +85,7 @@ out/
 │   ├── master_measurements.parquet         # clean, un-joined, pre-post archive
 │   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
 │   ├── measurements_by_feature/            # one file per measurer
+│   ├── measurements_by_category/           # one file per measurement category
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
 │   ├── dashboard.html, processing_report.html
 │   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts

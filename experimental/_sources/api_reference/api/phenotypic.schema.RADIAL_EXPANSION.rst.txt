@@ -18,7 +18,7 @@ phenotypic.schema.RADIAL\_EXPANSION
    
       ~RADIAL_EXPANSION.tier
       ~RADIAL_EXPANSION.kind
-      ~RADIAL_EXPANSION.category
+      ~RADIAL_EXPANSION.metric_family
       ~RADIAL_EXPANSION.rembi_module
       ~RADIAL_EXPANSION.change_note
       ~RADIAL_EXPANSION.header_scheme
@@ -85,12 +85,13 @@ phenotypic.schema.RADIAL\_EXPANSION
 
    .. autosummary::
    
-      ~RADIAL_EXPANSION.CATEGORY
+      ~RADIAL_EXPANSION.METRIC_FAMILY
       ~RADIAL_EXPANSION.resolved_kind
       ~RADIAL_EXPANSION.resolved_tier
       ~RADIAL_EXPANSION.resolved_rembi_module
       ~RADIAL_EXPANSION.use_label
       ~RADIAL_EXPANSION.use_badge
+      ~RADIAL_EXPANSION.category_badges
       ~RADIAL_EXPANSION.ROBUST_MEAN_RADIUS
       ~RADIAL_EXPANSION.MEAN_RADIUS
       ~RADIAL_EXPANSION.MEDIAN_RADIUS
@@ -108,5 +109,6 @@ phenotypic.schema.RADIAL\_EXPANSION
       ~RADIAL_EXPANSION.derivation_type
       ~RADIAL_EXPANSION.derives_from
       ~RADIAL_EXPANSION.rembi_module_override
+      ~RADIAL_EXPANSION.categories
    
    

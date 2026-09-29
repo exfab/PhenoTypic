@@ -18,7 +18,7 @@ phenotypic.schema.ColorLab
    
       ~ColorLab.tier
       ~ColorLab.kind
-      ~ColorLab.category
+      ~ColorLab.metric_family
       ~ColorLab.rembi_module
       ~ColorLab.change_note
       ~ColorLab.header_scheme
@@ -86,12 +86,13 @@ phenotypic.schema.ColorLab
 
    .. autosummary::
    
-      ~ColorLab.CATEGORY
+      ~ColorLab.METRIC_FAMILY
       ~ColorLab.resolved_kind
       ~ColorLab.resolved_tier
       ~ColorLab.resolved_rembi_module
       ~ColorLab.use_label
       ~ColorLab.use_badge
+      ~ColorLab.category_badges
       ~ColorLab.L_STAR_GEOMEDIAN
       ~ColorLab.A_STAR_GEOMEDIAN
       ~ColorLab.B_STAR_GEOMEDIAN
@@ -112,5 +113,6 @@ phenotypic.schema.ColorLab
       ~ColorLab.derivation_type
       ~ColorLab.derives_from
       ~ColorLab.rembi_module_override
+      ~ColorLab.categories
    
    

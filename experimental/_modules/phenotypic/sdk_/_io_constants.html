@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -628,7 +640,7 @@
 <span class="sd">      ``master_measurements_parquet_path``, ``manifest_json_path``,</span>
 <span class="sd">      ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,</span>
 <span class="sd">      ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,</span>
-<span class="sd">      ``measurements_by_feature_dir``,</span>
+<span class="sd">      ``measurements_by_feature_dir``, ``measurements_by_category_dir``,</span>
 <span class="sd">      etc.</span>
 <span class="sd">    - **`progress_dir_: Path`** — the already-resolved progress dir</span>
 <span class="sd">      (i.e. ``output_dir / &quot;progress&quot;``). Used for helpers that produce</span>
@@ -1443,6 +1455,10 @@
 <span class="c1">#: Per-feature spreadsheet split written by</span>
 <span class="c1">#: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.</span>
 <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements_by_feature&quot;</span>
+
+<span class="c1">#: Per-category spreadsheet split written by</span>
+<span class="c1">#: :func:`phenotypic._cli._cli_output_manager.split_master_by_category`.</span>
+<span class="n">DIR_MEASUREMENTS_BY_CATEGORY</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements_by_category&quot;</span>
 
 <span class="c1">#: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.</span>
 <span class="n">DIR_LOGS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span>
@@ -3080,6 +3096,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">measurements_by_feature_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements_by_feature/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span></div>
+
+
+
+<div class="viewcode-block" id="measurements_by_category_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.measurements_by_category_dir.html#phenotypic.sdk_.measurements_by_category_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measurements_by_category_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements_by_category/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS_BY_CATEGORY</span></div>
 
 
 

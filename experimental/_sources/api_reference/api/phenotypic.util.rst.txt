@@ -19,6 +19,7 @@
       geometric_median
       generate_output_key
       split_measurements
+      split_measurements_by_category
       robust_color_center
       medoid_ciede2000
       candidate_medoid

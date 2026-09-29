@@ -229,6 +229,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -451,6 +457,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -805,6 +817,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -962,6 +976,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_carries_user_metadata.html">phenotypic.sdk_.master_carries_user_metadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.user_metadata_headers.html">phenotypic.sdk_.user_metadata_headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_measurements_parquet_path.html">phenotypic.sdk_.master_measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_category_dir.html">phenotypic.sdk_.measurements_by_category_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_feature_dir.html">phenotypic.sdk_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_csv_path.html">phenotypic.sdk_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_parquet_path.html">phenotypic.sdk_.measurements_parquet_path</a></li>
@@ -1213,6 +1228,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.candidate_medoid.html">phenotypic.util.candidate_medoid</a></li>
@@ -1322,8 +1338,8 @@ measured across every 0.25 mm on the surface of an object.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.kind" title="phenotypic.schema.TEXTURE.kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kind</span></code></a></p></td>
 <td><p>Coarse classification kind, or None until assigned by a base class.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.category" title="phenotypic.schema.TEXTURE.category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">category</span></code></a></p></td>
-<td><p>Return the category name for this measurement enumeration.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.metric_family" title="phenotypic.schema.TEXTURE.metric_family"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metric_family</span></code></a></p></td>
+<td><p>Return the metric family for this measurement enumeration.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.rembi_module" title="phenotypic.schema.TEXTURE.rembi_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module</span></code></a></p></td>
 <td><p>REMBI module for this enum, or None until a subclass declares it.</p></td>
@@ -1341,7 +1357,7 @@ measured across every 0.25 mm on the surface of an object.</p>
 <td><p>Whether <em>column</em> is one of this enum's output headers.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.get_labels" title="phenotypic.schema.TEXTURE.get_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_labels</span></code></a></p></td>
-<td><p>Get all measurement labels without category prefix.</p></td>
+<td><p>Get all measurement labels without metric family prefix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.get_headers" title="phenotypic.schema.TEXTURE.get_headers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_headers</span></code></a></p></td>
 <td><p>Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the average across degrees of each feature at the end.</p></td>
@@ -1502,8 +1518,8 @@ measured across every 0.25 mm on the surface of an object.</p>
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.CATEGORY" title="phenotypic.schema.TEXTURE.CATEGORY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CATEGORY</span></code></a></p></td>
-<td><p>Get the category name for this measurement instance.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.METRIC_FAMILY" title="phenotypic.schema.TEXTURE.METRIC_FAMILY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">METRIC_FAMILY</span></code></a></p></td>
+<td><p>Get the metric family name for this measurement instance.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.resolved_kind" title="phenotypic.schema.TEXTURE.resolved_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolved_kind</span></code></a></p></td>
 <td><p>The coarse kind for this member (identity/quality/primary/derived).</p></td>
@@ -1520,86 +1536,92 @@ measured across every 0.25 mm on the surface of an object.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.use_badge" title="phenotypic.schema.TEXTURE.use_badge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_badge</span></code></a></p></td>
 <td><p>RST sphinx-design xref badge for this member's classification.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.ANGULAR_SECOND_MOMENT" title="phenotypic.schema.TEXTURE.ANGULAR_SECOND_MOMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ANGULAR_SECOND_MOMENT</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.category_badges" title="phenotypic.schema.TEXTURE.category_badges"><code class="xref py py-obj docutils literal notranslate"><span class="pre">category_badges</span></code></a></p></td>
+<td><p>RST outline badges, one per category, linking to the Categories page.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.ANGULAR_SECOND_MOMENT" title="phenotypic.schema.TEXTURE.ANGULAR_SECOND_MOMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ANGULAR_SECOND_MOMENT</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.CONTRAST" title="phenotypic.schema.TEXTURE.CONTRAST"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CONTRAST</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.CONTRAST" title="phenotypic.schema.TEXTURE.CONTRAST"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CONTRAST</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.CORRELATION" title="phenotypic.schema.TEXTURE.CORRELATION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CORRELATION</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.CORRELATION" title="phenotypic.schema.TEXTURE.CORRELATION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CORRELATION</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.VARIANCE" title="phenotypic.schema.TEXTURE.VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VARIANCE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.VARIANCE" title="phenotypic.schema.TEXTURE.VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VARIANCE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.INVERSE_DIFFERENCE_MOMENT" title="phenotypic.schema.TEXTURE.INVERSE_DIFFERENCE_MOMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">INVERSE_DIFFERENCE_MOMENT</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.INVERSE_DIFFERENCE_MOMENT" title="phenotypic.schema.TEXTURE.INVERSE_DIFFERENCE_MOMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">INVERSE_DIFFERENCE_MOMENT</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_AVERAGE" title="phenotypic.schema.TEXTURE.SUM_AVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_AVERAGE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_AVERAGE" title="phenotypic.schema.TEXTURE.SUM_AVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_AVERAGE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_VARIANCE" title="phenotypic.schema.TEXTURE.SUM_VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_VARIANCE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_VARIANCE" title="phenotypic.schema.TEXTURE.SUM_VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_VARIANCE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_ENTROPY" title="phenotypic.schema.TEXTURE.SUM_ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_ENTROPY</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.SUM_ENTROPY" title="phenotypic.schema.TEXTURE.SUM_ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUM_ENTROPY</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.ENTROPY" title="phenotypic.schema.TEXTURE.ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ENTROPY</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.ENTROPY" title="phenotypic.schema.TEXTURE.ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ENTROPY</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.DIFFERENCE_VARIANCE" title="phenotypic.schema.TEXTURE.DIFFERENCE_VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIFFERENCE_VARIANCE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.DIFFERENCE_VARIANCE" title="phenotypic.schema.TEXTURE.DIFFERENCE_VARIANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIFFERENCE_VARIANCE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.DIFFERENCE_ENTROPY" title="phenotypic.schema.TEXTURE.DIFFERENCE_ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIFFERENCE_ENTROPY</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.DIFFERENCE_ENTROPY" title="phenotypic.schema.TEXTURE.DIFFERENCE_ENTROPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DIFFERENCE_ENTROPY</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.IMC1" title="phenotypic.schema.TEXTURE.IMC1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IMC1</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.IMC1" title="phenotypic.schema.TEXTURE.IMC1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IMC1</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.IMC2" title="phenotypic.schema.TEXTURE.IMC2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IMC2</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.IMC2" title="phenotypic.schema.TEXTURE.IMC2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IMC2</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.label" title="phenotypic.schema.TEXTURE.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.label" title="phenotypic.schema.TEXTURE.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.desc" title="phenotypic.schema.TEXTURE.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.desc" title="phenotypic.schema.TEXTURE.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.bio_desc" title="phenotypic.schema.TEXTURE.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.bio_desc" title="phenotypic.schema.TEXTURE.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.image" title="phenotypic.schema.TEXTURE.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.image" title="phenotypic.schema.TEXTURE.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.pair" title="phenotypic.schema.TEXTURE.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.pair" title="phenotypic.schema.TEXTURE.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.tier_override" title="phenotypic.schema.TEXTURE.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.tier_override" title="phenotypic.schema.TEXTURE.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.derivation_type" title="phenotypic.schema.TEXTURE.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.derivation_type" title="phenotypic.schema.TEXTURE.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.derives_from" title="phenotypic.schema.TEXTURE.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.derives_from" title="phenotypic.schema.TEXTURE.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.rembi_module_override" title="phenotypic.schema.TEXTURE.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.rembi_module_override" title="phenotypic.schema.TEXTURE.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.TEXTURE.categories" title="phenotypic.schema.TEXTURE.categories"><code class="xref py py-obj docutils literal notranslate"><span class="pre">categories</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py method">
-<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.category">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_texture.html#TEXTURE.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.TEXTURE.category" title="Link to this definition">#</a></dt>
-<dd><p>Return the category name for this measurement enumeration.</p>
-<p>Subclasses must implement this method to provide a category name that will be used
-to prefix all measurement labels. This ensures consistent naming conventions across
-the codebase.</p>
+<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.metric_family">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metric_family</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_texture.html#TEXTURE.metric_family"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.TEXTURE.metric_family" title="Link to this definition">#</a></dt>
+<dd><p>Return the metric family for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a metric family name that will be
+used to prefix all measurement labels. This ensures consistent naming conventions
+across the codebase.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>The category name (e.g., ‘Size’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+<dt>The family name (e.g., ‘Size’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
 the full header name (e.g., ‘Size_Area’).</p>
 </dd>
 </dl>
@@ -1683,8 +1705,8 @@ the full header name (e.g., ‘Size_Area’).</p>
 <dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.header_scheme">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">header_scheme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_texture.html#TEXTURE.header_scheme"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.TEXTURE.header_scheme" title="Link to this definition">#</a></dt>
 <dd><p>Naming scheme for this enum’s DataFrame output headers.</p>
-<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{category}_{label}</span></code>;
-<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{category}_{metric}_{label}</span></code> (growth
+<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{family}_{label}</span></code>;
+<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{family}_{metric}_{label}</span></code> (growth
 models + model metrics, where <code class="docutils literal notranslate"><span class="pre">{metric}</span></code> is a runtime value);
 <code class="docutils literal notranslate"><span class="pre">&quot;texture&quot;</span></code> → TEXTURE’s <code class="docutils literal notranslate"><span class="pre">-deg/-scale</span></code> suffix scheme.</p>
 <dl class="field-list simple">
@@ -1786,15 +1808,15 @@ columns. Keep the text in <code class="docutils literal notranslate"><span class
 </dd></dl>
 
 <dl class="py property">
-<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.CATEGORY">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.TEXTURE.CATEGORY" title="Link to this definition">#</a></dt>
-<dd><p>Get the category name for this measurement instance.</p>
-<p>Provides instance-level access to the category name defined by the category()
+<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.METRIC_FAMILY">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">METRIC_FAMILY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.TEXTURE.METRIC_FAMILY" title="Link to this definition">#</a></dt>
+<dd><p>Get the metric family name for this measurement instance.</p>
+<p>Provides instance-level access to the metric family defined by the metric_family()
 classmethod. This is useful when you have a measurement instance and need to know
-which category it belongs to without explicitly referencing the class.</p>
+which metric family it belongs to without explicitly referencing the class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+<dd class="field-odd"><p>The metric family name from the enum class’s metric_family() method.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -1806,12 +1828,12 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.__str__">
 <span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.TEXTURE.__str__" title="Link to this definition">#</a></dt>
 <dd><p>Return the string representation of this measurement as the prefixed name.</p>
-<p>Returns the full enumeration value, which is the category-prefixed label
+<p>Returns the full enumeration value, which is the family-prefixed label
 (e.g., ‘Size_Area’). This is used when the measurement is converted to a string
 or used in string formatting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{family}_{label}’).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -1860,18 +1882,25 @@ reference table classifies every column. Returns <code class="docutils literal n
 do not classify (e.g. enums that subclass <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> directly).</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.category_badges">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category_badges</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.schema.TEXTURE.category_badges" title="Link to this definition">#</a></dt>
+<dd><p>RST outline badges, one per category, linking to the Categories page.</p>
+<p>Empty when the member has no category.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.get_labels">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.schema.TEXTURE.get_labels" title="Link to this definition">#</a></dt>
-<dd><p>Get all measurement labels without category prefix.</p>
-<p>Returns a list of the short labels (without category prefix) for all measurements
-defined in this enumeration. These come from each member’s <code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field.
-Useful for creating human-readable lists or column names when the category context
-is already established.</p>
+<dd><p>Get all measurement labels without metric family prefix.</p>
+<p>Returns a list of the short labels (without metric family prefix) for all
+measurements defined in this enumeration. These come from each member’s
+<code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field. Useful for creating human-readable lists or column names
+when the metric family context is already established.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the metric family prefix; to get
 prefixed names, use get_headers().</p>
 </dd>
 </dl>
@@ -1887,12 +1916,13 @@ prefixed names, use get_headers().</p>
 <dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.rst_table">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.TEXTURE.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
-<p>Adds a Biology column when any member sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image
-column when any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
+<p>Adds a Categories column when any member carries a category, a
+Biology column when any sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image column when
+any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the category name.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the metric family name.</p></li>
 <li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(name_column_header,</span> <span class="pre">description_column_header)</span></code>.</p></li>
 <li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>)
 instead of the bare label (<code class="docutils literal notranslate"><span class="pre">Area</span></code>).</p></li>
@@ -1940,7 +1970,7 @@ to the target’s __doc__ attribute.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.__new_member__">
 <span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><span class="pre">Entry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.TEXTURE.__new_member__" title="Link to this definition">#</a></dt>
 <dd><p>Create a member from an <a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema.Entry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entry</span></code></a>.</p>
-<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
+<p>The enum value is the family-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
 <code class="docutils literal notranslate"><span class="pre">label</span></code>/<code class="docutils literal notranslate"><span class="pre">desc</span></code>/<code class="docutils literal notranslate"><span class="pre">bio_desc</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> are stored as instance
 attributes. Anything other than an <code class="docutils literal notranslate"><span class="pre">Entry</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at
 class-creation time.</p>
@@ -2426,6 +2456,11 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <span class="sig-name descname"><span class="pre">rembi_module_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html#phenotypic.schema.REMBI_MODULE" title="phenotypic.schema.REMBI_MODULE"><span class="pre">REMBI_MODULE</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.schema.TEXTURE.rembi_module_override" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.TEXTURE.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.14)"><span class="pre">frozenset</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.CATEGORIES.html#phenotypic.schema.CATEGORIES" title="phenotypic.schema.CATEGORIES"><span class="pre">CATEGORIES</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.schema.TEXTURE.categories" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </section>
@@ -2454,7 +2489,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE"><code class="docutils literal notranslate"><span class="pre">TEXTURE</span></code></a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.category"><code class="docutils literal notranslate"><span class="pre">TEXTURE.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.metric_family"><code class="docutils literal notranslate"><span class="pre">TEXTURE.metric_family()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.ANGULAR_SECOND_MOMENT"><code class="docutils literal notranslate"><span class="pre">TEXTURE.ANGULAR_SECOND_MOMENT</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.CONTRAST"><code class="docutils literal notranslate"><span class="pre">TEXTURE.CONTRAST</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.CORRELATION"><code class="docutils literal notranslate"><span class="pre">TEXTURE.CORRELATION</span></code></a></li>
@@ -2476,13 +2511,14 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.rembi_module"><code class="docutils literal notranslate"><span class="pre">TEXTURE.rembi_module()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.change_note"><code class="docutils literal notranslate"><span class="pre">TEXTURE.change_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.owns_header"><code class="docutils literal notranslate"><span class="pre">TEXTURE.owns_header()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.CATEGORY"><code class="docutils literal notranslate"><span class="pre">TEXTURE.CATEGORY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.METRIC_FAMILY"><code class="docutils literal notranslate"><span class="pre">TEXTURE.METRIC_FAMILY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.__str__"><code class="docutils literal notranslate"><span class="pre">TEXTURE.__str__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.resolved_kind"><code class="docutils literal notranslate"><span class="pre">TEXTURE.resolved_kind</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.resolved_tier"><code class="docutils literal notranslate"><span class="pre">TEXTURE.resolved_tier</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.resolved_rembi_module"><code class="docutils literal notranslate"><span class="pre">TEXTURE.resolved_rembi_module</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.use_label"><code class="docutils literal notranslate"><span class="pre">TEXTURE.use_label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.use_badge"><code class="docutils literal notranslate"><span class="pre">TEXTURE.use_badge</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.category_badges"><code class="docutils literal notranslate"><span class="pre">TEXTURE.category_badges</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.get_labels"><code class="docutils literal notranslate"><span class="pre">TEXTURE.get_labels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.rst_table"><code class="docutils literal notranslate"><span class="pre">TEXTURE.rst_table()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.append_rst_to_doc"><code class="docutils literal notranslate"><span class="pre">TEXTURE.append_rst_to_doc()</span></code></a></li>
@@ -2544,6 +2580,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.derivation_type"><code class="docutils literal notranslate"><span class="pre">TEXTURE.derivation_type</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.derives_from"><code class="docutils literal notranslate"><span class="pre">TEXTURE.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.rembi_module_override"><code class="docutils literal notranslate"><span class="pre">TEXTURE.rembi_module_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.TEXTURE.categories"><code class="docutils literal notranslate"><span class="pre">TEXTURE.categories</span></code></a></li>
 </ul>
 </li>
 </ul>

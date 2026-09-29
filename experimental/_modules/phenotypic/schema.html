@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -448,6 +454,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -626,6 +638,7 @@
     <span class="n">REMBI_MODULE</span> <span class="k">as</span> <span class="n">REMBI_MODULE</span><span class="p">,</span>
     <span class="n">header_to_module</span> <span class="k">as</span> <span class="n">header_to_module</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">CategoryEntry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DerivedMeasure</span> <span class="k">as</span> <span class="n">DerivedMeasure</span><span class="p">,</span>
     <span class="n">DescriptiveTrait</span> <span class="k">as</span> <span class="n">DescriptiveTrait</span><span class="p">,</span>
@@ -689,6 +702,8 @@
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;Entry&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CATEGORIES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CategoryEntry&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MeasurementInfo&quot;</span><span class="p">,</span>
     <span class="s2">&quot;MetadataInfo&quot;</span><span class="p">,</span>
     <span class="s2">&quot;parse_qualified_header&quot;</span><span class="p">,</span>

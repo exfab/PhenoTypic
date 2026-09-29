@@ -18,7 +18,7 @@ available to code:
 | `ACQUISITION` | `ACQUISITION.INSTRUMENT` | `Metadata_Instrument` | ImageAcquisition |
 
 All nine enums inherit {class}`phenotypic.schema.MetadataInfo`, whose
-`category()` is `"Metadata"`. Category strings therefore cannot distinguish
+`metric_family()` is `"Metadata"`. Metric-family strings therefore cannot distinguish
 owners. Use enum identity and the ownership APIs instead:
 
 ```python

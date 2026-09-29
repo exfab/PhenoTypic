@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_ZMAX
       :nosignatures:
    
       ~QUALITY_ZMAX.kind
-      ~QUALITY_ZMAX.category
+      ~QUALITY_ZMAX.metric_family
       ~QUALITY_ZMAX.tier
       ~QUALITY_ZMAX.rembi_module
       ~QUALITY_ZMAX.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_ZMAX
 
    .. autosummary::
    
-      ~QUALITY_ZMAX.CATEGORY
+      ~QUALITY_ZMAX.METRIC_FAMILY
       ~QUALITY_ZMAX.resolved_kind
       ~QUALITY_ZMAX.resolved_tier
       ~QUALITY_ZMAX.resolved_rembi_module
       ~QUALITY_ZMAX.use_label
       ~QUALITY_ZMAX.use_badge
+      ~QUALITY_ZMAX.category_badges
       ~QUALITY_ZMAX.MEDIAN
       ~QUALITY_ZMAX.MAD
       ~QUALITY_ZMAX.NUM_MEMBERS
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_ZMAX
       ~QUALITY_ZMAX.derivation_type
       ~QUALITY_ZMAX.derives_from
       ~QUALITY_ZMAX.rembi_module_override
+      ~QUALITY_ZMAX.categories
    
    

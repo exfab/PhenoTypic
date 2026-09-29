@@ -55,6 +55,23 @@ A model fit on a primary phenotype is classified by its transformation:
 - **Normalization** (e.g. edge correction) → the input's tier, cleaned.
 - **Fit diagnostics** (R², RMSE, optimizer state, regularization knobs) → Quality.
 
+(measurement-categories)=
+## Categories are groupings, not trust claims
+
+Every measurement column begins with its metric family: `Size_Area` belongs to the
+**Size** family. The family says only which schema the column comes from.
+
+A **category** is a separate, curated grouping that cuts across families: one category
+can gather size, intensity and colour columns that three different schemas produce, and
+one column can belong to several categories. A category tells you where to look first,
+not how far to trust a single value; that is the job of the kind and tier above.
+
+Each run that measures objects writes one spreadsheet per category that has at least one
+column in the run, under `deliverables/measurements_by_category/`. The categories, their
+descriptions and their columns are listed on the
+{doc}`Categories </measurements_ref/categories/index>` page, which is generated from the
+schema so it never drifts from the code.
+
 See also: [Measurement metrics and their biological meaning](measurement_metrics_biological_meaning.md)
 for per-metric detail, and the
 [measurement reference](../measurements_ref/measurements/index) for the Use/Tier badge on

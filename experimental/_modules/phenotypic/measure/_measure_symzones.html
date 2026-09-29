@@ -226,6 +226,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -446,6 +452,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -857,7 +869,6 @@
         <span class="n">measurements</span> <span class="o">=</span> <span class="p">{</span>
             <span class="nb">str</span><span class="p">(</span><span class="n">feature</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">SYMMETRIC_ZONES</span>
-            <span class="k">if</span> <span class="n">feature</span> <span class="o">!=</span> <span class="n">SYMMETRIC_ZONES</span><span class="o">.</span><span class="n">CATEGORY</span>
         <span class="p">}</span>
 
         <span class="n">props</span> <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span>

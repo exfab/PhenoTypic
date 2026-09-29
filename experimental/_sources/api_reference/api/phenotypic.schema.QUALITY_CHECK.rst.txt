@@ -17,7 +17,7 @@ phenotypic.schema.QUALITY\_CHECK
       :nosignatures:
    
       ~QUALITY_CHECK.kind
-      ~QUALITY_CHECK.category
+      ~QUALITY_CHECK.metric_family
       ~QUALITY_CHECK.tier
       ~QUALITY_CHECK.rembi_module
       ~QUALITY_CHECK.change_note
@@ -85,12 +85,13 @@ phenotypic.schema.QUALITY\_CHECK
 
    .. autosummary::
    
-      ~QUALITY_CHECK.CATEGORY
+      ~QUALITY_CHECK.METRIC_FAMILY
       ~QUALITY_CHECK.resolved_kind
       ~QUALITY_CHECK.resolved_tier
       ~QUALITY_CHECK.resolved_rembi_module
       ~QUALITY_CHECK.use_label
       ~QUALITY_CHECK.use_badge
+      ~QUALITY_CHECK.category_badges
       ~QUALITY_CHECK.FLAG
       ~QUALITY_CHECK.METRIC
       ~QUALITY_CHECK.STATUS
@@ -103,5 +104,6 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.derivation_type
       ~QUALITY_CHECK.derives_from
       ~QUALITY_CHECK.rembi_module_override
+      ~QUALITY_CHECK.categories
    
    

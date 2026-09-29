@@ -229,6 +229,12 @@
             Metadata
           </a>
         </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
+          </a>
+        </li>
       </ul>
     </li>
 
@@ -451,6 +457,12 @@
           <a class="nav-link dropdown-item nav-internal"
              href="../../measurements_ref/metadata/index.html">
             Metadata
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/categories/index.html">
+            Categories
           </a>
         </li>
       </ul>
@@ -805,6 +817,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.qualified_header.html">phenotypic.schema.qualified_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.header_to_module.html">phenotypic.schema.header_to_module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -962,6 +976,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_carries_user_metadata.html">phenotypic.sdk_.master_carries_user_metadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.user_metadata_headers.html">phenotypic.sdk_.user_metadata_headers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.master_measurements_parquet_path.html">phenotypic.sdk_.master_measurements_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_category_dir.html">phenotypic.sdk_.measurements_by_category_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_by_feature_dir.html">phenotypic.sdk_.measurements_by_feature_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_csv_path.html">phenotypic.sdk_.measurements_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.measurements_parquet_path.html">phenotypic.sdk_.measurements_parquet_path</a></li>
@@ -1213,6 +1228,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.candidate_medoid.html">phenotypic.util.candidate_medoid</a></li>
@@ -20023,14 +20039,15 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 conventions, descriptive metadata, and automatic documentation generation. By inheriting
 from both str and Enum, MeasurementInfo enables measurement definitions to behave as
 enumeration members while maintaining string representation. The class automatically
-prefixes measurement labels with a category name, ensuring consistent naming across code
-and outputs.</p>
+prefixes measurement labels with a metric family name, ensuring consistent naming across
+code and outputs.</p>
 <p><strong>Key Purposes:</strong></p>
 <ul class="simple">
-<li><p>Standardize measurement naming conventions (category_label format) to reduce errors</p></li>
+<li><p>Standardize measurement naming conventions (family_label format) to reduce errors</p></li>
 <li><p>Centralize measurement definitions with labels and descriptions in one place</p></li>
 <li><p>Automatically generate RST documentation tables from measurement definitions</p></li>
-<li><p>Provide easy access to headers, labels, and category information for analysis workflows</p></li>
+<li><p>Provide easy access to headers, labels, and metric family information for analysis
+workflows</p></li>
 <li><p>Enable type-safe column names in measurement DataFrames</p></li>
 </ul>
 <p><strong>Usage with MeasureFeatures Subclasses:</strong></p>
@@ -20041,7 +20058,7 @@ and uses the enum values as DataFrame column headers.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">label</span></span></dt>
-<dd><p>The short label for the measurement (without category prefix). Set
+<dd><p>The short label for the measurement (without metric family prefix). Set
 automatically by __new__ from the <code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
@@ -20101,9 +20118,9 @@ both pieces of information together.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">CATEGORY</span></span></dt>
-<dd><p>The category name returned by the category() classmethod.
-Provides instance-level access to the measurement category.</p>
+<span class="sig-name descname"><span class="pre">METRIC_FAMILY</span></span></dt>
+<dd><p>The metric family name returned by the metric_family()
+classmethod. Provides instance-level access to the measurement’s metric family.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#property" title="(in Python v3.14)">property</a></p>
@@ -20117,7 +20134,7 @@ Provides instance-level access to the measurement category.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">SHAPE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="nd">@classmethod</span>
-<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
 <span class="gp">... </span>        <span class="k">return</span> <span class="s1">&#39;Shape&#39;</span>
 <span class="gp">...</span>
 <span class="gp">... </span>    <span class="n">AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s1">&#39;Area&#39;</span><span class="p">,</span> <span class="s1">&#39;Total number of pixels in the detected object&#39;</span><span class="p">)</span>
@@ -20133,7 +20150,7 @@ Provides instance-level access to the measurement category.</p>
 <span class="go">&#39;Area&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">SHAPE</span><span class="o">.</span><span class="n">AREA</span><span class="o">.</span><span class="n">desc</span>
 <span class="go">&#39;Total number of pixels in the detected object&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">SHAPE</span><span class="o">.</span><span class="n">AREA</span><span class="o">.</span><span class="n">CATEGORY</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">SHAPE</span><span class="o">.</span><span class="n">AREA</span><span class="o">.</span><span class="n">METRIC_FAMILY</span>
 <span class="go">&#39;Shape&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">SHAPE</span><span class="o">.</span><span class="n">get_labels</span><span class="p">()</span>
 <span class="go">[&#39;Area&#39;, &#39;Perimeter&#39;]</span>
@@ -20199,31 +20216,6 @@ to the target’s __doc__ attribute.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Return the category name for this measurement enumeration.</p>
-<p>Subclasses must implement this method to provide a category name that will be used
-to prefix all measurement labels. This ensures consistent naming conventions across
-the codebase.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>The category name (e.g., ‘Size’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
-the full header name (e.g., ‘Size_Area’).</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">change_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.change_note"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Return an RST change-note block rendered above this enum’s table.</p>
 <p>Rendered by <a class="reference internal" href="phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.append_rst_to_doc" title="phenotypic.abc_.MeasurementInfo.append_rst_to_doc"><code class="xref py py-meth docutils literal notranslate"><span class="pre">append_rst_to_doc()</span></code></a> (measurer class docs and the
@@ -20243,16 +20235,16 @@ columns. Keep the text in <code class="docutils literal notranslate"><span class
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_headers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.get_headers"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Get all measurement headers with category prefix.</p>
-<p>Returns a list of the full enumeration values (with category prefix) for all
+<dd><p>Get all measurement headers with metric family prefix.</p>
+<p>Returns a list of the full enumeration values (with metric family prefix) for all
 measurements defined in this enumeration. These strings are suitable for use as
 DataFrame column names, dictionary keys, or in any context where the full
-categorized name is needed.</p>
+prefixed name is needed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
 <dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Size_Area’, ‘Size_Perimeter’]). Each header includes the
-category prefix separated by an underscore.</p>
+metric family prefix separated by an underscore.</p>
 </dd>
 </dl>
 </p>
@@ -20266,15 +20258,15 @@ category prefix separated by an underscore.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.get_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Get all measurement labels without category prefix.</p>
-<p>Returns a list of the short labels (without category prefix) for all measurements
-defined in this enumeration. These come from each member’s <code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field.
-Useful for creating human-readable lists or column names when the category context
-is already established.</p>
+<dd><p>Get all measurement labels without metric family prefix.</p>
+<p>Returns a list of the short labels (without metric family prefix) for all
+measurements defined in this enumeration. These come from each member’s
+<code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field. Useful for creating human-readable lists or column names
+when the metric family context is already established.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the category prefix; to get
+<dt>List of measurement labels in enumeration order (e.g.,</dt><dd><p>[‘Area’, ‘Perimeter’]). Does not include the metric family prefix; to get
 prefixed names, use get_headers().</p>
 </dd>
 </dl>
@@ -20290,8 +20282,8 @@ prefixed names, use get_headers().</p>
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">header_scheme</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.header_scheme"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Naming scheme for this enum’s DataFrame output headers.</p>
-<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{category}_{label}</span></code>;
-<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{category}_{metric}_{label}</span></code> (growth
+<p><code class="docutils literal notranslate"><span class="pre">&quot;static&quot;</span></code> (default) → exact <code class="docutils literal notranslate"><span class="pre">{family}_{label}</span></code>;
+<code class="docutils literal notranslate"><span class="pre">&quot;metric_qualified&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">{family}_{metric}_{label}</span></code> (growth
 models + model metrics, where <code class="docutils literal notranslate"><span class="pre">{metric}</span></code> is a runtime value);
 <code class="docutils literal notranslate"><span class="pre">&quot;texture&quot;</span></code> → TEXTURE’s <code class="docutils literal notranslate"><span class="pre">-deg/-scale</span></code> suffix scheme.</p>
 <dl class="field-list simple">
@@ -20328,6 +20320,31 @@ models + model metrics, where <code class="docutils literal notranslate"><span c
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metric_family</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.metric_family"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the metric family for this measurement enumeration.</p>
+<p>Subclasses must implement this method to provide a metric family name that will be
+used to prefix all measurement labels. This ensures consistent naming conventions
+across the codebase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The family name (e.g., ‘Size’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Size_Area’).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">owns_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.owns_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Whether <em>column</em> is one of this enum’s output headers.</p>
 <dl class="field-list simple">
@@ -20355,12 +20372,13 @@ models + model metrics, where <code class="docutils literal notranslate"><span c
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.rst_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
-<p>Adds a Biology column when any member sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image
-column when any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
+<p>Adds a Categories column when any member carries a category, a
+Biology column when any sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image column when
+any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the category name.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the metric family name.</p></li>
 <li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(name_column_header,</span> <span class="pre">description_column_header)</span></code>.</p></li>
 <li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>)
 instead of the bare label (<code class="docutils literal notranslate"><span class="pre">Area</span></code>).</p></li>
@@ -20406,7 +20424,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><span class="pre">Entry</span></a></span></em><span class="sig-paren">)</span></dt>
 <dd><p>Create a member from an <code class="xref py py-class docutils literal notranslate"><span class="pre">Entry</span></code>.</p>
-<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
+<p>The enum value is the family-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
 <code class="docutils literal notranslate"><span class="pre">label</span></code>/<code class="docutils literal notranslate"><span class="pre">desc</span></code>/<code class="docutils literal notranslate"><span class="pre">bio_desc</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> are stored as instance
 attributes. Anything other than an <code class="docutils literal notranslate"><span class="pre">Entry</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at
 class-creation time.</p>
@@ -20421,12 +20439,12 @@ class-creation time.</p>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.__str__"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Return the string representation of this measurement as the prefixed name.</p>
-<p>Returns the full enumeration value, which is the category-prefixed label
+<p>Returns the full enumeration value, which is the family-prefixed label
 (e.g., ‘Size_Area’). This is used when the measurement is converted to a string
 or used in string formatting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{category}_{label}’).</p>
+<dd class="field-odd"><p>The full prefixed name of the measurement (e.g., ‘{family}_{label}’).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -20847,14 +20865,14 @@ left untouched.  Characters mapped to None are deleted.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CATEGORY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
-<dd><p>Get the category name for this measurement instance.</p>
-<p>Provides instance-level access to the category name defined by the category()
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">METRIC_FAMILY</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd><p>Get the metric family name for this measurement instance.</p>
+<p>Provides instance-level access to the metric family defined by the metric_family()
 classmethod. This is useful when you have a measurement instance and need to know
-which category it belongs to without explicitly referencing the class.</p>
+which metric family it belongs to without explicitly referencing the class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The category name from the enum class’s category() method.</p>
+<dd class="field-odd"><p>The metric family name from the enum class’s metric_family() method.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
@@ -20866,6 +20884,18 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">bio_desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
 <dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.14)"><span class="pre">frozenset</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.CATEGORIES.html#phenotypic.schema.CATEGORIES" title="phenotypic.schema._categories.CATEGORIES"><span class="pre">CATEGORIES</span></a><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category_badges</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd><p>RST outline badges, one per category, linking to the Categories page.</p>
+<p>Empty when the member has no category.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
