@@ -3,10 +3,11 @@
 Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
 ``<style>`` blocks into every Dash app's ``index_string``:
 
-* :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Comfortaa for
-  display + body, JetBrains Mono for mono, IBM Plex Serif kept only for
-  italic species names) and declares the ``--font-display`` / ``--font-body``
-  / ``--font-mono`` / ``--font-species`` custom properties.
+* :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Nunito Sans for
+  display, body and italic species names; JetBrains Mono for all data and
+  table values) plus the IBM Plex families the chart subsystem still uses,
+  and declares the ``--font-display`` / ``--font-body`` / ``--font-mono`` /
+  ``--font-species`` custom properties.
 * :data:`DESIGN_TOKENS_CSS` -- the brand + Okabe-Ito palettes, type scale,
   semantic ``--font-size-*`` aliases, line-height / tracking, spacing,
   radius, shadow, and ease/transition tokens.
@@ -77,6 +78,7 @@ __all__ = [
     "TEXT_2XS",
     "TEXT_XS",
     "TEXT_SM",
+    "TEXT_DATA",
     "TEXT_BASE",
     "TEXT_MD",
     "TEXT_LG",
@@ -91,6 +93,7 @@ __all__ = [
     "FONT_SIZE_HEADER_2",
     "FONT_SIZE_BODY_LG",
     "FONT_SIZE_BODY",
+    "FONT_SIZE_DATA",
     "FONT_SIZE_BODY_SM",
     "FONT_SIZE_CAPTION",
     "FONT_SIZE_MICRO",
@@ -150,37 +153,35 @@ __all__ = [
 #
 # Four role families (NOT one family across all roles):
 #
-#   display -- Comfortaa     : content headings, large stat values.
-#   body    -- Comfortaa     : prose, UI/component titles, button + tab labels.
+#   display -- Nunito Sans   : content headings, large stat values.
+#   body    -- Nunito Sans   : prose, UI/component titles, button + tab labels.
 #   mono    -- JetBrains Mono : ALL numeric data, axis labels, badge / label /
 #              caption text, and code tokens.
-#   species -- IBM Plex Serif : ITALIC binomial species names ONLY. Comfortaa
-#              ships no true italic face, so italic *Genus species* is set in a
-#              real serif italic instead of a browser-synthesized oblique.
+#   species -- Nunito Sans   : ITALIC binomial species names, set in the
+#              family's own true italic.
 #
-# Comfortaa carries both the display and body voice (one rounded geometric
-# sans across chrome); JetBrains Mono carries the data voice; IBM Plex Serif
-# is retained solely for italic species names. To swap a role, change its
-# ``_*_PRIMARY`` below and update ``_GOOGLE_FONTS_URL`` to load the new family
-# -- every call site inherits via the ``--font-*`` custom properties /
+# Nunito Sans carries all general text and formatting; JetBrains Mono carries
+# every data value and table value. The species role stays a separate token
+# so a future change of species face is one edit here. To swap a role, change
+# its ``_*_PRIMARY`` below and update ``_GOOGLE_FONTS_URL`` to load the new
+# family -- every call site inherits via the ``--font-*`` custom properties /
 # ``FONT_FAMILY_*`` constants.
 
-_DISPLAY_PRIMARY = "Comfortaa"
-_BODY_PRIMARY = "Comfortaa"
+_DISPLAY_PRIMARY = "Nunito Sans"
+_BODY_PRIMARY = "Nunito Sans"
 _MONO_PRIMARY = "JetBrains Mono"
-_SPECIES_PRIMARY = "IBM Plex Serif"
+_SPECIES_PRIMARY = "Nunito Sans"
 
-# The @import loads more than the four chrome roles: the chart subsystem
-# (``phenotypic.sdk_.viz.figures._theme``) is intentionally NOT migrated to
-# Comfortaa -- it keeps IBM Plex Sans for plot titles / legend names and IBM
-# Plex Serif for donut center values (DESIGN.md "06 -- Charts"). Those plots
-# render inside GUI Dash pages, so the IBM Plex families must stay loaded here
-# even though no ``--font-*`` chrome token references IBM Plex Sans. Comfortaa
-# carries display + body; JetBrains Mono carries data; IBM Plex Serif (italic)
-# also backs ``--font-species`` for binomial names.
+# The @import loads more than the chrome roles: the chart subsystem
+# (``phenotypic.sdk_.viz.figures._theme``) keeps IBM Plex Sans for plot titles
+# / legend names and IBM Plex Serif for donut center values (DESIGN.md
+# "Data Visualization"). Those plots render inside GUI Dash pages, so the IBM
+# Plex families stay loaded here even though no ``--font-*`` chrome token
+# references them. Nunito Sans loads 400-700 upright plus the 400 italic that
+# ``--font-species`` needs.
 _GOOGLE_FONTS_URL = (
     "https://fonts.googleapis.com/css2?"
-    "family=Comfortaa:wght@400;500;600;700"
+    "family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400"
     "&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500"
     "&family=IBM+Plex+Sans:wght@400;500;600;700"
     "&family=JetBrains+Mono:wght@400;500;600"
@@ -189,9 +190,9 @@ _GOOGLE_FONTS_URL = (
 
 # Cross-platform fallbacks: kick in if the Google Font is blocked or slow to
 # load. The stacks cover macOS / iOS, Windows, Linux, and Android in turn
-# before bottoming out on the generic CSS family. Display + body share the
-# sans stack (Comfortaa is a rounded sans); species falls back to a serif so
-# italic binomials stay serif even offline.
+# before bottoming out on the generic CSS family. Display, body and species
+# share the sans stack, so offline italic binomials fall back to the system
+# sans italic.
 _FALLBACK_SANS = (
     '-apple-system, BlinkMacSystemFont, "Segoe UI", '
     '"Helvetica Neue", Arial, sans-serif'
@@ -202,7 +203,7 @@ _FALLBACK_MONO = (
     'ui-monospace, "SFMono-Regular", Menlo, Consolas, '
     '"Liberation Mono", "Courier New", monospace'
 )
-_FALLBACK_SPECIES = 'Georgia, "Times New Roman", Times, serif'
+_FALLBACK_SPECIES = _FALLBACK_SANS
 
 # Python-side font-family strings -- mirror the CSS custom properties
 # below. Use these from Python inline ``style={...}`` dicts and from
@@ -393,14 +394,15 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 # ---------------------------------------------------------------------------
-# Type scale (rem-based; tuned for ~15 px body)
+# Type scale (rem-based; 16 px body, 15 px mono data values)
 # ---------------------------------------------------------------------------
 
 TEXT_2XS: str = "0.625rem"  # ~10 px -- data micro floor (chart axis, sparkline)
 TEXT_XS: str = "0.6875rem"  # ~11 px -- captions, footnotes
 TEXT_SM: str = "0.8125rem"  # ~13 px -- secondary UI labels
-TEXT_BASE: str = "0.9375rem"  # ~15 px -- body text
-TEXT_MD: str = "1.0625rem"  # ~17 px -- emphasized body
+TEXT_DATA: str = "0.9375rem"  # ~15 px -- mono data and table values
+TEXT_BASE: str = "1rem"  # 16 px -- body text
+TEXT_MD: str = "1.125rem"  # ~18 px -- emphasized body
 TEXT_LG: str = "1.25rem"  # ~20 px -- subhead
 TEXT_XL: str = "1.5rem"  # ~24 px -- builder canvas titles
 TEXT_2XL: str = "1.875rem"  # ~30 px -- page / dashboard top titles
@@ -421,7 +423,10 @@ TEXT_4XL: str = "3.25rem"  # ~52 px -- reserve (hero display)
 #   FONT_SIZE_HEADER_1  -- section heads
 #   FONT_SIZE_HEADER_2  -- sub-section heads
 #   FONT_SIZE_BODY_LG   -- emphasized / lead body
-#   FONT_SIZE_BODY      -- default body copy
+#   FONT_SIZE_BODY      -- default body copy (16 px)
+#   FONT_SIZE_DATA      -- mono data and table values (15 px); kept below
+#                          body so the Nunito Sans body size never reflows
+#                          tables
 #   FONT_SIZE_BODY_SM   -- UI titles, button labels, dense body (13 px)
 #   FONT_SIZE_CAPTION   -- form labels, overlines, badge text (11 px)
 #   FONT_SIZE_MICRO     -- chart axis ticks, sparkline floor (10 px)
@@ -435,8 +440,9 @@ FONT_SIZE_DISPLAY: str = TEXT_3XL  # 2.5rem
 FONT_SIZE_TITLE: str = TEXT_2XL  # 1.875rem
 FONT_SIZE_HEADER_1: str = TEXT_XL  # 1.5rem
 FONT_SIZE_HEADER_2: str = TEXT_LG  # 1.25rem
-FONT_SIZE_BODY_LG: str = TEXT_MD  # 1.0625rem
-FONT_SIZE_BODY: str = TEXT_BASE  # 0.9375rem
+FONT_SIZE_BODY_LG: str = TEXT_MD  # 1.125rem
+FONT_SIZE_BODY: str = TEXT_BASE  # 1rem
+FONT_SIZE_DATA: str = TEXT_DATA  # 0.9375rem
 FONT_SIZE_BODY_SM: str = TEXT_SM  # 0.8125rem
 FONT_SIZE_CAPTION: str = TEXT_XS  # 0.6875rem
 FONT_SIZE_MICRO: str = TEXT_2XS  # 0.625rem
@@ -542,6 +548,7 @@ DESIGN_TOKENS_CSS = f"""\
   --text-2xs:  {TEXT_2XS};
   --text-xs:   {TEXT_XS};
   --text-sm:   {TEXT_SM};
+  --text-data: {TEXT_DATA};
   --text-base: {TEXT_BASE};
   --text-md:   {TEXT_MD};
   --text-lg:   {TEXT_LG};
@@ -557,6 +564,7 @@ DESIGN_TOKENS_CSS = f"""\
   --font-size-header-2: var(--text-lg);
   --font-size-body-lg:  var(--text-md);
   --font-size-body:     var(--text-base);
+  --font-size-data:     var(--text-data);
   --font-size-body-sm:  var(--text-sm);
   --font-size-caption:  var(--text-xs);
   --font-size-micro:    var(--text-2xs);
@@ -672,7 +680,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
 # Base element defaults + named text-style classes (DESIGN.md "02.5 / 02.6")
 # ---------------------------------------------------------------------------
 #
-# Element defaults are conservative -- they establish the serif/mono *identity*
+# Element defaults are conservative -- they establish the sans/mono *identity*
 # (family, weight, heading color) for raw tags without forcing sizes, so they
 # don't fight component-set sizes. The ``.text-*`` classes are the full named
 # recipes; apply one class to a node to get the exact spec style.
@@ -680,7 +688,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
 BASE_STYLES_CSS = """\
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 600;
   color: var(--color-heading);
 }
 code, kbd, samp, pre {
@@ -693,11 +701,11 @@ code:not(pre code), kbd {
   border-radius: var(--radius-sm);
 }
 
-.text-display    { font-family: var(--font-display); font-size: var(--font-size-display);   font-weight: 400; line-height: var(--leading-display); letter-spacing: var(--tracking-tight); color: var(--color-heading); }
-.text-title      { font-family: var(--font-display); font-size: var(--font-size-title);     font-weight: 400; line-height: var(--leading-snug);    letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-header     { font-family: var(--font-display); font-size: var(--font-size-header-1);  font-weight: 400; line-height: var(--leading-tight);   letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-h2         { font-family: var(--font-display); font-size: var(--font-size-header-2);  font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
-.text-h3         { font-family: var(--font-display); font-size: var(--font-size-body-lg);   font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
+.text-display    { font-family: var(--font-display); font-size: var(--font-size-display);   font-weight: 600; line-height: var(--leading-display); letter-spacing: var(--tracking-tight); color: var(--color-heading); }
+.text-title      { font-family: var(--font-display); font-size: var(--font-size-title);     font-weight: 600; line-height: var(--leading-snug);    letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
+.text-header     { font-family: var(--font-display); font-size: var(--font-size-header-1);  font-weight: 600; line-height: var(--leading-tight);   letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
+.text-h2         { font-family: var(--font-display); font-size: var(--font-size-header-2);  font-weight: 600; line-height: var(--leading-snug);    color: var(--color-heading); }
+.text-h3         { font-family: var(--font-display); font-size: var(--font-size-body-lg);   font-weight: 600; line-height: var(--leading-snug);    color: var(--color-heading); }
 
 .text-body-lg    { font-family: var(--font-body); font-size: var(--font-size-body-lg); font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
 .text-body       { font-family: var(--font-body); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
@@ -709,8 +717,8 @@ code:not(pre code), kbd {
 .text-label      { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wide);  text-transform: uppercase; color: var(--color-muted); }
 .text-overline   { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--color-muted); }
 .text-caption    { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
-.text-data       { font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 500; line-height: var(--leading-normal); color: var(--color-heading); }
-.text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
+.text-data       { font-family: var(--font-mono); font-size: var(--font-size-data);    font-weight: 500; line-height: var(--leading-normal); color: var(--color-heading); }
+.text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-data);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
 .text-data-micro { font-family: var(--font-mono); font-size: var(--font-size-micro);   font-weight: 400; line-height: var(--leading-tight); letter-spacing: 0.02em; color: var(--color-muted); }
 
 .is-species      { font-family: var(--font-species); font-style: italic; }
