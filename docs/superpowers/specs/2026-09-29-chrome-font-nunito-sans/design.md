@@ -2,8 +2,8 @@
 
 - **Date:** 2026-09-29
 - **Branch:** `claude/magical-keller-kw5lu5`
-- **Status:** draft; three decisions (N1 to N3) are open and are being chosen in the
-  artifact at `docs/superpowers/artifacts/2026-09-29-figure-typography/`
+- **Status:** design settled; N1 to N3 were decided on 2026-09-29 in the artifact at
+  `docs/superpowers/artifacts/2026-09-29-figure-typography/`; awaiting implementation plan
 - **Follow-on:** the figure-typography spec (same artifact) and the move of `DESIGN.md`
   to the Google DESIGN.md token format (option C of the 2026-09-29 brainstorm) both
   build on the font roles this spec settles, so this change lands first.
@@ -64,29 +64,48 @@ two edits in that file:
 
 1. `_DISPLAY_PRIMARY` and `_BODY_PRIMARY` (`:168`, `:169`) become `"Nunito Sans"`.
 2. `_GOOGLE_FONTS_URL` (`:181`) replaces `family=Comfortaa:wght@400;500;600;700` with a
-   Nunito Sans request covering the same weights, plus italic cuts if N1 adopts them.
+   Nunito Sans request covering weights 400, 500, 600 and 700 plus the 400 italic that
+   N1 needs; 500 italic is added only if a species run inside a UI Title needs it.
 
-The fallback stacks stay as they are. `_FALLBACK_SANS` already covers macOS, Windows,
+The sans fallback stack stays as it is. `_FALLBACK_SANS` already covers macOS, Windows,
 Linux and Android system sans faces, and those are a closer offline stand-in for Nunito
 Sans than they were for the rounded Comfortaa.
 
-### Open decisions
+### Decisions
 
-**N1. Italic species names.** The recommendation is to set species names in Nunito
-Sans Italic by pointing `_SPECIES_PRIMARY` at `"Nunito Sans"` and keeping the
-`.is-species` rule's `font-style: italic`. A binomial set in the italic of the
-surrounding text is the ordinary typographic convention, and the serif exception
-existed only because Comfortaa had no italic. The alternative keeps IBM Plex Serif
-italic, which preserves the current look at the cost of a second text family in the
-chrome. Either way the role token survives, so a later reversal is a one-line change.
+**N1. Italic species names use Nunito Sans Italic.** `_SPECIES_PRIMARY` becomes
+`"Nunito Sans"` and the `.is-species` rule keeps its `font-style: italic`. A binomial
+set in the italic of the surrounding text is the ordinary typographic convention, and
+the serif exception existed only because Comfortaa had no italic. The `--font-species`
+role token survives, so a later reversal is a one-line change. `_FALLBACK_SPECIES`
+moves from the serif stack to `_FALLBACK_SANS` for the same reason. IBM Plex Serif stays
+in the Google Fonts request, because the chart subsystem still uses it for donut center
+values (`DESIGN.md` 06); only its role as the species face ends.
 
-**N2. Display weight.** `DESIGN.md` 02.1 sets display styles at weight 400 to keep
-Comfortaa headings light. Nunito Sans at 400 is a plainer, lower-contrast heading, so
-the choice is between keeping 400 and raising display styles to 600.
+**N2. Display styles move from weight 400 to 600.** Nunito Sans at 400 is a plainer,
+lower-contrast heading than Comfortaa at 400, and the heavier weight holds the
+hierarchy between headings and body text. The change touches the five display-family
+text styles (Display, Title, Header, H2, H3) in the `.text-*` classes
+(`_gui/_design.py:696` to `:700`) and in the `DESIGN.md` 02.4 table. UI Title already
+sits at 600 and Button at 500, so after this change headings and UI titles share a
+weight and are told apart by size alone. The implementation should confirm on the
+rendered hub that this still reads as two levels; if it does not, UI Title can drop to
+500 without touching headings.
 
-**N3. Size compensation.** The ladder is rem-based on a 15 px body (`DESIGN.md` 02.2).
-Given the smaller x-height, the choice is between keeping the ladder unchanged and
-raising the body root to 16 px. The artifact shows both at true scale.
+**N3. Body text rises from 15 px to 16 px.** At 16 px the Nunito Sans x-height is
+0.486 x 16 = 7.8 px, against Comfortaa's 0.547 x 15 = 8.2 px, so most of the lost
+x-height returns while text still sets narrower than before. The ladder is expressed in
+rem against the browser's 16 px root, so the change is `TEXT_BASE` from `0.9375rem` to
+`1rem` (`_gui/_design.py:402`).
+
+Two consequences follow, and the implementation plan must settle both.
+`FONT_SIZE_BODY` is also the size of the mono Data Value styles (`.text-data`,
+`.text-data--muted`), so raising it enlarges numeric table cells set in JetBrains Mono,
+which this change does not otherwise touch. The recommendation is to give the data
+styles their own alias pinned at the old `0.9375rem`, so the font swap does not
+reflow tables. The second consequence is that Body Large (`TEXT_MD`, 17 px) would sit
+only 1 px above body; raising it to `1.125rem` (18 px) keeps a visible step. Both are
+proposals of this spec rather than decisions taken in the artifact.
 
 ### Documents and tests that change with it
 
@@ -96,12 +115,12 @@ alone.
 
 | File | What changes |
 |---|---|
-| `src/phenotypic/_gui/_design.py` | `_DISPLAY_PRIMARY`, `_BODY_PRIMARY`, `_GOOGLE_FONTS_URL`, the role comment block (`:6`, `:153` to `:193`); `_SPECIES_PRIMARY` if N1 is adopted |
+| `src/phenotypic/_gui/_design.py` | `_DISPLAY_PRIMARY`, `_BODY_PRIMARY`, `_SPECIES_PRIMARY`, `_FALLBACK_SPECIES`, `_GOOGLE_FONTS_URL` and the role comment block (`:6`, `:153` to `:193`); `TEXT_BASE` and `TEXT_MD` (`:402`, `:403`); the display text-style weights (`:696` to `:700`); a new data-value size alias |
 | `src/phenotypic/_gui/shell/_assets/shell.css` | Header comment naming the role fonts (`:14`) |
 | `src/phenotypic/_gui/FEATURES.md` | "Semantic typography tokens" row (`:591`); required by the `features-md-gate` job for any change under `_gui/` |
-| `tests/unit/gui/test_config_and_design.py` | `test_font_family_constants_carry_role_fonts` (`:433` to `:443`) pins Comfortaa and IBM Plex Serif |
+| `tests/unit/gui/test_config_and_design.py` | `test_font_family_constants_carry_role_fonts` (`:433` to `:443`) pins Comfortaa for display and body and a serif species stack; all three assertions change |
 | `tests/unit/viz/test_theme.py` | `test_chart_body_font_intentionally_differs_from_gui_chrome` (`:108` to `:116`) pins Comfortaa; its intent (chart and chrome fonts differ) still holds |
-| `DESIGN.md` | 33 mentions: the header, Overview, Key Characteristics, 02.1, 02.4, 02.7, and component recipes in 05, 09, 13 and 14 |
+| `DESIGN.md` | 33 mentions: the header, Overview, Key Characteristics, 02.1, 02.4, 02.7, and component recipes in 05, 09, 13 and 14; the 02.2 size table (body 16 px) and 02.4 weights |
 | `docs/source/tutorials/gui/` screenshots | Regenerated with `scripts/capture_gui_tutorial_screenshots.py` per the `gui-tutorial-capture` skill, committing the full set |
 
 No test compares rendered pixels, so the metric change cannot fail a test by itself;
