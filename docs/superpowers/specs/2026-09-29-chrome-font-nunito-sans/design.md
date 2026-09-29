@@ -98,14 +98,42 @@ x-height returns while text still sets narrower than before. The ladder is expre
 rem against the browser's 16 px root, so the change is `TEXT_BASE` from `0.9375rem` to
 `1rem` (`_gui/_design.py:402`).
 
-Two consequences follow, and the implementation plan must settle both.
-`FONT_SIZE_BODY` is also the size of the mono Data Value styles (`.text-data`,
-`.text-data--muted`), so raising it enlarges numeric table cells set in JetBrains Mono,
-which this change does not otherwise touch. The recommendation is to give the data
-styles their own alias pinned at the old `0.9375rem`, so the font swap does not
-reflow tables. The second consequence is that Body Large (`TEXT_MD`, 17 px) would sit
-only 1 px above body; raising it to `1.125rem` (18 px) keeps a visible step. Both are
-proposals of this spec rather than decisions taken in the artifact.
+Two consequences follow, and the author accepted the recommendation for both on
+2026-09-29. `FONT_SIZE_BODY` is also the size of the mono Data Value styles
+(`.text-data`, `.text-data--muted`), so raising it would enlarge numeric table cells
+set in JetBrains Mono, which this change does not otherwise touch. The data styles
+therefore get their own alias, `FONT_SIZE_DATA` / `--font-size-data`, pinned at the old
+`0.9375rem`, so the font swap does not reflow tables. Two existing tests require every
+`FONT_SIZE_*` alias to equal exactly one `TEXT_*` primitive, one to one
+(`test_semantic_font_size_aliases_resolve_to_primitives` and
+`test_semantic_font_size_aliases_cover_full_scale` in
+`tests/unit/gui/test_config_and_design.py`). Once `TEXT_BASE` is 1rem no primitive
+holds 15 px, so the change adds a primitive `TEXT_DATA = "0.9375rem"` between
+`TEXT_SM` and `TEXT_BASE`, and the two tests and `test_type_scale_is_monotonic` gain
+the new pair. Body Large (`TEXT_MD`, 17 px)
+would otherwise sit only 1 px above body, so it rises to `1.125rem` (18 px) to keep a
+visible step. The fourteen other `--font-size-body` call sites in the sub-app
+stylesheets (tune, run console, builder, analysis) are prose and UI labels, so they
+move to 16 px as intended.
+
+### Role rule: Nunito Sans for text, mono for data
+
+The author set the rule on 2026-09-29: Nunito Sans carries all general text and
+formatting, and every data value and table value is set in the mono family. The four
+Dash `DataTable`s already comply, each setting `style_cell` to `FONT_FAMILY_MONO`
+(`tune/_callbacks.py:1198`, `results_viewer/_viewer_card.py:422`,
+`results_viewer/_error_tab/_layout.py:154`, `builder/_image_renderer.py:499`). Three
+plain HTML tables do not, because their cells inherit the body family:
+
+| Table | Cells not in mono | Stylesheet |
+|---|---|---|
+| Browse CSV metadata (`browse/_callbacks.py:268`) | every cell | `browse/_assets/browse.css:300` |
+| Run console Recent Runs (`run_console/_layout.py:202`) | Mode and Dashboard (Output is already mono) | `run_console/_assets/run_console.css:289`, `:294` |
+| Analysis post-op preview (`analysis/_post_preview.py:96`) | Before and After values (Column is already mono) | `analysis/_assets/analysis.css:68` |
+
+Their value cells move to `var(--font-mono)` at `var(--font-size-data)`, and their
+header cells take the Label style the Typography section already assigns to table
+headers. `DESIGN.md` states the rule in the Typography section.
 
 ### Documents and tests that change with it
 
@@ -115,7 +143,8 @@ alone.
 
 | File | What changes |
 |---|---|
-| `src/phenotypic/_gui/_design.py` | `_DISPLAY_PRIMARY`, `_BODY_PRIMARY`, `_SPECIES_PRIMARY`, `_FALLBACK_SPECIES`, `_GOOGLE_FONTS_URL` and the role comment block (`:6`, `:153` to `:193`); `TEXT_BASE` and `TEXT_MD` (`:402`, `:403`); the display text-style weights (`:696` to `:700`); a new data-value size alias |
+| `src/phenotypic/_gui/_design.py` | `_DISPLAY_PRIMARY`, `_BODY_PRIMARY`, `_SPECIES_PRIMARY`, `_FALLBACK_SPECIES`, `_GOOGLE_FONTS_URL` and the role comment block (`:6`, `:153` to `:193`); `TEXT_BASE` and `TEXT_MD` (`:402`, `:403`); the display text-style weights (`:696` to `:700`); the new `FONT_SIZE_DATA` alias and the `.text-data` classes that use it (`:712`, `:713`) |
+| Browse, run console and analysis stylesheets | Table value cells to mono (see Role rule) |
 | `src/phenotypic/_gui/shell/_assets/shell.css` | Header comment naming the role fonts (`:14`) |
 | `src/phenotypic/_gui/FEATURES.md` | "Semantic typography tokens" row (`:591`); required by the `features-md-gate` job for any change under `_gui/` |
 | `tests/unit/gui/test_config_and_design.py` | `test_font_family_constants_carry_role_fonts` (`:433` to `:443`) pins Comfortaa for display and body and a serif species stack; all three assertions change |

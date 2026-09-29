@@ -192,14 +192,20 @@ Visualization.
 > Make exports reproducible: pass `metadata={"CreationDate": None}` for PDF and
 > `metadata={"Date": None}` for SVG, and fix `svg.hashsalt`. matplotlib also honours
 > `SOURCE_DATE_EPOCH`.
+>
+> matplotlib reads these settings when the file is saved, not when the figure is
+> built, so a figure saved outside the theme is exported with matplotlib's own
+> defaults. Save through `export_figure()` from `phenotypic.sdk_.viz.figures`, which
+> applies the theme and the metadata for you, or call `savefig` inside
+> `phenotypic_mpl_context()`.
 
 ---
 
 ## Implementation outline
 
 The section guides agents, but the code should produce these defaults when nobody
-overrides them, or agents will fight the theme on every figure. The plan will cover
-four changes.
+overrides them, or agents will fight the theme on every figure. The plan covers the changes
+below.
 
 `sdk_/viz/figures/_mpl_theme.py` switches `phenotypic_rc()` from the screen look to the
 defaults above: DejaVu Sans, the 7/8/10 pt ladder and line widths, white backgrounds,
@@ -218,8 +224,19 @@ hand. Today 62 `figsize=` call sites in `src/` use about a dozen ad hoc sizes; t
 decides which of them are publication figures that should adopt a preset and which are
 diagnostics that may keep their own size.
 
+The package also gains `export_figure(fig, path)`, which saves inside
+`phenotypic_mpl_context()` with the reproducibility metadata for the file's format.
+It is needed because matplotlib reads `pdf.fonttype`, `svg.fonttype` and
+`svg.hashsalt` at save time: the pipeline's own publication path saves PNG outside the
+theme (`plotting/_pipeline/_adapter.py:46`, `plotting/_pipeline/_store_formats.py:33`),
+and a contributor's manuscript figure saved the same way would silently lose every
+export default.
+
 Existing tests that pin the screen look of the matplotlib theme change with it. The
-plan identifies them by importer, not by directory.
+plan identifies them by importer, not by directory. The GUI's analysis panel
+(`_gui/analysis/_render.py:86`) also draws through `phenotypic_mpl_context()`, so it
+adopts the figure look as well; that is intended, since those panels show the same
+analyzer figures a contributor would export.
 
 One consequence needs a decision in the plan. Pipeline figures are stored inside the
 per-image OME-Zarr stores (`figures/<run>/`), so a restyled theme changes those bytes
@@ -227,13 +244,15 @@ across versions. The layer semantics do not change, which suggests no bump of
 `PROCESS_LAYER_SEMANTICS_REVISION`, so continued process runs would keep old-style
 figures for images they already finished.
 
-## Open question
+## Resolved question
 
-Nothing in the section above is absolute, as the author asked. One item may deserve
-different treatment: avoiding red-green colormaps is an Absolute Constraint for GUI
-charts because it protects readers with deuteranopia, and the section above demotes it
-to a default for figures. If the author wants that one item to stay absolute in
-figures too, it moves back into the Absolute Constraints with its scope widened.
+Avoiding red-green colormaps is an Absolute Constraint for GUI charts, and the section
+above makes it a default for figures like everything else in it. The author confirmed
+that treatment on 2026-09-29.
+
+The author's rule that all data and table values use the mono family applies to the
+GUI (`2026-09-29-chrome-font-nunito-sans`). Figures keep DejaVu Sans for tick labels,
+as chosen in the artifact over the option with mono tick labels.
 
 ## References
 

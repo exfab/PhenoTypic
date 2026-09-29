@@ -2,8 +2,8 @@
 
 - **Date:** 2026-09-29
 - **Branch:** `claude/magical-keller-kw5lu5`
-- **Status:** draft; three decisions (C1 to C3) carry a recommendation and await the
-  author's confirmation
+- **Status:** design settled; C1 to C3 confirmed by the author on 2026-09-29; awaiting
+  implementation plan
 - **Depends on:** `2026-09-29-chrome-font-nunito-sans` (its tokens are the ones the
   front matter records) and `2026-09-29-figure-style-defaults` (its section is placed
   here)
@@ -127,26 +127,25 @@ that a formatter broke into one token per line, and it deletes the leftover edit
 note in the Absolute Constraints ("Add these to the existing ... block"). The Nunito
 Sans spec names both as well; whichever change lands first fixes them.
 
-## Decisions awaiting confirmation
+## Decisions (confirmed 2026-09-29)
 
 **C1. Where figure values live.** Figure sizes are in points and widths in
 millimetres, which the format's dimension type cannot express, and a custom
-`figures:` key draws a standing `token-like-ignored` warning. The recommendation is
-to keep figure values in the Figures section's own tables and in `_mpl_theme.py`, out
-of the front matter, so the lint stays clean. The alternative accepts one permanent
+`figures:` key draws a standing `token-like-ignored` warning. Figure values
+stay in the Figures section's own tables and in `_mpl_theme.py`, out of the front
+matter, so the lint stays clean. The rejected alternative accepted one permanent
 warning in exchange for having the figure values machine-readable next to the others.
 
-**C2. How the linter runs.** The recommendation is a documented manual command,
+**C2. How the linter runs.** The linter is a documented manual command,
 `npx @google/design.md@0.4.0 lint DESIGN.md`, named in `CLAUDE.md` beside the other
 checks, with the version pinned because the format is alpha. A pre-commit hook would
 catch findings earlier, but it would block commits on a document the author wants to
 remain guidance, and it adds a Node dependency to every contributor's commit path.
 
 **C3. Where the Absolute Constraints go.** The format puts Do's and Don'ts last, while
-the constraints matter most to an agent reading the file for the first time. The
-recommendation keeps them as a short "Absolute Constraints" subsection inside the
-Overview, which the format permits, and moves the longer Do and Don't lists to the
-final section.
+the constraints matter most to an agent reading the file for the first time. They stay
+as a short "Absolute Constraints" subsection inside the Overview, which the format
+permits, and the longer Do and Don't lists move to the final section.
 
 ## Verification
 
