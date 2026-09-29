@@ -451,78 +451,15 @@ alias** (right column). The raw `--text-*` primitive is back-compat only.
 | (reserve)       | `--text-4xl`  | 3.25rem / 52px   | --                     | --                   |
 
 ```css
---font-size-display:
-var
-
-(
---text-3xl
-
-)
-;
---font-size-title:
-var
-
-(
---text-2xl
-
-)
-;
---font-size-header-1:
-var
-
-(
---text-xl
-
-)
-;
---font-size-header-2:
-var
-
-(
---text-lg
-
-)
-;
---font-size-body-lg:
-var
-
-(
---text-md
-
-)
-;
---font-size-body:
-var
-
-(
---text-base
-
-)
-;
---font-size-body-sm:
-var
-
-(
---text-sm
-
-)
-; /* renamed from --font-size-label; see 02.7 */
---font-size-caption:
-var
-
-(
---text-xs
-
-)
-;
---font-size-micro:
-var
-
-(
---text-2xs
-
-)
-; /* new: chart axis / sparkline floor */
+--font-size-display:  var(--text-3xl);
+--font-size-title:    var(--text-2xl);
+--font-size-header-1: var(--text-xl);
+--font-size-header-2: var(--text-lg);
+--font-size-body-lg:  var(--text-md);
+--font-size-body:     var(--text-base);
+--font-size-body-sm:  var(--text-sm);   /* renamed from --font-size-label; see 02.7 */
+--font-size-caption:  var(--text-xs);
+--font-size-micro:    var(--text-2xs);  /* new: chart axis / sparkline floor */
 ```
 
 > SVG-rendered chart internals (axis ticks, scale-bar labels) may go to 8px directly,
@@ -533,63 +470,11 @@ var
 ### 02.3 -- Line-height & Tracking Tokens
 
 ```css
---leading-display:
+--leading-display: 1.1;   --leading-tight: 1.2;   --leading-snug: 1.3;
+--leading-normal:  1.45;  --leading-relaxed: 1.6;
 
-1.1
-;
---leading-tight:
-
-1.2
-;
---leading-snug:
-
-1.3
-;
---leading-normal:
-
-1.45
-;
---leading-relaxed:
-
-1.6
-;
-
---tracking-tight:
-
--
-0.02
-em
-
-;
---tracking-snug:
-
--
-0.01
-em
-
-;
---tracking-normal:
-
-0
-;
---tracking-button:
-
-0.01
-em
-
-;
---tracking-wide:
-
-0.08
-em
-
-;
---tracking-wider:
-
-0.12
-em
-
-;
+--tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
+--tracking-button: 0.01em; --tracking-wide: 0.08em;  --tracking-wider: 0.12em;
 ```
 
 | Line-height         | Used by                      | Tracking            | Used by               |
@@ -1010,30 +895,10 @@ Strategy section (next).
 
 ```css
 /* breakpoint reference values */
---bp-mobile-lg:
-
-480
-px
-
-;
---bp-tablet:
-
-768
-px
-
-;
---bp-desktop:
-
-992
-px
-
-;
---bp-wide:
-
-1600
-px
-
-;
+--bp-mobile-lg: 480px;
+--bp-tablet:    768px;
+--bp-desktop:   992px;
+--bp-wide:      1600px;
 ```
 
 CSS variables cannot be used inside media query conditions; the tokens above are the
@@ -1137,158 +1002,10 @@ each shadow token a level and a use.
 #### Elevation Tokens (recipes)
 
 ```css
---shadow-sm:
-
-0
-1
-px
-
-3
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.07
-)
-,
-0
-1
-px
-
-2
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.04
-)
-; /* Level 2 -- resting  */
---shadow:
-
-0
-4
-px
-
-12
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.08
-)
-,
-0
-1
-px
-
-3
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.05
-)
-; /* Level 3 -- raised   */
---shadow-md:
-
-0
-8
-px
-
-24
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.10
-)
-,
-0
-2
-px
-
-6
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.06
-)
-; /* Level 4 -- floating */
---shadow-lg:
-
-0
-16
-px
-
-40
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.12
-)
-,
-0
-4
-px
-
-12
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.07
-)
-; /* Level 5 -- overlay  */
+--shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);   /* Level 2 -- resting  */
+--shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);  /* Level 3 -- raised   */
+--shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);  /* Level 4 -- floating */
+--shadow-lg: 0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07);/* Level 5 -- overlay  */
 ```
 
 Each token is a two-stop shadow: a soft, wide far-shadow plus a tight near-shadow, which
@@ -1572,104 +1289,20 @@ placed above input.
 
 ```css
 /* Track */
-border-bottom:
-
-2
-px solid
-var
-
-(
---color-rule
-
-)
-; /* full width */
+border-bottom: 2px solid var(--color-rule); /* full width */
 
 /* Tab */
-font-family:
-var
-
-(
---font-body
-
-)
-;
-font-size:
-
-13
-px
-
-;
-font-weight:
-
-500
-;
-padding:
-
-12
-px
-
-20
-px
-
-;
-border-bottom:
-
-2
-px solid transparent
-
-;
-margin-bottom:
-
--
-2
-px
-
-;
+font-family: var(--font-body);
+font-size: 13px;
+font-weight: 500;
+padding: 12px 20px;
+border-bottom: 2px solid transparent;
+margin-bottom: -2px;
 
 /* States */
-/* active  */
-color:
-var
-
-(
---color-navy
-
-)
-;
-border-color:
-var
-
-(
---color-navy
-
-)
-;
-/* inactive */
-color:
-var
-
-(
---color-muted
-
-)
-;
-/* hover (inactive) */
-color:
-var
-
-(
---color-body
-
-)
-;
-border-color:
-var
-
-(
---color-border
-
-)
-;
+/* active  */ color: var(--color-navy); border-color: var(--color-navy);
+/* inactive */ color: var(--color-muted);
+/* hover (inactive) */ color: var(--color-body); border-color: var(--color-border);
 ```
 
 ---
