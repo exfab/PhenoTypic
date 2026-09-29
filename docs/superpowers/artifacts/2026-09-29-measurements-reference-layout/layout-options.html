@@ -1,0 +1,597 @@
+<title>Measurements Reference Layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single reading column for the proposal, broken by one full-bleed interactive
+   mock of the docs site whose option, page, and sidebar widths the reader can change. */
+:root {
+  --bg: #f5f8fa;
+  --surface: #ffffff;
+  --sunk: #e9f0f5;
+  --ink: #0f2433;
+  --muted: #52687a;
+  --line: #cfdbe4;
+  --accent: #0077b6;
+  --accent-soft: #d8ecf7;
+  --sky: #00aeef;
+  --t1: #1b7f4c; --t1-bg: #dcf2e5;
+  --t2: #0a5fa3; --t2-bg: #dbe9f7;
+  --t3: #9a6500; --t3-bg: #fbecd0;
+  --q: #5a6570;  --q-bg: #e6eaee;
+  --id: #6b5b95; --id-bg: #ebe6f5;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c151d; --surface: #13212c; --sunk: #182a37; --ink: #dce7ef; --muted: #93a8b8;
+    --line: #2a3f4f; --accent: #5cc4f0; --accent-soft: #173a50; --sky: #5cc4f0;
+    --t1: #7fd9a5; --t1-bg: #173a29; --t2: #8cc3f5; --t2-bg: #16304a;
+    --t3: #f1c26b; --t3-bg: #3b2c10; --q: #b3bec8; --q-bg: #26323c;
+    --id: #c3b5ea; --id-bg: #2c2640;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c151d; --surface: #13212c; --sunk: #182a37; --ink: #dce7ef; --muted: #93a8b8;
+  --line: #2a3f4f; --accent: #5cc4f0; --accent-soft: #173a50; --sky: #5cc4f0;
+  --t1: #7fd9a5; --t1-bg: #173a29; --t2: #8cc3f5; --t2-bg: #16304a;
+  --t3: #f1c26b; --t3-bg: #3b2c10; --q: #b3bec8; --q-bg: #26323c;
+  --id: #c3b5ea; --id-bg: #2c2640;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-inline: 16px; padding-block: 0 64px;
+}
+.col { max-width: 72ch; margin-inline: auto; }
+.wide { max-width: 1180px; margin-inline: auto; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.35rem; font-weight: 700; margin-block: 3rem 0.75rem; }
+h3 { font-size: 1.02rem; font-weight: 700; margin-block: 1.5rem 0.4rem; }
+p { margin-block: 0.6rem; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--sunk); padding: 0.05em 0.35em; border-radius: 3px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+
+header.top { padding-block: 40px 8px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.08rem; color: var(--muted); max-width: 64ch; }
+.status { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.chip { font-family: var(--font-mono); font-size: 0.74rem; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); }
+
+/* findings list */
+.findings { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.findings li { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.findings b { font-family: var(--font-display); }
+.tag { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; margin-right: 6px; }
+.tag.fact { background: var(--accent-soft); color: var(--accent); }
+.tag.flag { background: var(--t3-bg); color: var(--t3); }
+
+/* ---------- controls ---------- */
+.controls { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: end; margin-block: 16px 12px; }
+.seg-group { display: grid; gap: 4px; }
+.seg-label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); flex-wrap: wrap; }
+.seg button {
+  font: inherit; font-size: 0.86rem; border: 0; background: transparent; color: var(--ink);
+  padding: 6px 12px; cursor: pointer; border-right: 1px solid var(--line);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.reset { font: inherit; font-size: 0.82rem; background: none; border: 1px dashed var(--line); color: var(--muted); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+
+/* ---------- mock browser ---------- */
+.browser { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: 0 8px 28px -18px rgba(15,36,51,.45); }
+.chrome { display: flex; gap: 6px; align-items: center; padding: 8px 12px; background: var(--sunk); border-bottom: 1px solid var(--line); }
+.chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+.chrome .url { margin-left: 10px; font-family: var(--font-mono); font-size: 0.74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.navbar { display: flex; align-items: center; gap: 18px; padding: 10px 16px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.navbar .logo { font-family: var(--font-display); font-weight: 700; color: var(--accent); }
+.navbar span { font-size: 0.86rem; color: var(--muted); white-space: nowrap; }
+.navbar span.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--sky); padding-bottom: 2px; }
+.navbar .caret::after { content: " \25BE"; font-size: 0.7em; }
+
+.frame { display: flex; min-height: 540px; position: relative; }
+.side { flex: none; overflow: auto; padding: 16px 10px 16px 16px; background: var(--sunk); font-size: 0.84rem; }
+.side.left { width: var(--lw, 230px); }
+.side.right { width: var(--rw, 190px); background: var(--surface); border-left: 0; }
+.handle {
+  flex: none; width: 7px; cursor: col-resize; background: transparent; position: relative;
+  border-left: 1px solid var(--line); touch-action: none;
+}
+.handle.r { border-left: 0; border-right: 1px solid var(--line); }
+.handle::after { content: ""; position: absolute; top: 50%; left: 1px; width: 3px; height: 34px; margin-top: -17px; border-radius: 2px; background: var(--line); }
+.handle:hover::after, .handle:focus-visible::after, .handle.dragging::after { background: var(--sky); }
+.content { flex: 1 1 auto; min-width: 0; padding: 22px 26px 40px; overflow: auto; }
+
+.side .cap { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px 6px; }
+.side .cap:first-child { margin-top: 0; }
+.side hr { border: 0; border-top: 1px solid var(--line); margin: 10px 6px; }
+.side ul { list-style: none; margin: 0; padding: 0; }
+.side ul ul { padding-left: 12px; margin-block: 2px 6px; border-left: 1px solid var(--line); margin-left: 8px; }
+.side button.nav {
+  font: inherit; text-align: left; width: 100%; border: 0; background: none; color: var(--ink);
+  padding: 3px 6px; border-radius: 4px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+.side button.nav:hover { background: var(--accent-soft); }
+.side button.nav.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.side button.nav.op { font-family: var(--font-mono); font-size: 0.8rem; }
+.side .grp { font-weight: 600; }
+.side .toc-title { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px 4px; }
+.side .toc a { display: block; padding: 2px 4px; color: var(--muted); text-decoration: none; border-left: 2px solid transparent; padding-left: 8px; }
+.side .toc a:first-child { border-left-color: var(--sky); color: var(--ink); }
+
+/* mock page content */
+.content h1 { font-size: 1.6rem; margin-bottom: 4px; }
+.content h1 .api { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 400; color: var(--accent); margin-left: 8px; vertical-align: middle; }
+.content h2 { font-size: 1.08rem; margin-block: 1.4rem 0.4rem; }
+.content p { max-width: 68ch; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-block: 14px; }
+.facts div { background: var(--surface); outline: 1px solid var(--line); padding: 8px 10px; min-width: 0; }
+.facts dt { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 2px 0 0; font-size: 0.86rem; overflow-wrap: anywhere; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.84rem; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--sunk); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.col-name { font-family: var(--font-mono); font-size: 0.8rem; white-space: nowrap; }
+.bdg { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.bdg.t1 { background: var(--t1-bg); color: var(--t1); }
+.bdg.t2 { background: var(--t2-bg); color: var(--t2); }
+.bdg.t3 { background: var(--t3-bg); color: var(--t3); }
+.bdg.q  { background: var(--q-bg);  color: var(--q); }
+.bdg.id { background: var(--id-bg); color: var(--id); }
+.more { font-size: 0.8rem; color: var(--muted); padding: 6px 10px; }
+
+/* row-anatomy strip on Overview */
+.anatomy { display: flex; flex-wrap: wrap; gap: 3px; margin-block: 10px 4px; font-family: var(--font-mono); font-size: 0.74rem; }
+.anatomy span { padding: 8px 10px; border-radius: 4px; flex: 1 1 auto; min-width: 0; }
+.anatomy .a1 { background: var(--id-bg); color: var(--id); }
+.anatomy .a2 { background: var(--q-bg); color: var(--q); }
+.anatomy .a3 { background: var(--t1-bg); color: var(--t1); flex-grow: 3; }
+.anatomy-key { font-size: 0.78rem; color: var(--muted); }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 6px; }
+.steps li { counter-increment: s; padding-left: 28px; position: relative; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+.cards div { border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); min-width: 0; }
+.cards b { font-family: var(--font-mono); font-size: 0.8rem; display: block; overflow-wrap: anywhere; }
+.cards small { color: var(--muted); }
+.stub { border: 1px dashed var(--line); border-radius: 6px; padding: 14px; color: var(--muted); background: var(--sunk); }
+
+/* notes under the mock */
+.notes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.notes > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; min-width: 0; }
+.notes h3 { margin-top: 0; font-size: 0.95rem; }
+.notes ul { margin: 0; padding-left: 18px; font-size: 0.9rem; }
+.pro h3 { color: var(--t1); } .con h3 { color: var(--t3); }
+
+/* comparison + trees */
+.cmp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.cmp td:first-child { font-weight: 600; white-space: nowrap; }
+pre.tree { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; margin: 0; }
+pre.tree .c { color: var(--muted); }
+pre.tree .n { color: var(--accent); font-weight: 600; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.two > div { min-width: 0; }
+.decide { counter-reset: d; list-style: none; padding: 0; display: grid; gap: 10px; }
+.decide li { counter-increment: d; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px 12px 48px; position: relative; }
+.decide li::before { content: "Q" counter(d); position: absolute; left: 14px; top: 12px; font-family: var(--font-mono); font-weight: 600; color: var(--accent); }
+.rec { font-weight: 600; color: var(--t1); }
+
+@media (max-width: 760px) {
+  .frame { flex-direction: column; min-height: 0; }
+  .side.left { width: auto; max-height: 220px; }
+  .side.right, .handle { display: none; }
+  .content { padding: 18px 16px 28px; }
+  .notes, .two { grid-template-columns: 1fr; }
+  h1 { font-size: 1.7rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top col">
+  <div class="eyebrow">PhenoTypic docs · design options · 2026-09-29</div>
+  <h1>Measurements Reference Layout</h1>
+  <p class="lede">Three ways to turn the Measurements section into an overview page with a per-operation sidebar, plus the schema package reorganization and resizable sidebars that go with it. Try each option in the mock below. Drag either sidebar edge to resize it.</p>
+  <div class="status"><span class="chip">status: awaiting decisions</span><span class="chip">branch: claude/nifty-franklin-r99zhg</span><span class="chip">theme: pydata-sphinx-theme 0.16.1</span></div>
+</header>
+
+<section class="col">
+  <h2>What the code shows today</h2>
+  <ul class="findings">
+    <li><span class="tag fact">fact</span><b>The navbar item is a dropdown, not a link.</b> <code>_templates/navbar-nav.html</code> renders Measurements as a menu of Measurements, Metadata and Categories. The Measurements page itself is one generated page holding every schema table, about 36 of them, one after another.</li>
+    <li><span class="tag fact">fact</span><b>Measure operations already declare their tables. Set analyzers do not.</b> <code>MeasureFeatures.get_measurement_infoclasses()</code> maps each of the 11 public measurers to its schemas. <code>SetAnalyzer</code> has no equivalent, so a per-analyzer page needs a new declaration on the 11 analyzers that add columns. The class you called <code>AnalyzeSet</code> is named <code>SetAnalyzer</code> in the code.</li>
+    <li><span class="tag flag">needs a rule</span><b>Some schemas are switched on by parameter.</b> <code>MeasureColor</code> adds <code>ColorXYZ</code> and <code>Colorxy</code> only when <code>include_XYZ</code> and <code>include_xy</code> are set. <code>MeasureOrientationZones</code> adds diagnostics only when <code>include_diagnostics</code> is set. So the page generator must read the class-level declaration and label these tables "optional", instead of asking a default instance.</li>
+    <li><span class="tag flag">needs a home</span><b>Several schemas belong to no single operation.</b> <code>OBJECT</code> and <code>GRID</code> appear on every row. <code>CURATION</code>, <code>ErrorCategory</code>, <code>METADATA_MATCH</code> and <code>RADIAL_EXPANSION</code> come from the review GUI and the metadata join. <code>ColorComposition</code> has no active operation, because <code>MeasureColorComposition</code> is commented out of <code>measure/__init__.py</code>.</li>
+    <li><span class="tag flag">needs a rule</span><b>Two set analyzers add no columns.</b> <code>MADOutlierRemover</code> and <code>TukeyOutlierRemover</code> remove rows and return the same columns. They output a table, but the table has no columns of its own to document.</li>
+    <li><span class="tag fact">fact</span><b>Moving schema files does not by itself change the docs.</b> The generator decides the page structure, so the reorganization is a maintainability change. It also carries a data-compatibility cost: pickled <code>image.metadata</code> keys record enum classes by their private module path, so moving <code>_metadata.py</code> or <code>_experimental_tags/</code> needs new <code>_MOVED_CLASSES</code> rows. The import rule you asked for is now in <code>CLAUDE.md</code> and <code>schema/CLAUDE.md</code>, and has been pushed.</li>
+    <li><span class="tag fact">fact</span><b>Only one category exists today.</b> <code>CATEGORIES</code> has a single member, <code>StartingMetrics</code>. A Categories page will be short until more categories are added.</li>
+  </ul>
+</section>
+
+<section class="wide">
+  <div class="col" style="max-width:none">
+    <h2>Try the options</h2>
+  </div>
+  <div class="controls">
+    <div class="seg-group">
+      <span class="seg-label" id="opt-lbl">Layout option</span>
+      <div class="seg" role="group" aria-labelledby="opt-lbl" id="opt-seg">
+        <button type="button" data-opt="A" aria-pressed="true">A · Flat list</button>
+        <button type="button" data-opt="B" aria-pressed="false">B · Grouped by stage</button>
+        <button type="button" data-opt="C" aria-pressed="false">C · Hub pages</button>
+      </div>
+    </div>
+    <div class="seg-group">
+      <span class="seg-label" id="page-lbl">Jump to page</span>
+      <div class="seg" role="group" aria-labelledby="page-lbl" id="page-seg">
+        <button type="button" data-page="overview" aria-pressed="true">Overview</button>
+        <button type="button" data-page="MeasureSize" aria-pressed="false">MeasureSize</button>
+        <button type="button" data-page="ICC" aria-pressed="false">ICC</button>
+      </div>
+    </div>
+    <button type="button" class="reset" id="reset-w">Reset sidebar widths</button>
+  </div>
+
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><span class="url" id="mock-url">phenotypic.docs / measurements_ref / index.html</span></div>
+    <div class="navbar" aria-hidden="true">
+      <span class="logo">PhenoTypic</span>
+      <span class="caret">Tutorials</span><span class="caret">Guides</span>
+      <span class="on">Measurements</span>
+      <span>API Reference</span><span class="caret">More</span>
+    </div>
+    <div class="frame" id="frame">
+      <nav class="side left" id="side-left" aria-label="Section navigation (mock)"></nav>
+      <div class="handle" id="h-left" role="separator" aria-orientation="vertical" aria-label="Resize section navigation" tabindex="0" aria-valuemin="160" aria-valuemax="380"></div>
+      <article class="content" id="content" aria-live="polite"></article>
+      <div class="handle r" id="h-right" role="separator" aria-orientation="vertical" aria-label="Resize on-this-page sidebar" tabindex="0" aria-valuemin="140" aria-valuemax="340"></div>
+      <aside class="side right" id="side-right" aria-label="On this page (mock)"></aside>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="pro"><h3 id="pro-h">Strengths</h3><ul id="pros"></ul></div>
+    <div class="con"><h3>Costs</h3><ul id="cons"></ul></div>
+  </div>
+</section>
+
+<section class="col">
+  <h2>Side by side</h2>
+  <div class="cmp-wrap">
+    <table class="cmp">
+      <thead><tr><th></th><th>A · Flat list</th><th>B · Grouped by stage</th><th>C · Hub pages</th></tr></thead>
+      <tbody>
+        <tr><td>Sidebar rows</td><td>3 + 22</td><td>4 + 4 captions + 22</td><td>4 + 2 (children open in place)</td></tr>
+        <tr><td>Clicks to an op page</td><td>1</td><td>1</td><td>2 (or 1 once a group is open)</td></tr>
+        <tr><td>Matches your spec exactly</td><td>Yes</td><td>Adds captions and "Shared columns"</td><td>Adds a level</td></tr>
+        <tr><td>Finds QC vs. model columns</td><td>By name only</td><td>By caption</td><td>By hub page</td></tr>
+        <tr><td>Growth as more ops are added</td><td>Gets long</td><td>Scales per group</td><td>Scales best</td></tr>
+        <tr><td>Generator complexity</td><td>Lowest</td><td>Low, needs a group per op</td><td>Moderate, adds 2 hub pages</td></tr>
+        <tr><td>Schema folders mirror it</td><td>Not needed</td><td>One folder per group</td><td>One folder per hub</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><span class="rec">Recommendation: Option B.</span> It keeps every operation one click away as you described, and the captions separate per-colony measurements from set-level quality checks and model fits. Those are different kinds of output: one row per colony versus one row per group or strain. The captions come for free in pydata-sphinx-theme, because each generated <code>toctree</code> can carry a <code>:caption:</code>. The groups also give the schema subfolders a natural shape.</p>
+</section>
+
+<section class="col">
+  <h2>Schema package reorganization</h2>
+  <p>Both variants keep <code>from phenotypic.schema import SIZE</code> working unchanged, since the new rule already routes all callers through the package. The subfolders are underscore-prefixed to match <code>_experimental_tags/</code> and the rule that only <code>__init__.py</code> exports are public.</p>
+  <div class="two">
+    <div>
+      <h3>S1 · Folders by stage (pairs with B)</h3>
+<pre class="tree">schema/
+  __init__.py        <span class="c"># flat re-exports, unchanged</span>
+  <span class="n">_core/</span>             <span class="c"># Entry, MeasurementInfo, tiers,</span>
+                     <span class="c"># categories, change notes, REMBI</span>
+  <span class="n">_shared/</span>           <span class="c"># OBJECT, GRID, METADATA_MATCH,</span>
+                     <span class="c"># CURATION, ErrorCategory</span>
+  <span class="n">_measure/</span>          <span class="c"># SIZE, SHAPE, INTENSITY, TEXTURE,</span>
+                     <span class="c"># BBOX, Color*, zones, grid stats</span>
+  <span class="n">_analysis/</span>
+    <span class="n">_qc/</span>             <span class="c"># QUALITY_CHECK + 7 QUALITY_*</span>
+    <span class="n">_models/</span>         <span class="c"># 3 growth models, MODEL_METRICS</span>
+    _edge_correction.py
+  <span class="n">_metadata/</span>         <span class="c"># IMAGE + _experimental_tags/</span></pre>
+    </div>
+    <div>
+      <h3>S0 · Leave files flat</h3>
+<pre class="tree">schema/
+  __init__.py
+  _size.py  _shape.py  ...  <span class="c"># as today</span>
+
+<span class="c"># Grouping lives in one place instead:</span>
+<span class="c"># each operation declares its schemas,</span>
+<span class="c"># and the docs generator groups pages</span>
+<span class="c"># by operation base class.</span>
+
+<span class="c"># No pickle remap rows needed.</span>
+<span class="c"># No test or tooling path churn.</span></pre>
+    </div>
+  </div>
+  <p>The only required code change is the same under both: give <code>SetAnalyzer</code> a <code>get_measurement_infoclasses()</code> matching <code>MeasureFeatures</code>, and declare <code>_measurement_infoclasses</code> on the 11 analyzers that add columns. S1 then adds a <code>_MOVED_CLASSES</code> row for every metadata class that moves, so pickles written today still load. <code>RADIAL_EXPANSION</code> is placed only once its owner is confirmed. Today it is read only by the results-viewer GUI.</p>
+</section>
+
+<section class="col">
+  <h2>Resizable sidebars</h2>
+  <p>pydata-sphinx-theme gives both sidebars fixed widths, and I found no built-in or published option for drag resizing. Its recent work on the sidebars covers collapse and drawer behavior only (<a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/layout.html" target="_blank" rel="noopener">layout docs</a>, <a href="https://github.com/pydata/pydata-sphinx-theme/pull/2474" target="_blank" rel="noopener">PR 2474</a>). A small custom script is therefore needed.</p>
+  <div class="cmp-wrap">
+    <table class="cmp">
+      <thead><tr><th></th><th>R1 · CSS <code>resize</code></th><th>R2 · Drag handle script (recommended)</th></tr></thead>
+      <tbody>
+        <tr><td>Code</td><td>About 6 lines of CSS</td><td>About 70 lines of JS in <code>_static/</code> plus CSS</td></tr>
+        <tr><td>Grip</td><td>Small corner triangle</td><td>Full-height edge, as in the mock above</td></tr>
+        <tr><td>Right sidebar</td><td>Grows the wrong way (toward the window edge)</td><td>Drags from its inner edge</td></tr>
+        <tr><td>Remembers width</td><td>No</td><td>Yes, per browser (localStorage), double-click to reset</td></tr>
+        <tr><td>Keyboard</td><td>No</td><td>Arrow keys on the focused handle</td></tr>
+        <tr><td>Narrow screens</td><td>Needs care</td><td>Handles hidden wherever the theme turns a sidebar into a drawer</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>R2 applies to every page on the site, not only Measurements, because the handles attach to the theme's shared <code>.bd-sidebar-primary</code> and <code>.bd-sidebar-secondary</code> containers. The breakpoints where 0.16.1 switches each sidebar to a drawer still need to be read from the theme's stylesheet in a real build. I have not checked them yet.</p>
+</section>
+
+<section class="col">
+  <h2>Decisions needed before implementation</h2>
+  <ol class="decide">
+    <li><b>Which layout?</b> A, B or C. I recommend B.</li>
+    <li><b>Where does Metadata go?</b> Your list omits it. Options: a fifth entry in the top block (shown in B and C), a section of Overview, or its own navbar item.</li>
+    <li><b>Tier System page: move or include?</b> The tier content lives in <code>explanation/measurement_classification_system.md</code>. Either move that page into Measurements, or include its tier section in a new page so both places stay in sync from one source.</li>
+    <li><b>Outlier removers:</b> list <code>MADOutlierRemover</code> and <code>TukeyOutlierRemover</code> on a short "Filters" page, or leave them out of this reference?</li>
+    <li><b>Schema folders:</b> S1 (move files, add pickle remap rows) or S0 (keep files flat, group in the generator only)?</li>
+  </ol>
+</section>
+
+<script>
+(function () {
+  "use strict";
+  const MEASURE = ["MeasureBounds","MeasureColor","MeasureGridLinRegStats","MeasureGridSpread","MeasureIntensity","MeasureNeighborDist","MeasureOrientationZones","MeasureShape","MeasureSize","MeasureSymZones","MeasureTexture"];
+  const QC = ["ExpectedVsDetectedCount","GridOccupancy","ICC","MaxModifiedZScore","RelativeMAD","ReplicateAgreement","TukeyOutlierFraction"];
+  const MODELS = ["LinearCapAndLagModel","LinearLagModel","LogGrowthModel"];
+  const CORR = ["EdgeCorrector"];
+  const ANALYZERS = [...QC, ...MODELS, ...CORR];
+
+  const TOP_A = [["overview","Overview"],["tiers","Tier System"],["categories","Categories"]];
+  const TOP_BC = [...TOP_A, ["shared","Shared columns"],["metadata","Metadata"]];
+
+  const NOTES = {
+    A: {
+      pros: ["Exactly the structure you described.","Every operation is one click from anywhere in the section.","Simplest generator: one toctree after the divider."],
+      cons: ["22 look-alike names in one run; per-colony and per-group outputs are mixed.","Columns on every row (object label, grid) have to live inside Overview.","Gets longer with each new operation."]
+    },
+    B: {
+      pros: ["Still one click to any operation.","Captions separate per-colony measurements from set-level QC and model fits.","Uses the theme's native toctree captions; no custom sidebar code.","Groups map one-to-one onto schema subfolders (S1)."],
+      cons: ["Adds captions and a Shared columns page beyond your list.","The sidebar is as long as A's."]
+    },
+    C: {
+      pros: ["Shortest sidebar; the open group expands in place.","Hub pages can compare operations in one table (rows, tier mix, output file).","Scales best as operations are added."],
+      cons: ["One extra click to reach an operation from Overview.","Two more generated pages to maintain.","Hides the operation names until a group is opened."]
+    }
+  };
+
+  const TOC = {
+    overview: ["How a table is laid out","Where tables are written","Reading an operation page","Columns on every row"],
+    tiers: ["Four kinds","Three tiers","The trust contract"],
+    categories: ["Starting Metrics"],
+    shared: ["OBJECT","GRID","Curation and review"],
+    metadata: ["Image bookkeeping","Experimental tags"],
+    MeasureSize: ["Summary","Output","Columns","API reference"],
+    ICC: ["Summary","Output","Columns","Shared QC columns","API reference"],
+    hub_measure: ["Operations","Compare outputs"],
+    hub_analysis: ["Quality control","Growth models","Plate correction"],
+    stub: ["Summary","Output","Columns","API reference"]
+  };
+
+  const SIZE_ROWS = [
+    ["Size_Area","Total number of pixels occupied by the colony."],
+    ["Size_IntegratedIntensity","Sum of the colony's grayscale pixel values."],
+    ["Size_Perimeter","Length of the colony's outer boundary in pixels."],
+    ["Size_ConvexArea","Area of the smallest convex polygon containing the colony."],
+    ["Size_MajorAxisLength","Longest axis of the best-fit ellipse."],
+    ["Size_MaxFeretDiameter","Longest caliper distance across the colony."]
+  ];
+  const ICC_ROWS = [
+    ["QC_ICC_NumSubjects","Distinct subjects (for example timepoints) in the two-way model."],
+    ["QC_ICC_NumRaters","Replicates per subject in the two-way model."],
+    ["QC_ICC_NumMembers","Total measurements contributing to the ICC."]
+  ];
+  const QC_SHARED = [
+    ["QC_Metric","Headline metric in the check's own units."],
+    ["QC_Status","Categorical: pass, warn or fail."],
+    ["QC_Flag","True when the metric crosses fail_threshold; eligible for curation."]
+  ];
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const table = (rows, badge) =>
+    '<div class="tbl-wrap"><table><thead><tr><th>Column</th><th>Description</th><th>Type</th></tr></thead><tbody>' +
+    rows.map(([c, d]) => `<tr><td class="col-name">${esc(c)}</td><td>${esc(d)}</td><td>${badge}</td></tr>`).join("") +
+    "</tbody></table></div>";
+  const facts = (pairs) => '<dl class="facts">' + pairs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("") + "</dl>";
+
+  const PAGES = {
+    overview: () => `
+      <h1>Measurements</h1>
+      <p>Every PhenoTypic run writes its results as tables. This reference gives each operation that produces a table its own page, so you can look up any column by the operation that made it.</p>
+      <h2>How a table is laid out</h2>
+      <div class="anatomy"><span class="a1">Metadata_*</span><span class="a2">Object_Label · Bbox_* · Grid_*</span><span class="a3">Size_* · Shape_* · Intensity_* · …</span></div>
+      <div class="anatomy-key">Left to right: who and what the row is about, where the colony is, then one block per measurement family in pipeline order.</div>
+      <h2>Where tables are written</h2>
+      <p><code>deliverables/measurements.csv</code> holds one row per colony with your metadata joined. <code>measurements_by_feature/</code> splits it by operation and <code>measurements_by_category/</code> by category. Quality checks write under <code>deliverables/qc/</code>.</p>
+      <h2>Reading an operation page</h2>
+      <ol class="steps"><li>A one-line summary of what the operation measures.</li><li>An output strip: one row per what, column prefix, column count, trust tier, output file.</li><li>The column table. The Type badge links to the Tier System page.</li><li>A link to the operation's API page for its parameters.</li></ol>`,
+    tiers: () => `
+      <h1>Tier System</h1>
+      <p>Every column is one of four kinds: identity, quality, primary or derived. Primary measurements also get a trust tier.</p>
+      <div class="tbl-wrap"><table><thead><tr><th>Tier</th><th>Name</th><th>How to apply it</th></tr></thead><tbody>
+      <tr><td><span class="bdg t1">1</span></td><td>Direct phenotype</td><td>Report a single value; compare across conditions.</td></tr>
+      <tr><td><span class="bdg t2">2</span></td><td>Descriptive trait</td><td>Read the direction of change against a control.</td></tr>
+      <tr><td><span class="bdg t3">3</span></td><td>Discriminative feature</td><td>Use the whole block together for classification.</td></tr>
+      </tbody></table></div>`,
+    categories: () => `
+      <h1>Categories</h1>
+      <p>Curated groupings of columns across operations. One category exists today.</p>
+      <h2>Starting Metrics</h2>
+      <p>All 14 <code>Size_*</code> columns. Written to <code>measurements_by_category/StartingMetrics.csv</code>.</p>`,
+    shared: () => `
+      <h1>Shared columns</h1>
+      <p>Columns that no single operation owns. <code>OBJECT</code> and <code>GRID</code> appear on every row; the curation columns come from review in the results viewer.</p>
+      ${table([["Object_Label","Integer label identifying each detected colony."],["Grid_RowNum","Grid row of the colony's cell (GridImage runs)."]], '<span class="bdg id">Identity</span>')}`,
+    metadata: () => `
+      <h1>Metadata</h1>
+      <p>Image bookkeeping set by the pipeline, and the recommended experimental tags for your <code>--metadata</code> CSV.</p>
+      <div class="stub">Same generated tables as today's Metadata page.</div>`,
+    MeasureSize: () => `
+      <h1>MeasureSize <span class="api">API →</span></h1>
+      <p>Measure the key size magnitudes of each detected colony.</p>
+      ${facts([["One row per","colony"],["Prefix","<code>Size_</code>"],["Columns","14"],["Type",'<span class="bdg t1">Tier 1</span> ×14'],["Category","Starting Metrics"],["Written to","measurements.csv"]])}
+      <h2>Columns</h2>
+      ${table(SIZE_ROWS, '<span class="bdg t1">Tier 1</span>')}
+      <div class="more">+ 8 more columns</div>`,
+    ICC: () => `
+      <h1>ICC <span class="api">API →</span></h1>
+      <p>Flag groupby groups whose replicates have low ICC(2,1) agreement.</p>
+      ${facts([["One row per","group"],["Prefix","<code>QC_ICC_</code>"],["Columns","3 + 3 shared"],["Type",'<span class="bdg q">Quality</span>'],["Written to","deliverables/qc/"]])}
+      <h2>Columns</h2>
+      ${table(ICC_ROWS, '<span class="bdg q">Quality</span>')}
+      <h2>Shared QC columns</h2>
+      <p>Every quality check emits these. They are documented once here and repeated on each QC page.</p>
+      ${table(QC_SHARED, '<span class="bdg q">Quality</span>')}`,
+    hub_measure: () => `
+      <h1>Object measurements</h1>
+      <p>Operations that measure each detected colony. Every one writes one row per colony into <code>measurements.csv</code>.</p>
+      <div class="cards">${MEASURE.map((m) => `<div><b>${m}</b><small>${m === "MeasureSize" ? "14 columns · Tier 1" : "per colony"}</small></div>`).join("")}</div>`,
+    hub_analysis: () => `
+      <h1>Set analyses</h1>
+      <p>Operations that run on a whole measurement table after a run. Their rows are groups, strains or plates, not single colonies.</p>
+      <h2>Quality control</h2><div class="cards">${QC.map((m) => `<div><b>${m}</b><small>per group</small></div>`).join("")}</div>
+      <h2>Growth models</h2><div class="cards">${MODELS.map((m) => `<div><b>${m}</b><small>per strain and condition</small></div>`).join("")}</div>
+      <h2>Plate correction</h2><div class="cards">${CORR.map((m) => `<div><b>${m}</b><small>corrected columns</small></div>`).join("")}</div>`
+  };
+  const stub = (name) => `
+    <h1>${esc(name)} <span class="api">API →</span></h1>
+    <div class="stub">This page uses the same template as MeasureSize and ICC: summary, output strip, column table, API link. Use the "Jump to page" buttons for the two filled-in examples.</div>`;
+
+  const LS = "ptx-mock-sidebar-widths";
+  const DEF = { lw: 230, rw: 190 };
+  let state = { opt: "A", page: "overview", open: null };
+  let widths = { ...DEF };
+  try { const s = JSON.parse(localStorage.getItem(LS) || "null"); if (s && s.lw && s.rw) widths = s; } catch (e) { /* storage unavailable */ }
+
+  const frame = document.getElementById("frame");
+  const left = document.getElementById("side-left");
+  const right = document.getElementById("side-right");
+  const content = document.getElementById("content");
+  const hL = document.getElementById("h-left");
+  const hR = document.getElementById("h-right");
+
+  function applyWidths() {
+    frame.style.setProperty("--lw", widths.lw + "px");
+    frame.style.setProperty("--rw", widths.rw + "px");
+    hL.setAttribute("aria-valuenow", widths.lw);
+    hR.setAttribute("aria-valuenow", widths.rw);
+  }
+  function saveWidths() { try { localStorage.setItem(LS, JSON.stringify(widths)); } catch (e) { /* ignore */ } }
+
+  const groupOf = (p) => MEASURE.includes(p) ? "hub_measure" : ANALYZERS.includes(p) ? "hub_analysis" : null;
+  const navBtn = (id, label, cls = "") =>
+    `<li><button type="button" class="nav ${cls}${state.page === id ? " on" : ""}" data-go="${id}" title="${esc(label)}">${esc(label)}</button></li>`;
+  const opList = (arr) => arr.map((m) => navBtn(m, m, "op")).join("");
+
+  function renderSidebar() {
+    const o = state.opt;
+    let h = "";
+    if (o === "A") {
+      h = `<ul>${TOP_A.map(([i, l]) => navBtn(i, l)).join("")}</ul><hr><ul>${opList(MEASURE)}${opList(ANALYZERS)}</ul>`;
+    } else if (o === "B") {
+      h = `<ul>${TOP_BC.map(([i, l]) => navBtn(i, l)).join("")}</ul>
+        <div class="cap">Object measurements</div><ul>${opList(MEASURE)}</ul>
+        <div class="cap">Quality control</div><ul>${opList(QC)}</ul>
+        <div class="cap">Growth models</div><ul>${opList(MODELS)}</ul>
+        <div class="cap">Plate correction</div><ul>${opList(CORR)}</ul>`;
+    } else {
+      const g = groupOf(state.page) || (state.page.startsWith("hub_") ? state.page : null);
+      const grp = (id, label, kids) =>
+        `<li><button type="button" class="nav grp${state.page === id ? " on" : ""}" data-go="${id}">${label}</button>${g === id ? `<ul>${kids}</ul>` : ""}</li>`;
+      h = `<ul>${TOP_BC.map(([i, l]) => navBtn(i, l)).join("")}</ul><hr>
+        <ul>${grp("hub_measure", "Object measurements", opList(MEASURE))}
+        ${grp("hub_analysis", "Set analyses", `<li class="cap">Quality control</li>${opList(QC)}<li class="cap">Growth models</li>${opList(MODELS)}<li class="cap">Plate correction</li>${opList(CORR)}`)}</ul>`;
+    }
+    left.innerHTML = h;
+  }
+
+  function renderPage() {
+    const p = state.page;
+    content.innerHTML = PAGES[p] ? PAGES[p]() : stub(p);
+    const toc = TOC[p] || TOC.stub;
+    right.innerHTML = `<div class="toc-title">On this page</div><div class="toc">${toc.map((t) => `<a href="#" tabindex="-1">${esc(t)}</a>`).join("")}</div>`;
+    const slug = p === "overview" ? "index" : p.startsWith("hub_") ? p.replace("hub_", "") + "/index" : p.toLowerCase();
+    document.getElementById("mock-url").textContent = "phenotypic.docs / measurements_ref / " + slug + ".html";
+    document.querySelectorAll("#page-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.page === p)));
+  }
+
+  function renderNotes() {
+    const n = NOTES[state.opt];
+    document.getElementById("pros").innerHTML = n.pros.map((x) => `<li>${esc(x)}</li>`).join("");
+    document.getElementById("cons").innerHTML = n.cons.map((x) => `<li>${esc(x)}</li>`).join("");
+    document.querySelectorAll("#opt-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.opt === state.opt)));
+  }
+  function renderAll() { renderSidebar(); renderPage(); renderNotes(); }
+
+  document.getElementById("opt-seg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-opt]"); if (!b) return;
+    state.opt = b.dataset.opt; renderAll();
+  });
+  document.getElementById("page-seg").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-page]"); if (!b) return;
+    state.page = b.dataset.page; renderAll();
+  });
+  left.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-go]"); if (!b) return;
+    state.page = b.dataset.go; renderSidebar(); renderPage();
+  });
+  document.getElementById("reset-w").addEventListener("click", () => { widths = { ...DEF }; applyWidths(); saveWidths(); });
+
+  function bindHandle(handle, key, sign, min, max) {
+    let startX = 0, startW = 0;
+    const clamp = (v) => Math.max(min, Math.min(max, Math.round(v)));
+    handle.addEventListener("pointerdown", (e) => {
+      startX = e.clientX; startW = widths[key];
+      handle.setPointerCapture(e.pointerId); handle.classList.add("dragging");
+      document.body.style.userSelect = "none";
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (!handle.hasPointerCapture(e.pointerId)) return;
+      widths[key] = clamp(startW + sign * (e.clientX - startX)); applyWidths();
+    });
+    const end = (e) => {
+      if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+      handle.classList.remove("dragging"); document.body.style.userSelect = ""; saveWidths();
+    };
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    handle.addEventListener("dblclick", () => { widths[key] = DEF[key]; applyWidths(); saveWidths(); });
+    handle.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 40 : 10;
+      if (e.key === "ArrowLeft") widths[key] = clamp(widths[key] - sign * step);
+      else if (e.key === "ArrowRight") widths[key] = clamp(widths[key] + sign * step);
+      else return;
+      e.preventDefault(); applyWidths(); saveWidths();
+    });
+  }
+  bindHandle(hL, "lw", +1, 160, 380);
+  bindHandle(hR, "rw", -1, 140, 340);
+
+  applyWidths();
+  renderAll();
+})();
+</script>
