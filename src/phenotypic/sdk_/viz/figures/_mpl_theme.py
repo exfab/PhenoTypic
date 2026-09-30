@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 __all__ = [
     "FIGURE_WIDTHS_MM",
-    "MAX_FIGURE_HEIGHT_MM",
     "export_figure",
     "figure_size_mm",
     "phenotypic_mpl_context",
@@ -40,13 +39,11 @@ __all__ = [
 
 MM_PER_INCH: float = 25.4
 
-#: Named figure widths in millimetres. ``full`` is the text width of an A4 page
-#: (210 mm) with 1 in side margins, 210 - 2 x 25.4; ``half`` fits two figures
-#: side by side on that width with a 5 mm gutter.
+#: Optional named figure widths in millimetres, for convenience only. ``full`` is
+#: the text width of an A4 page (210 mm) with 1 in side margins, 210 - 2 x 25.4;
+#: ``half`` fits two figures side by side on that width with a 5 mm gutter. A
+#: figure may use any size its content needs, multi-panel figures included.
 FIGURE_WIDTHS_MM: dict[str, float] = {"full": 159.2, "half": 77.1}
-
-#: Text height of the same A4 page (297 mm) with 1 in margins, 297 - 2 x 25.4.
-MAX_FIGURE_HEIGHT_MM: float = 246.2
 
 #: Point sizes at printed size (DESIGN.md "Figures").
 _TICK_PT: float = 7.0
@@ -148,16 +145,17 @@ def figure_size_mm(
 
     Args:
         width: A preset name from :data:`FIGURE_WIDTHS_MM` (``"full"`` or
-            ``"half"``) or a width in millimetres.
-        height_mm: Figure height in millimetres, at most
-            :data:`MAX_FIGURE_HEIGHT_MM`.
+            ``"half"``) or any width in millimetres.
+        height_mm: Figure height in millimetres. No upper bound is enforced:
+            a dense multi-panel figure may need more than one A4 page height,
+            and it is the author's call.
 
     Returns:
         ``(width_in, height_in)`` for ``plt.figure(figsize=...)``.
 
     Raises:
         ValueError: If ``width`` names no preset, or either dimension is not
-            positive, or ``height_mm`` exceeds the A4 text height.
+            positive.
 
     Examples:
         >>> from phenotypic.sdk_.viz.figures import figure_size_mm
@@ -176,11 +174,6 @@ def figure_size_mm(
         width_mm = float(width)
     if width_mm <= 0 or height_mm <= 0:
         raise ValueError(f"figure size must be positive, got {width_mm} x {height_mm} mm")
-    if height_mm > MAX_FIGURE_HEIGHT_MM:
-        raise ValueError(
-            f"figure height {height_mm} mm exceeds the A4 text height of "
-            f"{MAX_FIGURE_HEIGHT_MM} mm"
-        )
     return width_mm / MM_PER_INCH, height_mm / MM_PER_INCH
 
 

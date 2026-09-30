@@ -2,9 +2,9 @@
 <title>PhenoTypic Figure Typography</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700;1,6..12,400&family=Comfortaa:wght@400;600&family=IBM+Plex+Serif:ital,wght@1,400&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700;1,6..12,400&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
 <style>
-/* Layout: a decision column on the left, a sticky A4 proof on the right; stacks at phone width. */
+/* Layout: candidate list on the left, a sticky preview (A4 proof or a single view) on the right; stacks at phone width. */
 :root {
   --canvas: #FBFEF8;
   --surface: #FFFFFF;
@@ -13,7 +13,6 @@
   --rule: #DDE3ED;
   --navy: #003660;
   --accent: #1B75BC;
-  --gold: #FEBC11;
   --chip-bg: #EEF3FA;
   --ok: #0B6B4F;
   --no: #9A3D00;
@@ -27,14 +26,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --canvas: #0E1621; --surface: #152131; --ink: #E4EAF2; --muted: #9AA8BC;
-    --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA; --gold: #FEBC11;
+    --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA;
     --chip-bg: #1C2C41; --ok: #5FD1A8; --no: #F0A060; --paper-shadow: rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --canvas: #0E1621; --surface: #152131; --ink: #E4EAF2; --muted: #9AA8BC;
-  --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA; --gold: #FEBC11;
+  --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA;
   --chip-bg: #1C2C41; --ok: #5FD1A8; --no: #F0A060; --paper-shadow: rgba(0, 0, 0, 0.55);
   color-scheme: dark;
 }
@@ -44,23 +43,23 @@ body {
   font-family: var(--font-ui); font-size: 15px; line-height: 1.55;
   padding-inline: 16px; padding-block: 28px 64px;
 }
-.wrap { max-width: 1480px; margin-inline: auto; display: grid; gap: 28px; }
+.wrap { max-width: 1480px; margin-inline: auto; display: grid; gap: 24px; }
 header h1 {
   font-size: clamp(1.6rem, 2.6vw, 2.2rem); font-weight: 700; color: var(--navy);
   margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance;
 }
-header p { margin: 0; max-width: 72ch; color: var(--muted); }
-.assume { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.assume span {
+header p { margin: 0 0 8px; max-width: 78ch; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chips span {
   font-family: var(--font-mono); font-size: 12px; background: var(--chip-bg);
   color: var(--ink); padding: 4px 10px; border-radius: 6px;
 }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.chips span b { color: var(--muted); font-weight: 600; margin-right: 4px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 1100px) {
-  .layout { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); align-items: start; }
-  .proof { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+  .layout { grid-template-columns: minmax(0, 470px) minmax(0, 1fr); align-items: start; }
+  .preview { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
 }
-.decisions { display: grid; gap: 22px; min-width: 0; }
 fieldset {
   border: 1px solid var(--rule); border-radius: 10px; background: var(--surface);
   margin: 0; padding: 18px 18px 16px; min-width: 0;
@@ -69,45 +68,35 @@ legend {
   font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--muted); padding-inline: 6px;
 }
-.q { font-weight: 700; font-size: 1.05rem; margin: 0 0 4px; color: var(--ink); }
+.q { font-weight: 700; font-size: 1.05rem; margin: 0 0 4px; }
 .qnote { margin: 0 0 12px; color: var(--muted); font-size: 0.92rem; }
 .opts { display: grid; gap: 8px; }
 .opt { position: relative; }
 .opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .opt label {
-  display: grid; gap: 2px; padding: 10px 12px 10px 38px; border-radius: 8px;
+  display: grid; gap: 3px; padding: 10px 12px 10px 38px; border-radius: 8px;
   border: 1px solid var(--rule); cursor: pointer; background: var(--surface);
 }
 .opt label::before {
   content: ""; position: absolute; left: 13px; top: 14px; width: 14px; height: 14px;
   border-radius: 50%; border: 1.5px solid var(--muted); background: var(--surface);
 }
-.opt input[type="checkbox"] + label::before { border-radius: 3px; }
 .opt input:checked + label { border-color: var(--accent); background: var(--chip-bg); }
 .opt input:checked + label::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
 .opt input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
 .opt .name { font-weight: 600; }
 .opt .name .tag {
   font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--navy);
-  border: 1px solid var(--navy); border-radius: 4px; padding: 0 5px; margin-left: 6px;
-  vertical-align: 1px;
+  border: 1px solid var(--navy); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px;
 }
 .opt .why { color: var(--muted); font-size: 0.9rem; }
-.mono { font-family: var(--font-mono); font-size: 0.86em; }
-.tablewrap { overflow-x: auto; margin-top: 12px; }
-table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
-th, td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: left; white-space: nowrap; }
-th { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-td.c { text-align: center; font-family: var(--font-mono); }
-td.yes { color: var(--ok); }
-td.nope { color: var(--no); }
-tr.sel td { background: var(--chip-bg); }
-.fine { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.opt .flags { font-family: var(--font-mono); font-size: 11.5px; }
+.flags .good { color: var(--ok); }
+.flags .bad { color: var(--no); }
 
-.proof { min-width: 0; display: grid; gap: 10px; }
-.proofbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
-.proofbar h2 { font-size: 1rem; margin: 0; color: var(--navy); }
-.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.preview { min-width: 0; display: grid; gap: 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
 .seg button {
   font: 600 13px var(--font-ui); background: var(--surface); color: var(--ink);
   border: 0; padding: 6px 12px; cursor: pointer;
@@ -115,7 +104,7 @@ tr.sel td { background: var(--chip-bg); }
 .seg button[aria-pressed="true"] { background: var(--navy); color: var(--surface); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .stage { overflow: hidden; border-radius: 6px; }
-.stage.true { overflow-x: auto; }
+.stage.scroll { overflow-x: auto; }
 .page {
   width: 210mm; min-height: 297mm; background: var(--paper); color: var(--paper-ink);
   padding: 22mm 25.4mm; box-shadow: 0 4px 24px var(--paper-shadow);
@@ -124,375 +113,207 @@ tr.sel td { background: var(--chip-bg); }
 .page h3 { font-size: 12pt; font-weight: 600; margin: 0 0 3mm; }
 .page p { font-size: 11pt; line-height: 1.4; margin: 0 0 3mm; text-align: justify; hyphens: auto; }
 .page figure { margin: 5mm 0 4mm; }
-.page figure img { display: block; width: 159.2mm; max-width: none; height: auto; }
+.page figure img { display: block; max-width: none; height: auto; }
 .page figcaption { font-size: 9pt; line-height: 1.35; margin-top: 2.5mm; }
-.page .ruler { font-family: var(--font-mono); font-size: 7pt; color: #666; margin-top: 1mm; display: flex; justify-content: space-between; border-top: 0.3mm solid #999; padding-top: 0.6mm; }
-.proofmeta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.slide {
+  aspect-ratio: 16 / 9; background: var(--paper); box-shadow: 0 4px 24px var(--paper-shadow);
+  display: grid; place-items: center; padding: 3%; border-radius: 4px; max-width: 100%;
+}
+.slide img { width: 100%; height: 100%; object-fit: contain; }
+.meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 
 section.block { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; min-width: 0; }
-section.block > h2 { margin: 0 0 4px; font-size: 1.25rem; color: var(--navy); }
-section.block > p.lead { margin: 0 0 16px; color: var(--muted); max-width: 80ch; }
-.chrome-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 900px) { .chrome-grid { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); } }
-.specimens { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.spec {
-  border: 1px solid var(--rule); border-radius: 10px; padding: 16px; background: #FFFFFF; color: #2E3A4E;
-}
-.spec .cap { font-family: var(--font-mono); font-size: 11px; color: #5E6B7E; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-.spec .h { color: #003660; font-size: 1.55em; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.01em; }
-.spec .body { margin: 0 0 12px; line-height: 1.6; }
-.spec .stat { display: flex; align-items: baseline; gap: 10px; border-top: 1px solid #DDE3ED; padding-top: 10px; }
-.spec .stat b { font-size: 2.1em; color: #003660; line-height: 1; }
-.spec .stat span { font-family: var(--font-mono); font-size: 11px; color: #5E6B7E; }
-.spec .btn { display: inline-block; margin-top: 12px; background: #003660; color: #FFFFFF; border-radius: 6px; padding: 7px 14px; font-weight: 600; font-size: 0.87em; letter-spacing: 0.01em; }
-
-.checks { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.src { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
-.out { display: grid; gap: 10px; }
+section.block > h2 { margin: 0 0 4px; font-size: 1.2rem; color: var(--navy); }
+section.block > p.lead { margin: 0 0 14px; color: var(--muted); max-width: 86ch; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13px; min-width: 100%; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+td { font-family: var(--font-mono); }
+td.bad { color: var(--no); font-weight: 600; }
+tr.sel td { background: var(--chip-bg); }
+.fine { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; max-width: 90ch; }
 .out pre {
-  margin: 0; background: var(--chip-bg); border-radius: 8px; padding: 14px; overflow-x: auto;
+  margin: 0 0 10px; background: var(--chip-bg); border-radius: 8px; padding: 14px; overflow-x: auto;
   font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; color: var(--ink);
 }
-.out .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .primary {
   font: 700 14px var(--font-ui); background: var(--navy); color: var(--surface);
   border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
 }
 .primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .status { font-size: 13px; color: var(--muted); }
-ol.refs { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; }
-ol.refs a { color: var(--accent); }
-.tier { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; border-radius: 4px; padding: 0 5px; margin-left: 4px; white-space: nowrap; }
-.tier.f { color: var(--ok); border: 1px solid var(--ok); }
-.tier.s { color: var(--no); border: 1px solid var(--no); }
 @media (prefers-reduced-motion: no-preference) { .opt label, .seg button { transition: background-color 120ms, border-color 120ms; } }
 </style>
 
 <div class="wrap">
   <header>
     <h1>PhenoTypic Figure Typography</h1>
-    <p>Pick one option per question. The A4 proof on the right redraws with every figure choice, and the settings block at the bottom collects your picks so you can paste them back into the session. Every figure below was drawn by matplotlib 3.10.7 from synthetic, fixed-seed data; nothing here is a real measurement.</p>
-    <div class="assume" aria-label="Assumptions">
-      <span>A4 210 × 297 mm</span>
-      <span>text width 159.2 mm (1 in margins)</span>
-      <span>sizes in pt at final printed size</span>
-      <span>figure placed at 100%</span>
+    <p><b>Round 2: the size ladder.</b> Round 1 is settled, so every candidate below uses the same typeface, colors, chrome and panel letters and differs only in text size and the line weights that go with it. Each candidate is drawn three ways, and the layout adapts the way a careful author would: legends move outside a panel when they would cover data, and crowded category labels are angled. The table reports what that costs.</p>
+    <p>All figures are drawn by matplotlib 3.10.7 from synthetic, fixed-seed data. Sizes are in points at the printed size.</p>
+    <div class="chips" aria-label="Decided in round 1">
+      <span><b>font</b>DejaVu Sans</span>
+      <span><b>colors</b>Okabe-Ito, published order</span>
+      <span><b>chrome</b>minimal</span>
+      <span><b>panels</b>(a) (b) (c)</span>
+      <span><b>size</b>any; no overlaps</span>
     </div>
   </header>
 
   <div class="layout">
-    <form class="decisions" id="figform" autocomplete="off">
+    <form autocomplete="off">
       <fieldset>
-        <legend>Figures · 1 of 5</legend>
-        <p class="q">Which typeface?</p>
-        <p class="qnote">Only the three bundled families are identical on every OS. A face that is not bundled either has to ship with the package or silently falls back to DejaVu Sans. That fallback is what today's theme does: it asks for IBM Plex Sans.</p>
-        <div class="opts" data-group="font"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Figures · 2 of 5</legend>
-        <p class="q">Which size ladder for an A4 page?</p>
-        <p class="qnote">Each ladder sets tick labels, axis labels and panel letters. The table checks each ladder against the text-size ranges journals publish. Those ranges come from search snippets and were not read from the official pages.</p>
-        <div class="opts" data-group="ladder"></div>
-        <div class="tablewrap">
-          <table id="compliance">
-            <thead><tr><th>Ladder</th><th>Nature 5–7</th><th>Cell 6–8</th><th>Science 6–9</th><th>PNAS 6–12</th><th>Elsevier ≥7</th><th>PLOS 8–12</th><th>Springer 8–12</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p class="fine">A check means both the smallest text (ticks) and the largest non-panel text (axis labels) fall inside the range. Scaling the figure to a different column width moves every size with it: a 159.2 mm figure enlarged to Nature's 183 mm double column grows by 15%.</p>
-      </fieldset>
-
-      <fieldset>
-        <legend>Figures · 3 of 5</legend>
-        <p class="q">Which Okabe-Ito order?</p>
-        <p class="qnote">The first four series are the only ones that differ between the options in the sample figure.</p>
-        <div class="opts" data-group="palette"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Figures · 4 of 5</legend>
-        <p class="q">How much plot chrome?</p>
-        <div class="opts" data-group="chrome"></div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Figures · 5 of 5</legend>
-        <p class="q">Which panel letters?</p>
-        <div class="opts" data-group="panel"></div>
+        <legend>Size ladder</legend>
+        <p class="q">Which text sizes? (tick labels / axis labels / panel letters)</p>
+        <p class="qnote">The A4 page around the figure sets its body text at 11 pt and its caption at 9 pt, for comparison.</p>
+        <div class="opts" id="ladders"></div>
       </fieldset>
     </form>
 
-    <div class="proof" aria-live="polite">
-      <div class="proofbar">
-        <h2>A4 proof</h2>
-        <div class="seg" role="group" aria-label="Proof zoom">
-          <button type="button" id="zoom-fit" aria-pressed="true">Fit</button>
-          <button type="button" id="zoom-true" aria-pressed="false">Actual size</button>
+    <div class="preview">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Which figure">
+          <button type="button" data-view="grid" aria-pressed="true">2×2, full width</button>
+          <button type="button" data-view="half" aria-pressed="false">Single, half width</button>
+          <button type="button" data-view="facets" aria-pressed="false">3×3 facets</button>
+        </div>
+        <div class="seg" role="group" aria-label="How it is viewed">
+          <button type="button" data-zoom="fit" aria-pressed="true">A4 page</button>
+          <button type="button" data-zoom="true" aria-pressed="false">A4, actual size</button>
+          <button type="button" data-zoom="slide" aria-pressed="false">On a slide</button>
         </div>
       </div>
       <div class="stage" id="stage">
         <div class="page" id="page">
           <h3>Colony growth of auxotrophic deletion strains</h3>
-          <p>Deletion of <i>URA3</i>, <i>HIS3</i> or <i>LEU2</i> slowed colony expansion on rich medium relative to the parental strain, with the largest delay in <i>leu2</i>Δ (Fig. 1a,b). Colony area at 48 h showed the edge effect typical of pinned arrays, with larger colonies in the outer two rows and columns (Fig. 1c).</p>
+          <p>Deletion of <i>URA3</i>, <i>HIS3</i> or <i>LEU2</i> slowed colony expansion on rich medium relative to the parental strain, with the largest delay in <i>leu2</i>Δ (Fig. 1). The edge effect typical of pinned arrays appears in the plate map, with larger colonies in the outer two rows and columns.</p>
           <figure>
-            <img id="proofimg" alt="Sample four-panel figure: growth curves, endpoint colony area, plate map and colony image" width="602" height="393">
-            <div class="ruler"><span>0</span><span>159.2 mm text width</span></div>
-            <figcaption><b>Figure 1 | Growth of <i>S. cerevisiae</i> deletion strains on YPD at 30 °C (synthetic data).</b> <b>a</b>, Colony area over time; lines show the mean and shading ±1 s.d. of <i>n</i> = 6 colonies. <b>b</b>, Colony area at 48 h; points are colonies and bars the mean. <b>c</b>, Colony area across a 384-pin plate. <b>d</b>, Grayscale crop of the imaged plate; scale bar in pixels because the synthetic plate is uncalibrated.</figcaption>
+            <img id="pageimg" alt="Sample figure for the selected size ladder">
+            <figcaption id="caption"></figcaption>
           </figure>
-          <p>Body text on this proof is set at 11 pt and the caption at 9 pt, the sizes a typical A4 manuscript or thesis uses. Figure text should read as a step below the caption, not as a separate scale.</p>
+          <p>Body text on this page is 11 pt and the caption 9 pt. Figure text at the chosen ladder should read comfortably next to both without taking space the data needs.</p>
         </div>
+        <div class="slide" id="slide" hidden><img id="slideimg" alt="The selected figure filling a 16:9 slide"></div>
       </div>
-      <div class="proofmeta" id="proofmeta"></div>
+      <div class="meta" id="meta"></div>
     </div>
   </div>
 
-  <section class="block" id="chrome">
-    <h2>GUI chrome in Nunito Sans</h2>
-    <p class="lead">These three choices are the open decisions N1 to N3 in the chrome-font spec. The specimens use the GUI's own colors and redraw as you choose; the Comfortaa card shows the current state for comparison.</p>
-    <div class="chrome-grid">
-      <form class="decisions" id="chromeform" autocomplete="off">
-        <fieldset>
-          <legend>N1 · Species names</legend>
-          <p class="q">How should italic binomials render?</p>
-          <div class="opts" data-group="species"></div>
-        </fieldset>
-        <fieldset>
-          <legend>N2 · Display weight</legend>
-          <p class="q">How heavy are headings and stat values?</p>
-          <div class="opts" data-group="dweight"></div>
-        </fieldset>
-        <fieldset>
-          <legend>N3 · Body size</legend>
-          <p class="q">Does the size ladder compensate?</p>
-          <p class="qnote">At the same pixel size Nunito Sans sets GUI strings at 85 to 87% of Comfortaa's width, and its x-height is 0.486 em against 0.547 em.</p>
-          <div class="opts" data-group="bsize"></div>
-        </fieldset>
-      </form>
-      <div class="specimens">
-        <div class="spec" id="spec-new">
-          <div class="cap">Nunito Sans · your choice</div>
-          <p class="h">Plate 07 · 48 h</p>
-          <p class="body">Colonies of <span class="sp">Rhodotorula toruloides</span> reached confluence in the outer rows. Review flagged wells before exporting measurements.</p>
-          <div class="stat"><b>1,152</b><span>COLONIES DETECTED</span></div>
-          <span class="btn">Export measurements</span>
-        </div>
-        <div class="spec" id="spec-old">
-          <div class="cap">Comfortaa · current</div>
-          <p class="h">Plate 07 · 48 h</p>
-          <p class="body">Colonies of <span class="sp">Rhodotorula toruloides</span> reached confluence in the outer rows. Review flagged wells before exporting measurements.</p>
-          <div class="stat"><b>1,152</b><span>COLONIES DETECTED</span></div>
-          <span class="btn">Export measurements</span>
-        </div>
-      </div>
+  <section class="block">
+    <h2>What each ladder costs</h2>
+    <p class="lead">Data area is the share of the figure inside the data panels, so higher leaves more room for data. Collisions count text that overlaps other text, text cut off at the figure edge, and data points hidden under a legend or label, after the layout has adapted. The last two columns give the tick-label size in screen pixels in two viewing situations.</p>
+    <div class="tablewrap">
+      <table id="costs">
+        <thead><tr>
+          <th>Ladder</th><th>2×2 data</th><th>Half data</th><th>3×3 data</th>
+          <th>Collisions</th><th>Ticks, laptop PDF</th><th>Ticks, slide</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
+    <p class="fine">Laptop PDF assumes the A4 page is fitted to a 1280 px-wide viewer window, so 1 pt ≈ 2.15 px. Slide assumes the full-width figure (159.2 mm) is stretched across a 1920 px-wide 16:9 slide, so 1 pt ≈ 4.25 px; a half-width figure placed alone on a slide doubles that. Body text on screen is usually 14 to 16 px for comparison. These are my assumptions for scale, not measurements of a particular device.</p>
   </section>
 
-  <section class="block" id="extras">
-    <h2>Also put in the figures section</h2>
-    <p class="lead">Rules an agent should follow beyond font and size. Checked items are my recommendations; untick anything you do not want written into DESIGN.md.</p>
-    <div class="checks" id="checks"></div>
-  </section>
-
-  <section class="block out" id="output">
-    <h2>Your settings</h2>
-    <p class="lead">Copy this block and paste it into the session.</p>
+  <section class="block out">
+    <h2>Your choice</h2>
+    <p class="lead">Copy this and paste it into the session.</p>
     <pre id="summary"></pre>
     <div class="row">
-      <button type="button" class="primary" id="copy">Copy settings</button>
+      <button type="button" class="primary" id="copy">Copy choice</button>
       <span class="status" id="copystatus" role="status"></span>
     </div>
-  </section>
-
-  <section class="block" id="sources">
-    <h2>Sources</h2>
-    <p class="lead"><span class="tier f">READ</span> means the source itself was read. <span class="tier s">SNIPPET</span> means only a search excerpt was seen, because the proxy blocked the publisher's site; confirm those numbers on the official page before treating them as rules.</p>
-    <ol class="refs">
-      <li>Rougier, N. P., Droettboom, M., &amp; Bourne, P. E. (2014). Ten simple rules for better figures. <i>PLOS Computational Biology</i>, 10(9), e1003833. <a href="https://doi.org/10.1371/journal.pcbi.1003833">doi:10.1371/journal.pcbi.1003833</a> <span class="tier f">READ</span> Gives no numeric font size; says defaults "are good enough for any plot but they are best for none" and warns against rainbow colormaps.</li>
-      <li>Wong, B. (2011). Points of view: Color blindness. <i>Nature Methods</i>, 8, 441. <a href="https://doi.org/10.1038/nmeth.1618">doi:10.1038/nmeth.1618</a> <span class="tier f">READ</span> metadata; the hex values and order are <span class="tier s">SNIPPET</span>. An author correction exists (doi:10.1038/s41592-023-01974-0).</li>
-      <li>Crameri, F., Shephard, G. E., &amp; Heron, P. J. (2020). The misuse of colour in science communication. <i>Nature Communications</i>, 11, 5444. <a href="https://doi.org/10.1038/s41467-020-19160-7">doi:10.1038/s41467-020-19160-7</a> <span class="tier f">READ</span> abstract.</li>
-      <li>Weissgerber, T. L., Milic, N. M., Winham, S. J., &amp; Garovic, V. D. (2015). Beyond bar and line graphs. <i>PLOS Biology</i>, 13(4), e1002128. <a href="https://doi.org/10.1371/journal.pbio.1002128">doi:10.1371/journal.pbio.1002128</a> <span class="tier f">READ</span> abstract.</li>
-      <li>matplotlib source, <span class="mono">lib/matplotlib/mpl-data/matplotlibrc</span> and the fonts guide (bundled families, <span class="mono">pdf.fonttype</span> 3 vs 42, <span class="mono">addfont</span> not persisting, <span class="mono">SOURCE_DATE_EPOCH</span>). <a href="https://github.com/matplotlib/matplotlib">github.com/matplotlib/matplotlib</a> <span class="tier f">READ</span></li>
-      <li>LaTeX <span class="mono">classes.dtx</span> (A4 paper size, article <span class="mono">\textwidth</span> 345/360/390 pt at 10/11/12 pt) and <span class="mono">geometry.dtx</span> (default hscale 0.7). <span class="tier f">READ</span> Word's 1 in default margins are <span class="tier s">SNIPPET</span>.</li>
-      <li>Journal artwork guides: Nature, Nature Communications, Cell Press, Science, PLOS, PNAS, eLife, ASM, Microbiology Society, Elsevier, Springer. <span class="tier s">SNIPPET</span> for every number in the ladder table.</li>
-      <li>Google Fonts CSS API responses for Nunito Sans and Comfortaa, queried 2026-09-29, and the google/fonts METADATA.pb files (OFL licence, axes). <span class="tier f">READ</span></li>
-    </ol>
   </section>
 </div>
 
 <script>
 (function () {
   "use strict";
-  const OPTIONS = {
-    font: [
-      { id: "dejavu", name: "DejaVu Sans", tag: "Recommended",
-        why: "matplotlib's own default, shipped inside every install, so a figure renders the same on macOS, Windows and Linux. Wider than Arial at the same size. A journal that names Arial or Helvetica gets a substitute." },
-      { id: "dejavu-mono", name: "DejaVu Sans, mono tick labels",
-        why: "Same face, with tick labels in DejaVu Sans Mono so digits line up and DESIGN.md's mono-for-data rule carries into figures. Mono digits are wider, so dense axes crowd sooner." },
-      { id: "stix", name: "STIX (serif)",
-        why: "Times-like serif bundled with matplotlib; matches serif body text and LaTeX math. Most journal guides list sans-serif faces for figure text." },
-      { id: "nunito", name: "Nunito Sans (shipped with the package)",
-        why: "Matches the new GUI chrome. Not bundled with matplotlib: the package would ship the OFL TTFs and call fontManager.addfont on every import. Rounded terminals read less neutral in a journal figure." }
-    ],
-    ladder: [
-      { id: "compact", name: "Compact · ticks 6, labels 7, panels 8 pt", sizes: [6, 7, 8],
-        why: "Journal-column density. Small for a full-width A4 figure read on paper." },
-      { id: "balanced", name: "Balanced · ticks 7, labels 8, panels 10 pt", sizes: [7, 8, 10], tag: "Recommended",
-        why: "One step below a 9 pt caption, which is how figure text usually relates to caption text on an A4 page. This is my judgment, not a published rule." },
-      { id: "generous", name: "Generous · ticks 8, labels 9, panels 11 pt", sizes: [8, 9, 11],
-        why: "Reads comfortably on A4 and on a projected slide; exceeds the upper bound of the tighter journal ranges." }
-    ],
-    palette: [
-      { id: "house", name: "House order · navy first",
-        why: "Current DESIGN.md order: brand navy #003660 replaces black as series 1, then orange, sky blue, bluish green, blue, purple. Navy is not an Okabe-Ito color." },
-      { id: "canonical", name: "Okabe-Ito as published · black first", tag: "Recommended",
-        why: "Black, orange, sky blue, bluish green, blue, vermilion, reddish purple: the published order with yellow skipped for lines on white. Reviewers recognise it, and no brand color enters a figure." }
-    ],
-    chrome: [
-      { id: "minimal", name: "Minimal", tag: "Recommended",
-        why: "White background, no gridlines, no panel titles; the caption carries the message. Closest to what journals print." },
-      { id: "guides", name: "Light guides",
-        why: "White background, faint horizontal gridlines and short left-aligned panel titles. Useful in reports and theses." },
-      { id: "current", name: "Current theme",
-        why: "Today's matplotlib theme: #FBFEF8 figure tint, grid on both axes, navy titles, light grey axes and ticks. The tint prints as a visible box on white paper." }
-    ],
-    panel: [
-      { id: "lower", name: "a  b  c  (bold lowercase)", tag: "Recommended", why: "Nature's style; also reads cleanly in running text as “Fig. 1a”." },
-      { id: "upper", name: "A  B  C  (bold uppercase)", why: "Common in Cell Press and many microbiology journals." },
-      { id: "paren", name: "(a)  (b)  (c)", why: "Common in theses and engineering journals; takes more room." }
-    ],
-    species: [
-      { id: "nunito-italic", name: "Nunito Sans Italic", tag: "Recommended",
-        why: "The italic of the surrounding text, the ordinary convention. Possible now because Nunito Sans has a true italic." },
-      { id: "plex-serif", name: "IBM Plex Serif Italic (current)",
-        why: "Keeps today's look. It was chosen only because Comfortaa has no italic." }
-    ],
-    dweight: [
-      { id: "400", name: "Regular (400)", why: "Today's setting; Comfortaa at 400 already looked substantial." },
-      { id: "600", name: "SemiBold (600)", tag: "Recommended",
-        why: "Nunito Sans at 400 is plainer and lower in contrast, so headings may need the extra weight to hold the hierarchy." }
-    ],
-    bsize: [
-      { id: "15", name: "Keep 15 px body", why: "No change to the ladder. The chrome will read about 11% smaller in x-height." },
-      { id: "16", name: "Raise body to 16 px", tag: "Recommended",
-        why: "Restores most of the lost x-height (0.486 × 16 ≈ 7.8 px vs 0.547 × 15 ≈ 8.2 px) while text still sets narrower than before." }
-    ]
+  // Measured by render_samples.py --ladders-only (samples/ladder/manifest.json).
+  const LADDERS = [
+    { id: "l7", sizes: [7, 8, 10], note: "Round 1's choice. Dense and journal-like; small on a laptop.",
+      m: { grid: [0.327, 0, 0, 0], half: [0.665, 0, 0, 0], facets: [0.746, 0, 0, 0] } },
+    { id: "l8", sizes: [8, 9, 12], note: "A step up; ticks at a small caption size.",
+      m: { grid: [0.300, 0, 0, 0], half: [0.641, 0, 0, 0], facets: [0.745, 0, 0, 0] } },
+    { id: "l9", sizes: [9, 10, 12], note: "Ticks at caption size. Lightest option that reads easily on a laptop.",
+      m: { grid: [0.276, 0, 0, 0], half: [0.648, 0, 0, 0], facets: [0.733, 0, 0, 0] } },
+    { id: "l10", sizes: [10, 11, 14], tag: "Recommended",
+      note: "Axis labels match the 11 pt A4 body text and panel letters reach 14 pt. Clean in all three figures once the layout adapts; crowded category labels get angled.",
+      m: { grid: [0.251, 0, 0, 0], half: [0.634, 0, 0, 0], facets: [0.718, 0, 0, 0] } },
+    { id: "l10b", sizes: [10, 12, 14], note: "Axis labels a point above body text. Still clean; gives up a little more room.",
+      m: { grid: [0.242, 0, 0, 0], half: [0.618, 0, 0, 0], facets: [0.710, 0, 0, 0] } },
+    { id: "l14", sizes: [14, 16, 18], note: "Everything at least 14 pt. Slide scale: text collides and is cut off in the 2×2, and the legend covers data at half width.",
+      m: { grid: [0.181, 3, 3, 0], half: [0.561, 0, 1, 17], facets: [0.657, 0, 0, 0] } }
+  ];
+  const VIEWS = {
+    grid: { width: 159.2, file: "grid",
+      caption: "<b>Figure 1 | Growth of <i>S. cerevisiae</i> deletion strains on YPD at 30 °C (synthetic data).</b> <b>(a)</b> Colony area over time; lines show the mean and shading ±1 s.d. of <i>n</i> = 6 colonies. <b>(b)</b> Colony area at 48 h; points are colonies, bars the mean, <i>n</i> = 6 per strain. <b>(c)</b> Colony area across a 384-pin plate. <b>(d)</b> Grayscale crop of the imaged plate; scale bar in pixels because the synthetic plate is uncalibrated." },
+    half: { width: 77.1, file: "half",
+      caption: "<b>Figure 1 | Colony growth (synthetic data).</b> Mean ± 1 s.d. of <i>n</i> = 6 colonies per strain, placed at half the A4 text width." },
+    facets: { width: 159.2, file: "facets",
+      caption: "<b>Figure 1 | Growth of nine deletion strains (synthetic data).</b> Grey lines are four replicate colonies; black is their mean. Axes are shared, so only the outer panels carry labels." }
   };
+  const PX_PER_PT = 96 / 72;
+  const LAPTOP = PX_PER_PT * 1280 / (210 * 96 / 25.4);
+  const SLIDE = PX_PER_PT * 1920 / (159.2 * 96 / 25.4);
+  const KEY = "phenotypic-figure-typography-round2";
 
-  const JOURNALS = [
-    { name: "Nature", min: 5, max: 7 },
-    { name: "Cell", min: 6, max: 8 },
-    { name: "Science", min: 6, max: 9 },
-    { name: "PNAS", min: 6, max: 12 },
-    { name: "Elsevier", min: 7, max: Infinity },
-    { name: "PLOS", min: 8, max: 12 },
-    { name: "Springer", min: 8, max: 12 }
-  ];
-
-  const EXTRAS = [
-    { id: "final-size", on: true, name: "Save at final printed size",
-      why: "Set figsize in mm from named width presets (full 159.2 mm, half 77 mm) and place the file at 100%. Point sizes are only true when nothing rescales the figure.", src: "reasoning; ASM asks for print-size submission (snippet)" },
-    { id: "fonttype-42", on: true, name: "Embed fonts as TrueType (pdf.fonttype = 42)",
-      why: "matplotlib defaults to Type 3. Type 42 keeps text as text, which editors and some submission systems expect.", src: "matplotlib fonts guide (read); publisher reasons (snippet)" },
-    { id: "vector-first", on: true, name: "Vector for plots, raster only for images",
-      why: "PDF or SVG for plots. Embedded photos at ≥300 dpi at final size, 600 dpi when mixed with line art.", src: "journal guides (snippet)" },
-    { id: "reproducible", on: true, name: "Byte-reproducible exports",
-      why: "Drop CreationDate from PDF metadata and fix svg.hashsalt, matching the reproducibility the OME-Zarr stores already guarantee.", src: "matplotlib source (read)" },
-    { id: "colormaps", on: true, name: "Perceptually uniform colormaps",
-      why: "cividis or viridis for continuous data, never jet or rainbow. This replaces the navy-to-sky ramp for figures only.", src: "Crameri 2020; Rougier 2014 rule 6" },
-    { id: "show-points", on: true, name: "Show the data points",
-      why: "For small n, plot individual values over a mean or median, and state n and what error bars show in the caption.", src: "Weissgerber 2015" },
-    { id: "redundant", on: true, name: "Redundant encoding",
-      why: "Pair color with marker or line style when series cross, so a figure survives grayscale printing and color-vision deficiency.", src: "reasoning" },
-    { id: "nomenclature", on: true, name: "Italic nomenclature",
-      why: "Genus and species italic; yeast gene and allele names italic (ura3Δ); strain names roman.", src: "field convention, no specific citation" },
-    { id: "units", on: true, name: "Axis labels as Quantity (unit)",
-      why: "“Colony area (mm²)”, with a true minus sign and no redundant axis titles.", src: "reasoning" },
-    { id: "scale-bars", on: true, name: "Burned-in scale bars on image panels",
-      why: "Already a DESIGN.md rule for exports; restate it in the figures section.", src: "DESIGN.md §15" },
-    { id: "journal-override", on: false, name: "Per-journal override presets",
-      why: "A small set of presets (width, font, size) for journals that insist on Arial or Helvetica. Uses a system font, so only the preset loses cross-OS identity.", src: "PLOS lists Arial, Times, Symbol (snippet)" },
-    { id: "svg-text", on: false, name: "Editable text in SVG (svg.fonttype = none)",
-      why: "Keeps SVG text editable in Inkscape or Illustrator, but the file then depends on the viewer having the font.", src: "matplotlib source (read)" }
-  ];
-
-  const DEFAULTS = { font: "dejavu", ladder: "balanced", palette: "canonical", chrome: "minimal", panel: "lower",
-                     species: "nunito-italic", dweight: "600", bsize: "16" };
-  const KEY = "phenotypic-figure-typography-v1";
-
-  function load() {
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
-  function save(state) {
-    try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
-  }
-
-  const stored = load() || {};
-  const state = Object.assign({}, DEFAULTS, stored.choices || {});
-  const extras = Object.assign({}, Object.fromEntries(EXTRAS.map(x => [x.id, x.on])), stored.extras || {});
+  let state = { ladder: "l10", view: "grid", zoom: "fit" };
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (raw) state = Object.assign(state, JSON.parse(raw));
+  } catch (e) { /* storage unavailable */ }
+  function save() { try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
 
   function el(tag, attrs, children) {
     const node = document.createElement(tag);
-    Object.entries(attrs || {}).forEach(([k, v]) => {
-      if (k === "text") node.textContent = v; else node.setAttribute(k, v);
-    });
+    Object.entries(attrs || {}).forEach(([k, v]) => { if (k === "text") node.textContent = v; else if (k === "html") node.innerHTML = v; else node.setAttribute(k, v); });
     (children || []).forEach(c => node.appendChild(c));
     return node;
   }
+  const sizesText = s => s[0] + " / " + s[1] + " / " + s[2] + " pt";
+  const collisions = m => ["grid", "half", "facets"].reduce((n, v) => n + m[v][1] + m[v][2] + m[v][3], 0);
 
-  function buildGroup(group) {
-    const host = document.querySelector('[data-group="' + group + '"]');
-    OPTIONS[group].forEach(opt => {
-      const id = "opt-" + group + "-" + opt.id;
-      const input = el("input", { type: "radio", name: group, id: id, value: opt.id });
-      if (state[group] === opt.id) input.checked = true;
-      input.addEventListener("change", () => { state[group] = opt.id; update(); });
-      const name = el("span", { class: "name", text: opt.name });
-      if (opt.tag) name.appendChild(el("span", { class: "tag", text: opt.tag }));
-      const label = el("label", { for: id }, [name, el("span", { class: "why", text: opt.why })]);
-      host.appendChild(el("div", { class: "opt" }, [input, label]));
-    });
-  }
+  const host = document.getElementById("ladders");
+  LADDERS.forEach(l => {
+    const id = "ladder-" + l.id;
+    const input = el("input", { type: "radio", name: "ladder", id: id, value: l.id });
+    if (state.ladder === l.id) input.checked = true;
+    input.addEventListener("change", () => { state.ladder = l.id; update(); });
+    const name = el("span", { class: "name", text: sizesText(l.sizes) });
+    if (l.tag) name.appendChild(el("span", { class: "tag", text: l.tag }));
+    const c = collisions(l.m);
+    const flags = el("span", { class: "flags" }, [
+      el("span", { class: c ? "bad" : "good", text: c ? c + " collisions" : "no collisions" }),
+      el("span", { text: " · 2×2 data area " + Math.round(l.m.grid[0] * 100) + "%" })
+    ]);
+    host.appendChild(el("div", { class: "opt" }, [input, el("label", { for: id }, [name, el("span", { class: "why", text: l.note }), flags])]));
+  });
 
-  function buildCompliance() {
-    const body = document.querySelector("#compliance tbody");
-    OPTIONS.ladder.forEach(l => {
-      const [tick, label] = l.sizes;
-      const row = el("tr", { "data-ladder": l.id }, [el("td", { text: l.id + " " + tick + "/" + label })]);
-      JOURNALS.forEach(j => {
-        const ok = tick >= j.min && label <= j.max;
-        row.appendChild(el("td", { class: "c " + (ok ? "yes" : "nope"), text: ok ? "✓" : "✗",
-                                   "aria-label": ok ? "within range" : "outside range" }));
-      });
-      body.appendChild(row);
-    });
-  }
+  const body = document.querySelector("#costs tbody");
+  LADDERS.forEach(l => {
+    const c = collisions(l.m);
+    const row = el("tr", { "data-ladder": l.id }, [
+      el("td", { text: sizesText(l.sizes) }),
+      el("td", { text: Math.round(l.m.grid[0] * 100) + "%" }),
+      el("td", { text: Math.round(l.m.half[0] * 100) + "%" }),
+      el("td", { text: Math.round(l.m.facets[0] * 100) + "%" }),
+      el("td", { class: c ? "bad" : "", text: c ? String(c) : "0" }),
+      el("td", { text: (l.sizes[0] * LAPTOP).toFixed(0) + " px" }),
+      el("td", { text: (l.sizes[0] * SLIDE).toFixed(0) + " px" })
+    ]);
+    body.appendChild(row);
+  });
 
-  function buildExtras() {
-    const host = document.getElementById("checks");
-    EXTRAS.forEach(x => {
-      const id = "extra-" + x.id;
-      const input = el("input", { type: "checkbox", id: id, value: x.id });
-      input.checked = !!extras[x.id];
-      input.addEventListener("change", () => { extras[x.id] = input.checked; update(); });
-      const label = el("label", { for: id }, [
-        el("span", { class: "name", text: x.name }),
-        el("span", { class: "why", text: x.why }),
-        el("span", { class: "src", text: "Basis: " + x.src })
-      ]);
-      host.appendChild(el("div", { class: "opt" }, [input, label]));
-    });
-  }
-
-  let zoomMode = "fit";
   function applyZoom() {
     const stage = document.getElementById("stage");
     const page = document.getElementById("page");
-    stage.classList.toggle("true", zoomMode === "true");
-    if (zoomMode === "fit") {
+    const slide = document.getElementById("slide");
+    page.hidden = state.zoom === "slide";
+    slide.hidden = state.zoom !== "slide";
+    stage.classList.toggle("scroll", state.zoom === "true");
+    if (state.zoom === "fit") {
       const scale = Math.min(1, stage.clientWidth / page.offsetWidth);
       page.style.transform = "scale(" + scale + ")";
       stage.style.height = (page.offsetHeight * scale) + "px";
@@ -500,73 +321,37 @@ ol.refs a { color: var(--accent); }
       page.style.transform = "none";
       stage.style.height = "auto";
     }
-    document.getElementById("zoom-fit").setAttribute("aria-pressed", String(zoomMode === "fit"));
-    document.getElementById("zoom-true").setAttribute("aria-pressed", String(zoomMode === "true"));
-  }
-
-  function applyChrome() {
-    const n = document.getElementById("spec-new");
-    const o = document.getElementById("spec-old");
-    const size = state.bsize + "px";
-    n.style.fontFamily = "'Nunito Sans', Arial, sans-serif";
-    n.style.fontSize = size;
-    n.querySelector(".h").style.fontWeight = state.dweight;
-    n.querySelector(".stat b").style.fontWeight = state.dweight;
-    const sp = n.querySelector(".sp");
-    sp.style.fontStyle = "italic";
-    sp.style.fontFamily = state.species === "nunito-italic" ? "'Nunito Sans', Arial, sans-serif" : "'IBM Plex Serif', Georgia, serif";
-    o.style.fontFamily = "'Comfortaa', Arial, sans-serif";
-    o.style.fontSize = "15px";
-    o.querySelector(".h").style.fontWeight = "400";
-    o.querySelector(".stat b").style.fontWeight = "400";
-    const osp = o.querySelector(".sp");
-    osp.style.fontStyle = "italic";
-    osp.style.fontFamily = "'IBM Plex Serif', Georgia, serif";
-  }
-
-  function summary() {
-    const lad = OPTIONS.ladder.find(l => l.id === state.ladder).sizes;
-    const picked = EXTRAS.filter(x => extras[x.id]).map(x => x.id);
-    const dropped = EXTRAS.filter(x => !extras[x.id]).map(x => x.id);
-    return [
-      "figures:",
-      "  font: " + state.font,
-      "  ladder: " + state.ladder + "  # ticks " + lad[0] + " pt, labels " + lad[1] + " pt, panels " + lad[2] + " pt",
-      "  palette: " + state.palette,
-      "  chrome: " + state.chrome,
-      "  panel_labels: " + state.panel,
-      "  include: [" + picked.join(", ") + "]",
-      "  exclude: [" + dropped.join(", ") + "]",
-      "chrome_font:",
-      "  species_italic: " + state.species,
-      "  display_weight: " + state.dweight,
-      "  body_px: " + state.bsize
-    ].join("\n");
   }
 
   function update() {
-    const file = [state.font, state.ladder, state.palette, state.chrome, state.panel].join("__") + ".svg";
-    document.getElementById("proofimg").src = "samples/" + file;
-    document.getElementById("proofmeta").textContent = file;
-    document.querySelectorAll("#compliance tbody tr").forEach(tr => {
-      tr.classList.toggle("sel", tr.getAttribute("data-ladder") === state.ladder);
-    });
-    applyChrome();
-    document.getElementById("summary").textContent = summary();
-    save({ choices: state, extras: extras });
+    const l = LADDERS.find(x => x.id === state.ladder);
+    const v = VIEWS[state.view];
+    const src = "samples/ladder/" + l.id + "__" + v.file + ".svg";
+    const img = document.getElementById("pageimg");
+    img.src = src;
+    img.style.width = v.width + "mm";
+    document.getElementById("slideimg").src = src;
+    document.getElementById("caption").innerHTML = v.caption;
+    const m = l.m[state.view];
+    document.getElementById("meta").textContent =
+      sizesText(l.sizes) + " · data area " + Math.round(m[0] * 100) + "% · overlaps " + m[1] +
+      " · cut off " + m[2] + " · data points hidden " + m[3];
+    document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    document.querySelectorAll("[data-zoom]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zoom === state.zoom)));
+    document.querySelectorAll("#costs tbody tr").forEach(tr => tr.classList.toggle("sel", tr.dataset.ladder === state.ladder));
+    document.getElementById("summary").textContent =
+      "figures:\n  ladder: " + l.id + "  # ticks " + l.sizes[0] + " pt, axis labels " + l.sizes[1] +
+      " pt, panel letters " + l.sizes[2] + " pt";
+    save();
+    applyZoom();
   }
 
-  ["font", "ladder", "palette", "chrome", "panel", "species", "dweight", "bsize"].forEach(buildGroup);
-  buildCompliance();
-  buildExtras();
-  update();
-
-  document.getElementById("proofimg").addEventListener("load", applyZoom);
-  document.getElementById("zoom-fit").addEventListener("click", () => { zoomMode = "fit"; applyZoom(); });
-  document.getElementById("zoom-true").addEventListener("click", () => { zoomMode = "true"; applyZoom(); });
+  document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { state.view = b.dataset.view; update(); }));
+  document.querySelectorAll("[data-zoom]").forEach(b => b.addEventListener("click", () => { state.zoom = b.dataset.zoom; update(); }));
+  document.getElementById("pageimg").addEventListener("load", applyZoom);
   window.addEventListener("resize", applyZoom);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(applyZoom);
-  applyZoom();
+  update();
 
   document.getElementById("copy").addEventListener("click", () => {
     const text = document.getElementById("summary").textContent;

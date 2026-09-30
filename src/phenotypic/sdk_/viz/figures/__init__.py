@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from ._mpl_theme import (
     FIGURE_WIDTHS_MM,
-    MAX_FIGURE_HEIGHT_MM,
     export_figure,
     figure_size_mm,
     phenotypic_mpl_context,
@@ -37,7 +36,6 @@ __all__ = [
     "phenotypic_rc",
     "phenotypic_mpl_context",
     "FIGURE_WIDTHS_MM",
-    "MAX_FIGURE_HEIGHT_MM",
     "figure_size_mm",
     "export_figure",
 ]

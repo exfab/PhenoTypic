@@ -10,7 +10,6 @@ from matplotlib.figure import Figure
 from phenotypic.sdk_._palette import OKABE_ITO_PUBLISHED
 from phenotypic.sdk_.viz.figures import (
     FIGURE_WIDTHS_MM,
-    MAX_FIGURE_HEIGHT_MM,
     export_figure,
     figure_size_mm,
     phenotypic_mpl_context,
@@ -86,9 +85,14 @@ def test_figure_size_mm_accepts_a_width_in_mm() -> None:
     assert figure_size_mm(100, 50)[0] * 25.4 == pytest.approx(100)
 
 
+def test_figure_size_mm_allows_tall_multi_panel_figures() -> None:
+    """No page-height cap: a dense multi-panel figure may be taller than A4."""
+    assert figure_size_mm("full", 297)[1] * 25.4 == pytest.approx(297)
+
+
 @pytest.mark.parametrize(
     ("width", "height"),
-    [("quarter", 50), (0, 50), ("full", 0), ("full", MAX_FIGURE_HEIGHT_MM + 1)],
+    [("quarter", 50), (0, 50), ("full", 0), (-10, 50)],
 )
 def test_figure_size_mm_rejects_bad_sizes(width, height) -> None:
     with pytest.raises(ValueError):

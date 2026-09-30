@@ -1,5 +1,10 @@
 # figsize audit (plan Task 2.5)
 
+> **Update 2026-09-30:** `figure_size_mm` no longer caps the height, and
+> `MAX_FIGURE_HEIGHT_MM` is gone. Tall multi-panel figures are allowed; the Figures
+> section now asks only that nothing overlaps. Findings below that depend on the
+> cap are historical.
+
 Date: 2026-09-29. Scope: every `figsize=` under `src/phenotypic` (`*.py`). No call
 site was changed. Sizes below are in inches as written in the code; mm = in x 25.4.
 

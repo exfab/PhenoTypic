@@ -1995,22 +1995,35 @@ so in one line in the figure's docstring or in your reply, so the contributor ca
 reverse it.
 
 The Absolute Constraints govern GUI chrome and on-screen charts. They do not apply to
-static figures, and nothing in this section is absolute.
+static figures, and apart from avoiding overlaps (see No overlaps), nothing in this
+section is absolute.
 
 ### Page and size
 
-Draw every figure at the size it will be printed, and place it at 100%. The point
-sizes below are only true when nothing rescales the figure afterwards.
+The figure's size is the author's call. A single plot, a dense multi-panel grid and a
+figure taller than a page are all fine, and nothing here fixes a size. The text sizes
+below are meant at the printed size, so they stay true only when the figure is placed
+at 100% rather than rescaled; build it at the size it will appear. Lay it out with
+`layout="constrained"` (or `tight_layout()`) rather than `bbox_inches="tight"` at save
+time, because the latter changes the saved dimensions and with them every point size.
+
+For A4 layouts, `figure_size_mm()` offers two optional widths. Use them when they fit;
+any other width or height is equally valid.
 
 | Preset | Width | Use |
 |---|---|---|
 | `full` | 159.2 mm | Full text width of an A4 page with 1 in margins |
 | `half` | 77.1 mm | Two figures side by side with a 5 mm gutter |
 
-Choose the height to suit the content, up to the 246.2 mm text height of the same
-page. Set `figsize` in inches from these millimetre values, and lay out with
-`layout="constrained"` rather than `bbox_inches="tight"`, because the latter changes
-the saved dimensions and with them every point size.
+### No overlaps
+
+Whatever its size and however many panels it has, a figure should have no text that
+overlaps other text, runs off the figure edge, or covers data. This is the one thing
+every figure should get right, and the text size is not the first thing to give up.
+When a figure gets crowded, let the layout adapt: move a legend outside its panel when
+it would cover data, angle or thin crowded tick labels, share axes across small
+multiples so only the outer panels carry labels, or make the figure larger. Shrink the
+text only when none of those works.
 
 ### Typography
 
@@ -2046,8 +2059,10 @@ Use a white figure and axes background, no gridlines, and only the bottom and le
 spines. Leave panel titles out; the caption carries the message. Draw legends
 without a frame.
 
-Label panels **(a)**, **(b)**, **(c)** in bold 10 pt at the top-left corner, just
-outside the axes.
+Label panels **(a)**, **(b)**, **(c)** in bold at the panel-letter size, as a
+left-aligned axes title (`ax.set_title("(a)", loc="left", fontweight="bold")`). The
+layout engine then reserves room for the letter, so it never collides with tick labels
+or the axis title the way a letter placed at a fixed offset does once the text grows.
 
 ### Showing data
 
