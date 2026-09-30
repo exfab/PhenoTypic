@@ -145,3 +145,38 @@ def test_fixed_name_measurers_write_exactly_their_documented_headers(
     }
     written = {str(column) for column in out.columns}
     assert documented <= written, sorted(documented - written)
+
+
+def test_a_quality_check_without_a_name_raises_instead_of_writing_placeholders() -> None:
+    class NamelessCheck(QualityCheck):
+        """A check that forgot to set ``name``."""
+
+    with pytest.raises(AttributeError, match="NamelessCheck defines no `name`"):
+        NamelessCheck.metric_col()
+    with pytest.raises(AttributeError, match="defines no `name`"):
+        NamelessCheck.output_header(QUALITY_CHECK.FLAG)
+    # Only the abstract base renders the documented placeholder.
+    assert QualityCheck.output_header(QUALITY_CHECK.METRIC) == "QC_<name>_Metric"
+    assert ICC.output_header(QUALITY_CHECK.METRIC) == "QC_ICC_Metric"
+
+
+def test_quality_check_docstring_and_emitter_share_one_formatter() -> None:
+    for member in QUALITY_CHECK:
+        assert ICC.output_header(member) == QUALITY_CHECK.header(member, ICC.name)
+        assert f"``{QUALITY_CHECK.header(member, ICC.name)}``" in (ICC.__doc__ or "")
+        assert QualityCheck.output_header(member) == QUALITY_CHECK.header(member)
+
+
+def test_edge_corrector_worker_names_columns_through_its_own_class(
+    growth_frame: pd.DataFrame,
+) -> None:
+    class RenamedEdge(EdgeCorrector):
+        @classmethod
+        def output_header(cls, member, on=None):
+            return "Renamed_" + super().output_header(member, on)
+
+    out = RenamedEdge(
+        on=_ON, groupby=["Metadata_SourcePlate"], nrows=3, ncols=4, pvalue=0.0
+    ).analyze(growth_frame)
+    assert f"Renamed_EdgeCorrection_NewVal-{_ON}" in out.columns
+    assert f"EdgeCorrection_NewVal-{_ON}" not in out.columns

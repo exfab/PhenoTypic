@@ -33,6 +33,25 @@ class QUALITY_CHECK(QualityInfo):
         return "QC"
 
     @classmethod
+    def header(cls, member: "QUALITY_CHECK", check_name: str | None = None) -> str:
+        """Return the column a quality check writes for *member*.
+
+        The single formatter behind ``QualityCheck.output_header`` (what
+        ``analyze()`` writes), the check docstrings and the Measurements
+        reference, so the three cannot disagree.
+
+        Args:
+            member: A ``QUALITY_CHECK`` member.
+            check_name: The check's ``name`` (``ICC``). ``None`` renders the
+                ``<name>`` placeholder used for the generic form.
+
+        Returns:
+            The header, e.g. ``QC_ICC_Metric``.
+        """
+        slug = check_name if check_name is not None else "<name>"
+        return f"QC_{slug}_{member.label}"
+
+    @classmethod
     def append_rst_to_doc(  # type: ignore[override]
         cls,
         doc: str | object,
@@ -56,7 +75,7 @@ class QUALITY_CHECK(QualityInfo):
             Docstring with an appended RST table of output columns.
         """
         slug = check_name if check_name is not None else "<name>"
-        rows = [_info_row(f"QC_{slug}_{m.label}", m) for m in cls]
+        rows = [_info_row(cls.header(m, check_name), m) for m in cls]
         table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
         base = doc if isinstance(doc, str) else (doc.__doc__ or "")
         return base + "\n\n" + table

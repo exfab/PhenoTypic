@@ -19,6 +19,9 @@ schema/
     _qc/           QUALITY_CHECK (shared QC columns) + the seven QUALITY_* enums
     _models/       the three growth models + MODEL_METRICS
   _metadata/       _image.py (IMAGE) + _experimental_tags/ (the eight owners)
+  _experimental_tags.py  compatibility module at the pre-2026-09 path; it only
+                   re-exports the owners and their one-release transition aliases,
+                   and goes away with those aliases
 ```
 
 The folders mirror the groups of the Measurements reference sidebar, but they
@@ -107,7 +110,8 @@ Exceptions, and only these:
    any public class the same test uses still comes from `phenotypic.schema`.
 3. **A test whose subject is a private path**, such as
    `test_direct_experimental_tags_package_imports_have_the_same_transition_aliases`,
-   which checks the deprecation alias on
+   which checks the deprecation alias on both `phenotypic.schema._experimental_tags`
+   (the pre-2026-09 path, kept as a compatibility module) and
    `phenotypic.schema._metadata._experimental_tags`.
 4. **Historical module-path strings in
    `_BackCompatUnpickler._MOVED_CLASSES`** (`_core/_image_parts/_image_io_handler.py`,
@@ -279,7 +283,9 @@ producer (`MeasureFeatures`, `SetAnalyzer`) has a classmethod
 `output_header(member, on=None)` and `output_header_placeholders()`. The default is
 `member.value` and no placeholders; a producer whose headers differ overrides both, and
 **its emitter must call `output_header`** (or the enum helper it wraps) so docs and table
-share one formatter. Overrides today: `QualityCheck` (`QC_<name>_<label>`), `ModelFitter`
+share one formatter. Overrides today: `QualityCheck` (`QUALITY_CHECK.header`,
+`QC_<name>_<label>`; only the abstract base renders `<name>`, and a concrete check
+without `name` raises), `ModelFitter`
 (`qualified_header`, `<metric>`), `EdgeCorrector` (`<value>-<column>`), `MeasureTexture`
 (`TEXTURE.header`, `<direction>` and `<x>` for the scale). Placeholders are `<lowercase>`
 tokens; each maps to an RST sentence, with an example, printed under **Placeholders** on

@@ -285,13 +285,6 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
             )
         }
 
-    @property
-    def _metric_token(self) -> str:
-        """The ``<metric>`` header segment derived from ``self.on``."""
-        from phenotypic.util._measurement_outputs import metric_token
-
-        return metric_token(str(self.on))
-
     def _qualified_rename_map(self, results: pd.DataFrame) -> Dict[Any, str]:
         """Map member-object columns to their metric-qualified header strings."""
         return {

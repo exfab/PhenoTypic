@@ -51,9 +51,13 @@ class MeasurementProducer:
     def output_header(self, member: MeasurementInfo, on: str | None = None) -> str:
         """Return the column header the producer writes for *member*.
 
-        Delegates to the producer class's ``output_header``, the same method
-        its ``measure``/``analyze`` uses, so documentation built from this
-        cannot drift from the table.
+        Delegates to the producer class's ``output_header``. Analyzers whose
+        headers differ from the enum value (quality checks, growth models,
+        edge correction) call that same method when they write their columns.
+        Measurement operations write ``member.value`` or an enum helper
+        (``TEXTURE.header``) directly, so for them agreement is not structural:
+        ``tests/unit/util/test_output_headers.py`` runs every producer and
+        checks the documented names against the columns written.
 
         Args:
             member: A member of one of this producer's schemas.

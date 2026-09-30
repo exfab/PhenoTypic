@@ -724,8 +724,9 @@ class EdgeCorrector(EdgeCorrection):
             )
         }
 
-    @staticmethod
+    @classmethod
     def _apply2group_func(
+            cls,
             group: pd.DataFrame,
             on: str,
             nrows: int,
@@ -737,7 +738,7 @@ class EdgeCorrector(EdgeCorrection):
     ) -> pd.DataFrame:
         """Apply edge correction logic to a single group of measurements.
 
-        Static method called by analyze() via joblib.Parallel to process each group
+        Classmethod called by analyze() via joblib.Parallel to process each group
         independently. Identifies interior colonies, performs permutation testing, and
         creates new corrected columns. Original measurement column remains unchanged.
         Called once per group.
@@ -798,10 +799,10 @@ class EdgeCorrector(EdgeCorrection):
         section_col = GRID.ROW_MAJOR_IDX
 
         # Set base case
-        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.NEW_VAL, on)] = group.loc[:, on]
+        group.loc[:, cls.output_header(EDGE_CORRECTION.NEW_VAL, on)] = group.loc[:, on]
 
         # TODO: Should this be the max or np.inf
-        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = (
+        group.loc[:, cls.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = (
             group.loc[:, on].max()
         )
 
@@ -879,10 +880,10 @@ class EdgeCorrector(EdgeCorrection):
         threshold = top_values.mean()
 
         # Apply correction: cap ALL values that exceed for fairness
-        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.NEW_VAL, on)] = np.clip(
+        group.loc[:, cls.output_header(EDGE_CORRECTION.NEW_VAL, on)] = np.clip(
             group.loc[:, on], a_min=0, a_max=threshold
         )
-        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = threshold
+        group.loc[:, cls.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = threshold
         return group
 
     @staticmethod

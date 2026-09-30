@@ -68,8 +68,10 @@ _OMITTED_MEMBERS: dict[str, frozenset[str]] = {
     "IMAGE": frozenset({"UUID", "PARENT_IMAGE_NAME", "PARENT_UUID", "IMFORMAT"}),
 }
 
-#: Schemas that no producer declares but that appear on output rows. Each is
-#: documented once, on the Shared columns page, under the heading given here.
+#: Schemas that no producer declares but that appear on output rows, as
+#: ``(schema, section key, note)``. Each is documented once, on the Shared
+#: columns page, in the section of :data:`_SHARED_SECTIONS` its key names. Notes
+#: are ``str.format`` templates over :func:`_path_names`.
 _SHARED_ONLY: tuple[tuple[str, str, str], ...] = (
     ("OBJECT", "rows", ""),
     ("GRID", "rows", "Written on rows from a ``GridImage`` only."),
@@ -79,7 +81,34 @@ _SHARED_ONLY: tuple[tuple[str, str, str], ...] = (
         "Written only when a run is given ``--metadata``. True on a row that "
         "comes from the metadata file alone, with no detected colony.",
     ),
-    ("CURATION", "curation", ""),
+    (
+        "CURATION",
+        "curation",
+        "Written once you curate colonies in the results viewer, to "
+        "``{d}/{qc}/{curation_labels}`` and to one ``{d}/{errors}/<category>.parquet`` "
+        "per category.",
+    ),
+)
+
+#: Sections of the Shared columns page, in order, as ``(key, heading, intro)``.
+#: ``stages`` expands to one section per stage whose producers share a schema
+#: (every quality check writes ``QUALITY_CHECK``); ``several`` holds schemas two
+#: or more operations declare as their own. Intros are templates like the notes.
+_SHARED_SECTIONS: tuple[tuple[str, str, str], ...] = (
+    (
+        "rows",
+        "On every measurement row",
+        "Every row of ``{d}/{measurements}`` says which colony it describes and "
+        "where that colony is. The pipeline adds the ten bounding-box columns to "
+        "every row itself, whether or not :doc:`../measure/MeasureBounds` is in "
+        "your pipeline; they are documented on that page "
+        "(:ref:`measurement-info-bbox`). The image bookkeeping columns are on "
+        ":doc:`../metadata/index`.",
+    ),
+    ("metadata", "With a metadata file", ""),
+    ("stages", "", ""),
+    ("several", "Written by several operations", ""),
+    ("curation", "After curation", ""),
 )
 
 #: Stages that group the operation pages, in sidebar order. ``base`` is resolved
@@ -261,30 +290,148 @@ def _operation_pages() -> tuple[_OperationPage, ...]:
     return tuple(sorted(pages, key=lambda page: order[page.group.slug]))
 
 
+@dataclass(frozen=True)
+class _SharedEntry:
+    """One schema on the Shared columns page and how to name its columns."""
+
+    info: type
+    header_for: Callable[[Any], str] | None
+    note: str | None
+
+
+@dataclass(frozen=True)
+class _SharedSection:
+    heading: str
+    intro: str
+    entries: tuple[_SharedEntry, ...]
+
+
+def _path_names() -> dict[str, str]:
+    """Output path names the Shared page's templates refer to."""
+    from phenotypic.sdk_ import (
+        CURATION_LABELS_PARQUET,
+        DIR_DELIVERABLES,
+        DIR_ERRORS,
+        DIR_QC,
+        MEASUREMENTS_CSV,
+    )
+
+    return {
+        "d": DIR_DELIVERABLES,
+        "qc": DIR_QC,
+        "errors": DIR_ERRORS,
+        "curation_labels": CURATION_LABELS_PARQUET,
+        "measurements": MEASUREMENTS_CSV,
+    }
+
+
+def _owners(pages: tuple[_OperationPage, ...]) -> dict[type, list[_OperationPage]]:
+    """Operation pages that declare each schema as their own."""
+    owners: dict[type, list[_OperationPage]] = {}
+    for page in pages:
+        for info in page.producer.primary_infos:
+            owners.setdefault(info, []).append(page)
+    return owners
+
+
+def _shared_layout(pages: tuple[_OperationPage, ...]) -> tuple[_SharedSection, ...]:
+    """Every section of the Shared columns page, derived from the producers.
+
+    The single description of that page: :func:`_canonical_docnames` anchors
+    each schema listed here on it, :func:`_build_shared_page` renders it, and
+    :func:`_written_headers` names its columns, so the three cannot disagree.
+    """
+    import phenotypic.schema as schema
+
+    paths = _path_names()
+    by_key: dict[str, list[_SharedEntry]] = {}
+    for name, key, note in _SHARED_ONLY:
+        by_key.setdefault(key, []).append(
+            _SharedEntry(getattr(schema, name), None, note.format(**paths) or None)
+        )
+
+    sections: list[_SharedSection] = []
+    for key, heading, intro in _SHARED_SECTIONS:
+        if key == "stages":
+            sections.extend(_stage_sections(pages))
+            continue
+        if key == "several":
+            entries = tuple(
+                _SharedEntry(
+                    info,
+                    owners[0].producer.output_header,
+                    "Written by "
+                    + ", ".join(f":doc:`../{page.docname}`" for page in owners)
+                    + ".",
+                )
+                for info, owners in _owners(pages).items()
+                if len(owners) > 1
+            )
+        else:
+            entries = tuple(by_key.get(key, ()))
+        if entries:
+            sections.append(_SharedSection(heading, intro.format(**paths), entries))
+    return tuple(sections)
+
+
+def _stage_sections(pages: tuple[_OperationPage, ...]) -> list[_SharedSection]:
+    """One section per stage whose producers write a shared schema."""
+    sections = []
+    for group in _groups():
+        infos = list(
+            dict.fromkeys(
+                info
+                for page in pages
+                if page.group == group
+                for info in page.producer.shared_infos
+            )
+        )
+        if not infos:
+            continue
+        note = _placeholder_sentence(group.base) or None
+        entries = tuple(_SharedEntry(info, group.base.output_header, note) for info in infos)
+        sections.append(_SharedSection(f"On every {group.noun} table", "", entries))
+    return sections
+
+
 def _canonical_docnames(pages: tuple[_OperationPage, ...]) -> dict[type, str]:
     """Map each schema to the one page that carries its anchor.
 
     A schema that exactly one operation declares as its own is anchored on
-    that operation's page. Every other documented schema (shared by a stage,
-    or declared by no operation) is anchored on the Shared columns page, and
-    metadata schemas on the Metadata page.
+    that operation's page. Every schema in :func:`_shared_layout` (declared by
+    no operation, shared by a stage, or declared by several operations) is
+    anchored on the Shared columns page, and metadata schemas on the Metadata
+    page.
     """
     import phenotypic.schema as schema
 
-    owners: dict[type, list[str]] = {}
-    for page in pages:
-        for info in page.producer.primary_infos:
-            owners.setdefault(info, []).append(page.docname)
-    canonical = {info: docs[0] for info, docs in owners.items() if len(docs) == 1}
-    for page in pages:
-        for info in page.producer.shared_infos:
-            canonical[info] = "shared/index"
-    for name, _section, _note in _SHARED_ONLY:
-        canonical[getattr(schema, name)] = "shared/index"
+    canonical = {
+        info: owners[0].docname
+        for info, owners in _owners(pages).items()
+        if len(owners) == 1
+    }
+    for section in _shared_layout(pages):
+        for entry in section.entries:
+            canonical[entry.info] = "shared/index"
     for info in _public_measurement_info_classes():
         if issubclass(info, schema.MetadataInfo):
             canonical[info] = "metadata/index"
     return canonical
+
+
+def _written_headers(pages: tuple[_OperationPage, ...]) -> dict[Any, str]:
+    """The header each documented member is written under, as its page shows it."""
+    headers: dict[Any, str] = {}
+    for page in pages:
+        for info in page.producer.primary_infos:
+            for member in info:
+                headers.setdefault(member, page.producer.output_header(member))
+    for section in _shared_layout(pages):
+        for entry in section.entries:
+            for member in entry.info:
+                if entry.header_for is not None:
+                    headers[member] = entry.header_for(member)
+    return headers
 
 
 def _optional_switches(producer_cls: type) -> dict[type, str]:
@@ -600,24 +747,8 @@ def _build_overview_page(pages: tuple[_OperationPage, ...]) -> str:
     return "\n".join(out)
 
 
-def _build_shared_page() -> str:
+def _build_shared_page(pages: tuple[_OperationPage, ...]) -> str:
     """Columns no single operation owns, each documented once."""
-    import phenotypic.schema as schema
-    from phenotypic.analysis.abc_ import ModelFitter, QualityCheck
-    from phenotypic.sdk_ import (
-        CURATION_LABELS_PARQUET,
-        DIR_DELIVERABLES,
-        DIR_ERRORS,
-        DIR_QC,
-        MEASUREMENTS_CSV,
-    )
-
-    shared_only = {name: note for name, _section, note in _SHARED_ONLY}
-
-    def section(name: str, **kwargs: Any) -> str:
-        return _class_section(getattr(schema, name), underline="~", **kwargs)
-
-    d = DIR_DELIVERABLES
     out = [
         ".. _measurement-shared-columns:",
         "",
@@ -625,39 +756,17 @@ def _build_shared_page() -> str:
         "Columns that no single operation owns: they sit on every row, or on every "
         "table of one kind. Each is documented once, here.",
         "",
-        *_heading("On every measurement row", "-"),
-        f"Every row of ``{d}/{MEASUREMENTS_CSV}`` says which colony it describes and "
-        "where that colony is. The pipeline adds the ten bounding-box columns to every "
-        "row itself, whether or not :doc:`../measure/MeasureBounds` is in your "
-        "pipeline; they are documented on that page (:ref:`measurement-info-bbox`). "
-        "The image bookkeeping columns are on :doc:`../metadata/index`.",
-        "",
-        section("OBJECT", note=shared_only["OBJECT"] or None),
-        section("GRID", note=shared_only["GRID"]),
-        *_heading("With a metadata file", "-"),
-        section("METADATA_MATCH", note=shared_only["METADATA_MATCH"]),
-        *_heading("On every quality-check table", "-"),
-        section(
-            "QUALITY_CHECK",
-            header_for=QualityCheck.output_header,
-            note=_placeholder_sentence(QualityCheck),
-        ),
-        *_heading("On every growth-model table", "-"),
-        section(
-            "MODEL_METRICS",
-            header_for=ModelFitter.output_header,
-            note=_placeholder_sentence(ModelFitter),
-        ),
-        *_heading("After curation", "-"),
-        section(
-            "CURATION",
-            note=(
-                "Written once you curate colonies in the results viewer, to "
-                f"``{d}/{DIR_QC}/{CURATION_LABELS_PARQUET}`` and to one "
-                f"``{d}/{DIR_ERRORS}/<category>.parquet`` per category."
-            ),
-        ),
     ]
+    for section in _shared_layout(pages):
+        out.extend(_heading(section.heading, "-"))
+        if section.intro:
+            out.extend([section.intro, ""])
+        out.extend(
+            _class_section(
+                entry.info, header_for=entry.header_for, note=entry.note, underline="~"
+            )
+            for entry in section.entries
+        )
     return "\n".join(out)
 
 
@@ -699,13 +808,20 @@ least one column in the run, under ``{deliverables}/{split_dir}/``, holding the
 metadata and position columns plus that category's columns."""
 
 
-def _category_section(category: Any, documented: set[Any] | None = None) -> str:
+def _category_section(
+    category: Any,
+    documented: set[Any] | None = None,
+    headers: dict[Any, str] | None = None,
+) -> str:
     """Render one category: anchor, heading, verbatim desc, output file, column table.
 
     Args:
         category: A ``CATEGORIES`` member.
         documented: Members the reference documents; others are left out so
             every row links to a real section. ``None`` keeps every member.
+        headers: The header each member is written under (``QC_ICC_Metric``,
+            not the ``QC_Metric`` value); a member missing from it shows its
+            value.
     """
     from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY
 
@@ -742,7 +858,7 @@ def _category_section(category: Any, documented: set[Any] | None = None) -> str:
         info_cls = type(member)
         out.extend(
             [
-                f"   * - ``{member.value}``",
+                f"   * - ``{(headers or {}).get(member, member.value)}``",
                 f"     - :ref:`{info_cls.metric_family()} <{_section_label(info_cls)}>`",
                 f"     - {member.use_badge}",
             ]
@@ -751,7 +867,7 @@ def _category_section(category: Any, documented: set[Any] | None = None) -> str:
     return "\n".join(out)
 
 
-def _build_categories_page(documented: set[Any]) -> str:
+def _build_categories_page(documented: set[Any], headers: dict[Any, str]) -> str:
     """Build the generated Categories page, one section per CATEGORIES member."""
     from phenotypic.schema import CATEGORIES
     from phenotypic.sdk_ import DIR_DELIVERABLES, DIR_MEASUREMENTS_BY_CATEGORY
@@ -760,7 +876,7 @@ def _build_categories_page(documented: set[Any]) -> str:
         deliverables=DIR_DELIVERABLES, split_dir=DIR_MEASUREMENTS_BY_CATEGORY
     )
     out = [*_heading("Categories", "="), intro, ""]
-    out.extend(_category_section(category, documented) for category in CATEGORIES)
+    out.extend(_category_section(category, documented, headers) for category in CATEGORIES)
     return "\n".join(out)
 
 
@@ -790,7 +906,7 @@ def _check_coverage(canonical: dict[type, str]) -> None:
 
     documented = {info.__name__ for info in canonical}
     problems = [
-        f"{info.__name__} is public but no operation declares it: set "
+        f"{info.__name__} is public but has no place in the reference: set "
         "_measurement_infoclass on the operation that writes it, or add it to "
         "_SHARED_ONLY or _NOT_IN_OUTPUT_TABLES in docs/source/_extensions/measurements_ref.py"
         for info in _public_measurement_info_classes()
@@ -800,6 +916,12 @@ def _check_coverage(canonical: dict[type, str]) -> None:
         f"{name} is listed in _NOT_IN_OUTPUT_TABLES but an operation declares it"
         for name in _NOT_IN_OUTPUT_TABLES
         if name in documented
+    )
+    known_sections = {key for key, _heading_text, _intro in _SHARED_SECTIONS}
+    problems.extend(
+        f"_SHARED_ONLY puts {name} in section {key!r}, which _SHARED_SECTIONS lacks"
+        for name, key, _note in _SHARED_ONLY
+        if key not in known_sections or key in {"stages", "several"}
     )
     for name, members in _OMITTED_MEMBERS.items():
         known = set(getattr(schema, name).__members__)
@@ -811,17 +933,42 @@ def _check_coverage(canonical: dict[type, str]) -> None:
         raise RuntimeError("Measurements reference coverage:\n  " + "\n  ".join(problems))
 
 
+#: Top-level entries under ``measurements_ref/`` the generator writes, besides
+#: one folder per stage in :data:`_GROUP_SPECS`.
+_GENERATED_ENTRIES = frozenset({"index.rst", "categories", "shared", "metadata"})
+
+#: Entries earlier layouts wrote, removed so stale pages never reach Sphinx.
+#: ``measurements`` held the single all-schemas page before 2026-09.
+_RETIRED_ENTRIES = frozenset({"measurements"})
+
+
 def _clean_generated(output_dir: Path) -> None:
-    """Remove last build's generated pages, keeping the hand-written ones."""
+    """Remove last build's generated pages, and nothing else.
+
+    Only entries the generator owns are deleted. Anything else that is not a
+    registered hand-written page is kept, with a warning: ``.gitignore`` hides
+    ``measurements_ref/`` from git except the pages it re-includes, so such a
+    file would otherwise sit untracked without anyone noticing.
+    """
+    import warnings
+
     if not output_dir.exists():
         return
+    owned = _GENERATED_ENTRIES | _RETIRED_ENTRIES | {spec[0] for spec in _GROUP_SPECS}
     for path in output_dir.iterdir():
-        if path.name in _HAND_WRITTEN_PAGES:
-            continue
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
+        if path.name in owned:
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+        elif path.name not in _HAND_WRITTEN_PAGES:
+            warnings.warn(
+                f"measurements_ref/{path.name} is not generated and not a registered "
+                "hand-written page, so git ignores it. Add it to _HAND_WRITTEN_PAGES "
+                "in docs/source/_extensions/measurements_ref.py and re-include it in "
+                ".gitignore.",
+                stacklevel=2,
+            )
 
 
 def _copy_measurement_assets(srcdir: str) -> None:
@@ -848,11 +995,11 @@ def _build_pages(srcdir: str) -> None:
     _write(output_dir / "index.rst", _build_overview_page(pages))
     for page in pages:
         _write(output_dir / f"{page.docname}.rst", _operation_page(page, canonical))
-    _write(output_dir / "shared" / "index.rst", _build_shared_page())
+    _write(output_dir / "shared" / "index.rst", _build_shared_page(pages))
     _write(output_dir / "metadata" / "index.rst", _build_metadata_page())
     _write(
         output_dir / "categories" / "index.rst",
-        _build_categories_page(_documented_members(canonical)),
+        _build_categories_page(_documented_members(canonical), _written_headers(pages)),
     )
 
 

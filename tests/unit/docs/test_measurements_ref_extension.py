@@ -275,7 +275,7 @@ def test_an_undeclared_public_schema_fails_the_build(
     monkeypatch.setattr(schema, "FUTURE_MEASUREMENT", FUTURE_MEASUREMENT, raising=False)
     monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_MEASUREMENT"])
 
-    with pytest.raises(RuntimeError, match="FUTURE_MEASUREMENT is public but no operation"):
+    with pytest.raises(RuntimeError, match="FUTURE_MEASUREMENT is public but has no place in the reference"):
         _build_reference_tree(tmp_path, monkeypatch)
 
 
@@ -372,8 +372,8 @@ def test_parameter_switched_schemas_say_which_parameter(reference: dict[str, str
 
 def test_shared_page_defines_its_placeholders(reference: dict[str, str]) -> None:
     shared = reference["shared/index"]
-    assert "``QC_<check>_Metric``" in shared
-    assert "``<check>`` is the check's name" in shared
+    assert "``QC_<name>_Metric``" in shared
+    assert "``<name>`` is the check's ``name``: ``ICC`` writes ``QC_ICC_Metric``" in shared
     assert "``ModelMetrics_<metric>_R2``" in shared
     assert "``<metric>`` is the fitted column" in shared
 
@@ -531,3 +531,92 @@ def test_sidebar_resize_assets_are_registered_and_match_theme_breakpoints() -> N
     # pydata-sphinx-theme turns the sidebars into drawers below lg / xl.
     assert "@media (min-width: 960px)" in css
     assert "@media (min-width: 1200px)" in css
+
+
+# --------------------------------------------------------------------------- #
+# Shared page, categories and cleanup follow the data, not a fixed list
+# --------------------------------------------------------------------------- #
+
+
+def test_a_schema_several_operations_declare_is_anchored_once_on_the_shared_page(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    import dataclasses
+
+    extension = _load_extension(monkeypatch)
+    pages = extension._operation_pages()
+    size = next(page for page in pages if page.name == "MeasureSize")
+    twin = dataclasses.replace(
+        size, producer=dataclasses.replace(size.producer, output_key="MeasureSizeTwin")
+    )
+    pages = (*pages, twin)
+
+    assert extension._canonical_docnames(pages)[schema.SIZE] == "shared/index"
+    shared = extension._build_shared_page(pages)
+    assert shared.count(_anchor(schema.SIZE) + "\n") == 1
+    assert "Written by several operations" in shared
+    assert ":doc:`../measure/MeasureSize`, :doc:`../measure/MeasureSizeTwin`" in shared
+    extension._check_coverage(extension._canonical_docnames(pages))
+    assert _anchor(schema.SIZE) not in extension._operation_page(
+        size, extension._canonical_docnames(pages)
+    )
+
+
+def test_every_shared_page_section_comes_from_the_layout(monkeypatch: MonkeyPatch) -> None:
+    extension = _load_extension(monkeypatch)
+    pages = extension._operation_pages()
+    shared = extension._build_shared_page(pages)
+    for section in extension._shared_layout(pages):
+        assert f"{section.heading}\n{'-' * len(section.heading)}" in shared
+        for entry in section.entries:
+            assert shared.count(_anchor(entry.info) + "\n") == 1
+
+
+def test_a_shared_only_entry_in_an_unknown_section_fails_the_build(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    extension = _load_extension(monkeypatch)
+    monkeypatch.setattr(
+        extension, "_SHARED_ONLY", (*extension._SHARED_ONLY, ("OBJECT", "nowhere", ""))
+    )
+    with pytest.raises(RuntimeError, match="section 'nowhere'"):
+        extension._build_pages(str(tmp_path))
+
+
+def test_category_rows_show_the_written_header_not_the_enum_value(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    extension = _load_extension(monkeypatch)
+    headers = extension._written_headers(extension._operation_pages())
+
+    class _QcCategory:
+        anchor = "measurement-category-qc"
+        display_name = "Qc"
+        desc = "A category holding the shared QC metric."
+        label = "Qc"
+
+        def members(self) -> tuple[Any, ...]:
+            return (schema.QUALITY_CHECK.METRIC, schema.LOG_GROWTH_MODEL.GROWTH_RATE)
+
+    rate = schema.LOG_GROWTH_MODEL.GROWTH_RATE
+
+    section = extension._category_section(_QcCategory(), headers=headers)
+    assert "``QC_<name>_Metric``" in section
+    assert f"``LogGrowthModel_<metric>_{rate.label}``" in section
+    assert "``QC_Metric``" not in section
+    assert f"``{rate.value}``" not in section
+
+
+def test_rebuild_keeps_and_warns_about_an_unregistered_hand_written_page(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    docs_root = tmp_path / "measurements_ref"
+    docs_root.mkdir()
+    (docs_root / "faq.md").write_text("hand-written, not registered")
+
+    with pytest.warns(UserWarning, match="measurements_ref/faq.md is not generated"):
+        _build_reference_tree(tmp_path, monkeypatch)
+
+    assert (docs_root / "faq.md").read_text() == "hand-written, not registered"

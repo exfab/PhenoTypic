@@ -372,8 +372,9 @@ class QualityCheck(SetAnalyzer, ABC):
         (``QC_ICC_Metric``), so the enum value (``QC_Metric``) never appears
         in a table. A check's own enum members are written as declared.
 
-        On the abstract base, which has no ``name``, the name renders as the
-        ``<check>`` placeholder used in the Measurements reference.
+        Only the abstract ``QualityCheck`` itself renders the ``<name>``
+        placeholder used in the Measurements reference. A concrete check with
+        no ``name`` raises instead, so it can never write ``QC_<name>_Metric``.
 
         Args:
             member: A ``QUALITY_CHECK`` member or one of the check's own.
@@ -381,22 +382,37 @@ class QualityCheck(SetAnalyzer, ABC):
 
         Returns:
             The emitted header.
+
+        Raises:
+            AttributeError: If a concrete check does not define ``name``.
         """
         if isinstance(member, QUALITY_CHECK):
-            return f"QC_{getattr(cls, 'name', '<check>')}_{member.label}"
+            return QUALITY_CHECK.header(member, cls._check_name())
         return super().output_header(member, on)
 
     @classmethod
-    def output_header_placeholders(cls) -> dict[str, str]:
-        """Define ``<check>``, which only the abstract base's headers contain."""
-        if getattr(cls, "name", None) is not None:
-            return {}
-        return {
-            "<check>": (
-                "the check's name: ``ICC`` writes ``QC_ICC_Metric``, and "
-                "``ExpectedVsDetectedCount`` writes ``QC_Count_Metric``."
+    def _check_name(cls) -> str | None:
+        """The check's ``name``; ``None`` only on the abstract base."""
+        name = getattr(cls, "name", None)
+        if name is None and cls is not QualityCheck:
+            raise AttributeError(
+                f"{cls.__name__} defines no `name`; every QualityCheck needs one, "
+                "because it names the check's QC_<name>_Metric/Flag/Status columns"
             )
-        }
+        return name
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<name>``, which only the abstract base's headers contain."""
+        if cls._check_name() is not None:
+            return {}
+        from phenotypic.analysis.qc import ICC, ExpectedVsDetectedCount
+
+        examples = " and ".join(
+            f"``{check.__name__}`` writes ``{check.metric_col()}``"
+            for check in (ICC, ExpectedVsDetectedCount)
+        )
+        return {"<name>": f"the check's ``name``: {examples}."}
 
     @classmethod
     def metric_col(cls) -> str:
