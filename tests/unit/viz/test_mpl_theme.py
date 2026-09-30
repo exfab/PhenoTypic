@@ -33,8 +33,10 @@ def test_typography_is_bundled_dejavu_sans_at_print_sizes() -> None:
     rc = phenotypic_rc()
     assert rc["font.sans-serif"] == ["DejaVu Sans"]
     assert rc["mathtext.fontset"] == "dejavusans"
-    assert rc["xtick.labelsize"] == rc["ytick.labelsize"] == rc["legend.fontsize"] == 7.0
-    assert rc["axes.labelsize"] == rc["legend.title_fontsize"] == 8.0
+    assert rc["xtick.labelsize"] == rc["ytick.labelsize"] == rc["legend.fontsize"] == 10.0
+    assert rc["axes.labelsize"] == rc["legend.title_fontsize"] == 12.0
+    # Body text: annotations, titles and any text without its own size.
+    assert rc["font.size"] == rc["axes.titlesize"] == 12.0
 
 
 def test_theme_font_resolves_without_fallback() -> None:

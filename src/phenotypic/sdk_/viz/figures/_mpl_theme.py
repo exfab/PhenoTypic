@@ -2,7 +2,7 @@
 
 This module carries the defaults in ``DESIGN.md`` "Figures": figures sized for an
 A4 page and set in DejaVu Sans, matplotlib's bundled face, so a figure renders the
-same on macOS, Windows and Linux. The theme uses the 7 / 8 / 10 pt size ladder at
+same on macOS, Windows and Linux. The theme uses the 10 / 12 / 14 pt size ladder at
 printed size, the published Okabe-Ito order, white backgrounds without gridlines,
 TrueType font embedding and reproducible export metadata.
 
@@ -46,8 +46,8 @@ MM_PER_INCH: float = 25.4
 FIGURE_WIDTHS_MM: dict[str, float] = {"full": 159.2, "half": 77.1}
 
 #: Point sizes at printed size (DESIGN.md "Figures").
-_TICK_PT: float = 7.0
-_LABEL_PT: float = 8.0
+_TICK_PT: float = 10.0
+_LABEL_PT: float = 12.0
 
 #: Fixed so SVG element ids, and with them the file bytes, repeat across runs.
 _SVG_HASHSALT: str = "phenotypic"
@@ -66,8 +66,8 @@ def phenotypic_rc() -> dict[str, Any]:
 
     Suitable for ``matplotlib.rcParams.update(...)`` or
     ``matplotlib.rc_context(phenotypic_rc())``. All text is DejaVu Sans; tick
-    labels, legend entries and annotations are 7 pt and axis, colorbar and legend
-    titles 8 pt. The Okabe-Ito published order anchors ``axes.prop_cycle``, so
+    labels and legend entries are 10 pt; axis, colorbar and legend titles,
+    annotations and all other text are 12 pt. The Okabe-Ito published order anchors ``axes.prop_cycle``, so
     the first plotted series is black.
 
     Returns:
@@ -88,17 +88,17 @@ def phenotypic_rc() -> dict[str, Any]:
         "legend.fontsize": _TICK_PT,
         "legend.title_fontsize": _LABEL_PT,
         # Lines and ticks on the same scale as the type.
-        "axes.linewidth": 0.6,
-        "xtick.major.width": 0.6,
-        "ytick.major.width": 0.6,
-        "xtick.minor.width": 0.5,
-        "ytick.minor.width": 0.5,
-        "xtick.major.size": 3.0,
-        "ytick.major.size": 3.0,
-        "xtick.minor.size": 1.5,
-        "ytick.minor.size": 1.5,
-        "lines.linewidth": 1.25,
-        "lines.markersize": 3.0,
+        "axes.linewidth": 0.8,
+        "xtick.major.width": 0.8,
+        "ytick.major.width": 0.8,
+        "xtick.minor.width": 0.6,
+        "ytick.minor.width": 0.6,
+        "xtick.major.size": 4.0,
+        "ytick.major.size": 4.0,
+        "xtick.minor.size": 2.0,
+        "ytick.minor.size": 2.0,
+        "lines.linewidth": 1.75,
+        "lines.markersize": 4.0,
         # Minimal chrome: white ground, no grid, bottom and left spines only.
         "figure.facecolor": "white",
         "axes.facecolor": "white",

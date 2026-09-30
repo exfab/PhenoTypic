@@ -32,7 +32,7 @@ mechanism, which the author excluded in the artifact.
 ```yaml
 figures:
   font: dejavu
-  ladder: balanced  # ticks 7 pt, labels 8 pt, panels 10 pt
+  ladder: l10b  # ticks 10 pt, body 12 pt, panels 14 pt (round 2, 2026-09-30)
   palette: canonical
   chrome: minimal
   panel_labels: paren
@@ -74,7 +74,7 @@ narrower `\textwidth` of 345, 360 or 390 pt at 10, 11 or 12 pt body size, which 
 121.3, 126.5 or 137.1 mm (`classes.dtx`, read directly; millimetres by conversion at
 72.27 pt per inch). The journal text-size ranges shown in the artifact came from search
 excerpts, because the proxy blocked every publisher's site, so this section does not
-cite them as rules; the chosen 7/8/10 pt ladder stands as a house default on its own
+cite them as rules; the chosen 10/12/14 pt ladder stands as a house default on its own
 footing.
 
 ## The section as it will read in DESIGN.md
@@ -143,12 +143,12 @@ Visualization.
 >
 > | Text | Size at print | Weight |
 > |---|---|---|
-> | Tick labels, legend entries, annotations | 7 pt | regular |
-> | Axis labels, colorbar labels, legend titles | 8 pt | regular |
-> | Panel labels | 10 pt | bold |
+> | Tick labels, legend entries | 10 pt | regular |
+> | Body text: axis, colorbar and legend titles, annotations, all other text | 12 pt | regular |
+> | Panel labels | 14 pt | bold |
 >
-> Lines follow the same scale: axes and ticks 0.6 pt, data lines 1.25 pt, markers
-> 3 pt, tick length 3 pt.
+> Lines follow the same scale: axes and ticks 0.8 pt, data lines 1.75 pt, markers
+> 4 pt, tick length 4 pt.
 >
 > ### Color
 >
@@ -223,7 +223,7 @@ overrides them, or agents will fight the theme on every figure. The plan covers 
 below.
 
 `sdk_/viz/figures/_mpl_theme.py` switches `phenotypic_rc()` from the screen look to the
-defaults above: DejaVu Sans, the 7/8/10 pt ladder and line widths, white backgrounds,
+defaults above: DejaVu Sans, the 10/12/14 pt ladder and line widths, white backgrounds,
 no grid, `pdf.fonttype` 42, `svg.fonttype` "none" and a fixed `svg.hashsalt`. Because
 `@figure(backend="mpl")` wraps every matplotlib pipeline figure in
 `phenotypic_mpl_context()` (`abc_/plotting/_pht_plot.py:259`), all of them pick up the
@@ -290,3 +290,14 @@ as chosen in the artifact over the option with mono tick labels.
 - Yeast genetic nomenclature follows the Saccharomyces Genome Database conventions;
   this session did not verify them against the SGD page, so the example above is
   [based on general knowledge of the field; no citation verified].
+
+## Size ladder, round 2 (2026-09-30)
+
+The author picked candidate `l10b` from the round-2 page of the figure-typography
+artifact: tick labels and legend entries 10 pt, body text 12 pt, panel letters 14 pt,
+with axes and ticks 0.8 pt, data lines 1.75 pt, markers 4 pt and tick length 4 pt. The
+author also asked for body text at 12 pt, so annotations moved from the tick-label row
+to the 12 pt row, which `font.size` and `axes.titlesize` carry. Measured on the
+artifact's three views, `l10b` had no overlapping or clipped text; its data area was
+0.242 (2x2 grid at full width), 0.618 (half-width single plot) and 0.710 (3x3 facets),
+against 0.327, 0.665 and 0.746 for the round-1 7/8/10 ladder.

@@ -2033,12 +2033,12 @@ so math matches the text, and DejaVu Sans Oblique for italics.
 
 | Text | Size at print | Weight |
 |---|---|---|
-| Tick labels, legend entries, annotations | 7 pt | regular |
-| Axis labels, colorbar labels, legend titles | 8 pt | regular |
-| Panel labels | 10 pt | bold |
+| Tick labels, legend entries | 10 pt | regular |
+| Body text: axis, colorbar and legend titles, annotations, all other text | 12 pt | regular |
+| Panel labels | 14 pt | bold |
 
-Lines follow the same scale: axes and ticks 0.6 pt, data lines 1.25 pt, markers
-3 pt, tick length 3 pt.
+Lines follow the same scale: axes and ticks 0.8 pt, data lines 1.75 pt, markers
+4 pt, tick length 4 pt.
 
 ### Color
 
