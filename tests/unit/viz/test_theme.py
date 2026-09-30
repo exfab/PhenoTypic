@@ -96,7 +96,7 @@ def test_okabe_ito_matches_design_md_series_order() -> None:
 
 
 def test_paper_bgcolor_matches_design_bg() -> None:
-    """Figure background is BG (#f5f7fa, DESIGN.md figure.facecolor), not white."""
+    """Figure background is BG (#FBFEF8, the DESIGN.md canvas), not white."""
     register_phenotypic_template()
     template = pio.templates[PHENOTYPIC_TEMPLATE_NAME]
     assert template.layout.paper_bgcolor == BG
@@ -105,15 +105,15 @@ def test_paper_bgcolor_matches_design_bg() -> None:
 def test_chart_body_font_intentionally_differs_from_gui_chrome() -> None:
     """The chart body font is IBM Plex Sans, decoupled from the GUI chrome body.
 
-    The GUI chrome moved to Comfortaa (``_gui/_design.FONT_FAMILY_BODY``), but the
+    The GUI chrome runs on Nunito Sans (``_gui/_design.FONT_FAMILY_BODY``), but the
     chart subsystem deliberately stays on IBM Plex Sans for plot titles and legend
-    names (DESIGN.md "06 -- Charts"). The two are expected to *differ* now -- this
+    names (DESIGN.md "Data Visualization"). The two are expected to *differ* -- this
     test pins that intent so neither side silently re-converges.
     """
     from phenotypic._gui._design import FONT_FAMILY_BODY
 
     assert FONT_FAMILY.startswith("'IBM Plex Sans'")
-    assert FONT_FAMILY_BODY.startswith("'Comfortaa'")
+    assert FONT_FAMILY_BODY.startswith("'Nunito Sans'")
     assert FONT_FAMILY != FONT_FAMILY_BODY
 
 

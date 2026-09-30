@@ -498,10 +498,14 @@ back-compat but new code should reach for the semantic tier:
 | Header 2    | `var(--font-size-header-2)` | `FONT_SIZE_HEADER_2`    |
 | Body lead   | `var(--font-size-body-lg)`  | `FONT_SIZE_BODY_LG`     |
 | Body        | `var(--font-size-body)`     | `FONT_SIZE_BODY`        |
+| Data (mono) | `var(--font-size-data)`     | `FONT_SIZE_DATA`        |
 | Label       | `var(--font-size-label)`    | `FONT_SIZE_LABEL`       |
 | Caption     | `var(--font-size-caption)`  | `FONT_SIZE_CAPTION`     |
 
-For font families: CSS uses the existing
+For font families: Nunito Sans (`--font-display` / `--font-body`) carries
+all general text, and JetBrains Mono (`--font-mono`, at `--font-size-data`)
+carries every data value and table value, including plain `html.Table`
+cells. CSS uses the existing
 `var(--font-display | --font-body | --font-mono)`; Python inline
 styles and call sites that don't see CSS variables (Cytoscape
 stylesheets, Plotly layouts, `dash_table` `style_cell`) import the
@@ -529,9 +533,11 @@ but a future palette change will. The same goes for `f"1px solid #1b75bc"`
 
 `COLOR_*` (navy/blue/gold/etc.) are UI-only — never use them as data
 series colors. `OI_*` (Okabe-Ito) are data-only — never use them for UI
-chrome. Series order is fixed: navy, orange, sky, green, blue, purple
-(vermilion reserved for error / alert). Yellow may not be used as text
-on white backgrounds. See [../../../DESIGN.md](../../../DESIGN.md) for
+chrome. On-screen series order is fixed: navy, orange, sky, green, blue,
+purple (vermilion reserved for error / alert); static matplotlib figures
+follow DESIGN.md "Figures" instead. Yellow may not be used as text on white
+backgrounds, and text in a data hue uses its darkened `--oi-*-text`,
+`--color-blue-text` or `--color-gold-text` variant, which clears WCAG AA. See [../../../DESIGN.md](../../../DESIGN.md) for
 badge contrast variants and prohibited combinations.
 
 ---

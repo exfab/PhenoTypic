@@ -272,6 +272,16 @@
   margin: 0;
 }
 
+/* Column headers take the Label style (DESIGN.md Typography). */
+.run-console-recents-table th {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
 .run-console-recents-row {
   cursor: pointer;
 }
@@ -287,11 +297,13 @@
 }
 
 .run-console-recents-cell-mode {
+  font-family: var(--font-mono);
   font-size: var(--font-size-label);
   color: var(--color-muted);
 }
 
 .run-console-recents-cell-dash {
+  font-family: var(--font-mono);
   font-size: var(--font-size-label);
   color: var(--color-muted);
 }

@@ -191,7 +191,7 @@ class TestRemovedOverlay:
         )
         # Locate the scatter overlay (only the overlay uses Scatter; the
         # data heatmap is a Heatmap trace). Removed/excluded cells render in
-        # the spec's failed/null color (vermilion), not grey (DESIGN.md "06"/"10").
+        # the spec's failed/null color (vermilion), not grey (DESIGN.md "Data Visualization" / "Well-Plate Grid").
         scatter_traces = [t for t in fig.data if t.type == "scatter"]
         assert scatter_traces, "Expected at least one overlay Scatter trace"
         scatter = scatter_traces[0]

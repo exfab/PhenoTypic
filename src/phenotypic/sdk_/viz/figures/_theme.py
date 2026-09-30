@@ -9,16 +9,16 @@ never re-spell hex codes, fonts, or axis styling.
 
 Design-token sources (single source of truth is ``DESIGN.md``):
 
-* Brand / UI palette -- ``01 -- Color Palette / Primary Colors``
+* Brand / UI palette -- ``Colors / Primary Colors -- UI Only``
   (navy ``#003660``, blue ``#1b75bc``, gold ``#febc11``).
-* Data series order -- ``06 -- Data Visualization / Categorical Series
-  Order`` and the matplotlib ``OKABE_ITO`` block in ``07 -- Code
-  Integration`` (navy-anchored: navy, orange, sky, green, blue, purple,
-  vermilion).
-* Typography -- ``02 -- Typography`` (IBM Plex Sans body stack).
-* Chart styling -- ``06 -- Data Visualization / Chart Styling Rules``
+* Data series order -- ``Data Visualization / Categorical Series
+  Order`` (navy-anchored: navy, orange, sky, green, blue, purple,
+  vermilion). Static matplotlib figures use the published order instead
+  (``Figures``).
+* Typography -- ``Typography`` (IBM Plex Sans body stack).
+* Chart styling -- ``Data Visualization / Chart Styling Rules``
   (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels
-  ``#8892a4``, navy title).
+  ``#6d7684``, navy title).
 
 This module imports only ``plotly``, the stdlib, and the dependency-free
 ``phenotypic.sdk_._palette``. It is deliberately free of ``dash`` and other
@@ -57,7 +57,7 @@ __all__ = [
 PHENOTYPIC_TEMPLATE_NAME: str = "phenotypic"
 
 # ---------------------------------------------------------------------------
-# Brand / UI palette (DESIGN.md "01 -- Color Palette / Primary Colors")
+# Brand / UI palette (DESIGN.md "Colors / Primary Colors -- UI Only")
 # ---------------------------------------------------------------------------
 
 #: Brand navy -- headings, title font, primary anchor.
@@ -81,13 +81,13 @@ GRID: str = "#e8ecf2"
 #: Axis lines (``--color-border``).
 AXIS: str = "#dde3ed"
 #: Secondary text -- axis labels, captions (``--color-muted``).
-MUTED: str = "#8892a4"
+MUTED: str = "#6d7684"
 #: Primary body text (``--color-body``).
 BODY: str = "#2e3a4e"
 
 # ---------------------------------------------------------------------------
-# Okabe-Ito data palette (DESIGN.md "Categorical Series Order" + the
-# matplotlib OKABE_ITO block in "07 -- Code Integration")
+# Okabe-Ito data palette (DESIGN.md "Data Visualization / Categorical Series
+# Order")
 # ---------------------------------------------------------------------------
 #
 # Colorblind-safe series order is fixed and must not be reordered:
@@ -101,8 +101,8 @@ BODY: str = "#2e3a4e"
 #: can import the named colours at module scope without loading plotly.
 OKABE_ITO: tuple[str, ...] = _PALETTE_OKABE_ITO
 
-#: Single-variable sequential colorscale (DESIGN.md "06 -- Heatmap Colorscale"
-#: and "12 -- Continuous Colorbar"): near-transparent navy -> sky -> full navy.
+#: Single-variable sequential colorscale (DESIGN.md "Data Visualization / Heatmap
+#: Colorscale" and "Chart Support Elements / Continuous Colorbar"): near-transparent navy -> sky -> full navy.
 #: The one continuous ramp for plate maps / heatmaps / intensity overlays;
 #: never build a sequential scale from the categorical ``OKABE_ITO`` order.
 SEQUENTIAL_COLORSCALE: tuple[tuple[float, str], ...] = (
@@ -112,12 +112,12 @@ SEQUENTIAL_COLORSCALE: tuple[tuple[float, str], ...] = (
 )
 
 #: Fill for failed / null / removed cells on a heatmap or plate map: vermilion
-#: at 70% opacity (DESIGN.md "06" / "10"). Reads as a non-data exclusion against
+#: at 70% opacity (DESIGN.md "Data Visualization" / "Well-Plate Grid"). Reads as a non-data exclusion against
 #: the navy-to-blue ramp under every CB type.
 FAILED_FILL: str = "rgba(213,94,0,0.7)"
 
 # ---------------------------------------------------------------------------
-# Typography (DESIGN.md "02 -- Typography")
+# Typography (DESIGN.md "Typography")
 # ---------------------------------------------------------------------------
 
 #: Body font stack (IBM Plex Sans) matching ``phenotypic._gui._design``'s
@@ -130,7 +130,7 @@ FONT_FAMILY: str = (
 )
 
 #: Mono font stack (JetBrains Mono) matching ``phenotypic._gui._design``'s
-#: ``FONT_FAMILY_MONO``. Per DESIGN.md "02", all numeric data -- axis tick
+#: ``FONT_FAMILY_MONO``. Per DESIGN.md "Typography", all numeric data -- axis tick
 #: labels, hover values, colorbar ticks, annotations -- render in mono. Kept in
 #: sync with the GUI by ``test_mono_font_does_not_drift_from_gui_design``.
 FONT_FAMILY_MONO: str = (
@@ -160,7 +160,7 @@ def register_phenotypic_template() -> None:
     """
     # Numeric data renders in mono (axis ticks, hover, colorbar, annotations);
     # titles, axis titles, and legend series names render in the body font
-    # (DESIGN.md "02 -- Typography" / "06 -- Chart Styling Rules").
+    # (DESIGN.md "Typography" / "Data Visualization / Chart Styling Rules").
     template = go.layout.Template(
         layout=dict(
             colorway=list(OKABE_ITO),
