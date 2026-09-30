@@ -510,7 +510,7 @@ class MeasurementInfo(str, Enum):
         Rendered by :meth:`append_rst_to_doc` (measurer class docs and the
         enum's own docstring) and by the Measurements reference page. Empty
         by default; an enum overrides it when a release changes its public
-        columns. Keep the text in ``phenotypic.schema._change_notes``.
+        columns. Keep the text in ``phenotypic.schema._base._change_notes``.
 
         Returns:
             str: RST, typically a ``.. versionchanged::`` directive, or ``""``.
