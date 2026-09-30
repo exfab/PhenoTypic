@@ -73,6 +73,7 @@ import errno
 import hashlib
 import json
 import logging
+import os
 import re
 import stat as stat_module
 from dataclasses import dataclass
@@ -2071,11 +2072,19 @@ def store_publication_token(
     root = Path(store) / STORE_ROOT_JSON
     try:
         if root_directory is None:
-            before = root.lstat()
-            if not stat_module.S_ISREG(before.st_mode):
+            if not stat_module.S_ISREG(root.lstat().st_mode):
                 return None
-            raw = root.read_bytes()
-            after = root.lstat()
+            # Measure the open file, exactly as both held backends do
+            # (``read_regular_with_stat``), not the path. On Windows
+            # ``os.lstat`` reports the creation time as ``st_ctime`` while
+            # ``os.fstat`` reports the metadata-change time
+            # (python/cpython#157671), and a directory-entry query can lag an
+            # open-handle query on ``st_mtime_ns``; either one made this
+            # branch's token differ from the held branch's for the same file.
+            with root.open("rb") as stream:
+                before = os.fstat(stream.fileno())
+                raw = stream.read()
+                after = os.fstat(stream.fileno())
         else:
             from phenotypic.sdk_._identity_io import IdentityRefused
 
