@@ -518,9 +518,12 @@ enforces this for ruff, but the rule binds regardless of the tool.
   prefixed column names used in DataFrames.
 - **Import schema classes from `phenotypic.schema`, never from its private
   modules.** Write `from phenotypic.schema import SIZE, QUALITY_ICC, IdentityInfo`,
-  not `from phenotypic.schema._size import SIZE` or
-  `from phenotypic.schema._tiers import IdentityInfo`. The file layout under
-  `schema/` is private and free to change; the package namespace is the contract.
+  not `from phenotypic.schema._measure._size import SIZE` or
+  `from phenotypic.schema._base._tiers import IdentityInfo`. The file layout under
+  `schema/` (stage folders `_base/`, `_shared/`, `_measure/`, `_analysis/`,
+  `_metadata/`) is private and free to change; the package namespace is the
+  contract, and `_BackCompatUnpickler` keeps pickles written under an older layout
+  loadable.
   The rule binds `src/`, `tests/` and `docs/` alike. If a class you need is not
   importable from the package, export it from `schema/__init__.py` instead of
   reaching into the module. The narrow exceptions (private *helpers* pinned by

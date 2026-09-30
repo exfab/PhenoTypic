@@ -212,7 +212,7 @@ def test_badge_spec_colors_are_valid_sphinx_design_semantic_colors():
     import pytest
 
     sd_shared = pytest.importorskip("sphinx_design.shared")
-    from phenotypic.schema._measurement_info import _BADGE_SPECS, _CATEGORY_BADGE_COLOR
+    from phenotypic.schema._base._measurement_info import _BADGE_SPECS, _CATEGORY_BADGE_COLOR
 
     valid = set(sd_shared.SEMANTIC_COLORS)
     used = {color for _text, color, _anchor in _BADGE_SPECS.values()} | {_CATEGORY_BADGE_COLOR}

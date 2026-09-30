@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import sys
 from collections.abc import Iterator
 from enum import Enum
 from pathlib import Path
@@ -17,11 +18,11 @@ from phenotypic.schema import (
     MeasurementInfo,
     MetadataInfo,
 )
-from phenotypic.schema._categories import _CAMEL_BOUNDARY_RE
+from phenotypic.schema._base._categories import _CAMEL_BOUNDARY_RE
 
-_CATEGORIES_MODULE = (
-    Path(__file__).resolve().parents[3] / "src" / "phenotypic" / "schema" / "_categories.py"
-)
+# Located through the class rather than a spelled path, so a schema file move
+# cannot turn this guard into a FileNotFoundError.
+_CATEGORIES_MODULE = Path(sys.modules[CATEGORIES.__module__].__file__)
 _STDLIB_ONLY = {"__future__", "re", "dataclasses", "enum", "typing", "collections.abc"}
 
 

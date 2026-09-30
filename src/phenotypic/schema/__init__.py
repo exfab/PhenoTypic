@@ -18,18 +18,18 @@ that standardize ``Metadata_*`` columns for the ``--metadata`` join and
 import sys
 import warnings
 
-from ._measurement_info import (
+from ._base._measurement_info import (
     Entry,
     MeasurementInfo,
     parse_qualified_header,
     qualified_header,
 )
-from ._rembi import (
+from ._base._rembi import (
     REMBI_MODULE as REMBI_MODULE,
     header_to_module as header_to_module,
 )
-from ._categories import CATEGORIES, CategoryEntry
-from ._tiers import (
+from ._base._categories import CATEGORIES, CategoryEntry
+from ._base._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
     DirectPhenotype as DirectPhenotype,
@@ -39,8 +39,8 @@ from ._tiers import (
     PrimaryMeasure as PrimaryMeasure,
     QualityInfo as QualityInfo,
 )
-from ._metadata import IMAGE
-from ._experimental_tags import (
+from ._metadata._image import IMAGE
+from ._metadata._experimental_tags import (
     ACQUISITION,
     CONDITION,
     CULTURE,
@@ -51,44 +51,44 @@ from ._experimental_tags import (
     STUDY,
 )
 
-from ._bbox import BBOX
-from ._color_composition import ColorComposition
-from ._color_hsv import ColorHSV
-from ._color_lab import ColorLab
-from ._color_xy import Colorxy
-from ._color_xyz import ColorXYZ
-from ._edge_correction import EDGE_CORRECTION
-from ._grid import GRID
-from ._grid_linreg_stats import GRID_LINREG_STATS
-from ._neighbor_dist import NEIGHBOR_DIST
-from ._grid_spread import GRID_SPREAD
-from ._linear_cap_and_lag_model import LINEAR_CAP_AND_LAG_MODEL
-from ._intensity import INTENSITY
-from ._linear_lag_model import LINEAR_LAG_MODEL
-from ._log_growth_model import LOG_GROWTH_MODEL
-from ._model_metrics import MODEL_METRICS
-from ._object import OBJECT
-from ._curation import CURATION
-from ._error_category import ErrorCategory
-from ._metadata_match import METADATA_MATCH
-from ._quality_check import QUALITY_CHECK
-from ._quality_count import QUALITY_COUNT
-from ._quality_icc import QUALITY_ICC
-from ._quality_mad import QUALITY_MAD
-from ._quality_occupancy import QUALITY_OCCUPANCY
-from ._quality_se import QUALITY_SE
-from ._quality_tukey import QUALITY_TUKEY
-from ._quality_zmax import QUALITY_ZMAX
-from ._radial_expansion import RADIAL_EXPANSION
-from ._orientation_zones import (
+from ._measure._bbox import BBOX
+from ._measure._color_composition import ColorComposition
+from ._measure._color_hsv import ColorHSV
+from ._measure._color_lab import ColorLab
+from ._measure._color_xy import Colorxy
+from ._measure._color_xyz import ColorXYZ
+from ._analysis._edge_correction import EDGE_CORRECTION
+from ._shared._grid import GRID
+from ._measure._grid_linreg_stats import GRID_LINREG_STATS
+from ._measure._neighbor_dist import NEIGHBOR_DIST
+from ._measure._grid_spread import GRID_SPREAD
+from ._analysis._models._linear_cap_and_lag_model import LINEAR_CAP_AND_LAG_MODEL
+from ._measure._intensity import INTENSITY
+from ._analysis._models._linear_lag_model import LINEAR_LAG_MODEL
+from ._analysis._models._log_growth_model import LOG_GROWTH_MODEL
+from ._analysis._models._model_metrics import MODEL_METRICS
+from ._shared._object import OBJECT
+from ._shared._curation import CURATION
+from ._shared._error_category import ErrorCategory
+from ._shared._metadata_match import METADATA_MATCH
+from ._analysis._qc._quality_check import QUALITY_CHECK
+from ._analysis._qc._quality_count import QUALITY_COUNT
+from ._analysis._qc._quality_icc import QUALITY_ICC
+from ._analysis._qc._quality_mad import QUALITY_MAD
+from ._analysis._qc._quality_occupancy import QUALITY_OCCUPANCY
+from ._analysis._qc._quality_se import QUALITY_SE
+from ._analysis._qc._quality_tukey import QUALITY_TUKEY
+from ._analysis._qc._quality_zmax import QUALITY_ZMAX
+from ._shared._radial_expansion import RADIAL_EXPANSION
+from ._measure._orientation_zones import (
     ORIENTATION_ZONE_DIAGNOSTIC,
     ORIENTATION_ZONE_PRIMARY,
     ORIENTATION_ZONES,
 )
-from ._shape import SHAPE
-from ._size import SIZE
-from ._symmetric_zones import SYMMETRIC_ZONES
-from ._texture import TEXTURE
+from ._measure._shape import SHAPE
+from ._measure._size import SIZE
+from ._measure._symmetric_zones import SYMMETRIC_ZONES
+from ._measure._texture import TEXTURE
 
 __all__ = [
     "Entry",

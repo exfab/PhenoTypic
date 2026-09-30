@@ -2,12 +2,36 @@
 
 Public, blessed API for PhenoTypic's measurement naming conventions.
 
-- `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
+## Layout
+
+Files are grouped by the stage that emits their columns. Every subfolder is
+private; `__init__.py` re-exports every class, and nothing else is public (see
+"Importing schema classes" below).
+
+```
+schema/
+  __init__.py      the only public surface: flat re-exports + legacy-name __getattr__
+  _base/           MeasurementInfo, Entry, tiers, CATEGORIES, REMBI, change notes
+  _shared/         columns no single operation owns: OBJECT, GRID, METADATA_MATCH,
+                   CURATION, ErrorCategory, RADIAL_EXPANSION
+  _measure/        one file per MeasureFeatures schema: SIZE, SHAPE, BBOX, Color*, ...
+  _analysis/       SetAnalyzer schemas: EDGE_CORRECTION
+    _qc/           QUALITY_CHECK (shared QC columns) + the seven QUALITY_* enums
+    _models/       the three growth models + MODEL_METRICS
+  _metadata/       _image.py (IMAGE) + _experimental_tags/ (the eight owners)
+```
+
+The folders mirror the groups of the Measurements reference sidebar, but they
+do not drive it: the docs generator groups pages by *operation*, from each
+operation's declared schemas, so a file's folder never changes what the docs
+show. Put a new schema in the folder of the stage that emits it.
+
+- `MeasurementInfo` (`_base/_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
   derivation_type=None, derives_from=None, rembi_module=None, categories=frozenset())` plus a
   `metric_family()` classmethod; the
   enum value is the family-prefixed header (e.g. `Size_Area`). `Entry` (a
-  frozen dataclass, also in `_measurement_info.py` and exported from the package)
+  frozen dataclass, also in `_base/_measurement_info.py` and exported from the package)
   is the **only** legal member value — raw tuples raise `TypeError` at import.
   `desc` is the technical/algorithm description; **`bio_desc` is human-authored
   only** (a biological claim — never machine-generated, see the root `CLAUDE.md`
@@ -22,14 +46,14 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   `append_rst_to_doc()`. `metric_family()`/`.METRIC_FAMILY` were hard-renamed
   from the `category()` classmethod and `CATEGORY` property with no alias; a subclass that still defines
   either legacy name raises `TypeError` at class creation.
-- 32 measurement-column enum modules (`_shape.py`, `_size.py`,
-  `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from
-  `__init__.py`.
-- `_metadata.py` — `IMAGE`: framework-populated image bookkeeping
+- Measurement-column enum modules under `_shared/`, `_measure/` and `_analysis/`
+  (`_measure/_shape.py`, `_measure/_size.py`, …) — one `MeasurementInfo`
+  subclass each, re-exported from `__init__.py`.
+- `_metadata/_image.py` — `IMAGE`: framework-populated image bookkeeping
   (`UUID`, `ImageName`, `BitDepth`, …). It subclasses `MetadataInfo`; members
   render in the shared flat namespace (for example `Metadata_ImageName`). These
   are `image.metadata` accessor keys set by the pipeline, not user input.
-- `_experimental_tags/` — eight `MetadataInfo` subclasses (`GENETIC`, `SAMPLE`,
+- `_metadata/_experimental_tags/` — eight `MetadataInfo` subclasses (`GENETIC`, `SAMPLE`,
   `PLATE`, `CONDITION`, `CULTURE`, `ACQUISITION`, `EXPERIMENT`, and `STUDY`),
   one per file and re-exported from `__init__.py`. Every owner has
   `metric_family() == "Metadata"`, so `SAMPLE.BIO_REPLICATE` renders as
@@ -56,13 +80,14 @@ Code outside this package reaches schema classes only through `phenotypic.schema
 
 ```python
 from phenotypic.schema import SIZE, QUALITY_ICC, IdentityInfo  # correct
-from phenotypic.schema._size import SIZE                        # wrong
-from phenotypic.schema._tiers import IdentityInfo               # wrong
+from phenotypic.schema._measure._size import SIZE              # wrong
+from phenotypic.schema._base._tiers import IdentityInfo         # wrong
 ```
 
-Every module file here is private (underscore-prefixed), and the layout is expected
-to move, for example into per-operation subfolders. A private import couples the
-caller to a file path; the package namespace survives a move. This applies to
+Every module file and folder here is private (underscore-prefixed), and the
+layout has already moved once (2026-09, flat files into the stage folders above).
+A private import couples the caller to a file path; the package namespace survives
+a move. This applies to
 `src/`, `tests/` and `docs/` (including Sphinx extensions).
 
 "Public interface" means **what the package namespace exposes, which is wider than
@@ -75,30 +100,37 @@ it from `__init__.py`; do not reach into the module.
 
 Exceptions, and only these:
 
-1. **Imports inside this package** (`from ._tiers import …`) are normal.
+1. **Imports inside this package** (`from .._base._tiers import …`) are normal.
 2. **A test that pins a private helper the package does not export** (`_classify`,
    `_BADGE_SPECS`, `_CATEGORY_BADGE_COLOR`, `_rst_cell_text`, `_VALID_KINDS`,
    `_CAMEL_BOUNDARY_RE`) may import that helper from its module. Only the helper:
    any public class the same test uses still comes from `phenotypic.schema`.
 3. **A test whose subject is a private path**, such as
    `test_direct_experimental_tags_package_imports_have_the_same_transition_aliases`,
-   which checks the deprecation alias on `phenotypic.schema._experimental_tags`.
+   which checks the deprecation alias on
+   `phenotypic.schema._metadata._experimental_tags`.
 4. **Historical module-path strings in
    `_BackCompatUnpickler._MOVED_CLASSES`** (`_core/_image_parts/_image_io_handler.py`,
    mirrored in `tests/unit/sdk_/test_metadata_io.py`). These record where a class
    lived when an old pickle was written. They are persisted data, not imports:
    never update one to a current path and never delete one.
 
-**Moving a schema file is a data-compatibility change.** Enum members pickle by
-their class's `__module__`, and today that is the private module (a pickled
-`image.metadata` key refers to `phenotypic.schema._metadata.IMAGE`). A change that
-moves any class that can end up in a pickle must add a `_MOVED_CLASSES` row from
-the old `(module, name)` to `("phenotypic.schema", name)` in the same commit.
+**Moving a schema file is safe for pickles, and it is the unpickler that makes it
+so.** Enum members pickle by their class's `__module__`, which is the private file
+the class lived in at write time (a pickle written before 2026-09 refers to
+`phenotypic.schema._metadata.IMAGE`; one written after refers to
+`phenotypic.schema._metadata._image.IMAGE`). `_BackCompatUnpickler` resolves any
+class pickled under a `phenotypic.schema._*` path by name through the public
+namespace (`_public_schema_class`), so no per-move row is needed. That guarantee
+holds only while every schema class keeps a unique public name: **never rename a
+public schema class, and never give two schema classes the same name**, without
+adding a `_MOVED_CLASSES` row for the old `(module, name)`. Guarded by
+`test_backcompat_unpickler_resolves_any_private_schema_path`.
 
 ## Measurement classification (kind + tier)
 
 Every member resolves to a coarse **kind** and, for primary/derived measurements,
-a trust **tier**. `_classify(member) -> (kind, tier)` in `_measurement_info.py` is
+a trust **tier**. `_classify(member) -> (kind, tier)` in `_base/_measurement_info.py` is
 the single resolver; members expose it via `.resolved_kind` (`"identity"` |
 `"quality"` | `"primary"` | `"derived"`) and `.resolved_tier` (`1` | `2` | `3` |
 `None`). The four kinds and the three primary tiers are explained for users in
@@ -106,7 +138,7 @@ the single resolver; members expose it via `.resolved_kind` (`"identity"` |
 and this section consistent.
 
 An enum declares its classification **structurally**, by subclassing a member-less
-base in `_tiers.py` instead of `MeasurementInfo` directly (all exported from the
+base in `_base/_tiers.py` instead of `MeasurementInfo` directly (all exported from the
 package):
 
 - `IdentityInfo` → `kind="identity"` (design factors / locators; not outcomes).
@@ -149,7 +181,7 @@ Sphinx extension `docs/source/_extensions/measurements_ref.py` calls `rst_table`
   its strings.**
 - `.use_badge` → the RST badge string for the Type column; covers **every** kind
   (Identity/Quality/Derived included, unlike `use_label`), returns `""` only when
-  a member fails to classify. Consumed by `_quality_check.py` for QC column headers.
+  a member fails to classify. Consumed by `_analysis/_qc/_quality_check.py` for QC column headers.
 - `_BADGE_SPECS` (keyed `(tier, kind)`) maps to `(text, color, anchor)`; colors
   are sphinx-design semantic names (Tier1=`success`, Tier2=`primary`,
   Tier3=`warning`, Quality=`secondary`, Identity=`muted`, Derived=`info`). A
@@ -165,7 +197,7 @@ Gotchas: keep the tier rows of `_USE_LABELS` and `_BADGE_SPECS` in sync (both
 encode the same `(tier, kind)` taxonomy). Badge cells are inserted into the
 list-table **unescaped** (they bypass `_rst_cell_text`) so the role renders — the
 badge text must stay free of literal `|`. When adding a new tier/kind, update
-`_tiers.py`, both badge maps, and the explanation page together.
+`_base/_tiers.py`, both badge maps, and the explanation page together.
 
 ## Measurement categories
 
@@ -176,14 +208,14 @@ it in the `measurement-categories` section of
 `docs/source/explanation/measurement_classification_system.md`. Keep that section
 and this one consistent.
 
-- `CATEGORIES` (`_categories.py`) is a closed, repo-defined `str` enum of
+- `CATEGORIES` (`_base/_categories.py`) is a closed, repo-defined `str` enum of
   `CategoryEntry(label, desc)`, and value == label. Members expose `.label`,
   `.desc`, `.display_name` (the label split on CamelCase), `.anchor`
   (`measurement-category-<label.lower()>`) and `.members()` (every public schema
   member carrying it, in `__all__` then member order). It deliberately does
   **not** subclass `MeasurementInfo`, because at least six discovery sites use
   `issubclass(x, MeasurementInfo)` and would pick it up as a measurement family.
-  `_categories.py` imports only stdlib at module level; `.members()` imports the
+  `_base/_categories.py` imports only stdlib at module level; `.members()` imports the
   schema package lazily.
 - Tag a member with `Entry(..., categories=CATEGORIES.X)`. It takes a bare member
   or an iterable of members. A raw string is refused, even one equal to a
@@ -224,7 +256,7 @@ base:
 - `member_for_header(column) -> member | None` — decode a column to its member.
 - `owns_header(column) -> bool` — `member_for_header(...) is not None`; **never** override.
 
-Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
+Emission (write side) lives with the enum or as shared functions in `_base/_measurement_info.py`:
 
 - **static** — the header *is* `member.value` (`Size_Area`); base default, no override.
 - **metric_qualified** — `{family}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):

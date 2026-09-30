@@ -1369,7 +1369,7 @@ def _ome_xml_modules(metadata_sections: dict[str, dict]) -> dict[str, dict]:
     """Group metadata headers by REMBI module for the OME-XML annotation block.
 
     Note the API: ``header_to_module()`` takes **no arguments** and returns the
-    whole ``{header: REMBI_MODULE}`` mapping (``schema/_rembi.py:29``, lru-cached).
+    whole ``{header: REMBI_MODULE}`` mapping (``schema/_base/_rembi.py:29``, lru-cached).
     """
     # An earlier draft called it as `header_to_module(key)`, which raises
     # TypeError on the first key -- and because `build_ome_xml` caught

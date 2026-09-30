@@ -19,7 +19,7 @@ from phenotypic.sdk_ import zarr_store_path
 from phenotypic.sdk_.ngff_ import valid_staged_store
 
 #: The measurement column is ``Object_Label``, not ``ObjectLabel`` --
-#: ``schema/_object.py`` with ``category() == "Object"``. Resolve it through the
+#: ``schema/_shared/_object.py`` with ``category() == "Object"``. Resolve it through the
 #: schema rather than spelling it, so a rename cannot silently turn the most
 #: load-bearing test in this plan into a KeyError.
 

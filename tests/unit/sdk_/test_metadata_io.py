@@ -1179,6 +1179,58 @@ class TestStoredMetadataKeyNormalization:
         # ... and unmoved classes pass through unchanged.
         assert unpickler.find_class("numpy", "ndarray") is np.ndarray
 
+    def test_backcompat_unpickler_resolves_any_private_schema_path(self):
+        """A class pickled under a schema file path that has since moved still loads.
+
+        Before the 2026-09 reorganization ``IMAGE`` lived in
+        ``phenotypic.schema._metadata`` and ``GENETIC`` in
+        ``phenotypic.schema._experimental_tags._genetic``; neither module exists
+        now. Protocol 0 spells the class as a ``GLOBAL`` opcode
+        (``c<module>\\n<name>\\n``), so rewriting the module text reproduces a
+        pickle written before the move, byte for byte in the part that matters.
+        """
+        import io as _io
+        import pickle
+
+        import phenotypic.schema as schema
+
+        from phenotypic._core._image_parts._image_io_handler import (
+            _BackCompatUnpickler,
+        )
+
+        stored = {schema.IMAGE.IMAGE_NAME: "plate-01", schema.GENETIC.STRAIN: "BY4741"}
+        blob = pickle.dumps(stored, protocol=0)
+        for moved_to, written_under in (
+            ("phenotypic.schema._metadata._image", "phenotypic.schema._metadata"),
+            (
+                "phenotypic.schema._metadata._experimental_tags._genetic",
+                "phenotypic.schema._experimental_tags._genetic",
+            ),
+        ):
+            current = f"c{moved_to}\n".encode()
+            assert current in blob, f"{moved_to} is no longer where the class lives"
+            blob = blob.replace(current, f"c{written_under}\n".encode())
+
+        # ``_metadata`` is now a package, so plain pickle finds the module but
+        # not the class; ``_experimental_tags`` no longer exists at all.
+        with pytest.raises((ModuleNotFoundError, AttributeError)):
+            pickle.loads(blob)  # noqa: S301 - bytes built in this test
+        assert _BackCompatUnpickler(_io.BytesIO(blob)).load() == stored
+
+        unpickler = _BackCompatUnpickler(_io.BytesIO(b""))
+        assert unpickler.find_class("phenotypic.schema._size", "SIZE") is schema.SIZE
+        assert (
+            unpickler.find_class("phenotypic.schema._tiers", "IdentityInfo")
+            is schema.IdentityInfo
+        )
+        # Private helpers and non-schema names are never resolved by name.
+        for module, name in (
+            ("phenotypic.schema._measurement_info", "_classify"),
+            ("phenotypic.schema._no_such_module", "NOT_A_SCHEMA"),
+        ):
+            with pytest.raises((ModuleNotFoundError, AttributeError)):
+                unpickler.find_class(module, name)
+
     def test_current_pickle_roundtrip_unaffected(self, temp_image_dir):
         """A current pickle still round-trips cleanly through the back-compat path."""
         img = phenotypic.Image(

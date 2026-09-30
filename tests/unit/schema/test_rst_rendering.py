@@ -118,7 +118,7 @@ def test_every_cell_sits_under_its_own_column_header() -> None:
     # every optional column is present and a cell emitted out of header order
     # lands under the wrong heading without changing any row's cell count.
     from phenotypic.schema import SIZE
-    from phenotypic.schema._measurement_info import _rst_cell_text
+    from phenotypic.schema._base._measurement_info import _rst_cell_text
 
     header, *rows = _list_table_rows(SIZE.rst_table())
     assert header == ["Name", "Description", "Type", "Categories", "Biology", "Image"]
@@ -145,7 +145,7 @@ def test_category_badges_is_empty_for_an_uncategorized_member() -> None:
 
 
 def test_quality_check_docs_render_with_category_column() -> None:
-    # _render_info_table's second caller (schema/_quality_check.py) runs at
+    # _render_info_table's second caller (schema/_analysis/_qc/_quality_check.py) runs at
     # import time for every QualityCheck subclass; a row-shape mismatch there
     # makes phenotypic.analysis unimportable.
     from phenotypic.schema import QUALITY_CHECK
