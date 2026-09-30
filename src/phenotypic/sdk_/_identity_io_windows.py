@@ -710,11 +710,14 @@ class _CtypesWindowsApi:
         """Adopt a handle as a CRT descriptor. Ownership transfers to the fd.
 
         The caller closes with :func:`os.close`; calling ``CloseHandle`` as
-        well is a double close. The probe confirmed that :func:`os.fstat` on
-        the resulting descriptor agrees exactly with :func:`os.stat` on the
-        path -- ``st_ino``, ``st_ctime_ns``, ``st_mtime_ns`` and ``st_size``
-        all identical -- which is what makes the two
-        ``store_publication_token`` branches agree by construction.
+        well is a double close. :func:`os.fstat` on the resulting descriptor
+        is the same measurement the path branch of ``store_publication_token``
+        takes of the file it opens, which is what makes the two branches agree
+        by construction. It does not agree with :func:`os.stat` on the path:
+        a 2026-09-20 probe found them identical on a freshly written file, but
+        ``os.stat`` reports the creation time as ``st_ctime`` where
+        ``os.fstat`` reports the change time (python/cpython#157671), and a
+        directory-entry query can lag on ``st_mtime_ns``.
         """
         if sys.platform == "win32":
             import msvcrt
