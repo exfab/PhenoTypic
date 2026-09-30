@@ -150,7 +150,9 @@ class EdgeCorrector(EdgeCorrection):
         Examples:
             Basic visualization of edge correction results:
 
-            >>> corrector = EdgeCorrector(on='Area', groupby=['ImageName'])
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.schema import IMAGE, SIZE
+            >>> corrector = EdgeCorrector(on=SIZE.AREA, groupby=[IMAGE.IMAGE_NAME])
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> fig, ax = corrector.show()  # doctest: +SKIP
             >>> # Single collapsed plot with all groups stacked vertically
@@ -166,7 +168,7 @@ class EdgeCorrector(EdgeCorrection):
             Filtered visualization for specific plate:
 
             >>> fig, ax = corrector.show(
-            ...     criteria={'Plate': 'P1'},
+            ...     criteria={IMAGE.IMAGE_NAME: 'plate_01'},
             ...     max_groups=10,
             ...     figsize=(12, 8)
             ... )  # doctest: +SKIP
@@ -665,27 +667,29 @@ class EdgeCorrector(EdgeCorrection):
 
         Returns:
             pd.DataFrame: Edge-corrected measurements with original data plus two new
-                correction columns:
-                - EDGE_CORRECTION.NEW_VAL-{self.on}: Capped measurement values
-                - EDGE_CORRECTION.CORRECTED_CAP-{self.on}: Threshold value used
+                correction columns, named by :meth:`output_header`:
+                - ``EdgeCorrection_NewVal-<on>``: Capped measurement values
+                - ``EdgeCorrection_Cap-<on>``: Threshold value used
                 Original measurement column (self.on) is preserved unchanged. If analyze()
                 has not been called, returns an empty DataFrame.
 
         Examples:
-            Retrieving corrected measurements after analysis:
+            Retrieving corrected colony areas after analysis:
 
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName']
-            ... )
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.schema import EDGE_CORRECTION, IMAGE, SIZE
+            >>> corrector = EdgeCorrector(on=SIZE.AREA, groupby=[IMAGE.IMAGE_NAME])
+            >>> new_val = corrector.output_header(EDGE_CORRECTION.NEW_VAL, corrector.on)
+            >>> cap = corrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, corrector.on)
+            >>> new_val, cap
+            ('EdgeCorrection_NewVal-Size_Area', 'EdgeCorrection_Cap-Size_Area')
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> results = corrector.results()  # doctest: +SKIP
             >>> assert results.equals(corrected)  # doctest: +SKIP
-            >>> # Access corrected values
-            >>> corrected_areas = results['Size-Area']  # doctest: +SKIP
-            >>> thresholds = results['Cap-Area']  # doctest: +SKIP
-            >>> # Original 'Area' column also available for comparison
-            >>> original_areas = results['Area']  # doctest: +SKIP
+            >>> corrected_areas = results[new_val]  # doctest: +SKIP
+            >>> thresholds = results[cap]  # doctest: +SKIP
+            >>> # The original Size_Area column is kept for comparison
+            >>> original_areas = results[corrector.on]  # doctest: +SKIP
 
         Notes:
             - Returns the DataFrame stored in self._latest_measurements
@@ -749,8 +753,8 @@ class EdgeCorrector(EdgeCorrection):
                 - on: Measurement column to correct
                 - time_label: Time point column (optional)
             on (str): Name of measurement column to analyze. Used as basis for new
-                corrected columns: EDGE_CORRECTION.NEW_VAL-{on} and
-                EDGE_CORRECTION.CORRECTED_CAP-{on}.
+                corrected columns ``EdgeCorrection_NewVal-<on>`` and
+                ``EdgeCorrection_Cap-<on>``, named by :meth:`output_header`.
             nrows (int): Grid rows (e.g., 8 for 96-well).
             ncols (int): Grid columns (e.g., 12 for 96-well).
             top_n (int): Number of top interior values for threshold.
@@ -762,9 +766,9 @@ class EdgeCorrector(EdgeCorrection):
 
         Returns:
             pd.DataFrame: Input group with two new correction columns added:
-                - EDGE_CORRECTION.NEW_VAL-{on}: Capped measurement values at threshold
+                - ``EdgeCorrection_NewVal-<on>``: Capped measurement values at threshold
                   (clipped if correction applied, original otherwise)
-                - EDGE_CORRECTION.CORRECTED_CAP-{on}: Threshold value computed
+                - ``EdgeCorrection_Cap-<on>``: Threshold value computed
                 Original measurement column (on) is preserved unchanged. All rows get
                 corrected values (not just edge wells) for consistency and reproducibility.
 
@@ -783,13 +787,14 @@ class EdgeCorrector(EdgeCorrection):
             Direct use in batch processing:
 
             >>> from phenotypic.analysis import EdgeCorrector
-            >>> group_data = data[data['Plate'] == 'P1']  # doctest: +SKIP
+            >>> from phenotypic.schema import CULTURE, SAMPLE, SIZE
+            >>> plate = data[data[SAMPLE.SOURCE_PLATE] == 'P1']  # doctest: +SKIP
             >>> corrected = EdgeCorrector._apply2group_func(
-            ...     group_data,
-            ...     on='Area',
+            ...     plate,
+            ...     on=SIZE.AREA,
             ...     nrows=8, ncols=12,
             ...     top_n=5,
-            ...     time_label='Time',
+            ...     time_label=CULTURE.TIME,
             ...     connectivity=4,
             ...     pvalue=0.05
             ... )  # doctest: +SKIP
