@@ -652,7 +652,9 @@ ledger, which cancellation uses after atomically deactivating the epoch.
 
 Without `--wait`, the command prints `PROCESSING SUBMITTED` and returns. The
 dependent finalizer alone publishes aggregate measurements, QC, analyses,
-dashboard, HTML report, README, and the atomic completion marker. With
+dashboard, HTML report, README, and the atomic completion marker. It runs as a
+chain of dependent CPU jobs (`pht-finalize-*`), one time limit each; see
+[CLI modes](../../tutorials/pages/cli_modes.md). With
 `--wait`, the CLI monitors that marker; Ctrl+C only detaches monitoring.
 
 **Pre-staging gated weights.** For offline compute nodes, download checkpoints on

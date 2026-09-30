@@ -1,7 +1,9 @@
-"""split_master_by_category has exactly one caller: finalize_post_master_outputs.
+"""split_master_by_category has exactly one caller: _publish_split_tables.
 
-That function is the single finalization path shared by full, measure,
-recompile and ``--mode migrate`` (spec §5.3). A second call site would let one
+That function is the ``tables`` group of the single finalization path shared by
+full, measure, recompile and ``--mode migrate`` (spec §5.3), reached in-process
+through ``finalize_post_master_outputs`` and on SLURM through the finalizer
+chain's ``tables`` task. A second call site would let one
 mode drift, and a call outside the publication fence would let a SLURM
 generation that lost ownership still write ``measurements_by_category/``.
 
@@ -88,11 +90,20 @@ def _parents(tree: ast.Module) -> dict[ast.AST, ast.AST]:
     return {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
 
 
-def test_category_split_is_referenced_only_from_finalize_post_master_outputs() -> None:
+def test_category_split_is_referenced_only_from_the_tables_group() -> None:
     references, definitions = _find("split_master_by_category")
     assert definitions == [f"{_OUTPUT_MANAGER}:<module>"]
     assert [where for where, _, _ in references] == [
-        f"{_OUTPUT_MANAGER}:finalize_post_master_outputs"
+        f"{_OUTPUT_MANAGER}:_publish_split_tables"
+    ]
+
+
+def test_the_tables_group_has_one_caller() -> None:
+    # A second caller of the group would be the second route this file
+    # exists to rule out, one level up.
+    references, _ = _find("_publish_split_tables")
+    assert [where for where, _, _ in references] == [
+        f"{_OUTPUT_MANAGER}:publish_finalization_outputs"
     ]
 
 

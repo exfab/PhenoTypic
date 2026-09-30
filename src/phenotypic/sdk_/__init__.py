@@ -255,6 +255,7 @@ from ._io_constants import (  # noqa: E402
     chunk_state_path,
     chunks_dir,
     aggregation_shard_dir,
+    finalize_chain_dir,
     checkpoint_lock_filename,
     checkpoint_lock_path,
     dashboard_html_path,
@@ -644,6 +645,7 @@ __all__ = [
     # Path helpers
     "BundleLayout",
     "aggregation_shard_dir",
+    "finalize_chain_dir",
     "analysis_full_parquet_path",
     "analysis_manifest_path",
     "best_pipeline_path",

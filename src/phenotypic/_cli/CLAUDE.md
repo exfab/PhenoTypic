@@ -359,6 +359,69 @@ sidecar. The existing staged-GPU controller topology is a specialized,
 explicitly capacity-reserved design; do not generalize it into new ordinary
 array sidecars.
 
+### The finalizer is a chain of jobs (`_cli_finalize_chain.py`)
+
+**Every SLURM finalization -- ordinary `full`/`measure`, staged GPU, and
+recompile -- runs as a chain of dependent jobs, one walltime each.** It used to
+be one job (P5's index K of a `0-K` array, or the staged one-task finalizer, or
+recompile's `TASK_FINALIZE` array entry) that waited for its own shards and
+then did all of the finalization under the per-image `--time`, which a large
+run exceeds.
+
+| Job | Tasks | Work |
+|---|---|---|
+| `prepare` | 1 | wait for / reconcile images (`_prepare_finalization`), then submit the rest |
+| `shards` | K | `_cli_finalize_fanout` shard worker (omitted on recompile, and at K = 0) |
+| `master` | 1 | `publish_master_and_mirror`: master, join, post, mirror, REMBI, `pipeline.json`; writes `handoff.json` |
+| `outputs` | 2 | `publish_finalization_outputs`: task 0 `analysis` (measurement plots, fit, analysis plots), task 1 `tables` (splits, error re-emit) |
+| `qc` | 1 | the `qc` group, after `outputs` because a QC plot may read a named analysis table |
+| `publish` | 1 | aggregate proof, then `_publish_finalization_tail` (manifest, dashboard, staged report/README, completion), or recompile's tail |
+
+- **The submission slot did not move.** The drip-feed `finalizer_script` and
+  the staged controller's `"finalizer"` token submit `prepare` where they
+  submitted the monolith; recompile passes `prepare` as its `finalizer_script`
+  and its `TASK_FINALIZE` task stays in the manifest but in no array.
+- **`prepare` is the chain's only submitter** (`submit_chain_stages` →
+  `submit_with_lifecycle`: ledgered, exactly once per `finalize-<stage>` token,
+  generation-fenced). It runs after the image arrays are terminal, so no chain
+  job is queued beside an active ordinary array. Pinned by
+  `test_the_finalizer_chain_submits_from_one_function_only`.
+- **Staged hand-off.** `prepare` sets the orchestration's `active_job_id` to
+  the `publish` job and retargets the pending recovery controller to it
+  (`_hand_staged_controller_to`). Without it the controller runs when
+  `prepare` exits and marks the epoch `failed` while the chain is queued; the
+  fake-SLURM staged test fails exactly that way when the call is removed.
+- **Failure is "incomplete", never silent.** Each task writes
+  `finalize_chain/<generation>/status/<stage>_<i>.json`; a task killed at its
+  walltime writes none and `publish` reads that as failed. `publish` always runs
+  (`afterany`), certifies nothing when anything failed, closes the lifecycle
+  (ordinary: deactivated; staged: `failed`; recompile: finalizer status
+  `failed`), and raises `FinalizationIncomplete` naming the task and its log.
+  `_close_after_chain_error` never overwrites that verdict, nor a cancelled or
+  superseded generation's. Re-running the same command recovers, through
+  recompile, which uses the same chain.
+- **Frames do not cross job boundaries; bytes do, and are checked.** `outputs`
+  and `qc` read the master and mirror back from disk and refuse unless their
+  SHA-256 matches `handoff.json`; `publish` checks again under
+  `.aggregate_publication.lock` before the proof. The chain's master, mirror
+  and splits are byte-identical to one in-process `finalize_run`
+  (`test_the_chain_publishes_the_bytes_one_process_would`).
+- **Resources:** every chain job uses the run's `--slurm` profile (staged:
+  the CPU profile). There is no separate finalizer profile, by user decision;
+  each job simply gets that walltime to itself.
+- **Fencing: an epoch check at every job's start; a per-write guard only on
+  recompile's serial jobs.** `generation_publication_guard` holds the
+  lifecycle lock for the *whole* of each guarded write, so on the two parallel
+  `outputs` tasks a long analysis fit would starve the sibling (300 s timeout)
+  and cancellation (60 s). `_commit_guard` therefore returns `None` except for
+  recompile's `master` and `publish`, which is no more than each finalizer had
+  before the chain (recompile held the guard across all of `finalize_run`;
+  ordinary and staged had none). Pinned by
+  `test_parallel_output_tasks_never_hold_the_lifecycle_lock`.
+- **`_run_finalize` (`--checkpoint-type finalize`) is kept** as the
+  composition of the same three helpers, because a run submitted before the
+  chain existed calls it from an already-written script.
+
 > **Queue ordinary SLURM work through the drip-feed dispatcher, and staged GPU
 > work through its recoverable controller.** The CPU autonomous strategy and
 > `--recompile` funnel their
@@ -403,11 +466,12 @@ persisting the returned ID.
   `stageN_chunk{i}.sh`. Stage 2 is **never chunked** (a shard worker streams its
   whole shard on one GPU); `--gpu-shards > chunk_limit` raises. `generate_staged_scripts`
   returns stage arrays plus controller, finalizer, config, and manifest paths.
-  Image stages are always lists. The finalizer is a
-  one-task CPU job that reloads the canonical pipeline and runs the same
+  Image stages are always lists. The finalizer is the `prepare` job of the
+  finalizer chain (above), on the CPU profile, and the chain runs the same
   aggregate/finalize path as ordinary SLURM, including named analysis and plot
   publication. The controller records every dynamically submitted ID and keeps
-  only one work array plus its recovery controller active at a time.
+  only one work array plus its recovery controller active at a time; while the
+  chain runs, its "work array" is the chain's `publish` job.
 - Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
   `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
@@ -1044,16 +1108,21 @@ no flag column to exist, and is automatically a no-op on frames that have none.
 Feed configured analysis and GUI result exploration from `measurements.parquet`, not
 `master_measurements.*`.
 
-**There is one FINAL master writer, and it is `finalize_run`.** Every mode
-reaches it: the forward CLI and `--mode measure` through `aggregate_measurements`
-(which is `finalize_run` under the publication lock), and the recompile SLURM
-finalizer through `_run_post_master_steps`, which hands its per-shard Parquets
-in as `shard_paths` rather than merging and writing a master of its own. That
-collapse is the point of §7.4 — recompile is *"call `finalize_run` again"*, not
-a second implementation to keep in sync — and it is also what keeps **one
-writer per artifact, per pass** true of `master_measurements.parquet`. A new
-code path that needs a final master calls `finalize_run`; it does not write the
-file and then call `finalize_post_master_outputs` itself.
+**There is one FINAL master writer, and it is `publish_master_and_mirror`**
+(`_cli_finalize_run.py`), the first of `finalize_run`'s three phases. Every
+mode reaches it: in-process through `finalize_run` (the forward CLI and
+`--mode measure` via `aggregate_measurements`, which is `finalize_run` under
+the publication lock; the legacy single-job recompile finalizer via
+`_run_post_master_steps`), and on SLURM through the finalizer chain's `master`
+job, which calls the same function and runs the other two phases
+(`publish_finalization_outputs`, `publish_finalization_proof`) as later jobs.
+Recompile hands its per-shard Parquets in as `shard_paths` rather than merging
+and writing a master of its own. That collapse is the point of §7.4 —
+recompile is *"call `finalize_run` again"*, not a second implementation to keep
+in sync — and it is also what keeps **one writer per artifact, per pass** true
+of `master_measurements.parquet`. A new code path that needs a final master
+calls `finalize_run` (or, as its own job, `publish_master_and_mirror`); it does
+not write the file and then call `finalize_post_master_outputs` itself.
 
 Mid-run checkpoint writers (`_aggregate_chunks_locked` in
 `_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state

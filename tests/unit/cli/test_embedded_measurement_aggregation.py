@@ -123,8 +123,11 @@ def test_recompile_finalizer_no_longer_carries_submit_time_join_keys(
             return_value=None,
         ),
         patch(
-            "phenotypic._cli._cli_output_manager.finalize_post_master_outputs",
+            "phenotypic._cli._cli_output_manager.publish_measurement_mirror",
             side_effect=capture_finalize,
+        ),
+        patch(
+            "phenotypic._cli._cli_output_manager.publish_finalization_outputs",
         ),
     ):
         _cli_recompile_worker._run_post_master_steps(

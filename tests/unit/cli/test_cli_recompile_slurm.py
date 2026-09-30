@@ -403,7 +403,10 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
         task["slurm_generation"] == "attempt-script-args"
         for task in manifest["tasks"]
     )
-    assert len(scripts) == 3
+    # The finalizer task stays in the manifest (above) but is in no array:
+    # the SLURM finalizer chain runs it after the arrays are terminal. So the
+    # four other tasks fill two arrays at array_limit=2.
+    assert len(scripts) == 2
     assert (
         scripts[-1].read_text(encoding="utf-8").count("_cli_recompile_worker")
         == 1
@@ -411,7 +414,16 @@ def test_generate_recompile_scripts_write_manifest_and_worker_arrays(
     assert '--task-index "$CURRENT_TASK_INDEX"' in scripts[-1].read_text(
         encoding="utf-8"
     )
-    assert "#SBATCH --array=0-0" in scripts[-1].read_text(encoding="utf-8")
+    assert "#SBATCH --array=0-1" in scripts[-1].read_text(encoding="utf-8")
+    arrayed = [
+        int(line.strip())
+        for script in scripts
+        for line in script.read_text(encoding="utf-8")
+        .split("TASK_INDICES=(\n", 1)[1]
+        .split("\n)", 1)[0]
+        .splitlines()
+    ]
+    assert arrayed == list(range(len(tasks) - 1))
     script_text = scripts[0].read_text(encoding="utf-8")
     assert "+    --slurm-generation" not in script_text
     assert "--slurm-generation attempt-script-args" in script_text

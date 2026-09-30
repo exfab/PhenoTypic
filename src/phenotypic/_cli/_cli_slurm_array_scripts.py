@@ -461,35 +461,29 @@ def generate_terminal_finalizer_script(
     output_dir: Path,
     shard_count: int = 1,
 ) -> Path:
-    """Write the dependent terminal publisher for an ordinary SLURM run.
+    """Write the single-job terminal publisher, as a ``0-K`` array.
 
-    **P5: this one-task job becomes a ``0-K`` array**, K aggregation shards at
-    indices ``0..K-1`` and the reserved ``TASK_FINALIZE`` entry at index K.
+    **Process/export runs are its only production caller now**, with
+    ``shard_count=0``: a one-task array whose index 0 runs the manifest
+    finalizer. A forward (``full``/``measure``) run submits the finalizer
+    chain instead (``_cli_finalize_chain.write_finalize_chain``), which gives
+    aggregation, the mirror, the derived outputs and publication a job, and a
+    walltime, each.
 
-    Index K's command is **unchanged** (CAN-19). ``_run_finalize`` already
-    publishes the run proof and does far more besides -- it waits for
-    completion, aggregates, builds the manifest and dashboard, publishes the
-    staged report, deactivates the generation. Minting a *new* finalizer that
-    published would have created a second publisher of the run proof, which is
-    the failure this whole change exists to remove, arriving through the fix
-    for it. So the existing dependent job is kept and becomes index K, and no
-    site changes its publication behaviour.
+    With ``shard_count=K > 0`` the array is P5's shape: K aggregation shards at
+    indices ``0..K-1`` and the reserved ``TASK_FINALIZE`` entry at index K,
+    which waits for its shards inside its own walltime. That shape is kept
+    because its index-K command is still the entry point of any run submitted
+    before the chain existed.
 
     **No new submission site.** The drip-feed dispatcher
     (``_cli_execution_strategies.py`` -> ``submit_slurm_script_chain``) keeps
-    submitting one thing where it submitted one thing before; only
-    ``task_indices`` changes. *No standalone parallel job is submitted* is
-    therefore true **by construction** rather than by discipline, which is why
-    the guards in ``test_array_auxiliary_routing.py`` assert the absence of a
-    submission site instead of policing the behaviour of one.
+    submitting one thing where it submitted one thing before.
 
     Args:
         config: Execution configuration.
         output_dir: Run output root.
-        shard_count: K, from
-            :func:`~phenotypic._cli._cli_finalize_fanout.shard_count`. The
-            default of 1 gives a two-task array -- one shard plus the
-            finalizer -- which is what the measured design target produces.
+        shard_count: K. ``0`` gives the one-task manifest/finalize job.
 
     Returns:
         Path to the generated script.

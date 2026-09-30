@@ -238,19 +238,29 @@ isolation before attributing it — most of them pass.
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
-  the sole publisher of aggregated outputs and the completion marker. **P5 does not
-  change that.** The forward run's dependent finalizer becomes a `0-K` array whose
-  indices `0..K-1` aggregate measurement shards and whose index K is the reserved
-  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
-  still the sole publisher; it now has K helpers that publish nothing.
+  the sole publisher of aggregated outputs and the completion marker. **The
+  finalizer is a chain of dependent jobs, one walltime each**
+  (`_cli_finalize_chain.py`): `prepare` → `shards` (K tasks) → `master` (master +
+  mirror) → `outputs` (plots/analysis, splits) → `qc` → `publish` (aggregate
+  proof, manifest, dashboard, completion). Ordinary, staged and recompile SLURM
+  runs all use it; the slot that used to submit the one finalizer job now submits
+  `prepare`, which submits the rest after the image arrays are terminal. A task
+  that fails or is killed at its walltime leaves the run **incomplete** (no
+  proof, no marker); re-run the same command. Every job uses the `--slurm`
+  profile. See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md), "The finalizer
+  is a chain of jobs".
   **With `--wait`, the aggregated outputs are written twice** and the sentence
   above does not cover it: `AutonomousSLURMStrategy` never sets
   `remote_managed` (only the staged path does, `_cli_staged_slurm.py:680,760`),
   so the CLI falls through to `aggregate_master_csv`
   (`phenotypicCLI.py:2977`) and aggregates **in the submitting process**, while
-  the dependent finalizer later aggregates again. The two are serialized by
-  `.aggregate_publication.lock` and read the same authorized sources, so they
-  write the same bytes — redundant, not divergent. **That last clause is a
+  the finalizer chain's `master` job aggregates again. Each master/mirror
+  publication and the proof are serialized by `.aggregate_publication.lock`
+  and read the same authorized sources, so they write the same bytes —
+  redundant, not divergent. **The chain depends on that sameness**: its later
+  jobs refuse a master or mirror whose SHA-256 differs from what `master`
+  recorded in `handoff.json`, so a divergent rewrite would leave the run
+  incomplete rather than certify bytes the chain did not write. **That clause is a
   property of one recent decision, not of the design**, and it was false
   before `87f933cb`: the in-process path fans out at K = worker count while
   the finalizer merges the scheduler's shards at its own K, and until

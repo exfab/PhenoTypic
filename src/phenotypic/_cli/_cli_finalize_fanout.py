@@ -8,10 +8,17 @@ N = 6,000 and the crossover where a second shard first earns its keep at
 **N ~= 34,600**, 5.8x that target (``spikes/RESULTS.md``). Nothing here makes a
 realistic run faster.
 
-What the decomposition buys is somewhere legal and ordered for the reserved
-``TASK_FINALIZE`` entry to run: the shard-completeness check (CAN-5), the
+What the decomposition buys is the shard-completeness check (CAN-5), the
 two-phase partial-failure semantics D-A narrows §8 to, and a single publisher
 for the aggregate and run proofs. Those hold whether K is 1 or 2,499.
+
+**On SLURM the shards are now their own job.** P5 put them in one ``0-K`` array
+with the reserved ``TASK_FINALIZE`` entry at index K, which then waited for
+its siblings inside its own walltime and did the rest of the finalization
+under that same limit. The finalizer chain (``_cli_finalize_chain``) submits
+the ``0..K-1`` shard array as its ``shards`` job and the finalization after it
+as separate jobs, each ``afterany`` on the one before; the ``0-K`` shape
+survives only for a run submitted before the chain existed.
 
 **Consequence worth stating, because it is a maintenance hazard rather than a
 bug:** the K > 1 path is exercised only by its own tests, never by production
@@ -681,7 +688,10 @@ def planned_work_ids_from_statuses(statuses: Sequence[dict]) -> list[str]:
 
 
 def resolve_finalizer_shard_inputs(
-    output_dir: Path, scheduler_epoch: str | None
+    output_dir: Path,
+    scheduler_epoch: str | None,
+    *,
+    timeout: float = 3600.0,
 ) -> "tuple[list[Path], list[str]] | None":
     """Return ``(shard_paths, planned_work_ids)``, or ``None`` for no fan-out.
 
@@ -714,6 +724,11 @@ def resolve_finalizer_shard_inputs(
     Args:
         output_dir: Run output root.
         scheduler_epoch: Active SLURM lifecycle generation, or ``None``.
+        timeout: Seconds to wait for the shard statuses. The single-job
+            finalizer shares an array with its shards and must wait for them;
+            the finalizer chain's ``master`` job runs after the shard array is
+            terminal and passes a short grace instead, so a shard that died
+            without a status is reported rather than waited on.
 
     Returns:
         The shards to merge and the source set to publish the proof against,
@@ -737,9 +752,20 @@ def resolve_finalizer_shard_inputs(
     tasks = manifest.get("tasks") or []
     expected = int(tasks[-1].get("expected_non_finalizer_tasks", 0))
 
-    statuses = wait_for_shard_statuses(
-        output_dir, scheduler_epoch=scheduler_epoch, expected=expected
-    )
+    try:
+        statuses = wait_for_shard_statuses(
+            output_dir,
+            scheduler_epoch=scheduler_epoch,
+            expected=expected,
+            timeout=timeout,
+        )
+    except TimeoutError as exc:
+        raise RuntimeError(
+            f"Aggregation fan-out is incomplete: {exc}. A shard task that "
+            "wrote no status was killed before it finished (walltime, memory "
+            "or node loss); its log is under logs/slurm/. Nothing was "
+            "published. RECOVERY: re-run the same command."
+        ) from exc
     failed = [s for s in statuses if s.get("status") != "completed"]
     shard_paths = collect_shard_paths(output_dir, scheduler_epoch)
 

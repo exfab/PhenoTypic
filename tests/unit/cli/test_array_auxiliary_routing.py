@@ -288,3 +288,96 @@ def test_growing_the_array_produces_no_second_script(
     assert siblings == [script], (
         f"K={shards} produced more than one finalizer script: {siblings}"
     )
+
+
+# ---------------------------------------------------------------------------
+# The finalizer chain: its one submission site, and when it runs
+# ---------------------------------------------------------------------------
+
+
+def _references(tree: ast.Module, name: str) -> list[str]:
+    """Return the enclosing function of every reference to *name*."""
+    found: list[str] = []
+
+    class _Finder(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.scope: list[str] = []
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+            self.scope.append(node.name)
+            self.generic_visit(node)
+            self.scope.pop()
+
+        def visit_Name(self, node: ast.Name) -> None:
+            if node.id == name:
+                found.append(".".join(self.scope) or "<module>")
+
+        def visit_Attribute(self, node: ast.Attribute) -> None:
+            if node.attr == name:
+                found.append(".".join(self.scope) or "<module>")
+            self.generic_visit(node)
+
+        def visit_alias(self, node: ast.alias) -> None:
+            if name in (node.name, node.asname):
+                found.append(".".join(self.scope) or "<module>")
+
+    _Finder().visit(tree)
+    return found
+
+
+def test_the_finalizer_chain_submits_from_one_function_only() -> None:
+    """The chain is a submitter, unlike the fan-out -- but in exactly one place.
+
+    ``prepare`` submits the chain's later jobs, and it runs only after the
+    image arrays are terminal (it is the dispatcher's ``afterany``
+    finalizer), so no chain job is ever queued beside an active ordinary
+    array. That holds only while ``submit_chain_stages`` is the sole
+    submission site and ``run_prepare_stage`` its sole caller; a second site
+    elsewhere in the module could submit from a job that is not ``prepare``.
+    """
+    tree = ast.parse(
+        _module_path("phenotypic._cli._cli_finalize_chain").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert set(_references(tree, "submit_with_lifecycle")) == {
+        "submit_chain_stages"
+    }
+    assert _references(tree, "submit_chain_stages") == ["run_prepare_stage"]
+    reached = {
+        node.id if isinstance(node, ast.Name) else node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Name, ast.Attribute))
+    }
+    assert not reached & _SUBMISSION_PRIMITIVES, (
+        "the finalizer chain reached a scheduler primitive other than the "
+        "ledgered, generation-fenced submit_with_lifecycle"
+    )
+
+
+def test_the_ordinary_finalizer_slot_submits_the_chain_prepare_job(
+    tmp_path: Path,
+) -> None:
+    """What the dispatcher submits after the last chunk is ``prepare``."""
+    from phenotypic._cli._cli_finalize_chain import (
+        MODE_ORDINARY,
+        STAGE_PREPARE,
+        load_chain_spec,
+        write_finalize_chain,
+    )
+
+    script = write_finalize_chain(
+        tmp_path,
+        mode=MODE_ORDINARY,
+        generation="gen-routing",
+        slurm_args={},
+        shards=1,
+    )
+
+    assert script == load_chain_spec(tmp_path, "gen-routing").scripts[
+        STAGE_PREPARE
+    ]
+    text = script.read_text(encoding="utf-8")
+    assert "#SBATCH --array=0-0" in text
+    assert "--stage prepare" in text

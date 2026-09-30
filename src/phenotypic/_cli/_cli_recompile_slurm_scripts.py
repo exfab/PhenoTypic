@@ -226,7 +226,8 @@ def generate_recompile_slurm_scripts(
         attempt_id: Optional scheduler-attempt namespace for generated state.
 
     Returns:
-        Ordered list of generated array script paths.
+        Ordered list of generated array script paths. They cover every task
+        except the finalizer, which the finalizer chain runs.
 
     Raises:
         ValueError: If ``array_limit`` is not positive.
@@ -269,7 +270,16 @@ def generate_recompile_slurm_scripts(
     log_dir.mkdir(parents=True, exist_ok=True)
 
     scripts: list[Path] = []
-    task_indices = list(range(len(tasks)))
+    # The finalizer task stays in the manifest -- it carries the finalizer's
+    # inputs, and its status file is what `--wait` watches -- but it is NOT an
+    # array entry. It runs as the SLURM finalizer chain (`_cli_finalize_chain`)
+    # after these arrays are terminal, one job per stage, instead of as one
+    # array task that waited for its siblings inside its own walltime.
+    task_indices = [
+        index
+        for index, task in enumerate(tasks)
+        if task.get("task_type") != TASK_FINALIZE
+    ]
     chunk_count = math.ceil(len(task_indices) / array_limit)
     for chunk_id in range(chunk_count):
         start = chunk_id * array_limit

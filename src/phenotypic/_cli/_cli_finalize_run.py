@@ -9,6 +9,7 @@ one.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
@@ -428,9 +429,21 @@ def finalize_run(
     5. persist ``pipeline.json``, analysis outputs, per-feature splits
     6. publish the aggregate proof
 
-    Steps 3-5 are :func:`~phenotypic._cli._cli_output_manager.finalize_post_master_outputs`,
-    which owns them and three further un-numbered side effects (legacy-QC
-    migration, canonical column ordering, and the REMBI manifest).
+    It is three phases, each callable on its own, and the SLURM finalizer
+    chain (``_cli_finalize_chain``) runs them as separate jobs so no one job
+    carries the whole walltime:
+
+    * steps 1-4, :func:`publish_master_and_mirror` -- the master, then
+      :func:`~phenotypic._cli._cli_output_manager.publish_measurement_mirror`
+      (with three further un-numbered side effects: legacy-QC migration,
+      canonical column ordering, and the REMBI manifest);
+    * step 5,
+      :func:`~phenotypic._cli._cli_output_manager.publish_finalization_outputs`
+      -- plots, analysis, QC and splits, which read the mirror;
+    * step 6, :func:`publish_finalization_proof`.
+
+    Run here they happen in that order in one process, exactly as before the
+    split.
 
     INVARIANT (INV-INPUTS, §7.5) -- **step 1 selects exactly the
     marker-authorized embedded measurement tables.** It never reads a prior
@@ -485,6 +498,106 @@ def finalize_run(
         Path to ``master_measurements.parquet``, or ``None`` when no
         measurement source could be read.
     """
+    from ._cli_output_manager import publish_finalization_outputs
+
+    publication = publish_master_and_mirror(
+        output_dir,
+        dataset_names=dataset_names,
+        include_dataset_column=include_dataset_column,
+        pipeline=pipeline,
+        metadata_csv=metadata_csv,
+        study_config=study_config,
+        shard_paths=shard_paths,
+        planned_work_ids=planned_work_ids,
+        commit_guard=commit_guard,
+    )
+    if publication is None:
+        return None
+
+    from ._cli_utils import logged_step
+
+    with logged_step(
+        logger, "finalize_run: derived outputs (plots, analysis, QC, splits)"
+    ):
+        publish_finalization_outputs(
+            Path(output_dir),
+            master_df=publication.master_df,
+            post_df=publication.post_df,
+            pipeline=publication.pipeline,
+            no_qc=no_qc,
+            commit_guard=commit_guard,
+        )
+
+    publish_finalization_proof(
+        Path(output_dir),
+        dataset_names=dataset_names,
+        authorized=publication.authorized,
+        source_work_ids=publication.source_work_ids,
+        commit_guard=commit_guard,
+    )
+    return publication.master_path
+
+
+@dataclass(frozen=True)
+class MasterPublication:
+    """What :func:`publish_master_and_mirror` wrote, for the phases after it.
+
+    Attributes:
+        master_path: ``master_measurements.parquet``.
+        master_df: The master frame, as written.
+        post_df: The mirror frame, as written to ``measurements.parquet``.
+        pipeline: The pipeline the mirror was built with, or ``None``.
+        authorized: Whether the sources came from marker-authorized records.
+            ``False`` is the legacy arm, which publishes no aggregate proof.
+        source_work_ids: The source set the master was built from, sorted --
+            the set the aggregate proof must be published against. ``None``
+            on the legacy arm.
+    """
+
+    master_path: Path
+    master_df: "pl.DataFrame"
+    post_df: "pl.DataFrame"
+    pipeline: "ImagePipeline | None"
+    authorized: bool
+    source_work_ids: list[str] | None
+
+
+def publish_master_and_mirror(
+    output_dir: Path,
+    *,
+    dataset_names: Sequence[str],
+    include_dataset_column: bool = True,
+    pipeline: "ImagePipeline | None" = None,
+    metadata_csv: Path | None = None,
+    study_config: dict | None = None,
+    shard_paths: Sequence[Path] | None = None,
+    planned_work_ids: Sequence[str] | None = None,
+    commit_guard: "CommitGuard | None" = None,
+) -> MasterPublication | None:
+    """Steps 1-4 of :func:`finalize_run`: the master, then the mirror.
+
+    **This is the one function that writes** ``master_measurements.parquet``.
+    :func:`finalize_run` calls it in-process; the SLURM finalizer chain
+    (``_cli_finalize_chain``) calls it as its own job and runs the derived
+    outputs and the proof as later jobs. Either way there is one writer of the
+    master per pass.
+
+    Args:
+        output_dir: Run output root.
+        dataset_names: Datasets to finalize.
+        include_dataset_column: Whether to insert ``Metadata_Dataset``.
+        pipeline: Recovered pipeline. ``None`` recovers it from the output
+            directory.
+        metadata_csv: The run's effective metadata snapshot.
+        study_config: REMBI Study-level fields.
+        shard_paths: Pre-merged measurement shards, or ``None``.
+        planned_work_ids: The source set the shards recorded merging.
+        commit_guard: Publication guard threaded to every terminal write.
+
+    Returns:
+        The publication, or ``None`` when no measurement source could be read
+        or the master write failed.
+    """
     from phenotypic.sdk_ import (
         PARQUET_WRITE_OPTIONS,
         atomic_write_with_writer,
@@ -494,7 +607,7 @@ def finalize_run(
     from ._cli_output_manager import (
         _guarded_terminal_best_effort,
         _load_pipeline_from_output_dir,
-        finalize_post_master_outputs,
+        publish_measurement_mirror,
     )
 
     from ._cli_utils import logged_step
@@ -546,21 +659,18 @@ def finalize_run(
         if pipeline is not None
         else _load_pipeline_from_output_dir(output_dir)
     )
-    with logged_step(
-        logger, "finalize_run: post-master outputs (mirror, splits, plots, QC)"
-    ):
-        finalize_post_master_outputs(
+    with logged_step(logger, "finalize_run: measurement mirror"):
+        post_df = publish_measurement_mirror(
             output_dir,
             master_df,
             resolved_pipeline,
             metadata_csv=metadata_csv,
-            no_qc=no_qc,
             study_config=study_config,
             commit_guard=commit_guard,
         )
 
+    source_work_ids: list[str] | None = None
     if authorized:
-        from ._cli_completion import publish_aggregate_snapshot
         from ._cli_finalize_fanout import _work_ids_for_sources
 
         # The proof describes the master that was just written, and says so by
@@ -573,19 +683,61 @@ def finalize_run(
             if planned_work_ids is not None
             else _work_ids_for_sources(output_dir, aggregated_sources)
         )
-        with logged_step(logger, "finalize_run: publish aggregate proof"):
-            publish_aggregate_snapshot(
-                output_dir,
-                source_work_ids=source_work_ids,
-                commit_guard=commit_guard,
-            )
-        # AFTER the proof, so "invalidate on success" is literal. Publication
-        # can still raise here -- a tree with no current state, an artifact
-        # that moved -- and invalidating first would destroy the previous
-        # finalization's intermediates on behalf of one that did not complete.
-        with logged_step(
-            logger, "finalize_run: invalidate finalization intermediates"
-        ):
-            _invalidate_finalization_intermediates(output_dir, dataset_names)
 
-    return master_path
+    return MasterPublication(
+        master_path=master_path,
+        master_df=master_df,
+        post_df=post_df,
+        pipeline=resolved_pipeline,
+        authorized=authorized,
+        source_work_ids=source_work_ids,
+    )
+
+
+def publish_finalization_proof(
+    output_dir: Path,
+    *,
+    dataset_names: Sequence[str],
+    authorized: bool,
+    source_work_ids: Sequence[str] | None,
+    commit_guard: "CommitGuard | None" = None,
+) -> None:
+    """Step 6 of :func:`finalize_run`: the aggregate proof, then invalidation.
+
+    A no-op on the legacy arm (*authorized* ``False``), which has never
+    published an aggregate proof.
+
+    Args:
+        output_dir: Run output root.
+        dataset_names: Datasets whose intermediates to invalidate.
+        authorized: Whether the master came from marker-authorized sources.
+        source_work_ids: The set the master was built from.
+        commit_guard: Publication guard threaded to every terminal write.
+
+    Raises:
+        ValueError: *authorized* is true and *source_work_ids* is ``None``.
+    """
+    if not authorized:
+        return
+    if source_work_ids is None:
+        raise ValueError(
+            "An authorized finalization must name the source set its master "
+            "was built from"
+        )
+    from ._cli_completion import publish_aggregate_snapshot
+    from ._cli_utils import logged_step
+
+    with logged_step(logger, "finalize_run: publish aggregate proof"):
+        publish_aggregate_snapshot(
+            output_dir,
+            source_work_ids=list(source_work_ids),
+            commit_guard=commit_guard,
+        )
+    # AFTER the proof, so "invalidate on success" is literal. Publication
+    # can still raise here -- a tree with no current state, an artifact
+    # that moved -- and invalidating first would destroy the previous
+    # finalization's intermediates on behalf of one that did not complete.
+    with logged_step(
+        logger, "finalize_run: invalidate finalization intermediates"
+    ):
+        _invalidate_finalization_intermediates(output_dir, dataset_names)

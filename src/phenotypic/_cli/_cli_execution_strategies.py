@@ -1101,17 +1101,45 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             seconds_per_image=SECONDS_PER_IMAGE_S2,
             max_array_size=array_limit,
         )
-        begin_aggregation_fanout(
-            output_dir,
-            scheduler_epoch=generation,
-            shards=shards,
-            dataset_names=[dataset.name for dataset in datasets],
-        )
-        finalizer_script = generate_terminal_finalizer_script(
-            self.config,
-            output_dir,
-            shard_count=shards,
-        )
+        if self.config.process_only_layer:
+            # A process/export run aggregates nothing, so it gets no shards:
+            # its finalizer is the manifest publisher alone, a one-task array.
+            finalizer_script = generate_terminal_finalizer_script(
+                self.config,
+                output_dir,
+                shard_count=0,
+            )
+        else:
+            begin_aggregation_fanout(
+                output_dir,
+                scheduler_epoch=generation,
+                shards=shards,
+                dataset_names=[dataset.name for dataset in datasets],
+            )
+            # The finalizer is a CHAIN of dependent jobs, one walltime each
+            # (`_cli_finalize_chain`). What the dispatcher submits here is its
+            # first job, `prepare`, which submits the rest once the image
+            # arrays are terminal -- so the dispatcher still submits one thing
+            # where it always submitted one thing.
+            from ._cli_finalize_chain import MODE_ORDINARY, write_finalize_chain
+            from ._cli_update_state import (
+                PROCESSING_GENERATION_ENV_VAR,
+                SLURM_GENERATION_ENV_VAR,
+            )
+
+            environment = {SLURM_GENERATION_ENV_VAR: generation}
+            if self.config.processing_generation:
+                environment[PROCESSING_GENERATION_ENV_VAR] = (
+                    self.config.processing_generation
+                )
+            finalizer_script = write_finalize_chain(
+                output_dir,
+                mode=MODE_ORDINARY,
+                generation=generation,
+                slurm_args=self.config.slurm_args,
+                shards=shards,
+                environment=environment,
+            )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,
             output_dir=output_dir,
@@ -1169,8 +1197,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             )
         else:
             console.print(
-                "[green]✓[/green] Terminal finalizer follows the last image "
-                "chunk; nonterminal checkpoints remain embedded"
+                "[green]✓[/green] Terminal finalizer chain follows the last "
+                "image chunk (prepare -> shards -> master -> outputs -> qc -> "
+                "publish, one job each); nonterminal checkpoints remain "
+                "embedded"
             )
 
             # Generate dashboard HTML

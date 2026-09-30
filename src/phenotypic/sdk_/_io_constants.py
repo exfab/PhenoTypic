@@ -842,6 +842,17 @@ DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 #: leaf name whose ``grep`` means one thing.
 DIR_AGGREGATION_SHARDS: Final[str] = "aggregation_shards"
 
+#: ``<progress>/finalize_chain/<generation>/`` -- one SLURM finalizer chain's
+#: scratch: its ``chain.json`` spec, the ``handoff.json`` the master job leaves
+#: for the jobs after it, and one ``status/<stage>_<index>.json`` per task.
+#:
+#: Per-invocation scratch like :data:`DIR_AGGREGATION_SHARDS`, and emptied the
+#: same way: when the chain is *written* at submission, never when it is read.
+#: Nothing outside ``_cli_finalize_chain`` reads it, and no run-state verdict
+#: is derived from it -- the completion marker and the aggregate proof remain
+#: the only evidence a run finished.
+DIR_FINALIZE_CHAIN: Final[str] = "finalize_chain"
+
 #: Path segment standing in for a null ``scheduler_epoch``.
 #:
 #: :func:`phenotypic.sdk_._run_state._scheduler_epoch` returns ``None``
@@ -2286,6 +2297,28 @@ def aggregation_shard_dir(
         / (scheduler_epoch or LOCAL_SCHEDULER_EPOCH)
     )
 
+
+
+def finalize_chain_dir(output_dir: Path, generation: str) -> Path:
+    """Return ``<progress>/finalize_chain/<generation>/``.
+
+    Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: Run output root.
+        generation: The SLURM lifecycle generation the chain belongs to (the
+            staged epoch on a staged run, the attempt id on recompile).
+
+    Returns:
+        The chain's scratch directory.
+
+    Raises:
+        ValueError: *generation* is empty. A chain always belongs to a
+            scheduler generation; there is no local chain.
+    """
+    if not generation:
+        raise ValueError("A finalizer chain needs a SLURM generation")
+    return progress_dir(output_dir) / DIR_FINALIZE_CHAIN / generation
 
 def task_status_path(output_dir: Path, task_index: int) -> Path:
     """Return ``<progress>/recompile/status/task_<idx>.json``."""

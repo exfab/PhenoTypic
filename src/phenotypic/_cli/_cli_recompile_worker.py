@@ -730,33 +730,7 @@ def _run_finalizer_task(
     expected = int(task.get("expected_non_finalizer_tasks", 0))
 
     statuses = _wait_for_non_finalizer_statuses(status_dir, expected)
-    failed_statuses = [
-        status for status in statuses if status.get("status") == "failed"
-    ]
-    # A failed TASK_OVERLAY is an independent, non-blocking side artifact: it
-    # fails routinely and expectedly for any image with no detected objects
-    # (NoObjectsError), which is normal for this dataset (e.g. no-growth
-    # timepoints) and unrelated to the measurements aggregate. Every other
-    # failure remains blocking, including an unclassified bootstrap failure.
-    # Treating every overlay failure as fatal meant recompile could never
-    # publish for a dataset with any such images at all.
-    blocking_failures = [
-        status
-        for status in failed_statuses
-        if status.get("task_type") != TASK_OVERLAY
-    ]
-    if blocking_failures:
-        raise RuntimeError(
-            f"{len(blocking_failures)} blocking non-finalizer recompile "
-            "task(s) failed "
-            f"(of {len(failed_statuses)} total non-finalizer failures)"
-        )
-    if failed_statuses:
-        logger.warning(
-            "%d non-finalizer recompile task(s) failed (all overlay, "
-            "non-blocking) — publishing anyway",
-            len(failed_statuses),
-        )
+    _refuse_blocking_recompile_failures(statuses)
 
     from phenotypic.sdk_ import phenotypic_cache_dir
     from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -813,6 +787,44 @@ def _run_finalizer_task(
             progress_dir,
             task,
             slurm_generation=slurm_generation,
+        )
+
+
+def _refuse_blocking_recompile_failures(statuses: list[dict[str, Any]]) -> None:
+    """Raise when a non-finalizer recompile task failed in a blocking way.
+
+    Args:
+        statuses: The non-finalizer task statuses.
+
+    Raises:
+        RuntimeError: A task other than an overlay task failed.
+    """
+    failed_statuses = [
+        status for status in statuses if status.get("status") == "failed"
+    ]
+    # A failed TASK_OVERLAY is an independent, non-blocking side artifact: it
+    # fails routinely and expectedly for any image with no detected objects
+    # (NoObjectsError), which is normal for this dataset (e.g. no-growth
+    # timepoints) and unrelated to the measurements aggregate. Every other
+    # failure remains blocking, including an unclassified bootstrap failure.
+    # Treating every overlay failure as fatal meant recompile could never
+    # publish for a dataset with any such images at all.
+    blocking_failures = [
+        status
+        for status in failed_statuses
+        if status.get("task_type") != TASK_OVERLAY
+    ]
+    if blocking_failures:
+        raise RuntimeError(
+            f"{len(blocking_failures)} blocking non-finalizer recompile "
+            "task(s) failed "
+            f"(of {len(failed_statuses)} total non-finalizer failures)"
+        )
+    if failed_statuses:
+        logger.warning(
+            "%d non-finalizer recompile task(s) failed (all overlay, "
+            "non-blocking) — publishing anyway",
+            len(failed_statuses),
         )
 
 
@@ -918,10 +930,41 @@ def _run_post_master_steps(
         Path to ``master_measurements.parquet``, or ``None`` when no
         measurement source could be read.
     """
-    from ._cli_finalize_run import (
-        finalize_run,
-        refuse_mixed_measurement_authority,
+    from ._cli_finalize_run import finalize_run
+
+    kwargs = recompile_finalize_kwargs(
+        task, attempt_dir=attempt_dir, statuses=statuses
     )
+    if slurm_generation is None:
+        return finalize_run(output_dir, **kwargs)
+    with generation_publication_guard(output_dir, slurm_generation):
+        return finalize_run(output_dir, **kwargs)
+
+
+def recompile_finalize_kwargs(
+    task: dict[str, Any],
+    *,
+    attempt_dir: Path,
+    statuses: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    """Return the ``finalize_run`` keyword arguments for one recompile attempt.
+
+    Shared by the single-task recompile finalizer and the SLURM finalizer
+    chain's master job, so both hand ``finalize_run`` the same shards, the
+    same metadata snapshot and the same planned source set.
+
+    Args:
+        task: The finalizer task dict from the attempt's task manifest.
+        attempt_dir: This attempt's directory, holding ``measurement_shards/``.
+        statuses: The non-finalizer task statuses, or ``None``.
+
+    Returns:
+        Keyword arguments for :func:`~phenotypic._cli._cli_finalize_run.finalize_run`.
+
+    Raises:
+        ValueError: The task's sources mix embedded and legacy authority.
+    """
+    from ._cli_finalize_run import refuse_mixed_measurement_authority
 
     # CAN-2: the recorded per-store join keys are gone. `finalize_post_master_
     # outputs` derives its own common columns from the master and the snapshot,
@@ -969,10 +1012,7 @@ def _run_post_master_steps(
         kwargs["planned_work_ids"] = planned_work_ids_from_statuses(
             measurement_statuses
         )
-    if slurm_generation is None:
-        return finalize_run(output_dir, **kwargs)
-    with generation_publication_guard(output_dir, slurm_generation):
-        return finalize_run(output_dir, **kwargs)
+    return kwargs
 
 
 def _regenerate_recompile_dashboard(

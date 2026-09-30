@@ -345,6 +345,19 @@ finalizer completion marker. Ctrl+C detaches monitoring while the jobs continue.
 `--force-local` overrides SLURM detection, which is
 what you want when testing on a login node.
 
+After the image jobs finish, the run is **finalized by a short chain of
+dependent jobs** rather than by one long job, so no single job has to fit all
+of the finalization into one time limit. In `squeue` they appear in order as
+`pht-finalize-prepare`, `pht-finalize-shards`, `pht-finalize-master`
+(the master table and `measurements.parquet`), `pht-finalize-outputs` (plots,
+analysis, and the per-feature and per-category tables), `pht-finalize-qc`,
+and `pht-finalize-publish` (dashboard and completion). Each uses the resources
+you passed with `--slurm`, and its log is
+`.phenotypic/logs/slurm/finalize_<stage>_<job>_<task>.log`. If any of them
+fails or runs out of time, the run is left incomplete, and the last job's log
+names which one. Run the same command again to finish it. `--mode recompile
+--slurm` finalizes the same way.
+
 `--checkpoint-interval N` inserts checkpoint tasks every N images in a SLURM
 array so a walltime kill loses at most N images of progress.
 

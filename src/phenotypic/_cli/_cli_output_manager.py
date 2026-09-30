@@ -1136,6 +1136,83 @@ def finalize_post_master_outputs(
         than the clean master. Equal to *master_df* when no post ops
         are configured and no metadata CSV is supplied.
     """
+    from ._cli_utils import logged_step
+
+    with logged_step(logger, "finalize outputs: mirror"):
+        post_df = publish_measurement_mirror(
+            output_dir,
+            master_df,
+            pipeline,
+            metadata_csv=metadata_csv,
+            study_config=study_config,
+            commit_guard=commit_guard,
+        )
+    publish_finalization_outputs(
+        output_dir,
+        master_df=master_df,
+        post_df=post_df,
+        pipeline=pipeline,
+        no_qc=no_qc,
+        commit_guard=commit_guard,
+        groups=FINALIZE_OUTPUT_GROUPS,
+    )
+    return post_df
+
+
+
+#: Derived-output group: measurement plots, the named analysis and its plots.
+FINALIZE_OUTPUT_GROUP_ANALYSIS: Final[str] = "analysis"
+
+#: Derived-output group: the QC rebuild (``qc.duckdb``) and the QC plots.
+FINALIZE_OUTPUT_GROUP_QC: Final[str] = "qc"
+
+#: Derived-output group: per-feature and per-category splits, error re-emit.
+FINALIZE_OUTPUT_GROUP_TABLES: Final[str] = "tables"
+
+#: Every derived-output group, in the order an in-process finalization runs
+#: them. **The order is the pre-split order of** ``finalize_post_master_outputs``
+#: **and is kept on purpose**: QC plots may resolve a named analysis table
+#: (``PlotQc`` with an ``AnalysisInput``), so ``qc`` must follow ``analysis``.
+#: ``tables`` depends on neither. The SLURM finalizer chain
+#: (``_cli_finalize_chain``) runs ``analysis`` and ``tables`` as two tasks of
+#: one array and ``qc`` as the job after it, which respects the same edge.
+FINALIZE_OUTPUT_GROUPS: Final[tuple[str, ...]] = (
+    FINALIZE_OUTPUT_GROUP_ANALYSIS,
+    FINALIZE_OUTPUT_GROUP_QC,
+    FINALIZE_OUTPUT_GROUP_TABLES,
+)
+
+
+def publish_measurement_mirror(
+    output_dir: Path,
+    master_df: "pl.DataFrame",
+    pipeline: Optional["ImagePipeline"],
+    *,
+    metadata_csv: Optional[Path] = None,
+    study_config: Optional[dict] = None,
+    commit_guard: "CommitGuard | None" = None,
+) -> "pl.DataFrame":
+    """Join metadata, apply post ops and publish the measurement mirror.
+
+    The first half of :func:`finalize_post_master_outputs`, and the half every
+    derived output reads: it writes ``deliverables/measurements.{csv,parquet}``,
+    the REMBI manifest and, when *pipeline* is given, ``pipeline.json``.
+
+    Args:
+        output_dir: Output root that already holds the master Parquet.
+        master_df: The un-joined master frame.
+        pipeline: Recovered pipeline, or ``None``.
+        metadata_csv: Effective metadata snapshot to join, or ``None``.
+        study_config: REMBI Study-level fields, or ``None``.
+        commit_guard: Publication guard threaded to every terminal write.
+
+    Returns:
+        The post-applied, metadata-joined, canonically ordered mirror frame.
+
+    Raises:
+        ValueError: The metadata join refused a conflicting alias or a lossy
+            coalesce. A clean-master fallback would publish an invalid mirror.
+    """
     from phenotypic.sdk_ import migrate_legacy_qc
 
     _guarded_terminal_call(
@@ -1204,43 +1281,115 @@ def finalize_post_master_outputs(
     )
 
     if pipeline is not None:
+        _guarded_terminal_call(
+            commit_guard,
+            lambda: _persist_pipeline_to_output_dir(output_dir, pipeline),
+        )
+    return post_df
+
+
+def publish_finalization_outputs(
+    output_dir: Path,
+    *,
+    master_df: "pl.DataFrame",
+    post_df: "pl.DataFrame",
+    pipeline: Optional["ImagePipeline"],
+    no_qc: bool = False,
+    commit_guard: "CommitGuard | None" = None,
+    groups: Sequence[str] = FINALIZE_OUTPUT_GROUPS,
+) -> None:
+    """Publish the derived outputs that read the mirror.
+
+    The second half of :func:`finalize_post_master_outputs`. Each group writes
+    artifacts no other group writes, so the SLURM finalizer chain can run them
+    as separate jobs; run in-process, the groups run in
+    :data:`FINALIZE_OUTPUT_GROUPS` order, which is the order this work ran in
+    before it was split.
+
+    **What does not cross a process boundary.** ``analysis`` hands its fitted
+    producer to the analysis plots through an in-memory registry, so the fit
+    and its plots stay in one group. ``qc`` reads a named analysis table, when
+    a QC plot asks for one, through the same registry: in-process it finds the
+    registration, and in a separate job it resolves the published
+    ``analysis_manifest.json`` from disk, which :class:`AnalysisRegistry`
+    already supports.
+
+    Args:
+        output_dir: Output root holding the master and the mirror.
+        master_df: The clean master. Only the error re-emit reads it.
+        post_df: The mirror frame :func:`publish_measurement_mirror` returned,
+            or the one a separate job read back from
+            ``deliverables/measurements.parquet``.
+        pipeline: Recovered pipeline, or ``None``.
+        no_qc: Skip the QC compute step.
+        commit_guard: Publication guard threaded to every terminal write.
+        groups: The groups to run, a subset of :data:`FINALIZE_OUTPUT_GROUPS`.
+
+    Raises:
+        ValueError: *groups* names an unknown group.
+    """
+    from ._cli_utils import logged_step
+
+    unknown = sorted(set(groups) - set(FINALIZE_OUTPUT_GROUPS))
+    if unknown:
+        raise ValueError(f"Unknown finalization output group(s): {unknown}")
+    selected = [group for group in FINALIZE_OUTPUT_GROUPS if group in groups]
+
+    registry = None
+    coordinator = None
+    measurements_pd = None
+    if pipeline is not None and (
+        FINALIZE_OUTPUT_GROUP_ANALYSIS in selected
+        or FINALIZE_OUTPUT_GROUP_QC in selected
+    ):
         from phenotypic.plotting._pipeline import (
             AnalysisRegistry,
             PlotCoordinator,
         )
 
-        _guarded_terminal_call(
-            commit_guard,
-            lambda: _persist_pipeline_to_output_dir(output_dir, pipeline),
-        )
         measurements_pd = post_df.to_pandas()
         coordinator = PlotCoordinator(pipeline, output_dir)
         registry = AnalysisRegistry(deliverables_dir(output_dir))
-        _guarded_terminal_call(
-            commit_guard,
-            lambda: coordinator.emit_measurements(measurements_pd),
+    elif pipeline is None and FINALIZE_OUTPUT_GROUP_ANALYSIS in selected:
+        logger.warning(
+            "Pipeline not available — skipping analysis, QC, and "
+            "pipeline.json persistence (master files still written to %s)",
+            output_dir,
         )
 
-        analysis_result = _guarded_terminal_call(
-            commit_guard,
-            lambda: _emit_analysis_outputs(output_dir, post_df, pipeline),
-        )
-        if analysis_result is not None:
+    if FINALIZE_OUTPUT_GROUP_ANALYSIS in selected and pipeline is not None:
+        assert coordinator is not None and registry is not None
+        assert measurements_pd is not None
+        with logged_step(logger, "finalize outputs: measurement plots"):
             _guarded_terminal_call(
                 commit_guard,
-                lambda: registry.register(
-                    analysis_result.analysis_id,
-                    analysis_result.table,
-                    producer=analysis_result.producer,
-                    artifacts=analysis_result.artifacts,
-                    manifest_entry=analysis_result.manifest_entry,
-                ),
+                lambda: coordinator.emit_measurements(measurements_pd),
             )
-        _guarded_terminal_call(
-            commit_guard,
-            lambda: coordinator.emit_analyses(measurements_pd, registry),
-        )
+        with logged_step(logger, "finalize outputs: analysis"):
+            analysis_result = _guarded_terminal_call(
+                commit_guard,
+                lambda: _emit_analysis_outputs(output_dir, post_df, pipeline),
+            )
+            if analysis_result is not None:
+                _guarded_terminal_call(
+                    commit_guard,
+                    lambda: registry.register(
+                        analysis_result.analysis_id,
+                        analysis_result.table,
+                        producer=analysis_result.producer,
+                        artifacts=analysis_result.artifacts,
+                        manifest_entry=analysis_result.manifest_entry,
+                    ),
+                )
+        with logged_step(logger, "finalize outputs: analysis plots"):
+            _guarded_terminal_call(
+                commit_guard,
+                lambda: coordinator.emit_analyses(measurements_pd, registry),
+            )
 
+    if FINALIZE_OUTPUT_GROUP_QC in selected and pipeline is not None:
+        assert coordinator is not None and registry is not None
+        assert measurements_pd is not None
         # QC compute + review-progress reset. A fresh CLI run is "a different
         # run", so the GUI-owned review_state.json is cleared regardless of
         # whether QC then recomputes (so stale review progress never carries
@@ -1258,56 +1407,79 @@ def finalize_post_master_outputs(
             # the qc package __init__ free of an eager _runner import.
             from phenotypic.sdk_._qc_recipe._runner import run_qc
 
-            successful = _guarded_terminal_best_effort(
-                commit_guard,
-                lambda: run_qc(measurements_pd, pipeline, output_dir),
-                warning="QC compute failed (master/measurements still written)",
-                default=(),
-            )
+            with logged_step(logger, "finalize outputs: QC"):
+                successful = _guarded_terminal_best_effort(
+                    commit_guard,
+                    lambda: run_qc(measurements_pd, pipeline, output_dir),
+                    warning=(
+                        "QC compute failed (master/measurements still written)"
+                    ),
+                    default=(),
+                )
             successful_qc = {
                 module.instance_id: module for module in successful
             }
-        _guarded_terminal_call(
-            commit_guard,
-            lambda: coordinator.emit_qc(
-                measurements_pd,
-                registry,
-                successful_modules=successful_qc,
-                qc_database=(
-                    qc_duckdb_path(output_dir) if successful_qc else None
+        with logged_step(logger, "finalize outputs: QC plots"):
+            _guarded_terminal_call(
+                commit_guard,
+                lambda: coordinator.emit_qc(
+                    measurements_pd,
+                    registry,
+                    successful_modules=successful_qc,
+                    qc_database=(
+                        qc_duckdb_path(output_dir) if successful_qc else None
+                    ),
                 ),
-            ),
-        )
-    else:
-        logger.warning(
-            "Pipeline not available — skipping analysis, QC, and "
-            "pipeline.json persistence (master files still written to %s)",
+            )
+
+    if FINALIZE_OUTPUT_GROUP_TABLES in selected:
+        _publish_split_tables(
             output_dir,
+            master_df=master_df,
+            post_df=post_df,
+            pipeline=pipeline,
+            commit_guard=commit_guard,
         )
+
+
+def _publish_split_tables(
+    output_dir: Path,
+    *,
+    master_df: "pl.DataFrame",
+    post_df: "pl.DataFrame",
+    pipeline: Optional["ImagePipeline"],
+    commit_guard: "CommitGuard | None",
+) -> None:
+    """Write the per-feature and per-category splits and re-emit error triage."""
+    from ._cli_utils import logged_step
 
     # Splits operate on the post-applied frame so per-feature spreadsheets
     # match what the GUI viewer reads from measurements.{csv,parquet}. The
     # clean master_measurements.* remains the archival source of truth.
-    _guarded_terminal_best_effort(
-        commit_guard,
-        lambda: split_master_by_feature(post_df, output_dir, pipeline),
-        warning=(
-            "Per-feature measurement split failed (master files still written)"
-        ),
-        default={},
-    )
+    with logged_step(logger, "finalize outputs: per-feature split"):
+        _guarded_terminal_best_effort(
+            commit_guard,
+            lambda: split_master_by_feature(post_df, output_dir, pipeline),
+            warning=(
+                "Per-feature measurement split failed "
+                "(master files still written)"
+            ),
+            default={},
+        )
 
     # Same frame, same guard: one spreadsheet per measurement category
     # (deliverables/measurements_by_category/). This is the only call site, so
     # full, measure, recompile and a full-run --mode migrate all publish it (spec §5.3).
-    _guarded_terminal_best_effort(
-        commit_guard,
-        lambda: split_master_by_category(post_df, output_dir),
-        warning=(
-            "Per-category measurement split failed (master files still written)"
-        ),
-        default={},
-    )
+    with logged_step(logger, "finalize outputs: per-category split"):
+        _guarded_terminal_best_effort(
+            commit_guard,
+            lambda: split_master_by_category(post_df, output_dir),
+            warning=(
+                "Per-category measurement split failed "
+                "(master files still written)"
+            ),
+            default={},
+        )
 
     # Re-emit the durable error-triage deliverables (errors/* + error_analysis.*)
     # from the labels store, keyed off the CLEAN master (the same frame the GUI's
@@ -1315,14 +1487,12 @@ def finalize_post_master_outputs(
     # qc/curation_labels.parquet. (spec §9)
     from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
 
-    _guarded_terminal_best_effort(
-        commit_guard,
-        lambda: reemit_error_deliverables(output_dir, master_df),
-        warning="Failed to re-emit error-triage deliverables",
-    )
-
-    return post_df
-
+    with logged_step(logger, "finalize outputs: error re-emit"):
+        _guarded_terminal_best_effort(
+            commit_guard,
+            lambda: reemit_error_deliverables(output_dir, master_df),
+            warning="Failed to re-emit error-triage deliverables",
+        )
 
 def _reset_qc_review_state(output_dir: Path) -> None:
     """Delete ``qc/review_state.json`` if present (CLI rerun resets review).

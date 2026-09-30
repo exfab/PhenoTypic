@@ -3962,12 +3962,34 @@ def _handle_recompile_slurm(
     # headers, so there is nothing to fan out and no afterok barrier to place
     # in front of the recompile array.
     flat_scripts: list[Path] = list(scripts)
+    recompile_manifest_path = (
+        recompile_attempt_dir(output_dir, attempt_id)
+        / RECOMPILE_TASK_MANIFEST_JSON
+    )
+    # The finalizer runs as a chain of dependent jobs after the last array
+    # (`_cli_finalize_chain`), each with its own walltime. Its shards are this
+    # attempt's measurement tasks, so the chain has no shard stage of its own.
+    from phenotypic._cli._cli_finalize_chain import (
+        MODE_RECOMPILE,
+        write_finalize_chain,
+    )
+
+    finalizer_script = write_finalize_chain(
+        output_dir,
+        mode=MODE_RECOMPILE,
+        generation=attempt_id,
+        slurm_args=slurm_args,
+        shards=0,
+        recompile_manifest=recompile_manifest_path,
+        recompile_finalizer_index=finalizer_task_index,
+    )
     submission_args: dict[str, Any] = {
         "flat_chunk_scripts": flat_scripts,
         "output_dir": output_dir,
         "slurm_args": slurm_args,
         "console": console,
         "generation": attempt_id,
+        "finalizer_script": finalizer_script,
     }
     try:
         _initialize_recompile_slurm_attempt(output_dir, attempt_id)
@@ -3983,10 +4005,6 @@ def _handle_recompile_slurm(
     flat_scripts = submission.flat_scripts
     job_ids = submission.job_ids
 
-    recompile_manifest_path = (
-        recompile_attempt_dir(output_dir, attempt_id)
-        / RECOMPILE_TASK_MANIFEST_JSON
-    )
     job_metadata = {
         JobMetadataKey.START_TIME: datetime.now().isoformat(
             timespec="milliseconds"

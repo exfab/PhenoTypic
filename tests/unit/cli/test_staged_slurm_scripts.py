@@ -140,10 +140,13 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
             "export PHENOTYPIC_PROCESSING_GENERATION=generation-123"
             in worker_script
         )
-    assert "_cli_checkpoint_handler" in finalizer
-    assert "--checkpoint-type finalize" in finalizer
-    assert "--epoch epoch-1" in finalizer
+    # The staged finalizer is the first job of the finalizer chain, on the
+    # CPU profile; it submits the rest of the chain once Stage 3 is terminal.
+    assert "_cli_finalize_chain" in finalizer
+    assert "--stage prepare" in finalizer
+    assert "--generation epoch-1" in finalizer
     assert "--partition=batch" in finalizer
+    assert "--gpus-per-node" not in finalizer
     assert "_cli_staged_controller" in controller
     # The controller must restore the reviewed source path before it imports
     # PhenoTypic and before its nested lifecycle submissions inherit the env.

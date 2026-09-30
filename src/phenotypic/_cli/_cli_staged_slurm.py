@@ -287,13 +287,58 @@ def _write_image_stage_chunks(
     return scripts
 
 
-def _finalizer_body(python_str: str, output_dir: Path, epoch: str) -> str:
-    """Build the canonical aggregate/finalize command for staged runs."""
-    return (
-        f"{python_str} -m phenotypic._cli._cli_checkpoint_handler "
-        f"--output-dir {shlex.quote(str(output_dir.absolute()))} "
-        "--checkpoint-type finalize "
-        f"--epoch {shlex.quote(epoch)}"
+def _write_staged_finalizer_chain(
+    *,
+    output_dir: Path,
+    epoch: str,
+    cpu_slurm_args: Dict[str, Any],
+    array_limit: int,
+    markers_required: bool,
+    processing_generation: str | None,
+    dataset_names: Sequence[str],
+    image_count: int,
+) -> Path:
+    """Write the staged finalizer chain and return its ``prepare`` script.
+
+    The chain aggregates through the same shard fan-out as an ordinary run.
+    **Only on a marker-authorized run**: the shard worker reads
+    ``authorized_measurement_sources`` and refuses a tree without them, so a
+    staged run that does not require Stage-3 markers gets K = 0, and the
+    master job reads the tables directly, as the single-job finalizer did.
+    """
+    from ._cli_finalize_chain import MODE_STAGED, write_finalize_chain
+    from ._cli_finalize_fanout import (
+        SECONDS_PER_IMAGE_S2,
+        begin_aggregation_fanout,
+        shard_count,
+    )
+    from ._cli_update_state import PROCESSING_GENERATION_ENV_VAR
+
+    shards = 0
+    if markers_required and image_count > 0:
+        shards = shard_count(
+            n_images=image_count,
+            seconds_per_image=SECONDS_PER_IMAGE_S2,
+            max_array_size=array_limit,
+        )
+        begin_aggregation_fanout(
+            output_dir,
+            scheduler_epoch=epoch,
+            shards=shards,
+            dataset_names=list(dataset_names),
+        )
+    environment = (
+        {PROCESSING_GENERATION_ENV_VAR: processing_generation}
+        if processing_generation
+        else {}
+    )
+    return write_finalize_chain(
+        output_dir,
+        mode=MODE_STAGED,
+        generation=epoch,
+        slurm_args=cpu_slurm_args,
+        shards=shards,
+        environment=environment,
     )
 
 
@@ -325,6 +370,8 @@ def generate_staged_scripts(
     durable_writes: bool | None = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    finalize_dataset_names: Sequence[str] | None = None,
+    finalize_image_count: int | None = None,
 ) -> Dict[str, Any]:
     """Write the per-stage SBATCH array scripts (no submission).
 
@@ -337,8 +384,15 @@ def generate_staged_scripts(
 
     Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...],
     "finalizer": Path}`` — the image stages are always lists (length 1 when
-    unchunked). The one-task finalizer uses the CPU profile and invokes the same
-    aggregate/finalize entry point as ordinary SLURM runs.
+    unchunked). ``"finalizer"`` is the first job of the finalizer chain
+    (``_cli_finalize_chain``), which the controller submits as its
+    ``"finalizer"`` work job; that job submits the rest of the chain on the
+    CPU profile, one walltime per stage.
+
+    ``finalize_dataset_names`` and ``finalize_image_count`` size the chain's
+    aggregation fan-out. They describe the **full** accepted inventory, not
+    this manifest, which is empty on a finalizer-only resume. ``None`` falls
+    back to the manifest.
     """
     script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
@@ -418,14 +472,23 @@ def generate_staged_scripts(
         body=_image_stage_body(3),
         chunks=chunks,
     )
-    finalizer = _write_stage_script(
-        script_dir,
-        log_dir,
-        "finalizer",
-        "phenotypic-finalize",
-        cpu_slurm_args,
-        [0],
-        _finalizer_body(python_str, output_dir, epoch),
+    finalizer = _write_staged_finalizer_chain(
+        output_dir=output_dir,
+        epoch=epoch,
+        cpu_slurm_args=cpu_slurm_args,
+        array_limit=array_limit,
+        markers_required=markers_required,
+        processing_generation=processing_generation,
+        dataset_names=(
+            list(finalize_dataset_names)
+            if finalize_dataset_names is not None
+            else list(dict.fromkeys(entry.dataset for entry in datasets_manifest))
+        ),
+        image_count=(
+            finalize_image_count
+            if finalize_image_count is not None
+            else n_images
+        ),
     )
     controller_config = script_dir / "staged_controller.json"
     controller = _write_stage_script(
@@ -619,6 +682,12 @@ class StagedSlurmStrategy(ExecutionStrategy):
         # ordering against the submit-capacity guard above it. Moving it
         # earlier would pre-empt that guard's error message.
         staged_slot = staged_detector_slot(cfg.pipeline_json)
+        # The finalizer aggregates the FULL accepted inventory, not this
+        # invocation's worklist -- which is empty on a finalizer-only resume.
+        finalize_inventory = getattr(cfg, "full_dataset_inventory", None) or {
+            dataset.name: [image.name for image in dataset.images]
+            for dataset in datasets
+        }
         scripts = generate_staged_scripts(
             pipeline_path=cfg.pipeline_json,
             detector_slot=staged_slot,
@@ -641,6 +710,10 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 cfg,
                 "processing_generation",
                 None,
+            ),
+            finalize_dataset_names=list(finalize_inventory),
+            finalize_image_count=sum(
+                len(images) for images in finalize_inventory.values()
             ),
         )
         state = initialize_orchestration(

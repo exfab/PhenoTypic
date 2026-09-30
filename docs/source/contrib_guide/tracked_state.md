@@ -313,6 +313,24 @@ either of these and every answer the system gives is identical — only slower
 
 ---
 
+## (e) Per-finalization coordination files
+
+Some files are read, and branched on, **within one SLURM finalization only**.
+They coordinate the jobs of that one pass, then stop mattering. They are not a
+fifth tracked state: `resolve_run_state` never reads them, no run-level verdict
+comes from them, and the next submission clears them before any job exists.
+
+| Artifact | Written by | Read by | Cleared |
+|---|---|---|---|
+| `.phenotypic/progress/aggregation_shards/<generation>/` (shards, `task_manifest.json`, `status/`) | the fan-out's shard tasks | the finalizer's shard-completeness check | `begin_aggregation_fanout`, at submission |
+| `.phenotypic/progress/finalize_chain/<generation>/` (`chain.json`, `handoff.json`, `status/<stage>_<i>.json`) | the finalizer chain's jobs (`_cli_finalize_chain.py`) | the chain's later jobs: `outputs`/`qc` skip when `master` published nothing, and `publish` refuses to certify when any task failed or left no status | `write_finalize_chain`, at submission |
+
+What a pass concludes still lives only in (a) and (b). A chain that finishes
+publishes the aggregate proof and the run proof; one that does not publishes
+neither, and the run reads `incomplete` from the proofs alone.
+
+---
+
 ## The one that fits none of the above: `migration_manifest.json`
 
 `.phenotypic/migration_manifest.json` is written by `--mode migrate`, is

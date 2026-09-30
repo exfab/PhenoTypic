@@ -39,6 +39,15 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 logger = logging.getLogger(__name__)
 
 
+class FinalizationIncomplete(RuntimeError):
+    """A finalization closed its run as terminal-incomplete, deliberately.
+
+    Raised after the lifecycle is already closed, so the job reads as failed
+    in the scheduler. Callers must not treat it as an unexpected error and
+    close the lifecycle a second time as ``failed``.
+    """
+
+
 @click.command("checkpoint-handler")
 @click.option(
     "--output-dir",
@@ -197,6 +206,13 @@ def _run_finalize(
 ) -> None:
     """Wait for completion, then run final aggregation + manifest + analysis.
 
+    **The single-job finalizer.** New SLURM submissions run the same work as a
+    chain of dependent jobs (``_cli_finalize_chain``), which calls the three
+    helpers below one job at a time. This composition stays for a run that
+    was submitted before the chain existed: its already-written finalizer
+    script calls this entry point, and the installed code must still finish
+    it.
+
     Args:
         output_dir: Root output directory.
         progress_dir: Progress directory containing ``job_metadata.json``.
@@ -207,35 +223,107 @@ def _run_finalize(
             logger.warning("No job_metadata.json; cannot finalize")
             return
         raise RuntimeError("No job_metadata.json; cannot finalize")
-    slurm_generation_raw = job_metadata.get("slurm_generation")
-    slurm_generation = (
-        str(slurm_generation_raw)
-        if isinstance(slurm_generation_raw, str) and slurm_generation_raw
-        else None
-    )
+    slurm_generation = _job_metadata_generation(job_metadata)
 
     if epoch is not None:
         from ._cli_staged_orchestration import assert_active_epoch
 
         assert_active_epoch(output_dir, epoch)
 
-    def _check_epoch() -> None:
-        if epoch is not None:
-            from ._cli_staged_orchestration import assert_active_epoch
+    _prepare_finalization(output_dir, progress_dir, job_metadata, epoch=epoch)
 
-            assert_active_epoch(output_dir, epoch)
+    datasets_totals = _dataset_totals(job_metadata)
+    metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
+    metadata_csv = Path(metadata_csv_str) if metadata_csv_str else None
 
+    # P5, CAN-19: this job is index K of its own array -- the reserved
+    # TASK_FINALIZE entry -- and indices 0..K-1 have aggregated the embedded
+    # tables into shards. `resolve_finalizer_shard_inputs` waits for them,
+    # refuses to proceed unless the shard set is complete, and hands back the
+    # source set the shards actually merged so the proof describes this
+    # master. `None` means this invocation never fanned out, which is the
+    # ordinary local path and not an error.
+    from ._cli_finalize_fanout import resolve_finalizer_shard_inputs
+
+    with logged_step(logger, "finalize: wait for aggregation shards"):
+        fanout_inputs = resolve_finalizer_shard_inputs(
+            output_dir, slurm_generation
+        )
+    shard_paths, planned_work_ids = fanout_inputs or (None, None)
+
+    # Final aggregation
+    from ._cli_output_manager import aggregate_measurements
+
+    with logged_step(logger, "finalize: aggregate measurements"):
+        aggregate_path = aggregate_measurements(
+            output_dir=output_dir,
+            dataset_names=list(datasets_totals.keys()),
+            include_dataset_column=job_metadata.get(
+                JobMetadataKey.INCLUDE_DATASET_COLUMN, True
+            ),
+            metadata_csv=metadata_csv,
+            no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
+            shard_paths=shard_paths,
+            planned_work_ids=planned_work_ids,
+        )
+    _publish_finalization_tail(
+        output_dir,
+        progress_dir,
+        job_metadata,
+        epoch=epoch,
+        aggregate_path=aggregate_path,
+    )
+
+
+def _job_metadata_generation(job_metadata: dict) -> str | None:
+    """Return the recorded SLURM lifecycle generation, or ``None``."""
+    raw = job_metadata.get("slurm_generation")
+    return str(raw) if isinstance(raw, str) and raw else None
+
+
+def _dataset_totals(job_metadata: dict) -> dict[str, int]:
+    """Return ``{dataset: image count}`` from job metadata."""
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
-    datasets_totals: dict[str, int] = {
+    return {
         name: (info["total"] if isinstance(info, dict) else int(info))
         for name, info in datasets_raw.items()
     }
+
+
+def _check_active_epoch(output_dir: Path, epoch: str | None) -> None:
+    """Raise when *epoch* is set and no longer the active staged epoch."""
+    if epoch is not None:
+        from ._cli_staged_orchestration import assert_active_epoch
+
+        assert_active_epoch(output_dir, epoch)
+
+
+def _prepare_finalization(
+    output_dir: Path,
+    progress_dir: Path,
+    job_metadata: dict,
+    *,
+    epoch: str | None,
+) -> None:
+    """Everything a finalizer does before it reads a measurement table.
+
+    Ordinary runs wait for the event log to account for every image (the
+    finalizer is ``afterany``, so this normally returns at once); staged runs
+    reconcile their Stage-3 publications instead.
+
+    Args:
+        output_dir: Root output directory.
+        progress_dir: Progress directory containing ``job_metadata.json``.
+        job_metadata: The loaded job metadata.
+        epoch: Staged orchestration epoch, or ``None`` for an ordinary run.
+    """
+    datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
     from ._dashboard._manifest_builder import (
         dataset_inventory_from_metadata,
     )
 
     dataset_inventory = dataset_inventory_from_metadata(datasets_raw)
-    total_expected = sum(datasets_totals.values())
+    total_expected = sum(_dataset_totals(job_metadata).values())
 
     # Wait for all images to complete (or fail)
     if epoch is None:
@@ -250,10 +338,7 @@ def _run_finalize(
                 timeout=600,
             )
 
-    # Final aggregation
-    from ._cli_output_manager import aggregate_measurements
-
-    _check_epoch()
+    _check_active_epoch(output_dir, epoch)
     if epoch is not None:
         from ._cli_staged_orchestration import (
             load_orchestration_state,
@@ -281,39 +366,54 @@ def _run_finalize(
                     ),
                     namespace=epoch,
                 )
-        _check_epoch()
+        _check_active_epoch(output_dir, epoch)
 
-    metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
-    metadata_csv = Path(metadata_csv_str) if metadata_csv_str else None
 
-    # P5, CAN-19: this job is index K of its own array -- the reserved
-    # TASK_FINALIZE entry -- and indices 0..K-1 have aggregated the embedded
-    # tables into shards. `resolve_finalizer_shard_inputs` waits for them,
-    # refuses to proceed unless the shard set is complete, and hands back the
-    # source set the shards actually merged so the proof describes this
-    # master. `None` means this invocation never fanned out, which is the
-    # ordinary local path and not an error.
-    from ._cli_finalize_fanout import resolve_finalizer_shard_inputs
+def _publish_finalization_tail(
+    output_dir: Path,
+    progress_dir: Path,
+    job_metadata: dict,
+    *,
+    epoch: str | None,
+    aggregate_path: Path | None,
+    incomplete_reason: str | None = None,
+) -> None:
+    """Everything a finalizer does after the aggregate proof.
 
-    with logged_step(logger, "finalize: wait for aggregation shards"):
-        fanout_inputs = resolve_finalizer_shard_inputs(
-            output_dir, slurm_generation
-        )
-    shard_paths, planned_work_ids = fanout_inputs or (None, None)
+    The display manifest, the dashboard, the staged report and README, and
+    the completion decision: publish the run proof and close the lifecycle,
+    or close it as terminal-incomplete.
 
-    with logged_step(logger, "finalize: aggregate measurements"):
-        aggregate_path = aggregate_measurements(
-            output_dir=output_dir,
-            dataset_names=list(datasets_totals.keys()),
-            include_dataset_column=job_metadata.get(
-                JobMetadataKey.INCLUDE_DATASET_COLUMN, True
-            ),
-            metadata_csv=metadata_csv,
-            no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
-            shard_paths=shard_paths,
-            planned_work_ids=planned_work_ids,
-        )
-    if aggregate_path is None:
+    Args:
+        output_dir: Root output directory.
+        progress_dir: Progress directory containing ``job_metadata.json``.
+        job_metadata: The loaded job metadata.
+        epoch: Staged orchestration epoch, or ``None`` for an ordinary run.
+        aggregate_path: The master the aggregation wrote, or ``None`` when
+            there was nothing to aggregate.
+        incomplete_reason: Set by the finalizer chain when one of its jobs
+            failed or was killed. The manifest and dashboard are still
+            rebuilt, so the failure is visible; then the lifecycle is closed
+            as terminal-incomplete, no completion marker is published, and
+            :class:`RuntimeError` carrying the reason is raised so the job
+            itself reads as failed. Re-running the same command recovers.
+
+    Raises:
+        FinalizationIncomplete: *incomplete_reason* is set.
+        RuntimeError: A staged or ordinary SLURM finalization could not
+            publish its outputs.
+    """
+    slurm_generation = _job_metadata_generation(job_metadata)
+    datasets_totals = _dataset_totals(job_metadata)
+    datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
+    from ._dashboard._manifest_builder import (
+        build_manifest,
+        dataset_inventory_from_metadata,
+    )
+
+    dataset_inventory = dataset_inventory_from_metadata(datasets_raw)
+
+    if aggregate_path is None and incomplete_reason is None:
         message = "No current-epoch measurements were available to aggregate"
         if epoch is not None:
             from ._cli_completion import state_requires_success_markers
@@ -330,14 +430,9 @@ def _run_finalize(
             )
         else:
             logger.warning(message)
-    _check_epoch()
+    _check_active_epoch(output_dir, epoch)
 
     # Final manifest
-    from ._dashboard._manifest_builder import (
-        build_manifest,
-        dataset_inventory_from_metadata,
-    )
-
     with logged_step(logger, "finalize: build manifest"):
         build_manifest(
             output_dir=output_dir,
@@ -353,7 +448,7 @@ def _run_finalize(
                 JobMetadataKey.PROCESSING_GENERATION
             ),
         )
-    _check_epoch()
+    _check_active_epoch(output_dir, epoch)
 
     # Regenerate dashboard
     try:
@@ -364,11 +459,17 @@ def _run_finalize(
                 output_dir,
                 execution_mode=resolve_execution_mode(job_metadata),
             )
-        _check_epoch()
+        _check_active_epoch(output_dir, epoch)
     except Exception:
-        if epoch is not None or slurm_generation is not None:
+        if incomplete_reason is None and (
+            epoch is not None or slurm_generation is not None
+        ):
             raise
         logger.warning("Dashboard generation failed", exc_info=True)
+
+    if incomplete_reason is not None:
+        _close_incomplete(output_dir, epoch, slurm_generation)
+        raise FinalizationIncomplete(incomplete_reason)
 
     if epoch is not None:
         with logged_step(logger, "finalize: publish report and README"):
@@ -404,6 +505,33 @@ def _run_finalize(
             _publish_run_completion_marker(output_dir, slurm_generation)
 
     logger.info("Finalization complete")
+
+
+def _close_incomplete(
+    output_dir: Path, epoch: str | None, slurm_generation: str | None
+) -> None:
+    """Close a finalization that must not certify the run.
+
+    Staged runs deactivate their orchestration as ``failed``; ordinary runs
+    deactivate the lifecycle generation. Neither publishes a completion marker
+    or a run proof, so the run state reads ``incomplete`` and re-running the
+    same command finalizes it again.
+
+    **Why** ``failed`` **and not** ``terminal_incomplete`` **on a staged run.**
+    The staged ``--wait`` loop ends only on ``complete``, ``failed`` or
+    ``cancelled`` (``StagedSlurmStrategy._wait_for_finalizer``), and a
+    controller cannot move a fenced epoch out of ``terminal_incomplete``. A
+    finalizer job that did not finish is a failure of the finalization, which
+    is what ``failed`` says; it does not claim anything about the images.
+    """
+    if epoch is not None:
+        from ._cli_staged_orchestration import deactivate_orchestration
+
+        deactivate_orchestration(output_dir, "failed")
+    elif slurm_generation is not None:
+        from ._cli_slurm_lifecycle import deactivate_generation
+
+        deactivate_generation(output_dir, slurm_generation)
 
 
 def _publish_run_completion_marker(
