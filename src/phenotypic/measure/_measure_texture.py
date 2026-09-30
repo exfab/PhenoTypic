@@ -129,6 +129,39 @@ class MeasureTexture(MeasureFeatures):
             raise ValueError(f"scale values must be distinct, got {scale}")
         return scale
 
+    @classmethod
+    def output_header(cls, member, on: str | None = None) -> str:
+        """Return the header pattern written for a texture feature.
+
+        Each feature is written once per direction and once averaged, at each
+        scale, so the documented form carries two placeholders; see
+        :meth:`output_header_placeholders`.
+        """
+        if isinstance(member, TEXTURE):
+            return TEXTURE.header(member, "<direction>", "<x>")
+        return super().output_header(member, on)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define the ``<x>`` scale and ``<direction>`` placeholders."""
+        example = TEXTURE.header(TEXTURE.CONTRAST, "deg045", 5)
+        return {
+            "<x>": (
+                "the ``scale`` parameter: the distance, in pixels, between the two "
+                "pixels compared when building the gray-level co-occurrence matrix, "
+                "zero-padded to two digits. The default ``scale=5`` writes "
+                "``scale05``. To convert it to a physical distance, divide by your "
+                "image's pixels per millimetre: at 40 px/mm, ``scale05`` compares "
+                "pixels 0.125 mm apart."
+            ),
+            "<direction>": (
+                "the direction of that offset: ``deg000``, ``deg045``, ``deg090`` or "
+                "``deg135`` (degrees), or ``avg``, the mean of the four. Each feature "
+                "therefore writes five columns per scale, e.g. "
+                f"``{example}``."
+            ),
+        }
+
     def _operate(self, image: Image) -> pd.DataFrame:
         """Performs texture measurements on the image objects.
 

@@ -6,7 +6,7 @@ import inspect
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Iterator, TypeAlias, TypeGuard
+from typing import Iterable, Iterator, Protocol, TypeAlias, TypeGuard
 
 import pandas as pd
 import polars as pl
@@ -17,13 +17,80 @@ from phenotypic.schema import CATEGORIES, MeasurementInfo
 MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
 
 
+class _TableProducer(Protocol):
+    """What the registry needs from a producer class: its header emitter."""
+
+    @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str: ...
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]: ...
+
+
 @dataclass(frozen=True)
-class _MeasurementProducer:
-    """A public producer class and the ``MeasurementInfo`` enums it owns."""
+class MeasurementProducer:
+    """A public operation that writes a table, and the schemas of its columns.
+
+    Attributes:
+        output_key: The producer's class name; also its file stem under
+            ``deliverables/measurements_by_feature/``.
+        producer: The operation class (a ``MeasureFeatures`` or
+            ``SetAnalyzer`` subclass).
+        primary_infos: Schemas this producer owns, in declaration order,
+            including any a parameter switches on (``MeasureColor``'s XYZ).
+        shared_infos: Schemas every producer of its kind writes alongside its
+            own (``MODEL_METRICS`` for growth models, ``QUALITY_CHECK`` for
+            quality checks).
+    """
 
     output_key: str
+    producer: type[_TableProducer]
     primary_infos: tuple[type[MeasurementInfo], ...]
     shared_infos: tuple[type[MeasurementInfo], ...] = ()
+
+    def output_header(self, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header the producer writes for *member*.
+
+        Delegates to the producer class's ``output_header``. Analyzers whose
+        headers differ from the enum value (quality checks, growth models,
+        edge correction) call that same method when they write their columns.
+        Measurement operations write ``member.value`` or an enum helper
+        (``TEXTURE.header``) directly, so for them agreement is not structural:
+        ``tests/unit/util/test_output_headers.py`` runs every producer and
+        checks the documented names against the columns written.
+
+        Args:
+            member: A member of one of this producer's schemas.
+            on: The analyzed column, for producers whose headers embed it;
+                ``None`` renders a placeholder such as ``<metric>``.
+
+        Returns:
+            The emitted header.
+        """
+        return self.producer.output_header(member, on)
+
+
+def measurement_producers() -> tuple[MeasurementProducer, ...]:
+    """Return every public operation that writes a table of schema columns.
+
+    Covers the public ``phenotypic.measure`` operations and the public
+    ``phenotypic.analysis`` analyzers that declare a ``MeasurementInfo``
+    schema. Analyzers that only remove rows (the outlier removers) declare
+    none and are not listed. The Measurements reference, the
+    ``measurements_by_feature/`` split and the deliverables README all read
+    this registry.
+
+    Returns:
+        Producers in discovery order: measurement operations, then analyzers,
+        each alphabetical.
+
+    Examples:
+        >>> from phenotypic.util import measurement_producers
+        >>> size = next(p for p in measurement_producers() if p.output_key == "MeasureSize")
+        >>> [info.__name__ for info in size.primary_infos]
+        ['SIZE']
+    """
+    return _discover_measurement_producers()
 
 
 def split_measurements(df: MeasurementFrame) -> dict[str, MeasurementFrame]:
@@ -189,15 +256,15 @@ def _producer_column_groups(columns: Iterable[str]) -> dict[str, list[str]]:
 
 
 @lru_cache(maxsize=1)
-def _discover_measurement_producers() -> tuple[_MeasurementProducer, ...]:
+def _discover_measurement_producers() -> tuple[MeasurementProducer, ...]:
     """Discover public measurement producers from public modules."""
     import phenotypic.analysis as analysis_module
     import phenotypic.measure as measure_module
     from phenotypic.abc_ import MeasureFeatures
     from phenotypic.analysis.abc_ import ModelFitter, QualityCheck, SetAnalyzer
-    from phenotypic.schema import MODEL_METRICS
+    from phenotypic.schema import MODEL_METRICS, QUALITY_CHECK
 
-    producers: list[_MeasurementProducer] = []
+    producers: list[MeasurementProducer] = []
 
     for name, cls in inspect.getmembers(measure_module, inspect.isclass):
         if name.startswith("_"):
@@ -206,7 +273,7 @@ def _discover_measurement_producers() -> tuple[_MeasurementProducer, ...]:
             continue
         infos = _declared_info_classes(cls)
         if infos:
-            producers.append(_MeasurementProducer(name, infos))
+            producers.append(MeasurementProducer(name, cls, infos))
 
     for name, cls in inspect.getmembers(analysis_module, inspect.isclass):
         if name.startswith("_"):
@@ -224,14 +291,22 @@ def _discover_measurement_producers() -> tuple[_MeasurementProducer, ...]:
             primary_infos = tuple(info for info in infos if info is not MODEL_METRICS)
             if primary_infos:
                 producers.append(
-                    _MeasurementProducer(
+                    MeasurementProducer(
                         name,
+                        cls,
                         primary_infos,
                         shared_infos=(MODEL_METRICS,),
                     )
                 )
+        elif issubclass(cls, QualityCheck):
+            # The shared QC trio is written as QC_<name>_Metric/Flag/Status,
+            # which QUALITY_CHECK does not own, so it never claims a column
+            # in split_measurements; it is listed for documentation.
+            producers.append(
+                MeasurementProducer(name, cls, infos, shared_infos=(QUALITY_CHECK,))
+            )
         else:
-            producers.append(_MeasurementProducer(name, infos))
+            producers.append(MeasurementProducer(name, cls, infos))
 
     return tuple(producers)
 

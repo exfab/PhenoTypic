@@ -1,5 +1,5 @@
 from phenotypic.schema import Entry, REMBI_MODULE
-from phenotypic.schema._tiers import IdentityInfo
+from phenotypic.schema import IdentityInfo
 
 
 class _ModEnum(IdentityInfo):

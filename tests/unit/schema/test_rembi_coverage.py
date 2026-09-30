@@ -1,6 +1,6 @@
 import phenotypic.schema as schema
 from phenotypic.schema import MeasurementInfo, REMBI_MODULE
-from phenotypic.schema._tiers import (
+from phenotypic.schema import (
     DirectPhenotype, DescriptiveTrait, DiscriminativeFeature,
     IdentityInfo, QualityInfo, DerivedMeasure, PrimaryMeasure,
 )

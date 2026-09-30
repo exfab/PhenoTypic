@@ -101,14 +101,25 @@ def test_legacy_python_names_warn_resolve_by_identity_and_stay_out_of_all():
     assert issubclass(caught[0].category, DeprecationWarning)
 
 
-def test_direct_experimental_tags_package_imports_have_the_same_transition_aliases():
-    import phenotypic.schema._experimental_tags as tags
+@pytest.mark.parametrize(
+    "path",
+    [
+        # The pre-2026-09 path callers imported directly; kept as a shim.
+        "phenotypic.schema._experimental_tags",
+        "phenotypic.schema._metadata._experimental_tags",
+    ],
+)
+def test_direct_experimental_tags_package_imports_have_the_same_transition_aliases(path):
+    import importlib
+
+    tags = importlib.import_module(path)
 
     assert "GENETIC_METADATA" not in tags.__all__
+    assert tags.GENETIC is schema.GENETIC
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        from phenotypic.schema._experimental_tags import GENETIC_METADATA
+        exec(f"from {path} import GENETIC_METADATA", (namespace := {}))
 
-    assert GENETIC_METADATA is schema.GENETIC
+    assert namespace["GENETIC_METADATA"] is schema.GENETIC
     assert len(caught) == 1
     assert issubclass(caught[0].category, DeprecationWarning)

@@ -246,6 +246,11 @@ class _BackCompatUnpickler(pickle.Unpickler):
 
     Scoped to the moved symbol only and used solely for unpickling — it does not
     reintroduce ``METADATA`` into ``constants_``'s import namespace.
+
+    ``_MOVED_CLASSES`` covers renamed *names* and pre-``schema`` paths. Any other
+    class pickled under a private ``phenotypic.schema._*`` module resolves by
+    name through the public package (:meth:`_public_schema_class`), so moving a
+    schema file needs no new row here.
     """
 
     _MOVED_CLASSES: dict[tuple[str, str], tuple[str, str]] = {
@@ -293,7 +298,30 @@ class _BackCompatUnpickler(pickle.Unpickler):
 
     def find_class(self, module: str, name: str):
         module, name = self._MOVED_CLASSES.get((module, name), (module, name))
+        if module.startswith("phenotypic.schema._"):
+            public = self._public_schema_class(name)
+            if public is not None:
+                return public
         return super().find_class(module, name)
+
+    @staticmethod
+    def _public_schema_class(name: str) -> type | None:
+        """Resolve a schema class pickled under any private module path.
+
+        Enum members pickle by their class's ``__module__``, which is the
+        private file the class lived in when the pickle was written (e.g.
+        ``phenotypic.schema._metadata`` before the 2026-09 reorganization moved
+        ``IMAGE`` to ``phenotypic.schema._metadata._image``). Resolving by name
+        through the public namespace makes every such path, past or future,
+        load without a per-move row. Legacy *names* still go through
+        ``_MOVED_CLASSES`` first, so their deprecation aliases never fire here.
+        """
+        import phenotypic.schema as schema
+
+        if name.startswith("_"):
+            return None
+        value = vars(schema).get(name)
+        return value if isinstance(value, type) else None
 
 
 class ImageIOHandler(ImageColorSpace):

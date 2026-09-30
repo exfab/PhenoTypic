@@ -252,18 +252,43 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
         }
         return {**model_cols, **metric_cols}
 
-    @property
-    def _metric_token(self) -> str:
-        """The ``<metric>`` header segment derived from ``self.on``."""
+    @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        Every fitted parameter and fit metric embeds the fitted measurement,
+        ``{Family}_{metric}_{label}`` (``LogGrowthModel_Area_r``), so the enum
+        value (``LogGrowthModel_r``) never appears in a table.
+
+        Args:
+            member: A member of the model's enum or of ``MODEL_METRICS``.
+            on: The fitted column (``Size_Area``). ``None`` renders the
+                ``<metric>`` placeholder used in the Measurements reference.
+
+        Returns:
+            The emitted header.
+        """
         from phenotypic.util._measurement_outputs import metric_token
 
-        return metric_token(str(self.on))
+        token = metric_token(str(on)) if on is not None else "<metric>"
+        return qualified_header(member, token)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<metric>``, with a header this model writes as the example."""
+        info = getattr(cls, "_measurement_infoclass", None) or MODEL_METRICS
+        member = next(iter(info))
+        return {
+            "<metric>": (
+                "the fitted column without its metric-family prefix: fitting "
+                f"``Size_Area`` writes ``{cls.output_header(member, 'Size_Area')}``."
+            )
+        }
 
     def _qualified_rename_map(self, results: pd.DataFrame) -> Dict[Any, str]:
         """Map member-object columns to their metric-qualified header strings."""
-        token = self._metric_token
         return {
-            column: qualified_header(column, token)
+            column: self.output_header(column, str(self.on))
             for column in results.columns
             if isinstance(column, MeasurementInfo)
         }
