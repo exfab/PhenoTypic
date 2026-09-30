@@ -415,7 +415,9 @@ def _placeholder_sentence(producer_cls: type) -> str:
 
 
 def _field_list(facts: list[tuple[str, str]]) -> list[str]:
-    return [*(f":{key}: {value}" for key, value in facts), ""]
+    # A bullet list, not an RST field list: pydata-sphinx-theme sets field
+    # names in a narrow column that breaks "One row per" one letter per line.
+    return [*(f"- **{key}:** {value}" for key, value in facts), ""]
 
 
 def _operation_page(page: _OperationPage, canonical: dict[type, str]) -> str:

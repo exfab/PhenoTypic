@@ -26,17 +26,17 @@ class ColorLab(DescriptiveTrait):
     # -- ΔE2000 medoid center (real pixel, perceptually-corrected) --
     L_STAR_MEDOID = Entry(
         "L*Medoid",
-        "L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
+        "L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
         categories=CATEGORIES.STARTING_METRICS,
     )
     A_STAR_MEDOID = Entry(
         "a*Medoid",
-        "a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
+        "a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
         categories=CATEGORIES.STARTING_METRICS,
     )
     B_STAR_MEDOID = Entry(
         "b*Medoid",
-        "b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
+        "b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's",
         categories=CATEGORIES.STARTING_METRICS,
     )
 
