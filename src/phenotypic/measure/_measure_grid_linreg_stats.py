@@ -63,9 +63,9 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
     def _operate(self, image: GridImage) -> pd.DataFrame:
         # Collect the relevant section info. If no section was specified perform calculation on the entire grid info table.
         if self.section_num is None:
-            section_info = image.grid.info().reset_index(drop=False)
+            section_info = image.grid.info(include_metadata=False)
         else:
-            grid_info = image.grid.info().reset_index(drop=False)
+            grid_info = image.grid.info(include_metadata=False)
             section_info = grid_info.loc[
                 grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)] == self.section_num, :
             ]
@@ -136,7 +136,11 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
             )
         )
 
-        return section_info.set_index(OBJECT.LABEL)
+        # Only the schema columns leave the measurer; grid.info() is the
+        # pipeline's own info block and would otherwise be emitted twice.
+        return section_info.set_index(OBJECT.LABEL).loc[
+            :, GRID_LINREG_STATS.get_headers()
+        ]
 
 
 MeasureGridLinRegStats.__doc__ = GRID_LINREG_STATS.append_rst_to_doc(
