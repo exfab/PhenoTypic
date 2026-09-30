@@ -20,10 +20,16 @@ from playwright.sync_api import Page
 
 
 def _install_message_listener(page: Page) -> None:
-    """Wire a window-scoped message listener that records phenotypic-dashboard
-    events into ``window.__pheno_received`` for later inspection."""
-    page.evaluate(
-        "() => {"
+    """Record phenotypic-dashboard events into ``window.__pheno_received``.
+
+    Registered as an init script, so the listener exists before the hub page
+    runs any code. The fixture's run is complete, so the dashboard posts its
+    ``manifest`` event once, on its first refresh, and then stops refreshing;
+    a listener attached after the iframe starts loading can miss that single
+    event for good.
+    """
+    page.add_init_script(
+        "(() => {"
         "  window.__pheno_received = [];"
         "  window.addEventListener('message', (e) => {"
         "    if (e?.data?.source === 'phenotypic-dashboard') {"
@@ -33,7 +39,7 @@ def _install_message_listener(page: Page) -> None:
         "      });"
         "    }"
         "  });"
-        "}"
+        "})();"
     )
 
 
@@ -65,16 +71,15 @@ def test_postshell_event_crosses_iframe_boundary(
 ) -> None:
     """The dashboard's ``postShellEvent`` reaches the parent window.
 
-    We click into the recent run, install a parent-side message listener,
-    then wait for the dashboard's refresh tick (default ~5 s). At least
-    one ``manifest`` event should land.
+    We install a parent-side message listener before the hub loads, click
+    into the recent run, then wait for the dashboard's first refresh. At
+    least one ``manifest`` event should land.
     """
+    _install_message_listener(page)
     page.goto(hub_url + "/run/")
     page.wait_for_selector('[id*="rc-recents-row"]', timeout=10_000)
     page.locator('[id*="rc-recents-row"]').first.click()
     page.wait_for_selector("#rc-iframe[src*='/runs/']", state="attached", timeout=5_000)
-
-    _install_message_listener(page)
 
     # Wait up to 12 s for at least one manifest event to arrive.
     page.wait_for_function(

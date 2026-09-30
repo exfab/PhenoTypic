@@ -379,7 +379,7 @@ class TestDesignTokens:
     def test_type_scale_is_monotonic(self) -> None:
         """The shared type scale (xs..3xl) must be increasing in rem."""
         sizes = [
-            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
+            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_DATA, _design.TEXT_BASE,
             _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
             _design.TEXT_2XL, _design.TEXT_3XL,
         ]
@@ -393,7 +393,7 @@ class TestDesignTokens:
         primitives. Catches a future rename of a primitive that forgets to
         update the alias."""
         primitives = {
-            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
+            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_DATA, _design.TEXT_BASE,
             _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
             _design.TEXT_2XL, _design.TEXT_3XL,
         }
@@ -404,6 +404,7 @@ class TestDesignTokens:
             "FONT_SIZE_HEADER_2": _design.FONT_SIZE_HEADER_2,
             "FONT_SIZE_BODY_LG": _design.FONT_SIZE_BODY_LG,
             "FONT_SIZE_BODY": _design.FONT_SIZE_BODY,
+            "FONT_SIZE_DATA": _design.FONT_SIZE_DATA,
             "FONT_SIZE_LABEL": _design.FONT_SIZE_LABEL,
             "FONT_SIZE_CAPTION": _design.FONT_SIZE_CAPTION,
         }
@@ -413,16 +414,17 @@ class TestDesignTokens:
             )
 
     def test_semantic_font_size_aliases_cover_full_scale(self) -> None:
-        """The eight semantic aliases collectively cover all eight rem
+        """The nine semantic aliases collectively cover all nine rem
         primitives — no gaps and no two aliases mapping to the same size."""
         alias_values = {
             _design.FONT_SIZE_DISPLAY, _design.FONT_SIZE_TITLE,
             _design.FONT_SIZE_HEADER_1, _design.FONT_SIZE_HEADER_2,
             _design.FONT_SIZE_BODY_LG, _design.FONT_SIZE_BODY,
-            _design.FONT_SIZE_LABEL, _design.FONT_SIZE_CAPTION,
+            _design.FONT_SIZE_DATA, _design.FONT_SIZE_LABEL,
+            _design.FONT_SIZE_CAPTION,
         }
         primitives = {
-            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_BASE,
+            _design.TEXT_XS, _design.TEXT_SM, _design.TEXT_DATA, _design.TEXT_BASE,
             _design.TEXT_MD, _design.TEXT_LG, _design.TEXT_XL,
             _design.TEXT_2XL, _design.TEXT_3XL,
         }
@@ -430,17 +432,25 @@ class TestDesignTokens:
 
     def test_font_family_constants_carry_role_fonts(self) -> None:
         """Each Python-side ``FONT_FAMILY_*`` string leads with its role font
-        (Comfortaa display + body / JetBrains Mono mono / IBM Plex Serif italic
-        species) and ends with the matching generic CSS family fallback
-        (DESIGN.md "02.1")."""
-        assert _design.FONT_FAMILY_DISPLAY.startswith("'Comfortaa'")
-        assert _design.FONT_FAMILY_BODY.startswith("'Comfortaa'")
+        (Nunito Sans display, body and italic species / JetBrains Mono mono)
+        and ends with the matching generic CSS family fallback (DESIGN.md
+        Typography)."""
+        assert _design.FONT_FAMILY_DISPLAY.startswith("'Nunito Sans'")
+        assert _design.FONT_FAMILY_BODY.startswith("'Nunito Sans'")
         assert _design.FONT_FAMILY_MONO.startswith("'JetBrains Mono'")
-        assert _design.FONT_FAMILY_SPECIES.startswith("'IBM Plex Serif'")
+        assert _design.FONT_FAMILY_SPECIES.startswith("'Nunito Sans'")
         assert _design.FONT_FAMILY_DISPLAY.rstrip().endswith("sans-serif")
         assert _design.FONT_FAMILY_BODY.rstrip().endswith("sans-serif")
         assert _design.FONT_FAMILY_MONO.rstrip().endswith("monospace")
-        assert _design.FONT_FAMILY_SPECIES.rstrip().endswith("serif")
+        assert _design.FONT_FAMILY_SPECIES.rstrip().endswith("sans-serif")
+
+    def test_data_values_keep_their_size_below_body(self) -> None:
+        """Mono data values stay at 15 px while Nunito Sans body text is 16 px,
+        so the chrome font change never reflows tables."""
+        assert _design.FONT_SIZE_DATA == "0.9375rem"
+        assert _design.FONT_SIZE_BODY == "1rem"
+        assert "font-size: var(--font-size-data)" in _design.BASE_STYLES_CSS
+        assert "--font-size-data:" in _design.DESIGN_TOKENS_CSS
 
     def test_spacing_grid_matches_8pt_system(self) -> None:
         """``SPACING_*`` constants line up with the 8 pt grid."""

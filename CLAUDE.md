@@ -99,6 +99,11 @@ isolation before attributing it — most of them pass.
   upstream sources under `docs/superpowers/**/refs`, but nothing protects the rest of the
   tree. If you already ran it bare: `git status`, then revert everything outside your
   change before committing.
+- `npx @google/design.md@0.4.0 lint DESIGN.md` — checks `DESIGN.md` against the Google
+  DESIGN.md format (token types, section order, WCAG AA contrast of every component).
+  A manual check, not a CI gate; run it after editing `DESIGN.md` or a color in
+  `_gui/_design.py`, whose values the front matter mirrors. The version is pinned
+  because the format is alpha.
 
 ### CLI
 
@@ -419,7 +424,8 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
 - [_gui/CLAUDE.md](src/phenotypic/_gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
   constants, `_design.py` tokens
-- [DESIGN.md](DESIGN.md) — dashboard & plot style guide
+- [DESIGN.md](DESIGN.md) — design system in the Google DESIGN.md format: GUI chrome,
+  on-screen charts, and the **Figures** defaults for static matplotlib figures
 - `src/phenotypic/post/`, `src/phenotypic/analysis/` — no sub-CLAUDE.md
 
 ## Key Files

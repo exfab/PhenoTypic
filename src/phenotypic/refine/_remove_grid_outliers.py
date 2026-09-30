@@ -9,7 +9,7 @@ from pydantic import AliasChoices, Field
 
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
-from phenotypic.schema import GRID_LINREG_STATS, GRID
+from phenotypic.schema import GRID_LINREG_STATS, GRID, OBJECT
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
@@ -104,9 +104,13 @@ class RemoveGridOutliers(GridObjectRefiner):
             ValueError: If parameters are misconfigured in a way that prevents
                 computation (propagated from measurement utilities).
         """
-        # Generate cached version of grid_info
+        # Residuals per object, joined with each object's grid row/column
         linreg_stat_extractor = MeasureGridLinRegStats()
-        grid_info = linreg_stat_extractor.measure(image)
+        grid_info = linreg_stat_extractor.measure(image).join(
+                image.grid.info(include_metadata=False)
+                .set_index(OBJECT.LABEL)
+                .loc[:, [str(GRID.ROW_NUM), str(GRID.COL_NUM)]]
+        )
 
         # Create container to hold the id of objects to be removed
         outlier_obj_ids = []

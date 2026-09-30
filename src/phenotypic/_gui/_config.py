@@ -1229,7 +1229,7 @@ def print_launcher_banner(
 #: and are read from there rather than restated, so the control and the
 #: dataclass cannot disagree about what "default" means.
 #:
-#: The type-size bounds are chosen to bracket DESIGN.md section 06, which
+#: The type-size bounds are chosen to bracket DESIGN.md "Data Visualization", which
 #: fixes axis labels at 7-8 px and a chart title at 13 px -- the current
 #: defaults sit inside that, and the range gives room either side without
 #: reaching sizes that would overflow a facet cell. Marker size and

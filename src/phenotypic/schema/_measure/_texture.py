@@ -34,6 +34,10 @@ class TEXTURE(DiscriminativeFeature):
 
     Texture_<feature_name>-avg-scale<scale>
 
+    Each scale value passed to ``MeasureTexture(scale=...)`` writes its own full set of
+    these columns, so measuring at ``scale=[5, 10]`` yields both the ``scale05`` and the
+    ``scale10`` columns side by side.
+
     """
 
     @classmethod

@@ -1017,7 +1017,7 @@
         btn.style.padding = "4px 12px";
         btn.style.background = "transparent";
         btn.style.border = "none";
-        btn.style.color = "var(--oi-vermilion, #d55e00)";
+        btn.style.color = "var(--oi-vermilion-text, #b85100)";
         btn.style.cursor = "pointer";
         btn.style.textAlign = "left";
         btn.style.font = "inherit";

@@ -19,6 +19,9 @@ OKABE_ITO_BLUE: str = "#0072B2"
 OKABE_ITO_PURPLE: str = "#CC79A7"
 OKABE_ITO_VERMILION: str = "#D55E00"
 OKABE_ITO_BLACK: str = "#000000"
+#: Okabe-Ito yellow. Nearly invisible as a line, point or text on white, so it
+#: is kept out of both cycles below and reserved for large filled areas.
+OKABE_ITO_YELLOW: str = "#F0E442"
 
 #: Categorical colour cycle for data series, in DESIGN.md's fixed order:
 #: navy (series 1, UI-harmonized), orange, sky, green, blue, purple, then
@@ -32,6 +35,21 @@ OKABE_ITO: tuple[str, ...] = (
     OKABE_ITO_PURPLE,
     OKABE_ITO_VERMILION,
     OKABE_ITO_BLACK,
+)
+
+
+#: Okabe-Ito in the order Wong (2011, Nature Methods 8:441) prints it, with
+#: yellow skipped: black, orange, sky blue, bluish green, blue, vermilion,
+#: reddish purple. Static matplotlib figures use this order (DESIGN.md
+#: "Figures"); GUI and Plotly charts keep the navy-first :data:`OKABE_ITO`.
+OKABE_ITO_PUBLISHED: tuple[str, ...] = (
+    OKABE_ITO_BLACK,
+    OKABE_ITO_ORANGE,
+    OKABE_ITO_SKY,
+    OKABE_ITO_GREEN,
+    OKABE_ITO_BLUE,
+    OKABE_ITO_VERMILION,
+    OKABE_ITO_PURPLE,
 )
 
 

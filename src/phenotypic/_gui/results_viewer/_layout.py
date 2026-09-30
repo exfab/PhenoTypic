@@ -135,7 +135,7 @@ def build_mode_badge(output_root: OutputRoot) -> Component:
         A pill-shaped :class:`dbc.Badge`. Colours come from
         :mod:`phenotypic._gui._design` tokens (navy for a full run; a darkened
         Okabe-Ito orange text variant for a bundle, AA-legible on white per
-        DESIGN.md "05 — Badges").
+        DESIGN.md "Components / Badges").
     """
     full_run = bool(getattr(output_root, "has_results", False))
     if full_run:

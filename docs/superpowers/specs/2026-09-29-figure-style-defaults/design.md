@@ -1,0 +1,303 @@
+# Figure style defaults for DESIGN.md
+
+- **Date:** 2026-09-29
+- **Branch:** `claude/magical-keller-kw5lu5`
+- **Status:** design settled; awaiting implementation plan
+- **Origin:** choices made in the artifact at
+  `docs/superpowers/artifacts/2026-09-29-figure-typography/` (published at
+  <https://claude.ai/artifact/9VfsXi3SKYRnneTMoja9gB>), recorded below as the settings
+  block the author returned
+- **Related:** `2026-09-29-chrome-font-nunito-sans` (lands first) and
+  `2026-09-29-design-md-format` (the restructure this section is written for)
+
+## Objective
+
+Give agents a written house style for static figures, meaning figures drawn with
+matplotlib for a manuscript, thesis, report or pipeline output, optimized for placement
+on an A4 page and suitable for journal submission. The section guides; it does not
+bind. Every rule in it is a default that an agent applies when the contributor has not
+asked for something else, and a contributor may override any of it without giving a
+reason.
+
+## Non-goals
+
+This spec does not restyle the interactive Plotly charts in the GUI, which keep
+following the `DESIGN.md` Data Visualization rules; a pipeline figure declared
+`@figure(backend="plotly")` is one of those. It adds no test that compares `DESIGN.md`
+to code, a check the author declined on 2026-09-29. It also adds no per-journal preset
+mechanism, which the author excluded in the artifact.
+
+## Decisions taken in the artifact
+
+```yaml
+figures:
+  font: dejavu
+  ladder: l10b  # ticks 10 pt, body 12 pt, panels 14 pt (round 2, 2026-09-30)
+  palette: canonical
+  chrome: minimal
+  panel_labels: paren
+  include: [final-size, fonttype-42, vector-first, reproducible, colormaps, show-points,
+            nomenclature, units, scale-bars, svg-text]
+  exclude: [journal-override, redundant]
+```
+
+The author dropped `redundant` (pair color with marker or line style) in a follow-up
+message after returning the block, so it appears under `exclude` here although the
+pasted block listed it as included.
+
+## Background
+
+`DESIGN.md` today treats every chart as a screen chart. Its matplotlib `rcParams` block
+(07, mirrored by `sdk_/viz/figures/_mpl_theme.py:21`) asks for IBM Plex Sans and
+JetBrains Mono, neither of which matplotlib bundles. Under matplotlib 3.10.7 in this
+repository's environment, `font_manager.findfont` resolves both to DejaVu Sans with a
+"Font family not found" warning, while a machine that has Helvetica Neue installed
+matches that entry of the same stack instead, so the same figure already renders in
+different faces on different machines. The block also paints the figure background
+`#FBFEF8`, which prints as a visible tinted box on white paper.
+
+Three statements in `DESIGN.md` would contradict the chosen defaults if left as they
+are, because they are written as absolute rules over all charts. The first is the
+Absolute Constraint that no numeric data or axis label may render outside JetBrains
+Mono, while figures will set numbers in DejaVu Sans. The second is the Absolute
+Constraint and the matching Don't that fix the Okabe-Ito order as navy first, while
+figures will use the published order with black first. The third is the Absolute
+Constraint that sequential colorbars use the navy-to-sky ramp, while figures will use
+cividis or viridis. The restructure in `2026-09-29-design-md-format` scopes all three to
+GUI and on-screen charts, and the Figures section below says so from its side.
+
+The size ladder and page geometry rest on these values. A4 is 210 x 297 mm (LaTeX
+`classes.dtx`, `a4paper` option). Word's default 1 in side margins leave a text width of
+210 - 2 x 25.4 = 159.2 mm and a text height of 297 - 2 x 25.4 = 246.2 mm; the margin
+default itself was seen only in a search excerpt. LaTeX's article class on A4 sets a
+narrower `\textwidth` of 345, 360 or 390 pt at 10, 11 or 12 pt body size, which is
+121.3, 126.5 or 137.1 mm (`classes.dtx`, read directly; millimetres by conversion at
+72.27 pt per inch). The journal text-size ranges shown in the artifact came from search
+excerpts, because the proxy blocked every publisher's site, so this section does not
+cite them as rules; the chosen 10/12/14 pt ladder stands as a house default on its own
+footing.
+
+## The section as it will read in DESIGN.md
+
+The text below is the proposed section verbatim. It is written for the canonical
+heading layout of `2026-09-29-design-md-format`, where it sits after Data
+Visualization.
+
+---
+
+> ## Figures
+>
+> This section covers static figures drawn with matplotlib: pipeline figures declared
+> `@figure(backend="mpl")`, analysis plots, and anything prepared for a manuscript,
+> thesis, report or poster. Interactive Plotly charts in the GUI follow Data
+> Visualization instead.
+>
+> ### How to apply these defaults
+>
+> Everything in this section is a default, not a constraint. When the contributor has
+> not said otherwise, apply it. When the contributor asks for something different, such
+> as an aggregate-only plot, a journal's own palette, a slide-sized figure or a
+> gridded background, do what they asked; they do not need to justify it, and you
+> should not argue for the default. When you depart from a default on your own
+> judgment because the plot's purpose calls for it, for example plotting a
+> distribution summary for 50,000 colonies where individual points would be noise, say
+> so in one line in the figure's docstring or in your reply, so the contributor can
+> reverse it.
+>
+> The Absolute Constraints govern GUI chrome and on-screen charts. They do not apply to
+> static figures, and apart from avoiding overlaps (see No overlaps), nothing in this
+> section is absolute.
+>
+> ### Page and size
+>
+> The figure's size is the author's call. A single plot, a dense multi-panel grid and a
+> figure taller than a page are all fine, and nothing here fixes a size. The text sizes
+> below are meant at the printed size, so they stay true only when the figure is placed
+> at 100% rather than rescaled; build it at the size it will appear. Lay it out with
+> `layout="constrained"` (or `tight_layout()`) rather than `bbox_inches="tight"` at save
+> time, because the latter changes the saved dimensions and with them every point size.
+>
+> For A4 layouts, `figure_size_mm()` offers two optional widths. Use them when they fit;
+> any other width or height is equally valid.
+>
+> | Preset | Width | Use |
+> |---|---|---|
+> | `full` | 159.2 mm | Full text width of an A4 page with 1 in margins |
+> | `half` | 77.1 mm | Two figures side by side with a 5 mm gutter |
+>
+> ### No overlaps
+>
+> Whatever its size and however many panels it has, a figure should have no text that
+> overlaps other text, runs off the figure edge, or covers data. This is the one thing
+> every figure should get right, and the text size is not the first thing to give up.
+> When a figure gets crowded, let the layout adapt: move a legend outside its panel when
+> it would cover data, angle or thin crowded tick labels, share axes across small
+> multiples so only the outer panels carry labels, or make the figure larger. Shrink the
+> text only when none of those works.
+>
+> ### Typography
+>
+> Set all figure text in **DejaVu Sans**, matplotlib's bundled default, so a figure
+> renders identically on macOS, Windows and Linux. Use `mathtext.fontset = "dejavusans"`
+> so math matches the text, and DejaVu Sans Oblique for italics.
+>
+> | Text | Size at print | Weight |
+> |---|---|---|
+> | Tick labels, legend entries | 10 pt | regular |
+> | Body text: axis, colorbar and legend titles, annotations, all other text | 12 pt | regular |
+> | Panel labels | 14 pt | bold |
+>
+> Lines follow the same scale: axes and ticks 0.8 pt, data lines 1.75 pt, markers
+> 4 pt, tick length 4 pt.
+>
+> ### Color
+>
+> Use the Okabe-Ito palette in its published order, starting from black: `#000000`,
+> `#E69F00`, `#56B4E9`, `#009E73`, `#0072B2`, `#D55E00`, `#CC79A7`. Skip yellow
+> (`#F0E442`) for lines, points and text on white, where it is nearly invisible; it is
+> usable as a large fill. Brand navy does not appear in figures. Beyond seven
+> categorical series, group the remainder into an "other" category drawn in grey.
+>
+> For continuous data use a perceptually uniform map: `cividis` by default, `viridis`
+> as the alternative. For data that diverge around a reference value, use a diverging
+> map centred on that value, such as `RdBu_r`. Avoid `jet`, rainbow maps and red-green
+> pairs.
+>
+> ### Layout and chrome
+>
+> Use a white figure and axes background, no gridlines, and only the bottom and left
+> spines. Leave panel titles out; the caption carries the message. Draw legends
+> without a frame.
+>
+> Label panels **(a)**, **(b)**, **(c)** in bold at the panel-letter size, as a
+> left-aligned axes title (`ax.set_title("(a)", loc="left", fontweight="bold")`). The
+> layout engine then reserves room for the letter, so it never collides with tick labels
+> or the axis title the way a letter placed at a fixed offset does once the text grows.
+>
+> ### Showing data
+>
+> When the number of observations is small enough to read, plot the individual points
+> over the summary, and state n and what error bars or bands show (s.d., s.e.m. or a
+> confidence interval) in the caption. When the figure's purpose is the aggregate
+> itself, plot the aggregate.
+>
+> Label axes as "Quantity (unit)", for example "Colony area (mm²)", and keep
+> matplotlib's true minus sign.
+>
+> Italicize genus and species names and gene names, following the organism's
+> nomenclature. For *Saccharomyces cerevisiae*, a mutant allele is lowercase italic
+> (*ura3Δ*), the wild-type gene uppercase italic (*URA3*), the protein roman (Ura3),
+> and strain identifiers roman.
+>
+> ### Image panels
+>
+> Burn a scale bar with a length label into every image panel of calibrated data; if
+> the image is uncalibrated, label the bar in pixels. Show single channels in
+> grayscale. Embed raster images at 300 dpi or more at their printed size, and at
+> 600 dpi when they are combined with line art in the same file.
+>
+> ### Export
+>
+> | Output | Setting | Why |
+> |---|---|---|
+> | PDF (primary) | `pdf.fonttype = 42` | Text is embedded as TrueType, so it stays selectable and editable |
+> | SVG | `svg.fonttype = "none"` | Text stays editable; it renders in a fallback face where DejaVu Sans is not installed, so treat the PDF as the reference |
+> | PNG (preview) | `dpi=300` | For quick viewing only |
+>
+> Make exports reproducible: pass `metadata={"CreationDate": None}` for PDF and
+> `metadata={"Date": None}` for SVG, and fix `svg.hashsalt`. matplotlib also honours
+> `SOURCE_DATE_EPOCH`.
+>
+> matplotlib reads these settings when the file is saved, not when the figure is
+> built, so a figure saved outside the theme is exported with matplotlib's own
+> defaults. Save through `export_figure()` from `phenotypic.sdk_.viz.figures`, which
+> applies the theme and the metadata for you, or call `savefig` inside
+> `phenotypic_mpl_context()`.
+
+---
+
+## Implementation outline
+
+The section guides agents, but the code should produce these defaults when nobody
+overrides them, or agents will fight the theme on every figure. The plan covers the changes
+below.
+
+`sdk_/viz/figures/_mpl_theme.py` switches `phenotypic_rc()` from the screen look to the
+defaults above: DejaVu Sans, the 10/12/14 pt ladder and line widths, white backgrounds,
+no grid, `pdf.fonttype` 42, `svg.fonttype` "none" and a fixed `svg.hashsalt`. Because
+`@figure(backend="mpl")` wraps every matplotlib pipeline figure in
+`phenotypic_mpl_context()` (`abc_/plotting/_pht_plot.py:259`), all of them pick up the
+change.
+
+`sdk_/_palette.py` gains the published Okabe-Ito order as a second, separately named
+tuple. The existing `OKABE_ITO` (navy first) stays as it is, because the Plotly template
+and the GUI read it.
+
+The figures package gains named width presets and a helper that turns a preset and a
+height in millimetres into a `figsize`, so a figure author never converts units by
+hand. Today 62 `figsize=` call sites in `src/` use about a dozen ad hoc sizes; the plan
+decides which of them are publication figures that should adopt a preset and which are
+diagnostics that may keep their own size.
+
+The package also gains `export_figure(fig, path)`, which saves inside
+`phenotypic_mpl_context()` with the reproducibility metadata for the file's format.
+It is needed because matplotlib reads `pdf.fonttype`, `svg.fonttype` and
+`svg.hashsalt` at save time: the pipeline's own publication path saves PNG outside the
+theme (`plotting/_pipeline/_adapter.py:46`, `plotting/_pipeline/_store_formats.py:33`),
+and a contributor's manuscript figure saved the same way would silently lose every
+export default.
+
+Existing tests that pin the screen look of the matplotlib theme change with it. The
+plan identifies them by importer, not by directory. The GUI's analysis panel
+(`_gui/analysis/_render.py:86`) also draws through `phenotypic_mpl_context()`, so it
+adopts the figure look as well; that is intended, since those panels show the same
+analyzer figures a contributor would export.
+
+One consequence needs a decision in the plan. Pipeline figures are stored inside the
+per-image OME-Zarr stores (`figures/<run>/`), so a restyled theme changes those bytes
+across versions. The layer semantics do not change, which suggests no bump of
+`PROCESS_LAYER_SEMANTICS_REVISION`, so continued process runs would keep old-style
+figures for images they already finished.
+
+## Resolved question
+
+Avoiding red-green colormaps is an Absolute Constraint for GUI charts, and the section
+above makes it a default for figures like everything else in it. The author confirmed
+that treatment on 2026-09-29.
+
+The author's rule that all data and table values use the mono family applies to the
+GUI (`2026-09-29-chrome-font-nunito-sans`). Figures keep DejaVu Sans for tick labels,
+as chosen in the artifact over the option with mono tick labels.
+
+## References
+
+- Rougier, N. P., Droettboom, M., & Bourne, P. E. (2014). Ten simple rules for better
+  figures. *PLOS Computational Biology*, 10(9), e1003833.
+  <https://doi.org/10.1371/journal.pcbi.1003833>
+- Wong, B. (2011). Points of view: Color blindness. *Nature Methods*, 8, 441.
+  <https://doi.org/10.1038/nmeth.1618>. The palette values and order were read from
+  secondary sources, not from the article itself.
+- Crameri, F., Shephard, G. E., & Heron, P. J. (2020). The misuse of colour in science
+  communication. *Nature Communications*, 11, 5444.
+  <https://doi.org/10.1038/s41467-020-19160-7>
+- Weissgerber, T. L., Milic, N. M., Winham, S. J., & Garovic, V. D. (2015). Beyond bar
+  and line graphs: time for a new data presentation paradigm. *PLOS Biology*, 13(4),
+  e1002128. <https://doi.org/10.1371/journal.pbio.1002128>
+- matplotlib 3.10.7 bundled fonts and `rcParamsDefault`, inspected in this repository's
+  environment on 2026-09-29; matplotlib source at <https://github.com/matplotlib/matplotlib>
+  for `pdf.fonttype`, `svg.hashsalt` and `SOURCE_DATE_EPOCH` behaviour.
+- LaTeX `classes.dtx` for A4 dimensions and article-class text widths.
+- Yeast genetic nomenclature follows the Saccharomyces Genome Database conventions;
+  this session did not verify them against the SGD page, so the example above is
+  [based on general knowledge of the field; no citation verified].
+
+## Size ladder, round 2 (2026-09-30)
+
+The author picked candidate `l10b` from the round-2 page of the figure-typography
+artifact: tick labels and legend entries 10 pt, body text 12 pt, panel letters 14 pt,
+with axes and ticks 0.8 pt, data lines 1.75 pt, markers 4 pt and tick length 4 pt. The
+author also asked for body text at 12 pt, so annotations moved from the tick-label row
+to the 12 pt row, which `font.size` and `axes.titlesize` carry. Measured on the
+artifact's three views, `l10b` had no overlapping or clipped text; its data area was
+0.242 (2x2 grid at full width), 0.618 (half-width single plot) and 0.710 (3x3 facets),
+against 0.327, 0.665 and 0.746 for the round-1 7/8/10 ladder.

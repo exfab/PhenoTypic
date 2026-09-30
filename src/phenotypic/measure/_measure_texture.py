@@ -40,7 +40,8 @@ class MeasureTexture(MeasureFeatures):
 
     Args:
         scale: Pixel offset(s) for the co-occurrence matrix. A single
-            integer or list of integers. Small values (1--2) capture fine
+            integer or list of distinct integers; each value writes its
+            own set of columns. Small values (1--2) capture fine
             texture; large values (5--10) capture coarse patterns.
             Default: ``5``.
         quant_lvl: Number of gray-level bins for quantization. Accepted
@@ -113,6 +114,21 @@ class MeasureTexture(MeasureFeatures):
             return [scale]
         return scale
 
+    @field_validator("scale")
+    @classmethod
+    def _require_distinct_scales(cls, scale: List[int]) -> List[int]:
+        """Reject an empty ``scale`` list or one that repeats a value.
+
+        Each scale's columns are merged onto the first scale's frame, so a
+        repeated scale would collide and come back with pandas ``_x``/``_y``
+        suffixes that no ``TEXTURE`` header recognizes.
+        """
+        if not scale:
+            raise ValueError("scale must contain at least one pixel offset")
+        if len(set(scale)) != len(scale):
+            raise ValueError(f"scale values must be distinct, got {scale}")
+        return scale
+
     @classmethod
     def output_header(cls, member, on: str | None = None) -> str:
         """Return the header pattern written for a texture feature.
@@ -171,9 +187,8 @@ class MeasureTexture(MeasureFeatures):
         )
 
         meas = compute_haralick(scale=self.scale[0])
-        if len(self.scale) > 1:
-            for scale in self.scale[1:]:
-                meas.merge(compute_haralick(scale=scale), on=OBJECT.LABEL, how="outer")
+        for scale in self.scale[1:]:
+            meas = meas.merge(compute_haralick(scale=scale), on=OBJECT.LABEL, how="outer")
         return meas
 
     @staticmethod
