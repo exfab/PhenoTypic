@@ -8,7 +8,7 @@ from scipy.stats import permutation_test
 
 from pydantic import field_validator
 
-from phenotypic.schema import EDGE_CORRECTION
+from phenotypic.schema import EDGE_CORRECTION, MeasurementInfo
 from ..abc_ import EdgeCorrection
 
 if TYPE_CHECKING:
@@ -694,6 +694,36 @@ class EdgeCorrector(EdgeCorrection):
         """
         return self._latest_measurements
 
+    @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        Edge-correction columns keep the full measured column after a hyphen,
+        e.g. ``EdgeCorrection_NewVal-Size_Area``, so corrections of several
+        measurements can sit side by side.
+
+        Args:
+            member: An ``EDGE_CORRECTION`` member.
+            on: The measured column. ``None`` renders the ``<column>``
+                placeholder used in the Measurements reference.
+
+        Returns:
+            The emitted header.
+        """
+        if isinstance(member, EDGE_CORRECTION):
+            return f"{member.value}-{on if on is not None else '<column>'}"
+        return super().output_header(member, on)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<column>``, with a header this analyzer writes as the example."""
+        return {
+            "<column>": (
+                "the corrected column in full: correcting ``Size_Area`` writes "
+                f"``{cls.output_header(EDGE_CORRECTION.NEW_VAL, 'Size_Area')}``."
+            )
+        }
+
     @staticmethod
     def _apply2group_func(
             group: pd.DataFrame,
@@ -768,10 +798,12 @@ class EdgeCorrector(EdgeCorrection):
         section_col = GRID.ROW_MAJOR_IDX
 
         # Set base case
-        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = group.loc[:, on]
+        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.NEW_VAL, on)] = group.loc[:, on]
 
         # TODO: Should this be the max or np.inf
-        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = group.loc[:, on].max()
+        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = (
+            group.loc[:, on].max()
+        )
 
         # Handle empty groups
         if len(group) == 0:
@@ -847,10 +879,10 @@ class EdgeCorrector(EdgeCorrection):
         threshold = top_values.mean()
 
         # Apply correction: cap ALL values that exceed for fairness
-        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = np.clip(group.loc[:, on],
-                                                                  a_min=0,
-                                                                  a_max=threshold)
-        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = threshold
+        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.NEW_VAL, on)] = np.clip(
+            group.loc[:, on], a_min=0, a_max=threshold
+        )
+        group.loc[:, EdgeCorrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = threshold
         return group
 
     @staticmethod

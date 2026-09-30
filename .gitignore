@@ -69,11 +69,13 @@ docs/source/api_reference/api/
 # functions of code already under version control, so the build always
 # reconstructs them.
 #   - downloads.rst <- generate_downloadables_rst (docs/source/conf.py)
-#   - measurements_ref/ <- _generate (docs/source/_extensions/measurements_ref.py)
+#   - measurements_ref/ <- _generate (docs/source/_extensions/measurements_ref.py),
+#     except the hand-written pages it lists in _HAND_WRITTEN_PAGES (re-included below)
 #   - _static/measurements/ <- _copy_measurement_assets (mirrors packaged
 #     phenotypic/_assets/measurements/ so /_static/measurements/* image refs resolve)
 docs/source/downloads.rst
-docs/source/measurements_ref/
+docs/source/measurements_ref/*
+!docs/source/measurements_ref/tier_system.md
 docs/source/_static/measurements/
 
 # Project-specific

@@ -157,19 +157,34 @@ class TEXTURE(DiscriminativeFeature):
         return None
 
     @classmethod
+    def header(cls, member: "TEXTURE", direction: str, scale: "int | str") -> str:
+        """Return one texture header, ``{family}_{label}-{direction}-scale{scale}``.
+
+        The single formatter behind :meth:`get_headers` and the documented
+        pattern, so the two cannot disagree.
+
+        Args:
+            member: The texture feature.
+            direction: ``deg000``, ``deg045``, ``deg090``, ``deg135`` or ``avg``,
+                or a placeholder such as ``<direction>``.
+            scale: The GLCM pixel offset, zero-padded to two digits, or a
+                placeholder string such as ``<x>``, used verbatim.
+
+        Returns:
+            The header, e.g. ``Texture_Contrast-deg045-scale05``.
+        """
+        scale_text = f"{scale:02d}" if isinstance(scale, int) else scale
+        return f"{cls.metric_family()}_{member.label}-{direction}-scale{scale_text}"
+
+    @classmethod
     def get_headers(cls, scale: int, matrix_name=None) -> list[str]:
         """Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the
         average across degrees of each feature at the end."""
-        angles = [0, 45, 90, 135]
-        labels: list[str] = []
-        for member in cls.get_labels():
-            for angle in angles:
-                labels.append(
-                        f"{cls.metric_family()}_{member}-deg{angle:03d}-scale{scale:02d}"
-                )
-
-        for member in cls.get_labels():
-            labels.append(
-                    f"{cls.metric_family()}_{member}-avg-scale{scale:02d}"
-            )
+        directions = [f"deg{angle:03d}" for angle in (0, 45, 90, 135)]
+        labels = [
+            cls.header(member, direction, scale)
+            for member in cls
+            for direction in directions
+        ]
+        labels.extend(cls.header(member, "avg", scale) for member in cls)
         return labels

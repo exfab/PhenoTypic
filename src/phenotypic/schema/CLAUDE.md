@@ -133,9 +133,10 @@ Every member resolves to a coarse **kind** and, for primary/derived measurements
 a trust **tier**. `_classify(member) -> (kind, tier)` in `_base/_measurement_info.py` is
 the single resolver; members expose it via `.resolved_kind` (`"identity"` |
 `"quality"` | `"primary"` | `"derived"`) and `.resolved_tier` (`1` | `2` | `3` |
-`None`). The four kinds and the three primary tiers are explained for users in
-`docs/source/explanation/measurement_classification_system.md` — keep that page
-and this section consistent.
+`None`). The four kinds and the three primary tiers are explained for users on
+the Tier System page, `docs/source/measurements_ref/tier_system.md` (hand-written,
+tracked, and the one page in `measurements_ref/` the generator does not
+overwrite) — keep that page and this section consistent.
 
 An enum declares its classification **structurally**, by subclassing a member-less
 base in `_base/_tiers.py` instead of `MeasurementInfo` directly (all exported from the
@@ -172,7 +173,7 @@ their diagnostic members carry no tier.
 ## Classification badges in the docs
 
 `rst_table()` renders a **"Type"** column whose cells are sphinx-design
-`:bdg-ref-{color}:` pills (one per member) linking to the explanation page —
+`:bdg-ref-{color}:` pills (one per member) linking to the Tier System page —
 this is how the classification surfaces in the Measurements reference (the
 Sphinx extension `docs/source/_extensions/measurements_ref.py` calls `rst_table`).
 
@@ -187,7 +188,7 @@ Sphinx extension `docs/source/_extensions/measurements_ref.py` calls `rst_table`
   Tier3=`warning`, Quality=`secondary`, Identity=`muted`, Derived=`info`). A
   `test_classification.py` unit test asserts every color is a real sphinx-design
   `SEMANTIC_COLORS`, so a typo'd color fails fast. The two anchor targets are MyST
-  `(label)=` anchors in the explanation md (`measurement-tiers` for tier badges,
+  `(label)=` anchors in `tier_system.md` (`measurement-tiers` for tier badges,
   `measurement-classification` for the rest); badge xrefs use `reftype="any"`, so
   a typo'd **anchor** only warns at build time and the CI docs build
   (`uv run make html`, no `-W`) won't fail on it — a broken anchor would ship as a
@@ -197,16 +198,16 @@ Gotchas: keep the tier rows of `_USE_LABELS` and `_BADGE_SPECS` in sync (both
 encode the same `(tier, kind)` taxonomy). Badge cells are inserted into the
 list-table **unescaped** (they bypass `_rst_cell_text`) so the role renders — the
 badge text must stay free of literal `|`. When adding a new tier/kind, update
-`_base/_tiers.py`, both badge maps, and the explanation page together.
+`_base/_tiers.py`, both badge maps, and the Tier System page together.
 
 ## Measurement categories
 
 A **category** is a curated, many-to-many grouping of columns that cuts across
 metric families (`Size_Area` is in the **Size** family and in the *Starting
 Metrics* category). Unlike kind/tier it makes **no trust claim**. Users read about
-it in the `measurement-categories` section of
-`docs/source/explanation/measurement_classification_system.md`. Keep that section
-and this one consistent.
+it in the intro of the generated Categories page (`measurement-categories` anchor,
+`_CATEGORIES_INTRO` in `docs/source/_extensions/measurements_ref.py`). Keep that
+intro and this section consistent.
 
 - `CATEGORIES` (`_base/_categories.py`) is a closed, repo-defined `str` enum of
   `CategoryEntry(label, desc)`, and value == label. Members expose `.label`,
@@ -271,8 +272,23 @@ Emission (write side) lives with the enum or as shared functions in `_base/_meas
 member)`. `metric_qualified` anchors on the metric-family prefix + the known member-label
 suffix, so a guardrail in `tests/unit/schema/test_dynamic_headers.py` asserts no label is
 a `_`-suffix of another. Emission (in the producer) and recognition (on the enum) live in
-two files that must agree; the round-trip test keeps them honest. Docs/`rst_table` render
-the **base** labels; only run-specific surfaces (the CLI README) fill in the real token.
+two files that must agree; the round-trip test keeps them honest.
+
+**The Measurements reference shows the header written, not the enum value.** Every table
+producer (`MeasureFeatures`, `SetAnalyzer`) has a classmethod
+`output_header(member, on=None)` and `output_header_placeholders()`. The default is
+`member.value` and no placeholders; a producer whose headers differ overrides both, and
+**its emitter must call `output_header`** (or the enum helper it wraps) so docs and table
+share one formatter. Overrides today: `QualityCheck` (`QC_<name>_<label>`), `ModelFitter`
+(`qualified_header`, `<metric>`), `EdgeCorrector` (`<value>-<column>`), `MeasureTexture`
+(`TEXTURE.header`, `<direction>` and `<x>` for the scale). Placeholders are `<lowercase>`
+tokens; each maps to an RST sentence, with an example, printed under **Placeholders** on
+the operation's page. The registry is `phenotypic.util.measurement_producers()`, and
+`tests/unit/util/test_output_headers.py` runs the producers to prove the documented
+names are the written ones. The generator
+(`docs/source/_extensions/measurements_ref.py`) fails the build for a public schema that
+no producer declares and that is not listed in its `_SHARED_ONLY` or
+`_NOT_IN_OUTPUT_TABLES`; members never written go in `_OMITTED_MEMBERS`.
 
 ### Adding a new dynamic scheme
 
@@ -284,9 +300,13 @@ the **base** labels; only run-specific surfaces (the CLI README) fill in the rea
    is inherited.
 4. In the producer, name columns via the helper and declare
    `_measurement_infoclass = <enum>` — that one attribute wires
-   split/output-key/recognition and CLI README documentation. When parameters
+   split/output-key/recognition, CLI README documentation and a page in the
+   Measurements reference. When parameters
    enable or disable individual schemas, override
-   `MeasureFeatures.get_measurement_infoclasses()` to return the active subset.
+   `MeasureFeatures.get_measurement_infoclasses()` to return the active subset
+   (the reference finds the enabling boolean parameter by construction).
+5. Override the producer's `output_header` and `output_header_placeholders` so the
+   reference shows the pattern and defines each placeholder.
 
 A `MeasureFeatures` emits via the enum (never hand-built strings):
 

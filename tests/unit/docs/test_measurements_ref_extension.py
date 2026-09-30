@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 from typing import Any
 
+import pytest
+from pytest import MonkeyPatch
+
 import phenotypic.schema as schema
 from phenotypic.schema import Entry, MeasurementInfo, MetadataInfo
-from pytest import MonkeyPatch
+from phenotypic.util import measurement_producers
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -18,6 +22,10 @@ _EXTENSION_PATH = (
 _API_INDEX_PATH = (
     _REPO_ROOT / "docs" / "source" / "api_reference" / "index.rst"
 )
+_TIER_SYSTEM_PATH = (
+    _REPO_ROOT / "docs" / "source" / "measurements_ref" / "tier_system.md"
+)
+_GROUP_ORDER = ("measure", "qc", "models", "correction")
 
 
 def _load_extension(monkeypatch: MonkeyPatch) -> Any:
@@ -57,6 +65,13 @@ def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
     return tmp_path / "measurements_ref"
 
 
+def _all_pages(docs_root: Path) -> dict[str, str]:
+    return {
+        path.relative_to(docs_root).with_suffix("").as_posix(): path.read_text()
+        for path in sorted(docs_root.rglob("*.rst"))
+    }
+
+
 def _class_heading(class_name: str) -> str:
     return (
         f":doc:`{class_name} "
@@ -64,34 +79,78 @@ def _class_heading(class_name: str) -> str:
     )
 
 
-def test_build_pages_creates_exactly_three_reference_pages(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
-) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
+def _anchor(info_cls: type) -> str:
+    return f".. _measurement-info-{info_cls.__name__.lower().replace('_', '-')}:"
 
-    pages = sorted(
-        path.relative_to(docs_root).as_posix()
-        for path in docs_root.rglob("*.rst")
-    )
-    assert pages == [
-        "categories/index.rst",
-        "measurements/index.rst",
-        "metadata/index.rst",
+
+@pytest.fixture(scope="module")
+def reference(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
+    """The generated reference, built once for the read-only tests."""
+    root = tmp_path_factory.mktemp("docs")
+    extension = _load_extension(MonkeyPatch())
+    extension._build_pages(str(root))
+    return _all_pages(root / "measurements_ref")
+
+
+# --------------------------------------------------------------------------- #
+# Structure and sidebar
+# --------------------------------------------------------------------------- #
+
+
+def test_one_page_per_table_producer_plus_the_section_pages(
+    reference: dict[str, str],
+) -> None:
+    operation_pages = {
+        name for name in reference if name.split("/")[0] in _GROUP_ORDER
+    }
+    assert {name.split("/")[1] for name in operation_pages} == {
+        producer.output_key for producer in measurement_producers()
+    }
+    assert set(reference) - operation_pages == {
+        "index",
+        "categories/index",
+        "shared/index",
+        "metadata/index",
+    }
+
+
+def test_outlier_removers_have_no_page(reference: dict[str, str]) -> None:
+    # They drop rows and add no columns, so there is nothing to document.
+    names = {name.split("/")[-1] for name in reference}
+    assert "MADOutlierRemover" not in names
+    assert "TukeyOutlierRemover" not in names
+
+
+def test_sidebar_is_overview_block_then_one_captioned_group_per_stage(
+    reference: dict[str, str],
+) -> None:
+    overview = reference["index"]
+    assert (
+        ".. toctree::\n   :hidden:\n\n"
+        "   Overview <self>\n"
+        "   Tier System <tier_system>\n"
+        "   Categories <categories/index>\n"
+        "   Shared columns <shared/index>\n"
+        "   Metadata <metadata/index>\n"
+    ) in overview
+    captions = re.findall(r":caption: (.+)", overview)
+    assert captions == [
+        "Object measurements",
+        "Quality control",
+        "Growth models",
+        "Plate correction",
     ]
+    for slug, caption in zip(_GROUP_ORDER, captions, strict=True):
+        block = overview.split(f":caption: {caption}\n\n", 1)[1].split("\n\n", 1)[0]
+        entries = [line.strip() for line in block.splitlines()]
+        assert entries, caption
+        assert all(entry.startswith(f"{slug}/") for entry in entries)
 
 
-def test_memberless_public_bases_are_not_discovered(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
-) -> None:
-    extension = _load_extension(monkeypatch)
-
-    assert schema.MetadataInfo in (
-        getattr(schema, name) for name in schema.__all__
-    )
-    assert schema.MetadataInfo not in extension._public_measurement_info_classes()
-    extension._build_pages(str(tmp_path))
+def test_only_the_overview_carries_toctrees(reference: dict[str, str]) -> None:
+    for name, text in reference.items():
+        if name != "index":
+            assert ".. toctree::" not in text, name
 
 
 def test_setup_generates_pages_before_sphinx_source_discovery(
@@ -112,86 +171,97 @@ def test_setup_generates_pages_before_sphinx_source_discovery(
     assert set(callbacks) == {"config-inited"}
     callbacks["config-inited"](FakeApp(), object())
     docs_root = tmp_path / "measurements_ref"
-    assert (docs_root / "measurements" / "index.rst").is_file()
-    assert (docs_root / "metadata" / "index.rst").is_file()
-    assert (docs_root / "categories" / "index.rst").is_file()
+    for page in ("index", "shared/index", "metadata/index", "categories/index"):
+        assert (docs_root / f"{page}.rst").is_file()
 
 
-def test_measurements_page_has_metadata_and_categories_as_toctree_children(
+def test_rebuild_keeps_the_hand_written_tier_page_and_drops_stale_pages(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
+    docs_root = tmp_path / "measurements_ref"
+    (docs_root / "measurements").mkdir(parents=True)
+    (docs_root / "measurements" / "index.rst").write_text("stale")
+    (docs_root / "tier_system.md").write_text("hand-written")
 
-    assert (
-        ".. toctree::\n   :hidden:\n\n   ../metadata/index\n   ../categories/index"
-        in measurements_page
-    )
-    for child in ("metadata", "categories"):
-        assert ".. toctree::" not in (docs_root / child / "index.rst").read_text()
+    _build_reference_tree(tmp_path, monkeypatch)
+
+    assert (docs_root / "tier_system.md").read_text() == "hand-written"
+    assert not (docs_root / "measurements").exists()
 
 
-def test_every_canonical_public_class_appears_once_on_the_correct_page(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_tier_page_is_tracked_and_carries_the_badge_anchors() -> None:
+    text = _TIER_SYSTEM_PATH.read_text(encoding="utf-8")
+    assert text.startswith("(measurement-classification)=\n\n# Tier System")
+    assert "(measurement-tiers)=" in text
+    gitignore = (_REPO_ROOT / ".gitignore").read_text()
+    assert "!docs/source/measurements_ref/tier_system.md" in gitignore
+
+
+# --------------------------------------------------------------------------- #
+# Every schema documented once, and only what appears in output tables
+# --------------------------------------------------------------------------- #
+
+
+def test_every_documented_schema_has_exactly_one_anchor(
+    reference: dict[str, str], monkeypatch: MonkeyPatch
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
-    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
-    combined = measurements_page + metadata_page
-
-    public_classes = _canonical_public_classes()
-    assert combined.count(".. list-table:: Metric family:") == len(public_classes)
-    for info_cls in public_classes:
-        heading = _class_heading(info_cls.__name__)
-        expected_page = (
-            metadata_page
-            if issubclass(info_cls, MetadataInfo)
-            else measurements_page
-        )
-        other_page = (
-            measurements_page
-            if issubclass(info_cls, MetadataInfo)
-            else metadata_page
-        )
-        assert expected_page.count(heading) == 1
-        assert heading not in other_page
+    extension = _load_extension(monkeypatch)
+    combined = "\n".join(reference.values())
+    for info_cls in _canonical_public_classes():
+        count = combined.count(_anchor(info_cls) + "\n")
+        if info_cls.__name__ in extension._NOT_IN_OUTPUT_TABLES:
+            assert count == 0, info_cls.__name__
+            assert _class_heading(info_cls.__name__) not in combined
+        else:
+            assert count == 1, info_cls.__name__
 
 
-def test_class_order_follows_schema_export_order(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_schema_anchors_sit_on_the_owning_page(reference: dict[str, str]) -> None:
+    assert _anchor(schema.SIZE) in reference["measure/MeasureSize"]
+    assert _anchor(schema.BBOX) in reference["measure/MeasureBounds"]
+    assert _anchor(schema.QUALITY_ICC) in reference["qc/ICC"]
+    for shared in (schema.OBJECT, schema.GRID, schema.QUALITY_CHECK, schema.MODEL_METRICS):
+        assert _anchor(shared) in reference["shared/index"], shared.__name__
+    for info_cls in _canonical_public_classes():
+        if issubclass(info_cls, MetadataInfo):
+            assert _anchor(info_cls) in reference["metadata/index"]
+
+
+def test_shared_schemas_repeat_on_each_producer_page_without_an_anchor(
+    reference: dict[str, str],
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
-    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
-
-    public_classes = _canonical_public_classes()
-    expected_groups = (
-        (
-            measurements_page,
-            [
-                info_cls
-                for info_cls in public_classes
-                if not issubclass(info_cls, MetadataInfo)
-            ],
-        ),
-        (
-            metadata_page,
-            [
-                info_cls
-                for info_cls in public_classes
-                if issubclass(info_cls, MetadataInfo)
-            ],
-        ),
-    )
-    for page, expected_classes in expected_groups:
-        positions = [page.index(_class_heading(info_cls.__name__)) for info_cls in expected_classes]
-        assert positions == sorted(positions)
+    for producer in measurement_producers():
+        for info_cls in producer.shared_infos:
+            text = next(
+                body for name, body in reference.items() if name.endswith(f"/{producer.output_key}")
+            )
+            assert _class_heading(info_cls.__name__) in text
+            assert _anchor(info_cls) not in text
 
 
-def test_future_classes_are_discovered_and_partitioned_automatically(
+def test_members_never_written_are_left_out(reference: dict[str, str]) -> None:
+    combined = "\n".join(reference.values())
+    for member in (
+        schema.GRID.ROW_INTERVAL_START,
+        schema.GRID.COL_INTERVAL_END,
+        schema.IMAGE.UUID,
+        schema.IMAGE.PARENT_UUID,
+    ):
+        assert f"``{member.value}``" not in combined
+    assert "``Grid_RowNum``" in combined
+    assert "``Metadata_ImageName``" in combined
+
+
+def test_compatibility_alias_is_deduplicated_to_canonical_class(
+    reference: dict[str, str],
+) -> None:
+    combined = "\n".join(reference.values())
+    assert combined.count(_class_heading("ORIENTATION_ZONE_DIAGNOSTIC")) == 1
+    assert _class_heading("ORIENTATION_ZONES") not in combined
+
+
+def test_an_undeclared_public_schema_fails_the_build(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -202,78 +272,115 @@ def test_future_classes_are_discovered_and_partitioned_automatically(
 
         VALUE = Entry("Value", "A future measurement value.")
 
+    monkeypatch.setattr(schema, "FUTURE_MEASUREMENT", FUTURE_MEASUREMENT, raising=False)
+    monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_MEASUREMENT"])
+
+    with pytest.raises(RuntimeError, match="FUTURE_MEASUREMENT is public but no operation"):
+        _build_reference_tree(tmp_path, monkeypatch)
+
+
+def test_a_future_metadata_owner_is_documented_automatically(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
     class FUTURE_METADATA(MetadataInfo):
         VALUE = Entry("Value", "A future metadata value.")
 
-    monkeypatch.setattr(
-        schema, "FUTURE_MEASUREMENT", FUTURE_MEASUREMENT, raising=False
-    )
     monkeypatch.setattr(schema, "FUTURE_METADATA", FUTURE_METADATA, raising=False)
-    monkeypatch.setattr(
-        schema,
-        "__all__",
-        [*schema.__all__, "FUTURE_MEASUREMENT", "FUTURE_METADATA"],
+    monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_METADATA"])
+
+    pages = _all_pages(_build_reference_tree(tmp_path, monkeypatch))
+    assert _class_heading("FUTURE_METADATA") in pages["metadata/index"]
+
+
+def test_omitted_member_names_must_exist(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    extension = _load_extension(monkeypatch)
+    monkeypatch.setitem(
+        extension._OMITTED_MEMBERS, "GRID", frozenset({"RENAMED_AWAY"})
     )
-
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
-    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
-
-    assert _class_heading("FUTURE_MEASUREMENT") in measurements_page
-    assert _class_heading("FUTURE_MEASUREMENT") not in metadata_page
-    assert _class_heading("FUTURE_METADATA") in metadata_page
-    assert _class_heading("FUTURE_METADATA") not in measurements_page
+    with pytest.raises(RuntimeError, match="GRID.RENAMED_AWAY"):
+        extension._build_pages(str(tmp_path))
 
 
-def test_compatibility_alias_is_deduplicated_to_canonical_class(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+# --------------------------------------------------------------------------- #
+# Column names are the headers actually written
+# --------------------------------------------------------------------------- #
+
+
+def _name_cells(text: str) -> list[str]:
+    return re.findall(r"^   \* - ``([^`]+)``$", text, flags=re.MULTILINE)
+
+
+def test_operation_pages_show_each_producers_emitted_header(
+    reference: dict[str, str], monkeypatch: MonkeyPatch
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
+    extension = _load_extension(monkeypatch)
+    for producer in measurement_producers():
+        text = next(
+            body for name, body in reference.items() if name.endswith(f"/{producer.output_key}")
+        )
+        cells = set(_name_cells(text))
+        for info_cls in (*producer.primary_infos, *producer.shared_infos):
+            for member in extension._emitted_members(info_cls):
+                assert producer.output_header(member) in cells, (producer.output_key, member)
 
-    assert measurements_page.count(
-        _class_heading("ORIENTATION_ZONE_DIAGNOSTIC")
-    ) == 1
-    assert _class_heading("ORIENTATION_ZONES") not in measurements_page
 
-
-def test_pages_only_add_linked_class_sections_and_tables(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_analyzer_pages_never_show_enum_values_that_are_not_written(
+    reference: dict[str, str],
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    combined = "\n".join(
-        path.read_text() for path in sorted(docs_root.rglob("*.rst"))
-    )
-
-    assert ".. _measurement-info-shape:" in combined
-    assert _class_heading("SHAPE") in combined
-    assert "Python export:" not in combined
-    assert "Compatibility alias for" not in combined
-    assert "Metadata Tag Overview" not in combined
-    assert ".. grid::" not in combined
-    assert "Browse " not in combined
+    icc = reference["qc/ICC"]
+    assert "``QC_ICC_Metric``" in icc
+    assert "``QC_Metric``" not in icc
+    model = reference["models/LogGrowthModel"]
+    assert "``LogGrowthModel_<metric>_r``" in model
+    assert "``LogGrowthModel_r``" not in model
+    edge = reference["correction/EdgeCorrector"]
+    assert "``EdgeCorrection_NewVal-<column>``" in edge
 
 
-def test_generated_tables_escape_rst_markup(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_every_placeholder_on_a_page_is_defined_there(reference: dict[str, str]) -> None:
+    for name, text in reference.items():
+        if name.split("/")[0] not in _GROUP_ORDER:
+            continue
+        used = {token for cell in _name_cells(text) for token in re.findall(r"<[a-z]+>", cell)}
+        defined = set(re.findall(r"^``(<[a-z]+>)``$", text, flags=re.MULTILINE))
+        assert used == defined, name
+
+
+def test_texture_scale_placeholder_is_defined_with_its_default(
+    reference: dict[str, str],
 ) -> None:
-    docs_root = _build_reference_tree(tmp_path, monkeypatch)
-    measurements_page = (docs_root / "measurements" / "index.rst").read_text()
-    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
-
-    assert ":mod:" not in metadata_page
-    assert ":class:" not in metadata_page
-    assert ":meth:" not in measurements_page
-    assert r"\|mean\|" in measurements_page
+    text = reference["measure/MeasureTexture"]
+    assert "``Texture_Contrast-<direction>-scale<x>``" in text
+    definition = text.split("``<x>``\n", 1)[1].split("\n\n", 1)[0]
+    assert "``scale``" in definition
+    assert "``scale05``" in definition
+    assert "``avg``" in text.split("``<direction>``\n", 1)[1]
 
 
-def test_schema_is_included_in_api_reference_autosummary() -> None:
-    api_index = _API_INDEX_PATH.read_text()
+def test_parameter_switched_schemas_say_which_parameter(reference: dict[str, str]) -> None:
+    color = reference["measure/MeasureColor"]
+    assert "Written only when ``include_XYZ=True``." in color
+    assert "Written only when ``include_xy=True``." in color
+    assert color.index(_class_heading("ColorLab")) < color.index(_class_heading("ColorXYZ"))
+    zones = reference["measure/MeasureOrientationZones"]
+    assert "Written only when ``include_diagnostics=True``." in zones
 
-    assert "   phenotypic.schema\n" in api_index
+
+def test_shared_page_defines_its_placeholders(reference: dict[str, str]) -> None:
+    shared = reference["shared/index"]
+    assert "``QC_<check>_Metric``" in shared
+    assert "``<check>`` is the check's name" in shared
+    assert "``ModelMetrics_<metric>_R2``" in shared
+    assert "``<metric>`` is the fitted column" in shared
+
+
+# --------------------------------------------------------------------------- #
+# Tables, change notes, escaping
+# --------------------------------------------------------------------------- #
 
 
 def test_class_section_renders_the_change_note_above_the_table(monkeypatch: MonkeyPatch):
@@ -284,6 +391,25 @@ def test_class_section_renders_the_change_note_above_the_table(monkeypatch: Monk
     assert marker in section
     assert section.index(marker) < section.index(".. list-table::")
     assert marker not in extension._class_section(schema.TEXTURE)
+
+
+def test_generated_tables_escape_rst_markup(reference: dict[str, str]) -> None:
+    combined = "\n".join(reference.values())
+    assert ":mod:" not in reference["metadata/index"]
+    assert ":class:" not in reference["metadata/index"]
+    assert ":meth:" not in combined
+    assert r"\|mean\|" in combined
+
+
+def test_schema_is_included_in_api_reference_autosummary() -> None:
+    api_index = _API_INDEX_PATH.read_text()
+
+    assert "   phenotypic.schema\n" in api_index
+
+
+# --------------------------------------------------------------------------- #
+# Categories
+# --------------------------------------------------------------------------- #
 
 
 def _category_sections(rst: str) -> dict[str, str]:
@@ -305,30 +431,27 @@ def _category_sections(rst: str) -> dict[str, str]:
 
 
 def test_categories_page_has_one_section_per_category_with_verbatim_desc(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+    reference: dict[str, str],
 ) -> None:
     from phenotypic.schema import CATEGORIES
 
-    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
+    text = reference["categories/index"]
+    assert text.count(".. _measurement-categories:") == 1
     for category in CATEGORIES:
-        assert page.count(f".. _{category.anchor}:") == 1
-        assert category.display_name in page
-        assert category.desc in page
-        assert f"measurements_by_category/{category.label}.csv" in page
-    assert "``Size_Area``" in page
-    assert ":ref:`Size <measurement-info-size>`" in page
-    assert ":ref:`measurement-categories`" in page
+        assert text.count(f".. _{category.anchor}:") == 1
+        assert category.display_name in text
+        assert category.desc in text
+        assert f"measurements_by_category/{category.label}.csv" in text
+    assert "``Size_Area``" in text
+    assert ":ref:`Size <measurement-info-size>`" in text
 
 
-def test_categories_page_lists_every_member_once_with_its_type_badge(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_categories_page_lists_every_documented_member_once_with_its_type_badge(
+    reference: dict[str, str],
 ) -> None:
     from phenotypic.schema import CATEGORIES
 
-    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
-    sections = _category_sections(page)
+    sections = _category_sections(reference["categories/index"])
     for category in CATEGORIES:
         section = sections[category.anchor]
         members = category.members()
@@ -341,32 +464,17 @@ def test_categories_page_lists_every_member_once_with_its_type_badge(
             assert member.use_badge in row_block
 
 
-def test_categories_page_is_generated_from_member_tags(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+def test_every_category_row_links_to_a_real_schema_anchor(
+    reference: dict[str, str],
 ) -> None:
-    from phenotypic.schema import CATEGORIES
-
-    class FUTURE_TAGGED(MeasurementInfo):
-        @classmethod
-        def metric_family(cls) -> str:
-            return "FutureTagged"
-
-        VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
-
-    monkeypatch.setattr(schema, "FUTURE_TAGGED", FUTURE_TAGGED, raising=False)
-    monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_TAGGED"])
-    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
-    assert "``FutureTagged_Value``" in page
+    combined = "\n".join(reference.values())
+    for target in re.findall(r"<(measurement-info-[a-z0-9-]+)>", reference["categories/index"]):
+        assert f".. _{target}:" in combined
 
 
 def test_every_badge_anchor_resolves_on_the_categories_page(
-    tmp_path: Path,
-    monkeypatch: MonkeyPatch,
+    reference: dict[str, str],
 ) -> None:
-    import re
-
-    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
     anchors = {
         match
         for info_cls in _canonical_public_classes()
@@ -374,16 +482,7 @@ def test_every_badge_anchor_resolves_on_the_categories_page(
     }
     assert anchors, "no category badge rendered anywhere"
     for anchor in anchors:
-        assert f".. _{anchor}:" in page
-
-
-def test_navbar_lists_categories_under_measurements() -> None:
-    navbar = (_REPO_ROOT / "docs" / "source" / "_templates" / "navbar-nav.html").read_text()
-    assert "pathto('measurements_ref/categories/index')" in navbar
-    assert "_pn.startswith('measurements_ref/categories/')" in navbar
-    assert navbar.index("measurements_ref/metadata/index") < navbar.index(
-        "measurements_ref/categories/index"
-    )
+        assert f".. _{anchor}:" in reference["categories/index"]
 
 
 def test_category_without_members_renders_a_sentence_not_an_empty_table(
@@ -407,3 +506,26 @@ def test_category_without_members_renders_a_sentence_not_an_empty_table(
     assert "A category nothing is tagged with yet." in section
     assert "No columns carry this category yet." in section
     assert ".. list-table::" not in section
+
+
+# --------------------------------------------------------------------------- #
+# Navbar and sidebar resizing
+# --------------------------------------------------------------------------- #
+
+
+def test_navbar_measurements_is_a_plain_link_to_the_overview() -> None:
+    navbar = (_REPO_ROOT / "docs" / "source" / "_templates" / "navbar-nav.html").read_text()
+    item = navbar[navbar.index("{# --- Measurements") : navbar.index("{# --- Remaining")]
+    assert "pathto('measurements_ref/index')" in item
+    assert "_pn.startswith('measurements_ref/')" in item
+    assert "dropdown" not in item
+
+
+def test_sidebar_resize_assets_are_registered_and_match_theme_breakpoints() -> None:
+    conf = (_REPO_ROOT / "docs" / "source" / "conf.py").read_text()
+    assert '"sidebar-resize.css"' in conf
+    assert '"sidebar-resize.js"' in conf
+    css = (_REPO_ROOT / "docs" / "source" / "_static" / "sidebar-resize.css").read_text()
+    # pydata-sphinx-theme turns the sidebars into drawers below lg / xl.
+    assert "@media (min-width: 960px)" in css
+    assert "@media (min-width: 1200px)" in css

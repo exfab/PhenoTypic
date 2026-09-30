@@ -190,6 +190,12 @@ html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_css_files = [
     "custom.css",
+    "sidebar-resize.css",
+]
+# Loaded in <head> without defer on purpose: it applies a stored sidebar width
+# before the body renders, then installs the drag handles on DOMContentLoaded.
+html_js_files = [
+    "sidebar-resize.js",
 ]
 
 if html_theme == "pydata_sphinx_theme":

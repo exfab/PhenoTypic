@@ -5,7 +5,7 @@ conventions, descriptive metadata, and automatic documentation generation.
 """
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Final, cast
@@ -34,7 +34,7 @@ _USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
     (2, "derived"): "Descriptive trait (Tier 2)",
 }
 
-#: MyST ``(label)=`` anchors in ``explanation/measurement_classification_system``.
+#: MyST ``(label)=`` anchors in ``docs/source/measurements_ref/tier_system.md``.
 #: Tier badges deep-link to the trust-contract table; kind-only badges (Quality /
 #: Identity / normalization-Derived) link to the page top.
 _ANCHOR_TIERS: Final = "measurement-tiers"
@@ -678,6 +678,8 @@ class MeasurementInfo(str, Enum):
         title: str | None = None,
         header: tuple[str, str] = ("Name", "Description"),
         use_headers: bool = False,
+        members: "Iterable[MeasurementInfo] | None" = None,
+        header_for: "Callable[[MeasurementInfo], str] | None" = None,
     ) -> str:
         """Render an RST list-table of this enum's members.
 
@@ -690,10 +692,23 @@ class MeasurementInfo(str, Enum):
             header: ``(name_column_header, description_column_header)``.
             use_headers: Name cell shows the prefixed value (``Size_Area``)
                 instead of the bare label (``Area``).
+            members: The members to list, in the order given; defaults to
+                every member. The Measurements reference passes only the
+                members that appear in output tables.
+            header_for: Name-cell text for a member, overriding
+                ``use_headers``. The Measurements reference passes the
+                producer's ``output_header`` so the table shows the header
+                actually written (``QC_ICC_Metric``, not ``QC_Metric``).
         """
         title = title or cls.metric_family()
         name_header, desc_header = header
-        rows = [_info_row(m.value if use_headers else m.label, m) for m in cls]
+        if header_for is None:
+            header_for = (lambda m: m.value) if use_headers else (lambda m: m.label)
+        listed = list(cls) if members is None else list(members)
+        foreign = [m for m in listed if not isinstance(m, cls)]
+        if foreign:
+            raise ValueError(f"{cls.__name__}.rst_table got foreign members: {foreign!r}")
+        rows = [_info_row(header_for(m), m) for m in listed]
         return _render_info_table(
             rows, title=title, name_header=name_header, desc_header=desc_header
         )

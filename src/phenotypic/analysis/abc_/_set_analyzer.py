@@ -26,6 +26,7 @@ from phenotypic.sdk_ import (
     metadata_member_for_label,
     normalize_metadata_columns,
 )
+from phenotypic.schema import MeasurementInfo
 from phenotypic.sdk_._docstring_params import apply_docstring_descriptions
 
 
@@ -225,6 +226,35 @@ class SetAnalyzer(BaseModel, abc.ABC):
         """
         super().__pydantic_init_subclass__(**kwargs)
         apply_docstring_descriptions(cls)
+
+    @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        The default is the member's own value. Analyzers whose headers embed
+        the analyzed column or the analyzer's name override this, and the
+        Measurements reference documents whatever it returns.
+
+        Args:
+            member: A member of a schema this analyzer declares.
+            on: The analyzed column, for analyzers whose headers embed it.
+                ``None`` renders a placeholder.
+
+        Returns:
+            The emitted header.
+        """
+        del on
+        return member.value
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define the placeholders in this analyzer's :meth:`output_header` patterns.
+
+        Returns:
+            Placeholder (``<metric>``) to an RST sentence saying what it
+            stands for, with an example. Empty when every header is fixed.
+        """
+        return {}
 
     @abc.abstractmethod
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:

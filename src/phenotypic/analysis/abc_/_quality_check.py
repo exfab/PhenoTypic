@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field, model_validator
 
-from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK, MeasurementInfo
 
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
@@ -365,19 +365,53 @@ class QualityCheck(SetAnalyzer, ABC):
         return members
 
     @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        The shared ``QUALITY_CHECK`` columns carry the check's :attr:`name`
+        (``QC_ICC_Metric``), so the enum value (``QC_Metric``) never appears
+        in a table. A check's own enum members are written as declared.
+
+        On the abstract base, which has no ``name``, the name renders as the
+        ``<check>`` placeholder used in the Measurements reference.
+
+        Args:
+            member: A ``QUALITY_CHECK`` member or one of the check's own.
+            on: Unused; accepted for the shared ``output_header`` signature.
+
+        Returns:
+            The emitted header.
+        """
+        if isinstance(member, QUALITY_CHECK):
+            return f"QC_{getattr(cls, 'name', '<check>')}_{member.label}"
+        return super().output_header(member, on)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<check>``, which only the abstract base's headers contain."""
+        if getattr(cls, "name", None) is not None:
+            return {}
+        return {
+            "<check>": (
+                "the check's name: ``ICC`` writes ``QC_ICC_Metric``, and "
+                "``ExpectedVsDetectedCount`` writes ``QC_Count_Metric``."
+            )
+        }
+
+    @classmethod
     def metric_col(cls) -> str:
         """Return the metric column name for this check."""
-        return f"QC_{cls.name}_Metric"
+        return cls.output_header(QUALITY_CHECK.METRIC)
 
     @classmethod
     def flag_col(cls) -> str:
         """Return the flag column name for this check."""
-        return f"QC_{cls.name}_Flag"
+        return cls.output_header(QUALITY_CHECK.FLAG)
 
     @classmethod
     def status_col(cls) -> str:
         """Return the status column name for this check."""
-        return f"QC_{cls.name}_Status"
+        return cls.output_header(QUALITY_CHECK.STATUS)
 
     def results(self) -> pd.DataFrame:
         """Return the augmented frame stored by the most recent analyze()."""

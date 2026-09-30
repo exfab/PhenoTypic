@@ -1,9 +1,10 @@
 (measurement-classification)=
 
-# Measurement Classification: Phenotypes vs. Features
+# Tier System
 
-PhenoTypic measures many columns per colony. This page explains *how to apply*
-each one — which numbers you can report directly as a biological result, and
+PhenoTypic measures many columns per colony. Every column in this reference
+carries a **Type** badge; this page explains what the badge means and *how to
+apply* each column — which numbers you can report directly as a biological result, and
 which are best used together as inputs to classification or clustering — without
 needing the underlying math.
 
@@ -55,24 +56,11 @@ A model fit on a primary phenotype is classified by its transformation:
 - **Normalization** (e.g. edge correction) → the input's tier, cleaned.
 - **Fit diagnostics** (R², RMSE, optimizer state, regularization knobs) → Quality.
 
-(measurement-categories)=
-## Categories are groupings, not trust claims
+## See also
 
-Every measurement column begins with its metric family: `Size_Area` belongs to the
-**Size** family. The family says only which schema the column comes from.
-
-A **category** is a separate, curated grouping that cuts across families: one category
-can gather size, intensity and colour columns that three different schemas produce, and
-one column can belong to several categories. A category tells you where to look first,
-not how far to trust a single value; that is the job of the kind and tier above.
-
-Each run that measures objects writes one spreadsheet per category that has at least one
-column in the run, under `deliverables/measurements_by_category/`. The categories, their
-descriptions and their columns are listed on the
-{doc}`Categories </measurements_ref/categories/index>` page, which is generated from the
-schema so it never drifts from the code.
-
-See also: [Measurement metrics and their biological meaning](measurement_metrics_biological_meaning.md)
-for per-metric detail, and the
-[measurement reference](../measurements_ref/measurements/index) for the Use/Tier badge on
-every column.
+- {doc}`Categories <categories/index>`: curated groupings of columns, which make
+  no trust claim.
+- [Measurement metrics and their biological meaning](../explanation/measurement_metrics_biological_meaning.md)
+  for per-metric detail.
+- The {doc}`operation pages <index>` of this reference, where every column
+  carries its Type badge.
