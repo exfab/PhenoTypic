@@ -395,9 +395,11 @@ def test_class_section_renders_the_change_note_above_the_table(monkeypatch: Monk
 
 def test_generated_tables_escape_rst_markup(reference: dict[str, str]) -> None:
     combined = "\n".join(reference.values())
-    assert ":mod:" not in reference["metadata/index"]
-    assert ":class:" not in reference["metadata/index"]
-    assert ":meth:" not in combined
+    # Roles, not the list-table ``:class:`` option the tables carry.
+    assert ":mod:`" not in reference["metadata/index"]
+    assert ":class:`" not in reference["metadata/index"]
+    assert ":meth:`" not in combined
+    assert "   :class: phenotypic-measurement-table" in combined
     assert r"\|mean\|" in combined
 
 

@@ -4,6 +4,7 @@ This module provides infrastructure for defining measurement types with consiste
 conventions, descriptive metadata, and automatic documentation generation.
 """
 
+import inspect
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import KW_ONLY, dataclass
@@ -192,6 +193,25 @@ def _rst_cell_text(text: str) -> str:
     return _RST_ROLE_RE.sub(_flatten, text).replace("|", r"\|")
 
 
+#: Column where a list-table cell's text starts (``"     - "``); continuation
+#: lines of a multi-line cell must sit exactly here to stay one paragraph.
+_CELL_INDENT: Final = " " * 7
+
+#: CSS class on every schema table, so the docs can let long column names wrap.
+_TABLE_CLASS: Final = "phenotypic-measurement-table"
+
+
+def _cell_block(text: str) -> str:
+    """Lay out a multi-line cell as one paragraph at the cell's column.
+
+    Descriptions are triple-quoted with source indentation. Left as is, the
+    continuation lines sit deeper than the first line and docutils reads the
+    cell as a definition list (first line bold, the rest indented), so dedent
+    them and re-indent to the cell column.
+    """
+    return inspect.cleandoc(text).replace("\n", "\n" + _CELL_INDENT)
+
+
 #: One list-table row; both ``_render_info_table`` callers must build it via ``_info_row``.
 _InfoRow = tuple[str, str, str, str | None, str, str]
 
@@ -234,6 +254,7 @@ def _render_info_table(
     lines = [
         f".. list-table:: Metric family: **{title}**",
         "   :header-rows: 1",
+        f"   :class: {_TABLE_CLASS}",
         "",
         f"   * - {name_header}",
         f"     - {desc_header}",
@@ -249,13 +270,13 @@ def _render_info_table(
 
     for name, desc, bio, img, use, cats in rows:
         lines.append(f"   * - ``{name}``")
-        lines.append(f"     - {_rst_cell_text(desc)}")
+        lines.append(f"     - {_cell_block(_rst_cell_text(desc))}")
         if has_use:
             lines.append(f"     - {use}")
         if has_cat:
             lines.append(f"     - {cats}")
         if has_bio:
-            lines.append(f"     - {_rst_cell_text(bio)}")
+            lines.append(f"     - {_cell_block(_rst_cell_text(bio))}")
         if has_img:
             if img:
                 lines.append(f"     - .. image:: {_ASSET_URL_PREFIX}/{img}")
