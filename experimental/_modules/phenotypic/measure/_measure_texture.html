@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/measure/_measure_texture.html" />
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -652,7 +608,8 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        scale: Pixel offset(s) for the co-occurrence matrix. A single</span>
-<span class="sd">            integer or list of integers. Small values (1--2) capture fine</span>
+<span class="sd">            integer or list of distinct integers; each value writes its</span>
+<span class="sd">            own set of columns. Small values (1--2) capture fine</span>
 <span class="sd">            texture; large values (5--10) capture coarse patterns.</span>
 <span class="sd">            Default: ``5``.</span>
 <span class="sd">        quant_lvl: Number of gray-level bins for quantization. Accepted</span>
@@ -725,6 +682,60 @@
             <span class="k">return</span> <span class="p">[</span><span class="n">scale</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">scale</span>
 
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;scale&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_distinct_scales</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject an empty ``scale`` list or one that repeats a value.</span>
+
+<span class="sd">        Each scale&#39;s columns are merged onto the first scale&#39;s frame, so a</span>
+<span class="sd">        repeated scale would collide and come back with pandas ``_x``/``_y``</span>
+<span class="sd">        suffixes that no ``TEXTURE`` header recognizes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">scale</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;scale must contain at least one pixel offset&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">scale</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">scale</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;scale values must be distinct, got </span><span class="si">{</span><span class="n">scale</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">scale</span>
+
+<div class="viewcode-block" id="MeasureTexture.output_header">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureTexture.html#phenotypic.measure.MeasureTexture.output_header">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the header pattern written for a texture feature.</span>
+
+<span class="sd">        Each feature is written once per direction and once averaged, at each</span>
+<span class="sd">        scale, so the documented form carries two placeholders; see</span>
+<span class="sd">        :meth:`output_header_placeholders`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">TEXTURE</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">TEXTURE</span><span class="o">.</span><span class="n">header</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="s2">&quot;&lt;direction&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;x&gt;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MeasureTexture.output_header_placeholders">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureTexture.html#phenotypic.measure.MeasureTexture.output_header_placeholders">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header_placeholders</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Define the ``&lt;x&gt;`` scale and ``&lt;direction&gt;`` placeholders.&quot;&quot;&quot;</span>
+        <span class="n">example</span> <span class="o">=</span> <span class="n">TEXTURE</span><span class="o">.</span><span class="n">header</span><span class="p">(</span><span class="n">TEXTURE</span><span class="o">.</span><span class="n">CONTRAST</span><span class="p">,</span> <span class="s2">&quot;deg045&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;&lt;x&gt;&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">&quot;the ``scale`` parameter: the distance, in pixels, between the two &quot;</span>
+                <span class="s2">&quot;pixels compared when building the gray-level co-occurrence matrix, &quot;</span>
+                <span class="s2">&quot;zero-padded to two digits. The default ``scale=5`` writes &quot;</span>
+                <span class="s2">&quot;``scale05``. To convert it to a physical distance, divide by your &quot;</span>
+                <span class="s2">&quot;image&#39;s pixels per millimetre: at 40 px/mm, ``scale05`` compares &quot;</span>
+                <span class="s2">&quot;pixels 0.125 mm apart.&quot;</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;&lt;direction&gt;&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">&quot;the direction of that offset: ``deg000``, ``deg045``, ``deg090`` or &quot;</span>
+                <span class="s2">&quot;``deg135`` (degrees), or ``avg``, the mean of the four. Each feature &quot;</span>
+                <span class="s2">&quot;therefore writes five columns per scale, e.g. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;``</span><span class="si">{</span><span class="n">example</span><span class="si">}</span><span class="s2">``.&quot;</span>
+            <span class="p">),</span>
+        <span class="p">}</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Performs texture measurements on the image objects.</span>
 
@@ -750,9 +761,8 @@
         <span class="p">)</span>
 
         <span class="n">meas</span> <span class="o">=</span> <span class="n">compute_haralick</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">scale</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-                <span class="n">meas</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">compute_haralick</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">),</span> <span class="n">on</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">scale</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+            <span class="n">meas</span> <span class="o">=</span> <span class="n">meas</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">compute_haralick</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">),</span> <span class="n">on</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">meas</span>
 
     <span class="nd">@staticmethod</span>

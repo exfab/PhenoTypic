@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/analysis/edge/_edge_correction.html" />
     <link rel="index" title="Index" href="../../../../genindex.html" />
     <link rel="search" title="Search" href="../../../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -618,7 +574,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdgeCorrection</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
@@ -1312,8 +1268,45 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span></div>
 
 
-    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="EdgeCorrector.output_header">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.EdgeCorrector.html#phenotypic.analysis.EdgeCorrector.output_header">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the column header :meth:`analyze` writes for *member*.</span>
+
+<span class="sd">        Edge-correction columns keep the full measured column after a hyphen,</span>
+<span class="sd">        e.g. ``EdgeCorrection_NewVal-Size_Area``, so corrections of several</span>
+<span class="sd">        measurements can sit side by side.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            member: An ``EDGE_CORRECTION`` member.</span>
+<span class="sd">            on: The measured column. ``None`` renders the ``&lt;column&gt;``</span>
+<span class="sd">                placeholder used in the Measurements reference.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The emitted header.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">EDGE_CORRECTION</span><span class="p">):</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">on</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&lt;column&gt;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EdgeCorrector.output_header_placeholders">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.EdgeCorrector.html#phenotypic.analysis.EdgeCorrector.output_header_placeholders">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header_placeholders</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Define ``&lt;column&gt;``, with a header this analyzer writes as the example.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;&lt;column&gt;&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s2">&quot;the corrected column in full: correcting ``Size_Area`` writes &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;``</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">NEW_VAL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Size_Area&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">``.&quot;</span>
+            <span class="p">)</span>
+        <span class="p">}</span></div>
+
+
+    <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply2group_func</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span>
             <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
             <span class="n">on</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -1325,7 +1318,7 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply edge correction logic to a single group of measurements.</span>
 
-<span class="sd">        Static method called by analyze() via joblib.Parallel to process each group</span>
+<span class="sd">        Classmethod called by analyze() via joblib.Parallel to process each group</span>
 <span class="sd">        independently. Identifies interior colonies, performs permutation testing, and</span>
 <span class="sd">        creates new corrected columns. Original measurement column remains unchanged.</span>
 <span class="sd">        Called once per group.</span>
@@ -1386,10 +1379,12 @@
         <span class="n">section_col</span> <span class="o">=</span> <span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span>
 
         <span class="c1"># Set base case</span>
-        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">NEW_VAL</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">on</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">]</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">NEW_VAL</span><span class="p">,</span> <span class="n">on</span><span class="p">)]</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">]</span>
 
         <span class="c1"># TODO: Should this be the max or np.inf</span>
-        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">CORRECTED_CAP</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">on</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">CORRECTED_CAP</span><span class="p">,</span> <span class="n">on</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="p">)</span>
 
         <span class="c1"># Handle empty groups</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -1465,10 +1460,10 @@
         <span class="n">threshold</span> <span class="o">=</span> <span class="n">top_values</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
         <span class="c1"># Apply correction: cap ALL values that exceed for fairness</span>
-        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">NEW_VAL</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">on</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">],</span>
-                                                                  <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                                                                  <span class="n">a_max</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
-        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">CORRECTED_CAP</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">on</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">NEW_VAL</span><span class="p">,</span> <span class="n">on</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">on</span><span class="p">],</span> <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">threshold</span>
+        <span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">EDGE_CORRECTION</span><span class="o">.</span><span class="n">CORRECTED_CAP</span><span class="p">,</span> <span class="n">on</span><span class="p">)]</span> <span class="o">=</span> <span class="n">threshold</span>
         <span class="k">return</span> <span class="n">group</span>
 
     <span class="nd">@staticmethod</span>

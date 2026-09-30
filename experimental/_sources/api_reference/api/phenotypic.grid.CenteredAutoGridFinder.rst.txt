@@ -38,6 +38,8 @@ phenotypic.grid.CenteredAutoGridFinder
       ~CenteredAutoGridFinder.model_validate
       ~CenteredAutoGridFinder.model_validate_json
       ~CenteredAutoGridFinder.model_validate_strings
+      ~CenteredAutoGridFinder.output_header
+      ~CenteredAutoGridFinder.output_header_placeholders
       ~CenteredAutoGridFinder.parse_file
       ~CenteredAutoGridFinder.parse_obj
       ~CenteredAutoGridFinder.parse_raw

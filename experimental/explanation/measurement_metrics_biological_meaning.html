@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,11 +60,12 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/explanation/measurement_metrics_biological_meaning.html" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Flat metadata namespace and semantic owners" href="metadata_namespace.html" />
-    <link rel="prev" title="Measurement Classification: Phenotypes vs. Features" href="measurement_classification_system.html" />
+    <link rel="prev" title="Refinement Strategies" href="refinement_strategies.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.20.0" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -577,7 +533,6 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="measurement_classification_system.html">Measurement Classification: Phenotypes vs. Features</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Measurement Metrics and Their Biological Meaning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metadata_namespace.html">Flat metadata namespace and semantic owners</a></li>
 <li class="toctree-l1"><a class="reference internal" href="edge_effects_in_plate_assays.html">Edge Effects in Plate-Based Assays</a></li>
@@ -656,7 +611,7 @@ and when to use it.</p>
 <blockquote>
 <div><p>For <em>how to apply</em> each metric — which to report directly vs. use as a
 classifier feature — see
-<a class="reference internal" href="measurement_classification_system.html"><span class="std std-doc">Measurement Classification: Phenotypes vs. Features</span></a>.</p>
+<a class="reference internal" href="../measurements_ref/tier_system.html"><span class="doc">Tier System</span></a>.</p>
 </div></blockquote>
 <section id="size-metrics-measuresize">
 <h2>Size Metrics (MeasureSize)<a class="headerlink" href="#size-metrics-measuresize" title="Link to this heading">#</a></h2>
@@ -664,7 +619,7 @@ classifier feature — see
 <p><span class="versionmodified changed">Changed in version 0.20.0: </span>Size magnitudes moved from <code class="docutils literal notranslate"><span class="pre">MeasureShape</span></code> to <code class="docutils literal notranslate"><span class="pre">MeasureSize</span></code>, and the radius
 columns were rebuilt. <code class="docutils literal notranslate"><span class="pre">Size_MedianRadius</span></code>, <code class="docutils literal notranslate"><span class="pre">Size_MeanRadius</span></code> and
 <code class="docutils literal notranslate"><span class="pre">Size_MaxRadius</span></code> are <strong>not</strong> the retired <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code> columns of the same name;
-see the rename table on the <a class="reference internal" href="../measurements_ref/measurements/index.html#measurement-info-size"><span class="std std-ref">SIZE reference</span></a>.</p>
+see the rename table on the <a class="reference internal" href="../measurements_ref/measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">SIZE reference</span></a>.</p>
 </div>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>

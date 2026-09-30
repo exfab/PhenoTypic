@@ -36,6 +36,8 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.model_validate
       ~MeasureColor.model_validate_json
       ~MeasureColor.model_validate_strings
+      ~MeasureColor.output_header
+      ~MeasureColor.output_header_placeholders
       ~MeasureColor.parse_file
       ~MeasureColor.parse_obj
       ~MeasureColor.parse_raw

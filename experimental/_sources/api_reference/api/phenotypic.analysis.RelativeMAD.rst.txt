@@ -38,6 +38,8 @@ phenotypic.analysis.RelativeMAD
       ~RelativeMAD.model_validate
       ~RelativeMAD.model_validate_json
       ~RelativeMAD.model_validate_strings
+      ~RelativeMAD.output_header
+      ~RelativeMAD.output_header_placeholders
       ~RelativeMAD.parse_file
       ~RelativeMAD.parse_obj
       ~RelativeMAD.parse_raw

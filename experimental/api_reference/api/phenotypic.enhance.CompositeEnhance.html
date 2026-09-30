@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,6 +60,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.enhance.CompositeEnhance.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -1227,6 +1183,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.measurement_producers.html">phenotypic.util.measurement_producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
@@ -1237,6 +1194,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MeasurementProducer.html">phenotypic.util.MeasurementProducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1313,7 +1271,7 @@
 <h1>phenotypic.enhance.CompositeEnhance<a class="headerlink" href="#phenotypic-enhance-compositeenhance" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.enhance.CompositeEnhance">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">CompositeEnhance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ops:</span> <span class="pre">~typing.List[~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f28c4578d30&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode:</span> <span class="pre">~typing.Literal['max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'min'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'median']</span> <span class="pre">=</span> <span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_gray:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm:</span> <span class="pre">~typing.Literal['clip'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'rescale']</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_composite_enhance.html#CompositeEnhance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.CompositeEnhance" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">CompositeEnhance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ops:</span> <span class="pre">~typing.List[~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f63e4ad4610&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode:</span> <span class="pre">~typing.Literal['max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'min'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'median']</span> <span class="pre">=</span> <span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_gray:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm:</span> <span class="pre">~typing.Literal['clip'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'rescale']</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_composite_enhance.html#CompositeEnhance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.CompositeEnhance" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.NormalizedOutputMixin.html#phenotypic.sdk_.NormalizedOutputMixin" title="phenotypic.sdk_.mixin._normalized_output_mixin.NormalizedOutputMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">NormalizedOutputMixin</span></code></a>, <a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_._image_enhancer.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a></p>
 <p>Enhance <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> by combining several enhancers’ response maps pixel-wise.</p>
 <p>Apply one or more enhancers (or preprocessing pipelines ending in an
@@ -1351,7 +1309,7 @@ applied <em>in sequence</em> rather than combined in parallel.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ops</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7f28c4578d30&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em><em>]</em>) – List of <a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a> or
+<li><p><strong>ops</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7f63e4ad4610&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em><em>]</em>) – List of <a class="reference internal" href="phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer" title="phenotypic.abc_.ImageEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageEnhancer</span></code></a> or
 <code class="xref py py-class docutils literal notranslate"><span class="pre">ImagePipeline</span></code> instances to combine. Pipelines
 allow per-branch preprocessing before the response is collected.
 Defaults to <code class="docutils literal notranslate"><span class="pre">[BlurGauss(),</span> <span class="pre">MedianFilter()]</span></code> when not

@@ -26,7 +26,6 @@ theoretical background for PhenoTypic's algorithms.
    :maxdepth: 1
    :caption: Measurement & Analysis
 
-   measurement_classification_system
    measurement_metrics_biological_meaning
    metadata_namespace
    edge_effects_in_plate_assays

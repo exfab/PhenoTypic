@@ -42,6 +42,8 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.model_validate
       ~MeasureOrientationZones.model_validate_json
       ~MeasureOrientationZones.model_validate_strings
+      ~MeasureOrientationZones.output_header
+      ~MeasureOrientationZones.output_header_placeholders
       ~MeasureOrientationZones.parse_file
       ~MeasureOrientationZones.parse_obj
       ~MeasureOrientationZones.parse_raw

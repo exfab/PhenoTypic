@@ -1,0 +1,189 @@
+.. _measurements-overview:
+
+Measurements
+============
+
+.. toctree::
+   :hidden:
+
+   Overview <self>
+   Tier System <tier_system>
+   Categories <categories/index>
+   Shared columns <shared/index>
+   Metadata <metadata/index>
+
+.. toctree::
+   :hidden:
+   :caption: Object measurements
+
+   measure/MeasureBounds
+   measure/MeasureColor
+   measure/MeasureGridLinRegStats
+   measure/MeasureGridSpread
+   measure/MeasureIntensity
+   measure/MeasureNeighborDist
+   measure/MeasureOrientationZones
+   measure/MeasureShape
+   measure/MeasureSize
+   measure/MeasureSymZones
+   measure/MeasureTexture
+
+.. toctree::
+   :hidden:
+   :caption: Quality control
+
+   qc/ExpectedVsDetectedCount
+   qc/GridOccupancy
+   qc/ICC
+   qc/MaxModifiedZScore
+   qc/RelativeMAD
+   qc/ReplicateAgreement
+   qc/TukeyOutlierFraction
+
+.. toctree::
+   :hidden:
+   :caption: Growth models
+
+   models/LinearCapAndLagModel
+   models/LinearLagModel
+   models/LogGrowthModel
+
+.. toctree::
+   :hidden:
+   :caption: Plate correction
+
+   correction/EdgeCorrector
+
+PhenoTypic writes its results as tables. This reference documents every column
+that appears in them, grouped by the operation that writes it: one page per
+measurement operation and per analyzer, listed in the sidebar by stage. Each
+column carries a **Type** badge that says how far a single value can be
+trusted; the :doc:`tier_system` page explains the badges.
+
+Reading a measurements table
+----------------------------
+
+Each row of ``deliverables/measurements.csv`` describes one detected colony. Its columns come in four blocks, always in this order:
+
+#. **Your experimental metadata**, from the ``--metadata`` file: strain, condition, replicate and the like (``Metadata_Strain``). See :doc:`metadata/index`.
+#. **Measurements**, one block per measurement operation in pipeline order. Every column name starts with its metric family: ``Size_Area`` is in the *Size* family and is written by :doc:`measure/MeasureSize`.
+#. **Image bookkeeping**: the image each colony came from (``Metadata_ImageName``, ``Metadata_BitDepth``).
+#. **Where the colony is**: ``Object_Label``, its bounding box (``Bbox_*``) and, on gridded plates, its well (``Grid_*``). See :doc:`shared/index`.
+
+Where tables are written
+------------------------
+
+A CLI run writes these files under its output directory:
+
+.. list-table::
+   :header-rows: 1
+
+   * - File
+     - One row per
+     - Holds
+   * - ``deliverables/measurements.csv`` (and ``.parquet``)
+     - detected colony
+     - every measurement column, with your metadata joined
+   * - ``deliverables/measurements_by_feature/<Operation>.csv``
+     - detected colony
+     - one measurement operation's columns, plus the metadata and position columns
+   * - ``deliverables/measurements_by_category/<Category>.csv``
+     - detected colony
+     - one :doc:`category <categories/index>`'s columns, plus the metadata and position columns
+   * - ``deliverables/qc/qc.duckdb``
+     - one table per quality check
+     - each check's columns; see *Quality control* in the sidebar
+   * - ``deliverables/<Model>.csv`` (and ``.parquet``)
+     - fitted group
+     - the pipeline's growth-model parameters and fit metrics
+   * - ``deliverables/qc/curation_labels.parquet``
+     - curated colony
+     - the category you assigned in the results viewer
+
+Analyzers you run yourself return the same columns from ``analyze()``.
+
+Reading an operation page
+-------------------------
+
+Every operation page has the same parts:
+
+#. A one-line summary of what the operation measures, and a link to its parameters.
+#. The table's facts: what one row describes, where the table is written, and how many columns the operation adds.
+#. One column table per schema, listing each column exactly as it is written. Where a header embeds the analyzed column, the page shows a placeholder (``<metric>``) and an example.
+
+Operations
+----------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 20 50
+
+   * - Operation
+     - Stage
+     - What it writes
+   * - :doc:`MeasureBounds <measure/MeasureBounds>`
+     - Object measurements
+     - Extract bounding box coordinates and centroids of detected colonies.
+   * - :doc:`MeasureColor <measure/MeasureColor>`
+     - Object measurements
+     - Measure robust colorimetric statistics for each colony.
+   * - :doc:`MeasureGridLinRegStats <measure/MeasureGridLinRegStats>`
+     - Object measurements
+     - Evaluate grid alignment quality using row-wise and column-wise linear regression.
+   * - :doc:`MeasureGridSpread <measure/MeasureGridSpread>`
+     - Object measurements
+     - Quantify within-well colony dispersion using pairwise centroid distances.
+   * - :doc:`MeasureIntensity <measure/MeasureIntensity>`
+     - Object measurements
+     - Measure grayscale intensity statistics of detected colonies.
+   * - :doc:`MeasureNeighborDist <measure/MeasureNeighborDist>`
+     - Object measurements
+     - Measure distances to grid neighbours and to the nearest object.
+   * - :doc:`MeasureOrientationZones <measure/MeasureOrientationZones>`
+     - Object measurements
+     - Measure absolute and radial-relative hyphal orientation by growth zone.
+   * - :doc:`MeasureShape <measure/MeasureShape>`
+     - Object measurements
+     - Measure the form of each detected colony.
+   * - :doc:`MeasureSize <measure/MeasureSize>`
+     - Object measurements
+     - Measure the key size magnitudes of each detected colony.
+   * - :doc:`MeasureSymZones <measure/MeasureSymZones>`
+     - Object measurements
+     - Measure colony radial expansion, symmetry, and canonical radial zones.
+   * - :doc:`MeasureTexture <measure/MeasureTexture>`
+     - Object measurements
+     - Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.
+   * - :doc:`ExpectedVsDetectedCount <qc/ExpectedVsDetectedCount>`
+     - Quality control
+     - Flag groups whose detected colony count diverges from metadata.
+   * - :doc:`GridOccupancy <qc/GridOccupancy>`
+     - Quality control
+     - Flag groups whose grid occupancy (filled cells / expected) is low.
+   * - :doc:`ICC <qc/ICC>`
+     - Quality control
+     - Flag ``groupby`` groups whose replicates have low ICC(2,1) agreement.
+   * - :doc:`MaxModifiedZScore <qc/MaxModifiedZScore>`
+     - Quality control
+     - Flag ``(group, time)`` bins whose worst member is a robust outlier.
+   * - :doc:`RelativeMAD <qc/RelativeMAD>`
+     - Quality control
+     - Flag ``(group, time)`` bins with poor robust agreement across replicates.
+   * - :doc:`ReplicateAgreement <qc/ReplicateAgreement>`
+     - Quality control
+     - Flag ``(group, time)`` bins with poor agreement across replicates.
+   * - :doc:`TukeyOutlierFraction <qc/TukeyOutlierFraction>`
+     - Quality control
+     - Flag ``(group, time)`` bins with a high fraction of Tukey outliers.
+   * - :doc:`LinearCapAndLagModel <models/LinearCapAndLagModel>`
+     - Growth models
+     - Linear-softplus growth fitter with a softplus saturation ceiling.
+   * - :doc:`LinearLagModel <models/LinearLagModel>`
+     - Growth models
+     - Linear-with-softplus lag-phase growth fitter (no saturation).
+   * - :doc:`LogGrowthModel <models/LogGrowthModel>`
+     - Growth models
+     - Logistic-growth model fitter with regularized least-squares objective.
+   * - :doc:`EdgeCorrector <correction/EdgeCorrector>`
+     - Plate correction
+     - Analyzer for detecting and correcting edge effects in arrayed colony growth.

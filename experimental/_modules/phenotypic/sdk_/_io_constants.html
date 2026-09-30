@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/sdk_/_io_constants.html" />
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -686,6 +642,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">stat</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stat_module</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
@@ -2939,11 +2896,19 @@
     <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store</span><span class="p">)</span> <span class="o">/</span> <span class="n">STORE_ROOT_JSON</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">root_directory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">before</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">before</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
                 <span class="k">return</span> <span class="kc">None</span>
-            <span class="n">raw</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
-            <span class="n">after</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
+            <span class="c1"># Measure the open file, exactly as both held backends do</span>
+            <span class="c1"># (``read_regular_with_stat``), not the path. On Windows</span>
+            <span class="c1"># ``os.lstat`` reports the creation time as ``st_ctime`` while</span>
+            <span class="c1"># ``os.fstat`` reports the metadata-change time</span>
+            <span class="c1"># (python/cpython#157671), and a directory-entry query can lag an</span>
+            <span class="c1"># open-handle query on ``st_mtime_ns``; either one made this</span>
+            <span class="c1"># branch&#39;s token differ from the held branch&#39;s for the same file.</span>
+            <span class="k">with</span> <span class="n">root</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+                <span class="n">before</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+                <span class="n">raw</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">after</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._identity_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityRefused</span>
 

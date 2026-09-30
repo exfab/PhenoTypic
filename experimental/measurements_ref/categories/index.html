@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,11 +60,12 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/categories/index.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="API Reference" href="../../api_reference/index.html" />
-    <link rel="prev" title="Metadata" href="../metadata/index.html" />
+    <link rel="next" title="Shared columns" href="../shared/index.html" />
+    <link rel="prev" title="Tier System" href="../tier_system.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.20.0" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown current active">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item current active">
+      <a class="nav-link nav-internal" href="../index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal current active"
-             href="#">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown current active">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item current active">
+      <a class="nav-link nav-internal" href="../index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal current active"
-             href="#">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -563,8 +519,45 @@
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../metadata/index.html">Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tier_system.html">Tier System</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Categories</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../shared/index.html">Shared columns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../metadata/index.html">Metadata</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Object measurements</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureBounds.html">MeasureBounds</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureColor.html">MeasureColor</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureGridLinRegStats.html">MeasureGridLinRegStats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureGridSpread.html">MeasureGridSpread</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureIntensity.html">MeasureIntensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureNeighborDist.html">MeasureNeighborDist</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureOrientationZones.html">MeasureOrientationZones</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureShape.html">MeasureShape</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureSize.html">MeasureSize</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureSymZones.html">MeasureSymZones</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../measure/MeasureTexture.html">MeasureTexture</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/RelativeMAD.html">RelativeMAD</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/ReplicateAgreement.html">ReplicateAgreement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/TukeyOutlierFraction.html">TukeyOutlierFraction</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Growth models</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../models/LinearCapAndLagModel.html">LinearCapAndLagModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models/LinearLagModel.html">LinearLagModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models/LogGrowthModel.html">LogGrowthModel</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Plate correction</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../correction/EdgeCorrector.html">EdgeCorrector</a></li>
 </ul>
 </div>
 </nav></div>
@@ -606,7 +599,7 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../measurements/index.html" class="nav-link">Measurements</a></li>
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Measurements</a></li>
     
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Categories</span></li>
   </ul>
@@ -627,7 +620,16 @@
                   
   <section id="categories">
 <h1>Categories<a class="headerlink" href="#categories" title="Link to this heading">#</a></h1>
-<p>Categories are curated groupings of measurement columns drawn from several metric families; one column can belong to several categories. Unlike the Type badge, a category makes no claim about how far a single value can be trusted (see <a class="reference internal" href="../../explanation/measurement_classification_system.html#measurement-categories"><span class="std std-ref">Categories are groupings, not trust claims</span></a>). Every run that measures objects writes one spreadsheet per category that has at least one column in the run, under <code class="docutils literal notranslate"><span class="pre">deliverables/measurements_by_category/</span></code>, holding the shared context columns (metadata, object label, grid) plus that category’s columns.</p>
+<p id="measurement-categories">Every measurement column begins with its metric family: <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code> belongs to
+the <strong>Size</strong> family, which says only which schema the column comes from. A
+<strong>category</strong> is a separate, curated grouping that cuts across families: one
+category can gather size, intensity and colour columns that three different
+schemas produce, and one column can belong to several categories.</p>
+<p>A category tells you where to look first, not how far to trust a single value;
+that is the job of the Type badge (see <a class="reference internal" href="../tier_system.html"><span class="doc">Tier System</span></a>).</p>
+<p>Every run that measures objects writes one spreadsheet per category that has at
+least one column in the run, under <code class="docutils literal notranslate"><span class="pre">deliverables/measurements_by_category/</span></code>, holding the
+metadata and position columns plus that category’s columns.</p>
 <section id="starting-metrics">
 <span id="measurement-category-startingmetrics"></span><h2>Starting Metrics<a class="headerlink" href="#starting-metrics" title="Link to this heading">#</a></h2>
 <p>Core per-colony magnitudes to examine first: the size measurements, integrated grayscale intensity, and the CIELAB medoid colour.</p>
@@ -641,76 +643,76 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_L*Medoid</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureColor.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_a*Medoid</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureColor.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_b*Medoid</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureColor.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_IntegratedIntensity</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-intensity"><span class="std std-ref">Intensity</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureIntensity.html#measurement-info-intensity"><span class="std std-ref">Intensity</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_Area</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_IntegratedIntensity</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_Perimeter</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_ConvexArea</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_BboxArea</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MajorAxisLength</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MinorAxisLength</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MinFeretDiameter</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MaxFeretDiameter</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_InscribedRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MedianRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MeanRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_RobustMeanRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MaxRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measurements/index.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 </tbody>
 </table>

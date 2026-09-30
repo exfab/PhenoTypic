@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/genindex.html" />
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -12456,6 +12412,12 @@
 </li>
       <li><a href="api_reference/api/phenotypic.sdk_.MetadataMigrationTarget.html#phenotypic.sdk_.MetadataMigrationTarget.hdf_snapshot_fingerprint">hdf_snapshot_fingerprint (phenotypic.sdk_.MetadataMigrationTarget attribute)</a>
 </li>
+      <li><a href="api_reference/api/phenotypic.schema.QUALITY_CHECK.html#phenotypic.schema.QUALITY_CHECK.header">header() (phenotypic.schema.QUALITY_CHECK class method)</a>
+
+      <ul>
+        <li><a href="api_reference/api/phenotypic.schema.TEXTURE.html#phenotypic.schema.TEXTURE.header">(phenotypic.schema.TEXTURE class method)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.header_scheme">header_scheme() (phenotypic.abc_.MeasurementInfo class method)</a>
 
       <ul>
@@ -16322,12 +16284,16 @@
 </li>
       <li><a href="api_reference/api/phenotypic.analysis.ErrorCutoffFinder.html#phenotypic.analysis.ErrorCutoffFinder.measurement_prefixes">measurement_prefixes (phenotypic.analysis.ErrorCutoffFinder attribute)</a>
 </li>
+      <li><a href="api_reference/api/phenotypic.util.measurement_producers.html#phenotypic.util.measurement_producers">measurement_producers() (in module phenotypic.util)</a>
+</li>
       <li><a href="api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo">MeasurementInfo (class in phenotypic.abc_)</a>
 
       <ul>
         <li><a href="api_reference/api/phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo">(class in phenotypic.schema)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer">MeasurementProducer (class in phenotypic.util)</a>
+</li>
       <li><a href="api_reference/core/visualization_plotting.html#phenotypic.plotting.PlotMeasTimeSeries.measurements">measurements (phenotypic.plotting.PlotMeasTimeSeries attribute)</a>
 
       <ul>
@@ -23797,6 +23763,8 @@
         <li><a href="api_reference/api/phenotypic.sdk_.constants_.IMAGE_TYPES.html#phenotypic.sdk_.constants_.IMAGE_TYPES.OBJECT">(phenotypic.sdk_.constants_.IMAGE_TYPES attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/api/phenotypic.schema.GRID_SPREAD.html#phenotypic.schema.GRID_SPREAD.OBJECT_COUNT">OBJECT_COUNT (phenotypic.schema.GRID_SPREAD attribute)</a>
+</li>
       <li><a href="api_reference/api/phenotypic.schema.GRID_SPREAD.html#phenotypic.schema.GRID_SPREAD.OBJECT_SPREAD">OBJECT_SPREAD (phenotypic.schema.GRID_SPREAD attribute)</a>
 </li>
       <li><a href="api_reference/api/phenotypic.abc_.ObjectDetector.html#phenotypic.abc_.ObjectDetector">ObjectDetector (class in phenotypic.abc_)</a>
@@ -23961,7 +23929,137 @@
       </ul></li>
       <li><a href="api_reference/api/phenotypic.sdk_.ProcessingStateKey.html#phenotypic.sdk_.ProcessingStateKey.OUTPUT_DIR">OUTPUT_DIR (phenotypic.sdk_.ProcessingStateKey attribute)</a>
 </li>
+      <li><a href="api_reference/api/phenotypic.abc_.GridFinder.html#phenotypic.abc_.GridFinder.output_header">output_header() (phenotypic.abc_.GridFinder class method)</a>
+
+      <ul>
+        <li><a href="api_reference/api/phenotypic.abc_.GridMeasureFeatures.html#phenotypic.abc_.GridMeasureFeatures.output_header">(phenotypic.abc_.GridMeasureFeatures class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.output_header">(phenotypic.abc_.MeasureFeatures class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.EdgeCorrector.html#phenotypic.analysis.EdgeCorrector.output_header">(phenotypic.analysis.EdgeCorrector class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ExpectedVsDetectedCount.html#phenotypic.analysis.ExpectedVsDetectedCount.output_header">(phenotypic.analysis.ExpectedVsDetectedCount class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.output_header">(phenotypic.analysis.GridOccupancy class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ICC.html#phenotypic.analysis.ICC.output_header">(phenotypic.analysis.ICC class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LinearCapAndLagModel.html#phenotypic.analysis.LinearCapAndLagModel.output_header">(phenotypic.analysis.LinearCapAndLagModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LinearLagModel.html#phenotypic.analysis.LinearLagModel.output_header">(phenotypic.analysis.LinearLagModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LogGrowthModel.html#phenotypic.analysis.LogGrowthModel.output_header">(phenotypic.analysis.LogGrowthModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.MADOutlierRemover.html#phenotypic.analysis.MADOutlierRemover.output_header">(phenotypic.analysis.MADOutlierRemover class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.MaxModifiedZScore.html#phenotypic.analysis.MaxModifiedZScore.output_header">(phenotypic.analysis.MaxModifiedZScore class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.RelativeMAD.html#phenotypic.analysis.RelativeMAD.output_header">(phenotypic.analysis.RelativeMAD class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ReplicateAgreement.html#phenotypic.analysis.ReplicateAgreement.output_header">(phenotypic.analysis.ReplicateAgreement class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.TukeyOutlierFraction.html#phenotypic.analysis.TukeyOutlierFraction.output_header">(phenotypic.analysis.TukeyOutlierFraction class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.TukeyOutlierRemover.html#phenotypic.analysis.TukeyOutlierRemover.output_header">(phenotypic.analysis.TukeyOutlierRemover class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.output_header">(phenotypic.grid.AutoGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.CenteredAutoGridFinder.html#phenotypic.grid.CenteredAutoGridFinder.output_header">(phenotypic.grid.CenteredAutoGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.ManualGridFinder.html#phenotypic.grid.ManualGridFinder.output_header">(phenotypic.grid.ManualGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureBounds.html#phenotypic.measure.MeasureBounds.output_header">(phenotypic.measure.MeasureBounds class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureColor.html#phenotypic.measure.MeasureColor.output_header">(phenotypic.measure.MeasureColor class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureGridLinRegStats.html#phenotypic.measure.MeasureGridLinRegStats.output_header">(phenotypic.measure.MeasureGridLinRegStats class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureGridSpread.html#phenotypic.measure.MeasureGridSpread.output_header">(phenotypic.measure.MeasureGridSpread class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureIntensity.html#phenotypic.measure.MeasureIntensity.output_header">(phenotypic.measure.MeasureIntensity class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureNeighborDist.html#phenotypic.measure.MeasureNeighborDist.output_header">(phenotypic.measure.MeasureNeighborDist class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.output_header">(phenotypic.measure.MeasureOrientationZones class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureShape.html#phenotypic.measure.MeasureShape.output_header">(phenotypic.measure.MeasureShape class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureSize.html#phenotypic.measure.MeasureSize.output_header">(phenotypic.measure.MeasureSize class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureSymZones.html#phenotypic.measure.MeasureSymZones.output_header">(phenotypic.measure.MeasureSymZones class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureTexture.html#phenotypic.measure.MeasureTexture.output_header">(phenotypic.measure.MeasureTexture class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.output_header">(phenotypic.util.MeasurementProducer method)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/api/phenotypic.abc_.GridFinder.html#phenotypic.abc_.GridFinder.output_header_placeholders">output_header_placeholders() (phenotypic.abc_.GridFinder class method)</a>
+
+      <ul>
+        <li><a href="api_reference/api/phenotypic.abc_.GridMeasureFeatures.html#phenotypic.abc_.GridMeasureFeatures.output_header_placeholders">(phenotypic.abc_.GridMeasureFeatures class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.output_header_placeholders">(phenotypic.abc_.MeasureFeatures class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.EdgeCorrector.html#phenotypic.analysis.EdgeCorrector.output_header_placeholders">(phenotypic.analysis.EdgeCorrector class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ExpectedVsDetectedCount.html#phenotypic.analysis.ExpectedVsDetectedCount.output_header_placeholders">(phenotypic.analysis.ExpectedVsDetectedCount class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.output_header_placeholders">(phenotypic.analysis.GridOccupancy class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ICC.html#phenotypic.analysis.ICC.output_header_placeholders">(phenotypic.analysis.ICC class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LinearCapAndLagModel.html#phenotypic.analysis.LinearCapAndLagModel.output_header_placeholders">(phenotypic.analysis.LinearCapAndLagModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LinearLagModel.html#phenotypic.analysis.LinearLagModel.output_header_placeholders">(phenotypic.analysis.LinearLagModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.LogGrowthModel.html#phenotypic.analysis.LogGrowthModel.output_header_placeholders">(phenotypic.analysis.LogGrowthModel class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.MADOutlierRemover.html#phenotypic.analysis.MADOutlierRemover.output_header_placeholders">(phenotypic.analysis.MADOutlierRemover class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.MaxModifiedZScore.html#phenotypic.analysis.MaxModifiedZScore.output_header_placeholders">(phenotypic.analysis.MaxModifiedZScore class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.RelativeMAD.html#phenotypic.analysis.RelativeMAD.output_header_placeholders">(phenotypic.analysis.RelativeMAD class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.ReplicateAgreement.html#phenotypic.analysis.ReplicateAgreement.output_header_placeholders">(phenotypic.analysis.ReplicateAgreement class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.TukeyOutlierFraction.html#phenotypic.analysis.TukeyOutlierFraction.output_header_placeholders">(phenotypic.analysis.TukeyOutlierFraction class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.analysis.TukeyOutlierRemover.html#phenotypic.analysis.TukeyOutlierRemover.output_header_placeholders">(phenotypic.analysis.TukeyOutlierRemover class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.output_header_placeholders">(phenotypic.grid.AutoGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.CenteredAutoGridFinder.html#phenotypic.grid.CenteredAutoGridFinder.output_header_placeholders">(phenotypic.grid.CenteredAutoGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.grid.ManualGridFinder.html#phenotypic.grid.ManualGridFinder.output_header_placeholders">(phenotypic.grid.ManualGridFinder class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureBounds.html#phenotypic.measure.MeasureBounds.output_header_placeholders">(phenotypic.measure.MeasureBounds class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureColor.html#phenotypic.measure.MeasureColor.output_header_placeholders">(phenotypic.measure.MeasureColor class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureGridLinRegStats.html#phenotypic.measure.MeasureGridLinRegStats.output_header_placeholders">(phenotypic.measure.MeasureGridLinRegStats class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureGridSpread.html#phenotypic.measure.MeasureGridSpread.output_header_placeholders">(phenotypic.measure.MeasureGridSpread class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureIntensity.html#phenotypic.measure.MeasureIntensity.output_header_placeholders">(phenotypic.measure.MeasureIntensity class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureNeighborDist.html#phenotypic.measure.MeasureNeighborDist.output_header_placeholders">(phenotypic.measure.MeasureNeighborDist class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.output_header_placeholders">(phenotypic.measure.MeasureOrientationZones class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureShape.html#phenotypic.measure.MeasureShape.output_header_placeholders">(phenotypic.measure.MeasureShape class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureSize.html#phenotypic.measure.MeasureSize.output_header_placeholders">(phenotypic.measure.MeasureSize class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureSymZones.html#phenotypic.measure.MeasureSymZones.output_header_placeholders">(phenotypic.measure.MeasureSymZones class method)</a>
+</li>
+        <li><a href="api_reference/api/phenotypic.measure.MeasureTexture.html#phenotypic.measure.MeasureTexture.output_header_placeholders">(phenotypic.measure.MeasureTexture class method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.output_illuminant">output_illuminant (phenotypic.correction.ColorCorrector attribute)</a>
+</li>
+      <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#id0">output_key (phenotypic.util.MeasurementProducer attribute)</a>, <a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.output_key">[1]</a>
 </li>
       <li><a href="api_reference/api/phenotypic.abc_.GpuDetector.html#phenotypic.abc_.GpuDetector.output_kind">output_kind (phenotypic.abc_.GpuDetector attribute)</a>
 </li>
@@ -23977,8 +24075,6 @@
 </li>
       <li><a href="api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL">OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL (phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE">OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE (phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC attribute)</a>
 </li>
       <li><a href="api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.OUTWARD_ROTATION_CONSISTENCY_DENSE">OUTWARD_ROTATION_CONSISTENCY_DENSE (phenotypic.schema.ORIENTATION_ZONE_PRIMARY attribute)</a>
@@ -26140,6 +26236,8 @@
 </li>
       <li><a href="api_reference/core/visualization_plotting.html#id6">primary (phenotypic.abc_.plotting.FigureSpec attribute)</a>, <a href="api_reference/core/visualization_plotting.html#phenotypic.abc_.plotting.FigureSpec.primary">[1]</a>
 </li>
+      <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#id2">primary_infos (phenotypic.util.MeasurementProducer attribute)</a>, <a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.primary_infos">[1]</a>
+</li>
       <li><a href="api_reference/core/store_layout.html#phenotypic.sdk_.ngff_.primary_series">primary_series() (in module phenotypic.sdk_.ngff_)</a>
 </li>
       <li><a href="api_reference/api/phenotypic.schema.STUDY.html#phenotypic.schema.STUDY.PRIVATE_UNTIL_DATE">PRIVATE_UNTIL_DATE (phenotypic.schema.STUDY attribute)</a>
@@ -26159,6 +26257,8 @@
       <li><a href="api_reference/api/phenotypic.sdk_.processing_state_path.html#phenotypic.sdk_.processing_state_path">processing_state_path() (in module phenotypic.sdk_)</a>
 </li>
       <li><a href="api_reference/api/phenotypic.sdk_.ProcessingStateKey.html#phenotypic.sdk_.ProcessingStateKey">ProcessingStateKey (class in phenotypic.sdk_)</a>
+</li>
+      <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#id1">producer (phenotypic.util.MeasurementProducer attribute)</a>, <a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.producer">[1]</a>
 </li>
       <li><a href="api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.profile">profile (phenotypic.correction.ColorCorrector attribute)</a>
 </li>
@@ -29505,6 +29605,8 @@
 </li>
       </ul></li>
       <li><a href="api_reference/api/phenotypic.sdk_.shard_parquet_filename.html#phenotypic.sdk_.shard_parquet_filename">shard_parquet_filename() (in module phenotypic.sdk_)</a>
+</li>
+      <li><a href="api_reference/api/phenotypic.util.MeasurementProducer.html#id3">shared_infos (phenotypic.util.MeasurementProducer attribute)</a>, <a href="api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.shared_infos">[1]</a>
 </li>
       <li><a href="api_reference/api/phenotypic.enhance.SharpenEdgeGauss.html#phenotypic.enhance.SharpenEdgeGauss">SharpenEdgeGauss (class in phenotypic.enhance)</a>
 </li>

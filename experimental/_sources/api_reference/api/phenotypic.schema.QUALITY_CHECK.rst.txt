@@ -75,6 +75,7 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.format
       ~QUALITY_CHECK.format_map
       ~QUALITY_CHECK.maketrans
+      ~QUALITY_CHECK.header
       ~QUALITY_CHECK.__init__
    
    

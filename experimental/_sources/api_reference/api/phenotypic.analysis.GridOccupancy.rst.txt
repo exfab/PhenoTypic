@@ -41,6 +41,8 @@ phenotypic.analysis.GridOccupancy
       ~GridOccupancy.model_validate
       ~GridOccupancy.model_validate_json
       ~GridOccupancy.model_validate_strings
+      ~GridOccupancy.output_header
+      ~GridOccupancy.output_header_placeholders
       ~GridOccupancy.parse_file
       ~GridOccupancy.parse_obj
       ~GridOccupancy.parse_raw

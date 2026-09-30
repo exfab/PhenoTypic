@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,6 +60,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.util.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -1227,6 +1183,7 @@
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.util</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.measurement_producers.html">phenotypic.util.measurement_producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
@@ -1237,6 +1194,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MeasurementProducer.html">phenotypic.util.MeasurementProducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1318,34 +1276,37 @@
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.generate_output_key.html#phenotypic.util.generate_output_key" title="phenotypic.util.generate_output_key"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generate_output_key</span></code></a></p></td>
 <td><p>Generate a column-description key for recognized output columns.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.split_measurements.html#phenotypic.util.split_measurements" title="phenotypic.util.split_measurements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.measurement_producers.html#phenotypic.util.measurement_producers" title="phenotypic.util.measurement_producers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measurement_producers</span></code></a></p></td>
+<td><p>Return every public operation that writes a table of schema columns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.split_measurements.html#phenotypic.util.split_measurements" title="phenotypic.util.split_measurements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements</span></code></a></p></td>
 <td><p>Split a measurements table into producer-specific data frames.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html#phenotypic.util.split_measurements_by_category" title="phenotypic.util.split_measurements_by_category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements_by_category</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html#phenotypic.util.split_measurements_by_category" title="phenotypic.util.split_measurements_by_category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_measurements_by_category</span></code></a></p></td>
 <td><p>Split a measurements table into one data frame per measurement category.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.robust_color_center.html#phenotypic.util.robust_color_center" title="phenotypic.util.robust_color_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">robust_color_center</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.robust_color_center.html#phenotypic.util.robust_color_center" title="phenotypic.util.robust_color_center"><code class="xref py py-obj docutils literal notranslate"><span class="pre">robust_color_center</span></code></a></p></td>
 <td><p>Euclidean geometric median of <code class="docutils literal notranslate"><span class="pre">points</span></code> (N, D), as a bare (D,) array.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html#phenotypic.util.medoid_ciede2000" title="phenotypic.util.medoid_ciede2000"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_ciede2000</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html#phenotypic.util.medoid_ciede2000" title="phenotypic.util.medoid_ciede2000"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_ciede2000</span></code></a></p></td>
 <td><p>ΔE2000 medoid center and per-pixel ΔE2000 distances to it.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.candidate_medoid.html#phenotypic.util.candidate_medoid" title="phenotypic.util.candidate_medoid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">candidate_medoid</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.candidate_medoid.html#phenotypic.util.candidate_medoid" title="phenotypic.util.candidate_medoid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">candidate_medoid</span></code></a></p></td>
 <td><p>The delta-E 2000 medoid of <em>lab_points</em>, found deterministically.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html#phenotypic.util.delta_e2000_spread" title="phenotypic.util.delta_e2000_spread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta_e2000_spread</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html#phenotypic.util.delta_e2000_spread" title="phenotypic.util.delta_e2000_spread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delta_e2000_spread</span></code></a></p></td>
 <td><p>Return (median, mean, P95) of a ΔE2000 distance array; NaNs if empty.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hsv_to_cone</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hsv_to_cone</span></code></a></p></td>
 <td><p>Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.cone_to_hsv.html#phenotypic.util.cone_to_hsv" title="phenotypic.util.cone_to_hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cone_to_hsv</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.cone_to_hsv.html#phenotypic.util.cone_to_hsv" title="phenotypic.util.cone_to_hsv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cone_to_hsv</span></code></a></p></td>
 <td><p>Inverse of <a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-func docutils literal notranslate"><span class="pre">hsv_to_cone()</span></code></a>; returns H,S,V in [0,1].</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html#phenotypic.util.lab_to_srgb_hex" title="phenotypic.util.lab_to_srgb_hex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lab_to_srgb_hex</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html#phenotypic.util.lab_to_srgb_hex" title="phenotypic.util.lab_to_srgb_hex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lab_to_srgb_hex</span></code></a></p></td>
 <td><p>Convert a single CIE L*a*b* (D65) color to an sRGB <code class="docutils literal notranslate"><span class="pre">#RRGGBB</span></code> string.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.decode_well_position.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.decode_well_position.html#phenotypic.util.decode_well_position" title="phenotypic.util.decode_well_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">decode_well_position</span></code></a></p></td>
 <td><p>Decode microplate well identifiers to 0-based linear indices.</p></td>
 </tr>
 </tbody>
@@ -1354,25 +1315,28 @@
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.MedoidResult.html#phenotypic.util.MedoidResult" title="phenotypic.util.MedoidResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MedoidResult</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer" title="phenotypic.util.MeasurementProducer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeasurementProducer</span></code></a></p></td>
+<td><p>A public operation that writes a table, and the schemas of its columns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.MedoidResult.html#phenotypic.util.MedoidResult" title="phenotypic.util.MedoidResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MedoidResult</span></code></a></p></td>
 <td><p>Outcome of a candidate-restricted medoid search.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html#phenotypic.util.ImageMetricsCalculator" title="phenotypic.util.ImageMetricsCalculator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageMetricsCalculator</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html#phenotypic.util.ImageMetricsCalculator" title="phenotypic.util.ImageMetricsCalculator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageMetricsCalculator</span></code></a></p></td>
 <td><p>Computes image quality metrics from detection matrices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.NoiseMetrics.html#phenotypic.util.NoiseMetrics" title="phenotypic.util.NoiseMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoiseMetrics</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.NoiseMetrics.html#phenotypic.util.NoiseMetrics" title="phenotypic.util.NoiseMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoiseMetrics</span></code></a></p></td>
 <td><p>Noise-related metrics from detection matrix analysis.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.ContrastMetrics.html#phenotypic.util.ContrastMetrics" title="phenotypic.util.ContrastMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ContrastMetrics</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.ContrastMetrics.html#phenotypic.util.ContrastMetrics" title="phenotypic.util.ContrastMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ContrastMetrics</span></code></a></p></td>
 <td><p>Contrast-related metrics from detection matrix analysis.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.StructureMetrics.html#phenotypic.util.StructureMetrics" title="phenotypic.util.StructureMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StructureMetrics</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.StructureMetrics.html#phenotypic.util.StructureMetrics" title="phenotypic.util.StructureMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StructureMetrics</span></code></a></p></td>
 <td><p>Structure tensor and ridge detection metrics.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.BackgroundMetrics.html#phenotypic.util.BackgroundMetrics" title="phenotypic.util.BackgroundMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BackgroundMetrics</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.BackgroundMetrics.html#phenotypic.util.BackgroundMetrics" title="phenotypic.util.BackgroundMetrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BackgroundMetrics</span></code></a></p></td>
 <td><p>Background uniformity metrics.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.util.QualityScores.html#phenotypic.util.QualityScores" title="phenotypic.util.QualityScores"><code class="xref py py-obj docutils literal notranslate"><span class="pre">QualityScores</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.QualityScores.html#phenotypic.util.QualityScores" title="phenotypic.util.QualityScores"><code class="xref py py-obj docutils literal notranslate"><span class="pre">QualityScores</span></code></a></p></td>
 <td><p>Normalized 0-1 quality scores for radar chart visualization.</p></td>
 </tr>
 </tbody>
@@ -1828,6 +1792,120 @@ ridge_responses, scales, ridge_method, and coherence_map.</p>
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_intensity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em></dt>
 <dd><p>Maximum intensity value based on image bit depth.</p>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">MeasurementProducer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">producer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_TableProducer</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primary_infos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shared_infos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/util/_measurement_outputs.html#MeasurementProducer"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A public operation that writes a table, and the schemas of its columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>producer</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><em>_TableProducer</em><em>]</em>)</p></li>
+<li><p><strong>primary_infos</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>shared_infos</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">output_key</span></span></dt>
+<dd><p>The producer’s class name; also its file stem under
+<code class="docutils literal notranslate"><span class="pre">deliverables/measurements_by_feature/</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">producer</span></span></dt>
+<dd><p>The operation class (a <code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code> or
+<code class="docutils literal notranslate"><span class="pre">SetAnalyzer</span></code> subclass).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)">type</a>[phenotypic.util._measurement_outputs._TableProducer]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">primary_infos</span></span></dt>
+<dd><p>Schemas this producer owns, in declaration order,
+including any a parameter switches on (<code class="docutils literal notranslate"><span class="pre">MeasureColor</span></code>’s XYZ).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)">type</a>[<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo">phenotypic.schema._base._measurement_info.MeasurementInfo</a>], …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">shared_infos</span></span></dt>
+<dd><p>Schemas every producer of its kind writes alongside its
+own (<code class="docutils literal notranslate"><span class="pre">MODEL_METRICS</span></code> for growth models, <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> for
+quality checks).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)">type</a>[<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo">phenotypic.schema._base._measurement_info.MeasurementInfo</a>], …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_measurement_outputs.html#MeasurementProducer.output_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the column header the producer writes for <em>member</em>.</p>
+<p>Delegates to the producer class’s <code class="docutils literal notranslate"><span class="pre">output_header</span></code>. Analyzers whose
+headers differ from the enum value (quality checks, growth models,
+edge correction) call that same method when they write their columns.
+Measurement operations write <code class="docutils literal notranslate"><span class="pre">member.value</span></code> or an enum helper
+(<code class="docutils literal notranslate"><span class="pre">TEXTURE.header</span></code>) directly, so for them agreement is not structural:
+<code class="docutils literal notranslate"><span class="pre">tests/unit/util/test_output_headers.py</span></code> runs every producer and
+checks the documented names against the columns written.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of one of this producer’s schemas.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The analyzed column, for producers whose headers embed it;
+<code class="docutils literal notranslate"><span class="pre">None</span></code> renders a placeholder such as <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">output_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">primary_infos</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">producer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_TableProducer</span><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">shared_infos</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -2490,6 +2568,36 @@ Geometric median in nearly linear time. STOC 2016.</p>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">measurement_producers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer" title="phenotypic.util._measurement_outputs.MeasurementProducer"><span class="pre">MeasurementProducer</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_measurement_outputs.html#measurement_producers"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return every public operation that writes a table of schema columns.</p>
+<p>Covers the public <code class="docutils literal notranslate"><span class="pre">phenotypic.measure</span></code> operations and the public
+<code class="docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code> analyzers that declare a <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code>
+schema. Analyzers that only remove rows (the outlier removers) declare
+none and are not listed. The Measurements reference, the
+<code class="docutils literal notranslate"><span class="pre">measurements_by_feature/</span></code> split and the deliverables README all read
+this registry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>measurement operations, then analyzers,
+each alphabetical.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Producers in discovery order</p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util</span><span class="w"> </span><span class="kn">import</span> <span class="n">measurement_producers</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">size</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">measurement_producers</span><span class="p">()</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">output_key</span> <span class="o">==</span> <span class="s2">&quot;MeasureSize&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">info</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">size</span><span class="o">.</span><span class="n">primary_infos</span><span class="p">]</span>
+<span class="go">[&#39;SIZE&#39;]</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py function">

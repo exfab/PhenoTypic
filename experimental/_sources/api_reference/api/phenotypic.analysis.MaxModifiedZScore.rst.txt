@@ -38,6 +38,8 @@ phenotypic.analysis.MaxModifiedZScore
       ~MaxModifiedZScore.model_validate
       ~MaxModifiedZScore.model_validate_json
       ~MaxModifiedZScore.model_validate_strings
+      ~MaxModifiedZScore.output_header
+      ~MaxModifiedZScore.output_header_placeholders
       ~MaxModifiedZScore.parse_file
       ~MaxModifiedZScore.parse_obj
       ~MaxModifiedZScore.parse_raw

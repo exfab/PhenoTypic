@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,6 +60,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.analysis.ICC.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -1227,6 +1183,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.measurement_producers.html">phenotypic.util.measurement_producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
@@ -1237,6 +1194,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MeasurementProducer.html">phenotypic.util.MeasurementProducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1440,7 +1398,7 @@ unmatched so the not-evaluated check is loud, not a silent pass:</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id1">
 <caption><span class="caption-text">Metric family: <strong>QC_ICC</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -1451,15 +1409,15 @@ unmatched so the not-evaluated check is loud, not a silent pass:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -1532,6 +1490,12 @@ unmatched so the not-evaluated check is loud, not a silent pass:</p>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ICC.model_validate_strings" title="phenotypic.analysis.ICC.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
 <td><p>Validate the given object with string data against the Pydantic model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ICC.output_header" title="phenotypic.analysis.ICC.output_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header</span></code></a></p></td>
+<td><p>Return the column header <a class="reference internal" href="#phenotypic.analysis.ICC.analyze" title="phenotypic.analysis.ICC.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ICC.output_header_placeholders" title="phenotypic.analysis.ICC.output_header_placeholders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header_placeholders</span></code></a></p></td>
+<td><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base's headers contain.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ICC.parse_file" title="phenotypic.analysis.ICC.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
@@ -2433,6 +2397,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.ICC.output_header">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ICC.output_header" title="Link to this definition">#</a></dt>
+<dd><p>Return the column header <a class="reference internal" href="#phenotypic.analysis.ICC.analyze" title="phenotypic.analysis.ICC.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="#phenotypic.analysis.ICC.name" title="phenotypic.analysis.ICC.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.ICC.output_header_placeholders">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.analysis.ICC.output_header_placeholders" title="Link to this definition">#</a></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ICC.parse_file">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'utf8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proto</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DeprecatedParseProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_pickle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#phenotypic.analysis.ICC.parse_file" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -2759,6 +2763,8 @@ augmented frame projected to group-key + member-key + <code class="docutils lite
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.model_validate"><code class="docutils literal notranslate"><span class="pre">ICC.model_validate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.model_validate_json"><code class="docutils literal notranslate"><span class="pre">ICC.model_validate_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.model_validate_strings"><code class="docutils literal notranslate"><span class="pre">ICC.model_validate_strings()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.output_header"><code class="docutils literal notranslate"><span class="pre">ICC.output_header()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.output_header_placeholders"><code class="docutils literal notranslate"><span class="pre">ICC.output_header_placeholders()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.parse_file"><code class="docutils literal notranslate"><span class="pre">ICC.parse_file()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.parse_obj"><code class="docutils literal notranslate"><span class="pre">ICC.parse_obj()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ICC.parse_raw"><code class="docutils literal notranslate"><span class="pre">ICC.parse_raw()</span></code></a></li>

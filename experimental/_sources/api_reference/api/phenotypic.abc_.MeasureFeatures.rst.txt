@@ -36,6 +36,8 @@ phenotypic.abc\_.MeasureFeatures
       ~MeasureFeatures.model_validate
       ~MeasureFeatures.model_validate_json
       ~MeasureFeatures.model_validate_strings
+      ~MeasureFeatures.output_header
+      ~MeasureFeatures.output_header_placeholders
       ~MeasureFeatures.parse_file
       ~MeasureFeatures.parse_obj
       ~MeasureFeatures.parse_raw

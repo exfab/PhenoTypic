@@ -18,6 +18,7 @@
    
       geometric_median
       generate_output_key
+      measurement_producers
       split_measurements
       split_measurements_by_category
       robust_color_center
@@ -40,6 +41,7 @@
       :template: class.rst
       :nosignatures:
    
+      MeasurementProducer
       MedoidResult
       ImageMetricsCalculator
       NoiseMetrics

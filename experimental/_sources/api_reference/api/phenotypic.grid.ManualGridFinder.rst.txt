@@ -38,6 +38,8 @@ phenotypic.grid.ManualGridFinder
       ~ManualGridFinder.model_validate
       ~ManualGridFinder.model_validate_json
       ~ManualGridFinder.model_validate_strings
+      ~ManualGridFinder.output_header
+      ~ManualGridFinder.output_header_placeholders
       ~ManualGridFinder.parse_file
       ~ManualGridFinder.parse_obj
       ~ManualGridFinder.parse_raw

@@ -36,6 +36,8 @@ phenotypic.measure.MeasureNeighborDist
       ~MeasureNeighborDist.model_validate
       ~MeasureNeighborDist.model_validate_json
       ~MeasureNeighborDist.model_validate_strings
+      ~MeasureNeighborDist.output_header
+      ~MeasureNeighborDist.output_header_placeholders
       ~MeasureNeighborDist.parse_file
       ~MeasureNeighborDist.parse_obj
       ~MeasureNeighborDist.parse_raw

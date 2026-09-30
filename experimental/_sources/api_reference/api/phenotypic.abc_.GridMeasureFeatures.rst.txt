@@ -36,6 +36,8 @@ phenotypic.abc\_.GridMeasureFeatures
       ~GridMeasureFeatures.model_validate
       ~GridMeasureFeatures.model_validate_json
       ~GridMeasureFeatures.model_validate_strings
+      ~GridMeasureFeatures.output_header
+      ~GridMeasureFeatures.output_header_placeholders
       ~GridMeasureFeatures.parse_file
       ~GridMeasureFeatures.parse_obj
       ~GridMeasureFeatures.parse_raw

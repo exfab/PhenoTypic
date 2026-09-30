@@ -38,6 +38,8 @@ phenotypic.abc\_.GridFinder
       ~GridFinder.model_validate
       ~GridFinder.model_validate_json
       ~GridFinder.model_validate_strings
+      ~GridFinder.output_header
+      ~GridFinder.output_header_placeholders
       ~GridFinder.parse_file
       ~GridFinder.parse_obj
       ~GridFinder.parse_raw

@@ -1,6 +1,12 @@
 Metadata
 ========
 
+Metadata columns all start with ``Metadata_``. The image bookkeeping columns are
+set by PhenoTypic for every image. The experimental tags are the recommended
+names for the columns of your ``--metadata`` file: a column named for a tag's
+label is recognized as that tag, and any other column is kept as
+``Metadata_<Label>`` (see :doc:`/explanation/metadata_namespace`).
+
 .. _measurement-info-image:
 
 :doc:`IMAGE </api_reference/api/phenotypic.schema.IMAGE>`
@@ -8,24 +14,13 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
-   * - ``Metadata_UUID``
-     - The unique identifier of the image.
-     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ImageName``
      - The name of the image.
-     - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ParentImageName``
-     - The name of the parent image.
-     - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ParentUUID``
-     - The UUID of the parent image.
-     - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ImageFormat``
-     - The format of the image.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ImageType``
      - The type of the image.
@@ -44,8 +39,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_Organism``
@@ -83,8 +79,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_SampleID``
@@ -125,8 +122,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_PlateID``
@@ -152,8 +150,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_Media``
@@ -203,8 +202,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_Time``
@@ -242,8 +242,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_ExperimentID``
@@ -269,8 +270,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_Title``
@@ -311,8 +313,9 @@ Metadata
 
 .. list-table:: Metric family: **Metadata**
    :header-rows: 1
+   :class: phenotypic-measurement-table
 
-   * - Column label
+   * - Column
      - Description
      - Type
    * - ``Metadata_ImagingDate``

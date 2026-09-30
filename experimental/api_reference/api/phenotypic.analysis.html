@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -61,6 +62,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.analysis.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -211,33 +213,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -441,33 +420,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -1229,6 +1185,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.measurement_producers.html">phenotypic.util.measurement_producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
@@ -1239,6 +1196,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MeasurementProducer.html">phenotypic.util.MeasurementProducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1433,7 +1391,7 @@ groupby (list[str]): Column names for grouping data by experiment/plate/conditio
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id1">
 <caption><span class="caption-text">Metric family: <strong>EdgeCorrection</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -1444,11 +1402,11 @@ groupby (list[str]): Column names for grouping data by experiment/plate/conditio
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Cap</span></code></p></td>
 <td><p>The carrying capacity for the target measurement</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NewVal</span></code></p></td>
 <td><p>The new value of the target measurement</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -1754,6 +1712,41 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/edge/_edge_correction.html#EdgeCorrector.output_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html#phenotypic.analysis.EdgeCorrector.analyze" title="phenotypic.analysis.EdgeCorrector.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>Edge-correction columns keep the full measured column after a hyphen,
+e.g. <code class="docutils literal notranslate"><span class="pre">EdgeCorrection_NewVal-Size_Area</span></code>, so corrections of several
+measurements can sit side by side.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – An <code class="docutils literal notranslate"><span class="pre">EDGE_CORRECTION</span></code> member.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The measured column. <code class="docutils literal notranslate"><span class="pre">None</span></code> renders the <code class="docutils literal notranslate"><span class="pre">&lt;column&gt;</span></code>
+placeholder used in the Measurements reference.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/edge/_edge_correction.html#EdgeCorrector.output_header_placeholders"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;column&gt;</span></code>, with a header this analyzer writes as the example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -3446,7 +3439,7 @@ the metric is infinite and the key is recorded:</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id2">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id2">
 <caption><span class="caption-text">Metric family: <strong>QC_Count</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -3457,20 +3450,20 @@ the metric is infinite and the key is recorded:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="pst-scrollable-table-container"><table class="table" id="id3">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id3">
 <caption><span class="caption-text">Metric family: <strong>QC_Count</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -3481,15 +3474,15 @@ the metric is infinite and the key is recorded:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Detected</span></code></p></td>
 <td><p>Detected colony count in the group.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Expected</span></code></p></td>
 <td><p>Expected colony count from the metadata frame.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Delta</span></code></p></td>
 <td><p>Detected − Expected (signed; negative = missing).</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -3836,6 +3829,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html#phenotypic.analysis.ExpectedVsDetectedCount.name" title="phenotypic.analysis.ExpectedVsDetectedCount.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -4732,7 +4765,7 @@ the filled-cell count, not the colony count:</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id4">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id4">
 <caption><span class="caption-text">Metric family: <strong>QC_Occupancy</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -4743,20 +4776,20 @@ the filled-cell count, not the colony count:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<div class="pst-scrollable-table-container"><table class="table" id="id5">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id5">
 <caption><span class="caption-text">Metric family: <strong>QC_Occupancy</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -4767,15 +4800,15 @@ the filled-cell count, not the colony count:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Filled</span></code></p></td>
 <td><p>Distinct grid cells holding at least one colony (doublets count once).</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Expected</span></code></p></td>
 <td><p>Expected grid-cell count from the metadata frame (rows per group).</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Vacant</span></code></p></td>
 <td><p>Expected - Filled; empty/missing grid cells in the group.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -5123,6 +5156,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.analyze" title="phenotypic.analysis.GridOccupancy.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.name" title="phenotypic.analysis.GridOccupancy.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -6054,7 +6127,7 @@ unmatched so the not-evaluated check is loud, not a silent pass:</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id6">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id6">
 <caption><span class="caption-text">Metric family: <strong>QC_ICC</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -6065,15 +6138,15 @@ unmatched so the not-evaluated check is loud, not a silent pass:</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ICC_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -6421,6 +6494,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.ICC.html#phenotypic.analysis.ICC.analyze" title="phenotypic.analysis.ICC.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.ICC.html#phenotypic.analysis.ICC.name" title="phenotypic.analysis.ICC.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -7229,7 +7342,7 @@ unaffected.</p></li>
 </ul>
 </div>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id7">
 <caption><span class="caption-text">Metric family: <strong>LinearCapAndLagModel</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -7240,31 +7353,31 @@ unaffected.</p></li>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">v</span></code></p></td>
 <td><p>The post-lag phase growth rate.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s0</span></code></p></td>
 <td><p>The initial size</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lambda</span></code></p></td>
 <td><p>The duration of the lag phase</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></td>
 <td><p>lag phase transition sharpness</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">smax</span></code></p></td>
 <td><p>Carrying capacity used by the model. Either the user-provided scalar or the per-group observed maximum.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code></p></td>
 <td><p>Saturation transition sharpness. Fitted per-group when a saturation shoulder is detected and <code class="docutils literal notranslate"><span class="pre">beta</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> at construction; held at the user-provided scalar (or the module default) when no shoulder is present.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mode</span></code></p></td>
 <td><p>Fit variant selected per-group: ‘fixed_beta’ (beta held at the user-provided or module-default value) or ‘fitted_beta’ (beta fitted as a 5th free parameter when a saturation shoulder is detected).</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -7576,6 +7689,41 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html#phenotypic.analysis.LinearCapAndLagModel.analyze" title="phenotypic.analysis.LinearCapAndLagModel.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>Every fitted parameter and fit metric embeds the fitted measurement,
+<code class="docutils literal notranslate"><span class="pre">{Family}_{metric}_{label}</span></code> (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_Area_r</span></code>), so the enum
+value (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_r</span></code>) never appears in a table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of the model’s enum or of <code class="docutils literal notranslate"><span class="pre">MODEL_METRICS</span></code>.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The fitted column (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>). <code class="docutils literal notranslate"><span class="pre">None</span></code> renders the
+<code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code> placeholder used in the Measurements reference.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>, with a header this model writes as the example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -8418,7 +8566,7 @@ unaffected.</p></li>
 </ul>
 </div>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id8">
 <caption><span class="caption-text">Metric family: <strong>LinearLagModel</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -8430,22 +8578,22 @@ unaffected.</p></li>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">v</span></code></p></td>
 <td><p>The post-lag phase growth rate.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td><p>The post-lag phase growth rate using the target metric (usually radius)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s0</span></code></p></td>
 <td><p>The initial value of the target metric</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td><p>The initial size</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lambda</span></code></p></td>
 <td><p>The duration of the lag phase</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></td>
 <td><p>lag phase transition sharpness</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 </tbody>
@@ -8756,6 +8904,41 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.LinearLagModel.html#phenotypic.analysis.LinearLagModel.analyze" title="phenotypic.analysis.LinearLagModel.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>Every fitted parameter and fit metric embeds the fitted measurement,
+<code class="docutils literal notranslate"><span class="pre">{Family}_{metric}_{label}</span></code> (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_Area_r</span></code>), so the enum
+value (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_r</span></code>) never appears in a table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of the model’s enum or of <code class="docutils literal notranslate"><span class="pre">MODEL_METRICS</span></code>.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The fitted column (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>). <code class="docutils literal notranslate"><span class="pre">None</span></code> renders the
+<code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code> placeholder used in the Measurements reference.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>, with a header this model writes as the example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -9549,7 +9732,7 @@ beta (float): The maximum penalty factor applied to the carrying</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id9">
 <caption><span class="caption-text">Metric family: <strong>LogGrowthModel</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -9560,31 +9743,31 @@ beta (float): The maximum penalty factor applied to the carrying</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">r</span></code></p></td>
 <td><p>The intrinsic growth rate</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">K</span></code></p></td>
 <td><p>The carrying capacity</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N0</span></code></p></td>
 <td><p>The initial number of the colony size metric being fitted</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lambda</span></code></p></td>
 <td><p>The regularization factor applied to the max specific growth rate and initial population size</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code></p></td>
 <td><p>The penalty factor applied to relative difference of the carrying capacity from the largest measurement</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">µmax</span></code></p></td>
 <td><p>The growth rate of the colony calculated as (K*r)/4</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Kmax</span></code></p></td>
 <td><p>The upper bound of the carrying capacity for model fitting</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -9891,6 +10074,41 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html#phenotypic.analysis.LogGrowthModel.analyze" title="phenotypic.analysis.LogGrowthModel.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>Every fitted parameter and fit metric embeds the fitted measurement,
+<code class="docutils literal notranslate"><span class="pre">{Family}_{metric}_{label}</span></code> (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_Area_r</span></code>), so the enum
+value (<code class="docutils literal notranslate"><span class="pre">LogGrowthModel_r</span></code>) never appears in a table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of the model’s enum or of <code class="docutils literal notranslate"><span class="pre">MODEL_METRICS</span></code>.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The fitted column (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>). <code class="docutils literal notranslate"><span class="pre">None</span></code> renders the
+<code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code> placeholder used in the Measurements reference.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>, with a header this model writes as the example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -10990,6 +11208,45 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html#phenotypic.analysis.MADOutlierRemover.analyze" title="phenotypic.analysis.MADOutlierRemover.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The default is the member’s own value. Analyzers whose headers embed
+the analyzed column or the analyzer’s name override this, and the
+Measurements reference documents whatever it returns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of a schema this analyzer declares.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The analyzed column, for analyzers whose headers embed it.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> renders a placeholder.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define the placeholders in this analyzer’s <a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html#phenotypic.analysis.MADOutlierRemover.output_header" title="phenotypic.analysis.MADOutlierRemover.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a> patterns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Placeholder (<code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>) to an RST sentence saying what it
+stands for, with an example. Empty when every header is fixed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'utf8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proto</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DeprecatedParseProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_pickle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -11773,7 +12030,7 @@ receive <code class="docutils literal notranslate"><span class="pre">metric</spa
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id10">
 <caption><span class="caption-text">Metric family: <strong>QC_ZMax</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -11784,15 +12041,15 @@ receive <code class="docutils literal notranslate"><span class="pre">metric</spa
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ZMax_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ZMax_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_ZMax_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -12140,6 +12397,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html#phenotypic.analysis.MaxModifiedZScore.analyze" title="phenotypic.analysis.MaxModifiedZScore.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html#phenotypic.analysis.MaxModifiedZScore.name" title="phenotypic.analysis.MaxModifiedZScore.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -13125,7 +13422,7 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_MAD_M
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id11">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id11">
 <caption><span class="caption-text">Metric family: <strong>QC_MAD</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -13136,15 +13433,15 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_MAD_M
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_MAD_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_MAD_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_MAD_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -13493,6 +13790,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.RelativeMAD.html#phenotypic.analysis.RelativeMAD.analyze" title="phenotypic.analysis.RelativeMAD.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.RelativeMAD.html#phenotypic.analysis.RelativeMAD.name" title="phenotypic.analysis.RelativeMAD.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -14338,7 +14675,7 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_SE_Me
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id12">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id12">
 <caption><span class="caption-text">Metric family: <strong>QC_SE</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -14349,15 +14686,15 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_SE_Me
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_SE_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -14706,6 +15043,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html#phenotypic.analysis.ReplicateAgreement.analyze" title="phenotypic.analysis.ReplicateAgreement.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html#phenotypic.analysis.ReplicateAgreement.name" title="phenotypic.analysis.ReplicateAgreement.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -15613,7 +15990,7 @@ default <code class="docutils literal notranslate"><span class="pre">min_replica
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id13">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id13">
 <caption><span class="caption-text">Metric family: <strong>QC_Tukey</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -15624,15 +16001,15 @@ default <code class="docutils literal notranslate"><span class="pre">min_replica
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_Flag</span></code></p></td>
 <td><p>True when the metric crosses fail_threshold in the bad direction; eligible for curation.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_Metric</span></code></p></td>
 <td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_Status</span></code></p></td>
 <td><p>Categorical: pass | warn | fail.</p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -15981,6 +16358,46 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html#phenotypic.analysis.TukeyOutlierFraction.analyze" title="phenotypic.analysis.TukeyOutlierFraction.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The shared <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> columns carry the check’s <a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html#phenotypic.analysis.TukeyOutlierFraction.name" title="phenotypic.analysis.TukeyOutlierFraction.name"><code class="xref py py-attr docutils literal notranslate"><span class="pre">name</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">QC_ICC_Metric</span></code>), so the enum value (<code class="docutils literal notranslate"><span class="pre">QC_Metric</span></code>) never appears
+in a table. A check’s own enum members are written as declared.</p>
+<p>Only the abstract <code class="docutils literal notranslate"><span class="pre">QualityCheck</span></code> itself renders the <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>
+placeholder used in the Measurements reference. A concrete check with
+no <code class="docutils literal notranslate"><span class="pre">name</span></code> raises instead, so it can never write <code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A <code class="docutils literal notranslate"><span class="pre">QUALITY_CHECK</span></code> member or one of the check’s own.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Unused; accepted for the shared <code class="docutils literal notranslate"><span class="pre">output_header</span></code> signature.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#AttributeError" title="(in Python v3.14)"><strong>AttributeError</strong></a> – If a concrete check does not define <code class="docutils literal notranslate"><span class="pre">name</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base’s headers contain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -17100,6 +17517,45 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><em>Self</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
+<dd><p>Return the column header <a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html#phenotypic.analysis.TukeyOutlierRemover.analyze" title="phenotypic.analysis.TukeyOutlierRemover.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The default is the member’s own value. Analyzers whose headers embed
+the analyzed column or the analyzer’s name override this, and the
+Measurements reference documents whatever it returns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of a schema this analyzer declares.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The analyzed column, for analyzers whose headers embed it.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> renders a placeholder.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The emitted header.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span></dt>
+<dd><p>Define the placeholders in this analyzer’s <a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html#phenotypic.analysis.TukeyOutlierRemover.output_header" title="phenotypic.analysis.TukeyOutlierRemover.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a> patterns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Placeholder (<code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code>) to an RST sentence saying what it
+stands for, with an example. Empty when every header is fixed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>

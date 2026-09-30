@@ -1,7 +1,20 @@
 Categories
 ==========
 
-Categories are curated groupings of measurement columns drawn from several metric families; one column can belong to several categories. Unlike the Type badge, a category makes no claim about how far a single value can be trusted (see :ref:`measurement-categories`). Every run that measures objects writes one spreadsheet per category that has at least one column in the run, under ``deliverables/measurements_by_category/``, holding the shared context columns (metadata, object label, grid) plus that category's columns.
+.. _measurement-categories:
+
+Every measurement column begins with its metric family: ``Size_Area`` belongs to
+the **Size** family, which says only which schema the column comes from. A
+**category** is a separate, curated grouping that cuts across families: one
+category can gather size, intensity and colour columns that three different
+schemas produce, and one column can belong to several categories.
+
+A category tells you where to look first, not how far to trust a single value;
+that is the job of the Type badge (see :doc:`../tier_system`).
+
+Every run that measures objects writes one spreadsheet per category that has at
+least one column in the run, under ``deliverables/measurements_by_category/``, holding the
+metadata and position columns plus that category's columns.
 
 .. _measurement-category-startingmetrics:
 

@@ -38,6 +38,8 @@ phenotypic.analysis.LogGrowthModel
       ~LogGrowthModel.model_validate
       ~LogGrowthModel.model_validate_json
       ~LogGrowthModel.model_validate_strings
+      ~LogGrowthModel.output_header
+      ~LogGrowthModel.output_header_placeholders
       ~LogGrowthModel.parse_file
       ~LogGrowthModel.parse_obj
       ~LogGrowthModel.parse_raw

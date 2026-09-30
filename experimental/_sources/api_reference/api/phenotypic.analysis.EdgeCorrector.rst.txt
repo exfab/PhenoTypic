@@ -34,6 +34,8 @@ phenotypic.analysis.EdgeCorrector
       ~EdgeCorrector.model_validate
       ~EdgeCorrector.model_validate_json
       ~EdgeCorrector.model_validate_strings
+      ~EdgeCorrector.output_header
+      ~EdgeCorrector.output_header_placeholders
       ~EdgeCorrector.parse_file
       ~EdgeCorrector.parse_obj
       ~EdgeCorrector.parse_raw

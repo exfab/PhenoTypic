@@ -41,6 +41,8 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.model_validate
       ~ExpectedVsDetectedCount.model_validate_json
       ~ExpectedVsDetectedCount.model_validate_strings
+      ~ExpectedVsDetectedCount.output_header
+      ~ExpectedVsDetectedCount.output_header_placeholders
       ~ExpectedVsDetectedCount.parse_file
       ~ExpectedVsDetectedCount.parse_obj
       ~ExpectedVsDetectedCount.parse_raw

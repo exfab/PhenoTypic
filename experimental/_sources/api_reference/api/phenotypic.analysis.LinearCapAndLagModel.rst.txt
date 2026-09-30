@@ -38,6 +38,8 @@ phenotypic.analysis.LinearCapAndLagModel
       ~LinearCapAndLagModel.model_validate
       ~LinearCapAndLagModel.model_validate_json
       ~LinearCapAndLagModel.model_validate_strings
+      ~LinearCapAndLagModel.output_header
+      ~LinearCapAndLagModel.output_header_placeholders
       ~LinearCapAndLagModel.parse_file
       ~LinearCapAndLagModel.parse_obj
       ~LinearCapAndLagModel.parse_raw

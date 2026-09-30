@@ -75,6 +75,7 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.format
       ~TEXTURE.format_map
       ~TEXTURE.maketrans
+      ~TEXTURE.header
       ~TEXTURE.__init__
    
    

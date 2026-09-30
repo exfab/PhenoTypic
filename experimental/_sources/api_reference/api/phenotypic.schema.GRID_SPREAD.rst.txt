@@ -93,6 +93,7 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.use_badge
       ~GRID_SPREAD.category_badges
       ~GRID_SPREAD.OBJECT_SPREAD
+      ~GRID_SPREAD.OBJECT_COUNT
       ~GRID_SPREAD.label
       ~GRID_SPREAD.desc
       ~GRID_SPREAD.bio_desc

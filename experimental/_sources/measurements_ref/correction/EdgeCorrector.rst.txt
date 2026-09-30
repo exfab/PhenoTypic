@@ -1,0 +1,37 @@
+.. _measurement-op-edgecorrector:
+
+EdgeCorrector
+=============
+
+Analyzer for detecting and correcting edge effects in arrayed colony growth.
+
+Parameters and usage: :py:class:`EdgeCorrector <phenotypic.analysis.EdgeCorrector>`.
+
+- **Written to:** the frame ``analyze()`` returns only; a CLI run does not write it to a file
+- **Columns:** 2, each a pattern (see Placeholders)
+
+.. rubric:: Placeholders
+
+Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:
+
+``<column>``
+   The corrected column in full: correcting ``Size_Area`` writes ``EdgeCorrection_NewVal-Size_Area``.
+
+.. _measurement-info-edge-correction:
+
+:doc:`EDGE_CORRECTION </api_reference/api/phenotypic.schema.EDGE_CORRECTION>`
+-----------------------------------------------------------------------------
+
+.. list-table:: Metric family: **EdgeCorrection**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``EdgeCorrection_Cap-<column>``
+     - The carrying capacity for the target measurement
+     - :bdg-ref-info:`Derived <measurement-classification>`
+   * - ``EdgeCorrection_NewVal-<column>``
+     - The new value of the target measurement
+     - :bdg-ref-info:`Derived <measurement-classification>`

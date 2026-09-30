@@ -41,6 +41,8 @@ phenotypic.analysis.ReplicateAgreement
       ~ReplicateAgreement.model_validate
       ~ReplicateAgreement.model_validate_json
       ~ReplicateAgreement.model_validate_strings
+      ~ReplicateAgreement.output_header
+      ~ReplicateAgreement.output_header_placeholders
       ~ReplicateAgreement.parse_file
       ~ReplicateAgreement.parse_obj
       ~ReplicateAgreement.parse_raw

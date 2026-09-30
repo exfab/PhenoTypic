@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/util/_measurement_outputs.html" />
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -616,7 +572,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">TypeAlias</span><span class="p">,</span> <span class="n">TypeGuard</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">TypeAlias</span><span class="p">,</span> <span class="n">TypeGuard</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
@@ -627,13 +583,89 @@
 <span class="n">MeasurementFrame</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">_TableProducer</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the registry needs from a producer class: its header emitter.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header_placeholders</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span> <span class="o">...</span>
+
+
+<div class="viewcode-block" id="MeasurementProducer">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">_MeasurementProducer</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A public producer class and the ``MeasurementInfo`` enums it owns.&quot;&quot;&quot;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasurementProducer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A public operation that writes a table, and the schemas of its columns.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        output_key: The producer&#39;s class name; also its file stem under</span>
+<span class="sd">            ``deliverables/measurements_by_feature/``.</span>
+<span class="sd">        producer: The operation class (a ``MeasureFeatures`` or</span>
+<span class="sd">            ``SetAnalyzer`` subclass).</span>
+<span class="sd">        primary_infos: Schemas this producer owns, in declaration order,</span>
+<span class="sd">            including any a parameter switches on (``MeasureColor``&#39;s XYZ).</span>
+<span class="sd">        shared_infos: Schemas every producer of its kind writes alongside its</span>
+<span class="sd">            own (``MODEL_METRICS`` for growth models, ``QUALITY_CHECK`` for</span>
+<span class="sd">            quality checks).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">output_key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">producer</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">_TableProducer</span><span class="p">]</span>
     <span class="n">primary_infos</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span>
     <span class="n">shared_infos</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">MeasurementInfo</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
+
+<div class="viewcode-block" id="MeasurementProducer.output_header">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.output_header">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_header</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the column header the producer writes for *member*.</span>
+
+<span class="sd">        Delegates to the producer class&#39;s ``output_header``. Analyzers whose</span>
+<span class="sd">        headers differ from the enum value (quality checks, growth models,</span>
+<span class="sd">        edge correction) call that same method when they write their columns.</span>
+<span class="sd">        Measurement operations write ``member.value`` or an enum helper</span>
+<span class="sd">        (``TEXTURE.header``) directly, so for them agreement is not structural:</span>
+<span class="sd">        ``tests/unit/util/test_output_headers.py`` runs every producer and</span>
+<span class="sd">        checks the documented names against the columns written.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            member: A member of one of this producer&#39;s schemas.</span>
+<span class="sd">            on: The analyzed column, for producers whose headers embed it;</span>
+<span class="sd">                ``None`` renders a placeholder such as ``&lt;metric&gt;``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The emitted header.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">producer</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="measurement_producers">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.measurement_producers.html#phenotypic.util.measurement_producers">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measurement_producers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MeasurementProducer</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return every public operation that writes a table of schema columns.</span>
+
+<span class="sd">    Covers the public ``phenotypic.measure`` operations and the public</span>
+<span class="sd">    ``phenotypic.analysis`` analyzers that declare a ``MeasurementInfo``</span>
+<span class="sd">    schema. Analyzers that only remove rows (the outlier removers) declare</span>
+<span class="sd">    none and are not listed. The Measurements reference, the</span>
+<span class="sd">    ``measurements_by_feature/`` split and the deliverables README all read</span>
+<span class="sd">    this registry.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Producers in discovery order: measurement operations, then analyzers,</span>
+<span class="sd">        each alphabetical.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.util import measurement_producers</span>
+<span class="sd">        &gt;&gt;&gt; size = next(p for p in measurement_producers() if p.output_key == &quot;MeasureSize&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; [info.__name__ for info in size.primary_infos]</span>
+<span class="sd">        [&#39;SIZE&#39;]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_discover_measurement_producers</span><span class="p">()</span></div>
+
 
 
 <div class="viewcode-block" id="split_measurements">
@@ -808,15 +840,15 @@
 
 
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">_discover_measurement_producers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">_MeasurementProducer</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_discover_measurement_producers</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MeasurementProducer</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover public measurement producers from public modules.&quot;&quot;&quot;</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">analysis_module</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">measure_module</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFitter</span><span class="p">,</span> <span class="n">QualityCheck</span><span class="p">,</span> <span class="n">SetAnalyzer</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span><span class="p">,</span> <span class="n">QUALITY_CHECK</span>
 
-    <span class="n">producers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">_MeasurementProducer</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">producers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">MeasurementProducer</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">measure_module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
@@ -825,7 +857,7 @@
             <span class="k">continue</span>
         <span class="n">infos</span> <span class="o">=</span> <span class="n">_declared_info_classes</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">infos</span><span class="p">:</span>
-            <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_MeasurementProducer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">infos</span><span class="p">))</span>
+            <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MeasurementProducer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">infos</span><span class="p">))</span>
 
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">analysis_module</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">):</span>
@@ -843,14 +875,22 @@
             <span class="n">primary_infos</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">info</span> <span class="k">for</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">infos</span> <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">MODEL_METRICS</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">primary_infos</span><span class="p">:</span>
                 <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="n">_MeasurementProducer</span><span class="p">(</span>
+                    <span class="n">MeasurementProducer</span><span class="p">(</span>
                         <span class="n">name</span><span class="p">,</span>
+                        <span class="bp">cls</span><span class="p">,</span>
                         <span class="n">primary_infos</span><span class="p">,</span>
                         <span class="n">shared_infos</span><span class="o">=</span><span class="p">(</span><span class="n">MODEL_METRICS</span><span class="p">,),</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">QualityCheck</span><span class="p">):</span>
+            <span class="c1"># The shared QC trio is written as QC_&lt;name&gt;_Metric/Flag/Status,</span>
+            <span class="c1"># which QUALITY_CHECK does not own, so it never claims a column</span>
+            <span class="c1"># in split_measurements; it is listed for documentation.</span>
+            <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">MeasurementProducer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">infos</span><span class="p">,</span> <span class="n">shared_infos</span><span class="o">=</span><span class="p">(</span><span class="n">QUALITY_CHECK</span><span class="p">,))</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_MeasurementProducer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">infos</span><span class="p">))</span>
+            <span class="n">producers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MeasurementProducer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">infos</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">producers</span><span class="p">)</span>
 

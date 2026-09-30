@@ -36,6 +36,8 @@ phenotypic.measure.MeasureGridSpread
       ~MeasureGridSpread.model_validate
       ~MeasureGridSpread.model_validate_json
       ~MeasureGridSpread.model_validate_strings
+      ~MeasureGridSpread.output_header
+      ~MeasureGridSpread.output_header_placeholders
       ~MeasureGridSpread.parse_file
       ~MeasureGridSpread.parse_obj
       ~MeasureGridSpread.parse_raw

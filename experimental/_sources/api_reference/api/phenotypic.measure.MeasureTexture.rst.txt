@@ -36,6 +36,8 @@ phenotypic.measure.MeasureTexture
       ~MeasureTexture.model_validate
       ~MeasureTexture.model_validate_json
       ~MeasureTexture.model_validate_strings
+      ~MeasureTexture.output_header
+      ~MeasureTexture.output_header_placeholders
       ~MeasureTexture.parse_file
       ~MeasureTexture.parse_obj
       ~MeasureTexture.parse_raw

@@ -38,6 +38,8 @@ phenotypic.analysis.ICC
       ~ICC.model_validate
       ~ICC.model_validate_json
       ~ICC.model_validate_strings
+      ~ICC.output_header
+      ~ICC.output_header_placeholders
       ~ICC.parse_file
       ~ICC.parse_obj
       ~ICC.parse_raw

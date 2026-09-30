@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/schema.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -628,18 +584,18 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">Entry</span><span class="p">,</span>
     <span class="n">MeasurementInfo</span><span class="p">,</span>
     <span class="n">parse_qualified_header</span><span class="p">,</span>
     <span class="n">qualified_header</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">REMBI_MODULE</span> <span class="k">as</span> <span class="n">REMBI_MODULE</span><span class="p">,</span>
     <span class="n">header_to_module</span> <span class="k">as</span> <span class="n">header_to_module</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">CategoryEntry</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">CategoryEntry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DerivedMeasure</span> <span class="k">as</span> <span class="n">DerivedMeasure</span><span class="p">,</span>
     <span class="n">DescriptiveTrait</span> <span class="k">as</span> <span class="n">DescriptiveTrait</span><span class="p">,</span>
     <span class="n">DirectPhenotype</span> <span class="k">as</span> <span class="n">DirectPhenotype</span><span class="p">,</span>
@@ -649,8 +605,8 @@
     <span class="n">PrimaryMeasure</span> <span class="k">as</span> <span class="n">PrimaryMeasure</span><span class="p">,</span>
     <span class="n">QualityInfo</span> <span class="k">as</span> <span class="n">QualityInfo</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._experimental_tags</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata._experimental_tags</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ACQUISITION</span><span class="p">,</span>
     <span class="n">CONDITION</span><span class="p">,</span>
     <span class="n">CULTURE</span><span class="p">,</span>
@@ -661,44 +617,44 @@
     <span class="n">STUDY</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._bbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._color_composition</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorComposition</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._color_hsv</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorHSV</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._color_lab</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorLab</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._color_xy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Colorxy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._color_xyz</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorXYZ</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._edge_correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._grid_linreg_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_LINREG_STATS</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._neighbor_dist</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEIGHBOR_DIST</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._grid_spread</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_SPREAD</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._linear_cap_and_lag_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_CAP_AND_LAG_MODEL</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._intensity</span><span class="w"> </span><span class="kn">import</span> <span class="n">INTENSITY</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._linear_lag_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_LAG_MODEL</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._log_growth_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LOG_GROWTH_MODEL</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._model_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._object</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._curation</span><span class="w"> </span><span class="kn">import</span> <span class="n">CURATION</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._error_category</span><span class="w"> </span><span class="kn">import</span> <span class="n">ErrorCategory</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata_match</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA_MATCH</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_CHECK</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_count</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_COUNT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_icc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ICC</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_mad</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_MAD</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_occupancy</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_OCCUPANCY</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_se</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_SE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_tukey</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_TUKEY</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._quality_zmax</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ZMAX</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._radial_expansion</span><span class="w"> </span><span class="kn">import</span> <span class="n">RADIAL_EXPANSION</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._orientation_zones</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._bbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._color_composition</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorComposition</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._color_hsv</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorHSV</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._color_lab</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorLab</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._color_xy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Colorxy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._color_xyz</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorXYZ</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._edge_correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">EDGE_CORRECTION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._grid_linreg_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_LINREG_STATS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._neighbor_dist</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEIGHBOR_DIST</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._grid_spread</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID_SPREAD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._models._linear_cap_and_lag_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_CAP_AND_LAG_MODEL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._intensity</span><span class="w"> </span><span class="kn">import</span> <span class="n">INTENSITY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._models._linear_lag_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_LAG_MODEL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._models._log_growth_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LOG_GROWTH_MODEL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._models._model_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._object</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._curation</span><span class="w"> </span><span class="kn">import</span> <span class="n">CURATION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._error_category</span><span class="w"> </span><span class="kn">import</span> <span class="n">ErrorCategory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._metadata_match</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA_MATCH</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_CHECK</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_count</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_COUNT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_icc</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ICC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_mad</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_MAD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_occupancy</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_OCCUPANCY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_se</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_SE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_tukey</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_TUKEY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._analysis._qc._quality_zmax</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ZMAX</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._shared._radial_expansion</span><span class="w"> </span><span class="kn">import</span> <span class="n">RADIAL_EXPANSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._orientation_zones</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ORIENTATION_ZONE_DIAGNOSTIC</span><span class="p">,</span>
     <span class="n">ORIENTATION_ZONE_PRIMARY</span><span class="p">,</span>
     <span class="n">ORIENTATION_ZONES</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._shape</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHAPE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._size</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIZE</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._symmetric_zones</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._texture</span><span class="w"> </span><span class="kn">import</span> <span class="n">TEXTURE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._shape</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHAPE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._size</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIZE</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._symmetric_zones</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measure._texture</span><span class="w"> </span><span class="kn">import</span> <span class="n">TEXTURE</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;Entry&quot;</span><span class="p">,</span>

@@ -1,0 +1,245 @@
+.. _measurement-op-measurecolor:
+
+MeasureColor
+============
+
+Measure robust colorimetric statistics for each colony.
+
+Parameters and usage: :py:class:`MeasureColor <phenotypic.measure.MeasureColor>`.
+
+- **One row per:** detected colony
+- **Written to:** ``deliverables/measurements.csv`` (every operation, with your metadata joined) and ``deliverables/measurements_by_feature/MeasureColor.csv``, each with a ``.parquet`` beside it
+- **Columns:** 55
+
+.. _measurement-info-colorlab:
+
+:doc:`ColorLab </api_reference/api/phenotypic.schema.ColorLab>`
+---------------------------------------------------------------
+
+.. list-table:: Metric family: **ColorLab**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+     - Categories
+   * - ``ColorLab_L*GeoMedian``
+     - L* of the ΔE76 (Euclidean) geometric-median center color of the object
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_a*GeoMedian``
+     - a* of the ΔE76 (Euclidean) geometric-median center color of the object
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_b*GeoMedian``
+     - b* of the ΔE76 (Euclidean) geometric-median center color of the object
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_L*Medoid``
+     - L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+   * - ``ColorLab_a*Medoid``
+     - a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+   * - ``ColorLab_b*Medoid``
+     - b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported ``*GeoMedian`` columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+   * - ``ColorLab_DeltaE2000MedianFromMedoid``
+     - Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_DeltaE2000MeanFromMedoid``
+     - Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_DeltaE2000P95FromMedoid``
+     - 95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_LabTotalVariance``
+     - Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+   * - ``ColorLab_MedoidColorHex``
+     - sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+
+.. _measurement-info-colorhsv:
+
+:doc:`ColorHSV </api_reference/api/phenotypic.schema.ColorHSV>`
+---------------------------------------------------------------
+
+.. list-table:: Metric family: **ColorHSV**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ColorHSV_HueRobustMean``
+     - Hue of the cone-embedded geometric-median robust center (circular-correct)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``ColorHSV_SaturationRobustMean``
+     - Saturation of the cone-embedded geometric-median robust center
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``ColorHSV_ValueRobustMean``
+     - Value (brightness) of the cone-embedded geometric-median robust center
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``ColorHSV_HSVConeVariance``
+     - Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+
+.. _measurement-info-colorxyz:
+
+:doc:`ColorXYZ </api_reference/api/phenotypic.schema.ColorXYZ>`
+---------------------------------------------------------------
+
+Written only when ``include_XYZ=True``.
+
+.. list-table:: Metric family: **ColorXYZ**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ColorXYZ_CieXMin``
+     - The minimum X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXQ1``
+     - The lower quartile (Q1) X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXMean``
+     - The mean X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXMedian``
+     - The median X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXQ3``
+     - The upper quartile (Q3) X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXMax``
+     - The maximum X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXStdDev``
+     - The standard deviation of the X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieXCoeffVar``
+     - The coefficient of variation of the X value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYMin``
+     - The minimum Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYQ1``
+     - The lower quartile (Q1) Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYMean``
+     - The mean Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYMedian``
+     - The median Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYQ3``
+     - The upper quartile (Q3) Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYMax``
+     - The maximum Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYStdDev``
+     - The standard deviation of the Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieYCoeffVar``
+     - The coefficient of variation of the Y value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZMin``
+     - The minimum Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZQ1``
+     - The lower quartile (Q1) Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZMean``
+     - The mean Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZMedian``
+     - The median Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZQ3``
+     - The upper quartile (Q3) Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZMax``
+     - The maximum Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZStdDev``
+     - The standard deviation of the Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``ColorXYZ_CieZCoeffVar``
+     - The coefficient of variation of the Z value of the object in CIE XYZ color space
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+
+.. _measurement-info-colorxy:
+
+:doc:`Colorxy </api_reference/api/phenotypic.schema.Colorxy>`
+-------------------------------------------------------------
+
+Written only when ``include_xy=True``.
+
+.. list-table:: Metric family: **Colorxy**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``Colorxy_xMin``
+     - The minimum chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xQ1``
+     - The lower quartile (Q1) chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xMean``
+     - The mean chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xMedian``
+     - The median chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xQ3``
+     - The upper quartile (Q3) chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xMax``
+     - The maximum chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xStdDev``
+     - The standard deviation of the chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_xCoeffVar``
+     - The coefficient of variation of the chromaticity x coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yMin``
+     - The minimum chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yQ1``
+     - The lower quartile (Q1) chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yMean``
+     - The mean chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yMedian``
+     - The median chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yQ3``
+     - The upper quartile (Q3) chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yMax``
+     - The maximum chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yStdDev``
+     - The standard deviation of the chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Colorxy_yCoeffVar``
+     - The coefficient of variation of the chromaticity y coordinate of the object
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`

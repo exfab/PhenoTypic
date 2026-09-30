@@ -1,0 +1,87 @@
+.. _measurement-op-loggrowthmodel:
+
+LogGrowthModel
+==============
+
+Logistic-growth model fitter with regularized least-squares objective.
+
+Parameters and usage: :py:class:`LogGrowthModel <phenotypic.analysis.LogGrowthModel>`.
+
+- **One row per:** fitted group (the ``groupby`` columns)
+- **Written to:** the frame ``analyze()`` returns; when it is the pipeline's model, a CLI run writes ``deliverables/LogGrowthModel.csv`` and ``.parquet``
+- **Columns:** 14, each a pattern (see Placeholders)
+
+.. rubric:: Placeholders
+
+Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:
+
+``<metric>``
+   The fitted column without its metric-family prefix: fitting ``Size_Area`` writes ``LogGrowthModel_Area_r``.
+
+.. _measurement-info-log-growth-model:
+
+:doc:`LOG_GROWTH_MODEL </api_reference/api/phenotypic.schema.LOG_GROWTH_MODEL>`
+-------------------------------------------------------------------------------
+
+.. list-table:: Metric family: **LogGrowthModel**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``LogGrowthModel_<metric>_r``
+     - The intrinsic growth rate
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LogGrowthModel_<metric>_K``
+     - The carrying capacity
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LogGrowthModel_<metric>_N0``
+     - The initial number of the colony size metric being fitted
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LogGrowthModel_<metric>_lambda``
+     - The regularization factor applied to the max specific growth rate and initial population size
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``LogGrowthModel_<metric>_beta``
+     - The penalty factor applied to relative difference of the carrying capacity from the largest measurement
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``LogGrowthModel_<metric>_µmax``
+     - The growth rate of the colony calculated as (K*r)/4
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LogGrowthModel_<metric>_Kmax``
+     - The upper bound of the carrying capacity for model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`MODEL_METRICS </api_reference/api/phenotypic.schema.MODEL_METRICS>`
+-------------------------------------------------------------------------
+
+Every growth model writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **ModelMetrics**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ModelMetrics_<metric>_MAE``
+     - The mean absolute error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_MSE``
+     - The mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_RMSE``
+     - The root mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_R2``
+     - The coefficient of determination
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_NumSamples``
+     - The number of samples used for model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerLoss``
+     - The loss of model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerStatus``
+     - The output of the optimizer status
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

@@ -32,7 +32,8 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -58,6 +59,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/measure/_measure_grid_spread.html" />
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -206,33 +208,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -434,33 +413,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -618,8 +574,8 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">distance_matrix</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial.distance</span><span class="w"> </span><span class="kn">import</span> <span class="n">pdist</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">OBJECT</span>
 
 
 <div class="viewcode-block" id="MeasureGridSpread">
@@ -633,12 +589,9 @@
 <span class="sd">    fragmented growth, or invasive spreading.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        pd.DataFrame: Section-level statistics sorted by spread</span>
-<span class="sd">        (descending) with columns:</span>
-
-<span class="sd">            - count: number of colonies detected in the section.</span>
-<span class="sd">            - ObjectSpread: sum of squared pairwise Euclidean distances</span>
-<span class="sd">              between colony centroids in the section.</span>
+<span class="sd">        pd.DataFrame: One row per object, keyed by ``Object_Label``. Each</span>
+<span class="sd">        object carries its grid section&#39;s spread and object count, so every</span>
+<span class="sd">        object in a section shares the same values.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Detecting over-segmented wells where multiple objects were</span>
@@ -663,27 +616,27 @@
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">GRID_SPREAD</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="n">gs_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
-        <span class="n">gs_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-                <span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span>
 
-        <span class="n">obj_spread</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">gs_bindex</span> <span class="ow">in</span> <span class="n">gs_counts</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
-            <span class="n">curr_gs_subtable</span> <span class="o">=</span> <span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
-                <span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">==</span> <span class="n">gs_bindex</span><span class="p">,</span> <span class="p">:</span>
-            <span class="p">]</span>
+        <span class="n">section_spread</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">section_idx</span><span class="p">,</span> <span class="n">section_table</span> <span class="ow">in</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="n">centers</span> <span class="o">=</span> <span class="n">section_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+                <span class="p">:,</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)]</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="c1"># pdist yields each unordered pair once, so distinct pairs at equal</span>
+            <span class="c1"># distances are all counted.</span>
+            <span class="n">section_spread</span><span class="p">[</span><span class="n">section_idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdist</span><span class="p">(</span><span class="n">centers</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
 
-            <span class="n">x_vector</span> <span class="o">=</span> <span class="n">curr_gs_subtable</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)]</span>
-            <span class="n">y_vector</span> <span class="o">=</span> <span class="n">curr_gs_subtable</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)]</span>
-            <span class="n">obj_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">x_vector</span><span class="p">,</span> <span class="n">y_vector</span><span class="p">)))</span>
-            <span class="n">gs_distance_matrix</span> <span class="o">=</span> <span class="n">distance_matrix</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">obj_vector</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">obj_vector</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-            <span class="n">obj_spread</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">gs_distance_matrix</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
-        <span class="n">gs_counts</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID_SPREAD</span><span class="o">.</span><span class="n">OBJECT_SPREAD</span><span class="p">),</span>
-                         <span class="n">value</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">obj_spread</span><span class="p">))</span>
-        <span class="n">gs_counts</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID_SPREAD</span><span class="o">.</span><span class="n">OBJECT_SPREAD</span><span class="p">),</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                              <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">gs_counts</span></div>
+        <span class="c1"># Section-level values are broadcast to every object in the section so</span>
+        <span class="c1"># the frame keys on Object_Label like every other measurer.</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">:</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">GRID_SPREAD</span><span class="o">.</span><span class="n">OBJECT_SPREAD</span><span class="p">):</span> <span class="n">section</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">section_spread</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">GRID_SPREAD</span><span class="o">.</span><span class="n">OBJECT_COUNT</span><span class="p">):</span> <span class="n">section</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                <span class="p">}</span>
+        <span class="p">)</span></div>
 
 
 

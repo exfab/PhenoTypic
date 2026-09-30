@@ -33,7 +33,8 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
   
   <!-- So that users can add custom icons -->
   <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -59,6 +60,7 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.measure.MeasureTexture.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -209,33 +211,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -439,33 +418,10 @@
     </li>
 
     
-    
-    <li class="nav-item dropdown">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../measurements_ref/index.html">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/measurements/index.html">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/metadata/index.html">
-            Metadata
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal"
-             href="../../measurements_ref/categories/index.html">
-            Categories
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     
@@ -1227,6 +1183,7 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.util.html">phenotypic.util</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.geometric_median.html">phenotypic.util.geometric_median</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.generate_output_key.html">phenotypic.util.generate_output_key</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.measurement_producers.html">phenotypic.util.measurement_producers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements_by_category.html">phenotypic.util.split_measurements_by_category</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
@@ -1237,6 +1194,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MeasurementProducer.html">phenotypic.util.MeasurementProducer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
@@ -1324,7 +1282,8 @@ quantify surface roughness, regularity, and directional patterns
 that distinguish colony morphotypes.</p>
 <dl>
 <dt>Args:</dt><dd><dl class="simple">
-<dt>scale: Pixel offset(s) for the co-occurrence matrix. A single</dt><dd><p>integer or list of integers. Small values (1–2) capture fine
+<dt>scale: Pixel offset(s) for the co-occurrence matrix. A single</dt><dd><p>integer or list of distinct integers; each value writes its
+own set of columns. Small values (1–2) capture fine
 texture; large values (5–10) capture coarse patterns.
 Default: <code class="docutils literal notranslate"><span class="pre">5</span></code>.</p>
 </dd>
@@ -1380,7 +1339,7 @@ interpreting texture metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
-<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id1">
 <caption><span class="caption-text">Metric family: <strong>Texture</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
@@ -1390,130 +1349,91 @@ interpreting texture metrics in a biological context.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AngularSecondMoment</span></code></p></td>
-<td><dl class="simple">
-<dt>Angular second moment (energy / uniformity). Measures the degree of local homogeneity</dt><dd><p>(Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
+<td><p>Angular second moment (energy / uniformity). Measures the degree of local homogeneity
+(Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
 mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
-sporulation zones). Reflects colony surface regularity rather than brightness.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+sporulation zones). Reflects colony surface regularity rather than brightness.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Contrast</span></code></p></td>
-<td><dl class="simple">
-<dt>Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level</dt><dd><p>differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
+<td><p>Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
+differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
 indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
-and zonation amplitude.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+and zonation amplitude.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Correlation</span></code></p></td>
-<td><dl class="simple">
-<dt>Linear gray-level correlation between neighboring pixels. Positive, high values suggest</dt><dd><p>structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
+<td><p>Linear gray-level correlation between neighboring pixels. Positive, high values suggest
+structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
 values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
-illumination gradients and directional GLCM computation.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+illumination gradients and directional GLCM computation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HaralickVariance</span></code></p></td>
-<td><dl class="simple">
-<dt>GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct</dt><dd><p>from raw intensity variance. High values → complex, multi-zone textures with variable
+<td><p>GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
+from raw intensity variance. High values → complex, multi-zone textures with variable
 hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
-surfaces.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+surfaces.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InverseDifferenceMoment</span></code></p></td>
-<td><dl class="simple">
-<dt>Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures</dt><dd><p>(e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
-(e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+<td><p>Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
+(e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
+(e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumAverage</span></code></p></td>
-<td><dl class="simple">
-<dt>Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of</dt><dd><p>neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
+<td><p>Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
+neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
 illumination and exposure are controlled, but remains a second-order rather than first-order
-intensity metric.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+intensity metric.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SumVariance</span></code></p></td>
-<td><dl class="simple">
-<dt>Variance of gray-level sum distribution. High values → heterogeneous brightness zones</dt><dd><p>(e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
-tone across the colony. Often correlated with Contrast; use comparatively within one setup.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+<td><p>Variance of gray-level sum distribution. High values → heterogeneous brightness zones
+(e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
+tone across the colony. Often correlated with Contrast; use comparatively within one setup.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumEntropy</span></code></p></td>
-<td><dl class="simple">
-<dt>Entropy of the gray-level sum distribution. High values → diverse brightness combinations</dt><dd><p>and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
-spaced rings). Indicates spatial unpredictability of summed intensities.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+<td><p>Entropy of the gray-level sum distribution. High values → diverse brightness combinations
+and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
+spaced rings). Indicates spatial unpredictability of summed intensities.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Entropy</span></code></p></td>
-<td><dl class="simple">
-<dt>Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information</dt><dd><p>content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
+<td><p>Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
+content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
 Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
-gray-level quantization and image dynamic range.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+gray-level quantization and image dynamic range.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DiffVariance</span></code></p></td>
-<td><dl class="simple">
-<dt>Variance of gray-level difference distribution. High values → mixture of smooth and textured</dt><dd><p>regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
-Highlights heterogeneity in edge magnitude across the colony.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+<td><p>Variance of gray-level difference distribution. High values → mixture of smooth and textured
+regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
+Highlights heterogeneity in edge magnitude across the colony.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DiffEntropy</span></code></p></td>
-<td><dl class="simple">
-<dt>Entropy of gray-level difference distribution. High values → irregular, unpredictable</dt><dd><p>intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
+<td><p>Entropy of gray-level difference distribution. High values → irregular, unpredictable
+intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
 regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
-rather than its magnitude.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+rather than its magnitude.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation1</span></code></p></td>
-<td><dl class="simple">
-<dt>Information measure of correlation 1. Compares joint vs marginal entropies to quantify</dt><dd><p>mutual dependence between gray levels. Positive values → structured, predictable textures
+<td><p>Information measure of correlation 1. Compares joint vs marginal entropies to quantify
+mutual dependence between gray levels. Positive values → structured, predictable textures
 (e.g., organized radial growth); near-zero → independence between adjacent regions.
-Direction of sign varies with implementation.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+Direction of sign varies with implementation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation2</span></code></p></td>
-<td><dl class="simple">
-<dt>Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.</dt><dd><p>Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
+<td><p>Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
+Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
 rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
-organization missed by linear correlation.</p>
-</dd>
-</dl>
-</td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+organization missed by linear correlation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../measurements_ref/tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -1580,6 +1500,12 @@ organization missed by linear correlation.</p>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureTexture.model_validate_strings" title="phenotypic.measure.MeasureTexture.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
 <td><p>Validate the given object with string data against the Pydantic model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureTexture.output_header" title="phenotypic.measure.MeasureTexture.output_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header</span></code></a></p></td>
+<td><p>Return the header pattern written for a texture feature.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureTexture.output_header_placeholders" title="phenotypic.measure.MeasureTexture.output_header_placeholders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header_placeholders</span></code></a></p></td>
+<td><p>Define the <code class="docutils literal notranslate"><span class="pre">&lt;x&gt;</span></code> scale and <code class="docutils literal notranslate"><span class="pre">&lt;direction&gt;</span></code> placeholders.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureTexture.parse_file" title="phenotypic.measure.MeasureTexture.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
@@ -1673,6 +1599,34 @@ organization missed by linear correlation.</p>
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.warn">
 <span class="sig-name descname"><span class="pre">warn</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureTexture.warn" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.output_header">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_texture.html#MeasureTexture.output_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureTexture.output_header" title="Link to this definition">#</a></dt>
+<dd><p>Return the header pattern written for a texture feature.</p>
+<p>Each feature is written once per direction and once averaged, at each
+scale, so the documented form carries two placeholders; see
+<a class="reference internal" href="#phenotypic.measure.MeasureTexture.output_header_placeholders" title="phenotypic.measure.MeasureTexture.output_header_placeholders"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header_placeholders()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.output_header_placeholders">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_header_placeholders</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_texture.html#MeasureTexture.output_header_placeholders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureTexture.output_header_placeholders" title="Link to this definition">#</a></dt>
+<dd><p>Define the <code class="docutils literal notranslate"><span class="pre">&lt;x&gt;</span></code> scale and <code class="docutils literal notranslate"><span class="pre">&lt;direction&gt;</span></code> placeholders.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.__copy__">
@@ -1978,7 +1932,7 @@ raised.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.get_measurement_infoclasses">
-<span class="sig-name descname"><span class="pre">get_measurement_infoclasses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.measure.MeasureTexture.get_measurement_infoclasses" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_measurement_infoclasses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.measure.MeasureTexture.get_measurement_infoclasses" title="Link to this definition">#</a></dt>
 <dd><p>Return the measurement schemas active for this operation.</p>
 <p>The default implementation discovers the singular
 <code class="docutils literal notranslate"><span class="pre">_measurement_infoclass</span></code> and plural <code class="docutils literal notranslate"><span class="pre">_measurement_infoclasses</span></code>
@@ -1991,7 +1945,7 @@ individual schemas.</p>
 operation instance.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)">type</a>[<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>], …]</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.14)">type</a>[<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>], …]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2280,7 +2234,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureTexture.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'enhance':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description=&quot;Rescale</span> <span class="pre">each</span> <span class="pre">colony's</span> <span class="pre">intensity</span> <span class="pre">to</span> <span class="pre">[0,</span> <span class="pre">1]</span> <span class="pre">before</span> <span class="pre">computing</span> <span class="pre">Haralick</span> <span class="pre">features.</span> <span class="pre">Improves</span> <span class="pre">contrast</span> <span class="pre">in</span> <span class="pre">low-variance</span> <span class="pre">regions</span> <span class="pre">but</span> <span class="pre">can</span> <span class="pre">bias</span> <span class="pre">cross-colony</span> <span class="pre">comparisons.&quot;),</span> <span class="pre">'quant_lvl':</span> <span class="pre">FieldInfo(annotation=Literal[8,</span> <span class="pre">16,</span> <span class="pre">32,</span> <span class="pre">64],</span> <span class="pre">required=False,</span> <span class="pre">default=32,</span> <span class="pre">description='Number</span> <span class="pre">of</span> <span class="pre">gray-level</span> <span class="pre">bins</span> <span class="pre">for</span> <span class="pre">quantization.</span> <span class="pre">Accepted'),</span> <span class="pre">'scale':</span> <span class="pre">FieldInfo(annotation=List[int],</span> <span class="pre">required=False,</span> <span class="pre">default=[5],</span> <span class="pre">description='Pixel</span> <span class="pre">offset(s)</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">co-occurrence</span> <span class="pre">matrix.</span> <span class="pre">A</span> <span class="pre">single</span> <span class="pre">integer</span> <span class="pre">or</span> <span class="pre">list</span> <span class="pre">of</span> <span class="pre">integers.</span> <span class="pre">Small</span> <span class="pre">values</span> <span class="pre">(1--2)</span> <span class="pre">capture</span> <span class="pre">fine</span> <span class="pre">texture;</span> <span class="pre">large</span> <span class="pre">values</span> <span class="pre">(5--10)</span> <span class="pre">capture</span> <span class="pre">coarse</span> <span class="pre">patterns.'),</span> <span class="pre">'warn':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Emit</span> <span class="pre">warnings</span> <span class="pre">when</span> <span class="pre">Haralick</span> <span class="pre">computation</span> <span class="pre">fails</span> <span class="pre">for</span> <span class="pre">individual</span> <span class="pre">colonies</span> <span class="pre">(typically</span> <span class="pre">very</span> <span class="pre">small</span> <span class="pre">objects).')}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureTexture.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'enhance':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description=&quot;Rescale</span> <span class="pre">each</span> <span class="pre">colony's</span> <span class="pre">intensity</span> <span class="pre">to</span> <span class="pre">[0,</span> <span class="pre">1]</span> <span class="pre">before</span> <span class="pre">computing</span> <span class="pre">Haralick</span> <span class="pre">features.</span> <span class="pre">Improves</span> <span class="pre">contrast</span> <span class="pre">in</span> <span class="pre">low-variance</span> <span class="pre">regions</span> <span class="pre">but</span> <span class="pre">can</span> <span class="pre">bias</span> <span class="pre">cross-colony</span> <span class="pre">comparisons.&quot;),</span> <span class="pre">'quant_lvl':</span> <span class="pre">FieldInfo(annotation=Literal[8,</span> <span class="pre">16,</span> <span class="pre">32,</span> <span class="pre">64],</span> <span class="pre">required=False,</span> <span class="pre">default=32,</span> <span class="pre">description='Number</span> <span class="pre">of</span> <span class="pre">gray-level</span> <span class="pre">bins</span> <span class="pre">for</span> <span class="pre">quantization.</span> <span class="pre">Accepted'),</span> <span class="pre">'scale':</span> <span class="pre">FieldInfo(annotation=List[int],</span> <span class="pre">required=False,</span> <span class="pre">default=[5],</span> <span class="pre">description='Pixel</span> <span class="pre">offset(s)</span> <span class="pre">for</span> <span class="pre">the</span> <span class="pre">co-occurrence</span> <span class="pre">matrix.</span> <span class="pre">A</span> <span class="pre">single</span> <span class="pre">integer</span> <span class="pre">or</span> <span class="pre">list</span> <span class="pre">of</span> <span class="pre">distinct</span> <span class="pre">integers;</span> <span class="pre">each</span> <span class="pre">value</span> <span class="pre">writes</span> <span class="pre">its</span> <span class="pre">own</span> <span class="pre">set</span> <span class="pre">of</span> <span class="pre">columns.</span> <span class="pre">Small</span> <span class="pre">values</span> <span class="pre">(1--2)</span> <span class="pre">capture</span> <span class="pre">fine</span> <span class="pre">texture;</span> <span class="pre">large</span> <span class="pre">values</span> <span class="pre">(5--10)</span> <span class="pre">capture</span> <span class="pre">coarse</span> <span class="pre">patterns.'),</span> <span class="pre">'warn':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Emit</span> <span class="pre">warnings</span> <span class="pre">when</span> <span class="pre">Haralick</span> <span class="pre">computation</span> <span class="pre">fails</span> <span class="pre">for</span> <span class="pre">individual</span> <span class="pre">colonies</span> <span class="pre">(typically</span> <span class="pre">very</span> <span class="pre">small</span> <span class="pre">objects).')}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureTexture.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2689,6 +2643,8 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.quant_lvl"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.quant_lvl</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.enhance"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.enhance</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.warn"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.warn</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.output_header"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.output_header()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.output_header_placeholders"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.output_header_placeholders()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.__copy__"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureTexture.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureTexture.__del__()</span></code></a></li>
