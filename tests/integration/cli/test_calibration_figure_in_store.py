@@ -120,6 +120,12 @@ def _deliverable(out: Path) -> dict[tuple[str, str], bytes]:
     [directory] = (out / "deliverables" / "plots" / "cal" / "ds").glob("plate-*")
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["schema_version"] == 3
+    # Exactly the mirrored files and the manifest: no stray or label-named copy.
+    on_disk = {p.relative_to(directory).as_posix() for p in directory.rglob("*")
+               if p.is_file() and not p.name.startswith(".")}
+    assert on_disk == {"manifest.json", *PAGES.values()}
+    assert {(p["plot"], p["key"]): p["files"]["png"] for p in manifest["pages"]} == PAGES
+    assert manifest["failed"] == []
     return {page: (directory / name).read_bytes() for page, name in PAGES.items()}
 
 
@@ -142,6 +148,7 @@ def test_full_mode_stores_the_overlay_png_and_copies_it_out(tmp_path):
     assert all(png.startswith(b"\x89PNG") for png in data.values())
     assert all(data[tile] != data[("delta_e", "delta_e")]
                for tile in PAGES if tile[0] == "tiles")
+    assert data[("tiles", "roi_0")] != data[("tiles", "roi_1")]  # two ROIs, two drawings
     assert _deliverable(out) == data
 
 
@@ -172,12 +179,18 @@ def test_two_same_day_process_runs_write_byte_identical_stores(tmp_path):
 
     image, pipeline = _write_inputs(tmp_path)
     stores = []
-    for name in ("a", "b"):
+    # The same UTC day, but each run's own call: a different timestamp and pid,
+    # which a process store must omit to stay byte-identical (spec §1a).
+    calls = {
+        "a": RunInitiation(DAY, f"{DAY}T12:00:00.000Z", 7),
+        "b": RunInitiation(DAY, f"{DAY}T18:30:45.123Z", 4242),
+    }
+    for name, call in calls.items():
         out = tmp_path / name
         process_single_apply_only_core(
             pipeline_path=pipeline, image_path=image, input_root=image.parent,
             output_dir=out, image_type="Image", layer="rgb", read_kwargs={},
-            process_format="zarr", run_initiation=RunInitiation(DAY, f"{DAY}T12:00:00.000Z", 7),
+            process_format="zarr", run_initiation=call,
         )
         stores.append(out / "plate.ome.zarr")
 
@@ -187,7 +200,9 @@ def test_two_same_day_process_runs_write_byte_identical_stores(tmp_path):
 
     first, second = (tree(s) for s in stores)
     assert first == second
-    assert any(path.startswith("figures/") and "/cal/tiles/roi_1.png" in path for path in first)
+    run_id = _run_of(pipeline)
+    for relative in PAGES.values():
+        assert f"figures/{run_id}/cal/{relative}" in first
 
 
 def test_measure_with_the_same_pipeline_keeps_the_overlay_in_its_folder(tmp_path):
