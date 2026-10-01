@@ -322,21 +322,22 @@ def plot_page_paths(pages: Sequence[tuple[str, str, str]]) -> list[tuple[str, st
             order. The store passes the key as the preferred name; the direct
             publisher passes the label.
     """
-    plots = list(dict.fromkeys(plot for plot, _key, _preferred in pages))
+    # Page indices per plot, plots in first-appearance order.
+    members: dict[str, list[int]] = {}
+    for i, (plot, _key, _preferred) in enumerate(pages):
+        members.setdefault(plot, []).append(i)
     # Reserved first (spec D6), so a plot named like the group document or the
     # manifest gets the digest suffix instead of colliding with that file. Their
     # key is "", which no plot name is (`PlotPage` refuses an empty key or plot):
     # a plot named exactly "zarr.json" must not read as the reserved entry itself.
     reserved = [("", name) for name in _RESERVED_PLOT_NAMES]
-    named = unique_page_stems(reserved + [(plot, plot) for plot in plots])
-    plot_directories = dict(zip(plots, named[len(reserved):]))
-    stems = [""] * len(pages)
-    for plot in plots:
-        members = [i for i, (owner, _key, _preferred) in enumerate(pages) if owner == plot]
-        named = unique_page_stems([(pages[i][1], pages[i][2]) for i in members])
-        for i, stem in zip(members, named):
-            stems[i] = stem
-    return [(plot_directories[plot], stems[i]) for i, (plot, _key, _preferred) in enumerate(pages)]
+    folders = unique_page_stems(reserved + [(plot, plot) for plot in members])
+    paths: list[tuple[str, str]] = [("", "")] * len(pages)
+    for folder, indices in zip(folders[len(reserved):], members.values()):
+        stems = unique_page_stems([(pages[i][1], pages[i][2]) for i in indices])
+        for i, stem in zip(indices, stems):
+            paths[i] = (folder, stem)
+    return paths
 
 
 def publish_plot_output(

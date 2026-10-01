@@ -341,7 +341,8 @@ class _SameRunKeeper:
             return False
         stored = entry.get("bindings", {}).get(binding.id)
         failures = [
-            StoredFigureFailure(f["binding"], f["page"], f["format"], f["error"], f.get("plot"))
+            StoredFigureFailure(f["binding"], f["page"], f["format"], f["error"],
+                                plot=f.get("plot"))
             for f in entry.get("failed", [])
             if f.get("binding") == binding.id
         ]

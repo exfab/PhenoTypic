@@ -298,10 +298,9 @@ def write_image_figures(
         _ensure_group(directory)
         pages = []
         for page in binding.pages:
-            page_directory = (
-                directory if page.directory is None else directory / page.directory
-            )
+            page_directory = directory
             if page.directory is not None:
+                page_directory = directory / page.directory
                 _ensure_group(page_directory)
             entries = []
             for stored in page.files:

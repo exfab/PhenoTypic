@@ -164,8 +164,9 @@ def _publish_binding(
 ) -> None:
     """Publish one binding as a manifest directory mirroring the store.
 
-    Spec 2026-09-30 §3. Every page lands at its store-relative ``<plot folder>/<file>`` inside the
-    image's directory; a flat version 1 page lands in that directory itself.
+    Spec 2026-09-30 §3. Every page lands at its store-relative
+    ``<plot folder>/<file>`` inside the image's directory; a flat version 1
+    page lands in that directory itself.
     A page is identified by ``(key, plot)``: one key may appear in two plots.
 
     *record* is already bound to this binding's id.
@@ -177,8 +178,10 @@ def _publish_binding(
         page_id = (failure["page"], failure.get("plot"))
         if page_id not in published_ids:
             failed_only.setdefault(page_id, str(failure.get("error")))
-    base = plots_base / safe_path_component(binding_id) / safe_path_component(dataset)
-    directory = base / output_stem
+    directory = (
+        plots_base / safe_path_component(binding_id)
+        / safe_path_component(dataset) / output_stem
+    )
     _require_plot_publication(publication_guard)
     directory.mkdir(parents=True, exist_ok=True)
     # Same lock `publish_plot_output` takes for a manifest directory, so two
