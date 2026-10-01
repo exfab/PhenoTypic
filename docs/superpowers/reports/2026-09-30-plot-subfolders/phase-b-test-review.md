@@ -365,3 +365,25 @@ def test_a_failed_plotted_page_records_its_plot_and_keeps_the_shared_folder(tmp_
 - **Read with the diffs:** every new or edited test, using `phaseB-src.diff` and `phaseB-tests.diff`, plus the surrounding fixtures (`_store_fixtures.py`, the `_page` fixture, the coordinator plot classes).
 - **Executed:** only the mutation batch above (Slurm 29304592, run by main). The gate-B counts are main's (Slurm 29304475).
 - **Not executed:** the killing tests proposed here. For I1-I3 and MINOR 1 and 2, the expected red under each mutant, or against today's code, is derived from reading the code.
+
+---
+
+## Resolution (orchestrator, 2026-09-30)
+
+- **Fix-up commit:** `aa0f5562`.
+  - The I1-I3 killing tests.
+  - Minor 1 (src): the copy-out removes an empty plot folder it created.
+  - Minor 2 (src): the guard and mkdir sit inside the page `try`. A mkdir OSError fails only that page, and the except is narrowed to the mkdir, so the render is unchanged.
+  - Minors 3-6.
+- **Runs:**
+  - red phase: exactly 3 failed (the minor 1/2 tests);
+  - green: 278 passed; ruff and mypy clean.
+  - An earlier draft's `except OSError` wrapped the render and reused `exc` (2 mypy errors). It was narrowed before the commit.
+- **Survivor rerun against `aa0f5562`** (Slurm 29304907): all four former survivors are now killed.
+  - BASELINE: 216 passed.
+  - W4: `test_a_failed_plotted_page_records_its_plot_and_keeps_the_shared_folder` (also `test_a_plot_folder_that_cannot_be_created_fails_only_its_page`).
+  - C5b and C6: `test_a_disambiguated_folder_and_file_are_copied_as_the_store_named_them`.
+  - B1: `test_a_plot_name_survives_builder_store_and_copy_out`.
+  - Control RC: still red.
+  - The worktree fingerprint was identical before and after (`aa0f5562`, dirty=0).
+- **Deferred:** minor 7 (custom_plotter.md:385-395 and 419-450) is carried into Task 8.
