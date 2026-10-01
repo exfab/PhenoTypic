@@ -21,7 +21,7 @@ Reviewer: implementation-test-reviewer (phase gate B). Analysis only. No source,
 
 Two small edge cases are MINOR: an empty plot folder left by a failed copy-out, and a figure left open on one refusal path.
 
-**Tests.** The batch ran 18 mutants and a red control. Every mutant I predicted killed was killed. The four I predicted to survive did survive, and each one is a real hole:
+**Tests.** The batch ran 17 mutants and a red control (13 killed, 4 survived; corrected by the orchestrator from "18", counted row by row from `mutB_29304592.log`). Every mutant I predicted killed was killed. The four I predicted to survive did survive, and each one is a real hole:
 - **C5b, C6:** decision P1, "names come from the stored path", is pinned only where the stored name equals what `plot` or `key` would give. A copy-out that re-derives either one passes.
 - **B1:** Review Focus 5 end to end. The builder could store the cleaned folder as the page's `plot`, and every test would pass. That would split a page from its failures under `(key, plot)` matching.
 - **W4:** the direct publisher's `failed[].plot` could be the key.
