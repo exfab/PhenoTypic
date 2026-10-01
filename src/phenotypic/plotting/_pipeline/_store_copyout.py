@@ -235,6 +235,7 @@ def _publish_pages(
     for page in pages:
         files: dict[str, str] = {}
         errors: list[BaseException] = []
+        created: Path | None = None
         for entry in page["files"]:
             try:
                 data = _read_stored_file(store, figures_root, entry)
@@ -248,6 +249,7 @@ def _publish_pages(
                     # before any directory is created (plan review I5).
                     _require_plot_publication(publication_guard)
                     page_directory.mkdir()
+                    created = page_directory
 
                 def _copy(dest: Path) -> None:
                     dest.write_bytes(data)
@@ -281,6 +283,11 @@ def _publish_pages(
                 errors.append(exc)
                 record(exc, page=page["key"], fmt="html")
         if not files:
+            if created is not None and not any(created.iterdir()):
+                # As in the writer: no empty plot folder for a page that
+                # copied nothing. Only one this page created, so a folder a
+                # sibling published into stays.
+                created.rmdir()
             failed.append({"key": page["key"], "plot": page.get("plot"),
                            "label": page["label"],
                            "error": "no stored file could be copied out"})

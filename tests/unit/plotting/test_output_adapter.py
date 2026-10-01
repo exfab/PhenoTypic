@@ -72,16 +72,16 @@ def test_matplotlib_pages_publish_with_collision_safe_names(tmp_path) -> None:
     second = plt.figure()
     output = PlotOutput(
         pages=(
-            # One plot, so the names must be made unique within one folder.
-            PlotPage("first", first, label="A/B", plot="same"),
-            PlotPage("second", second, label="A B", plot="same"),
+            # One plot, so the names must be made unique within one folder:
+            # "A-b" and "a-b" collide case-folded.
+            PlotPage("first", first, label="A b", plot="same"),
+            PlotPage("second", second, label="a-b", plot="same"),
         )
     )
     manifest = publish_plot_output(output, tmp_path, plot_id="demo")
     files = [entry["files"]["png"] for entry in manifest["pages"]]
-    assert len(files) == 2
-    assert all(name.startswith("same/") for name in files)
-    assert len({name.casefold() for name in files}) == 2
+    digest = hashlib.sha256(b"second").hexdigest()[:8]
+    assert files == ["same/A-b.png", f"same/a-b-{digest}.png"]
     assert all((tmp_path / name).is_file() for name in files)
     persisted = json.loads((tmp_path / "manifest.json").read_text())
     assert persisted["class"] == "demo"
@@ -126,6 +126,79 @@ def test_unsupported_page_fails_without_suppressing_sibling(tmp_path) -> None:
     assert [(f["key"], f["plot"]) for f in manifest["failed"]] == [("bad", "bad")]
     # A page that rendered nothing leaves no empty plot folder behind.
     assert not (tmp_path / "bad").exists()
+
+
+def test_a_failed_plotted_page_records_its_plot_and_keeps_the_shared_folder(
+    tmp_path,
+) -> None:
+    output = PlotOutput(pages=(
+        PlotPage(key="good", plot="tiles", figure=plt.figure()),
+        PlotPage(key="bad", plot="tiles", figure=object()),
+    ))
+    manifest = publish_plot_output(output, tmp_path, plot_id="demo")
+    assert [(f["key"], f["plot"]) for f in manifest["failed"]] == [
+        ("bad", "tiles")
+    ]
+    # The folder holds the good page, so the failed page does not remove it.
+    assert sorted(p.name for p in (tmp_path / "tiles").iterdir()) == [
+        "good.png"
+    ]
+
+
+def test_a_refused_plot_folder_closes_the_page_figure(tmp_path) -> None:
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    before = set(plt.get_fignums())
+    # Entry, inside the lock, then the plot folder.
+    calls = iter([True, True, False])
+    with pytest.raises(PlotPublicationBlocked):
+        publish_plot_output(
+            PlotOutput(pages=(
+                PlotPage(key="a", plot="tiles", figure=plt.figure()),
+            )),
+            tmp_path / "agg", plot_id="agg",
+            publication_guard=lambda: next(calls, False),
+        )
+    assert set(plt.get_fignums()) == before
+    assert not (tmp_path / "agg" / "tiles").exists()
+
+
+def test_a_plot_folder_that_cannot_be_created_fails_only_its_page(
+    tmp_path, monkeypatch
+) -> None:
+    """Like a render error, and like copy-out: a page failure, recorded,
+    while its siblings publish -- not an aborted publication."""
+    from pathlib import Path
+
+    real_mkdir = Path.mkdir
+
+    def _mkdir(self, *args, **kwargs):
+        if self.name == "locked":
+            raise PermissionError("read-only")
+        return real_mkdir(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", _mkdir)
+    refused = plt.figure()
+    output = PlotOutput(pages=(
+        PlotPage(key="a", plot="locked", figure=refused),
+        PlotPage(key="b", plot="open", figure=plt.figure()),
+    ))
+    manifest = publish_plot_output(output, tmp_path, plot_id="demo")
+    assert [(p["key"], p["files"]) for p in manifest["pages"]] == [
+        ("b", {"png": "open/b.png"})
+    ]
+    assert manifest["failed"] == [{
+        "key": "a", "plot": "locked", "label": None,
+        "error": "PermissionError: read-only",
+    }]
+    assert (tmp_path / "open" / "b.png").is_file()
+    assert not (tmp_path / "locked").exists()
+    assert not plt.fignum_exists(refused.number)
+    [entry] = [
+        json.loads(line)
+        for line in (tmp_path / ".failures.jsonl").read_text().splitlines()
+    ]
+    assert entry["error"] == "PermissionError: read-only"
 
 
 def test_concurrent_plot_publications_do_not_mix_generations(

@@ -348,6 +348,35 @@ def test_the_plot_folder_comes_from_the_stored_path_not_the_plot_name(tmp_path):
     assert (directory / "Tile-overlay" / "roi_0.html").is_file()
 
 
+def test_a_disambiguated_folder_and_file_are_copied_as_the_store_named_them(tmp_path):
+    """P1 / D4: folder and file come from the stored path, including where the
+    store had to disambiguate them, so neither can be re-derived from
+    `plot` or `key`."""
+    from phenotypic.plotting._pipeline._writer import plot_page_paths
+
+    ids = [("Tiles", "roi 0"), ("tiles", "roi 0")]
+    paths = plot_page_paths([(plot, key, key) for plot, key in ids])
+    # Premise: the second folder carries the digest suffix; the stem is not the key.
+    assert paths[0] == ("Tiles", "roi-0") and paths[1][0].startswith("tiles-")
+    pages = tuple(
+        StoredFigurePage(
+            key, None, "plotly", {"k": 1},
+            (StoredFigureFile("plotly-json", "application/vnd.plotly.v1+json",
+                              f"{stem}.plotly.json", _plotly_json()),),
+            plot=plot, directory=folder,
+        )
+        for (plot, key), (folder, stem) in zip(ids, paths)
+    )
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(*pages)))
+    directory = plots / "sym" / "ds-1" / _STEM
+    assert [p["files"] for p in _manifest(plots)["pages"]] == [
+        {"plotly-json": f"{folder}/{stem}.plotly.json", "html": f"{folder}/{stem}.html"}
+        for folder, stem in paths
+    ]
+    for folder, stem in paths:
+        assert (directory / folder / f"{stem}.html").is_file()
+
+
 def test_a_flat_v1_page_is_copied_into_the_image_folder(tmp_path):
     """A version 1 run stored pages flat, with no `plot` anywhere."""
     failed = (StoredFigureFailure("sym", "default", "png", "OSError: partial"),)
@@ -389,6 +418,46 @@ def test_a_page_with_no_copyable_file_is_failed_with_its_plot(tmp_path):
          "error": "no stored file could be copied out"}
     ]
     assert not (plots / "sym" / "ds-1" / _STEM / "tiles").exists()
+
+
+def test_a_page_whose_copy_fails_leaves_no_empty_plot_folder(tmp_path, monkeypatch):
+    from phenotypic.plotting._pipeline import _store_copyout
+
+    def _disk_full(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(_store_copyout, "_atomic_write", _disk_full)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(_page("roi_0", plot="tiles"))))
+    # Premise: the read passed, so the copy (after the mkdir) is what failed.
+    assert [(r["format"], r["error"]) for r in _lines(plots)] == [
+        ("plotly-json", "OSError: disk full")
+    ]
+    manifest = _manifest(plots)
+    assert manifest["pages"] == []
+    assert [(f["key"], f["plot"]) for f in manifest["failed"]] == [("roi_0", "tiles")]
+    assert not (plots / "sym" / "ds-1" / _STEM / "tiles").exists()
+
+
+def test_a_failed_copy_keeps_the_plot_folder_its_sibling_published_into(tmp_path, monkeypatch):
+    """Only a folder the failing page created is removed, never a shared one."""
+    from phenotypic.plotting._pipeline import _store_copyout
+
+    real = _store_copyout._atomic_write
+
+    def _second_page_fails(destination, *args, **kwargs):
+        if destination.name.startswith("roi_1"):
+            raise OSError("disk full")
+        return real(destination, *args, **kwargs)
+
+    monkeypatch.setattr(_store_copyout, "_atomic_write", _second_page_fails)
+    pages = (_page("roi_0", plot="tiles"), _page("roi_1", plot="tiles"))
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(*pages)))
+    manifest = _manifest(plots)
+    assert [p["key"] for p in manifest["pages"]] == ["roi_0"]
+    assert [(f["key"], f["plot"]) for f in manifest["failed"]] == [("roi_1", "tiles")]
+    assert sorted(p.name for p in (plots / "sym" / "ds-1" / _STEM / "tiles").iterdir()) == [
+        "roi_0.html", "roi_0.plotly.json",
+    ]
 
 
 def test_a_refused_guard_creates_no_plot_folder(tmp_path):

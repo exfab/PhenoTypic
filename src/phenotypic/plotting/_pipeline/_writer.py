@@ -248,10 +248,9 @@ def _remove_stale_sibling(
 
     A rerun on a node without Chrome writes HTML only; a plot that switched
     to matplotlib writes PNG only. Either way the other rendering from the
-    earlier run would survive beside the new one and read as this run's --
-    on the flat path because nothing records which generation a file belongs
-    to, and in a manifest directory because the manifest stops naming it
-    while it stays on disk.
+    earlier run would survive beside the new one, in the page's plot folder
+    under the manifest directory, and read as this run's: the manifest stops
+    naming it while it stays on disk.
 
     Only *stem*'s own sibling is touched. Files a manifest no longer names
     for other reasons -- a page whose key vanished between runs -- are not
@@ -421,18 +420,30 @@ def _publish_plot_output_locked(
     for page, (plot_directory, stem) in zip(output.pages, paths):
         page_directory = directory / plot_directory
         created = not page_directory.exists()
-        if created:
-            # The guard is asked immediately before any directory is created.
-            _require_plot_publication(publication_guard)
-            page_directory.mkdir()
+        files: dict[str, str] = {}
+        errors: list[BaseException] = []
+        backend: str | None = None
         try:
-            files, errors, backend = _render_page(
-                page.figure, page_directory, stem,
-                plots_base=base,
-                plot_id=plot_id,
-                publication_guard=publication_guard,
-                commit_guard=commit_guard,
-            )
+            if created:
+                # The guard is asked immediately before any directory is
+                # created; a refusal here closes the figure like any other.
+                _require_plot_publication(publication_guard)
+                try:
+                    page_directory.mkdir()
+                except OSError as mkdir_error:
+                    # Like a render error, this fails the page, not the
+                    # whole publication -- as in copy-out, where the mkdir
+                    # is per file. Nothing was created, so nothing to remove.
+                    errors.append(mkdir_error)
+                    created = False
+            if not errors:
+                files, errors, backend = _render_page(
+                    page.figure, page_directory, stem,
+                    plots_base=base,
+                    plot_id=plot_id,
+                    publication_guard=publication_guard,
+                    commit_guard=commit_guard,
+                )
         except PlotPublicationBlocked:
             FigureAdapter.close(page.figure)
             raise

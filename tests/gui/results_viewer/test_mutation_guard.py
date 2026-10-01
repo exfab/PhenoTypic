@@ -612,6 +612,64 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
     assert after_files == before_files
 
 
+def test_real_plot_writer_rechecks_before_creating_a_plot_folder(
+    tmp_path: Path,
+) -> None:
+    """The variant with no earlier publication: the page's plot folder does
+    not exist, so the third question is the plot-folder one, and a refusal
+    there must leave the folder uncreated."""
+    source = tmp_path / "plot-folder-race"
+    _seed_output(source, complete=True)
+    owner = gui_launch_owner_path(source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
+    owner.write_text('{"status":"complete"}', encoding="utf-8")
+    output = _discover(source)
+    plot_dir = output.layout.plots_dir / "guarded"
+    # The manifest directory exists, so the only directory the publication
+    # could create is the page's plot folder. Its lock file is created on
+    # entry, before any guard question about the page, and is not output.
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    lock = plot_dir / ".publication.lock"
+    page_dir = plot_dir / "default"
+    output = _discover(source)
+    guard = OutputMutationGuard(output, "generation-plot")
+    before_dirs, before_files = _tree_snapshot(source, ignored_files=(lock,))
+    checks = 0
+
+    def _late_guard() -> bool:
+        nonlocal checks
+        checks += 1
+        if checks == 3:
+            # Entry and the in-lock recheck passed; this is the plot folder.
+            bump_scientific_config_digest(source)
+        try:
+            guard.authorize(
+                "Measurement plot refresh",
+                presented_generation="generation-plot",
+            )
+        except OutputMutationBlocked:
+            return False
+        return True
+
+    with pytest.raises(PlotPublicationBlocked):
+        publish_plot_output(
+            PlotOutput(pages=(PlotPage("default", plt.figure()),)),
+            plot_dir,
+            plot_id="guarded",
+            publication_guard=_late_guard,
+        )
+
+    after_dirs, after_files = _tree_snapshot(source, ignored_files=(lock,))
+    perturbed = (
+        resolve_processing_state_path(source).relative_to(source).as_posix()
+    )
+    assert checks == 3
+    assert not page_dir.exists()
+    assert after_dirs == before_dirs
+    assert after_files.pop(perturbed) != before_files.pop(perturbed)
+    assert after_files == before_files
+
+
 def test_inconsistent_results_layout_keeps_views_and_disables_mutations(
     tmp_path: Path,
 ) -> None:
