@@ -72,15 +72,17 @@ def test_matplotlib_pages_publish_with_collision_safe_names(tmp_path) -> None:
     second = plt.figure()
     output = PlotOutput(
         pages=(
-            PlotPage("first", first, label="A/B"),
-            PlotPage("second", second, label="A B"),
+            # One plot, so the names must be made unique within one folder.
+            PlotPage("first", first, label="A/B", plot="same"),
+            PlotPage("second", second, label="A B", plot="same"),
         )
     )
     manifest = publish_plot_output(output, tmp_path, plot_id="demo")
     files = [entry["files"]["png"] for entry in manifest["pages"]]
     assert len(files) == 2
+    assert all(name.startswith("same/") for name in files)
     assert len({name.casefold() for name in files}) == 2
-    assert all((tmp_path / name).exists() for name in files)
+    assert all((tmp_path / name).is_file() for name in files)
     persisted = json.loads((tmp_path / "manifest.json").read_text())
     assert persisted["class"] == "demo"
     assert {page["backend"] for page in persisted["pages"]} == {"matplotlib"}
@@ -91,13 +93,14 @@ def test_hash_suffix_is_rechecked_for_page_filename_collision(tmp_path) -> None:
     reserved_suffix = hashlib.sha256(third_key.encode("utf-8")).hexdigest()[:8]
     output = PlotOutput(
         pages=(
-            PlotPage("first", plt.figure(), label="A"),
+            PlotPage("first", plt.figure(), label="A", plot="same"),
             PlotPage(
                 "preempted-suffix",
                 plt.figure(),
                 label=f"A-{reserved_suffix}",
+                plot="same",
             ),
-            PlotPage(third_key, plt.figure(), label="A"),
+            PlotPage(third_key, plt.figure(), label="A", plot="same"),
         )
     )
 
@@ -105,8 +108,9 @@ def test_hash_suffix_is_rechecked_for_page_filename_collision(tmp_path) -> None:
 
     files = [page["files"]["png"] for page in manifest["pages"]]
     assert len(files) == 3
+    assert all(name.startswith("same/") for name in files)
     assert len({name.casefold() for name in files}) == 3
-    assert all((tmp_path / name).exists() for name in files)
+    assert all((tmp_path / name).is_file() for name in files)
 
 
 def test_unsupported_page_fails_without_suppressing_sibling(tmp_path) -> None:
@@ -118,6 +122,10 @@ def test_unsupported_page_fails_without_suppressing_sibling(tmp_path) -> None:
     )
     manifest = publish_plot_output(output, tmp_path, plot_id="demo")
     assert [page["key"] for page in manifest["pages"]] == ["good"]
+    assert (tmp_path / "good" / "good.png").is_file()
+    assert [(f["key"], f["plot"]) for f in manifest["failed"]] == [("bad", "bad")]
+    # A page that rendered nothing leaves no empty plot folder behind.
+    assert not (tmp_path / "bad").exists()
 
 
 def test_concurrent_plot_publications_do_not_mix_generations(
@@ -216,9 +224,9 @@ def test_a_plotly_page_publishes_html_without_chrome(tmp_path, monkeypatch) -> N
     manifest = publish_plot_output(output, tmp_path / "sym", plot_id="sym")
 
     page = manifest["pages"][0]
-    assert page["files"] == {"html": "Only.html"}
-    assert (tmp_path / "sym" / "Only.html").is_file()
-    assert not (tmp_path / "sym" / "Only.png").exists()
+    assert page["files"] == {"html": "only/Only.html"}
+    assert (tmp_path / "sym" / "only" / "Only.html").is_file()
+    assert list((tmp_path / "sym").rglob("*.png")) == []
 
 
 def test_the_html_references_the_hoisted_bundle(tmp_path, monkeypatch) -> None:
@@ -235,11 +243,11 @@ def test_the_html_references_the_hoisted_bundle(tmp_path, monkeypatch) -> None:
         output, plots_base / "sym", plot_id="sym", plots_base=plots_base
     )
 
-    html = (plots_base / "sym" / "Only.html").read_text()
-    assert 'src="../plotly.min.js"' in html
+    html = (plots_base / "sym" / "only" / "Only.html").read_text()
+    assert 'src="../../plotly.min.js"' in html
     assert (plots_base / "plotly.min.js").is_file()
-    # The 4.8 MB bundle must NOT be duplicated into the page directory.
-    assert not (plots_base / "sym" / "plotly.min.js").exists()
+    # The 4.8 MB bundle must NOT be duplicated into the page or plot directory.
+    assert list((plots_base / "sym").rglob("plotly.min.js")) == []
 
 
 def test_a_matplotlib_page_publishes_png_only(tmp_path) -> None:
@@ -253,7 +261,7 @@ def test_a_matplotlib_page_publishes_png_only(tmp_path) -> None:
     output = PlotOutput(pages=(PlotPage(key="only", figure=Figure(), label="Only"),))
     manifest = publish_plot_output(output, tmp_path / "m", plot_id="m")
 
-    assert manifest["pages"][0]["files"] == {"png": "Only.png"}
+    assert manifest["pages"][0]["files"] == {"png": "only/Only.png"}
     assert manifest["renderers"] == {"png": "available"}
 
 
@@ -285,7 +293,7 @@ def test_a_partial_rendering_failure_is_not_lost(tmp_path, monkeypatch) -> None:
     )
 
     page = manifest["pages"][0]
-    assert page["files"] == {"html": "Only.html"}          # HTML still published
+    assert page["files"] == {"html": "only/Only.html"}     # HTML still published
     # Exact, not a substring. A substring match is satisfied by
     # "RuntimeError: RuntimeError: raster exploded", which is what an earlier
     # draft wrote when _render_page returned pre-formatted strings that
@@ -316,10 +324,13 @@ def test_every_page_failing_yields_an_explanatory_manifest(tmp_path, monkeypatch
     ))
     manifest = publish_plot_output(output, tmp_path / "p", plot_id="p")
 
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
     assert manifest["pages"] == []
     assert len(manifest["failed"]) == 1
     assert manifest["failed"][0]["key"] == "a"
+    assert manifest["failed"][0]["plot"] == "a"
+    # Its plot folder was created for it, and is not left behind empty.
+    assert not (tmp_path / "p" / "a").exists()
     # Exact, for the same reason as the partial-failure test: a substring is
     # satisfied by a doubled "RuntimeError: RuntimeError: " prefix too. The
     # value is machine-independent -- errors[0] is always the HTML failure,
@@ -382,6 +393,74 @@ def test_a_mixed_backend_directory_reports_png_as_partial(
         "png": "available: matplotlib only; chrome not found",
     }
     by_key = {page["key"]: page for page in manifest["pages"]}
-    assert by_key["interactive"]["files"] == {"html": "Interactive.html"}
-    assert by_key["raster"]["files"] == {"png": "Raster.png"}
+    assert by_key["interactive"]["files"] == {"html": "interactive/Interactive.html"}
+    assert by_key["raster"]["files"] == {"png": "raster/Raster.png"}
     assert manifest["failed"] == []
+
+
+def test_pages_land_in_plot_folders_with_a_v3_manifest(tmp_path) -> None:
+    def figure():
+        fig, ax = plt.subplots()
+        ax.plot([0, 1])
+        return fig
+
+    output = PlotOutput(pages=(
+        PlotPage(key="a", plot="tiles", label="Tile A", figure=figure()),
+        PlotPage(key="b", plot="tiles", figure=figure()),
+        PlotPage(key="chart", figure=figure()),
+    ))
+    manifest = publish_plot_output(
+        output, tmp_path / "agg", plot_id="agg", plots_base=tmp_path
+    )
+    assert manifest["schema_version"] == 3
+    assert [(p["plot"], p["key"], p["files"]["png"]) for p in manifest["pages"]] == [
+        ("tiles", "a", "tiles/Tile-A.png"),
+        ("tiles", "b", "tiles/b.png"),
+        ("chart", "chart", "chart/chart.png"),
+    ]
+    for page in manifest["pages"]:
+        assert (tmp_path / "agg" / page["files"]["png"]).is_file()
+
+
+def test_a_rerun_removes_the_old_rendering_inside_its_plot_folder(
+    tmp_path, monkeypatch
+) -> None:
+    import plotly.graph_objects as go
+
+    from phenotypic.plotting._pipeline import _backends
+
+    stale = tmp_path / "agg" / "tiles" / "a.png"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"old")
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)  # HTML only
+
+    publish_plot_output(
+        PlotOutput(pages=(PlotPage(key="a", plot="tiles", figure=go.Figure()),)),
+        tmp_path / "agg", plot_id="agg", plots_base=tmp_path,
+    )
+
+    assert not stale.exists()
+    assert (tmp_path / "agg" / "tiles" / "a.html").is_file()
+
+
+def test_the_guard_is_asked_before_a_plot_folder_is_created(tmp_path) -> None:
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    def output() -> PlotOutput:
+        return PlotOutput(pages=(PlotPage(key="a", plot="tiles", figure=plt.figure()),))
+
+    # Premise: an admitting guard does create the plot folder, so its absence
+    # below is the refusal's doing.
+    publish_plot_output(
+        output(), tmp_path / "admitted", plot_id="agg", publication_guard=lambda: True
+    )
+    assert (tmp_path / "admitted" / "tiles" / "a.png").is_file()
+    # Entry check, inside the lock, then the plot folder.
+    calls = iter([True, True, False])
+    with pytest.raises(PlotPublicationBlocked):
+        publish_plot_output(
+            output(), tmp_path / "agg", plot_id="agg",
+            publication_guard=lambda: next(calls, False),
+        )
+    assert (tmp_path / "agg").is_dir()            # refused after the binding folder ...
+    assert not (tmp_path / "agg" / "tiles").exists()  # ... and before the plot folder

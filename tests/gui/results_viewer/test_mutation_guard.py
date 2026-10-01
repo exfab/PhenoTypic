@@ -565,15 +565,24 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
         plot_dir,
         plot_id="guarded",
     )
+    # The page's plot folder exists from the publication above, so the guarded
+    # rerun asks the guard no plot-folder question: entry, inside the lock,
+    # then the PNG commit.
+    page_dir = plot_dir / "default"
+    assert (page_dir / "default.png").is_file()
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-plot")
     before_dirs, before_files = _tree_snapshot(source)
     checks = 0
+    png_pending_at_perturbation: list[Path] = []
 
     def _late_guard() -> bool:
         nonlocal checks
         checks += 1
         if checks == 3:
+            # The rendered PNG is waiting in its temporary sibling: this is the
+            # commit-time recheck, after the render and before the replace.
+            png_pending_at_perturbation.extend(page_dir.glob(".default.png.*.tmp"))
             bump_scientific_config_digest(source)
         try:
             guard.authorize(
@@ -597,6 +606,7 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
         resolve_processing_state_path(source).relative_to(source).as_posix()
     )
     assert checks == 3
+    assert len(png_pending_at_perturbation) == 1
     assert after_dirs == before_dirs
     assert after_files.pop(perturbed) != before_files.pop(perturbed)
     assert after_files == before_files

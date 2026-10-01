@@ -357,7 +357,8 @@ def publish_plot_output(
 
     Args:
         value: Raw supported figure or normalized multi-page output.
-        directory: Destination directory for page PNGs and the manifest.
+        directory: Destination directory for the manifest. Each page's
+            files go into its plot folder below it, ``<plot>/<file>``.
         plot_id: Stable binding ID used in diagnostics.
         plot_class: Producer class name. Defaults to ``plot_id`` for direct
             writer calls.
@@ -412,13 +413,21 @@ def _publish_plot_output_locked(
     # does so while emitting a correct-looking relative src.
     base = plots_base if plots_base is not None else directory
 
-    stems = unique_page_stems(
-        [(page.key, page.label or page.key) for page in output.pages]
+    # Each page renders into its plot folder; file stems keep the label
+    # preference (decision P1 of the plot-subfolders plan).
+    paths = plot_page_paths(
+        [(page.plot_name, page.key, page.label or page.key) for page in output.pages]
     )
-    for page, stem in zip(output.pages, stems):
+    for page, (plot_directory, stem) in zip(output.pages, paths):
+        page_directory = directory / plot_directory
+        created = not page_directory.exists()
+        if created:
+            # The guard is asked immediately before any directory is created.
+            _require_plot_publication(publication_guard)
+            page_directory.mkdir()
         try:
             files, errors, backend = _render_page(
-                page.figure, directory, stem,
+                page.figure, page_directory, stem,
                 plots_base=base,
                 plot_id=plot_id,
                 publication_guard=publication_guard,
@@ -433,7 +442,7 @@ def _publish_plot_output_locked(
             # Only for pages the manifest will list: a failed page's files
             # are not described by this generation either way.
             _remove_stale_sibling(
-                directory, stem, backend, files,
+                page_directory, stem, backend, files,
                 publication_guard=publication_guard,
                 commit_guard=commit_guard,
             )
@@ -451,8 +460,12 @@ def _publish_plot_output_locked(
             )
 
         if not files:
+            if created and not any(page_directory.iterdir()):
+                # No empty plot folder for a page that rendered nothing.
+                page_directory.rmdir()
             failed.append({
                 "key": page.key,
+                "plot": page.plot_name,
                 "label": page.label,
                 "error": (
                     _format_error(errors[0])
@@ -464,8 +477,10 @@ def _publish_plot_output_locked(
 
         entry: dict[str, Any] = {
             "key": page.key,
+            "plot": page.plot_name,
             "label": page.label,
-            "files": files,
+            # Relative to *directory*, plot folder included.
+            "files": {fmt: f"{plot_directory}/{name}" for fmt, name in files.items()},
             "backend": "matplotlib" if backend == "mpl" else "plotly",
             "metadata": dict(page.metadata),
         }
@@ -502,7 +517,7 @@ def _publish_plot_output_locked(
         renderers["png"] = "available"
 
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "plot_id": plot_id,
         "class": plot_class or plot_id,
         "renderers": renderers,

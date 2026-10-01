@@ -162,7 +162,7 @@ def test_measurement_plot_receives_current_table(tmp_path) -> None:
     pipeline = ImagePipeline(plots=[PlotBinding(id="measurements", plot=plot)])
     PlotCoordinator(pipeline, tmp_path).emit_measurements(table)
     assert plot._seen is table
-    assert (plots_dir(tmp_path) / "measurements" / "default.png").exists()
+    assert (plots_dir(tmp_path) / "measurements" / "default" / "default.png").exists()
 
 
 def test_explicit_plots_base_avoids_double_deliverables_join(tmp_path) -> None:
@@ -177,7 +177,7 @@ def test_explicit_plots_base_avoids_double_deliverables_join(tmp_path) -> None:
         plots_base=standalone_plots,
     ).emit_measurements(table)
 
-    assert (standalone_plots / "measurements" / "default.png").exists()
+    assert (standalone_plots / "measurements" / "default" / "default.png").exists()
     assert not (tmp_path / "bundle" / "deliverables").exists()
 
 
@@ -295,7 +295,7 @@ def test_analysis_update_refreshes_reused_producer_with_default_input(
     )
 
     assert plot._seen is None
-    assert (plots_dir(tmp_path) / "reused-model" / "default.png").exists()
+    assert (plots_dir(tmp_path) / "reused-model" / "default" / "default.png").exists()
 
 
 def test_qc_plot_receives_exact_successful_check_and_selected_input(
@@ -406,7 +406,7 @@ def test_qc_reference_uses_instance_id_when_output_id_is_custom(tmp_path) -> Non
     assert analyzed_plot._seen.qc_instance_id == entry.instance_id
     assert analyzed_plot._seen.analyzed_check is analyzed_plot
     assert (
-        plots_dir(tmp_path) / "custom-grid-output" / "default.png"
+        plots_dir(tmp_path) / "custom-grid-output" / "default" / "default.png"
     ).exists()
 
 
@@ -1059,7 +1059,7 @@ def test_a_plotly_aggregate_uses_the_one_hoisted_bundle(
     assert sorted(tmp_path.rglob("plotly.min.js")) == [
         plots_dir(tmp_path) / "plotly.min.js"
     ]
-    assert (plots_dir(tmp_path) / "measurements" / "default.html").exists()
+    assert (plots_dir(tmp_path) / "measurements" / "default" / "default.html").exists()
 
 
 def test_the_flat_path_closes_its_matplotlib_figure(tmp_path) -> None:
@@ -1148,8 +1148,8 @@ def test_an_aggregate_rerun_without_chrome_removes_the_previous_png(
         lambda coordinator: coordinator.emit_measurements(pd.DataFrame()),
     )
 
-    assert list(directory.glob("*.png")) == []
-    assert (directory / "default.html").is_file()
+    assert list(directory.rglob("*.png")) == []
+    assert (directory / "default" / "default.html").is_file()
     _assert_manifest_matches_disk(directory)
 
 
