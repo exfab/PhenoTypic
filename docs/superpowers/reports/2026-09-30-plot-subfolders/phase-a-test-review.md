@@ -326,3 +326,27 @@ def test_a_bare_page_and_a_plotted_page_naming_one_file_are_refused():
 - **Read with the diffs:** every new or edited test, using main's `git log`, test diff and src diff (`/bigdata/exfab/anguy344/PhenoTypic/.worktrees/phaseA-*.{txt,diff}`).
 - **Executed:** only the mutation batch above (Slurm 29304001, run by main).
 - **Not executed:** the killing tests proposed here have not been run. Each one's expected red under its mutation is derived from reading the code.
+
+---
+
+## Resolution (orchestrator, 2026-09-30)
+
+- **Fix-up commit:** `21b2c696`. It adds the killing tests for I1-I4 and minor items 2 and 8, the minor 1/3/4 test changes, and the minor 5 `StoredFigurePage` check. It also fixes the missed `test_process_only_zarr.py:720` path.
+- **Runs:**
+  - red phase (Slurm 29304075): 2 failed, both minor-5 params, as predicted;
+  - green (29304086): 179 passed.
+- **Mutation rerun against `21b2c696`** (Slurm 29304097): every mutant is now killed.
+  - BASELINE: 129 passed.
+  - M1: `test_a_bare_page_and_a_plotted_page_naming_one_file_are_refused`.
+  - M2, M3: `test_failures_of_plotted_pages_record_the_plot_not_the_key`.
+  - M4: `test_a_page_with_no_plot_over_a_plot_folder_is_refused`.
+  - M5: `test_a_page_spread_over_two_plot_folders_is_refused`.
+  - M6: `test_a_kept_page_keeps_the_folder_its_path_names_not_its_plot_name`.
+  - M9: `test_a_measure_rewrite_adds_a_v2_run_to_a_v1_store`.
+  - M11: `test_a_v1_store_gains_a_v2_run_and_keeps_its_v1_run_byte_for_byte` and `test_a_resave_over_a_v1_store_leaves_no_stale_file_in_its_run`.
+  - Control C1: still red.
+  - The worktree fingerprint was identical before and after (`21b2c696`, dirty=0).
+- **Deferred:**
+  - Minor 6: no fix needed.
+  - Minor 7: GUI tab value `plot/key`, a follow-up outside this spec.
+  - Minor 9: carried into Task 5's brief.
