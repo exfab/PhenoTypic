@@ -133,7 +133,7 @@ def test_full_mode_stores_figures_and_copies_them_out(tmp_path):
     assert run["failed"] == [] and run["unavailable"] == []
     [page] = run["bindings"]["sym"]["pages"]
     assert [f["format"] for f in page["files"]] == ["plotly-json"]
-    assert page["files"][0]["path"] == f"figures/{run_id}/sym/default.plotly.json"
+    assert page["files"][0]["path"] == f"figures/{run_id}/sym/default/default.plotly.json"
     deliverable = list((out / "deliverables/plots/sym/ds").glob("plate-*.plotly.json"))
     assert len(deliverable) == 1
     assert deliverable[0].read_bytes() == (store / page["files"][0]["path"]).read_bytes()

@@ -38,7 +38,7 @@ from ._failures import _format_error, record_plot_failure
 from ._output import normalize_plot_output
 from ._store_copyout import _UNRESOLVED, _read_stored_file
 from ._store_formats import serialize_store_format
-from ._writer import PlotPublicationBlocked, safe_path_component, unique_page_stems
+from ._writer import PlotPublicationBlocked, plot_page_paths, safe_path_component
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +341,7 @@ class _SameRunKeeper:
             return False
         stored = entry.get("bindings", {}).get(binding.id)
         failures = [
-            StoredFigureFailure(f["binding"], f["page"], f["format"], f["error"])
+            StoredFigureFailure(f["binding"], f["page"], f["format"], f["error"], f.get("plot"))
             for f in entry.get("failed", [])
             if f.get("binding") == binding.id
         ]
@@ -367,8 +367,9 @@ class _SameRunKeeper:
         pages: list[StoredFigurePage] = []
         for page in stored["pages"]:
             files: list[StoredFigureFile] = []
+            page_directories: set[str | None] = set()
             for entry in page["files"]:
-                run_id, directory, _plot_directory, filename = (
+                run_id, directory, plot_directory, filename = (
                     split_figure_file_path(entry["path"])
                 )
                 if run_id != self._run.run_id:
@@ -376,13 +377,24 @@ class _SameRunKeeper:
                         f"{entry['path']!r} is not in run folder {self._run.run_id!r}"
                     )
                 directories.add(directory)
+                page_directories.add(plot_directory)
                 data = _read_stored_file(self._store, figures_root, entry)
                 files.append(StoredFigureFile(
                     entry["format"], entry["media_type"], filename, data
                 ))
+            # A version 1 page is flat with no `plot`; a version 2 page sits in
+            # one plot folder. Anything else is not this writer's layout.
+            plot = page.get("plot")
+            if len(page_directories) > 1 or (plot is None) != (None in page_directories):
+                raise ValueError(
+                    f"stored page {page['key']!r} of {binding.id!r} is not laid out "
+                    f"as this writer lays it out (plot {plot!r}, folders "
+                    f"{sorted(map(str, page_directories))})"
+                )
             pages.append(StoredFigurePage(
                 key=page["key"], label=page["label"], backend=page["backend"],
                 metadata=page["metadata"], files=tuple(files),
+                plot=plot, directory=next(iter(page_directories), None),
             ))
         if len(directories) != 1:
             raise ValueError(
@@ -405,20 +417,20 @@ def _build_pages(
         raise ValueError("inspect() returned a PlotOutput with no pages")
     try:
         spec = declared_figure_spec(binding.plot)
-        stems = unique_page_stems([(page.key, page.key) for page in output.pages])
+        paths = plot_page_paths([(page.plot_name, page.key, page.key) for page in output.pages])
     except BaseException:
         for page in output.pages:
             FigureAdapter.close(page.figure)
         raise
     pages: list[StoredFigurePage] = []
-    for page, stem in zip(output.pages, stems):
+    for page, (plot_directory, stem) in zip(output.pages, paths):
         try:
-            built = _build_page(binding, page, stem, spec, failed)
+            built = _build_page(binding, page, plot_directory, stem, spec, failed)
         except PlotPublicationBlocked:
             raise
         except Exception as exc:  # noqa: BLE001 - per-page best effort
             failed.append(StoredFigureFailure(
-                binding.id, page.key, None, normalize_figure_error(exc)
+                binding.id, page.key, None, normalize_figure_error(exc), plot=page.plot_name
             ))
             built = None
         finally:
@@ -431,6 +443,7 @@ def _build_pages(
 def _build_page(
     binding: Any,
     page: Any,
+    plot_directory: str,
     stem: str,
     spec: Any,
     failed: list[StoredFigureFailure],
@@ -464,7 +477,7 @@ def _build_page(
             raise
         except Exception as exc:  # noqa: BLE001 - per-format best effort
             failed.append(StoredFigureFailure(
-                binding.id, page.key, fmt, normalize_figure_error(exc)
+                binding.id, page.key, fmt, normalize_figure_error(exc), plot=page.plot_name
             ))
             continue
         files.append(StoredFigureFile(fmt, info.media_type, f"{stem}{info.extension}", data))
@@ -473,6 +486,7 @@ def _build_page(
     return StoredFigurePage(
         key=page.key, label=page.label, backend=backend,
         metadata=metadata, files=tuple(files),
+        plot=page.plot_name, directory=plot_directory,
     )
 
 

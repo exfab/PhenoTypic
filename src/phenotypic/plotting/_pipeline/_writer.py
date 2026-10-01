@@ -306,6 +306,40 @@ def unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]:
     return stems
 
 
+#: Plot-folder names that would collide with a file beside them: a binding's
+#: Zarr group document, and the deliverables manifest (spec D6).
+_RESERVED_PLOT_NAMES: tuple[str, ...] = ("zarr.json", "manifest.json")
+
+
+def plot_page_paths(pages: Sequence[tuple[str, str, str]]) -> list[tuple[str, str]]:
+    """Return ``(plot_directory, file_stem)`` per page (spec 2026-09-30 §2).
+
+    Plot folders are unique within the binding and file stems unique within
+    their folder, both by :func:`unique_page_stems`, so a collision gets the
+    same stable digest suffix it always has.
+
+    Args:
+        pages: ``(plot_name, page_key, preferred_name)`` per page, in page
+            order. The store passes the key as the preferred name; the direct
+            publisher passes the label.
+    """
+    plots = list(dict.fromkeys(plot for plot, _key, _preferred in pages))
+    # Reserved first (spec D6), so a plot named like the group document or the
+    # manifest gets the digest suffix instead of colliding with that file. Their
+    # key is "", which no plot name is (`PlotPage` refuses an empty key or plot):
+    # a plot named exactly "zarr.json" must not read as the reserved entry itself.
+    reserved = [("", name) for name in _RESERVED_PLOT_NAMES]
+    named = unique_page_stems(reserved + [(plot, plot) for plot in plots])
+    plot_directories = dict(zip(plots, named[len(reserved):]))
+    stems = [""] * len(pages)
+    for plot in plots:
+        members = [i for i, (owner, _key, _preferred) in enumerate(pages) if owner == plot]
+        named = unique_page_stems([(pages[i][1], pages[i][2]) for i in members])
+        for i, stem in zip(members, named):
+            stems[i] = stem
+    return [(plot_directories[plot], stems[i]) for i, (plot, _key, _preferred) in enumerate(pages)]
+
+
 def publish_plot_output(
     value: Any | PlotOutput,
     directory: Path,
@@ -514,6 +548,7 @@ def _require_plot_publication(
 
 __all__ = [
     "PlotPublicationBlocked",
+    "plot_page_paths",
     "publish_plot_output",
     "safe_path_component",
 ]
