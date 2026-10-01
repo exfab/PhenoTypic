@@ -1,0 +1,6 @@
+phenotypic.util.split\_measurements\_by\_category
+=================================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: split_measurements_by_category

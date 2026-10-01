@@ -1,0 +1,835 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>MeasureTexture &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sidebar-resize.css?v=bc74e319" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=456b64e2"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'measurements_ref/measure/MeasureTexture';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.20.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script src="../../_static/sidebar-resize.js?v=94bb1ac8"></script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.20.1/measurements_ref/measure/MeasureTexture.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ExpectedVsDetectedCount" href="../qc/ExpectedVsDetectedCount.html" />
+    <link rel="prev" title="MeasureSymZones" href="MeasureSymZones.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.20.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item current active">
+      <a class="nav-link nav-internal" href="../index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item current active">
+      <a class="nav-link nav-internal" href="../index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tier_system.html">Tier System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../categories/index.html">Categories</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../shared/index.html">Shared columns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../metadata/index.html">Metadata</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Object measurements</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="MeasureBounds.html">MeasureBounds</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureColor.html">MeasureColor</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureGridLinRegStats.html">MeasureGridLinRegStats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureGridSpread.html">MeasureGridSpread</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureIntensity.html">MeasureIntensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureNeighborDist.html">MeasureNeighborDist</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureOrientationZones.html">MeasureOrientationZones</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureShape.html">MeasureShape</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureSize.html">MeasureSize</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MeasureSymZones.html">MeasureSymZones</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">MeasureTexture</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/RelativeMAD.html">RelativeMAD</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/ReplicateAgreement.html">ReplicateAgreement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/TukeyOutlierFraction.html">TukeyOutlierFraction</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Growth models</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../models/LinearCapAndLagModel.html">LinearCapAndLagModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models/LinearLagModel.html">LinearLagModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models/LogGrowthModel.html">LogGrowthModel</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Plate correction</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../correction/EdgeCorrector.html">EdgeCorrector</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Measurements</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">MeasureTexture</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="measuretexture">
+<span id="measurement-op-measuretexture"></span><h1>MeasureTexture<a class="headerlink" href="#measuretexture" title="Link to this heading">#</a></h1>
+<p>Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.</p>
+<p>Parameters and usage: <a class="reference internal" href="../../api_reference/api/phenotypic.measure.MeasureTexture.html#phenotypic.measure.MeasureTexture" title="phenotypic.measure.MeasureTexture"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureTexture</span></code></a>.</p>
+<ul class="simple">
+<li><p><strong>One row per:</strong> detected colony</p></li>
+<li><p><strong>Written to:</strong> <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.csv</span></code> (every operation, with your metadata joined) and <code class="docutils literal notranslate"><span class="pre">deliverables/measurements_by_feature/MeasureTexture.csv</span></code>, each with a <code class="docutils literal notranslate"><span class="pre">.parquet</span></code> beside it</p></li>
+<li><p><strong>Columns:</strong> 13, each a pattern (see Placeholders)</p></li>
+</ul>
+<p class="rubric">Placeholders</p>
+<p>Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">&lt;x&gt;</span></code></dt><dd><p>The <code class="docutils literal notranslate"><span class="pre">scale</span></code> parameter: the distance, in pixels, between the two pixels compared when building the gray-level co-occurrence matrix, zero-padded to two digits. The default <code class="docutils literal notranslate"><span class="pre">scale=5</span></code> writes <code class="docutils literal notranslate"><span class="pre">scale05</span></code>. To convert it to a physical distance, divide by your image’s pixels per millimetre: at 40 px/mm, <code class="docutils literal notranslate"><span class="pre">scale05</span></code> compares pixels 0.125 mm apart.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">&lt;direction&gt;</span></code></dt><dd><p>The direction of that offset: <code class="docutils literal notranslate"><span class="pre">deg000</span></code>, <code class="docutils literal notranslate"><span class="pre">deg045</span></code>, <code class="docutils literal notranslate"><span class="pre">deg090</span></code> or <code class="docutils literal notranslate"><span class="pre">deg135</span></code> (degrees), or <code class="docutils literal notranslate"><span class="pre">avg</span></code>, the mean of the four. Each feature therefore writes five columns per scale, e.g. <code class="docutils literal notranslate"><span class="pre">Texture_Contrast-deg045-scale05</span></code>.</p>
+</dd>
+</dl>
+<section id="texture">
+<span id="measurement-info-texture"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.TEXTURE.html"><span class="doc">TEXTURE</span></a><a class="headerlink" href="#texture" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id1">
+<caption><span class="caption-text">Metric family: <strong>Texture</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Column</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_AngularSecondMoment-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Angular second moment (energy / uniformity). Measures the degree of local homogeneity
+(Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
+mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
+sporulation zones). Reflects colony surface regularity rather than brightness.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Contrast-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
+differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
+indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
+and zonation amplitude.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Correlation-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Linear gray-level correlation between neighboring pixels. Positive, high values suggest
+structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
+values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
+illumination gradients and directional GLCM computation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_HaralickVariance-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
+from raw intensity variance. High values → complex, multi-zone textures with variable
+hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
+surfaces.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InverseDifferenceMoment-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
+(e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
+(e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumAverage-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
+neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
+illumination and exposure are controlled, but remains a second-order rather than first-order
+intensity metric.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumVariance-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Variance of gray-level sum distribution. High values → heterogeneous brightness zones
+(e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
+tone across the colony. Often correlated with Contrast; use comparatively within one setup.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumEntropy-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Entropy of the gray-level sum distribution. High values → diverse brightness combinations
+and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
+spaced rings). Indicates spatial unpredictability of summed intensities.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Entropy-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
+content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
+Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
+gray-level quantization and image dynamic range.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_DiffVariance-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Variance of gray-level difference distribution. High values → mixture of smooth and textured
+regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
+Highlights heterogeneity in edge magnitude across the colony.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_DiffEntropy-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Entropy of gray-level difference distribution. High values → irregular, unpredictable
+intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
+regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
+rather than its magnitude.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InfoCorrelation1-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Information measure of correlation 1. Compares joint vs marginal entropies to quantify
+mutual dependence between gray levels. Positive values → structured, predictable textures
+(e.g., organized radial growth); near-zero → independence between adjacent regions.
+Direction of sign varies with implementation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InfoCorrelation2-&lt;direction&gt;-scale&lt;x&gt;</span></code></p></td>
+<td><p>Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
+Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
+rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
+organization missed by linear correlation.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#texture"><span class="xref std std-doc">TEXTURE</span></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/measurements_ref/measure/MeasureTexture.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

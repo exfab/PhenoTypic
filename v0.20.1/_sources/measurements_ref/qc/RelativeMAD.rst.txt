@@ -1,0 +1,55 @@
+.. _measurement-op-relativemad:
+
+RelativeMAD
+===========
+
+Flag ``(group, time)`` bins with poor robust agreement across replicates.
+
+Parameters and usage: :py:class:`RelativeMAD <phenotypic.analysis.RelativeMAD>`.
+
+- **Written to:** the frame ``analyze()`` returns; a CLI run stores it as one table in ``deliverables/qc/qc.duckdb``
+- **Columns:** 6
+
+.. _measurement-info-quality-mad:
+
+:doc:`QUALITY_MAD </api_reference/api/phenotypic.schema.QUALITY_MAD>`
+---------------------------------------------------------------------
+
+.. list-table:: Metric family: **QC_MAD**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_MAD_Median``
+     - Group median of the measurement.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_MAD_MAD``
+     - Median absolute deviation (raw, before normalization).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_MAD_NumMembers``
+     - Members contributing to the statistic.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`QUALITY_CHECK </api_reference/api/phenotypic.schema.QUALITY_CHECK>`
+-------------------------------------------------------------------------
+
+Every quality check writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_MAD_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_MAD_Metric``
+     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_MAD_Status``
+     - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

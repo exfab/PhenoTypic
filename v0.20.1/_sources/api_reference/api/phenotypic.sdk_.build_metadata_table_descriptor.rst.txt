@@ -1,0 +1,6 @@
+phenotypic.sdk\_.build\_metadata\_table\_descriptor
+===================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: build_metadata_table_descriptor

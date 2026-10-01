@@ -1,0 +1,26 @@
+phenotypic.sdk\_.napari\_.LabelEditorWidget
+===========================================
+
+.. currentmodule:: phenotypic.sdk_.napari_
+
+.. autoclass:: LabelEditorWidget
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LabelEditorWidget.__init__
+      ~LabelEditorWidget.run
+   
+   
+
+   
+   
+   

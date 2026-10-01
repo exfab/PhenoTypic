@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migrate\_metadata\_file
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migrate_metadata_file

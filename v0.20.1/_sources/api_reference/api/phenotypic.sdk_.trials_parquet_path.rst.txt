@@ -1,0 +1,6 @@
+phenotypic.sdk\_.trials\_parquet\_path
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: trials_parquet_path

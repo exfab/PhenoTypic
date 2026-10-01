@@ -1,0 +1,6 @@
+phenotypic.sdk\_.deliverables\_dir
+==================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: deliverables_dir

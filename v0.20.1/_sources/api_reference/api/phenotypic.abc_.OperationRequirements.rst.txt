@@ -1,0 +1,35 @@
+phenotypic.abc\_.OperationRequirements
+======================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: OperationRequirements
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OperationRequirements.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OperationRequirements.extra
+      ~OperationRequirements.grid_image
+      ~OperationRequirements.modules
+      ~OperationRequirements.rgb_input
+      ~OperationRequirements.weights
+   
+   

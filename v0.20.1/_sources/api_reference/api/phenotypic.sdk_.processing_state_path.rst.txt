@@ -1,0 +1,6 @@
+phenotypic.sdk\_.processing\_state\_path
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: processing_state_path

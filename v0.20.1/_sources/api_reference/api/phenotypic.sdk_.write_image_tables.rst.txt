@@ -1,0 +1,6 @@
+phenotypic.sdk\_.write\_image\_tables
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: write_image_tables

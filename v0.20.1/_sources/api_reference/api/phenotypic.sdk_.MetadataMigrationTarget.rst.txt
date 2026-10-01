@@ -1,0 +1,39 @@
+phenotypic.sdk\_.MetadataMigrationTarget
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: MetadataMigrationTarget
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MetadataMigrationTarget.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MetadataMigrationTarget.conflicts
+      ~MetadataMigrationTarget.hdf_snapshot_fingerprint
+      ~MetadataMigrationTarget.mixed_table
+      ~MetadataMigrationTarget.needs_metadata_marker
+      ~MetadataMigrationTarget.proposed_header_map
+      ~MetadataMigrationTarget.path
+      ~MetadataMigrationTarget.kind
+      ~MetadataMigrationTarget.status
+      ~MetadataMigrationTarget.source_fingerprint
+   
+   

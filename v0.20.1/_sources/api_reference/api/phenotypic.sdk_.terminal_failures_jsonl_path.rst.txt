@@ -1,0 +1,6 @@
+phenotypic.sdk\_.terminal\_failures\_jsonl\_path
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: terminal_failures_jsonl_path

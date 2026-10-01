@@ -1,0 +1,6 @@
+phenotypic.sdk\_.resolve\_processing\_state\_path
+=================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: resolve_processing_state_path

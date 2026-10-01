@@ -1,0 +1,32 @@
+phenotypic.schema.CategoryEntry
+===============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: CategoryEntry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CategoryEntry.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CategoryEntry.label
+      ~CategoryEntry.desc
+   
+   

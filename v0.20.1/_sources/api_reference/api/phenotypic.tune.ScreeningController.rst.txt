@@ -1,0 +1,26 @@
+phenotypic.tune.ScreeningController
+===================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: ScreeningController
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ScreeningController.__init__
+      ~ScreeningController.run
+   
+   
+
+   
+   
+   

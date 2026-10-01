@@ -1,0 +1,38 @@
+phenotypic.tune.score
+=====================
+
+.. automodule:: phenotypic.tune.score
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      Scorer
+      QCScorer
+      ReferenceFreeScorer
+      GroundTruthMasks
+      SupervisedScorer
+      CompositeScorer
+   
+   
+
+   
+   
+   
+
+
+

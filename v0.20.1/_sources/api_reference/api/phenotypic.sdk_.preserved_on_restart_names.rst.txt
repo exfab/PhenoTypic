@@ -1,0 +1,6 @@
+phenotypic.sdk\_.preserved\_on\_restart\_names
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: preserved_on_restart_names

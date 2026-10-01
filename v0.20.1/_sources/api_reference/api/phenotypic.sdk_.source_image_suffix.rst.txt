@@ -1,0 +1,6 @@
+phenotypic.sdk\_.source\_image\_suffix
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: source_image_suffix

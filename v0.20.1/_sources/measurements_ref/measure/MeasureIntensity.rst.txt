@@ -1,0 +1,74 @@
+.. _measurement-op-measureintensity:
+
+MeasureIntensity
+================
+
+Measure grayscale intensity statistics of detected colonies.
+
+Parameters and usage: :py:class:`MeasureIntensity <phenotypic.measure.MeasureIntensity>`.
+
+- **One row per:** detected colony
+- **Written to:** ``deliverables/measurements.csv`` (every operation, with your metadata joined) and ``deliverables/measurements_by_feature/MeasureIntensity.csv``, each with a ``.parquet`` beside it
+- **Columns:** 12
+
+.. _measurement-info-intensity:
+
+:doc:`INTENSITY </api_reference/api/phenotypic.schema.INTENSITY>`
+-----------------------------------------------------------------
+
+.. list-table:: Metric family: **Intensity**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+     - Categories
+   * - ``Intensity_IntegratedIntensity``
+     - The sum of the object's pixels
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+   * - ``Intensity_Density``
+     - The ratio of the object's intensity to the max possible intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_ConvexDensity``
+     - The ratio of the objects intensity to the max possible intensity of the object's convex hull
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_MinimumIntensity``
+     - The minimum intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_MaximumIntensity``
+     - The maximum intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_MeanIntensity``
+     - The mean intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_MedianIntensity``
+     - The median intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_StandardDeviationIntensity``
+     - The standard deviation of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_CoefficientVarianceIntensity``
+     - The coefficient of variation of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_LowerQuartileIntensity``
+     - The lower quartile intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_UpperQuartileIntensity``
+     - The upper quartile intensity of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``Intensity_InterquartileRangeIntensity``
+     - The interquartile range of the object
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 

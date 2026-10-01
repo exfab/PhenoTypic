@@ -1,0 +1,60 @@
+phenotypic.tune.Categorical
+===========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Categorical
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Categorical.__init__
+      ~Categorical.construct
+      ~Categorical.copy
+      ~Categorical.dict
+      ~Categorical.from_orm
+      ~Categorical.json
+      ~Categorical.model_construct
+      ~Categorical.model_copy
+      ~Categorical.model_dump
+      ~Categorical.model_dump_json
+      ~Categorical.model_json_schema
+      ~Categorical.model_parametrized_name
+      ~Categorical.model_post_init
+      ~Categorical.model_rebuild
+      ~Categorical.model_validate
+      ~Categorical.model_validate_json
+      ~Categorical.model_validate_strings
+      ~Categorical.parse_file
+      ~Categorical.parse_obj
+      ~Categorical.parse_raw
+      ~Categorical.schema
+      ~Categorical.schema_json
+      ~Categorical.update_forward_refs
+      ~Categorical.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Categorical.model_computed_fields
+      ~Categorical.model_config
+      ~Categorical.model_extra
+      ~Categorical.model_fields
+      ~Categorical.model_fields_set
+      ~Categorical.kind
+      ~Categorical.choices
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.estimate\_concurrent\_capacity
+=====================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: estimate_concurrent_capacity

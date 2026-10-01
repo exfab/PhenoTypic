@@ -1,0 +1,46 @@
+phenotypic.util.QualityScores
+=============================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: QualityScores
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QualityScores.__init__
+      ~QualityScores.clear
+      ~QualityScores.copy
+      ~QualityScores.fromkeys
+      ~QualityScores.get
+      ~QualityScores.items
+      ~QualityScores.keys
+      ~QualityScores.pop
+      ~QualityScores.popitem
+      ~QualityScores.setdefault
+      ~QualityScores.update
+      ~QualityScores.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QualityScores.SNR
+      ~QualityScores.Contrast
+      ~QualityScores.Coherence
+      ~QualityScores.Uniformity
+      ~QualityScores.Sharpness
+   
+   

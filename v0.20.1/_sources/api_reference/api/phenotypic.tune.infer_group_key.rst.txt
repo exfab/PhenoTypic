@@ -1,0 +1,6 @@
+phenotypic.tune.infer\_group\_key
+=================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: infer_group_key

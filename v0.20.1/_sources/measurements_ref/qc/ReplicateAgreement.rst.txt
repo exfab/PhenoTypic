@@ -1,0 +1,58 @@
+.. _measurement-op-replicateagreement:
+
+ReplicateAgreement
+==================
+
+Flag ``(group, time)`` bins with poor agreement across replicates.
+
+Parameters and usage: :py:class:`ReplicateAgreement <phenotypic.analysis.ReplicateAgreement>`.
+
+- **Written to:** the frame ``analyze()`` returns; a CLI run stores it as one table in ``deliverables/qc/qc.duckdb``
+- **Columns:** 7
+
+.. _measurement-info-quality-se:
+
+:doc:`QUALITY_SE </api_reference/api/phenotypic.schema.QUALITY_SE>`
+-------------------------------------------------------------------
+
+.. list-table:: Metric family: **QC_SE**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_SE_Value``
+     - Raw SE = stddev / sqrt(n) across replicates.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_SE_Mean``
+     - Mean across replicates at this (group, time).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_SE_CV``
+     - Coefficient of variation, stddev / \|mean\|.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_SE_NumReplicates``
+     - Replicate count contributing to the SE.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`QUALITY_CHECK </api_reference/api/phenotypic.schema.QUALITY_CHECK>`
+-------------------------------------------------------------------------
+
+Every quality check writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_SE_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_SE_Metric``
+     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_SE_Status``
+     - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

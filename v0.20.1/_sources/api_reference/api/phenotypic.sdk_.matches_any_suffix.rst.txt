@@ -1,0 +1,6 @@
+phenotypic.sdk\_.matches\_any\_suffix
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: matches_any_suffix

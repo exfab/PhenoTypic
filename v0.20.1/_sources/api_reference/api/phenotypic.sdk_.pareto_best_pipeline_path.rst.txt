@@ -1,0 +1,6 @@
+phenotypic.sdk\_.pareto\_best\_pipeline\_path
+=============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: pareto_best_pipeline_path

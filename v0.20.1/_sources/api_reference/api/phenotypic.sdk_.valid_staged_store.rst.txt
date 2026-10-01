@@ -1,0 +1,6 @@
+phenotypic.sdk\_.valid\_staged\_store
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: valid_staged_store

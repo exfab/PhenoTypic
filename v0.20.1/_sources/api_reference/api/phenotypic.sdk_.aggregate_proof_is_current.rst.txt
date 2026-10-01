@@ -1,0 +1,6 @@
+phenotypic.sdk\_.aggregate\_proof\_is\_current
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: aggregate_proof_is_current

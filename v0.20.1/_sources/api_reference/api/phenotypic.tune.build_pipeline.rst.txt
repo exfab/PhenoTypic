@@ -1,0 +1,6 @@
+phenotypic.tune.build\_pipeline
+===============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: build_pipeline

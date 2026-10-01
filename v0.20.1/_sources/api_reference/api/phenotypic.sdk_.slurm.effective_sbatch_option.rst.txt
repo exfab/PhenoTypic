@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.effective\_sbatch\_option
+================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: effective_sbatch_option

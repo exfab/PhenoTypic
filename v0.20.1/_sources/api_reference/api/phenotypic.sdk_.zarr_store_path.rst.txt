@@ -1,0 +1,6 @@
+phenotypic.sdk\_.zarr\_store\_path
+==================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: zarr_store_path

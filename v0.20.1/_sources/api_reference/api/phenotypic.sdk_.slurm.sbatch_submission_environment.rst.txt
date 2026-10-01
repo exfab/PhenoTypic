@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.sbatch\_submission\_environment
+======================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: sbatch_submission_environment

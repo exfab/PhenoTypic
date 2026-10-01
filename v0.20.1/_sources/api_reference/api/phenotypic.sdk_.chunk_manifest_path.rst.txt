@@ -1,0 +1,6 @@
+phenotypic.sdk\_.chunk\_manifest\_path
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: chunk_manifest_path

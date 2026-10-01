@@ -1,0 +1,6 @@
+phenotypic.sdk\_.record\_provenance
+===================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: record_provenance

@@ -1,0 +1,64 @@
+phenotypic.analysis.ErrorCutoffFinder
+=====================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: ErrorCutoffFinder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ErrorCutoffFinder.__init__
+      ~ErrorCutoffFinder.analyze
+      ~ErrorCutoffFinder.construct
+      ~ErrorCutoffFinder.copy
+      ~ErrorCutoffFinder.dict
+      ~ErrorCutoffFinder.enough_data
+      ~ErrorCutoffFinder.from_orm
+      ~ErrorCutoffFinder.json
+      ~ErrorCutoffFinder.measurement_columns
+      ~ErrorCutoffFinder.model_construct
+      ~ErrorCutoffFinder.model_copy
+      ~ErrorCutoffFinder.model_dump
+      ~ErrorCutoffFinder.model_dump_json
+      ~ErrorCutoffFinder.model_json_schema
+      ~ErrorCutoffFinder.model_parametrized_name
+      ~ErrorCutoffFinder.model_post_init
+      ~ErrorCutoffFinder.model_rebuild
+      ~ErrorCutoffFinder.model_validate
+      ~ErrorCutoffFinder.model_validate_json
+      ~ErrorCutoffFinder.model_validate_strings
+      ~ErrorCutoffFinder.parse_file
+      ~ErrorCutoffFinder.parse_obj
+      ~ErrorCutoffFinder.parse_raw
+      ~ErrorCutoffFinder.schema
+      ~ErrorCutoffFinder.schema_json
+      ~ErrorCutoffFinder.update_forward_refs
+      ~ErrorCutoffFinder.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ErrorCutoffFinder.model_computed_fields
+      ~ErrorCutoffFinder.model_config
+      ~ErrorCutoffFinder.model_extra
+      ~ErrorCutoffFinder.model_fields
+      ~ErrorCutoffFinder.model_fields_set
+      ~ErrorCutoffFinder.min_error_n
+      ~ErrorCutoffFinder.min_good_n
+      ~ErrorCutoffFinder.measurement_prefixes
+   
+   

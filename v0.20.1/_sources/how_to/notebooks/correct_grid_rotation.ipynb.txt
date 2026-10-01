@@ -1,0 +1,91 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# How To: Correct Grid Rotation\n",
+    "\n",
+    "Apply `GridAligner` to straighten plates that were scanned at a slight angle.\n",
+    "This improves grid detection accuracy for downstream well-level analysis."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import phenotypic as pht\n",
+    "from phenotypic.data import load_yeast_plate\n",
+    "from phenotypic.correction import GridAligner\n",
+    "from phenotypic.detect import OtsuDetector\n",
+    "from phenotypic.enhance import BlurGauss, EnhanceLocalContrast"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Load and Detect"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()\n",
+    "pipeline = pht.ImagePipeline(\n",
+    "    ops=[BlurGauss(sigma=2.0), EnhanceLocalContrast(clip_limit=0.01), OtsuDetector()]\n",
+    ")\n",
+    "plate = pipeline.apply(plate)\n",
+    "plate.dash(overlay=True, show_grid=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Apply Grid Alignment\n",
+    "\n",
+    "`GridAligner` detects the dominant rotation angle from colony positions\n",
+    "and rotates the image to straighten the grid."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "aligner = GridAligner()\n",
+    "plate = aligner.apply(plate)\n",
+    "plate.dash(overlay=True, show_grid=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The gridlines should now align more closely with the colony rows and\n",
+    "columns. Place `GridAligner` after initial detection in your pipeline\n",
+    "so it can use detected colony positions to compute the rotation angle."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

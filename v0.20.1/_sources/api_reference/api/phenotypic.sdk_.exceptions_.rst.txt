@@ -1,0 +1,64 @@
+phenotypic.sdk\_.exceptions\_
+=============================
+
+.. automodule:: phenotypic.sdk_.exceptions_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      ArrayKeyValueShapeMismatchError
+      DataIntegrityError
+      EmptyImageError
+      GrayscaleOutOfRangeError
+      GridImageInputError
+      IllegalAssignmentError
+      IllegalElementAssignmentError
+      ImageOperationError
+      ImmutableComponentError
+      InputShapeMismatchError
+      InterfaceError
+      InvalidHsvSchemaError
+      InvalidMapValueError
+      InvalidMaskScalarValueError
+      InvalidMaskValueError
+      InvalidShapeError
+      MetadataKeySpacesError
+      MetadataKeyValueError
+      MetadataValueNonScalarError
+      NoArrayError
+      NoComponentError
+      NoImageDataError
+      NoObjectsError
+      NoOutputError
+      ObjectNotFoundError
+      OperationFailedError
+      OperationIntegrityError
+      OutputValueError
+      PhenoTypicError
+      UUIDReassignmentError
+      UnknownError
+      UnsupportedFileTypeError
+      UnsupportedImageFormat
+      UuidAssignmentError
+   
+   
+
+
+

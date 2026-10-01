@@ -1,0 +1,83 @@
+.. _measurement-op-linearlagmodel:
+
+LinearLagModel
+==============
+
+Linear-with-softplus lag-phase growth fitter (no saturation).
+
+Parameters and usage: :py:class:`LinearLagModel <phenotypic.analysis.LinearLagModel>`.
+
+- **One row per:** fitted group (the ``groupby`` columns)
+- **Written to:** the frame ``analyze()`` returns; when it is the pipeline's model, a CLI run writes ``deliverables/LinearLagModel.csv`` and ``.parquet``
+- **Columns:** 11, each a pattern (see Placeholders)
+
+.. rubric:: Placeholders
+
+Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:
+
+``<metric>``
+   The fitted column without its metric-family prefix: fitting ``Size_Area`` writes ``LinearLagModel_Area_v``.
+
+.. _measurement-info-linear-lag-model:
+
+:doc:`LINEAR_LAG_MODEL </api_reference/api/phenotypic.schema.LINEAR_LAG_MODEL>`
+-------------------------------------------------------------------------------
+
+.. list-table:: Metric family: **LinearLagModel**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+     - Biology
+   * - ``LinearLagModel_<metric>_v``
+     - The post-lag phase growth rate.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - The post-lag phase growth rate using the target metric (usually radius)
+   * - ``LinearLagModel_<metric>_s0``
+     - The initial value of the target metric
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - The initial size
+   * - ``LinearLagModel_<metric>_lambda``
+     - The duration of the lag phase
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``LinearLagModel_<metric>_alpha``
+     - lag phase transition sharpness
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 
+
+:doc:`MODEL_METRICS </api_reference/api/phenotypic.schema.MODEL_METRICS>`
+-------------------------------------------------------------------------
+
+Every growth model writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **ModelMetrics**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ModelMetrics_<metric>_MAE``
+     - The mean absolute error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_MSE``
+     - The mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_RMSE``
+     - The root mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_R2``
+     - The coefficient of determination
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_NumSamples``
+     - The number of samples used for model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerLoss``
+     - The loss of model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerStatus``
+     - The output of the optimizer status
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

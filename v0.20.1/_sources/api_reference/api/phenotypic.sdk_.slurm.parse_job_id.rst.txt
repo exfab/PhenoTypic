@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.parse\_job\_id
+=====================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: parse_job_id

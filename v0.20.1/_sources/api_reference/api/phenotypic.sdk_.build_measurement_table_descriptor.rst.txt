@@ -1,0 +1,6 @@
+phenotypic.sdk\_.build\_measurement\_table\_descriptor
+======================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: build_measurement_table_descriptor

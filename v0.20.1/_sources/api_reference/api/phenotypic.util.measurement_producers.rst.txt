@@ -1,0 +1,6 @@
+phenotypic.util.measurement\_producers
+======================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: measurement_producers

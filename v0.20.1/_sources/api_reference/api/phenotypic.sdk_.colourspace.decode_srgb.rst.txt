@@ -1,0 +1,6 @@
+phenotypic.sdk\_.colourspace.decode\_srgb
+=========================================
+
+.. currentmodule:: phenotypic.sdk_.colourspace
+
+.. autofunction:: decode_srgb

@@ -1,0 +1,162 @@
+.. _measurement-shared-columns:
+
+Shared columns
+==============
+
+Columns that no single operation owns: they sit on every row, or on every table of one kind. Each is documented once, here.
+
+On every measurement row
+------------------------
+
+Every row of ``deliverables/measurements.csv`` says which colony it describes and where that colony is. The pipeline adds the ten bounding-box columns to every row itself, whether or not :doc:`../measure/MeasureBounds` is in your pipeline; they are documented on that page (:ref:`measurement-info-bbox`). The image bookkeeping columns are on :doc:`../metadata/index`.
+
+.. _measurement-info-object:
+
+:doc:`OBJECT </api_reference/api/phenotypic.schema.OBJECT>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table:: Metric family: **Object**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``Object_Label``
+     - Integer label uniquely identifying each detected object (colony) within its source image. Acts as the per-image primary key shared by every measurement table, letting all per-colony measurements be joined together and traced back to a single colony on the agar plate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+.. _measurement-info-grid:
+
+:doc:`GRID </api_reference/api/phenotypic.schema.GRID>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Written on rows from a ``GridImage`` only.
+
+.. list-table:: Metric family: **Grid**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``Grid_RowNum``
+     - The row idx of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``Grid_ColNum``
+     - The column idx of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``Grid_RowMajorIdx``
+     - The row-major index of the object. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``Grid_ColMajorIdx``
+     - The col-major index of the object in an array. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+
+With a metadata file
+--------------------
+
+.. _measurement-info-metadata-match:
+
+:doc:`METADATA_MATCH </api_reference/api/phenotypic.schema.METADATA_MATCH>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Written only when a run is given ``--metadata``. True on a row that comes from the metadata file alone, with no detected colony.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_MetadataOnly``
+     - True when the row came from a --metadata CSV key that matched no measured object; every measurement/info column on the row is null.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+On every quality check table
+----------------------------
+
+.. _measurement-info-quality-check:
+
+:doc:`QUALITY_CHECK </api_reference/api/phenotypic.schema.QUALITY_CHECK>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``<name>`` is the check's ``name``: ``ICC`` writes ``QC_ICC_Metric`` and ``ExpectedVsDetectedCount`` writes ``QC_Count_Metric``.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_<name>_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_<name>_Metric``
+     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_<name>_Status``
+     - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+On every growth model table
+---------------------------
+
+.. _measurement-info-model-metrics:
+
+:doc:`MODEL_METRICS </api_reference/api/phenotypic.schema.MODEL_METRICS>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``<metric>`` is the fitted column without its metric-family prefix: fitting ``Size_Area`` writes ``ModelMetrics_Area_MAE``.
+
+.. list-table:: Metric family: **ModelMetrics**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ModelMetrics_<metric>_MAE``
+     - The mean absolute error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_MSE``
+     - The mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_RMSE``
+     - The root mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_R2``
+     - The coefficient of determination
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_NumSamples``
+     - The number of samples used for model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerLoss``
+     - The loss of model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerStatus``
+     - The output of the optimizer status
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+After curation
+--------------
+
+.. _measurement-info-curation:
+
+:doc:`CURATION </api_reference/api/phenotypic.schema.CURATION>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Written once you curate colonies in the results viewer, to ``deliverables/qc/curation_labels.parquet`` and to one ``deliverables/errors/<category>.parquet`` per category.
+
+.. list-table:: Metric family: **Curation**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``Curation_Category``
+     - Error-category token assigned to a removed/triaged object.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.OperationIntegrityError
+=====================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: OperationIntegrityError

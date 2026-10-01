@@ -1,0 +1,6 @@
+phenotypic.sdk\_.curation\_labels\_parquet\_path
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: curation_labels_parquet_path

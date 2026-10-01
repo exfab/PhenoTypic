@@ -1,0 +1,52 @@
+phenotypic.sdk\_.PhenotypicAttr
+===============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: PhenotypicAttr
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PhenotypicAttr.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PhenotypicAttr.DETECT_MODE
+      ~PhenotypicAttr.FIGURES
+      ~PhenotypicAttr.GAMMA
+      ~PhenotypicAttr.GRID
+      ~PhenotypicAttr.ILLUMINANT
+      ~PhenotypicAttr.IMAGE_CLASS
+      ~PhenotypicAttr.IMPORTED
+      ~PhenotypicAttr.LABELS
+      ~PhenotypicAttr.METADATA
+      ~PhenotypicAttr.METADATA_TABLE
+      ~PhenotypicAttr.PHENOTYPIC_VERSION
+      ~PhenotypicAttr.PROTECTED
+      ~PhenotypicAttr.PROVENANCE
+      ~PhenotypicAttr.PUBLIC
+      ~PhenotypicAttr.PUBLICATION_PROTOCOL
+      ~PhenotypicAttr.PYRAMID
+      ~PhenotypicAttr.ROOT
+      ~PhenotypicAttr.SERIES
+      ~PhenotypicAttr.SNAPSHOT_SHA256
+      ~PhenotypicAttr.STORE_SCHEMA_VERSION
+      ~PhenotypicAttr.TABLES
+      ~PhenotypicAttr.WORK_ID
+   
+   

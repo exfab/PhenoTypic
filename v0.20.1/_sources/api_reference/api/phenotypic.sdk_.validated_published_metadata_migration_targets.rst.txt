@@ -1,0 +1,6 @@
+phenotypic.sdk\_.validated\_published\_metadata\_migration\_targets
+===================================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: validated_published_metadata_migration_targets

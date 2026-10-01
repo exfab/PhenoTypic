@@ -1,0 +1,6 @@
+phenotypic.util.split\_measurements
+===================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: split_measurements

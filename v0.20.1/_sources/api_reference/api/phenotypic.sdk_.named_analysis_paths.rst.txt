@@ -1,0 +1,6 @@
+phenotypic.sdk\_.named\_analysis\_paths
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: named_analysis_paths

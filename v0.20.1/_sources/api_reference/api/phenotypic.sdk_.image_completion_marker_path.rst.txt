@@ -1,0 +1,6 @@
+phenotypic.sdk\_.image\_completion\_marker\_path
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: image_completion_marker_path
