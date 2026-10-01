@@ -125,7 +125,7 @@ isolation before attributing it — most of them pass.
   omitted from its journal, so two identical runs **on the same UTC day** write
   byte-identical stores. The day matters because figure run folders are named
   by date. A store also carries the pipeline's per-image figures under
-  `figures/<run>/` (revision 3); flat `tiff` exports carry none. A process
+  `figures/<run>/<binding>/<plot>/<file>` (revision 3; descriptor `schema_version` 2 since `feat/plot-subfolders`); flat `tiff` exports carry none. A process
   store's run entry omits the initial call's `initiated_at_utc` and
   `initiated_pid` for the same reason the journal omits its wall-clock times.
   Provenance is cumulative: reading a PhenoTypic store retains its complete

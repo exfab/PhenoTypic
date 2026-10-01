@@ -23,7 +23,16 @@ from phenotypic.plotting._pipeline._store_figures import (
     build_image_figures,
     normalize_figure_error,
 )
-from tests.unit.plotting._store_fixtures import TEST_RUN
+from phenotypic.plotting._pipeline._writer import plot_page_paths
+from phenotypic.sdk_._image_figures import (
+    StoredFigureBinding,
+    StoredFigureFile,
+    StoredFigurePage,
+    StoredFigures,
+    read_figure_run,
+    write_image_figures,
+)
+from tests.unit.plotting._store_fixtures import TEST_RUN, figure_store
 
 
 class Bars(BaseModel, PlotImage):
@@ -186,11 +195,12 @@ def test_a_declared_png_with_chrome_stores_what_kaleido_returns(monkeypatch):
 def test_hand_built_pages_use_backend_defaults_and_collision_safe_names():
     stored = _build(HandBuiltPages())
     [binding] = stored.bindings
-    names = {page.key: [f.filename for f in page.files] for page in binding.pages}
-    assert names["A b"] == ["A-b.plotly.json"]
-    [mpl_name] = names["a-b"]
-    assert re.fullmatch(r"a-b-[0-9a-f]{8}\.png", mpl_name)
-    assert "odd" not in names and "np" not in names
+    # Bare pages are each their own plot (spec D2): the digest is on the folder.
+    where = {page.key: (page.directory, [f.filename for f in page.files]) for page in binding.pages}
+    assert where["A b"] == ("A-b", ["A-b.plotly.json"])
+    folder, [mpl_name] = where["a-b"]
+    assert re.fullmatch(r"a-b-[0-9a-f]{8}", folder) and mpl_name == "a-b.png"
+    assert "odd" not in where and "np" not in where
     by_page = {f.page: f for f in stored.failed}
     assert by_page["odd"].format is None
     assert by_page["odd"].error.startswith("TypeError: unsupported figure type")
@@ -411,10 +421,12 @@ class OtherClass(BaseModel, PlotImage):
 
 
 def _files(store):
-    return {
+    files = {
         path.relative_to(store).as_posix(): path.read_bytes()
         for path in sorted((store / "figures").rglob("*")) if path.is_file()
     }
+    assert files, f"no figure files under {store}"   # an empty == empty proves nothing
+    return files
 
 
 def _first_store(tmp_path, mode="draw", run=TEST_RUN):
@@ -465,7 +477,7 @@ def test_another_runs_folder_is_never_copied_from(tmp_path):
 
 def test_a_tampered_file_is_a_binding_failure_and_keeps_nothing(tmp_path):
     _first, store = _first_store(tmp_path)
-    [png] = (store / "figures" / TEST_RUN.run_id / "ApplyState").glob("*.png")
+    [png] = (store / "figures" / TEST_RUN.run_id / "ApplyState").rglob("*.png")
     png.write_bytes(png.read_bytes() + b"\0")
     kept = _keep(store, ApplyState(mode="gone"))
     assert kept.bindings == () and kept.unavailable == ()
@@ -502,7 +514,9 @@ def test_a_figure_stored_by_another_class_is_not_kept(tmp_path):
 def test_a_drawable_binding_is_redrawn_not_kept(tmp_path):
     first, store = _first_store(tmp_path)
     # A stored copy that would refuse to be kept: only a redraw can succeed.
-    for png in (store / "figures" / TEST_RUN.run_id / "ApplyState").glob("*.png"):
+    pngs = list((store / "figures" / TEST_RUN.run_id / "ApplyState").rglob("*.png"))
+    assert pngs     # tampering nothing could not tell a redraw from a keep
+    for png in pngs:
         png.write_bytes(b"tampered")
     rebuilt = _keep(store, ApplyState(mode="draw"), Bars())
     assert [b.binding_id for b in rebuilt.bindings] == ["ApplyState", "Bars"]
@@ -555,3 +569,269 @@ def test_merge_joins_one_runs_parts_and_refuses_two_runs():
     elsewhere = build_image_figures(ImagePipeline(plots=[Bars()]), object(), run=other)
     with pytest.raises(ValueError, match="different runs"):
         merge_stored_figures(stage3, elsewhere)
+
+
+# --------------------------------------------------------------------------
+# Plot folders (spec 2026-09-30 §2): pages are built into
+# `<binding>/<plot>/<file>`; a kept v1 page stays flat, a kept v2 page stays
+# in its folder
+# --------------------------------------------------------------------------
+
+
+class PerRoiPages(BaseModel, PlotImage):
+    """Two `tiles` pages and a bare `delta_e`, like the calibration overlay."""
+
+    mode: str = "draw"
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        from matplotlib.figure import Figure
+
+        if self.mode == "gone":
+            raise FigureInputUnavailable("the as-shot pixels are gone")
+
+        def fig(y):
+            f = Figure()
+            f.subplots().plot([0, y])
+            return f
+
+        return PlotOutput(pages=(
+            PlotPage(key="roi_0", plot="tiles", figure=fig(1)),
+            PlotPage(key="roi_1", plot="tiles", figure=fig(2)),
+            PlotPage(key="delta_e", figure=fig(3)),
+        ))
+
+
+def test_plot_page_paths_groups_pages_by_plot():
+    assert plot_page_paths([
+        ("tiles", "roi_0", "roi_0"), ("tiles", "roi_1", "roi_1"), ("delta_e", "delta_e", "delta_e"),
+    ]) == [("tiles", "roi_0"), ("tiles", "roi_1"), ("delta_e", "delta_e")]
+
+
+def test_plot_folders_that_collide_get_distinct_names():
+    """Review Focus 1: case-folded collisions get the stable digest suffix."""
+    paths = plot_page_paths([("Tiles", "a", "a"), ("tiles", "a", "a")])
+    folders = [folder for folder, _stem in paths]
+    assert folders[0] == "Tiles"
+    assert re.fullmatch(r"tiles-[0-9a-f]{8}", folders[1])
+    assert [stem for _folder, stem in paths] == ["a", "a"]       # one per folder, no clash
+    assert paths == plot_page_paths([("Tiles", "a", "a"), ("tiles", "a", "a")])  # stable
+    # First appearance takes the clean name, whichever spelling comes first.
+    reversed_folders = [folder for folder, _stem in plot_page_paths([
+        ("tiles", "a", "a"), ("Tiles", "a", "a"),
+    ])]
+    assert reversed_folders[0] == "tiles"
+    assert re.fullmatch(r"Tiles-[0-9a-f]{8}", reversed_folders[1])
+
+
+def test_reserved_names_never_become_plot_folders():
+    """Minor 1: a plot named like the group document or the manifest."""
+    folders = [folder for folder, _stem in plot_page_paths([
+        ("zarr.json", "a", "a"), ("Manifest.JSON", "b", "b"),
+    ])]
+    assert all(re.fullmatch(r"(zarr|Manifest)\.(json|JSON)-[0-9a-f]{8}", f) for f in folders)
+
+
+def test_two_pages_of_one_plot_whose_stems_collide_get_distinct_files():
+    """I2: the per-plot file pass, not only the folder pass, is collision-safe."""
+    paths = plot_page_paths([("tiles", "A b", "A b"), ("tiles", "a-b", "a-b")])
+    assert paths[0] == ("tiles", "A-b")
+    assert paths[1][0] == "tiles" and re.fullmatch(r"a-b-[0-9a-f]{8}", paths[1][1])
+
+
+def test_a_multi_plot_output_is_built_into_plot_folders():
+    [binding] = _build(PerRoiPages()).bindings
+    assert [(p.plot, p.directory, p.key, p.files[0].filename) for p in binding.pages] == [
+        ("tiles", "tiles", "roi_0", "roi_0.png"),
+        ("tiles", "tiles", "roi_1", "roi_1.png"),
+        ("delta_e", "delta_e", "delta_e", "delta_e.png"),
+    ]
+
+
+def test_a_foldered_v2_binding_is_kept_byte_identical(tmp_path):
+    first = _build(PerRoiPages())
+    store = figure_store(tmp_path / "first", first)
+    stored_pages = read_figure_run(store, TEST_RUN.run_id)["bindings"]["PerRoiPages"]["pages"]
+    assert [p["files"][0]["path"].split("/")[3:] for p in stored_pages] == [
+        ["tiles", "roi_0.png"], ["tiles", "roi_1.png"], ["delta_e", "delta_e.png"],
+    ]   # really `<binding>/<plot>/<file>`, so the keep below reads plot folders
+    kept = _keep(store, PerRoiPages(mode="gone"))
+    assert kept == first
+    assert _files(figure_store(tmp_path / "again", kept)) == _files(store)
+
+
+def _flat_v1_store(tmp_path, *, plot_claimed):
+    """A run folder an older PhenoTypic wrote: flat page, no `plot`, version 1."""
+    flat = StoredFigures(TEST_RUN, (StoredFigureBinding(
+        "PerRoiPages", "PerRoiPages", "PerRoiPages",
+        (StoredFigurePage("tiles", None, "mpl", {},
+                          (StoredFigureFile("png", "image/png", "tiles.png", b"\x89PNG v1"),)),),
+    ),), ())
+    store = figure_store(tmp_path / "v1", flat)
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    figures = root["attributes"]["phenotypic"]["figures"]
+    figures["schema_version"] = 1
+    [page] = figures["runs"][TEST_RUN.run_id]["bindings"]["PerRoiPages"]["pages"]
+    if plot_claimed is None:
+        page.pop("plot")                      # exactly as 0.19 wrote it
+    else:
+        page["plot"] = plot_claimed           # a v2 claim over a flat path
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+    return store
+
+
+def test_a_kept_flat_page_is_written_flat_with_a_null_plot(tmp_path):
+    """I6 / P3: the null plot survives the write and the file stays flat."""
+    kept = _keep(_flat_v1_store(tmp_path, plot_claimed=None), PerRoiPages(mode="gone"))
+    again = figure_store(tmp_path / "again", kept)
+    [page] = read_figure_run(again, TEST_RUN.run_id)["bindings"]["PerRoiPages"]["pages"]
+    assert page["plot"] is None
+    assert page["files"][0]["path"] == f"figures/{TEST_RUN.run_id}/PerRoiPages/tiles.png"
+
+
+def test_a_binding_spread_over_two_binding_folders_is_refused(tmp_path):
+    """I6: the single-binding-folder check still holds with plot folders."""
+    store = figure_store(tmp_path / "s", _build(PerRoiPages()))
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    pages = root["attributes"]["phenotypic"]["figures"]["runs"][TEST_RUN.run_id]["bindings"]["PerRoiPages"]["pages"]
+    moved = pages[2]["files"][0]
+    assert len(moved["path"].split("/")) == 5    # a plot-folder page, not a flat one
+    source = store / moved["path"]
+    moved["path"] = moved["path"].replace("/PerRoiPages/", "/Elsewhere/")
+    (store / moved["path"]).parent.mkdir(parents=True)
+    source.rename(store / moved["path"])
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+    kept = _keep(store, PerRoiPages(mode="gone"))
+    assert kept.bindings == ()
+    assert "one directory" in kept.failed[0].error
+
+
+def test_a_page_failure_records_its_plot_through_the_descriptor(tmp_path):
+    """I6 / Review Focus 5: the builder stamps `plot` on page failures."""
+    stored = _build(HandBuiltPages())
+    by_page = {f.page: f for f in stored.failed}
+    assert by_page["odd"].plot == "odd" and by_page["np"].plot == "np"
+    (tmp_path / "s").mkdir()
+    fragment = write_image_figures(tmp_path / "s", stored)
+    failed = fragment["figures"]["runs"][TEST_RUN.run_id]["failed"]
+    assert {(f["page"], f["plot"]) for f in failed} >= {("odd", "odd"), ("np", "np")}
+
+
+def test_a_flat_v1_binding_is_kept_flat(tmp_path):
+    """Review Focus 2: an older PhenoTypic wrote this run's folder flat."""
+    kept = _keep(_flat_v1_store(tmp_path, plot_claimed=None), PerRoiPages(mode="gone"))
+    [page] = kept.bindings[0].pages
+    assert (page.plot, page.directory, page.files[0].filename) == (None, None, "tiles.png")
+
+
+def test_a_page_whose_plot_disagrees_with_its_path_is_refused(tmp_path):
+    kept = _keep(_flat_v1_store(tmp_path, plot_claimed="tiles"), PerRoiPages(mode="gone"))
+    assert kept.bindings == ()
+    [failure] = kept.failed
+    assert (failure.binding, failure.page) == ("PerRoiPages", None)
+    assert "not laid out" in failure.error
+
+
+class PlottedFailures(BaseModel, PlotImage):
+    """Failing pages whose plot is not their key, like calibration's `tiles`."""
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        from matplotlib.figure import Figure
+
+        def fig():
+            f = Figure()
+            f.subplots().plot([0, 1])
+            return f
+
+        return PlotOutput(pages=(
+            PlotPage(key="roi_0", plot="tiles", figure=fig()),
+            PlotPage(key="roi_1", plot="tiles", figure=object()),   # whole-page failure
+            PlotPage(key="roi_2", plot="tiles", figure=fig()),      # per-format failure, below
+        ))
+
+
+def test_failures_of_plotted_pages_record_the_plot_not_the_key(tmp_path, monkeypatch):
+    """I1: both failure sites stamp the page's plot, which T4 matches on."""
+    from phenotypic.plotting._pipeline import _store_figures
+
+    real = _store_figures.serialize_store_format
+
+    def flaky(fmt, figure, *, binding_id, page_key):
+        if page_key == "roi_2":
+            raise OSError("disk full")
+        return real(fmt, figure, binding_id=binding_id, page_key=page_key)
+
+    monkeypatch.setattr(_store_figures, "serialize_store_format", flaky)
+    stored = _build(PlottedFailures())
+    assert {(f.page, f.format, f.plot) for f in stored.failed} == {
+        ("roi_1", None, "tiles"), ("roi_2", "png", "tiles"),
+    }
+    (tmp_path / "s").mkdir()
+    failed = write_image_figures(tmp_path / "s", stored)["figures"]["runs"][TEST_RUN.run_id]["failed"]
+    assert {(f["page"], f["plot"]) for f in failed} == {("roi_1", "tiles"), ("roi_2", "tiles")}
+
+
+class SpacedPlot(BaseModel, PlotImage):
+    """A plot name that does not clean to itself: folder `Tile-overlay`."""
+
+    mode: str = "draw"
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        from matplotlib.figure import Figure
+
+        if self.mode == "gone":
+            raise FigureInputUnavailable("gone")
+        f = Figure()
+        f.subplots().plot([0, 1])
+        return PlotOutput(pages=(PlotPage(key="roi_0", plot="Tile overlay", figure=f),))
+
+
+def test_a_kept_page_keeps_the_folder_its_path_names_not_its_plot_name(tmp_path):
+    """I2: the kept folder comes from the stored path, never from `plot`."""
+    first = _build(SpacedPlot())
+    assert first.bindings[0].pages[0].directory == "Tile-overlay"
+    store = figure_store(tmp_path / "first", first)
+    kept = _keep(store, SpacedPlot(mode="gone"))
+    assert kept == first
+    assert _files(figure_store(tmp_path / "again", kept)) == _files(store)
+
+
+def _tamper_pages(store, edit) -> None:
+    """Apply *edit* to the stored `PerRoiPages` pages and write the root back."""
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    run = root["attributes"]["phenotypic"]["figures"]["runs"][TEST_RUN.run_id]
+    edit(run["bindings"]["PerRoiPages"]["pages"])
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+
+
+def _refused_as_not_laid_out(store) -> None:
+    kept = _keep(store, PerRoiPages(mode="gone"))
+    assert kept.bindings == ()
+    [failure] = kept.failed
+    assert (failure.binding, failure.page) == ("PerRoiPages", None)
+    assert "not laid out" in failure.error
+
+
+def test_a_page_with_no_plot_over_a_plot_folder_is_refused(tmp_path):
+    """Minor 2: the other direction of the layout check -- no `plot`, foldered path."""
+    store = figure_store(tmp_path / "s", _build(PerRoiPages()))
+
+    def drop_plot(pages):
+        assert len(pages[0]["files"][0]["path"].split("/")) == 5   # really foldered
+        pages[0].pop("plot")
+
+    _tamper_pages(store, drop_plot)
+    _refused_as_not_laid_out(store)
+
+
+def test_a_page_spread_over_two_plot_folders_is_refused(tmp_path):
+    """Minor 2: one page whose files sit in two plot folders of one binding."""
+    store = figure_store(tmp_path / "s", _build(PerRoiPages()))
+
+    def spread(pages):
+        # `delta_e/delta_e.png`: a real file with a valid sha256, in another folder.
+        borrowed = dict(pages[2]["files"][0])
+        assert borrowed["path"].split("/")[3] != pages[0]["files"][0]["path"].split("/")[3]
+        pages[0]["files"].append(borrowed)
+
+    _tamper_pages(store, spread)
+    _refused_as_not_laid_out(store)

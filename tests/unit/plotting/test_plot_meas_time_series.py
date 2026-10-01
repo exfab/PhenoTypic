@@ -331,12 +331,18 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
         plot_id=type(plot).__name__,
     )
 
+    # Each page is a plot of its own, so its folder comes from its key; the
+    # file keeps the label.
     assert [page["files"]["png"] for page in manifest["pages"]] == [
-        "BY4741.png",
-        "RM11-1a.png",
+        "Metadata_Strain-str-BY4741/BY4741.png",
+        "Metadata_Strain-str-RM11-1a/RM11-1a.png",
     ]
-    assert (destination / "BY4741.png").read_bytes() == b"png"
-    assert (destination / "RM11-1a.png").read_bytes() == b"png"
+    assert (
+        destination / "Metadata_Strain-str-BY4741" / "BY4741.png"
+    ).read_bytes() == b"png"
+    assert (
+        destination / "Metadata_Strain-str-RM11-1a" / "RM11-1a.png"
+    ).read_bytes() == b"png"
 
 
 def test_colony_metric_defaults_use_public_schema_columns() -> None:
