@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=ec2b1084"></script>
+    <script src="../../../../_static/documentation_options.js?v=456b64e2"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.0" />
+  <meta name="docsearch:version" content="0.20.1" />
   </head>
   
   
@@ -907,7 +907,7 @@
             <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotOutput</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the tile overlay and ΔE00 chart for *subject*, the image ``apply()`` ran on.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the per-ROI tile overlays and ΔE00 chart for *subject*, the image ``apply()`` ran on.</span>
 
 <span class="sd">        Deliberately not ``@figure``: the approved overlay look must not be</span>
 <span class="sd">        wrapped in a theme context, and its matplotlib figure stores as PNG.</span>
@@ -919,9 +919,10 @@
 <span class="sd">            **overrides: None are accepted.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Two pages: ``&quot;tiles&quot;``, what :meth:`show_tiles` returns, and</span>
-<span class="sd">            ``&quot;delta_e&quot;``, what :meth:`show_delta_bar_plot` returns. Both are</span>
-<span class="sd">            always present, so every image stores the same pages.</span>
+<span class="sd">            One ``tiles`` page per ROI (``roi_&lt;index&gt;``), each an overlay of</span>
+<span class="sd">            that ROI alone, then ``delta_e``, what :meth:`show_delta_bar_plot`</span>
+<span class="sd">            returns. All are always present, so every image stores the same</span>
+<span class="sd">            pages.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            FigureInputUnavailable: If no ``apply()`` has kept a record, or the</span>
@@ -948,11 +949,24 @@
                     <span class="s2">&quot;image: the overlay is drawn only for the image the last &quot;</span>
                     <span class="s2">&quot;apply() ran on&quot;</span>
             <span class="p">)</span>
-        <span class="c1"># Both pages or neither: a failure in either fails the whole binding,</span>
-        <span class="c1"># which publishes nothing. A tiles-only output would publish flat for</span>
-        <span class="c1"># this image and flip the copy-out layout against every other image.</span>
+        <span class="c1"># All pages or none: a failure in any page fails the whole binding,</span>
+        <span class="c1"># which publishes nothing. One overlay per ROI (spec 2026-09-30 §4),</span>
+        <span class="c1"># each drawn from the record with only that ROI, so the frame-level</span>
+        <span class="c1"># title (verdict, patches fitted) stays on every one.</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calibration_record</span>
+        <span class="n">overlays</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">PlotPage</span><span class="p">(</span>
+                <span class="n">key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;roi_</span><span class="si">{</span><span class="n">roi</span><span class="o">.</span><span class="n">roi_index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">plot</span><span class="o">=</span><span class="s2">&quot;tiles&quot;</span><span class="p">,</span>
+                <span class="n">figure</span><span class="o">=</span><span class="n">render_calibration_overlay</span><span class="p">(</span>
+                    <span class="n">record</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;rois&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">roi</span><span class="p">]})</span>
+                <span class="p">),</span>
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Tile overlay, ROI </span><span class="si">{</span><span class="n">roi</span><span class="o">.</span><span class="n">roi_index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">rois</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="p">(</span>
-            <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;tiles&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">(),</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Tile overlay&quot;</span><span class="p">),</span>
+            <span class="o">*</span><span class="n">overlays</span><span class="p">,</span>
             <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;delta_e&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">show_delta_bar_plot</span><span class="p">(),</span>
                      <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Delta E00 before and after&quot;</span><span class="p">),</span>
         <span class="p">))</span></div>

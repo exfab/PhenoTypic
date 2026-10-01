@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
+    <script src="../../_static/documentation_options.js?v=456b64e2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="Migrate legacy results and provenance" href="migrate_ome_zarr.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.0" />
+  <meta name="docsearch:version" content="0.20.1" />
   </head>
   
   
@@ -743,7 +743,8 @@ dashboard can therefore show a plate’s figures from the store alone:</p>
 └── figures/
     ├── 2026-09-22-3f9a1c2b7e04/   &lt;- one run: {UTC date}-{first 12 hex of the pipeline sha256}
     │   └── sym/                   &lt;- one plot binding
-    │       └── default.plotly.json
+    │       └── default/           &lt;- one plot
+    │           └── default.plotly.json
     └── 2026-10-03-a07bc5e91d22/   &lt;- a later run with another pipeline
 </pre></div>
 </div>
@@ -754,8 +755,10 @@ the folder names. Read the store as follows:</p>
 <li><p><strong>Read the descriptor.</strong> Open the root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> and take
 <code class="docutils literal notranslate"><span class="pre">attributes.phenotypic.figures</span></code>. A store without the key has no figures:
 it was written before this feature, or by a pipeline with no per-image
-plot. <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is <code class="docutils literal notranslate"><span class="pre">1</span></code>. Refuse a version you do not know rather than
-guessing at its layout.</p></li>
+plot. <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is <code class="docutils literal notranslate"><span class="pre">2</span></code>, or <code class="docutils literal notranslate"><span class="pre">1</span></code> for a run written before plots had
+their own folder (<code class="docutils literal notranslate"><span class="pre">&lt;binding&gt;/&lt;file&gt;</span></code>). Each page of a version 2 run carries
+a <code class="docutils literal notranslate"><span class="pre">plot</span></code>. Refuse a version you do not know rather than guessing at its
+layout.</p></li>
 <li><p><strong>Choose a run.</strong> <code class="docutils literal notranslate"><span class="pre">runs</span></code> maps each run folder to its entry. Every entry
 records the <code class="docutils literal notranslate"><span class="pre">date</span></code> the run started and the <code class="docutils literal notranslate"><span class="pre">pipeline_sha256</span></code> of the pipeline
 file it ran. An entry written by any CLI mode except <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span></code> also
@@ -783,7 +786,7 @@ earlier run’s folder may still hold that figure.</p>
 <span class="n">store</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;plate_01.ome.zarr&quot;</span><span class="p">)</span>
 <span class="n">root</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">((</span><span class="n">store</span> <span class="o">/</span> <span class="s2">&quot;zarr.json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
 <span class="n">figures</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phenotypic&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;figures&quot;</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">figures</span><span class="p">[</span><span class="s2">&quot;schema_version&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+<span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">figures</span><span class="p">[</span><span class="s2">&quot;schema_version&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown figures schema_version </span><span class="si">{</span><span class="n">figures</span><span class="p">[</span><span class="s1">&#39;schema_version&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 
@@ -812,7 +815,7 @@ earlier run’s folder may still hold that figure.</p>
             <span class="k">if</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span> <span class="o">!=</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;sha256&quot;</span><span class="p">]:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;changed since written, skipped:&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
                 <span class="k">continue</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">binding_id</span><span class="p">,</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;media_type&quot;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">binding_id</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;plot&quot;</span><span class="p">),</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;media_type&quot;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>Several runs can share a date when the pipeline changed within a day. Filter

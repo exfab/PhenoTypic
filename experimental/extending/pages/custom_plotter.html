@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
+    <script src="../../_static/documentation_options.js?v=456b64e2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="Using Mixins" href="using_mixins.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.0" />
+  <meta name="docsearch:version" content="0.20.1" />
   </head>
   
   
@@ -772,6 +772,18 @@ page from decorated figure methods, as this two-page morphology report does:</p>
         <span class="p">)</span>
 </pre></div>
 </div>
+<p>A page can name the plot it belongs to with <code class="docutils literal notranslate"><span class="pre">plot=</span></code>. Pages sharing a plot are
+stored in one folder, one file per page, while a page without <code class="docutils literal notranslate"><span class="pre">plot=</span></code> is a
+plot of its own:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="p">(</span>
+    <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;roi_0&quot;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="s2">&quot;tiles&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="n">overlay_0</span><span class="p">),</span>
+    <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;roi_1&quot;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="s2">&quot;tiles&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="n">overlay_1</span><span class="p">),</span>
+    <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;delta_e&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="n">chart</span><span class="p">),</span>            <span class="c1"># stored at delta_e/delta_e</span>
+<span class="p">))</span>
+</pre></div>
+</div>
+<p>A plot name cannot contain <code class="docutils literal notranslate"><span class="pre">/</span></code>. A plot named <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> or <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> is
+stored under a suffixed folder name, so it never shadows those files.</p>
 <p>Because the pages come from decorated methods, each one is themed and
 backend-checked, and <code class="docutils literal notranslate"><span class="pre">report()</span></code> still composes them. A class that declares no
 <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods at all must also override <code class="docutils literal notranslate"><span class="pre">report()</span></code>, because the inherited
@@ -828,23 +840,24 @@ plot’s does.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, one figure</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;.&lt;ext&gt;</span></code>, one file per stored format, plus <code class="docutils literal notranslate"><span class="pre">.html</span></code> for a stored <code class="docutils literal notranslate"><span class="pre">plotly-json</span></code>; no manifest</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/</span></code>, holding one folder per plot (<code class="docutils literal notranslate"><span class="pre">&lt;plot&gt;/&lt;key&gt;.&lt;ext&gt;</span></code>, plus <code class="docutils literal notranslate"><span class="pre">.html</span></code> for a stored <code class="docutils literal notranslate"><span class="pre">plotly-json</span></code>) and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> (<code class="docutils literal notranslate"><span class="pre">schema_version</span></code> 3)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, a multi-page <code class="docutils literal notranslate"><span class="pre">PlotOutput</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/</span></code>, holding the pages and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code></p></td>
-<td><p>the pages and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code>, directly in <code class="docutils literal notranslate"><span class="pre">plots/&lt;id&gt;/</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plots/&lt;id&gt;/</span></code>, holding one folder per plot (<code class="docutils literal notranslate"><span class="pre">&lt;plot&gt;/&lt;label</span> <span class="pre">or</span> <span class="pre">key&gt;.&lt;ext&gt;</span></code>) and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> (<code class="docutils literal notranslate"><span class="pre">schema_version</span></code> 3)</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">&lt;hash&gt;</span></code> is derived from the original dataset and image name, so two plates
 whose names differ only in characters that are unsafe in a filename never
-overwrite each other. A page’s filename comes from its <code class="docutils literal notranslate"><span class="pre">label</span></code>, or its <code class="docutils literal notranslate"><span class="pre">key</span></code>
-when it has no label. A single figure returned from an aggregate plot is the
-page <code class="docutils literal notranslate"><span class="pre">default</span></code>, so <code class="docutils literal notranslate"><span class="pre">PlotColonyArea</span></code> publishes <code class="docutils literal notranslate"><span class="pre">plots/PlotColonyArea/default.html</span></code>.</p>
+overwrite each other. An aggregate plot names a page’s file from its <code class="docutils literal notranslate"><span class="pre">label</span></code>,
+or its <code class="docutils literal notranslate"><span class="pre">key</span></code> when it has no label. An image figure copied out from the store is
+named by its <code class="docutils literal notranslate"><span class="pre">key</span></code>. A single figure is the page <code class="docutils literal notranslate"><span class="pre">default</span></code>, in a plot of the
+same name, so <code class="docutils literal notranslate"><span class="pre">PlotColonyArea</span></code> publishes
+<code class="docutils literal notranslate"><span class="pre">plots/PlotColonyArea/default/default.html</span></code>. A single-figure <code class="docutils literal notranslate"><span class="pre">PlotImage</span></code> is
+published the same way, as <code class="docutils literal notranslate"><span class="pre">&lt;stem&gt;-&lt;hash&gt;/default/default.&lt;ext&gt;</span></code> with a
+<code class="docutils literal notranslate"><span class="pre">manifest.json</span></code>.</p>
 <p>The tree also contains hidden <code class="docutils literal notranslate"><span class="pre">.lock</span></code> files, such as <code class="docutils literal notranslate"><span class="pre">.publication.lock</span></code> in
 each manifest directory and <code class="docutils literal notranslate"><span class="pre">.plotlyjs.lock</span></code> and <code class="docutils literal notranslate"><span class="pre">.failures.lock</span></code> at the
 plots root. They serialise concurrent writers, for example SLURM workers
@@ -873,12 +886,12 @@ publish straight to <code class="docutils literal notranslate"><span class="pre"
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">plotly-json</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&lt;page&gt;.plotly.json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;plot&gt;/&lt;key&gt;.plotly.json</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">application/vnd.plotly.v1+json</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">plotly</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">png</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&lt;page&gt;.png</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;plot&gt;/&lt;key&gt;.png</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">image/png</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">plotly</span></code> (needs Chrome), <code class="docutils literal notranslate"><span class="pre">mpl</span></code></p></td>
 </tr>
@@ -949,10 +962,11 @@ type is neither Plotly nor matplotlib is recorded as a failed page.</p>
 <span class="c1"># [(&#39;plotly-json&#39;, &#39;png&#39;)]</span>
 </pre></div>
 </div>
-<p>A CLI run of this pipeline stores <code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default.plotly.json</span></code> and
-<code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default.png</span></code> in each plate’s run folder, and publishes both
-under <code class="docutils literal notranslate"><span class="pre">deliverables/plots/PlotColonySizes/&lt;dataset&gt;/</span></code>, next to an <code class="docutils literal notranslate"><span class="pre">.html</span></code> page
-generated from the JSON.</p>
+<p>A CLI run of this pipeline stores <code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default/default.plotly.json</span></code>
+and <code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default/default.png</span></code> in each plate’s run folder, and
+publishes both under
+<code class="docutils literal notranslate"><span class="pre">deliverables/plots/PlotColonySizes/&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/default/</span></code>, next to
+an <code class="docutils literal notranslate"><span class="pre">.html</span></code> page generated from the JSON.</p>
 </section>
 <section id="run-folders">
 <h3>Run folders<a class="headerlink" href="#run-folders" title="Link to this heading">#</a></h3>
@@ -1004,8 +1018,8 @@ relative position, or the pages will open blank.</p>
 rendering is left over from an earlier run. A PNG written on a node that had
 Chrome is removed when the plot is rerun on a node without it, and an HTML page
 is removed when a plot switches to matplotlib. Otherwise the leftover would sit
-beside the new file as if this run had produced it. This applies to
-single-figure image plots and to every page a new manifest lists.</p>
+beside the new file as if this run had produced it. This applies to every
+page a new manifest lists.</p>
 <p>The cleanup covers only those pages. If a page key from an earlier run no
 longer appears, or a page fails on the rerun, its old files stay on disk.
 In a manifest directory, trust <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> rather than a directory listing
@@ -1035,18 +1049,21 @@ never fails it.</p>
 <section id="the-plot-manifest">
 <h2>The plot manifest<a class="headerlink" href="#the-plot-manifest" title="Link to this heading">#</a></h2>
 <p>Every directory holding a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> records what the latest publication
-wrote there. The manifest is at <code class="docutils literal notranslate"><span class="pre">schema_version:</span> <span class="pre">2</span></code>:</p>
+wrote there. The manifest is at <code class="docutils literal notranslate"><span class="pre">schema_version:</span> <span class="pre">3</span></code>, and every <code class="docutils literal notranslate"><span class="pre">files</span></code> value is a path
+relative to the manifest, including the plot folder:</p>
 <div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;plot_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PlotColonyMorphology&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;class&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PlotColonyMorphology&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;renderers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;html&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;available&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;png&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unavailable: chrome not found&quot;</span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span>
-<span class="w">     </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;html&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony-area.html&quot;</span><span class="p">},</span><span class="w"> </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}}</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;plot&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;html&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;area/Colony-area.html&quot;</span><span class="p">},</span><span class="w"> </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}}</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;circularity&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;circularity&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;plot&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;circularity&quot;</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span>
 <span class="w">     </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OSError: [Errno 28] No space left on device&quot;</span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
@@ -1063,14 +1080,14 @@ records <code class="docutils literal notranslate"><span class="pre">html:</span
 a page is matplotlib. Its <code class="docutils literal notranslate"><span class="pre">files</span></code> show which stored formats were copied, and
 <code class="docutils literal notranslate"><span class="pre">partial</span></code> lists the errors of the formats that failed for that page, whether
 the store recorded them or the copy hit them.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pages</span></code> lists each published page. <code class="docutils literal notranslate"><span class="pre">files</span></code> maps each format to the file it
-produced. It omits <code class="docutils literal notranslate"><span class="pre">png</span></code> when Chrome was unavailable and <code class="docutils literal notranslate"><span class="pre">html</span></code> for a
+<li><p><code class="docutils literal notranslate"><span class="pre">pages</span></code> lists each published page with its <code class="docutils literal notranslate"><span class="pre">key</span></code> and <code class="docutils literal notranslate"><span class="pre">plot</span></code>. <code class="docutils literal notranslate"><span class="pre">files</span></code> maps
+each format to the file it produced, relative to the manifest. It omits <code class="docutils literal notranslate"><span class="pre">png</span></code> when Chrome was unavailable and <code class="docutils literal notranslate"><span class="pre">html</span></code> for a
 matplotlib page. <code class="docutils literal notranslate"><span class="pre">backend</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;plotly&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;matplotlib&quot;</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">partial</span></code> appears on a page when one renderer failed but the other
 succeeded, for example when the HTML was written and the PNG export raised.
 It lists the errors.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">failed</span></code> lists each page that produced no file at all, with its <code class="docutils literal notranslate"><span class="pre">key</span></code>,
-<code class="docutils literal notranslate"><span class="pre">label</span></code> and <code class="docutils literal notranslate"><span class="pre">error</span></code>. When every page fails, the manifest still says why.</p></li>
+<code class="docutils literal notranslate"><span class="pre">plot</span></code>, <code class="docutils literal notranslate"><span class="pre">label</span></code> and <code class="docutils literal notranslate"><span class="pre">error</span></code>. When every page fails, the manifest still says why.</p></li>
 </ul>
 </section>
 <section id="the-failure-record">

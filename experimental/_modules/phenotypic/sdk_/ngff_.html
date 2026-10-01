@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
+    <script src="../../../_static/documentation_options.js?v=456b64e2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.0" />
+  <meta name="docsearch:version" content="0.20.1" />
   </head>
   
   
@@ -668,7 +668,11 @@
 <span class="c1">#: files, exactly as `tables/` holds `table.parquet`; described by</span>
 <span class="c1">#: `attributes.phenotypic.figures`, never by `ome.series`.</span>
 <span class="n">FIGURES_GROUP</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;figures&quot;</span>
-<span class="n">FIGURES_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c1">#: The figures descriptor version this writer writes (spec 2026-09-30 §2):</span>
+<span class="c1">#: version 2 adds a plot folder per page and ``plot`` on pages and failures.</span>
+<span class="n">FIGURES_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="c1">#: Versions this reader understands. Version 1 (flat pages) is a subset of 2.</span>
+<span class="n">READABLE_FIGURES_SCHEMA_VERSIONS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">})</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">EmbeddedMeasurementParquetMetadataKeys</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
