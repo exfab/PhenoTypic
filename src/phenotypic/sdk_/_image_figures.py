@@ -158,7 +158,8 @@ class StoredFigurePage:
     builder round-trips it and refuses a page it cannot (spec §1).
     ``plot`` is the logical plot name and ``directory`` its sanitized folder
     (spec 2026-09-30 §2); both ``None`` is a flat page, as a version 1 run
-    stored it.
+    stored it. One without the other is refused here, so a builder bug
+    fails at the write rather than at the next keep.
     """
 
     key: str
@@ -168,6 +169,14 @@ class StoredFigurePage:
     files: tuple[StoredFigureFile, ...]
     plot: str | None = None
     directory: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.plot is None) != (self.directory is None):
+            raise ValueError(
+                f"stored figure page {self.key!r} must name both its plot and "
+                f"its directory, or neither (plot {self.plot!r}, directory "
+                f"{self.directory!r})"
+            )
 
 
 @dataclass(frozen=True)

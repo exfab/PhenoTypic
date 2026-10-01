@@ -29,12 +29,14 @@ LATER = FigureRun(date="2026-10-03", pipeline_sha256="cd" * 32)
 
 
 def _figures(
-    tag: bytes = b"one", binding: str = "sym", run: FigureRun = RUN
+    tag: bytes = b"one", binding: str = "sym", run: FigureRun = RUN,
+    plot: str | None = None,
 ) -> StoredFigures:
+    """One page; flat unless *plot* names its folder too."""
     page = StoredFigurePage("default", None, "plotly", {}, (
         StoredFigureFile("plotly-json", "application/vnd.plotly.v1+json",
                          "default.plotly.json", tag),
-    ))
+    ), plot=plot, directory=plot)
     return StoredFigures(run, (StoredFigureBinding(binding, "X", binding, (page,)),), ())
 
 
@@ -299,6 +301,67 @@ def test_a_measure_rewrite_leaves_an_unknown_figures_schema_untouched(tmp_path, 
     )
     assert read_image_figures_descriptor(store) == newer
     assert _without_inodes(_figures_tree(store)) == before
+
+
+def _relabel_as_v1(store) -> dict:
+    """The shape 0.19 wrote: schema_version 1, no `plot` on pages or failures."""
+    root_path = store / "zarr.json"
+    root = json.loads(root_path.read_text(encoding="utf-8"))
+    figures = root["attributes"]["phenotypic"]["figures"]
+    figures["schema_version"] = 1
+    for run in figures["runs"].values():
+        for binding in run["bindings"].values():
+            for page in binding["pages"]:
+                page.pop("plot", None)
+        for failure in run["failed"]:
+            failure.pop("plot", None)
+    root_path.write_text(json.dumps(root), encoding="utf-8")
+    return json.loads(json.dumps(figures["runs"]))
+
+
+def test_a_measure_rewrite_adds_a_v2_run_to_a_v1_store(tmp_path, plate):
+    """Spec §5: the first `--mode measure` after an upgrade adds its run."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old"))
+    v1_runs = _relabel_as_v1(store)
+    before = _snapshot(store, RUN)
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        figures=_figures(b"new", run=LATER),
+    )
+    descriptor = read_image_figures_descriptor(store)
+    assert descriptor["schema_version"] == 2
+    assert set(descriptor["runs"]) == {RUN.run_id, LATER.run_id}
+    assert descriptor["runs"][RUN.run_id] == v1_runs[RUN.run_id]
+    assert {k: d for k, (d, _i) in _snapshot(store, RUN).items()} == {
+        k: d for k, (d, _i) in before.items()
+    }
+
+
+def test_a_resave_over_a_v1_store_leaves_no_stale_file_in_its_run(tmp_path, plate):
+    """The reprocess case: a v1 store holding this run and another is re-saved
+    after the upgrade. The re-saved run's old flat file is not carried beside
+    its new plot folder, and the other run is kept as it is (spec §5)."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old"))
+    plate.save2zarr(store, figures=_figures(b"later", run=LATER))
+    v1_runs = _relabel_as_v1(store)
+    later = _without_inodes(_snapshot(store, LATER))
+    plate.save2zarr(store, figures=_figures(b"new", plot="default"))
+    descriptor = read_image_figures_descriptor(store)
+    assert descriptor["schema_version"] == 2
+    assert set(descriptor["runs"]) == {RUN.run_id, LATER.run_id}
+    assert descriptor["runs"][LATER.run_id] == v1_runs[LATER.run_id]
+    assert _without_inodes(_snapshot(store, LATER)) == later
+    listed = {
+        entry["path"]
+        for binding in descriptor["runs"][RUN.run_id]["bindings"].values()
+        for page in binding["pages"]
+        for entry in page["files"]
+    }
+    assert listed == {_at("sym/default/default.plotly.json")}
+    on_disk = {
+        name for name in _snapshot(store, RUN) if not name.endswith("/zarr.json")
+    }
+    assert on_disk == listed
 
 
 def test_the_descriptor_reader_answers_none_for_a_foreign_root(tmp_path):

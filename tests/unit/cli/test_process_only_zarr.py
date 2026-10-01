@@ -718,7 +718,7 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
     first, second = run(tmp_path / "a", "1"), run(tmp_path / "b", "2")
     left, right = _tree_bytes(first), _tree_bytes(second)
     assert any(
-        name.startswith("figures/2026-09-22-") and name.endswith("/sym/default.plotly.json")
+        name.startswith("figures/2026-09-22-") and name.endswith("/sym/default/default.plotly.json")
         for name in left
     )
     assert sorted(left) == sorted(right)

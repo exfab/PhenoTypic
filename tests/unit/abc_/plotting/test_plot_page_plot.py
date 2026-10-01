@@ -19,7 +19,7 @@ def test_plot_names_the_folder_when_given():
 
 @pytest.mark.parametrize("plot", ["", 3, "a/b", "/tiles", "tiles/"])
 def test_an_empty_non_string_or_slashed_plot_is_refused(plot):
-    with pytest.raises(ValueError, match="plot"):
+    with pytest.raises(ValueError, match="plot page plot"):
         PlotPage(key="k", plot=plot, figure=object())
 
 
@@ -48,3 +48,10 @@ def test_a_bare_page_and_a_plotted_page_with_one_key_coexist():
     # (plot "a", key "a") and (plot "tiles", key "a") are different pages.
     PlotOutput(pages=(PlotPage(key="a", figure=object()),
                       PlotPage(key="a", plot="tiles", figure=object())))
+
+
+def test_a_bare_page_and_a_plotted_page_naming_one_file_are_refused():
+    # Bare "tiles" is (plot "tiles", key "tiles"): both would be tiles/tiles.<ext>.
+    with pytest.raises(ValueError, match="duplicate page keys"):
+        PlotOutput(pages=(PlotPage(key="tiles", figure=object()),
+                          PlotPage(key="tiles", plot="tiles", figure=object())))
