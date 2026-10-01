@@ -10,6 +10,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.patches import Rectangle
 from matplotlib.text import Text
 
+import phenotypic
 from phenotypic import Image
 from phenotypic.correction import CalibrateColorRpcc
 from phenotypic.correction._color_correction import _calibration_overlay as overlay
@@ -776,6 +777,10 @@ def test_a_16_bit_frame_draws_its_pixels_not_white() -> None:
 
 
 # -- the ΔE00 bar chart -------------------------------------------------------
+def test_version_is_0_20_2() -> None:
+    assert phenotypic.__version__ == "0.20.2"
+
+
 def bar_series(fig) -> dict[str, list]:
     """The chart's bar containers by label, each a list of Rectangles."""
     (ax,) = fig.axes
