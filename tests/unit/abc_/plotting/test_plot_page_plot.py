@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import pytest
 
+import phenotypic
 from phenotypic.abc_.plotting import PlotOutput, PlotPage
+
+
+def test_version_is_0_20_1():
+    assert phenotypic.__version__ == "0.20.1"
 
 
 def test_plot_defaults_to_the_key():
