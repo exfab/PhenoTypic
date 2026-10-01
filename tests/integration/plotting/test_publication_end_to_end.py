@@ -59,6 +59,12 @@ def _plots(tmp_path: Path) -> Path:
     return tmp_path / "deliverables" / "plots"
 
 
+def _image_directory(plot_directory: Path) -> Path:
+    """The one ``<stem>-<hash>`` directory an image plot published for plate_01."""
+    [directory] = plot_directory.glob("plate_01-*")
+    return directory
+
+
 def _publish_through_store(
     pipeline: ImagePipeline, image, tmp_path: Path, *, expect_clean: bool = True
 ) -> None:
@@ -122,20 +128,30 @@ def test_a_plotly_image_plot_publishes_html_and_one_hoisted_bundle(
     _publish_through_store(pipeline, image, tmp_path)
 
     plots = _plots(tmp_path)
-    directory = plots / "ObjectCount" / "ds-1"
-    pages = list(directory.glob("plate_01-*.html"))
+    directory = _image_directory(plots / "ObjectCount" / "ds-1")
+    pages = list(directory.rglob("*.html"))
     assert len(pages) == 1, "expected exactly one published HTML page"
 
+    # The page sits in its plot folder, two levels deeper than before, so the
+    # relative src to the one hoisted bundle is two levels longer too.
     assert sorted(tmp_path.rglob("plotly.min.js")) == [plots / "plotly.min.js"]
-    assert 'src="../../plotly.min.js"' in pages[0].read_text(encoding="utf-8")
+    assert 'src="../../../../plotly.min.js"' in pages[0].read_text(encoding="utf-8")
 
     # The stored default is `plotly-json`, copied out beside its HTML; no
     # PNG is stored, so none is published whatever this machine can render.
-    assert len(list(directory.glob("plate_01-*.plotly.json"))) == 1
-    assert list(directory.glob("*.png")) == []
+    assert len(list(directory.rglob("*.plotly.json"))) == 1
+    assert list(directory.rglob("*.png")) == []
 
-    # The flat path writes no manifest, and nothing was recorded as failed.
-    assert not (directory / "manifest.json").exists()
+    # A manifest directory with nothing failed, naming exactly the files copied
+    # out (the pre-folder flat path wrote none; there is no flat case now).
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == 3
+    assert manifest["failed"] == []
+    (page,) = manifest["pages"]
+    assert set(page["files"]) == {"html", "plotly-json"}
+    assert {directory / name for name in page["files"].values()} == {
+        pages[0], *directory.rglob("*.plotly.json")
+    }
     assert list(tmp_path.rglob(".failures.jsonl")) == []
 
 
@@ -147,8 +163,8 @@ def test_a_matplotlib_image_plot_publishes_png_only_and_no_bundle(
 
     _publish_through_store(pipeline, image, tmp_path)
 
-    directory = _plots(tmp_path) / "ObjectCountMpl" / "ds-1"
-    assert len(list(directory.glob("plate_01-*.png"))) == 1
+    directory = _image_directory(_plots(tmp_path) / "ObjectCountMpl" / "ds-1")
+    assert len(list(directory.rglob("*.png"))) == 1
     assert list(tmp_path.rglob("*.html")) == []
     # Matplotlib has no HTML form, so nothing should have fetched the bundle.
     assert list(tmp_path.rglob("plotly.min.js")) == []
@@ -167,7 +183,7 @@ def test_an_aggregate_plot_manifest_matches_what_is_on_disk(
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     can_rasterise = chrome_available()
 
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
     assert manifest["failed"] == []
     assert manifest["renderers"] == {
         "html": "available",
@@ -177,15 +193,19 @@ def test_an_aggregate_plot_manifest_matches_what_is_on_disk(
     assert page["backend"] == "plotly"
     assert set(page["files"]) == ({"html", "png"} if can_rasterise else {"html"})
 
-    # The manifest names exactly the page files present -- no more, no fewer.
+    # The manifest names exactly the page files present -- no more, no fewer --
+    # as paths relative to the manifest, each inside the page's plot folder.
     on_disk = {
-        path.name
-        for path in directory.iterdir()
+        path.relative_to(directory).as_posix()
+        for path in directory.rglob("*")
         if path.is_file()
         and not path.name.startswith(".")
         and path.name != "manifest.json"
     }
     assert on_disk == set(page["files"].values())
+    assert {Path(name).parent.as_posix() for name in page["files"].values()} == {
+        page["plot"]
+    }
 
 
 def test_a_failing_plot_is_recorded_once_and_does_not_stop_its_neighbour(
@@ -215,5 +235,6 @@ def test_a_failing_plot_is_recorded_once_and_does_not_stop_its_neighbour(
     assert (entry["dataset"], entry["image_stem"]) == ("ds 1", "plate_01")
     assert entry["error"] == "RuntimeError: colony count unavailable"
 
-    assert len(list((plots / "ObjectCount" / "ds-1").glob("plate_01-*.html"))) == 1
+    neighbour = _image_directory(plots / "ObjectCount" / "ds-1")
+    assert len(list(neighbour.rglob("*.html"))) == 1
     assert not (plots / "ExplodingImagePlot").exists()

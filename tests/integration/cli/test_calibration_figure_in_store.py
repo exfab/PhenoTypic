@@ -95,25 +95,32 @@ def _runs(store: Path) -> dict:
     return read_image_figures_descriptor(store)["runs"]
 
 
-#: The binding's two pages, and the file each is copied out to (its label).
-PAGES = {"tiles": "Tile-overlay.png", "delta_e": "Delta-E00-before-and-after.png"}
+#: Each page's (plot, key), and the file it is copied out to: the store's plot
+#: folder, named by key (spec 2026-09-30, D4). `_write_inputs`' frame has two
+#: card bands, so two ROIs, then delta E.
+PAGES = {
+    ("tiles", "roi_0"): "tiles/roi_0.png",
+    ("tiles", "roi_1"): "tiles/roi_1.png",
+    ("delta_e", "delta_e"): "delta_e/delta_e.png",
+}
 
 
-def _overlay(store: Path, run_id: str) -> tuple[dict, dict[str, bytes]]:
+def _overlay(store: Path, run_id: str) -> tuple[dict, dict[tuple[str, str], bytes]]:
     """The binding's descriptor entry in one run folder, and each page's PNG."""
     entry = _runs(store)[run_id]["bindings"]["cal"]
     pngs = {}
     for page in entry["pages"]:
         [stored] = page["files"]
-        pngs[page["key"]] = (store / stored["path"]).read_bytes()
+        pngs[(page["plot"], page["key"])] = (store / stored["path"]).read_bytes()
     return entry, pngs
 
 
-def _deliverable(out: Path) -> dict[str, bytes]:
-    """Each page's copy-out, by page key: two pages publish as a manifest dir."""
+def _deliverable(out: Path) -> dict[tuple[str, str], bytes]:
+    """Each page's copy-out, by (plot, key): a manifest dir mirroring the store."""
     [directory] = (out / "deliverables" / "plots" / "cal" / "ds").glob("plate-*")
-    assert (directory / "manifest.json").is_file()
-    return {key: (directory / name).read_bytes() for key, name in PAGES.items()}
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == 3
+    return {page: (directory / name).read_bytes() for page, name in PAGES.items()}
 
 
 def test_full_mode_stores_the_overlay_png_and_copies_it_out(tmp_path):
@@ -125,15 +132,16 @@ def test_full_mode_stores_the_overlay_png_and_copies_it_out(tmp_path):
     assert run["failed"] == [] and run["unavailable"] == []
     entry, data = _overlay(store, run_id)
     assert entry["class"] == "CalibrateColorRpcc"
-    assert [(p["key"], p["backend"]) for p in entry["pages"]] == [
-        ("tiles", "mpl"), ("delta_e", "mpl"),
+    assert [(p["plot"], p["key"], p["backend"]) for p in entry["pages"]] == [
+        ("tiles", "roi_0", "mpl"), ("tiles", "roi_1", "mpl"), ("delta_e", "delta_e", "mpl"),
     ]
     for page in entry["pages"]:
         assert [(f["format"], f["path"]) for f in page["files"]] == [
-            ("png", f"figures/{run_id}/cal/{page['key']}.png")
+            ("png", f"figures/{run_id}/cal/{page['plot']}/{page['key']}.png")
         ]
     assert all(png.startswith(b"\x89PNG") for png in data.values())
-    assert data["tiles"] != data["delta_e"]
+    assert all(data[tile] != data[("delta_e", "delta_e")]
+               for tile in PAGES if tile[0] == "tiles")
     assert _deliverable(out) == data
 
 
@@ -151,8 +159,35 @@ def test_process_mode_zarr_stores_the_overlay(tmp_path):
     run_id = _run_of(pipeline)
     assert _runs(store)[run_id]["failed"] == []
     _entry, data = _overlay(store, run_id)
-    assert list(data) == ["tiles", "delta_e"]
+    assert list(data) == list(PAGES)
     assert all(png.startswith(b"\x89PNG") for png in data.values())
+    # Figures live in the image's store only; process mode has no deliverables.
+    for plot, key in PAGES:
+        assert (store / f"figures/{run_id}/cal/{plot}/{key}.png").is_file()
+    assert not (out / "deliverables").exists()
+
+
+def test_two_same_day_process_runs_write_byte_identical_stores(tmp_path):
+    from phenotypic._cli._cli_process_only import process_single_apply_only_core
+
+    image, pipeline = _write_inputs(tmp_path)
+    stores = []
+    for name in ("a", "b"):
+        out = tmp_path / name
+        process_single_apply_only_core(
+            pipeline_path=pipeline, image_path=image, input_root=image.parent,
+            output_dir=out, image_type="Image", layer="rgb", read_kwargs={},
+            process_format="zarr", run_initiation=RunInitiation(DAY, f"{DAY}T12:00:00.000Z", 7),
+        )
+        stores.append(out / "plate.ome.zarr")
+
+    def tree(store: Path) -> dict[str, bytes]:
+        return {p.relative_to(store).as_posix(): p.read_bytes()
+                for p in sorted(store.rglob("*")) if p.is_file()}
+
+    first, second = (tree(s) for s in stores)
+    assert first == second
+    assert any(path.startswith("figures/") and "/cal/tiles/roi_1.png" in path for path in first)
 
 
 def test_measure_with_the_same_pipeline_keeps_the_overlay_in_its_folder(tmp_path):
@@ -234,7 +269,7 @@ def test_staged_stage1_draws_the_overlay_and_stage3_keeps_it(tmp_path, fake_gpu,
     assert list(_runs(store)) == [run_id]
     assert _runs(store)[run_id]["failed"] == []
     stage1 = _overlay(store, run_id)
-    assert list(stage1[1]) == ["tiles", "delta_e"]
+    assert list(stage1[1]) == list(PAGES)
     assert all(png.startswith(b"\x89PNG") for png in stage1[1].values())
 
     plan.gpu_detector._ensure_model_loaded()
