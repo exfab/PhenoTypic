@@ -338,12 +338,12 @@ def _edit_descriptor(store, edit):
 
 def test_an_unknown_schema_version_is_skipped_and_recorded(tmp_path):
     store = figure_store(tmp_path / "s", _one(_page()))
-    _edit_descriptor(store, lambda d: d.update(schema_version=2))
+    _edit_descriptor(store, lambda d: d.update(schema_version=3))
     plots = _publish(tmp_path, store)
     assert not (plots / "sym").exists()
     [record] = _lines(plots)
     assert record["binding_id"] == "<store>"
-    assert "schema_version 2" in record["error"]
+    assert "schema_version 3" in record["error"]
 
 
 def test_a_path_outside_figures_is_a_per_file_failure(tmp_path):

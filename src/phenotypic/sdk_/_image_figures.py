@@ -156,6 +156,9 @@ class StoredFigurePage:
 
     ``metadata`` is strict, key-sorted JSON by the time it gets here: the
     builder round-trips it and refuses a page it cannot (spec §1).
+    ``plot`` is the logical plot name and ``directory`` its sanitized folder
+    (spec 2026-09-30 §2); both ``None`` is a flat page, as a version 1 run
+    stored it.
     """
 
     key: str
@@ -163,6 +166,8 @@ class StoredFigurePage:
     backend: str
     metadata: Mapping[str, Any]
     files: tuple[StoredFigureFile, ...]
+    plot: str | None = None
+    directory: str | None = None
 
 
 @dataclass(frozen=True)
@@ -183,6 +188,7 @@ class StoredFigureFailure:
     page: str | None
     format: str | None
     error: str
+    plot: str | None = None
 
 
 @dataclass(frozen=True)
@@ -199,32 +205,42 @@ class StoredFigures:
     unavailable: tuple[str, ...] = ()
 
 
-def figure_file_path(run_id: str, directory: str, filename: str) -> str:
-    """Store-relative path of one figure file (spec §1a)."""
+def figure_file_path(
+    run_id: str, directory: str, filename: str, plot_directory: str | None = None
+) -> str:
+    """Store-relative path of one figure file (spec §1a; 2026-09-30 §2)."""
     from . import ngff_
 
-    return f"{ngff_.FIGURES_GROUP}/{run_id}/{directory}/{filename}"
+    middle = f"{directory}/{plot_directory}" if plot_directory is not None else directory
+    return f"{ngff_.FIGURES_GROUP}/{run_id}/{middle}/{filename}"
 
 
-def split_figure_file_path(path: str) -> tuple[str, str, str]:
-    """Invert :func:`figure_file_path`: ``(run_id, directory, filename)``.
+def split_figure_file_path(path: str) -> tuple[str, str, str | None, str]:
+    """Invert :func:`figure_file_path`: ``(run_id, directory, plot_directory, filename)``.
+
+    ``plot_directory`` is ``None`` for a flat (version 1) page.
 
     Raises:
         ValueError: If *path* is not laid out as this writer lays it out --
-            which also refuses ``..`` and absolute paths.
+            which also refuses ``..``, ``.`` and absolute paths.
     """
     from . import ngff_
 
+    raw = str(path).split("/")
     parts = PurePosixPath(path).parts
     if (
-        len(parts) != 4
-        or parts[0] != ngff_.FIGURES_GROUP
+        len(parts) not in (4, 5)
+        or len(raw) != len(parts)           # PurePosixPath drops "." and "" components
+        or parts[0] != ngff_.FIGURES_GROUP  # also refuses an absolute path, whose parts[0] is "/"
         or any(part in {".", ".."} for part in parts)
     ):
         raise ValueError(
-            f"figure path {path!r} is not {ngff_.FIGURES_GROUP}/<run>/<binding>/<file>"
+            f"figure path {path!r} is not "
+            f"{ngff_.FIGURES_GROUP}/<run>/<binding>/[<plot>/]<file>"
         )
-    return parts[1], parts[2], parts[3]
+    if len(parts) == 4:
+        return parts[1], parts[2], None, parts[3]
+    return parts[1], parts[2], parts[3], parts[4]
 
 
 def _ensure_group(directory: Path) -> None:
@@ -256,7 +272,7 @@ def write_image_figures(
         figures: The built figures of one run.
 
     Returns:
-        ``{"figures": {"schema_version": 1, "runs": {run_id: entry}}}``, to
+        ``{"figures": {"schema_version": 2, "runs": {run_id: entry}}}``, to
         merge with :func:`apply_image_figures_attributes`.
     """
     import os
@@ -273,9 +289,14 @@ def write_image_figures(
         _ensure_group(directory)
         pages = []
         for page in binding.pages:
+            page_directory = (
+                directory if page.directory is None else directory / page.directory
+            )
+            if page.directory is not None:
+                _ensure_group(page_directory)
             entries = []
             for stored in page.files:
-                target = ngff_.long_path(directory / stored.filename)
+                target = ngff_.long_path(page_directory / stored.filename)
                 # A new inode, always: an existing path may be a hard link
                 # into the live store, and exclusive create refuses to write
                 # through one the unlink did not remove.
@@ -288,11 +309,14 @@ def write_image_figures(
                 entries.append({
                     "format": stored.format,
                     "media_type": stored.media_type,
-                    "path": figure_file_path(run_id, binding.directory, stored.filename),
+                    "path": figure_file_path(
+                        run_id, binding.directory, stored.filename, page.directory
+                    ),
                     "sha256": hashlib.sha256(stored.data).hexdigest(),
                 })
             pages.append({
                 "key": page.key,
+                "plot": page.plot,
                 "label": page.label,
                 "backend": page.backend,
                 "metadata": dict(page.metadata),
@@ -312,7 +336,8 @@ def write_image_figures(
     entry |= {
         "bindings": bindings,
         "failed": [
-            {"binding": f.binding, "page": f.page, "format": f.format, "error": f.error}
+            {"binding": f.binding, "page": f.page, "plot": f.plot,
+             "format": f.format, "error": f.error}
             for f in figures.failed
         ],
         "unavailable": list(figures.unavailable),
@@ -364,8 +389,9 @@ def carry_figure_runs(
     if not known_figures_schema(descriptor):
         logger.warning(
             "Carrying the figures of %s untouched and adding no run: "
-            "schema_version %r is not %r",
-            source_store, descriptor.get("schema_version"), ngff_.FIGURES_SCHEMA_VERSION,
+            "schema_version %r is not one of %r",
+            source_store, descriptor.get("schema_version"),
+            sorted(ngff_.READABLE_FIGURES_SCHEMA_VERSIONS),
         )
         _carry_tree(
             Path(source_store) / ngff_.FIGURES_GROUP,
@@ -399,7 +425,9 @@ def _carry_file(
     from . import ngff_
 
     try:
-        file_run, directory, _filename = split_figure_file_path(stored["path"])
+        file_run, directory, plot_directory, _filename = split_figure_file_path(
+            stored["path"]
+        )
         if file_run != run_id:
             raise ValueError(f"{stored['path']!r} is not in run folder {run_id!r}")
         source = source_root / stored["path"]
@@ -412,6 +440,10 @@ def _carry_file(
         _ensure_group(store_part / ngff_.FIGURES_GROUP)
         _ensure_group(store_part / ngff_.FIGURES_GROUP / run_id)
         _ensure_group(store_part / ngff_.FIGURES_GROUP / run_id / directory)
+        if plot_directory is not None:
+            _ensure_group(
+                store_part / ngff_.FIGURES_GROUP / run_id / directory / plot_directory
+            )
         _link_or_copy(source, store_part / stored["path"])
     except (OSError, KeyError, TypeError, ValueError) as exc:
         logger.warning("Could not carry figure file %r: %s", stored.get("path"), exc)
@@ -490,7 +522,8 @@ def apply_image_figures_attributes(
             logger.warning(
                 "Adding no figure run to a figures descriptor of schema_version "
                 "%r; this writer knows %r",
-                current.get("schema_version"), ngff_.FIGURES_SCHEMA_VERSION,
+                current.get("schema_version"),
+                sorted(ngff_.READABLE_FIGURES_SCHEMA_VERSIONS),
             )
             return
         phenotypic[ngff_.PhenotypicAttr.FIGURES] = incoming
@@ -509,13 +542,18 @@ def known_figures_schema(descriptor: object) -> bool:
     ``False`` for a descriptor whose ``schema_version`` this writer does not
     know. Every write path then leaves that descriptor and its files as they
     are and adds no run: never relabelled, never dropped (spec §1a).
+    "Knows" means one of ``READABLE_FIGURES_SCHEMA_VERSIONS`` (2026-09-30 §2).
     """
+    return not isinstance(descriptor, Mapping) or _readable_version(
+        descriptor.get("schema_version")
+    )
+
+
+def _readable_version(version: object) -> bool:
+    """Whether *version* is one this reader knows; a ``bool`` never is."""
     from . import ngff_
 
-    return (
-        not isinstance(descriptor, Mapping)
-        or descriptor.get("schema_version") == ngff_.FIGURES_SCHEMA_VERSION
-    )
+    return type(version) is int and version in ngff_.READABLE_FIGURES_SCHEMA_VERSIONS
 
 
 def read_image_figures_descriptor(store_path: Path) -> dict[str, Any] | None:
@@ -584,10 +622,10 @@ def read_figure_run(store_path: Path, run_id: str) -> dict[str, Any] | None:
     if descriptor is None:
         return None
     version = descriptor.get("schema_version")
-    if version != ngff_.FIGURES_SCHEMA_VERSION:
+    if not _readable_version(version):
         raise ValueError(
             f"figures schema_version {version!r} is not supported "
-            f"(this reader knows {ngff_.FIGURES_SCHEMA_VERSION})"
+            f"(this reader knows {sorted(ngff_.READABLE_FIGURES_SCHEMA_VERSIONS)})"
         )
     runs = descriptor.get("runs")
     entry = runs.get(run_id) if isinstance(runs, dict) else None

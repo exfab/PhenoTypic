@@ -780,6 +780,7 @@ def replace_image_tables(
         return _populate
 
     if figures is not None:
+        from . import ngff_
         from ._image_figures import known_figures_schema, read_image_figures_descriptor
 
         descriptor = read_image_figures_descriptor(Path(store_path))
@@ -788,8 +789,9 @@ def replace_image_tables(
             # could delete anything; the store's figures stay as they are.
             logger.warning(
                 "Adding no figure run to %s: its figures schema_version %r is "
-                "not one this writer knows",
+                "not one this writer knows (%r)",
                 store_path, descriptor.get("schema_version"),
+                sorted(ngff_.READABLE_FIGURES_SCHEMA_VERSIONS),
             )
             figures = None
 

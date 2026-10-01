@@ -257,7 +257,7 @@ def _relabel_as_newer(store) -> dict:
     ``schema_version`` and a file only that layout names."""
     root_path = store / "zarr.json"
     root = json.loads(root_path.read_text(encoding="utf-8"))
-    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 2
+    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 3
     root_path.write_text(json.dumps(root), encoding="utf-8")
     (store / "figures" / "newer.bin").write_bytes(b"newer layout")
     return read_image_figures_descriptor(store)

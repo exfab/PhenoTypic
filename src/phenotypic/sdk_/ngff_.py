@@ -99,7 +99,11 @@ METADATA_TABLE_SCHEMA_VERSION: Final[int] = 1
 #: files, exactly as `tables/` holds `table.parquet`; described by
 #: `attributes.phenotypic.figures`, never by `ome.series`.
 FIGURES_GROUP: Final[str] = "figures"
-FIGURES_SCHEMA_VERSION: Final[int] = 1
+#: The figures descriptor version this writer writes (spec 2026-09-30 §2):
+#: version 2 adds a plot folder per page and ``plot`` on pages and failures.
+FIGURES_SCHEMA_VERSION: Final[int] = 2
+#: Versions this reader understands. Version 1 (flat pages) is a subset of 2.
+READABLE_FIGURES_SCHEMA_VERSIONS: Final[frozenset[int]] = frozenset({1, 2})
 
 
 class EmbeddedMeasurementParquetMetadataKeys(NamedTuple):

@@ -368,7 +368,9 @@ class _SameRunKeeper:
         for page in stored["pages"]:
             files: list[StoredFigureFile] = []
             for entry in page["files"]:
-                run_id, directory, filename = split_figure_file_path(entry["path"])
+                run_id, directory, _plot_directory, filename = (
+                    split_figure_file_path(entry["path"])
+                )
                 if run_id != self._run.run_id:
                     raise ValueError(
                         f"{entry['path']!r} is not in run folder {self._run.run_id!r}"
