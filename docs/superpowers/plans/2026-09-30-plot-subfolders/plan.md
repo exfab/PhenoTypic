@@ -1041,6 +1041,8 @@ def test_a_page_with_no_copyable_file_is_failed_with_its_plot(tmp_path):
 
 def test_a_refused_guard_creates_no_plot_folder(tmp_path):
     """I5: the guard is asked before a plot folder is created."""
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked   # as the file's sibling tests do
+
     calls = iter([True, True, True, False])   # read-guard, binding dir, lock, then the plot-folder mkdir
     store = figure_store(tmp_path / "s", _one(_page("roi_0", plot="tiles")))
     with pytest.raises(PlotPublicationBlocked):
