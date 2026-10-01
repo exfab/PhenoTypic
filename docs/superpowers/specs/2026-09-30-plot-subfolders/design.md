@@ -41,6 +41,9 @@ figures/<run>/<binding>/<plot>/<file>
 | D3 | Per-ROI files are named `roi_<index>`. |
 | D4 | `deliverables/plots/` **mirrors the store**. |
 | D5 | One PR for the whole change. |
+| D6 | `PlotPage.plot` **refuses a `/`** (today a `/` in a name silently becomes a folder called `page`). `zarr.json` and `manifest.json` are **reserved** folder names and get the digest suffix. *(2026-09-30, after plan review)* |
+| D7 | **No changelog file.** The release note is the PR description. *(after plan review)* |
+| D8 | Folder naming stays `<binding>/<plot>/<file>`. The binding folder already names the operation (`CalibrateColorRpcc/` in the exfab pipeline), and the class is recorded as `"class"` in the descriptor and manifest. A pipeline that gives an op a custom key shows that key. *(after plan review)* |
 
 ## Background: what exists today
 
@@ -110,7 +113,7 @@ class PlotPage:
   `plot is None` the page's plot is its `key`, so every existing plot still
   works unchanged and lands at `<key>/<key>.<ext>` (D2).
 - **Validation** is in `__post_init__`, beside the key check. `plot`, when
-  given, is a non-empty string.
+  given, is a non-empty string containing no `/` (D6).
 - **Uniqueness:** `PlotOutput` refuses a duplicate `(plot or key, key)` pair.
   It no longer refuses a duplicate bare `key`. `tiles/roi_0` and `masks/roi_0`
   may coexist.
@@ -147,7 +150,10 @@ figures/
   first-appearance order. So two plots whose names clean to the same name
   (case-folded) get the existing stable digest suffix.
 - **Files:** `unique_page_stems` over that plot's pages, in page order.
-- Both reuse the existing rule. There is no new naming code.
+- Both reuse the existing rule.
+- **Reserved folder names (D6):** `zarr.json` (the binding's group document)
+  and `manifest.json` (the deliverables manifest), compared case-folded. A plot
+  named either gets the digest suffix, as a collision would.
 
 **Each new folder gets the empty Zarr group document** its parents already
 have, through the same `_ensure_group`, so `figures/` still opens as a Zarr
@@ -247,7 +253,10 @@ plots/<binding>/<dataset>/<stem>/
   deletes the "a failure must not flip a multi-page binding to the flat
   layout" logic in `_store_copyout.py`.
 - **A page kept flat from a version 1 run** (plot `None`) is copied into the
-  image folder itself, as today.
+  image folder itself, `<stem>/<file>`. For a version 1 binding whose only page
+  was `default`, this differs from today: it used to publish as
+  `<dataset>/<stem>.<ext>` with no manifest, and now gets the image folder and
+  a manifest like everything else.
 - **Both deliverables writers follow the rule:** the store copy-out
   (`_store_copyout.py`) and the direct publish (`publish_plot_output`,
   `_writer.py`). `unique_page_stems` applies per plot folder, as in the store.
@@ -325,9 +334,11 @@ The 3 test files that hard-code flat paths are updated, not deleted.
 - **`CLAUDE.md`, CLI section:** "A store also carries the pipeline's per-image
   figures under `figures/<run>/`" gains "`<binding>/<plot>/<file>`".
 - **Plotting user docs:** `PlotPage(plot=...)`, with the calibration example.
-- **Changelog:**
+- **Release note, in the PR description (D7; the repo has no changelog file):**
   - the layout change and descriptor version 2;
   - manifest version 3, and that the flat deliverable form is gone;
+  - that deliverable image figures are now named by key (plan decision P1), so
+    a re-copy leaves earlier label-named files beside the new ones;
   - older PhenoTypic adds no figure run to a version 2 store and leaves it
     intact.
 

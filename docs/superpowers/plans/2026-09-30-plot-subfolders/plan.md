@@ -33,10 +33,23 @@
   - `tests/unit/correction/`: `test_calibration_overlay.py`, `test_calibration_plot_image.py`
   - `tests/unit/plotting/`: `test_coordinator.py`, `test_output_adapter.py`, `test_public_imports.py`, `test_store_copyout.py`, `test_store_figures_build.py`
   - `tests/unit/sdk_/`: `test_image_figures.py`, `test_image_figures_store.py`
+- **Outside the 17-file set, also run at each phase gate:**
+  - `tests/unit/plotting/test_plot_meas_time_series.py`
+  - `tests/gui/results_viewer/test_mutation_guard.py`, which needs the Qt env: `uv sync --group dev --group test-qt --extra gui --extra napari`
+  Neither ran in the baseline. Run both once at `ba725001` first, so their results can be compared by name.
+- **The sweep rule (plan review I1).** One level deeper, a check against the old flat location passes while testing nothing. So in every test file a task touches:
+  - every negative check (`not … .exists()`, `glob(...) == []`) is made against the new location, or becomes `rglob`;
+  - every `glob`-based positive check, and every `first == second` comparison of globbed lists, also asserts the result is **non-empty**.
+  Each task's sweep step lists the known hits and greps for more:
+  ```bash
+  grep -n 'glob(\|exists()\|iterdir\|first == second' <the task's touched test files>
+  ```
 - **Figures descriptor `schema_version`:** written `2`; readable `{1, 2}`.
 - **Deliverables manifest `schema_version`:** `3`.
 - **By mode (spec §3):** full, measure and staged store figures **and** copy them to deliverables. `--mode process --process-format zarr` stores them in the image's store **only**, with no `deliverables/`. A TIFF process export carries none. No task changes this; Task 7 pins it.
 - **Per-ROI file names:** `roi_<index>` (spec D3), where `<index>` is `RoiOverlay.roi_index`.
+- **`PlotPage.plot` refuses `/`** (spec D6). `zarr.json` and `manifest.json` are reserved plot-folder names (case-folded), so they get the digest suffix.
+- **The plan review** is `docs/superpowers/reports/2026-09-30-plot-subfolders/plan-review.md` (0 blocker, 8 important, 14 minor). This revision folds in I1–I8 and minor items 1, 2, 5, 6, 7, 9, 10, 11 and 14. Minor items 3, 4, 8, 12 and 13 are accepted as noted there.
 - **A page with no `plot` is stored at `<key>/<key>.<ext>`** (spec D2).
 - **Commits:** one per task, ending with:
   ```
@@ -127,8 +140,8 @@ def test_plot_names_the_folder_when_given():
     assert (page.plot_name, page.key) == ("tiles", "roi_0")
 
 
-@pytest.mark.parametrize("plot", ["", 3])
-def test_an_empty_or_non_string_plot_is_refused(plot):
+@pytest.mark.parametrize("plot", ["", 3, "a/b", "/tiles", "tiles/"])
+def test_an_empty_non_string_or_slashed_plot_is_refused(plot):
     with pytest.raises(ValueError, match="plot"):
         PlotPage(key="k", plot=plot, figure=object())
 
@@ -195,8 +208,12 @@ class PlotPage:
     def __post_init__(self) -> None:
         if not isinstance(self.key, str) or not self.key:
             raise ValueError("plot page key must be a non-empty string")
-        if self.plot is not None and (not isinstance(self.plot, str) or not self.plot):
-            raise ValueError("plot page plot must be a non-empty string or None")
+        if self.plot is not None and (
+            not isinstance(self.plot, str) or not self.plot or "/" in self.plot
+        ):
+            raise ValueError(
+                "plot page plot must be None or a non-empty string without '/'"
+            )
 
     @property
     def plot_name(self) -> str:
@@ -568,11 +585,32 @@ In `tests/unit/sdk_/test_image_figures.py`:
 - `test_apply_never_merges_with_an_unknown_schema`: `newer = {"schema_version": 3, "layout": {"x": 1}}`.
 - `test_read_figure_run_picks_one_run_and_refuses_an_unknown_schema`: set `schema_version` to `3` and match `"schema_version 3"`.
 
-Then search the rest of the 17-file set for pinned values, and update each hit the same way (`2` → `3` where it means "unknown"; `1` → `2` where it means "what this writer writes"):
+Known hits outside that file (plan review I3). Use `3` for "a newer, unknown version" from now on:
+- `tests/unit/sdk_/test_image_figures_store.py:260`: `_relabel_as_newer` sets `["schema_version"] = 2` as the unknown layout. Change it to `3`. It is used by the tests at `:282` and `:295`.
+- `tests/unit/plotting/test_store_copyout.py:341` (`d.update(schema_version=2)`) and `:346` (`"schema_version 2"`): change both to `3`.
+
+Then grep **every** form, not just literals, and update each hit the same way (`2` → `3` where it means "unknown"; `1` → `2` where it means "what this writer writes"). Leave deliverables-manifest versions for Tasks 4 and 5:
 
 ```bash
-grep -rn '"schema_version": 1\|schema_version"\] == 1\|"schema_version": 2' tests/unit/sdk_ tests/unit/plotting tests/unit/cli tests/integration/cli
+grep -rn 'schema_version' tests/unit/sdk_ tests/unit/plotting tests/unit/cli tests/integration
 ```
+
+Make the version 1 fixture real (minor 6). In `test_a_v1_store_gains_a_v2_run_and_keeps_its_v1_run_byte_for_byte`, after setting `schema_version = 1`, strip the keys 0.19 never wrote, so the carried entry has the true version 1 shape:
+
+```python
+    v1_run = root["attributes"]["phenotypic"]["figures"]["runs"][_OTHER.run_id]
+    for binding in v1_run["bindings"].values():
+        for page in binding["pages"]:
+            page.pop("plot")
+    for failure in v1_run["failed"]:
+        failure.pop("plot")
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+    old_entry = json.loads(json.dumps(v1_run))
+```
+
+Then build `phenotypic` from that same `root` (move the `old_entry` line after the strip, replacing the earlier one).
+
+Warning wording (minor 7): the three "this writer knows %r" warnings (`_image_figures.py:368, 493`, and `_measurement_tables.py:790`) print `sorted(ngff_.READABLE_FIGURES_SCHEMA_VERSIONS)` instead of `FIGURES_SCHEMA_VERSION`.
 
 - [ ] **Step 5: Run the tests**
 
@@ -602,16 +640,17 @@ git commit -m "feat(store): figures descriptor v2 with plot folders; read v1 and
 
 - [ ] **Step 1: Write the failing tests** (append to `tests/unit/plotting/test_store_figures_build.py`, which already defines `_build`, `_keep`, `_files`, `ApplyState` and imports `TEST_RUN`)
 
-```python
-import json
+Add these to the file's existing module-level imports. `json` and `re` are already imported there; do not import them twice (minor 14):
 
-from phenotypic.plotting._pipeline._store_figures import keep_image_figures  # noqa: F401  (used below)
+```python
 from phenotypic.plotting._pipeline._writer import plot_page_paths
 from phenotypic.sdk_._image_figures import (
     StoredFigureBinding,
     StoredFigureFile,
     StoredFigurePage,
     StoredFigures,
+    read_figure_run,
+    write_image_figures,
 )
 from tests.unit.plotting._store_fixtures import figure_store
 
@@ -655,6 +694,21 @@ def test_plot_folders_that_collide_get_distinct_names():
     assert paths == plot_page_paths([("Tiles", "a", "a"), ("tiles", "a", "a")])  # stable
 
 
+def test_reserved_names_never_become_plot_folders():
+    """Minor 1: a plot named like the group document or the manifest."""
+    folders = [folder for folder, _stem in plot_page_paths([
+        ("zarr.json", "a", "a"), ("Manifest.JSON", "b", "b"),
+    ])]
+    assert all(re.fullmatch(r"(zarr|Manifest)\.(json|JSON)-[0-9a-f]{8}", f) for f in folders)
+
+
+def test_two_pages_of_one_plot_whose_stems_collide_get_distinct_files():
+    """I2: the per-plot file pass, not only the folder pass, is collision-safe."""
+    paths = plot_page_paths([("tiles", "A b", "A b"), ("tiles", "a-b", "a-b")])
+    assert paths[0] == ("tiles", "A-b")
+    assert paths[1][0] == "tiles" and re.fullmatch(r"a-b-[0-9a-f]{8}", paths[1][1])
+
+
 def test_a_multi_plot_output_is_built_into_plot_folders():
     [binding] = _build(PerRoiPages()).bindings
     assert [(p.plot, p.directory, p.key, p.files[0].filename) for p in binding.pages] == [
@@ -690,6 +744,42 @@ def _flat_v1_store(tmp_path, *, plot_claimed):
         page["plot"] = plot_claimed           # a v2 claim over a flat path
     (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
     return store
+
+
+def test_a_kept_flat_page_is_written_flat_with_a_null_plot(tmp_path):
+    """I6 / P3: the null plot survives the write and the file stays flat."""
+    kept = _keep(_flat_v1_store(tmp_path, plot_claimed=None), PerRoiPages(mode="gone"))
+    again = figure_store(tmp_path / "again", kept)
+    [page] = read_figure_run(again, TEST_RUN.run_id)["bindings"]["PerRoiPages"]["pages"]
+    assert page["plot"] is None
+    assert page["files"][0]["path"] == f"figures/{TEST_RUN.run_id}/PerRoiPages/tiles.png"
+
+
+def test_a_binding_spread_over_two_binding_folders_is_refused(tmp_path):
+    """I6: the single-binding-folder check still holds with plot folders."""
+    store = figure_store(tmp_path / "s", _build(PerRoiPages()))
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    pages = root["attributes"]["phenotypic"]["figures"]["runs"][TEST_RUN.run_id]["bindings"]["PerRoiPages"]["pages"]
+    moved = pages[2]["files"][0]
+    source = store / moved["path"]
+    moved["path"] = moved["path"].replace("/PerRoiPages/", "/Elsewhere/")
+    (store / moved["path"]).parent.mkdir(parents=True)
+    source.rename(store / moved["path"])
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+    kept = _keep(store, PerRoiPages(mode="gone"))
+    assert kept.bindings == ()
+    assert "one directory" in kept.failed[0].error
+
+
+def test_a_page_failure_records_its_plot_through_the_descriptor(tmp_path):
+    """I6 / Review Focus 5: the builder stamps `plot` on page failures."""
+    stored = _build(HandBuiltPages())
+    by_page = {f.page: f for f in stored.failed}
+    assert by_page["odd"].plot == "odd" and by_page["np"].plot == "np"
+    (tmp_path / "s").mkdir()
+    fragment = write_image_figures(tmp_path / "s", stored)
+    failed = fragment["figures"]["runs"][TEST_RUN.run_id]["failed"]
+    assert {(f["page"], f["plot"]) for f in failed} >= {("odd", "odd"), ("np", "np")}
 
 
 def test_a_flat_v1_binding_is_kept_flat(tmp_path):
@@ -739,7 +829,11 @@ def plot_page_paths(pages: Sequence[tuple[str, str, str]]) -> list[tuple[str, st
             publisher passes the label.
     """
     plots = list(dict.fromkeys(plot for plot, _key, _preferred in pages))
-    plot_directories = dict(zip(plots, unique_page_stems([(plot, plot) for plot in plots])))
+    # Reserved first (spec D6), so a plot named like the group document or the
+    # manifest gets the digest suffix instead of colliding with that file.
+    reserved = [(name, name) for name in _RESERVED_PLOT_NAMES]
+    named = unique_page_stems(reserved + [(plot, plot) for plot in plots])
+    plot_directories = dict(zip(plots, named[len(reserved):]))
     stems = [""] * len(pages)
     for plot in plots:
         members = [i for i, (owner, _key, _preferred) in enumerate(pages) if owner == plot]
@@ -749,7 +843,15 @@ def plot_page_paths(pages: Sequence[tuple[str, str, str]]) -> list[tuple[str, st
     return [(plot_directories[plot], stems[i]) for i, (plot, _key, _preferred) in enumerate(pages)]
 ```
 
-Add `"plot_page_paths"` to `_writer.py`'s `__all__`.
+Above it, add the constant:
+
+```python
+#: Plot-folder names that would collide with a file beside them: a binding's
+#: Zarr group document, and the deliverables manifest (spec D6).
+_RESERVED_PLOT_NAMES: tuple[str, ...] = ("zarr.json", "manifest.json")
+```
+
+`unique_page_stems` already compares case-folded, so `Zarr.JSON` is caught too. Add `"plot_page_paths"` to `_writer.py`'s `__all__`.
 
 - [ ] **Step 4: Build into folders** (`_store_figures.py`)
 
@@ -835,6 +937,14 @@ A page with no files cannot occur here: the writer omits a page that stored noth
 Run: `QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest -o addopts="" -p no:cacheprovider tests/unit/plotting/test_store_figures_build.py tests/unit/cli/test_staged_figures_keep.py tests/unit/sdk_ -q`
 Expected: all pass, except assertions that pin the old flat filenames for bare pages. Each such assertion changes from `f"{key}.png"` at `<binding>/` to `<key>/<key>.png` (D2). Update each one, then rerun until everything passes.
 
+**Sweep (I1).** Known vacuous checks in this task's files:
+- `test_store_figures_build.py:505`, `test_a_drawable_binding_is_redrawn_not_kept`: the tamper loop `for png in (...ApplyState).glob("*.png")` no longer finds anything, because the PNG is now in `ApplyState/tiles/`. Use `rglob("*.png")` and assert the list is non-empty before the loop, or the test cannot tell redraw from keep.
+- `:468` (`[png] = ….glob("*.png")`) fails loudly; switch it to `rglob`.
+
+Then run the sweep grep from Global Constraints over `test_store_figures_build.py` and `test_staged_figures_keep.py`, and fix every hit by the rule.
+
+Keep the integration tests bisectable (minor 11): in `tests/integration/cli/test_figures_in_store.py:136`, change the pinned `sym/default.plotly.json` to `sym/default/default.plotly.json` in this task.
+
 - [ ] **Step 7: Lint, commit, phase gate A**
 
 ```bash
@@ -843,7 +953,7 @@ git add src/phenotypic/plotting/_pipeline/_writer.py src/phenotypic/plotting/_pi
 git commit -m "feat(store): build figures into plot folders; keep v1 flat and v2 foldered bindings"
 ```
 
-**Phase gate A:** submit the 17-file figure set as a Slurm job (the baseline job's script, `logs/pht_figures_baseline.sh` in AutoConvertRaw-GC, pointed at this worktree). Failures are expected only in copy-out (Task 4) and calibration (Task 6) assertions. List every failing test **by name**. Any failure outside `test_store_copyout.py`, `test_calibration_*`, `test_figures_in_store.py` and `test_publication_end_to_end.py` must be explained before going on.
+**Phase gate A:** submit the 17-file figure set as a Slurm job (the baseline job's script, `logs/pht_figures_baseline.sh` in AutoConvertRaw-GC, pointed at this worktree). Failures are expected only in copy-out (Task 4) and calibration (Task 6) assertions. List every failing test **by name**. Any failure outside `test_store_copyout.py`, `test_coordinator.py`, `test_calibration_*` and `test_publication_end_to_end.py` must be explained before going on. Also run the two out-of-set files (Global Constraints) and compare them by name with their `ba725001` results.
 
 ---
 
@@ -915,6 +1025,35 @@ Also:
 - **Delete** `test_a_failed_second_page_does_not_flip_the_layout_to_flat`. It guards the removed flat case.
 - **Rewrite** `test_a_failed_lone_default_page_writes_nothing` as `test_a_failed_lone_default_page_writes_a_manifest_of_its_failure`. The binding now always publishes a manifest directory, whose `failed` lists `{"key": "default", "plot": "default", …}`.
 - **Add** `test_a_flat_v1_page_is_copied_into_the_image_folder`: a store page with `plot=None, directory=None` lands at `<stem>/<file>`, and the manifest gives `"plot": null`.
+- **Rewrite** `test_a_republished_page_loses_its_leftover_renderings` (I6). Seed the leftover where it now lives, `<stem>/default/default.png`, publish a plotly-json-only page, and assert `default.png` is gone **from that plot folder** while `default.plotly.json` and `default.html` are present.
+- **Add** the I4 and I5 tests:
+
+```python
+def test_a_page_with_no_copyable_file_is_failed_with_its_plot(tmp_path):
+    """I4: the "no stored file could be copied out" entry carries `plot`."""
+    store = figure_store(tmp_path / "s", _one(_page("roi_0", plot="tiles")))
+    (store / run_path("sym/tiles/roi_0.plotly.json")).write_bytes(b"tampered")
+    manifest = _manifest(_publish(tmp_path, store))
+    assert manifest["pages"] == []
+    [failed] = manifest["failed"]
+    assert (failed["key"], failed["plot"]) == ("roi_0", "tiles")
+
+
+def test_a_refused_guard_creates_no_plot_folder(tmp_path):
+    """I5: the guard is asked before a plot folder is created."""
+    calls = iter([True, True, True, False])   # read-guard, binding dir, lock, then the plot-folder mkdir
+    store = figure_store(tmp_path / "s", _one(_page("roi_0", plot="tiles")))
+    with pytest.raises(PlotPublicationBlocked):
+        _publish(tmp_path, store, publication_guard=lambda: next(calls, False))
+    image_dir = tmp_path / "deliverables" / "plots" / "sym" / "ds-1" / _STEM
+    assert image_dir.is_dir()                  # the refusal came after the image folder ...
+    assert not (image_dir / "tiles").exists()  # ... and before the plot folder
+```
+
+(A refused guard propagates `PlotPublicationBlocked`, as `test_a_refused_guard_propagates_before_anything_is_written` relies on. The `True` count must equal the guard calls made before the plot-folder check, which come from `publish_store_figures` and `_publish_binding`. Count them and adjust the sequence so the single `False` lands on the plot-folder check. The two closing asserts prove where it landed.)
+
+- **Fix the vacuous refused-guard test** (I1): `test_a_refused_guard_mid_page_leaves_no_half_page` asserts `not (base / f"{_STEM}.plotly.json").exists()`, a path no layout writes any more. Assert `list((base / _STEM).rglob("*.plotly.json")) == []` instead, after first asserting that the refusal happened mid-page.
+- **Pinned paths and manifests** (I3): `:73` is covered by the rename above. Update the version 2 manifest literal at `:279` to version 3 with `"plot"` on its entries. The three `run_path("sym/default.plotly.json")` uses at `:125`, `:164` and `:352` become `run_path("sym/default/default.plotly.json")`. The first two "tamper" a path that no longer exists, so without this they would silently test nothing.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -972,7 +1111,11 @@ Update the docstring: "Publish one binding as a manifest directory mirroring the
                 _run, _binding, plot_directory, name = split_figure_file_path(entry["path"])
                 stem = name[: -len(STORE_FORMATS[entry["format"]].extension)]
                 page_directory = directory if plot_directory is None else directory / plot_directory
-                page_directory.mkdir(exist_ok=True)
+                if not page_directory.exists():
+                    # The writer's contract: the guard is asked immediately
+                    # before any directory is created (I5).
+                    _require_plot_publication(publication_guard)
+                    page_directory.mkdir()
                 relative = name if plot_directory is None else f"{plot_directory}/{name}"
                 _atomic_write(page_directory / name, lambda dest, d=data: dest.write_bytes(d),
                               publication_guard=publication_guard, commit_guard=commit_guard)
@@ -994,6 +1137,11 @@ Changes that follow from the new names:
   ```
   `stem` and `page_directory` are set from the page's stored files (all of one page's formats share a stem and a folder), and `_remove_leftovers` runs only when `files` is non-empty, so both are always bound there.
 - The manifest page entry gains `"plot": page.get("plot")`.
+- The `if not files:` branch (today `_store_copyout.py:277-279`) also records the plot (I4):
+  ```python
+  failed.append({"key": page["key"], "plot": page.get("plot"), "label": page["label"],
+                 "error": "no stored file could be copied out"})
+  ```
 - The per-page failure lookup matches on `(key, plot)`:
   ```python
   partial = [f["error"] for f in page_failures
@@ -1004,7 +1152,14 @@ Changes that follow from the new names:
 - [ ] **Step 4: Run the tests**
 
 Run: `QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest -o addopts="" -p no:cacheprovider tests/unit/plotting/test_store_copyout.py tests/unit/plotting/test_coordinator.py -q`
-Expected: all pass. Update any remaining `test_coordinator.py` assertion that pinned the flat or label-named layout, to the mirrored layout.
+Expected: all pass. Update any remaining `test_coordinator.py` assertion that pinned the flat or label-named layout, to the mirrored layout. `:97`, `:115` and `:899` fail loudly.
+
+**Sweep (I1).** Known vacuous checks:
+- `test_coordinator.py:126-130` (`…_stable_for_reruns`): `list(dir.glob("*.png"))` is `[]` both times, so `first == second` proves nothing. Use `sorted(dir.rglob("*.png"))` and assert it is non-empty.
+- `test_coordinator.py:717` and `:963` (`glob("*.png") == []`) become `rglob`.
+- `test_coordinator.py:718` (`not (directory / "manifest.json").exists()`): read the test's intent; a binding directory now always has a manifest unless nothing was published, so assert whatever the test means at the new depth.
+
+Then run the sweep grep over `test_store_copyout.py` and `test_coordinator.py`.
 
 - [ ] **Step 5: Lint and commit**
 
@@ -1066,8 +1221,10 @@ Expected: FAIL (`KeyError: 'plot'`, or `schema_version` 2).
     )
     for page, (plot_directory, stem) in zip(output.pages, paths):
         page_directory = directory / plot_directory
-        _require_plot_publication(publication_guard)
-        page_directory.mkdir(exist_ok=True)
+        created = not page_directory.exists()
+        if created:
+            _require_plot_publication(publication_guard)   # before directory creation, per the contract
+            page_directory.mkdir()
         try:
             files, errors, backend = _render_page(
                 page.figure, page_directory, stem,
@@ -1080,6 +1237,8 @@ Expected: FAIL (`KeyError: 'plot'`, or `schema_version` 2).
                                   publication_guard=publication_guard, commit_guard=commit_guard)
         …record_plot_failure unchanged…
         if not files:
+            if created and not any(page_directory.iterdir()):
+                page_directory.rmdir()   # minor 9: no empty plot folder for a page that rendered nothing
             failed.append({"key": page.key, "plot": page.plot_name, "label": page.label,
                            "error": …unchanged…})
             continue
@@ -1094,10 +1253,38 @@ Then set `"schema_version": 3` in the manifest dict. `_render_page` computes the
 
 - [ ] **Step 4: Update the existing direct-publish assertions and run**
 
-Every `test_output_adapter.py` assertion that reads `entry["files"]["png"]` as a bare name now gets `"<plot>/<name>"`. A bare page has plot = key, so `"default"` becomes `"default/default.png"`. Update them, then run:
+Every `test_output_adapter.py` assertion that reads `entry["files"]["png"]` as a bare name now gets `"<plot>/<name>"`. A bare page has plot = key, so `"default"` becomes `"default/default.png"`.
+
+**Keep the collision tests meaningful (I2).** `test_matplotlib_pages_publish_with_collision_safe_names` (`:70-87`) and `test_hash_suffix_is_rechecked_for_page_filename_collision` (`:89-110`) use bare pages. Each bare page is now its own folder, so they would pass with `unique_page_stems` deleted. Give every page in each of them `plot="same"`, so the file names still have to be made unique within one folder, and assert the files land in `same/`.
+
+**Stale sibling inside a plot folder (I6).** Add:
+
+```python
+def test_a_rerun_removes_the_old_rendering_inside_its_plot_folder(tmp_path, monkeypatch):
+    stale = tmp_path / "agg" / "tiles" / "a.png"
+    stale.parent.mkdir(parents=True)
+    stale.write_bytes(b"old")
+    import plotly.graph_objects as go
+    from phenotypic.plotting._pipeline import _backends
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)   # plotly → html only
+    publish_plot_output(PlotOutput(pages=(PlotPage(key="a", plot="tiles", figure=go.Figure()),)),
+                        tmp_path / "agg", plot_id="agg", plots_base=tmp_path)
+    assert not stale.exists()
+    assert (tmp_path / "agg" / "tiles" / "a.html").is_file()
+```
+
+(Patch `chrome_available` where `_render_page` looks it up. Read `test_a_plotly_page_publishes_html_without_chrome` at `:205` and copy its monkeypatch target exactly.)
+
+**Out-of-set tests (I3):**
+- `tests/unit/plotting/test_plot_meas_time_series.py:334-338` pins `files["png"] == ["BY4741.png", …]` and `destination / "BY4741.png"`. The folder comes from the key, so these become `"strain-str-BY4741/BY4741.png"` (per `safe_path_component`; confirm it from the published manifest rather than hand-deriving it). Leave `:127-147`, which reads `tmp_path/"manifest.json"`, as it is.
+- `tests/gui/results_viewer/test_mutation_guard.py:556-600` counts guard calls (`checks == 3`, perturbing at the third). The new plot-folder guard call shifts which operation the third call guards. Update the count so the perturbation still lands on the **PNG commit** guard, and assert that it does: the test must still prove a commit-time refusal.
+
+**Sweep (I1):** `test_output_adapter.py:221` (`not (sym/"Only.png").exists()`) and `:242` (`not (plots_base/"sym"/"plotly.min.js").exists()`) aim at the old depth. Make the first an `rglob`. The second's intent ("no bundle per directory") now also covers `sym/<plot>/`, so assert `list((plots_base / "sym").rglob("plotly.min.js")) == []`. Then run the sweep grep over `test_output_adapter.py` and `test_plot_meas_time_series.py`.
+
+Then run:
 
 Run: `QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest -o addopts="" -p no:cacheprovider tests/unit/plotting -q`
-Expected: all pass.
+Expected: all pass. Then, in the Qt env (Global Constraints): `QT_QPA_PLATFORM=offscreen uv run pytest -o addopts="" -p no:cacheprovider tests/gui/results_viewer/test_mutation_guard.py -q`. Expected: all pass.
 
 - [ ] **Step 5: Lint, commit, phase gate B**
 
@@ -1162,15 +1349,26 @@ def test_a_skipped_frame_still_draws_every_roi():
 
 def test_one_roi_stores_one_overlay():
     """Review Focus 4."""
-    operation = frozen_op(rois=band_rois()[:1], lattice_prior=[band_prior()])
+    # One band is 12 patches; a degree-3 fit needs 13 (`require_rank`), and that
+    # fails before QC, so `on_qc_fail` cannot help. Degree 2 fits 12 (probed
+    # 2026-09-30: verdict "corrected", 12/24 fitted).
+    operation = frozen_op(rois=band_rois()[:1], lattice_prior=[band_prior()], degree=2)
     frame = Image(arr=render_frame())
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         operation.apply(frame, inplace=True)
+    assert operation.calibration_record.verdict == "corrected"
     assert _ids(operation.inspect(frame)) == [("tiles", "roi_0"), ("delta_e", "delta_e")]
 ```
 
-(`band_rois` and `band_prior` come from `._checker_frames`; add them to the import. If one ROI is refused by `min_patches`, pass `on_qc_fail="skip"`: the page set is what's under test, not the fit.)
+(`band_rois` and `band_prior` come from `._checker_frames`; add them to the import.)
+
+Keep the existing "no subject: the held image" check (I8). In `test_inspect_draws_one_overlay_per_roi_and_the_delta_e_chart`, add at the end:
+
+```python
+    held = operation.inspect()
+    assert [_png(p.figure) for p in held.pages] == [_png(p.figure) for p in output.pages]
+```
 
 In `test_an_image_pipeline_listing_it_under_plots_stores_both_figures`, rename it to `…_stores_every_figure_in_its_plot_folder`, and assert:
 
@@ -1285,27 +1483,20 @@ Other assertions to update:
 
 - [ ] **Step 2: Pin process mode: figures in the store, nothing in deliverables** (spec §3 "by mode")
 
-```python
-def test_process_mode_stores_plot_folders_and_writes_no_deliverables(tmp_path):
-    from phenotypic._cli._cli_process_only import process_single_apply_only_core
+Extend the existing `test_process_mode_zarr_stores_the_overlay`. Do not add a third test: `test_figures_in_store.py::test_process_mode_carries_figures_only_in_a_store` already pins "no deliverables" for zarr and tiff (minor 10). Append:
 
-    image, pipeline = _write_inputs(tmp_path)
-    out = tmp_path / "out"
-    process_single_apply_only_core(
-        pipeline_path=pipeline, image_path=image, input_root=image.parent,
-        output_dir=out, image_type="Image", layer="rgb", read_kwargs={},
-        process_format="zarr", run_initiation=RunInitiation(DAY, f"{DAY}T12:00:00.000Z", 7),
-    )
-    store = out / "plate.ome.zarr"
-    run_id = _run_of(pipeline)
-    _entry, data = _overlay(store, run_id)
-    assert list(data) == list(PAGES)
+```python
     for plot, key in PAGES:
         assert (store / f"figures/{run_id}/cal/{plot}/{key}.png").is_file()
     assert not (out / "deliverables").exists()
 ```
 
-Run it now; it must pass on top of Tasks 1-6. It pins existing behaviour: process mode never had a deliverables tree.
+It must pass on top of Tasks 1-6. It pins existing behaviour: process mode never had a deliverables tree.
+
+**Sweep (I1)** in `tests/integration/plotting/test_publication_end_to_end.py`:
+- `:135` (`glob("*.png") == []`) becomes `rglob`.
+- `:139` (`not (directory / "manifest.json").exists()`): restate it at the new depth by its intent.
+- The `src="../../plotly.min.js"` near `:108` becomes `../../../../plotly.min.js` for an image figure, which is the copy-out depth. The lines above these fail loudly; these two would not.
 
 - [ ] **Step 3: Add the determinism test** (process mode, same UTC day, two output folders)
 
@@ -1384,12 +1575,20 @@ PlotOutput(pages=(
 ```
 ````
 
-Replace the layout table rows at lines 227-229 with:
+Fix the statements the new layout makes false (I7):
+- the sentence just above line 235, "A page's filename comes from its `label`, or its `key`". It now applies to aggregate plots only. Image figures copied out from the store are named by **key** (decision P1); say both.
+- `:235`: `PlotColonyArea` publishes `plots/PlotColonyArea/default/default.html`.
+- `:332-333`: it stores `PlotColonySizes/default/default.plotly.json`.
+- the manifest remarks around `:395` and `:421`: manifest `schema_version` 3, and `files` values are paths relative to the manifest, including the plot folder.
+
+Then replace the layout table rows at lines 227-229 with:
 
 ```markdown
 | `PlotImage` | `<dataset>/<stem>-<hash>/`, holding one folder per plot (`<plot>/<key>.<ext>`, plus `.html` for a stored `plotly-json`) and a `manifest.json` (`schema_version` 3) |
 | `PlotMeas`, `PlotAnalysis`, `PlotQc` | `plots/<id>/`, holding one folder per plot (`<plot>/<label or key>.<ext>`) and a `manifest.json` (`schema_version` 3) |
 ```
+
+- [ ] **Step 3b: The release note goes in the PR description (spec D7; no changelog file).** Draft it now in the PR body, from spec §6's list.
 
 - [ ] **Step 4: Commit the docs**
 
@@ -1420,4 +1619,6 @@ Expected: no new errors relative to `ba725001` (compare the error list).
 | §3 deliverables mirror, manifest version 3, flat case removed, both writers, version 1 page copied flat, `_remove_stale_sibling` scoped per folder and not sweeping | 4, 5 |
 | §4 per-ROI overlays, `roi_<index>`, `delta_e` unchanged, refused frame draws all, `show_tiles` unchanged | 6 |
 | §5 testing matrix | 1-7 |
-| §6 documentation | 8 |
+| §6 documentation; release note in the PR description (D7) | 8 |
+| D6 `plot` refuses `/`; reserved folder names | 1, 3 |
+| Plan review I1-I8 | sweeps in 3, 4, 5, 7; I2 in 3, 5; I3 in 2, 4, 5; I4, I5 in 4; I6 in 3, 4, 5; I7 in 8; I8 in 6 |
