@@ -290,6 +290,7 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
 
         Paired bars per scored tile, in the overlay key's order, with the good
         and fair bands marked and the mean over fitted patches in the title.
+        Each pair is labelled by a swatch of the patch's chart reference colour.
         A patch outlier rejection removed is hatched: its after-value is held
         out, not fitted. A refused or skipped frame still draws, saying why
         there is nothing to chart.

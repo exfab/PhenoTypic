@@ -10,6 +10,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.patches import Rectangle
 from matplotlib.text import Text
 
+import phenotypic
 from phenotypic import Image
 from phenotypic.correction import CalibrateColorRpcc
 from phenotypic.correction._color_correction import _calibration_overlay as overlay
@@ -776,10 +777,20 @@ def test_a_16_bit_frame_draws_its_pixels_not_white() -> None:
 
 
 # -- the ΔE00 bar chart -------------------------------------------------------
+def test_version_is_0_20_2() -> None:
+    assert phenotypic.__version__ == "0.20.2"
+
+
 def bar_series(fig) -> dict[str, list]:
     """The chart's bar containers by label, each a list of Rectangles."""
     (ax,) = fig.axes
     return {c.get_label(): list(c) for c in ax.containers}
+
+
+def reference_swatches(fig) -> list:
+    """The chart's x-axis reference swatches, in drawing order."""
+    (ax,) = fig.axes
+    return [p for p in ax.patches if p.get_gid() == overlay.REFERENCE_SWATCH_GID]
 
 
 def test_bars_are_the_records_delta_e_one_pair_per_scored_tile() -> None:
@@ -794,9 +805,12 @@ def test_bars_are_the_records_delta_e_one_pair_per_scored_tile() -> None:
     assert [b.get_height() for b in series["before"]] == [t.delta_e_before for t in scored]
     assert [b.get_height() for b in series["after"]] == [t.delta_e_after for t in scored]
     (ax,) = render_delta_e_bars(record).axes
-    ticks = [label.get_text() for label in ax.get_xticklabels()]
-    assert ticks == [t.patch + (" (rejected)" if t.status == "rejected" else "")
-                     for t in scored]
+    assert not any(label.get_text() for label in ax.get_xticklabels())
+    swatches = reference_swatches(ax.figure)
+    assert [s.get_label() for s in swatches] == [t.patch for t in scored]
+    for swatch, tile in zip(swatches, scored):
+        np.testing.assert_allclose(swatch.get_facecolor()[:3], tile.reference_srgb)
+        assert bool(swatch.get_hatch()) == (tile.status == "rejected")
 
 
 def test_rejected_tiles_are_hatched_and_left_out_of_the_mean() -> None:
@@ -834,13 +848,45 @@ def test_a_frame_with_no_fit_draws_no_bars_and_says_why(policy) -> None:
         assert any("quality gate failed" in t for t in texts)
 
 
-def test_the_bar_chart_labels_do_not_overlap_or_clip() -> None:
-    """No text leaves the figure; no two upright texts collide.
+@pytest.mark.parametrize(("figsize", "dpi"), [(None, 160), (None, 72), ((12.0, 5.0), 300)])
+def test_each_swatch_sits_under_its_own_bar_pair(figsize, dpi) -> None:
+    """Centred on its before/after pair, below the axis, a fixed size in inches."""
+    record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
+    fig = render_delta_e_bars(record, figsize=figsize, dpi=dpi)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    (ax,) = fig.axes
+    series = bar_series(fig)
+    swatches = reference_swatches(fig)
+    assert len(swatches) == len(series["before"]) == 24
+    axis_bottom = ax.get_window_extent(renderer).y0
+    for swatch, before, after in zip(swatches, series["before"], series["after"]):
+        box = swatch.get_window_extent(renderer)
+        pair = (before.get_window_extent(renderer).x0 + after.get_window_extent(renderer).x1) / 2
+        assert abs((box.x0 + box.x1) / 2 - pair) < 1.0
+        assert box.y1 < axis_bottom
+        assert box.width / fig.dpi == pytest.approx(overlay._TICK_SWATCH_IN, abs=0.01)
+        assert box.height == pytest.approx(box.width, abs=1.0)
 
-    The rotated tick labels are excluded from the overlap half only: their
-    axis-aligned extents overlap by construction while the glyphs do not.
-    The planted frame's rejected neutrals stretch the y-range to ~40, which
-    squeezes the good and fair lines to a few pixels apart.
+
+def test_a_narrow_figure_shrinks_the_swatches_apart() -> None:
+    """A caller's narrow ``figsize`` keeps neighbouring swatches separate."""
+    record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
+    fig = render_delta_e_bars(record, figsize=(6.0, 3.0))
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    boxes = [s.get_window_extent(renderer) for s in reference_swatches(fig)]
+    assert boxes[0].width / fig.dpi < overlay._TICK_SWATCH_IN
+    assert all(right.x0 - left.x1 > 0 for left, right in zip(boxes, boxes[1:]))
+
+
+def test_the_bar_chart_labels_do_not_overlap_or_clip() -> None:
+    """No text or swatch leaves the figure; no two texts or swatches collide.
+
+    The x-axis is labelled by reference swatches, not text, so they join the
+    texts in both halves. The planted frame's rejected neutrals stretch the
+    y-range to ~40, which squeezes the good and fair lines to a few pixels
+    apart.
     """
     fig = render_delta_e_bars(calibrated(planted_faults(), on_qc_fail="warn").calibration_record)
     fig.canvas.draw()
@@ -856,8 +902,15 @@ def test_the_bar_chart_labels_do_not_overlap_or_clip() -> None:
         if t.get_rotation() == 0:
             upright.append((t.get_text(), box))
     assert {"good <= 2", "fair <= 5"} <= {text for text, _ in upright}
-    for i, (a_text, a) in enumerate(upright):
-        for b_text, b in upright[i + 1:]:
+    swatches = [(f"swatch {s.get_label()}", s.get_window_extent(renderer))
+                for s in reference_swatches(fig)]
+    assert len(swatches) == 24
+    for name, box in swatches:
+        assert box.x0 >= frame.x0 - 0.5 and box.x1 <= frame.x1 + 0.5, f"clipped: {name}"
+        assert box.y0 >= frame.y0 - 0.5 and box.y1 <= frame.y1 + 0.5, f"clipped: {name}"
+    labels = upright + swatches
+    for i, (a_text, a) in enumerate(labels):
+        for b_text, b in labels[i + 1:]:
             dx = min(a.x1, b.x1) - max(a.x0, b.x0)
             dy = min(a.y1, b.y1) - max(a.y0, b.y0)
             assert dx <= 0.5 or dy <= 0.5, f"{a_text!r} overlaps {b_text!r}"
