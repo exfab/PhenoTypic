@@ -794,9 +794,12 @@ def test_bars_are_the_records_delta_e_one_pair_per_scored_tile() -> None:
     assert [b.get_height() for b in series["before"]] == [t.delta_e_before for t in scored]
     assert [b.get_height() for b in series["after"]] == [t.delta_e_after for t in scored]
     (ax,) = render_delta_e_bars(record).axes
-    ticks = [label.get_text() for label in ax.get_xticklabels()]
-    assert ticks == [t.patch + (" (rejected)" if t.status == "rejected" else "")
-                     for t in scored]
+    assert not any(label.get_text() for label in ax.get_xticklabels())
+    swatches = [p for p in ax.patches if not p.get_clip_on()]
+    assert [s.get_label() for s in swatches] == [t.patch for t in scored]
+    for swatch, tile in zip(swatches, scored):
+        np.testing.assert_allclose(swatch.get_facecolor()[:3], tile.reference_srgb)
+        assert bool(swatch.get_hatch()) == (tile.status == "rejected")
 
 
 def test_rejected_tiles_are_hatched_and_left_out_of_the_mean() -> None:
