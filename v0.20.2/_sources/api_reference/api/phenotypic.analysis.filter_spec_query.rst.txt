@@ -1,0 +1,6 @@
+phenotypic.analysis.filter\_spec\_query
+=======================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autofunction:: filter_spec_query

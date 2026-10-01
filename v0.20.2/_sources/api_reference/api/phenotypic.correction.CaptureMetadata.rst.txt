@@ -1,0 +1,67 @@
+phenotypic.correction.CaptureMetadata
+=====================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: CaptureMetadata
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CaptureMetadata.__init__
+      ~CaptureMetadata.compare
+      ~CaptureMetadata.construct
+      ~CaptureMetadata.copy
+      ~CaptureMetadata.dict
+      ~CaptureMetadata.from_image
+      ~CaptureMetadata.from_orm
+      ~CaptureMetadata.json
+      ~CaptureMetadata.model_construct
+      ~CaptureMetadata.model_copy
+      ~CaptureMetadata.model_dump
+      ~CaptureMetadata.model_dump_json
+      ~CaptureMetadata.model_json_schema
+      ~CaptureMetadata.model_parametrized_name
+      ~CaptureMetadata.model_post_init
+      ~CaptureMetadata.model_rebuild
+      ~CaptureMetadata.model_validate
+      ~CaptureMetadata.model_validate_json
+      ~CaptureMetadata.model_validate_strings
+      ~CaptureMetadata.parse_file
+      ~CaptureMetadata.parse_obj
+      ~CaptureMetadata.parse_raw
+      ~CaptureMetadata.schema
+      ~CaptureMetadata.schema_json
+      ~CaptureMetadata.update_forward_refs
+      ~CaptureMetadata.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CaptureMetadata.model_computed_fields
+      ~CaptureMetadata.model_config
+      ~CaptureMetadata.model_extra
+      ~CaptureMetadata.model_fields
+      ~CaptureMetadata.model_fields_set
+      ~CaptureMetadata.camera_make
+      ~CaptureMetadata.camera_model
+      ~CaptureMetadata.lens_model
+      ~CaptureMetadata.iso
+      ~CaptureMetadata.exposure_time
+      ~CaptureMetadata.f_number
+      ~CaptureMetadata.focal_length
+   
+   

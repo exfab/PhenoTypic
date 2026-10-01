@@ -1,0 +1,84 @@
+phenotypic.schema.REMBI\_MODULE
+===============================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: REMBI_MODULE
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~REMBI_MODULE.encode
+      ~REMBI_MODULE.replace
+      ~REMBI_MODULE.split
+      ~REMBI_MODULE.rsplit
+      ~REMBI_MODULE.join
+      ~REMBI_MODULE.capitalize
+      ~REMBI_MODULE.casefold
+      ~REMBI_MODULE.title
+      ~REMBI_MODULE.center
+      ~REMBI_MODULE.count
+      ~REMBI_MODULE.expandtabs
+      ~REMBI_MODULE.find
+      ~REMBI_MODULE.partition
+      ~REMBI_MODULE.index
+      ~REMBI_MODULE.ljust
+      ~REMBI_MODULE.lower
+      ~REMBI_MODULE.lstrip
+      ~REMBI_MODULE.rfind
+      ~REMBI_MODULE.rindex
+      ~REMBI_MODULE.rjust
+      ~REMBI_MODULE.rstrip
+      ~REMBI_MODULE.rpartition
+      ~REMBI_MODULE.splitlines
+      ~REMBI_MODULE.strip
+      ~REMBI_MODULE.swapcase
+      ~REMBI_MODULE.translate
+      ~REMBI_MODULE.upper
+      ~REMBI_MODULE.startswith
+      ~REMBI_MODULE.endswith
+      ~REMBI_MODULE.removeprefix
+      ~REMBI_MODULE.removesuffix
+      ~REMBI_MODULE.isascii
+      ~REMBI_MODULE.islower
+      ~REMBI_MODULE.isupper
+      ~REMBI_MODULE.istitle
+      ~REMBI_MODULE.isspace
+      ~REMBI_MODULE.isdecimal
+      ~REMBI_MODULE.isdigit
+      ~REMBI_MODULE.isnumeric
+      ~REMBI_MODULE.isalpha
+      ~REMBI_MODULE.isalnum
+      ~REMBI_MODULE.isidentifier
+      ~REMBI_MODULE.isprintable
+      ~REMBI_MODULE.zfill
+      ~REMBI_MODULE.format
+      ~REMBI_MODULE.format_map
+      ~REMBI_MODULE.maketrans
+      ~REMBI_MODULE.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~REMBI_MODULE.STUDY
+      ~REMBI_MODULE.BIOSAMPLE
+      ~REMBI_MODULE.SPECIMEN_PREP
+      ~REMBI_MODULE.IMAGE_ACQUISITION
+      ~REMBI_MODULE.IMAGE_DATA
+      ~REMBI_MODULE.ANALYZED_DATA
+      ~REMBI_MODULE.UNCATEGORIZED
+   
+   

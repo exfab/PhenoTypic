@@ -1,0 +1,6 @@
+phenotypic.data.load\_synth\_yeast\_plate
+=========================================
+
+.. currentmodule:: phenotypic.data
+
+.. autofunction:: load_synth_yeast_plate

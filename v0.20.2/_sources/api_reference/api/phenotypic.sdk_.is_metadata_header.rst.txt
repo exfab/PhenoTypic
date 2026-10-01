@@ -1,0 +1,6 @@
+phenotypic.sdk\_.is\_metadata\_header
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: is_metadata_header

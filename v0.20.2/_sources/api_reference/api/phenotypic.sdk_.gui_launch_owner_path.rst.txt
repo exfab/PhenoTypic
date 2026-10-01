@@ -1,0 +1,6 @@
+phenotypic.sdk\_.gui\_launch\_owner\_path
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: gui_launch_owner_path

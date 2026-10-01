@@ -1,0 +1,45 @@
+phenotypic.sdk\_.slurm.SlurmArrayScriptSpec
+===========================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autoclass:: SlurmArrayScriptSpec
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SlurmArrayScriptSpec.__init__
+      ~SlurmArrayScriptSpec.render
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SlurmArrayScriptSpec.array_name
+      ~SlurmArrayScriptSpec.bounds_error_message
+      ~SlurmArrayScriptSpec.current_var
+      ~SlurmArrayScriptSpec.error_log_path
+      ~SlurmArrayScriptSpec.missing_task_id_message
+      ~SlurmArrayScriptSpec.prelude
+      ~SlurmArrayScriptSpec.requeue
+      ~SlurmArrayScriptSpec.signal_grace
+      ~SlurmArrayScriptSpec.job_name
+      ~SlurmArrayScriptSpec.slurm_args
+      ~SlurmArrayScriptSpec.log_path
+      ~SlurmArrayScriptSpec.task_indices
+      ~SlurmArrayScriptSpec.body
+      ~SlurmArrayScriptSpec.comments
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.write\_slurm\_array\_script
+==================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: write_slurm_array_script

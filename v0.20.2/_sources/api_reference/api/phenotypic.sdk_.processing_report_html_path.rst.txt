@@ -1,0 +1,6 @@
+phenotypic.sdk\_.processing\_report\_html\_path
+===============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: processing_report_html_path

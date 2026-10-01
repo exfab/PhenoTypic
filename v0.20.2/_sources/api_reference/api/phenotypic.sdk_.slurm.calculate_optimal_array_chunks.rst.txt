@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.calculate\_optimal\_array\_chunks
+========================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: calculate_optimal_array_chunks

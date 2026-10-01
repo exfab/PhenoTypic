@@ -1,0 +1,6 @@
+phenotypic.sdk\_.overlays\_dir
+==============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: overlays_dir

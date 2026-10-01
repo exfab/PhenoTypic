@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migrate\_legacy\_qc
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migrate_legacy_qc

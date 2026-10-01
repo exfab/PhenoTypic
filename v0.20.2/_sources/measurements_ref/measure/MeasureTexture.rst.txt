@@ -1,0 +1,109 @@
+.. _measurement-op-measuretexture:
+
+MeasureTexture
+==============
+
+Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.
+
+Parameters and usage: :py:class:`MeasureTexture <phenotypic.measure.MeasureTexture>`.
+
+- **One row per:** detected colony
+- **Written to:** ``deliverables/measurements.csv`` (every operation, with your metadata joined) and ``deliverables/measurements_by_feature/MeasureTexture.csv``, each with a ``.parquet`` beside it
+- **Columns:** 13, each a pattern (see Placeholders)
+
+.. rubric:: Placeholders
+
+Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:
+
+``<x>``
+   The ``scale`` parameter: the distance, in pixels, between the two pixels compared when building the gray-level co-occurrence matrix, zero-padded to two digits. The default ``scale=5`` writes ``scale05``. To convert it to a physical distance, divide by your image's pixels per millimetre: at 40 px/mm, ``scale05`` compares pixels 0.125 mm apart.
+
+``<direction>``
+   The direction of that offset: ``deg000``, ``deg045``, ``deg090`` or ``deg135`` (degrees), or ``avg``, the mean of the four. Each feature therefore writes five columns per scale, e.g. ``Texture_Contrast-deg045-scale05``.
+
+.. _measurement-info-texture:
+
+:doc:`TEXTURE </api_reference/api/phenotypic.schema.TEXTURE>`
+-------------------------------------------------------------
+
+.. list-table:: Metric family: **Texture**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``Texture_AngularSecondMoment-<direction>-scale<x>``
+     - Angular second moment (energy / uniformity). Measures the degree of local homogeneity
+       (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
+       mycelial density). Low values → heterogeneous surfaces (e.g., sectored, wrinkled, or mixed
+       sporulation zones). Reflects colony surface regularity rather than brightness.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_Contrast-<direction>-scale<x>``
+     - Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
+       differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
+       indicate gradual tonal changes or uniformly pigmented colonies. Quantifies visual roughness
+       and zonation amplitude.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_Correlation-<direction>-scale<x>``
+     - Linear gray-level correlation between neighboring pixels. Positive, high values suggest
+       structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
+       values indicate uncorrelated, disordered growth (e.g., diffuse cottony mycelium). Sensitive to
+       illumination gradients and directional GLCM computation.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_HaralickVariance-<direction>-scale<x>``
+     - GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
+       from raw intensity variance. High values → complex, multi-zone textures with variable
+       hyphal/spore densities. Low values → consistent gray-level relationships and simpler colony
+       surfaces.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_InverseDifferenceMoment-<direction>-scale<x>``
+     - Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
+       (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
+       (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_SumAverage-<direction>-scale<x>``
+     - Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
+       neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
+       illumination and exposure are controlled, but remains a second-order rather than first-order
+       intensity metric.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_SumVariance-<direction>-scale<x>``
+     - Variance of gray-level sum distribution. High values → heterogeneous brightness zones
+       (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
+       tone across the colony. Often correlated with Contrast; use comparatively within one setup.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_SumEntropy-<direction>-scale<x>``
+     - Entropy of the gray-level sum distribution. High values → diverse brightness combinations
+       and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
+       spaced rings). Indicates spatial unpredictability of summed intensities.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_Entropy-<direction>-scale<x>``
+     - Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
+       content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
+       Low values → simple, smooth, predictable patterns (glabrous or uniform colonies). Sensitive to
+       gray-level quantization and image dynamic range.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_DiffVariance-<direction>-scale<x>``
+     - Variance of gray-level difference distribution. High values → mixture of smooth and textured
+       regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
+       Highlights heterogeneity in edge magnitude across the colony.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_DiffEntropy-<direction>-scale<x>``
+     - Entropy of gray-level difference distribution. High values → irregular, unpredictable
+       intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
+       regular periodic transitions (e.g., concentric zonation). Reflects randomness of local contrast
+       rather than its magnitude.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_InfoCorrelation1-<direction>-scale<x>``
+     - Information measure of correlation 1. Compares joint vs marginal entropies to quantify
+       mutual dependence between gray levels. Positive values → structured, predictable textures
+       (e.g., organized radial growth); near-zero → independence between adjacent regions.
+       Direction of sign varies with implementation.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
+   * - ``Texture_InfoCorrelation2-<direction>-scale<x>``
+     - Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
+       Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric
+       rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
+       organization missed by linear correlation.
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`

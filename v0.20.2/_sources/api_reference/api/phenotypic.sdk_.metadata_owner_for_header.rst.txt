@@ -1,0 +1,6 @@
+phenotypic.sdk\_.metadata\_owner\_for\_header
+=============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: metadata_owner_for_header

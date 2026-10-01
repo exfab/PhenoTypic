@@ -1,0 +1,55 @@
+.. _measurement-op-icc:
+
+ICC
+===
+
+Flag ``groupby`` groups whose replicates have low ICC(2,1) agreement.
+
+Parameters and usage: :py:class:`ICC <phenotypic.analysis.ICC>`.
+
+- **Written to:** the frame ``analyze()`` returns; a CLI run stores it as one table in ``deliverables/qc/qc.duckdb``
+- **Columns:** 6
+
+.. _measurement-info-quality-icc:
+
+:doc:`QUALITY_ICC </api_reference/api/phenotypic.schema.QUALITY_ICC>`
+---------------------------------------------------------------------
+
+.. list-table:: Metric family: **QC_ICC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_ICC_NumSubjects``
+     - Distinct subjects (e.g. timepoints) in the two-way model.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_ICC_NumRaters``
+     - Replicates per subject in the two-way model.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_ICC_NumMembers``
+     - Total measurements contributing to the ICC.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`QUALITY_CHECK </api_reference/api/phenotypic.schema.QUALITY_CHECK>`
+-------------------------------------------------------------------------
+
+Every quality check writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_ICC_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_ICC_Metric``
+     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_ICC_Status``
+     - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

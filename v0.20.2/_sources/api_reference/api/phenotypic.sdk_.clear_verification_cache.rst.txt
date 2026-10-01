@@ -1,0 +1,6 @@
+phenotypic.sdk\_.clear\_verification\_cache
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: clear_verification_cache

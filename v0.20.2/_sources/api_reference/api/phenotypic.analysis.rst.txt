@@ -1,0 +1,59 @@
+﻿phenotypic.analysis
+===================
+
+.. automodule:: phenotypic.analysis
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      cubical_persistence
+      filter_spec_json
+      filter_spec_query
+      render_error_analysis_html
+      render_error_analysis_report
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      LinearCapAndLagModel
+      EdgeCorrector
+      ErrorCutoffFinder
+      ExpectedVsDetectedCount
+      GridOccupancy
+      ICC
+      LinearLagModel
+      LogGrowthModel
+      MADOutlierRemover
+      MaxModifiedZScore
+      PersistencePairsResult
+      RelativeMAD
+      ReplicateAgreement
+      TukeyOutlierFraction
+      TukeyOutlierRemover
+   
+   
+
+   
+   
+   
+
+
+

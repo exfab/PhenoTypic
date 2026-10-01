@@ -1,0 +1,6 @@
+phenotypic.tune.select\_params\_to\_freeze
+==========================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: select_params_to_freeze

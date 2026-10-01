@@ -1,0 +1,6 @@
+phenotypic.sdk\_.default\_output\_dir\_name
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: default_output_dir_name

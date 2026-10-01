@@ -1,0 +1,6 @@
+phenotypic.sdk\_.aggregation\_shard\_dir
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: aggregation_shard_dir

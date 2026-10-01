@@ -1,0 +1,6 @@
+phenotypic.tune.run\_auto\_space
+================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: run_auto_space

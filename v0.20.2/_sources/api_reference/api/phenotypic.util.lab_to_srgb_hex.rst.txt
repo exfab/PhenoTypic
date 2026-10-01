@@ -1,0 +1,6 @@
+phenotypic.util.lab\_to\_srgb\_hex
+==================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: lab_to_srgb_hex

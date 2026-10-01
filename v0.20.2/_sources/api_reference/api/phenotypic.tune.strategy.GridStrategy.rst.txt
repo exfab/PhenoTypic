@@ -1,0 +1,28 @@
+phenotypic.tune.strategy.GridStrategy
+=====================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: GridStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridStrategy.__init__
+      ~GridStrategy.is_exhausted
+      ~GridStrategy.register_result
+      ~GridStrategy.suggest
+   
+   
+
+   
+   
+   

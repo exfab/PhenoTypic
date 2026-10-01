@@ -1,0 +1,154 @@
+.. _measurement-op-measuresize:
+
+MeasureSize
+===========
+
+Measure the key size magnitudes of each detected colony.
+
+Parameters and usage: :py:class:`MeasureSize <phenotypic.measure.MeasureSize>`.
+
+- **One row per:** detected colony
+- **Written to:** ``deliverables/measurements.csv`` (every operation, with your metadata joined) and ``deliverables/measurements_by_feature/MeasureSize.csv``, each with a ``.parquet`` beside it
+- **Columns:** 14
+
+.. _measurement-info-size:
+
+:doc:`SIZE </api_reference/api/phenotypic.schema.SIZE>`
+-------------------------------------------------------
+
+.. versionchanged:: 0.20.0
+   Colony size magnitudes moved from :class:`~phenotypic.schema.SHAPE` to
+   :class:`~phenotypic.schema.SIZE`: :class:`~phenotypic.measure.MeasureSize`
+   is now their only source, and :class:`~phenotypic.measure.MeasureShape`
+   emits form descriptors only. The radius columns were rebuilt so each name
+   matches its value. Retired columns are not aliased, and stores written by
+   earlier versions keep their old column names. A run started before 0.20.0
+   must be re-run with ``--overwrite``, not resumed. Resuming reuses the
+   images it already finished, with their old column names.
+
+   ==============================  ================================
+   Retired column                  Successor
+   ==============================  ================================
+   ``Shape_Area``                  ``Size_Area``
+   ``Shape_Perimeter``             ``Size_Perimeter``
+   ``Shape_ConvexArea``            ``Size_ConvexArea``
+   ``Shape_BboxArea``              ``Size_BboxArea``
+   ``Shape_MajorAxisLength``       ``Size_MajorAxisLength``
+   ``Shape_MinorAxisLength``       ``Size_MinorAxisLength``
+   ``Shape_MinFeretDiameter``      ``Size_MinFeretDiameter``
+   ``Shape_MaxFeretDiameter``      ``Size_MaxFeretDiameter``
+   ``Shape_MaxRadius``             ``Size_InscribedRadius``
+   ``Shape_MeanRadius``            ``Shape_MeanBoundaryDist``
+   ``Shape_MedianRadius``          ``Shape_MedianBoundaryDist``
+   ==============================  ================================
+
+   New columns: ``Size_MedianRadius``, ``Size_MeanRadius``,
+   ``Size_RobustMeanRadius`` and ``Size_MaxRadius``, all measured from one
+   center, the centroid of the distance-transform peak.
+
+   **Same name, different value:** ``Size_MedianRadius``, ``Size_MeanRadius``
+   and ``Size_MaxRadius`` are *not* the retired ``Shape_MedianRadius``,
+   ``Shape_MeanRadius`` and ``Shape_MaxRadius``. Compare old data against the
+   successor in the table above (identical except for colonies touching
+   another colony or the image border, which now measure to that edge),
+   never against the same-named ``Size_`` column.
+   Model outputs are named by the stripped label, so ``<Model>_MaxRadius_*``,
+   ``<Model>_MeanRadius_*`` and ``<Model>_MedianRadius_*`` fitted before and
+   after 0.20.0 share a name but not a meaning.
+
+
+.. list-table:: Metric family: **Size**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+     - Categories
+     - Biology
+     - Image
+   * - ``Size_Area``
+     - Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - Projected 2D footprint of the colony in pixels — a common proxy for colony size and overall growth in arrayed plate assays. With matched imaging and incubation, larger area generally reflects greater proliferation or spreading; it captures only the 2D footprint, not colony height or cell density.
+     - .. image:: /_static/measurements/shape/area.png
+          :width: 110px
+   * - ``Size_IntegratedIntensity``
+     - The sum of the object's grayscale pixels. Calculated as :math:`\sum{\text{pixel values}} \times \text{area}`.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_Perimeter``
+     - Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_ConvexArea``
+     - Area of the smallest convex polygon that completely contains the colony, computed from the convex hull of its pixel centers. Represents the colony's "filled-in" appearance if all indentations and holes were removed. Because the hull passes through pixel centers it is slightly smaller than the pixel count of a convex colony. Useful for detecting colony spreading patterns or invasive growth characteristics.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_BboxArea``
+     - Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MajorAxisLength``
+     - Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MinorAxisLength``
+     - Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MinFeretDiameter``
+     - Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MaxFeretDiameter``
+     - Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_InscribedRadius``
+     - Radius of the largest circle that fits entirely inside the colony, equal to the maximum of the colony's Euclidean distance transform: the distance from the colony's deepest interior point to its nearest edge. For an ideal disk it equals the disk radius. It reflects the colony's narrowest dimension, not its overall extent: an elongated colony reports half its width whatever its length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it unchanged. Use MaxRadius for overall extent. The image border counts as an edge.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MedianRadius``
+     - Median distance from the colony center to its boundary over the radial signature: the boundary distance sampled in equal angular directions (360 by default), keeping the outermost boundary crossing in each. The outer outline of every piece of the colony is sampled and holes are ignored, so a colony made of several pieces (a runner joined only at a corner, or fragments merged into one colony) is measured whole, and MaxRadius reaches its farthest piece. The center is the centroid of the distance-transform peak plateau; it lies inside compact colonies, but for a ring-shaped colony it can fall in the central hole. For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 14.1 pixels. This is not the value the retired Shape_MedianRadius carried (a median distance to the nearest edge, now Shape_MedianBoundaryDist).
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MeanRadius``
+     - Mean distance from the colony center to its boundary over the radial signature (see MedianRadius for the center and sampling). For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 21.0 pixels. A runner or spur pulls it upward in proportion to its angular width; use RobustMeanRadius for the compact body. This is not the value the retired Shape_MeanRadius carried (a mean distance to the nearest edge, now Shape_MeanBoundaryDist).
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_RobustMeanRadius``
+     - Symmetrically trimmed mean (20% from each end by default) of the radial signature (see MedianRadius). Because the signature is sampled by angle, a narrow runner contributes only its angular width and is trimmed away, so this estimates the typical radius of the colony's compact body. The trim treats genuine elongation the same way: an ideal 100 x 20 pixel rectangle gives 16.2 pixels against a MeanRadius of 21.0 pixels. For an ideal disk it equals the disk radius.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -
+   * - ``Size_MaxRadius``
+     - Largest distance from the colony center to its boundary over the radial signature (see MedianRadius): the colony's furthest reach. For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 50.9 pixels. A MaxRadius far above RobustMeanRadius indicates a protrusion, spur, or runner. This is not the value the retired Shape_MaxRadius carried (the inscribed radius, now Size_InscribedRadius).
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - :bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`
+     - 
+     -

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.generate\_dispatcher\_script
+===================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: generate_dispatcher_script

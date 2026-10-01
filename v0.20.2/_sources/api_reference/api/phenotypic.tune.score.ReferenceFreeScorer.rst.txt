@@ -1,0 +1,68 @@
+phenotypic.tune.score.ReferenceFreeScorer
+=========================================
+
+.. currentmodule:: phenotypic.tune.score
+
+.. autoclass:: ReferenceFreeScorer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ReferenceFreeScorer.__init__
+      ~ReferenceFreeScorer.availability
+      ~ReferenceFreeScorer.construct
+      ~ReferenceFreeScorer.copy
+      ~ReferenceFreeScorer.dict
+      ~ReferenceFreeScorer.finalize
+      ~ReferenceFreeScorer.from_orm
+      ~ReferenceFreeScorer.is_unattended_safe
+      ~ReferenceFreeScorer.json
+      ~ReferenceFreeScorer.meta_validate
+      ~ReferenceFreeScorer.model_construct
+      ~ReferenceFreeScorer.model_copy
+      ~ReferenceFreeScorer.model_dump
+      ~ReferenceFreeScorer.model_dump_json
+      ~ReferenceFreeScorer.model_json_schema
+      ~ReferenceFreeScorer.model_parametrized_name
+      ~ReferenceFreeScorer.model_post_init
+      ~ReferenceFreeScorer.model_rebuild
+      ~ReferenceFreeScorer.model_validate
+      ~ReferenceFreeScorer.model_validate_json
+      ~ReferenceFreeScorer.model_validate_strings
+      ~ReferenceFreeScorer.parse_file
+      ~ReferenceFreeScorer.parse_obj
+      ~ReferenceFreeScorer.parse_raw
+      ~ReferenceFreeScorer.schema
+      ~ReferenceFreeScorer.schema_json
+      ~ReferenceFreeScorer.score_image
+      ~ReferenceFreeScorer.update_forward_refs
+      ~ReferenceFreeScorer.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ReferenceFreeScorer.count_term_name
+      ~ReferenceFreeScorer.model_computed_fields
+      ~ReferenceFreeScorer.model_config
+      ~ReferenceFreeScorer.model_extra
+      ~ReferenceFreeScorer.model_fields
+      ~ReferenceFreeScorer.model_fields_set
+      ~ReferenceFreeScorer.count_check
+      ~ReferenceFreeScorer.replicate_groupby
+      ~ReferenceFreeScorer.gt_masks_source
+      ~ReferenceFreeScorer.min_area
+   
+   

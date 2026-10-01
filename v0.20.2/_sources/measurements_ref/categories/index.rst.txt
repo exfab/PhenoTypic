@@ -1,0 +1,87 @@
+Categories
+==========
+
+.. _measurement-categories:
+
+Every measurement column begins with its metric family: ``Size_Area`` belongs to
+the **Size** family, which says only which schema the column comes from. A
+**category** is a separate, curated grouping that cuts across families: one
+category can gather size, intensity and colour columns that three different
+schemas produce, and one column can belong to several categories.
+
+A category tells you where to look first, not how far to trust a single value;
+that is the job of the Type badge (see :doc:`../tier_system`).
+
+Every run that measures objects writes one spreadsheet per category that has at
+least one column in the run, under ``deliverables/measurements_by_category/``, holding the
+metadata and position columns plus that category's columns.
+
+.. _measurement-category-startingmetrics:
+
+Starting Metrics
+----------------
+
+Core per-colony magnitudes to examine first: the size measurements, integrated grayscale intensity, and the CIELAB medoid colour.
+
+Written to ``deliverables/measurements_by_category/StartingMetrics.csv`` (and ``.parquet``).
+
+.. list-table::
+   :header-rows: 1
+
+   * - Column
+     - Metric family
+     - Type
+   * - ``ColorLab_L*Medoid``
+     - :ref:`ColorLab <measurement-info-colorlab>`
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``ColorLab_a*Medoid``
+     - :ref:`ColorLab <measurement-info-colorlab>`
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``ColorLab_b*Medoid``
+     - :ref:`ColorLab <measurement-info-colorlab>`
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``Intensity_IntegratedIntensity``
+     - :ref:`Intensity <measurement-info-intensity>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_Area``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_IntegratedIntensity``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_Perimeter``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_ConvexArea``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_BboxArea``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MajorAxisLength``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MinorAxisLength``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MinFeretDiameter``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MaxFeretDiameter``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_InscribedRadius``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MedianRadius``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MeanRadius``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_RobustMeanRadius``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``Size_MaxRadius``
+     - :ref:`Size <measurement-info-size>`
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`

@@ -1,0 +1,48 @@
+﻿phenotypic.correction
+=====================
+
+.. automodule:: phenotypic.correction
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      CalibrateColorRpcc
+      CaptureMetadata
+      CheckerLattice
+      CheckerRoi
+      ColorCheckerProfile
+      ColorCorrector
+      ColorDenoise
+      ColumnLattice
+      DenoiseBlockMatch
+      GridAligner
+      CropImage
+      PadImage
+      BayesShrinkCorrector
+      QcLimits
+      QcRecord
+      VisuShrinkCorrector
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,264 @@
+﻿phenotypic.sdk\_
+================
+
+.. automodule:: phenotypic.sdk_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      aggregate_publication_marker_path
+      atomic_write_bytes
+      atomic_write_json
+      atomic_write_parquet
+      atomic_write_text
+      atomic_write_with_writer
+      publication_commit
+      build_measurement_table_descriptor
+      build_metadata_table_descriptor
+      embedded_measurement_columns
+      read_embedded_measurement_column
+      read_embedded_measurement_descriptor
+      replace_embedded_measurement_table
+      replace_image_tables
+      write_embedded_measurement_table
+      write_image_tables
+      write_metadata_table
+      canonical_metadata_order
+      ensure_metadata_prefix
+      external_metadata_preserved_columns
+      is_binary_mask
+      is_metadata_header
+      metadata_category_for_label
+      metadata_category_prefixes
+      metadata_member_for_header
+      metadata_member_for_label
+      metadata_only_mask
+      metadata_owner_for_header
+      metadata_owner_for_label
+      normalize_metadata_columns
+      order_measurement_columns
+      metadata_migration_authority
+      migrate_metadata_bundle
+      migrate_metadata_file
+      migrate_preflighted_metadata_bundle
+      preflight_metadata_schema
+      rollback_metadata_migration
+      validated_published_metadata_migration_targets
+      timed_execution
+      describe_durability
+      durable_writes_enabled
+      new_part_path
+      promote_store
+      read_phenotypic_attributes
+      sweep_orphan_parts
+      valid_staged_store
+      aggregate_proof_is_current
+      assert_identity_current
+      clear_verification_cache
+      finalization_input_object
+      resolve_run_state
+      run_identity
+      aggregation_shard_dir
+      analysis_full_parquet_path
+      analysis_manifest_path
+      best_pipeline_path
+      best_params_path
+      bytes_fingerprint
+      chunk_lock_path
+      chunk_manifest_path
+      chunk_parquet_filename
+      chunk_parquet_path
+      chunk_state_path
+      chunks_dir
+      checkpoint_lock_filename
+      checkpoint_lock_path
+      dashboard_html_path
+      dataset_measurements_dir
+      dataset_overlays_dir
+      dataset_results_dir
+      dataset_zarr_dir
+      datasets_needing_migration
+      overlays_dir
+      plots_dir
+      plot_failures_jsonl_path
+      plotlyjs_bundle_path
+      curation_labels_parquet_path
+      custom_categories_json_path
+      default_output_dir_name
+      deliverables_dir
+      error_analysis_csv_path
+      error_analysis_html_path
+      error_analysis_parquet_path
+      error_category_parquet_path
+      errors_dir
+      event_log_path
+      ensure_typed_json_suffix
+      failures_jsonl_path
+      file_fingerprint
+      generalization_path
+      generation_staging_path
+      gui_launch_owner_path
+      slurm_lifecycle_path
+      image_completion_marker_path
+      image_record_path
+      read_image_record
+      record_provenance
+      record_rejection
+      has_config_suffix
+      job_metadata_path
+      load_image_from_store
+      logs_dir
+      manifest_json_path
+      master_carries_user_metadata
+      user_metadata_headers
+      master_measurements_parquet_path
+      measurements_by_category_dir
+      measurements_by_feature_dir
+      measurements_csv_path
+      measurements_parquet_path
+      migration_backup_dir
+      migration_backup_path
+      migration_lock_path
+      migration_receipt_path
+      named_analysis_csv_path
+      named_analysis_parquet_path
+      named_analysis_paths
+      metadata_csv_deliverable_path
+      terminal_failures_jsonl_path
+      matches_any_suffix
+      migrate_legacy_machine_state
+      migrate_legacy_qc
+      clear_machine_state
+      machine_state_restart_targets
+      preserved_on_restart_names
+      param_importance_path
+      pareto_best_pipeline_path
+      pareto_dir
+      pareto_front_parquet_path
+      pareto_importance_path
+      phenotypic_cache_dir
+      phenotypic_cache_pipeline_json_path
+      pipeline_json_path
+      pipeline_publication_lock
+      pipeline_publication_lock_path
+      paths_fingerprint
+      processing_report_html_path
+      processing_state_path
+      progress_dir
+      qc_dir
+      qc_duckdb_path
+      qc_review_state_path
+      readme_md_path
+      read_run_manifest
+      recompile_dir
+      recompile_status_dir
+      rembi_manifest_path
+      resolve_event_log_path
+      resolve_execution_mode
+      resolve_manifest_json_path
+      resolve_pipeline_config_path
+      resolve_processing_state_path
+      resolve_progress_dir
+      resolve_split_assignment_path
+      resolve_study_db_path
+      resolve_tuning_spec_path
+      restart_epoch_path
+      results_dir
+      run_completion_marker_path
+      sentinel_resubmitted_path
+      shard_parquet_filename
+      slurm_scripts_dir
+      source_cache_key
+      is_zarr_store_name
+      store_stem
+      source_image_stem
+      source_image_suffix
+      store_publication_token
+      store_revision_identity
+      task_status_filename
+      task_status_path
+      trials_parquet_path
+      tune_cache_dir
+      tune_cache_run_marker_path
+      tune_cache_journal_path
+      tune_cache_split_assignment_path
+      tune_cache_splits_dir
+      tune_cache_study_db_path
+      tuning_spec_path
+      verification_cache_path
+      verified_parquet_path
+      validate_analysis_id
+      zarr_store_path
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      FootprintMixin
+      GridInferenceMixin
+      HDF
+      InputLayerMixin
+      LazyWidgetMixin
+      NormControlMixin
+      NormalizedOutputMixin
+      PreparedEmbeddedMeasurementTable
+      PreparedImageTables
+      MetadataMigrationAuthority
+      MetadataMigrationReport
+      MetadataMigrationResult
+      MetadataMigrationTarget
+      PhenotypicAttr
+      ImageState
+      RunDiagnostics
+      RunIdentity
+      RunState
+      ChunkManifestKey
+      ChunkStateKey
+      DashboardManifestKey
+      DashboardManifestSlurmInfoKey
+      EnvVar
+      JobMetadataKey
+      ModulePath
+      ProcessingStateKey
+      AnalysisArtifactPaths
+      BundleLayout
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: module.rst
+   :recursive:
+
+   colourspace
+   constants_
+   exceptions_
+   napari_
+   slurm
+   slurm_
+

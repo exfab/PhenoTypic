@@ -1,0 +1,37 @@
+phenotypic.analysis.PersistencePairsResult
+==========================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: PersistencePairsResult
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PersistencePairsResult.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PersistencePairsResult.birth_values
+      ~PersistencePairsResult.death_values
+      ~PersistencePairsResult.lifetimes
+      ~PersistencePairsResult.birth_cells
+      ~PersistencePairsResult.death_cells
+      ~PersistencePairsResult.essential_cells
+      ~PersistencePairsResult.filtration
+   
+   

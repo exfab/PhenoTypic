@@ -1,0 +1,6 @@
+phenotypic.tune.compute\_param\_importance
+==========================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: compute_param_importance

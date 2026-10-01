@@ -1,0 +1,68 @@
+phenotypic.correction.QcLimits
+==============================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: QcLimits
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QcLimits.__init__
+      ~QcLimits.construct
+      ~QcLimits.copy
+      ~QcLimits.dict
+      ~QcLimits.from_orm
+      ~QcLimits.json
+      ~QcLimits.model_construct
+      ~QcLimits.model_copy
+      ~QcLimits.model_dump
+      ~QcLimits.model_dump_json
+      ~QcLimits.model_json_schema
+      ~QcLimits.model_parametrized_name
+      ~QcLimits.model_post_init
+      ~QcLimits.model_rebuild
+      ~QcLimits.model_validate
+      ~QcLimits.model_validate_json
+      ~QcLimits.model_validate_strings
+      ~QcLimits.parse_file
+      ~QcLimits.parse_obj
+      ~QcLimits.parse_raw
+      ~QcLimits.schema
+      ~QcLimits.schema_json
+      ~QcLimits.update_forward_refs
+      ~QcLimits.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QcLimits.model_computed_fields
+      ~QcLimits.model_config
+      ~QcLimits.model_extra
+      ~QcLimits.model_fields
+      ~QcLimits.model_fields_set
+      ~QcLimits.max_shift_px
+      ~QcLimits.max_anchor_disagreement_px
+      ~QcLimits.min_ecc
+      ~QcLimits.min_placement_margin
+      ~QcLimits.warn_placement_margin
+      ~QcLimits.max_hungarian_disagreement
+      ~QcLimits.max_mean_impurity
+      ~QcLimits.max_tile_impurity
+      ~QcLimits.max_robust_shift
+      ~QcLimits.max_clipped
+   
+   

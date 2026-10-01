@@ -1,0 +1,35 @@
+phenotypic.util.MeasurementProducer
+===================================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: MeasurementProducer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeasurementProducer.__init__
+      ~MeasurementProducer.output_header
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasurementProducer.shared_infos
+      ~MeasurementProducer.output_key
+      ~MeasurementProducer.producer
+      ~MeasurementProducer.primary_infos
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.phenotypic\_cache\_pipeline\_json\_path
+========================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: phenotypic_cache_pipeline_json_path

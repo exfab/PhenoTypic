@@ -1,0 +1,87 @@
+.. _measurement-op-linearcapandlagmodel:
+
+LinearCapAndLagModel
+====================
+
+Linear-softplus growth fitter with a softplus saturation ceiling.
+
+Parameters and usage: :py:class:`LinearCapAndLagModel <phenotypic.analysis.LinearCapAndLagModel>`.
+
+- **One row per:** fitted group (the ``groupby`` columns)
+- **Written to:** the frame ``analyze()`` returns; when it is the pipeline's model, a CLI run writes ``deliverables/LinearCapAndLagModel.csv`` and ``.parquet``
+- **Columns:** 14, each a pattern (see Placeholders)
+
+.. rubric:: Placeholders
+
+Some column names depend on how you run the operation. They are shown as patterns, with these placeholders:
+
+``<metric>``
+   The fitted column without its metric-family prefix: fitting ``Size_Area`` writes ``LinearCapAndLagModel_Area_v``.
+
+.. _measurement-info-linear-cap-and-lag-model:
+
+:doc:`LINEAR_CAP_AND_LAG_MODEL </api_reference/api/phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL>`
+-----------------------------------------------------------------------------------------------
+
+.. list-table:: Metric family: **LinearCapAndLagModel**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``LinearCapAndLagModel_<metric>_v``
+     - The post-lag phase growth rate.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_s0``
+     - The initial size
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_lambda``
+     - The duration of the lag phase
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_alpha``
+     - lag phase transition sharpness
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_smax``
+     - Carrying capacity used by the model. Either the user-provided scalar or the per-group observed maximum.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_beta``
+     - Saturation transition sharpness. Fitted per-group when a saturation shoulder is detected and ``beta`` is ``None`` at construction; held at the user-provided scalar (or the module default) when no shoulder is present.
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+   * - ``LinearCapAndLagModel_<metric>_mode``
+     - Fit variant selected per-group: 'fixed_beta' (beta held at the user-provided or module-default value) or 'fitted_beta' (beta fitted as a 5th free parameter when a saturation shoulder is detected).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`MODEL_METRICS </api_reference/api/phenotypic.schema.MODEL_METRICS>`
+-------------------------------------------------------------------------
+
+Every growth model writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **ModelMetrics**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``ModelMetrics_<metric>_MAE``
+     - The mean absolute error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_MSE``
+     - The mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_RMSE``
+     - The root mean squared error
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_R2``
+     - The coefficient of determination
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_NumSamples``
+     - The number of samples used for model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerLoss``
+     - The loss of model fitting
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``ModelMetrics_<metric>_OptimizerStatus``
+     - The output of the optimizer status
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

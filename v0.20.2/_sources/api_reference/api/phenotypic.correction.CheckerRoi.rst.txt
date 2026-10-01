@@ -1,0 +1,68 @@
+phenotypic.correction.CheckerRoi
+================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: CheckerRoi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CheckerRoi.__init__
+      ~CheckerRoi.coerce
+      ~CheckerRoi.construct
+      ~CheckerRoi.copy
+      ~CheckerRoi.dict
+      ~CheckerRoi.from_bbox
+      ~CheckerRoi.from_orm
+      ~CheckerRoi.json
+      ~CheckerRoi.model_construct
+      ~CheckerRoi.model_copy
+      ~CheckerRoi.model_dump
+      ~CheckerRoi.model_dump_json
+      ~CheckerRoi.model_json_schema
+      ~CheckerRoi.model_parametrized_name
+      ~CheckerRoi.model_post_init
+      ~CheckerRoi.model_rebuild
+      ~CheckerRoi.model_validate
+      ~CheckerRoi.model_validate_json
+      ~CheckerRoi.model_validate_strings
+      ~CheckerRoi.parse_file
+      ~CheckerRoi.parse_obj
+      ~CheckerRoi.parse_raw
+      ~CheckerRoi.schema
+      ~CheckerRoi.schema_json
+      ~CheckerRoi.update_forward_refs
+      ~CheckerRoi.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CheckerRoi.col_slice
+      ~CheckerRoi.model_computed_fields
+      ~CheckerRoi.model_config
+      ~CheckerRoi.model_extra
+      ~CheckerRoi.model_fields
+      ~CheckerRoi.model_fields_set
+      ~CheckerRoi.row_slice
+      ~CheckerRoi.shape
+      ~CheckerRoi.row
+      ~CheckerRoi.col
+      ~CheckerRoi.label
+      ~CheckerRoi.expect_tiles
+      ~CheckerRoi.anchor_col
+   
+   

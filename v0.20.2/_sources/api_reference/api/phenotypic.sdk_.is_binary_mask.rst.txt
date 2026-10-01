@@ -1,0 +1,6 @@
+phenotypic.sdk\_.is\_binary\_mask
+=================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: is_binary_mask

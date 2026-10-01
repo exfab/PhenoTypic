@@ -1,0 +1,6 @@
+phenotypic.sdk\_.error\_category\_parquet\_path
+===============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: error_category_parquet_path

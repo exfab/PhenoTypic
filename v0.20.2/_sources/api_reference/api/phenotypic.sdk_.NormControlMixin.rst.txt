@@ -1,0 +1,25 @@
+phenotypic.sdk\_.NormControlMixin
+=================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: NormControlMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NormControlMixin.__init__
+   
+   
+
+   
+   
+   
