@@ -2,7 +2,11 @@
 
 Findings F25, F29; review R21, R30. The node-local check reads the filesystem
 type of each path's mount from ``/proc/self/mounts``; these tests replace that
-read with a scripted mount table so they run the same on any host.
+read with a scripted mount table. The table is Linux's, but the paths matched
+against it are still resolved on the host, so a test that expects a mount to
+match runs on Linux only: macOS resolves ``/tmp`` to ``/private/tmp`` and
+Windows to ``<drive>:\\tmp``. Off Linux the production check reads no table
+and skips.
 """
 
 from __future__ import annotations
@@ -178,6 +182,12 @@ def _slurm_context(pipeline=None, **paths):
     )
 
 
+#: A scripted Linux mount table only matches paths resolved on Linux.
+linux_paths = pytest.mark.skipif(
+    sys.platform != "linux", reason="matches host-resolved paths against a Linux mount table"
+)
+
+
 def _node_local(findings):
     return _by_code(findings).get("PF-NODE-LOCAL")
 
@@ -189,6 +199,7 @@ def test_shared_filesystems_produce_nothing(mounts) -> None:
     ))) is None
 
 
+@linux_paths
 @pytest.mark.parametrize(
     ("option", "value", "fs"),
     [
@@ -237,6 +248,7 @@ def test_no_mount_table_means_no_finding(monkeypatch) -> None:
     assert _node_local(check_output_location(_slurm_context(output_dir=Path("/tmp/out")))) is None
 
 
+@linux_paths
 def test_the_longest_mount_wins() -> None:
     fs = _cli_preflight._filesystem_type(Path("/bigdata/with space/x"), MOUNTS)
 
@@ -244,11 +256,13 @@ def test_the_longest_mount_wins() -> None:
     assert _cli_preflight._filesystem_type(Path("/bigdata/x"), MOUNTS) == "gpfs"
 
 
+@linux_paths
 def test_a_later_mount_at_the_same_point_wins() -> None:
     """Review E8: a later entry covers an earlier one at the same mount point."""
     assert _cli_preflight._filesystem_type(Path("/over/run"), MOUNTS) == "gpfs"
 
 
+@linux_paths
 def test_every_octal_escape_is_decoded() -> None:
     """Review E8: /proc/self/mounts escapes tab, newline and backslash too."""
     assert _cli_preflight._filesystem_type(Path("/bigdata/with\ttab/x"), MOUNTS) == "tmpfs"

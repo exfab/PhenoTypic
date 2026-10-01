@@ -67,7 +67,9 @@ def _build_reference_tree(tmp_path: Path, monkeypatch: MonkeyPatch) -> Path:
 
 def _all_pages(docs_root: Path) -> dict[str, str]:
     return {
-        path.relative_to(docs_root).with_suffix("").as_posix(): path.read_text()
+        path.relative_to(docs_root).with_suffix("").as_posix(): path.read_text(
+            encoding="utf-8"
+        )
         for path in sorted(docs_root.rglob("*.rst"))
     }
 

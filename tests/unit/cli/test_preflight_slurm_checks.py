@@ -8,6 +8,7 @@ replace with a fake that records the command and returns a scripted result.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -469,6 +470,10 @@ def _fake_scheduler_bin(tmp_path: Path, sbatch_stderr: str) -> Path:
     return bin_dir
 
 
+# The stand-ins are extensionless shebang scripts, which Windows cannot run:
+# there ``sbatch`` is simply not found, and the drain case passes only because
+# a missing sbatch reports the same PF-SBATCH-UNAVAILABLE code.
+@pytest.mark.skipif(sys.platform == "win32", reason="shebang stand-ins for sbatch")
 @pytest.mark.parametrize(
     ("stderr", "exit_code", "code"),
     [

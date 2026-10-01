@@ -227,8 +227,14 @@ class TestMicroSamModelsFolder:
         assert MicroSamCheckpointManager.cache_dir() == tmp_path / "models"
 
     def test_an_empty_variable_counts_as_unset(self, monkeypatch):
+        # Compared with the unset value, not a folder name: the platformdirs
+        # default is ``.../micro_sam`` on Linux and macOS but
+        # ``...\micro_sam\micro_sam\Cache`` on Windows.
+        monkeypatch.delenv("MICROSAM_CACHEDIR", raising=False)
+        unset = MicroSamCheckpointManager.cache_dir()
         monkeypatch.setenv("MICROSAM_CACHEDIR", "")
-        assert MicroSamCheckpointManager.cache_dir().parent.name == "micro_sam"
+        assert MicroSamCheckpointManager.cache_dir() == unset
+        assert "micro_sam" in unset.parts
 
     def test_the_preflight_sees_a_cached_model(self, tmp_path, monkeypatch):
         from phenotypic.detect.nn import MicroSamDetector
