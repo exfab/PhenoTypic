@@ -214,6 +214,19 @@ documents all derive from page order and names alone.
 | re-measure run clear (`_measurement_tables.py:702`) | none: it clears the whole run folder |
 | `latest_run_date` | none: it reads only run names and hashes |
 
+### Where figures go, by mode (unchanged behaviour, now stated and pinned)
+
+| Mode | Figures in each image's store (`figures/<run>/<binding>/<plot>/<file>`) | Copied out to `deliverables/plots/` |
+|---|---|---|
+| full, measure, staged | yes | yes, mirrored as below |
+| **process, `--process-format zarr`** (what AutoConvertRaw-GC runs) | **yes**: the per-ROI overlays land in the store | **no**: process mode has no deliverables tree (`_cli_process_only.py:348-368`) |
+| process, `--process-format tiff` | no: a flat TIFF has nowhere to hold them | no |
+
+This change moves no mode across that line. It is stated here because process
+mode is how AutoConvertRaw-GC gets its per-ROI overlays, and a regression that
+started copying out, or stopped storing, would break that silently. §5 pins it
+with a test.
+
 ### Deliverables: mirror the store (D4)
 
 ```text
@@ -299,6 +312,7 @@ end as a Slurm job, using the committed
 | `CalibrateColorRpcc` | 2 ROIs give pages `tiles/roi_0`, `tiles/roi_1`, `delta_e/delta_e`; each overlay figure carries one ROI panel; a refused frame draws N overlays; 1 ROI gives `tiles/roi_0` |
 | determinism | two same-day `--mode process` runs are byte-identical stores |
 | end to end | a `--mode process` store over a 2-ROI pipeline holds the three files, and the descriptor lists them |
+| process mode, by mode | a `--mode process --process-format zarr` run stores the per-ROI files in the image's store and writes **no** `deliverables/` directory |
 
 The 3 test files that hard-code flat paths are updated, not deleted.
 
