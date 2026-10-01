@@ -98,8 +98,9 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "correction/_color_correction/_calibration_overlay.py": {
         "FigureCanvasAgg": ("render_calibration_overlay", "render_delta_e_bars"),
         "Figure": ("render_calibration_overlay", "render_delta_e_bars"),
-        "Rectangle": ("render_calibration_overlay",),
+        "Rectangle": ("render_calibration_overlay", "render_delta_e_bars"),
         "Patch": ("render_delta_e_bars",),
+        "ScaledTranslation": ("render_delta_e_bars",),
         "font_manager": ("_theme_font_family",),
         "rc_context": ("render_calibration_overlay", "render_delta_e_bars"),
         "phenotypic_mpl_context": (

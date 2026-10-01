@@ -697,9 +697,13 @@ _AFTER_COLOUR = "#E69F00"
 _ANNOTATION_COLOUR = "#8892a4"
 _BAR_PITCH_IN = 0.34     # figure width per scored tile
 _BAR_MIN_W_IN = 4.5
+_BAR_MARGIN_W_IN = 1.2   # figure width outside the bars: y-axis and band labels
 _BAR_H_IN = 3.4
-_TICK_SWATCH_IN = 0.2    # side of each x-axis reference swatch; < _BAR_PITCH_IN
+_TICK_SWATCH_IN = 0.2    # largest side of each x-axis reference swatch
+_TICK_SWATCH_FILL = 0.7  # widest a swatch may be, as a fraction of its slot
 _TICK_SWATCH_GAP_IN = 0.05  # axis <-> swatch
+#: ``gid`` of each x-axis reference swatch, so callers can find them.
+REFERENCE_SWATCH_GID = "reference-swatch"
 
 
 def _scored_tiles(record: CalibrationOverlayRecord) -> list[tuple[TileOverlay, float, float]]:
@@ -722,8 +726,12 @@ def _draw_reference_swatches(fig, ax, tiles: Sequence[TileOverlay], rectangle,
     Sized in inches and anchored at the tick, so a swatch stays square at any
     figure size. Unclipped and in layout, so constrained layout leaves room
     for it below the axis. A rejected tile's swatch is hatched like its bars.
+    A caller's narrow ``figsize`` shrinks the side so neighbours stay apart;
+    the slot is estimated with the same margin the default width allows.
     """
-    side, gap = _TICK_SWATCH_IN, _TICK_SWATCH_GAP_IN
+    slot = (fig.get_figwidth() - _BAR_MARGIN_W_IN) / len(tiles)
+    side = max(0.0, min(_TICK_SWATCH_IN, _TICK_SWATCH_FILL * slot))
+    gap = _TICK_SWATCH_GAP_IN
     at_tick = ax.get_xaxis_transform()  # x in data, y in axes fraction
     for i, tile in enumerate(tiles):
         anchor = scaled_translation(i, 0, at_tick)
@@ -732,7 +740,7 @@ def _draw_reference_swatches(fig, ax, tiles: Sequence[TileOverlay], rectangle,
                 transform=fig.dpi_scale_trans + anchor, clip_on=False,
                 facecolor=tile.reference_srgb, edgecolor=_SWATCH_EDGE, linewidth=0.4,
                 hatch="////" if tile.status == "rejected" else None,
-                label=tile.patch,
+                label=tile.patch, gid=REFERENCE_SWATCH_GID,
         ))
 
 
@@ -748,10 +756,11 @@ def render_delta_e_bars(
     ones. Each pair's x-axis tick is a swatch of the patch's chart reference
     colour rather than its name. A rejected tile's bars and swatch are
     hatched, because outlier rejection kept it out of the fit, so its
-    after-value is held out rather than fitted. The title gives the mean before -> after over the fitted
-    tiles alone -- so it differs from ``ColorCheckerProfile.diagnostics``'
-    means, which include rejected patches, whenever one was rejected. Dashed lines mark the good and fair bands
-    (``DELTA_E_GOOD``, ``DELTA_E_FAIR``).
+    after-value is held out rather than fitted. The title gives the mean
+    before -> after over the fitted tiles alone -- so it differs from
+    ``ColorCheckerProfile.diagnostics``' means, which include rejected
+    patches, whenever one was rejected. Dashed lines mark the good and fair
+    bands (``DELTA_E_GOOD``, ``DELTA_E_FAIR``).
 
     A frame that was refused or skipped has no ΔE00 and still gets a figure:
     the title and why nothing was fitted, and no bars. Every image therefore
@@ -767,8 +776,9 @@ def render_delta_e_bars(
         A ``matplotlib.figure.Figure`` with an Agg canvas attached. The two
         bar series are ``fig.axes[0].containers``, labelled ``"before"`` and
         ``"after"``; a figure with no scored tile has no containers. The
-        swatches are the axes' unclipped ``Rectangle`` patches, in bar order,
-        each labelled with its patch name.
+        swatches are the axes' patches whose ``gid`` is
+        ``REFERENCE_SWATCH_GID``, in bar order, each labelled with its patch
+        name.
     """
     from matplotlib import rc_context
     from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -791,7 +801,8 @@ def render_delta_e_bars(
 
     with phenotypic_mpl_context(), rc_context({"font.family": [_theme_font_family()]}):
         if figsize is None:
-            figsize = (max(_BAR_MIN_W_IN, _BAR_PITCH_IN * len(tiles) + 1.2), _BAR_H_IN)
+            figsize = (max(_BAR_MIN_W_IN, _BAR_PITCH_IN * len(tiles) + _BAR_MARGIN_W_IN),
+                       _BAR_H_IN)
         fig = Figure(figsize=figsize, dpi=dpi, layout="constrained")
         FigureCanvasAgg(fig)
         # Wrapped to the figure: an image name has no length limit.
