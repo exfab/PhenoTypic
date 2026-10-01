@@ -320,6 +320,30 @@ _CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
 }
 
 
+def _use_utf8_output_streams() -> None:
+    """Encode ``sys.stdout`` and ``sys.stderr`` as UTF-8 when they are not already.
+
+    On Windows a redirected stream (a pipe, a file, or the GUI run console's
+    ``subprocess.PIPE``) takes the locale code page, typically cp1252, which
+    cannot encode the CLI's status glyphs (``\\u2713``, ``\\u2192``, box
+    drawing). rich then raises ``UnicodeEncodeError`` on the first one and the
+    run dies before it starts. The run console decodes the child's output as
+    UTF-8 (``_gui/run_console/_runner.py``), so UTF-8 is also what that reader
+    expects. A stream that is already UTF-8 (POSIX locales, the Windows
+    console, click's ``CliRunner``) or that cannot be reconfigured is left
+    alone.
+    """
+    import codecs
+
+    for stream in (sys.stdout, sys.stderr):
+        encoding = getattr(stream, "encoding", None)
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not encoding or reconfigure is None:
+            continue
+        if codecs.lookup(encoding).name != "utf-8":
+            reconfigure(encoding="utf-8")
+
+
 def _load_cli_runtime() -> None:
     """Bind the heavy runtime names into this module's globals.
 
@@ -1940,6 +1964,8 @@ def phenotypic_cli(
     # error. Every mode pays the import, usage errors included -- deliberate,
     # because a run that reaches an image has already paid it (spec A/P13).
     load_runtime_dependencies()
+    # Before the first status line: a cp1252 stream cannot carry its glyphs.
+    _use_utf8_output_streams()
     # Custom operations register on import; doing it here, before any
     # pipeline is read, makes a broken PHENOTYPIC_PRELOAD_MODULES entry fail
     # at startup as one error line naming the variable. Class resolution
