@@ -16,13 +16,17 @@ import weakref
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.abc_.plotting import FigureInputUnavailable, PlotImage, PlotOutput
+from phenotypic.abc_.plotting import FigureInputUnavailable, PlotImage
 from phenotypic.correction import CalibrateColorRpcc
 from phenotypic.plotting._pipeline._store_figures import build_image_figures
 from phenotypic.plotting._pipeline._store_formats import serialize_store_format
 from phenotypic.sdk_._image_figures import FigureRun
 
-from ._checker_frames import frozen_op, render_frame
+from phenotypic.correction._color_correction._calibration_overlay import (
+    render_calibration_overlay,
+)
+
+from ._checker_frames import band_prior, band_rois, frozen_op, render_frame
 
 
 def _png(figure) -> bytes:
@@ -58,26 +62,27 @@ def test_it_is_an_image_plot():
     assert isinstance(frozen_op(), PlotImage)
 
 
-def _page_pngs(output) -> dict[str, bytes]:
-    assert isinstance(output, PlotOutput)
-    return {page.key: _png(page.figure) for page in output.pages}
+def _ids(output) -> list[tuple[str, str]]:
+    return [(page.plot_name, page.key) for page in output.pages]
 
 
-def test_inspect_draws_the_overlay_and_the_delta_e_chart():
+def test_inspect_draws_one_overlay_per_roi_and_the_delta_e_chart():
     operation, frame = _applied()
-    expected = {
-        "tiles": _png(operation.show_tiles()),
-        "delta_e": _png(operation.show_delta_bar_plot()),
-    }
+    record = operation.calibration_record
+    assert len(record.rois) == 2
     output = operation.inspect(frame, for_save=True)
-    assert [page.key for page in output.pages] == ["tiles", "delta_e"]
-    assert _page_pngs(output) == expected
+    assert _ids(output) == [("tiles", "roi_0"), ("tiles", "roi_1"), ("delta_e", "delta_e")]
+    for roi, page in zip(record.rois, output.pages):
+        alone = render_calibration_overlay(record.model_copy(update={"rois": [roi]}))
+        assert _png(page.figure) == _png(alone)  # exactly that ROI, nothing else
+    assert _png(output.pages[2].figure) == _png(operation.show_delta_bar_plot())
+    assert _png(output.pages[0].figure) != _png(output.pages[1].figure)
     # No subject: the held image, which is still alive.
-    assert _page_pngs(operation.inspect()) == expected
+    held = operation.inspect()
+    assert [_png(p.figure) for p in held.pages] == [_png(p.figure) for p in output.pages]
 
 
-def test_a_skipped_frame_still_yields_both_pages():
-    # Every image stores the same pages, so the copy-out layout never flips.
+def test_a_skipped_frame_still_draws_every_roi():
     operation = frozen_op(on_qc_fail="skip")
     frame = Image(arr=render_frame(gain=1.6))  # saturated card
     with warnings.catch_warnings():
@@ -85,10 +90,24 @@ def test_a_skipped_frame_still_yields_both_pages():
         operation.apply(frame, inplace=True)
     assert operation.calibration_record.verdict == "skipped"
     output = operation.inspect(frame)
-    assert [page.key for page in output.pages] == ["tiles", "delta_e"]
-    (ax,) = output.pages[1].figure.axes
-    assert ax.containers == []  # no fit, so no bars; the page says why
+    assert _ids(output) == [("tiles", "roi_0"), ("tiles", "roi_1"), ("delta_e", "delta_e")]
+    (ax,) = output.pages[2].figure.axes
+    assert ax.containers == []
     assert all(_png(page.figure).startswith(b"\x89PNG") for page in output.pages)
+
+
+def test_one_roi_stores_one_overlay():
+    """Review Focus 4."""
+    # One band is 12 patches; a degree-3 fit needs 13 (`require_rank`), and that
+    # fails before QC, so `on_qc_fail` cannot help. Degree 2 fits 12 (probed
+    # 2026-09-30: verdict "corrected", 12/24 fitted).
+    operation = frozen_op(rois=band_rois()[:1], lattice_prior=[band_prior()], degree=2)
+    frame = Image(arr=render_frame())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        operation.apply(frame, inplace=True)
+    assert operation.calibration_record.verdict == "corrected"
+    assert _ids(operation.inspect(frame)) == [("tiles", "roi_0"), ("delta_e", "delta_e")]
 
 
 def test_another_image_is_unavailable():
@@ -150,7 +169,7 @@ def test_a_pipeline_binds_it_by_reference_and_round_trips():
     assert restored_binding.plot is restored.get_ops()["cal"]
 
 
-def test_an_image_pipeline_listing_it_under_plots_stores_both_figures():
+def test_an_image_pipeline_listing_it_under_plots_stores_every_figure_in_its_plot_folder():
     operation = frozen_op()
     pipeline = ImagePipeline(ops={"cal": operation}, plots=[operation])
     frame = Image(arr=render_frame())
@@ -163,9 +182,13 @@ def test_an_image_pipeline_listing_it_under_plots_stores_both_figures():
     assert (stored.failed, stored.unavailable) == ((), ())
     [binding] = stored.bindings
     assert (binding.binding_id, binding.plot_class) == ("cal", "CalibrateColorRpcc")
-    assert [(p.key, p.backend) for p in binding.pages] == [("tiles", "mpl"), ("delta_e", "mpl")]
+    assert [(p.directory, p.key, p.files[0].filename) for p in binding.pages] == [
+        ("tiles", "roi_0", "roi_0.png"), ("tiles", "roi_1", "roi_1.png"),
+        ("delta_e", "delta_e", "delta_e.png"),
+    ]
+    assert {p.backend for p in binding.pages} == {"mpl"}
     for page in binding.pages:
         [file] = page.files
-        assert (file.format, file.filename) == ("png", f"{page.key}.png")
+        assert file.format == "png"
         assert file.data.startswith(b"\x89PNG")
     assert binding.pages[0].files[0].data != binding.pages[1].files[0].data

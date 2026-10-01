@@ -328,7 +328,7 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             for_save: bool = False,
             **overrides: Any,
     ) -> PlotOutput:
-        """Draw the tile overlay and ΔE00 chart for *subject*, the image ``apply()`` ran on.
+        """Draw the per-ROI tile overlays and ΔE00 chart for *subject*, the image ``apply()`` ran on.
 
         Deliberately not ``@figure``: the approved overlay look must not be
         wrapped in a theme context, and its matplotlib figure stores as PNG.
@@ -340,9 +340,10 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             **overrides: None are accepted.
 
         Returns:
-            Two pages: ``"tiles"``, what :meth:`show_tiles` returns, and
-            ``"delta_e"``, what :meth:`show_delta_bar_plot` returns. Both are
-            always present, so every image stores the same pages.
+            One ``tiles`` page per ROI (``roi_<index>``), each an overlay of
+            that ROI alone, then ``delta_e``, what :meth:`show_delta_bar_plot`
+            returns. All are always present, so every image stores the same
+            pages.
 
         Raises:
             FigureInputUnavailable: If no ``apply()`` has kept a record, or the
@@ -369,11 +370,24 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
                     "image: the overlay is drawn only for the image the last "
                     "apply() ran on"
             )
-        # Both pages or neither: a failure in either fails the whole binding,
-        # which publishes nothing. A tiles-only output would publish flat for
-        # this image and flip the copy-out layout against every other image.
+        # All pages or none: a failure in any page fails the whole binding,
+        # which publishes nothing. One overlay per ROI (spec 2026-09-30 §4),
+        # each drawn from the record with only that ROI, so the frame-level
+        # title (verdict, patches fitted) stays on every one.
+        record = self._calibration_record
+        overlays = tuple(
+            PlotPage(
+                key=f"roi_{roi.roi_index}",
+                plot="tiles",
+                figure=render_calibration_overlay(
+                    record.model_copy(update={"rois": [roi]})
+                ),
+                label=f"Tile overlay, ROI {roi.roi_index}",
+            )
+            for roi in record.rois
+        )
         return PlotOutput(pages=(
-            PlotPage(key="tiles", figure=self.show_tiles(), label="Tile overlay"),
+            *overlays,
             PlotPage(key="delta_e", figure=self.show_delta_bar_plot(),
                      label="Delta E00 before and after"),
         ))
