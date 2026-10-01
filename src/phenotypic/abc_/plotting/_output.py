@@ -52,10 +52,13 @@ class PlotPage:
     """One independently saveable figure page.
 
     Args:
-        key: Stable logical page key.
+        key: Stable logical page key; names the page's file.
         figure: Plotly or Matplotlib figure.
         label: Optional human-readable page label.
         metadata: Immutable-by-convention selector metadata.
+        plot: The plot this page belongs to; names the folder its file is
+            stored in. ``None`` means the page is a plot of its own, stored
+            at ``<key>/<key>`` (spec 2026-09-30 §1).
     """
 
     key: str
@@ -64,10 +67,22 @@ class PlotPage:
     metadata: Mapping[str, str | int | float | bool | None] = field(
         default_factory=dict
     )
+    plot: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.key, str) or not self.key:
             raise ValueError("plot page key must be a non-empty string")
+        if self.plot is not None and (
+            not isinstance(self.plot, str) or not self.plot or "/" in self.plot
+        ):
+            raise ValueError(
+                "plot page plot must be None or a non-empty string without '/'"
+            )
+
+    @property
+    def plot_name(self) -> str:
+        """The plot (folder) this page is stored under: ``plot``, else ``key``."""
+        return self.plot if self.plot is not None else self.key
 
 
 @dataclass(frozen=True)
@@ -77,8 +92,10 @@ class PlotOutput:
     pages: tuple[PlotPage, ...]
 
     def __post_init__(self) -> None:
-        keys = [page.key for page in self.pages]
-        duplicates = sorted({key for key in keys if keys.count(key) > 1})
+        ids = [(page.plot_name, page.key) for page in self.pages]
+        duplicates = sorted(
+            {f"{plot}/{key}" for plot, key in ids if ids.count((plot, key)) > 1}
+        )
         if duplicates:
             raise ValueError(f"plot output contains duplicate page keys: {duplicates}")
 
