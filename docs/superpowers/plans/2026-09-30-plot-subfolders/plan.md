@@ -93,6 +93,52 @@
 
 ---
 
+## Execution (execute-plan-orchestration, 2026-09-30)
+
+**Dependency DAG** (→ = must finish before; shared files noted):
+
+```text
+T1 (_output.py) ──┬──────────────► T3 (_writer.py: plot_page_paths; _store_figures.py)
+T2 (ngff_, _image_figures) ──┬──► T3
+                             └──► T4 (_store_copyout.py)        needs T2's split_figure_file_path
+T3 ──► T4 (expects foldered stores)    T3 ──► T5 (_writer.py again: shared with T3)
+T1 ──► T6 (_calibrate_color_rpcc.py)   T1..T6 ──► T7 (integration tests)   T1..T7 ──► T8 (docs, full run)
+Shared test files: test_store_copyout.py (T2 step 4 :341/346, then T4); tests/unit/plotting/* (T3, T4, T5)
+```
+
+**Shapes:** T1 Leaf; T2 Keystone; T3 Keystone; T4 Seam (deliverables copy-out,
+guard contract); T5 Seam (direct publisher plus the GUI guard-count test); T6
+Leaf (calibration pages); T7 Sweep (integration expectations, determinism); T8
+Sweep (docs).
+
+**Clusters, run sequentially:**
+
+| Cluster | Tasks | Why grouped | Model, effort |
+|---|---|---|---|
+| C1 | T1 + T2 | T1 is a Leaf folded into the store keystone; zero file overlap, both are foundations for T3 | frontier (Opus), high |
+| C2 | T3 | keystone: build and keep into plot folders, sweep A | frontier, high |
+| C3 | T4 | seam: copy-out mirror, guard before mkdir | frontier, high |
+| C4 | T5 | seam: direct publisher, GUI guard count | frontier, high |
+| C5 | T6 | leaf: per-ROI calibration pages | mid-tier (Sonnet), medium; verified by the frontier phase reviewer |
+| C6 | T7 | sweep: integration expectations, process-mode pin, determinism | mid-tier, medium; frontier verify at gate C |
+| C7 | T8 steps 1-4 | docs sweep | mid-tier, medium |
+
+The orchestrator runs T8 steps 5-6 (full regression, mypy) itself.
+
+**Parallelism considered and declined.** C3/C4/C5 touch disjoint files, but
+running them at once would need separate worktrees and a merge, and the phase
+gates measure one tree. Sequential keeps each gate one determinate state.
+
+**Gates:**
+- **Before dispatch:** plan review, done (`docs/superpowers/reports/2026-09-30-plot-subfolders/plan-review.md`) and folded in.
+- **Per cluster (light):** the orchestrator reads the diff, runs the task's focused tests and ruff, and commits.
+- **Phase gates (deep):**
+  - **A** after C2: `implementation-test-reviewer`, frontier, over T1-T3, plus the 17-file set and the out-of-set files as a Slurm job.
+  - **B** after C4: the same, over T4-T5.
+  - **C** after C6: `implementation-test-reviewer` over T6-T7, plus the 17-file set, which must give 0 failures.
+- **End:** one simplify pass (frontier, quality only), then the full sharded regression and mypy (T8 steps 5-6).
+- **Escalation:** any open question that conflicts with the spec stops the run and goes to the user.
+
 ## File map
 
 | File | Responsibility | Tasks |
