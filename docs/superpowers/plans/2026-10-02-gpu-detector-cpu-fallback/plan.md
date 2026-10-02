@@ -1,6 +1,29 @@
 # GPU detectors: fall back to CPU when no accelerator is present
 
-Date: 2026-10-02. Status: plan, not implemented.
+Date: 2026-10-02. Status: **implemented** (same day), with the recommended
+scope: only `device="auto"` falls back; an explicit accelerator still raises.
+
+## Implementation notes (deviations from the plan below)
+
+- **Step 3 needed a second change.** `with_default_gpu_request`
+  (`sdk_/slurm/_sbatch.py`) passed an explicit `slurm_gpus_per_node=0` through,
+  so the non-staged path would have emitted `--gpus-per-node=0`, which SLURM
+  rejects (the staged resolver's docstring records this as OQ4). It now drops
+  the key, mirroring `resolve_stage_slurm_args`. The run preflight shares that
+  helper, so it still skips the partition check for that case.
+- **The two CLI blocks became helpers** so they are testable without driving a
+  whole strategy: `_report_gpu_pipeline_device` (local device report) and
+  `gpu_pipeline_slurm_args` (SLURM profile + GRES refusal), both in
+  `_cli/_cli_execution_strategies.py`.
+- **Step 2's optional `StagedGpuStrategy` notice and Step 5 were not done.**
+  The staged path logs the fallback through `resolve_device`'s log warning at
+  model load.
+- **Tests** run without PyTorch through a fake `torch`
+  (`tests/_fakes/fake_torch.py`): `tests/unit/detect/nn/test_resolve_device_fallback.py`
+  and `tests/unit/cli/test_gpu_cpu_fallback.py`. Each of the three fixes was
+  reverted in turn and at least one test failed each time (4, 3 and 1
+  failures). The CPU smoke run of real models listed under **Risks** is still
+  outstanding.
 
 ## Problem
 

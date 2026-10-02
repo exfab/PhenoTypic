@@ -91,7 +91,7 @@ class Sam3(GpuDetector):
         max_instances_per_tile: SAM3's hard 200-instance-per-forward cap;
             structural, not tuned.
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
-            and raises ``RuntimeError`` if none is found.
+            and falls back to CPU with a warning if none is found.
         input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
             layer SAM3 was trained on), ``"gray"``, or ``"detect_mat"``.
             Single-channel layers are stacked to 3 channels and coerced to
@@ -106,7 +106,7 @@ class Sam3(GpuDetector):
     Raises:
         ImportError: If ``transformers`` / ``torch`` are not installed.  Install
             with ``pip install phenotypic[foundation]``.
-        RuntimeError: If ``device="auto"`` and no accelerator is available, or
+        RuntimeError: If an explicitly requested accelerator is unavailable, or
             the gated weights cannot be downloaded (access not granted / no
             token).
 

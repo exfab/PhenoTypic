@@ -2,7 +2,7 @@
 
 Provides :class:`Sam2CheckpointManager` and :class:`MicroSamCheckpointManager`
 for offline-friendly checkpoint management (download/list/clear), plus
-:func:`resolve_device` for GPU auto-detection.
+:func:`resolve_device` for accelerator auto-detection with CPU fallback.
 
 Type aliases defined here (:data:`Sam2ModelSize`, :data:`MicroSamModelType`,
 :data:`Device`, :data:`ResolvedDevice`) are the single source of truth and
@@ -120,15 +120,25 @@ def _build_accelerator_checks() -> list[tuple[str, Callable[[], bool]]]:
 
 def resolve_device(
     device: Device = "auto",
-    allow_cpu: bool = False,
+    allow_cpu: bool = True,
 ) -> ResolvedDevice:
     """Resolve a device string to an available PyTorch device.
+
+    ``"auto"`` means "the best device this machine has": an accelerator when
+    one is present, otherwise CPU. Every GPU detector defaults to ``"auto"``,
+    so a pipeline authored on a GPU workstation still runs on a CPU-only node
+    (slowly) instead of aborting. An *explicitly* named accelerator is a
+    statement that the caller wants that hardware, so it is never silently
+    replaced: an unavailable ``"cuda"``/``"mps"``/``"xpu"`` raises.
 
     Args:
         device: ``"auto"`` probes accelerators in priority order, or pass
             any PyTorch device string (``"cuda"``, ``"mps"``, ``"cpu"``, etc.).
-        allow_cpu: When *True* and no accelerator is found in ``"auto"``
-            mode, fall back to CPU with a warning instead of raising.
+        allow_cpu: Whether ``"auto"`` may fall back to CPU when no accelerator
+            is found. Defaults to *True*: the fallback emits a ``UserWarning``
+            and a log warning (a warning raised inside a SLURM or loky worker
+            is easy to lose, the log line is not). Pass *False* where a caller
+            must have an accelerator.
 
     Returns:
         Resolved device string suitable for ``torch.device()``.
@@ -146,12 +156,12 @@ def resolve_device(
             if check():
                 return name  # type: ignore[return-value]
         if allow_cpu:
-            warnings.warn(
-                "No GPU/accelerator detected — inference will be very slow "
-                "on CPU.",
-                UserWarning,
-                stacklevel=2,
+            message = (
+                "No GPU/accelerator detected; device='auto' is falling back "
+                "to CPU. Inference will be much slower than on a GPU."
             )
+            logger.warning(message)
+            warnings.warn(message, UserWarning, stacklevel=2)
             return "cpu"
         raise RuntimeError(
             "No accelerator available. GPU-based detectors require a GPU "

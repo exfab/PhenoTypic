@@ -253,7 +253,7 @@ class DinoSam2Detector(GpuDetector):
             ``crop_n_points_downscale_factor ** n``.  Default 1 (the SAM2
             default).
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
-            and raises ``RuntimeError`` if none is found.
+            and falls back to CPU with a warning if none is found.
         input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
             layer the SAM2/DINO backbones were trained on), ``"gray"``, or
             ``"detect_mat"``.  Single-channel layers are stacked to 3 channels
@@ -266,7 +266,7 @@ class DinoSam2Detector(GpuDetector):
     Raises:
         ImportError: If ``sam2`` / ``transformers`` / ``torch`` are not
             installed.  Install with ``pip install phenotypic[foundation]``.
-        RuntimeError: If ``device="auto"`` and no accelerator is available, or
+        RuntimeError: If an explicitly requested accelerator is unavailable, or
             (``dino_version=3``) the gated DINOv3 license was not accepted /
             no token is present.
 

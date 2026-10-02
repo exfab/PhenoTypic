@@ -80,9 +80,12 @@ class GpuDetector(ObjectDetector, ABC):
       multiple workers competing for the same GPU.
     - **SLURM execution:** Automatically requests GPU resources
       (``--gpus-per-node=1``) if the user hasn't specified GPU args.
-      Raises an error if the target partition has no GPUs.
-    - **No GPU available:** Raises RuntimeError at pipeline validation
-      time with a clear message.
+      Raises an error if the target partition has no GPUs, unless the
+      user explicitly set ``slurm_gpus_per_node=0``.
+    - **No GPU available:** With the default ``device="auto"``, the
+      detector falls back to CPU at model load and warns (inference is
+      much slower). Only an explicitly requested accelerator that is
+      unavailable (e.g. ``device="cuda"``) raises ``RuntimeError``.
 
     **When to subclass GpuDetector vs ObjectDetector**
 
