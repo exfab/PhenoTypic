@@ -47,9 +47,9 @@ class MicroSamDetector(GpuDetector):
 
         device: PyTorch device for inference. ``"auto"`` (default) probes
             accelerators in priority order: CUDA, Apple MPS, Intel XPU,
-            Habana HPU, then raises if none found. Pass ``"cpu"`` to force
-            CPU inference (very slow). Any valid PyTorch device string is
-            accepted.
+            Habana HPU, then falls back to CPU with a warning if none is
+            found. Pass ``"cpu"`` to force CPU inference (much slower). Any
+            valid PyTorch device string is accepted.
         input_layer: Image layer fed to the model -- one of ``"rgb"``,
             ``"gray"``, or ``"detect_mat"``. Defaults to ``"gray"`` because
             micro-sam's light-microscopy weights are grayscale-native.
@@ -70,8 +70,8 @@ class MicroSamDetector(GpuDetector):
             ``docs/source/how_to/pages/gpu_detection_setup.md`` for a
             pixi-based recipe that installs ``phenotypic`` and
             ``micro_sam`` together in a single environment.
-        RuntimeError: If ``device="auto"`` and no GPU/accelerator is
-            available.
+        RuntimeError: If an explicitly requested accelerator (e.g.
+            ``device="cuda"``) is unavailable.
 
     Best For:
         * Agar plate images captured under standard brightfield or
