@@ -56,7 +56,7 @@ the CLI (local, SLURM, staged GPU), and the GUI.
 | D1 | `RefMetadata` ops carry **no table path**. Reference data comes **only** from an active `ReferenceContext`. | Including metadata is a deliberate act at run time; a pipeline can never silently run against a stale table it embedded. Removes the precedence rule, effective-pipeline rewriting, and per-op table snapshots. |
 | D2 | `ReferenceContext` is a **public core class**, `phenotypic.ReferenceContext`, usable as a context manager. | Users can prototype — inspect exactly what an op will see (`lookup`, `load_image`) without running it. |
 | D3 | Activation uses a `contextvars.ContextVar`, the same mechanism as `_core/_provenance.py`. | Reaches ops nested at any depth (`CompositeEnhance`, `CompositeDetector`, branch pipelines) without threading an argument through every `_operate`; exception-safe restore. |
-| D4 | Subclasses declare their columns as **ordinary typed fields** marked `RefColumnField`. | Each op targets its own columns; the choice serializes with the pipeline; tooling (preflight, GUI dropdowns, `reference_columns()`) discovers them without per-op code. |
+| D4 | Subclasses declare their columns as **ordinary typed fields** typed `RefColumn` / `RefImageColumn`. | Each op targets its own columns; the choice serializes with the pipeline; tooling (preflight, GUI dropdowns, `reference_columns()`) discovers them without per-op code. |
 | D5 | The CLI's table is the existing `--metadata`, snapshotted to `deliverables/metadata.csv` (full) or `.phenotypic/reference_metadata.csv` (process). | One table serves both the reference lookup and the measurement join, so they cannot disagree; the snapshot is byte-stable provenance. |
 | D6 | `SubtractBlank` subtracts the blank's **fresh channel in the target's detect mode**, and requires the target's `detect_mat` to be **fresh** (unmodified since its last reset) with **no `ImageCorrector` earlier** in the application. | Position-independent correctness: valid at root, after `SetDetectMode`, or inside a composite branch; refuses rather than mis-subtracts. `SetDetectMode` discards prior enhancement (`_set_detect_mode.py`; `_image_handler.py:403`), so "must be first" was the wrong rule. |
 | D7 | Lookup is **strict**: missing row, missing column, null, or disagreeing values all raise. Self-reference raises. | The ucr_033 table is per-colony (~96 rows per image); strictness turns every malformed-table case into a loud failure. |
@@ -92,7 +92,9 @@ class ReferenceContext:
     def lookup(self, image: "Image | str", columns: Sequence[str]) -> dict[str, Any]: ...
     def resolve_image(self, name: str) -> "Path | Image": ...
     def load_image(self, name: str) -> "Image": ...
-    def narrow(self, *, dataset: str | None, image_root: str | Path | None = None) -> "ReferenceContext": ...
+    def narrow(self, *, dataset=None, image_root=None, images=None) -> "ReferenceContext": ...
+    def has_column(self, name: str) -> bool: ...
+    def reference_image_digest(self, name: str) -> str | None: ...
 
     # provenance
     @property
@@ -102,9 +104,9 @@ class ReferenceContext:
 **Construction** reads and validates the table immediately, so a bad table
 fails before the first image:
 
-- A path is read with the CLI's reader (`read_metadata_csv`, whole-file schema
-  inference; parquet via polars). That reader moves from `_cli/_metadata_join.py`
-  to `sdk_` so `_core` does not import `_cli`; `_cli` re-imports it.
+- A `.csv` path is read with `infer_schema=False` and every column is cast to
+  string (parquet via polars, then cast): every value is a name, and type
+  inference would turn the stem `000123` into the integer `123`.
 - Headers are normalized with the same in-memory canonicalization the CLI join
   uses (`normalize_metadata_columns` and friends), so `ImageName` and
   `Metadata_ImageName` are equivalent. The source file is never rewritten.
@@ -116,9 +118,10 @@ fails before the first image:
 
 **Activation.** `__enter__` sets the module `ContextVar` and pushes the token
 on the instance; `__exit__` resets it in all cases. An inner context
-**replaces** the outer one entirely (no field merging); `narrow(dataset=...)`
-is the explicit way to derive a context that shares the parsed table and
-caches. A single instance must not be entered concurrently from two threads
+**replaces** the outer one entirely (no field merging);
+`narrow(*, dataset=None, image_root=None, images=None)` is the explicit way to
+derive a context that shares the parsed table and lookup indexes (each `None`
+keeps the parent's value). A single instance must not be entered concurrently from two threads
 (documented).
 
 **`lookup(image, columns)`** — the semantics every op inherits:
@@ -137,7 +140,8 @@ caches. A single instance must not be entered concurrently from two threads
 5. Returns `{requested_column_name: value}`.
 
 **`resolve_image(name)`**: `images[name]` if present; else the unique file in
-`image_root` whose stem is `name` (any suffix). Zero or several matches →
+`image_root` whose stem is `name` (any suffix), or the file named exactly
+`name` when it includes its extension. Zero or several matches →
 `ReferenceImageError` listing candidates.
 
 **`load_image(name)`**: resolves, then reads with `Image.imread` using the
@@ -157,15 +161,20 @@ build their own (§5.2). No pipeline or composite code starts threads today; an
 op that ever ran children on a thread must use `contextvars.copy_context()`.
 Ops must read the context inside `_operate`, never defer it.
 
-### 4.2 `RefMetadata` mixin and `RefColumnField` — `src/phenotypic/abc_/_ref_metadata.py`
+### 4.2 `RefMetadata` mixin and `RefColumn` / `RefImageColumn` — `src/phenotypic/abc_/_ref_metadata.py`
 
 Exported from `phenotypic.abc_`. Fieldless, like `PlotImage`.
 
+The column markers reuse the existing `_ColumnRefMarker` (`sdk_/_column_ref.py`),
+which the GUI registry already renders as a dropdown, with a new source
+`"reference_metadata"`:
+
 ```python
-# sdk_/typing_.py
-class RefColumn:          # Annotated marker: "this field's value names a metadata column"
-    ...
-RefColumnField = Annotated[str, RefColumn()]
+# sdk_/_column_ref.py  (ColumnSource gains "reference_metadata")
+RefColumn = Annotated[str, _ColumnRefMarker("reference_metadata")]
+RefImageColumn = Annotated[str, _ColumnRefMarker("reference_metadata"), _ReferenceImageMarker()]
+#   RefColumn: a value.  RefImageColumn: a value naming another image -- the CLI
+#   resolves these to files at startup and in its preflight.
 
 # abc_/_ref_metadata.py
 class RefMetadata:
@@ -173,8 +182,11 @@ class RefMetadata:
         # v1: only ImageOperation subclasses may mix this in (TypeError otherwise)
 
     def _ref_columns(self) -> tuple[str, ...]:
-        # default: values of every model field whose metadata carries RefColumn,
+        # default: values of every model field carrying _ColumnRefMarker("reference_metadata"),
         # in declaration order; override only for computed column names
+
+    def _ref_image_columns(self) -> tuple[str, ...]:
+        # the subset whose fields also carry _ReferenceImageMarker
 
     def _ref_values(self, image) -> dict[str, Any]:
         # ReferenceContext.current() or RefMetadataUnavailableError; then ctx.lookup
@@ -193,23 +205,24 @@ SubtractBlank reads ('Metadata_BlankImage',) from a ReferenceContext, but none i
   CLI:    pass --metadata blank_map.csv
 ```
 
-`RefColumnField` values are plain strings in `pipeline.json`. The tune
+`RefColumn`/`RefImageColumn` values are plain strings in `pipeline.json`. The tune
 annotation-coverage gate applies to numeric fields only, so no `TuneSpec` is
 needed; tune auto-search treats them as non-numeric.
 
 ### 4.3 `ImagePipeline.reference_columns()`
 
-Returns `{tree_path: columns}` for every `RefMetadata` op anywhere in the
-operation tree, using the same tree-path spelling as the staged-GPU walker
-(`find_gpu_detectors`, `_cli_validation.py:370`). Empty dict when the pipeline
+`reference_columns(*, images_only=False)` returns `{tree_path: columns}` for
+every `RefMetadata` op anywhere in the operation tree, using the same tree-path
+spelling as the staged-GPU walker (`sdk_._operation_tree.find_operations`,
+joined with `/`); `images_only=True` returns only `RefImageColumn` columns. Empty dict when the pipeline
 needs no table. Used by the CLI preflight, the GUI, the tune refusal, and
 users.
 
 ### 4.4 `SubtractBlank` — `src/phenotypic/enhance/_subtract_blank.py`
 
 ```python
-class SubtractBlank(ImageEnhancer, RefMetadata):
-    blank_column: RefColumnField = "Metadata_BlankImage"
+class SubtractBlank(BackgroundSubtraction, RefMetadata):   # BackgroundSubtraction is an ImageEnhancer
+    blank_column: RefImageColumn = "Metadata_BlankImage"
     polarity: Literal["brighter", "darker", "both"] = "brighter"
 ```
 
@@ -222,9 +235,12 @@ class SubtractBlank(ImageEnhancer, RefMetadata):
    - `np.array_equal(image.detect_mat[:], get_detection_mode(image.detect_mode).compute(image))`
      must hold, else `StaleDetectMatError` ("place SubtractBlank before any
      enhancer, or directly after SetDetectMode").
-   - No operation in `current_application_operations(image)` resolves to an
-     `ImageCorrector` subclass, else `StaleDetectMatError` (a corrector changed
-     the target's pixels; the raw blank does not share that change).
+   - No operation record in the image's current provenance application has an
+     `operation_class` naming a loaded `ImageCorrector` subclass, else
+     `StaleDetectMatError` (a corrector changed the target's pixels; the raw
+     blank does not share that change). Limitation: a corrector inside the
+     same composite branch is recorded only when the composite finishes, so it
+     is not seen; correctors do not live in composites today.
 4. `blank = self._ref_image(name)`; refuse with `ReferenceImageError` if
    `blank.gray.shape != image.gray.shape` or bit depths differ.
 5. `b = get_detection_mode(image.detect_mode).compute(blank)` — the blank's
@@ -252,8 +268,8 @@ background estimation.
 from phenotypic import Image, ImagePipeline, ReferenceContext
 from phenotypic.enhance import SubtractBlank
 
-pipe = ImagePipeline(ops=[SubtractBlank(), OtsuDetector()])
-pipe.reference_columns()        # {'ops/SubtractBlank': ('Metadata_BlankImage',)}
+pipe = ImagePipeline(ops={"sb": SubtractBlank(), "det": OtsuDetector()})
+pipe.reference_columns()        # {'sb': ('Metadata_BlankImage',)}
 
 ctx = ReferenceContext("blank_map.csv", image_root="images/")
 ctx.lookup("d000426_300_123_2026-05-27_02-41-37", ["Metadata_BlankImage"])
@@ -271,7 +287,7 @@ No `pipeline.apply(..., metadata=)` keyword: the context is the one way.
 | Mode | Snapshot | Continuation without re-passing `--metadata` |
 |---|---|---|
 | `full` | `deliverables/metadata.csv` (existing, unchanged) | existing fallback to the snapshot |
-| `process` | **new:** `.phenotypic/reference_metadata.csv`, byte-for-byte, same atomic writer | **new:** same fallback rule, guarded the same way as `_cli_identity.py`'s full-mode fallback |
+| `process` | **new:** `.phenotypic/reference_metadata.csv`, byte-for-byte, atomic; preserved across `--restart` as `deliverables/metadata.csv` is | **new:** same fallback rule |
 | `measure`, `recompile`, `migrate` | — | ops are not applied; no context |
 
 Today `process` mode ignores `--metadata` (`phenotypicCLI.py:2335`); it now
@@ -280,10 +296,21 @@ behaviour is unchanged (ignored), so existing process invocations — including
 the run console's, which may pass `--metadata` regardless of mode — keep
 working.
 
-**Where the context is entered.** Each worker builds one base context per
-process from the snapshot (`ReferenceContext(table, read_kwargs=<input read
-kwargs>)`) and, per image, `narrow(dataset=ds.name)` with
-`image_root=ds.input_dir`, around the existing apply calls:
+**Reference manifest.** Stage-3 and SLURM workers know only the run root and
+the dataset name, so the CLI plans references once. At startup, before any
+work-id is computed (`_prepare_incremental_startup`), it resolves every input
+image's reference values and reference-image files with the same planner the
+preflight uses (`_cli/_cli_reference.py`, `plan_references`) and writes
+`.phenotypic/reference_manifest.json`: the table path and SHA-256, the input
+reader kwargs, each dataset's `{name: absolute path}` map, and each image's
+reference digest. A run whose pipeline needs no references deletes any stale
+manifest.
+
+**Where the context is entered.** Each worker core wraps its existing apply
+call in `worker_reference_context(output_dir, dataset_name)`, which builds one
+base context per process from the manifest (refusing if the table's bytes no
+longer match the manifest's digest) and narrows it to the dataset and its
+resolved image map:
 
 - `_cli_process_single.py:334` (`apply_and_measure`)
 - `_cli_process_only.py:347` (`apply`)
@@ -295,11 +322,15 @@ directory**, consistent with `Metadata_ImageName` being the input stem
 (`Image.imread` sets `name = filepath.stem`, `_image_io_handler.py:796`). A
 blank that is not itself an input can still live there.
 
-**Identity.** Full mode already folds the metadata digest into the work-id.
-Process mode adds the reference table's SHA-256 to its work-id digest **only
-when `reference_columns()` is non-empty**, so existing process continuations
-are not invalidated. Editing a blank assignment therefore re-derives exactly
-the runs that read it.
+**Identity.** The `--metadata` digest today enters only the *finalization*
+digest (`_cli_identity.py:333`), not the per-image work-id — metadata never
+changed per-image science before. Now it can, so `compute_work_id` gains an
+optional **per-image reference digest** (canonical digest of the image's
+resolved reference values plus each reference image file's SHA-256), read from
+the manifest by both the main process and SLURM workers. It is present only
+when the pipeline needs references, so every existing work-id is unchanged; and
+it is per image, so editing one plate's blank re-runs that plate's frames and
+nothing else, in every mode.
 
 **Run preflight** (`_cli_preflight.py`; new codes added to the closed set and
 `HINTS`). Checks read only the pipeline, the table, and directory listings —
@@ -310,17 +341,21 @@ a finding that fails every image is an `error`, one that fails some is a
 | Code | Severity | Condition |
 |---|---|---|
 | `PF-REF-NO-TABLE` | error | pipeline needs reference columns; no `--metadata` and no snapshot to fall back to |
-| `PF-REF-COLUMN` | error | table lacks `Metadata_ImageName` or a column some op names (message lists op path → column) |
+| `PF-REF-TABLE` | error | the table cannot be read, or lacks `Metadata_ImageName` |
+| `PF-REF-COLUMN` | error | table lacks a column some op names (message lists op path → column) |
 | `PF-REF-UNMATCHED` | warning | input images with no row |
 | `PF-REF-AMBIGUOUS` | warning | input images whose rows are null or disagree for a needed column |
 | `PF-REF-SELF` | warning | input images that name themselves as their blank (hint: exclude them, e.g. `--image-manifest`) |
 | `PF-REF-UNRESOLVED` | warning | a named reference image matches 0 or >1 files in its dataset directory |
 
 Preflight runs before `--overwrite` clears anything and before `--dry-run`
-exits, like the staged-GPU refusal.
+exits, like the staged-GPU refusal. It resolves reference-image *names* to
+files but never opens or hashes them; startup does the hashing.
 
 **SLURM / staged GPU.** No new jobs. `SubtractBlank` is an enhancer, so in a
-staged run it lands in Stage 1 by construction. The snapshot is on shared
+staged run it lands in Stage 1 by construction; Stage 3 also enters the
+context, because it re-runs the detector's whole top-level ancestor, which can
+contain a `SubtractBlank` sibling. The snapshot is on shared
 storage under `--output`; workers read it, never the user's original.
 
 ### 5.3 GUI
@@ -405,7 +440,7 @@ Unit (`tests/unit/`):
   `resolve_image` 0/1/many; LRU reuse (one read for N lookups) and
   invalidation on mtime change; `current()` is `None` outside; nesting
   replaces then restores; restore after an exception; `table_sha256`.
-- `RefMetadata`: column discovery from `RefColumnField` fields; override;
+- `RefMetadata`: column discovery from `RefColumn`/`RefImageColumn` fields; override;
   `TypeError` on a non-`ImageOperation` subclass; unavailable-error text names
   both fixes; `_references` provenance entry.
 - `SubtractBlank`: each polarity on a synthetic blank/target pair with known
