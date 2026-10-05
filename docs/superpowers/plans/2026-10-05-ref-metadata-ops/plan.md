@@ -15,7 +15,7 @@
 - `uv` is the only runner: `uv run pytest …`, `uv run ruff check --fix <explicit paths>` (never bare `ruff check --fix`).
 - Operations are pydantic models: typed class-level fields, **no hand-written `__init__`**, keyword-only construction.
 - `_operate` is an instance method. Operations return the image; enhancers change `detect_mat` only (`rgb`/`gray` untouched).
-- Lazy imports: `import phenotypic` and `phenotypic.ReferenceContext` attribute access must not load polars, pandas or anything in `HEAVY_STARTUP_MODULES`. Import those inside functions.
+- Lazy imports: `import phenotypic` must still load nothing in `HEAVY_STARTUP_MODULES` (guard: `tests/unit/ci/test_startup_imports.py`); new modules import polars/pandas inside functions. Accessing `phenotypic.ReferenceContext` loads `phenotypic._core`, which is already heavy — exactly as `phenotypic.Image` is (review M5) — so no attribute-access guard is added.
 - Google-style docstrings; doctests must run with `load_synth_yeast_plate()`; microbiology context in examples.
 - Metadata semantics through schema helpers (`ensure_metadata_prefix`, `normalize_metadata_columns`, `str(IMAGE.IMAGE_NAME)`, `str(EXPERIMENT.DATASET)`), never `startswith("Metadata_")`.
 - `deliverables/metadata.csv` is never rewritten by anything in this plan.
@@ -39,6 +39,15 @@ The plan was written against the code and found these corrections; the spec was 
 - **S5 — `narrow` signature** is `narrow(*, dataset=None, image_root=None, images=None)`; `None` keeps the parent's value.
 - **S6 — process-mode snapshot** `.phenotypic/reference_metadata.csv` is added to the restart-preserved set, matching full mode, whose `deliverables/metadata.csv` survives `--restart`.
 - **S7 — preflight** gains `PF-REF-TABLE` (table unreadable/invalid) beside the spec's six codes, and never hashes image files (its module contract is "headers only"); hashing happens at startup.
+
+Applied after the independent plan review (`docs/superpowers/reports/2026-10-05-ref-metadata-ops/plan-review.md`):
+
+- **S8 (B1) — Stage 2 needs the context too.** A `SubtractBlank` inside the GPU detector's own sequence branch is moved into `stage2_prefix` (`_cli_pipeline_split.py:84-97`) and applied by `_apply_stage2_prefix` in Stage 2 (`_cli_staged_workers.py:457-458`); the `--layer objmap` export re-applies the residual pipeline (`_cli_staged_strategy.py:518-522`). Both enter the context (Task 6); spec §5.2's "lands in Stage 1 by construction" is corrected.
+- **S9 (M1) — one image identity.** Planner, work-ids and resolution use `source_image_stem` (`sdk_/_io_constants.py:1887`), which is what `imread` names an image (`x.ome.zarr` → `x`); `resolve_image` accepts OME-Zarr store directories; a store's identity digest is its root `zarr.json`.
+- **S10 (M5) — no attribute-access import guard** (impossible under `_core`; see Global Constraints).
+- **S11 (M6) — builder column fields stay free text in v1.** The inspector is rendered by `_render_views` from 12 callbacks (`builder/_callbacks.py:3943`); live dropdowns need the picked path carried in builder state. v1 shows the table's columns in the picker's status line instead. Spec §5.3 updated; the dropdown is a follow-up the user may promote.
+- **S12 — tune refusal is a `TuningSpec` validator** (spec: "at spec load"), not in `TuningEngine.__init__`.
+- **S13 — details.** An `images=` in-memory `Image` is returned shared, not copied (spec §4.1 updated); the corrector check scans every provenance application, not only the last (Stage 2's probe copy opens a fresh one); measure mode never touches the manifest; an `--overwrite` run that needs references must pass `--metadata` (the snapshot it would fall back to is deleted).
 
 ## Review Focus
 
@@ -87,7 +96,7 @@ Expected: `phenotypic 1.41.2`
     - `reference_image_digest(name: str) -> str | None`
     - `narrow(*, dataset: str | None = None, image_root: str | Path | None = None, images: Mapping | None = None) -> ReferenceContext`
     - properties `table: pl.DataFrame`, `columns: tuple[str, ...]`, `table_sha256: str | None`; attributes `dataset`, `image_root`, `images`, `read_kwargs`
-  - module functions `_read_image(path: Path, read_kwargs: Mapping[str, Any]) -> Image`, `_clear_image_cache() -> None`
+  - module functions `reference_file_digest(path: Path) -> str` (file bytes, or a store's root `zarr.json`), `_read_image(path: Path, read_kwargs: Mapping[str, Any]) -> Image`, `_clear_image_cache() -> None`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -97,8 +106,6 @@ Expected: `phenotypic 1.41.2`
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -327,15 +334,13 @@ def test_context_restored_after_exception(tmp_path):
     assert ReferenceContext.current() is None
 
 
-def test_attribute_access_does_not_import_polars_or_pandas():
-    code = (
-        "import sys, phenotypic; phenotypic.ReferenceContext; "
-        "print(','.join(m for m in ('polars', 'pandas') if m in sys.modules))"
-    )
-    out = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
-    ).stdout.strip()
-    assert out == ""
+def test_resolve_ome_zarr_store_by_its_source_stem(tmp_path):
+    root = tmp_path / "imgs"
+    (root / "t00.ome.zarr").mkdir(parents=True)
+    (root / "t00.ome.zarr" / "zarr.json").write_text("{}", encoding="utf-8")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    assert ctx.resolve_image("t00") == root / "t00.ome.zarr"
+    assert rc.reference_file_digest(root / "t00.ome.zarr") is not None
 ```
 
 - [ ] **Step 2: Run to verify failure**
@@ -363,6 +368,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from collections import OrderedDict
 from contextvars import ContextVar, Token
 from pathlib import Path
@@ -433,14 +439,28 @@ _ACTIVE: ContextVar["ReferenceContext | None"] = ContextVar(
 
 #: Loaded reference images, most recently used last. A worker processes many
 #: frames of one plate against one blank, so a small cache removes almost all
-#: re-reads while bounding memory (each entry is one full image).
-_IMAGE_CACHE: "OrderedDict[tuple, tuple[Image, str]]" = OrderedDict()
-_IMAGE_CACHE_SIZE = 4
+#: re-reads while bounding memory (each entry is one full image; at --njobs 32
+#: that is 64 images machine-wide). The lock is for the GUI, whose Werkzeug
+#: server runs previews on threads.
+_IMAGE_CACHE: "OrderedDict[tuple, tuple[Image, str | None]]" = OrderedDict()
+_IMAGE_CACHE_SIZE = 2
+_IMAGE_CACHE_LOCK = threading.Lock()
 
 
 def _clear_image_cache() -> None:
     """Drop every cached reference image (tests and long-lived sessions)."""
-    _IMAGE_CACHE.clear()
+    with _IMAGE_CACHE_LOCK:
+        _IMAGE_CACHE.clear()
+
+
+def reference_file_digest(path: Path) -> str:
+    """SHA-256 identifying a reference image on disk.
+
+    A file's bytes; for an OME-Zarr store directory, its root ``zarr.json``
+    (hashing every chunk would cost more than the image read it identifies).
+    """
+    target = Path(path) / "zarr.json" if Path(path).is_dir() else Path(path)
+    return hashlib.sha256(target.read_bytes()).hexdigest()
 
 
 def _read_image(path: Path, read_kwargs: Mapping[str, Any]) -> "Image":
@@ -715,11 +735,19 @@ class ReferenceContext:
                 f"Cannot resolve reference image {name!r}: the ReferenceContext has "
                 f"no image_root and no images entry for it"
             )
+        from phenotypic.sdk_._io_constants import is_zarr_store_name, source_image_stem
+
+        def is_image(p: Path) -> bool:
+            return p.is_file() or (p.is_dir() and is_zarr_store_name(p))
+
         root = self.image_root
         exact = root / name
-        if exact.is_file():
+        if is_image(exact):
             return exact
-        candidates = sorted(p for p in root.iterdir() if p.is_file() and p.stem == name)
+        # source_image_stem is what Image.imread names an image: "x.ome.zarr" -> "x".
+        candidates = sorted(
+            p for p in root.iterdir() if is_image(p) and source_image_stem(p) == name
+        )
         if len(candidates) != 1:
             raise ReferenceImageError(
                 f"Reference image {name!r} matches {len(candidates)} files in {root}: "
@@ -738,18 +766,20 @@ class ReferenceContext:
             stat.st_size,
             json.dumps(self.read_kwargs, sort_keys=True, default=str),
         )
-        cached = _IMAGE_CACHE.get(key)
-        if cached is None:
-            try:
-                image = _read_image(target, self.read_kwargs)
-            except Exception as exc:  # noqa: BLE001 -- surface as the reference failure
-                raise ReferenceImageError(f"Cannot read reference image {target}: {exc}") from exc
-            cached = (image, hashlib.sha256(target.read_bytes()).hexdigest())
+        with _IMAGE_CACHE_LOCK:
+            cached = _IMAGE_CACHE.get(key)
+            if cached is not None:
+                _IMAGE_CACHE.move_to_end(key)
+                return cached
+        try:
+            image = _read_image(target, self.read_kwargs)
+        except Exception as exc:  # noqa: BLE001 -- surface as the reference failure
+            raise ReferenceImageError(f"Cannot read reference image {target}: {exc}") from exc
+        cached = (image, reference_file_digest(target))
+        with _IMAGE_CACHE_LOCK:
             _IMAGE_CACHE[key] = cached
             while len(_IMAGE_CACHE) > _IMAGE_CACHE_SIZE:
                 _IMAGE_CACHE.popitem(last=False)
-        else:
-            _IMAGE_CACHE.move_to_end(key)
         return cached
 
     def load_image(self, name: str) -> "Image":
@@ -815,7 +845,7 @@ In `src/phenotypic/sdk_/__init__.py` add to `_LAZY_ATTRS`:
     "ReferenceTableError": "phenotypic._core._reference_context",
 ```
 
-and the same five names to its `__all__`. (Verify `sdk_.__getattr__` resolves an absolute module name: it calls `importlib.import_module(module_name, __name__)`; an absolute name ignores the package argument. If it instead concatenates, use `".._core._reference_context"`.)
+and the same five names to its `__all__` (`sdk_.__getattr__` resolves absolute module names, `sdk_/__init__.py:61-66`).
 
 - [ ] **Step 5: Run to verify pass**
 
@@ -842,7 +872,7 @@ git commit -m "feat(core): public ReferenceContext for per-image reference metad
 - Create: `src/phenotypic/abc_/_ref_metadata.py`
 - Modify: `src/phenotypic/abc_/__init__.py` (eager import + `__all__`)
 - Modify: `src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py` (new method)
-- Modify: `src/phenotypic/tune/_engine.py` (`TuningEngine.__init__`)
+- Modify: `src/phenotypic/tune/_spec.py` (new `model_validator` on `TuningSpec`, beside `_reject_multi_objective_without_optuna` ~line 265)
 - Test: `tests/unit/abc_/test_ref_metadata.py`, `tests/unit/tune/test_reference_refusal.py`
 
 **Interfaces:**
@@ -853,7 +883,7 @@ git commit -m "feat(core): public ReferenceContext for per-image reference metad
   - `ColumnSource` gains `"reference_metadata"`
   - `phenotypic.abc_.RefMetadata` with `_ref_columns() -> tuple[str, ...]`, `_ref_image_columns() -> tuple[str, ...]`, `_ref_values(image) -> dict[str, str]`, `_ref_image(name: str) -> Image`, `provenance_parameters() -> dict` (adds `"_references"`)
   - `ImagePipeline.reference_columns(*, images_only: bool = False) -> dict[str, tuple[str, ...]]` keyed by `"/".join(tree_path)`
-  - `phenotypic.tune._engine._refuse_reference_metadata(pipeline) -> None` (raises `ValueError`)
+  - `phenotypic.tune._spec._refuse_reference_metadata(pipeline) -> None` (raises `ValueError`), called by a `TuningSpec` `model_validator(mode="after")`
 
 - [ ] **Step 1: Write the failing tests** (`tests/unit/abc_/test_ref_metadata.py`)
 
@@ -959,7 +989,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.tune._engine import _refuse_reference_metadata
+from phenotypic.tune._spec import _refuse_reference_metadata
 from tests.unit.abc_.test_ref_metadata import _ReadsStrain
 
 
@@ -1129,7 +1159,12 @@ class RefMetadata:
         return values
 
     def _ref_image(self, name: str) -> "Image":
-        """Load the reference image *name* through the active context."""
+        """Load the reference image *name* through the active context.
+
+        Call :meth:`_ref_values` first in the same ``_operate``: it resets this
+        op's provenance record, so a record left by an earlier apply that
+        raised cannot leak into this one.
+        """
         ctx = self._require_context()
         image = ctx.load_image(name)
         record = _resolved().setdefault(
@@ -1174,7 +1209,7 @@ In `src/phenotypic/abc_/__init__.py` add `from ._ref_metadata import RefMetadata
         return found
 ```
 
-- [ ] **Step 6: Tune refusal** — in `src/phenotypic/tune/_engine.py`:
+- [ ] **Step 6: Tune refusal** — in `src/phenotypic/tune/_spec.py` (module level):
 
 ```python
 def _refuse_reference_metadata(pipeline: "ImagePipeline") -> None:
@@ -1192,7 +1227,15 @@ def _refuse_reference_metadata(pipeline: "ImagePipeline") -> None:
         )
 ```
 
-and call `_refuse_reference_metadata(spec.pipeline)` as the first line of `TuningEngine.__init__`.
+and on `TuningSpec`, beside the other after-validators:
+
+```python
+    @model_validator(mode="after")
+    def _reject_reference_metadata(self) -> "TuningSpec":
+        """Refuse, at spec load, a pipeline whose ops read reference metadata."""
+        _refuse_reference_metadata(self.pipeline)
+        return self
+```
 
 - [ ] **Step 7: Run to verify pass**
 
@@ -1202,8 +1245,8 @@ Expected: pass.
 - [ ] **Step 8: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/sdk_/_column_ref.py src/phenotypic/sdk_/__init__.py src/phenotypic/abc_/_ref_metadata.py src/phenotypic/abc_/__init__.py src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py src/phenotypic/tune/_engine.py tests/unit/abc_/test_ref_metadata.py tests/unit/tune/test_reference_refusal.py
-git add -A src/phenotypic/sdk_ src/phenotypic/abc_ src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py src/phenotypic/tune/_engine.py tests/unit/abc_/test_ref_metadata.py tests/unit/tune/test_reference_refusal.py
+uv run ruff check --fix src/phenotypic/sdk_/_column_ref.py src/phenotypic/sdk_/__init__.py src/phenotypic/abc_/_ref_metadata.py src/phenotypic/abc_/__init__.py src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py src/phenotypic/tune/_spec.py tests/unit/abc_/test_ref_metadata.py tests/unit/tune/test_reference_refusal.py
+git add src/phenotypic/sdk_/_column_ref.py src/phenotypic/sdk_/__init__.py src/phenotypic/abc_/_ref_metadata.py src/phenotypic/abc_/__init__.py src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py src/phenotypic/tune/_spec.py tests/unit/abc_/test_ref_metadata.py tests/unit/tune/test_reference_refusal.py
 git commit -m "feat(abc): RefMetadata mixin, RefColumn markers, pipeline.reference_columns"
 ```
 
@@ -1214,6 +1257,8 @@ git commit -m "feat(abc): RefMetadata mixin, RefColumn markers, pipeline.referen
 **Files:**
 - Create: `src/phenotypic/enhance/_subtract_blank.py`
 - Modify: `src/phenotypic/enhance/__init__.py` (export `SubtractBlank`)
+- Modify: `tests/unit/enhance/test_detect_mat_invariant.py` (apply `RefMetadata` enhancers inside a context — review M4)
+- Modify: `tests/unit/abc_/test_enhancer_taxonomy.py` (`SubtractBlank` under `BackgroundSubtraction` in `TAXONOMY`)
 - Modify: `src/phenotypic/sdk_/__init__.py` (`_LAZY_ATTRS["StaleDetectMatError"] = "phenotypic.enhance._subtract_blank"`, `__all__`)
 - Test: `tests/unit/enhance/test_subtract_blank.py`
 
@@ -1236,7 +1281,8 @@ from phenotypic import GridImage, Image, ImagePipeline, ReferenceContext
 from phenotypic._core._image_parts.detection_modes import get_detection_mode
 from phenotypic._core._reference_context import ReferenceImageError, ReferenceLookupError
 from phenotypic.abc_ import ImageCorrector
-from phenotypic.enhance import BlurGauss, SetDetectMode, SubtractBlank
+from phenotypic.detect import CompositeDetector, OtsuDetector
+from phenotypic.enhance import BlurGauss, CompositeEnhance, SetDetectMode, SubtractBlank
 from phenotypic.enhance._subtract_blank import StaleDetectMatError
 
 
@@ -1304,8 +1350,38 @@ def test_runs_after_set_detect_mode_following_an_enhancer():
 def test_refuses_after_an_enhancer():
     target, blank = _pair()
     pipe = ImagePipeline(ops={"blur": BlurGauss(sigma=1.0), "sb": SubtractBlank()})
-    with _ctx(blank=blank), pytest.raises(StaleDetectMatError, match="SetDetectMode"):
+    # ImagePipeline re-raises an op's exception as RuntimeError from it
+    # (_image_pipeline_core.py:934-941), so assert on the cause.
+    with _ctx(blank=blank), pytest.raises(RuntimeError) as info:
         pipe.apply(target)
+    assert isinstance(info.value.__cause__, StaleDetectMatError)
+    assert "SetDetectMode" in str(info.value.__cause__)
+
+
+def test_bare_op_after_a_blur_refuses_directly():
+    target, blank = _pair()
+    blurred = BlurGauss(sigma=1.0).apply(target)
+    with _ctx(blank=blank), pytest.raises(StaleDetectMatError):
+        SubtractBlank().apply(blurred)
+
+
+def test_runs_inside_a_branch_pipeline_and_composites():
+    """The ucr_033 placement: inside a branch, after its own SetDetectMode."""
+    target, blank = _pair()
+    branch = ImagePipeline(ops={"mode": SetDetectMode(mode="gray"), "sb": SubtractBlank()})
+    with _ctx(blank=blank):
+        ImagePipeline(ops={"branch": branch}).apply(target)
+        CompositeEnhance(ops=[SubtractBlank()]).apply(target)
+        CompositeDetector(
+            ops=[ImagePipeline(ops={"sb": SubtractBlank(), "det": OtsuDetector()})]
+        ).apply(target)
+
+
+def test_refuses_bit_depth_mismatch():
+    target = Image(arr=np.full((8, 8), 40, dtype=np.uint8), name="t04")
+    blank = Image(arr=np.full((8, 8), 40 * 257, dtype=np.uint16), name="t00")
+    with _ctx(blank=blank), pytest.raises(ReferenceImageError, match="bit"):
+        SubtractBlank().apply(target)
 
 
 class _NoopCorrector(ImageCorrector):
@@ -1318,8 +1394,20 @@ class _NoopCorrector(ImageCorrector):
 def test_refuses_after_a_corrector():
     target, blank = _pair()
     pipe = ImagePipeline(ops={"fix": _NoopCorrector(), "sb": SubtractBlank()})
-    with _ctx(blank=blank), pytest.raises(StaleDetectMatError, match="_NoopCorrector"):
+    with _ctx(blank=blank), pytest.raises(RuntimeError) as info:
         pipe.apply(target)
+    assert isinstance(info.value.__cause__, StaleDetectMatError)
+    assert "_NoopCorrector" in str(info.value.__cause__)
+
+
+def test_refuses_a_corrector_from_an_earlier_application():
+    """Stage 2's probe copy opens a fresh provenance application; a Stage-1
+    corrector must still be seen (review minor: scan every application)."""
+    target, blank = _pair()
+    corrected = ImagePipeline(ops={"fix": _NoopCorrector()}).apply(target)
+    with _ctx(blank=blank), pytest.raises(RuntimeError) as info:
+        ImagePipeline(ops={"sb": SubtractBlank()}).apply(corrected)
+    assert isinstance(info.value.__cause__, StaleDetectMatError)
 
 
 def test_refuses_self_reference():
@@ -1356,7 +1444,7 @@ def test_round_trips_through_json():
     assert (op.blank_column, op.polarity) == ("Metadata_Frame0", "darker")
 ```
 
-(Check how `ImagePipeline` exposes its ops — `get_ops()` returns the dict, as `get_meas`/`get_post` do per `_operation_tree._slot_child`. If the accessor differs, use the one `test_cli_preflight_ordering.py` fixtures rely on.)
+(`ImagePipeline.get_ops()` returns the ops dict, `_image_pipeline_core.py:549`. If `CompositeDetector` rejects a branch `ImagePipeline` in `ops`, nest the branch the way the ucr_033 `F1x3` pipeline does — read `/bigdata/exfab/anguy344/projects/ucr_033_e_d_Linzer_Ganoderma/scripts/2026-09-11_full_plate_pipeline/configs/F1x3.json.pht-pipe` — and keep the test's intent: SubtractBlank directly after a fresh detect_mat inside a composite.)
 
 - [ ] **Step 2: Run to verify failure**
 
@@ -1446,7 +1534,9 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
         ReferenceImageError: The blank cannot be resolved or read, or its
             shape or bit depth differs from the target's.
         StaleDetectMatError: ``detect_mat`` was already enhanced, or an
-            ``ImageCorrector`` ran earlier in this pipeline.
+            ``ImageCorrector`` appears anywhere in the image's recorded
+            history. Inside an ``ImagePipeline`` these arrive wrapped in the
+            pipeline's ``RuntimeError`` (the original is its ``__cause__``).
 
     Examples:
         A frame identical to its blank cancels to zero:
@@ -1511,11 +1601,17 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
 
     @staticmethod
     def _require_raw_target(image: "Image", mode) -> None:
+        # Every application, not only the last: a staged run's Stage-2 probe
+        # copy opens a fresh application, and a corrector recorded by Stage 1
+        # must still be seen there (else GPU time is spent, then Stage 3 refuses).
         journal = image._metadata.provenance_journal
-        applications = journal.get("applications") or []
-        operations = applications[-1]["operations"] if applications else []
         correctors = _corrector_class_names()
-        for record in operations:
+        records = [
+            record
+            for application in journal.get("applications") or []
+            for record in application.get("operations", [])
+        ]
+        for record in records:
             if record.get("operation_class") in correctors:
                 raise StaleDetectMatError(
                     f"SubtractBlank follows {record.get('operation_name')}, an "
@@ -1534,25 +1630,55 @@ Note the limitation in a comment above `_require_raw_target`: records of a corre
 
 Export: in `src/phenotypic/enhance/__init__.py` add `from ._subtract_blank import SubtractBlank` beside `SubtractGaussian` and `"SubtractBlank"` to `__all__`. Add the `StaleDetectMatError` lazy entry to `sdk_` as listed above.
 
-- [ ] **Step 4: Run to verify pass**
+- [ ] **Step 4: Keep the enhancer gates honest (review M4)**
 
-Run: `uv run pytest tests/unit/enhance/test_subtract_blank.py -q && uv run pytest --doctest-modules src/phenotypic/enhance/_subtract_blank.py -q`
+`tests/unit/enhance/test_detect_mat_invariant.py` applies every zero-arg enhancer in `enhance.__all__` to `load_synth_yeast_plate()` and forbids skipping any. Do not weaken that; give reference ops what they need. Replace the body line of `test_enhancer_keeps_detect_mat_in_unit_range` that applies the op with:
+
+```python
+    out = _apply_gate_enhancer(op).detect_mat[:]
+```
+
+and add above it:
+
+```python
+def _apply_gate_enhancer(op: object):
+    """Apply *op* to the synthetic plate; reference ops get a context whose
+    every reference column names a second copy of the plate."""
+    import pandas as pd
+
+    from phenotypic import ReferenceContext
+    from phenotypic.abc_ import RefMetadata
+
+    plate = load_synth_yeast_plate()
+    if not isinstance(op, RefMetadata):
+        return op.apply(plate)
+    row = {"Metadata_ImageName": [plate.name]}
+    row.update({column: ["gate_reference"] for column in op._ref_columns()})
+    with ReferenceContext(pd.DataFrame(row), images={"gate_reference": load_synth_yeast_plate()}):
+        return op.apply(plate)
+```
+
+In `tests/unit/abc_/test_enhancer_taxonomy.py`, add `"SubtractBlank",` to the `BackgroundSubtraction` tuple in `TAXONOMY` (after `"FlattenIllumination"`).
+
+- [ ] **Step 5: Run to verify pass**
+
+Run: `uv run pytest tests/unit/enhance/test_subtract_blank.py tests/unit/enhance/test_detect_mat_invariant.py tests/unit/abc_/test_enhancer_taxonomy.py -q && uv run pytest --doctest-modules src/phenotypic/enhance/_subtract_blank.py -q`
 Expected: pass. If `test_refuses_after_a_corrector` fails because a bare `ImageCorrector` subclass cannot be instantiated (an abstract hook), implement that hook minimally in `_NoopCorrector`.
 
-- [ ] **Step 5: Affected-surface check for the new operation**
+- [ ] **Step 6: Affected-surface check for the new operation**
 
 Run: `uv run pytest tests/unit/tune/test_annotation_coverage.py tests/unit/gui/test_operation_registry.py tests/unit/test_pickleable.py -q`
 Expected: pass (the new op's only numeric-free fields need no `TuneSpec`; the registry must discover `SubtractBlank`; the op must pickle for loky workers).
 
-- [ ] **Step 6: Lint and commit**
+- [ ] **Step 7: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/enhance/_subtract_blank.py src/phenotypic/enhance/__init__.py src/phenotypic/sdk_/__init__.py tests/unit/enhance/test_subtract_blank.py
-git add src/phenotypic/enhance/_subtract_blank.py src/phenotypic/enhance/__init__.py src/phenotypic/sdk_/__init__.py tests/unit/enhance/test_subtract_blank.py
+uv run ruff check --fix src/phenotypic/enhance/_subtract_blank.py src/phenotypic/enhance/__init__.py src/phenotypic/sdk_/__init__.py tests/unit/enhance/test_subtract_blank.py tests/unit/enhance/test_detect_mat_invariant.py tests/unit/abc_/test_enhancer_taxonomy.py
+git add src/phenotypic/enhance/_subtract_blank.py src/phenotypic/enhance/__init__.py src/phenotypic/sdk_/__init__.py tests/unit/enhance/test_subtract_blank.py tests/unit/enhance/test_detect_mat_invariant.py tests/unit/abc_/test_enhancer_taxonomy.py
 git commit -m "feat(enhance): SubtractBlank subtracts a time series' media-blank frame"
 ```
 
-**Phase 1 gate:** `uv run pytest tests/unit/core tests/unit/abc_ tests/unit/enhance tests/unit/tune/test_reference_refusal.py tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py -q` once. Expected: pass.
+**Phase 1 gate:** `uv run pytest tests/unit/core tests/unit/abc_ tests/unit/enhance tests/unit/tune tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py -q` once (a Slurm job if it runs past a few minutes). Expected: pass.
 
 ---
 
@@ -1566,7 +1692,7 @@ git commit -m "feat(enhance): SubtractBlank subtracts a time series' media-blank
 - Test: `tests/unit/cli/test_cli_reference.py`
 
 **Interfaces:**
-- Consumes: Task 1, Task 2 (`ImagePipeline.reference_columns`), `Dataset` (`_cli_types.py:27`: `name`, `images`, `input_dir`, `output_dir`), `file_sha256` (`_cli_failure_tracker.py:86`), `canonical_digest` (`sdk_/_digests.py:46`), `atomic_write_bytes`/`atomic_write_json` (`sdk_/_atomic_io.py`).
+- Consumes: Task 1 (incl. `reference_file_digest`), Task 2 (`ImagePipeline.reference_columns`), `Dataset` (`_cli_types.py:27`: `name`, `images`, `input_dir`, `output_dir`), `source_image_stem` (`sdk_/_io_constants.py:1887`), `canonical_digest` (`sdk_/_digests.py:46`), `atomic_write_bytes`/`atomic_write_json` (`sdk_/_atomic_io.py:180,209`).
 - Produces (all in `phenotypic._cli._cli_reference` unless noted):
   - `phenotypic.sdk_._io_constants`: `REFERENCE_METADATA_CSV = "reference_metadata.csv"`, `REFERENCE_MANIFEST_JSON = "reference_manifest.json"`, `reference_metadata_snapshot_path(output_dir) -> Path`, `reference_manifest_path(output_dir) -> Path`
   - `@dataclass(frozen=True) class ReferencePlan: total_images: int; unmatched: tuple[str, ...]; ambiguous: tuple[str, ...]; self_referenced: tuple[str, ...]; unresolved: tuple[str, ...]; images_by_dataset: dict[str, dict[str, str]]; digests: dict[str, dict[str, str]]` (labels are `"<dataset>/<stem>"`)
@@ -1575,7 +1701,7 @@ git commit -m "feat(enhance): SubtractBlank subtracts a time series' media-blank
   - `input_read_kwargs(config) -> dict[str, Any]`
   - `snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path | None`
   - `write_reference_manifest(output_dir, *, plan, table_path: Path, table_sha256: str, read_kwargs: dict) -> Path`
-  - `read_reference_manifest(output_dir: Path) -> dict | None`
+  - `read_reference_manifest(output_dir: Path) -> dict | None` (memoised on the file's `(st_mtime_ns, st_size)`; review M2)
   - `remove_reference_manifest(output_dir: Path) -> None`
   - `worker_reference_context(output_dir: Path, dataset_name: str | None)` — context manager yielding `ReferenceContext | None`
   - `reference_digest_for(output_dir: Path | None, dataset_name: str, image_stem: str) -> str | None`
@@ -1709,6 +1835,35 @@ def test_snapshot_copies_bytes_and_reuses_existing(tmp_path, tree):
     assert ref.snapshot_reference_metadata(tmp_path / "fresh", None) is None
 
 
+def test_manifest_is_parsed_once_for_many_lookups(tree, tmp_path, monkeypatch):
+    """Work-ids are computed per image in several startup passes (review M2)."""
+    table, dataset = tree
+    out = tmp_path / "out"
+    ctx = ReferenceContext(table)
+    plan = ref.plan_references(ctx, _pipe(), [dataset], hash_images=True)
+    ref.write_reference_manifest(out, plan=plan, table_path=table, table_sha256=ctx.table_sha256, read_kwargs={})
+    parses = []
+    real = ref._parse_manifest
+    monkeypatch.setattr(ref, "_parse_manifest", lambda text: (parses.append(1), real(text))[1])
+    ref._MANIFEST_CACHE.clear()
+    for _ in range(50):
+        ref.reference_digest_for(out, "plate1", "t01")
+    assert len(parses) == 1
+
+
+def test_store_inputs_are_keyed_by_source_stem(tmp_path):
+    """x.ome.zarr is named "x" by imread, not "x.ome" (review M1)."""
+    root = tmp_path / "in" / "plate1"
+    (root / "t01.ome.zarr").mkdir(parents=True)
+    _write(root / "blank.tif", 20)
+    table = tmp_path / "layout.csv"
+    pd.DataFrame({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["blank"]}).to_csv(table, index=False)
+    dataset = Dataset(name="plate1", images=[root / "t01.ome.zarr"], input_dir=root, output_dir=tmp_path / "out")
+    plan = ref.plan_references(ReferenceContext(table), _pipe(), [dataset], hash_images=True)
+    assert plan.unmatched == ()
+    assert set(plan.digests["plate1"]) == {"t01"}
+
+
 def test_snapshot_is_preserved_on_restart():
     from phenotypic.sdk_._io_constants import REFERENCE_METADATA_CSV, preserved_on_restart_names
 
@@ -1736,7 +1891,7 @@ REFERENCE_METADATA_CSV: Final[str] = "reference_metadata.csv"
 REFERENCE_MANIFEST_JSON: Final[str] = "reference_manifest.json"
 ```
 
-add `REFERENCE_METADATA_CSV` to the `_PRESERVED_ON_RESTART` set, and beside `restart_epoch_path`:
+add `REFERENCE_METADATA_CSV` to the `_PRESERVED_ON_RESTART` set — and re-read that set's membership rule first (`_io_constants.py:1282-1312`); the justification is that it is a **run input snapshot**, the process-mode twin of `deliverables/metadata.csv`, which `--restart` already keeps — then, beside `restart_epoch_path`:
 
 ```python
 def reference_metadata_snapshot_path(output_dir: Path) -> Path:
@@ -1823,10 +1978,13 @@ def plan_references(
     Returns:
         The classified plan. An image appears in at most one failure list.
     """
-    from phenotypic._core._reference_context import ReferenceImageError, ReferenceLookupError
+    from phenotypic._core._reference_context import (
+        ReferenceImageError,
+        ReferenceLookupError,
+        reference_file_digest,
+    )
     from phenotypic.sdk_._digests import canonical_digest
-
-    from ._cli_failure_tracker import file_sha256
+    from phenotypic.sdk_._io_constants import source_image_stem
 
     value_columns = _union(pipeline.reference_columns())
     image_columns = set(_union(pipeline.reference_columns(images_only=True)))
@@ -1844,7 +2002,8 @@ def plan_references(
         dataset_digests = digests.setdefault(dataset.name, {})
         for image_path in dataset.images:
             total += 1
-            stem = Path(image_path).stem
+            # The name Image.imread gives this input ("x.ome.zarr" -> "x").
+            stem = source_image_stem(Path(image_path))
             label = f"{dataset.name}/{stem}"
             try:
                 values = scoped.lookup(stem, value_columns)
@@ -1869,7 +2028,7 @@ def plan_references(
                 resolved[name] = key
                 if hash_images:
                     if key not in sha_cache:
-                        sha_cache[key] = file_sha256(Path(key))
+                        sha_cache[key] = reference_file_digest(Path(key))
                     image_shas[name] = sha_cache[key]
             if failure is not None:
                 failure.append(label)
@@ -1965,14 +2124,33 @@ def write_reference_manifest(
     return path
 
 
+#: Parsed manifests keyed by path, stamped with ``(st_mtime_ns, st_size)``. A
+#: 34,500-image manifest is ~3 MB and parses in ~19 ms (review M2 probe), and
+#: work-ids are computed per image in several startup passes and per image in
+#: every worker -- re-parsing each time would cost minutes per pass.
+_MANIFEST_CACHE: dict[str, tuple[tuple[int, int], dict]] = {}
+
+
+def _parse_manifest(text: str) -> dict:
+    return json.loads(text)
+
+
 def read_reference_manifest(output_dir: Path) -> dict | None:
     """The run's reference manifest, or ``None`` when the run needs none."""
     from phenotypic.sdk_._io_constants import reference_manifest_path
 
     path = reference_manifest_path(output_dir)
-    if not path.is_file():
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        _MANIFEST_CACHE.pop(str(path), None)
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    stamp = (stat.st_mtime_ns, stat.st_size)
+    cached = _MANIFEST_CACHE.get(str(path))
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, _parse_manifest(path.read_text(encoding="utf-8")))
+        _MANIFEST_CACHE[str(path)] = cached
+    return cached[1]
 
 
 def remove_reference_manifest(output_dir: Path) -> None:
@@ -2033,11 +2211,15 @@ def reference_digest_for(output_dir: Path | None, dataset_name: str, image_stem:
 Run: `uv run pytest tests/unit/cli/test_cli_reference.py -q`
 Expected: pass.
 
-- [ ] **Step 6: Lint and commit**
+- [ ] **Step 6: Tracked-state ledger**
+
+`_cli/CLAUDE.md` requires every new `.phenotypic/` artifact to be registered in `docs/source/contrib_guide/tracked_state.md`. Add rows for `reference_manifest.json` (producer: startup `publish_reference_inputs`; readers: worker cores, `work_id_for_image`, `_worker_work_identity`; lifecycle: rewritten every forward startup, removed when the pipeline needs no references, cleared by `--restart`) and `reference_metadata.csv` (producer: process-mode startup; reader: the manifest; preserved by `--restart`), following that page's existing row format.
+
+- [ ] **Step 7: Lint and commit**
 
 ```bash
 uv run ruff check --fix src/phenotypic/sdk_/_io_constants.py src/phenotypic/_cli/_cli_reference.py tests/unit/cli/test_cli_reference.py
-git add src/phenotypic/sdk_/_io_constants.py src/phenotypic/_cli/_cli_reference.py tests/unit/cli/test_cli_reference.py
+git add src/phenotypic/sdk_/_io_constants.py src/phenotypic/_cli/_cli_reference.py tests/unit/cli/test_cli_reference.py docs/source/contrib_guide/tracked_state.md
 git commit -m "feat(cli): reference planner, run manifest, and worker ReferenceContext"
 ```
 
@@ -2052,7 +2234,7 @@ git commit -m "feat(cli): reference planner, run manifest, and worker ReferenceC
 
 **Interfaces:**
 - Consumes: Task 4 (`plan_references(..., hash_images=False)`, `resolve_reference_table_path`), `PreflightContext` (`config`, `pipeline`, `datasets`, `mode`), `PreflightFinding(code, severity, message, subjects=())`, test helpers `make_config`, `make_datasets`, `make_context` from `tests/unit/cli/_preflight_support.py`.
-- Produces: `check_reference_metadata(context) -> list[PreflightFinding]`; codes `PF-REF-NO-TABLE`, `PF-REF-TABLE`, `PF-REF-COLUMN`, `PF-REF-UNMATCHED`, `PF-REF-AMBIGUOUS`, `PF-REF-SELF`, `PF-REF-UNRESOLVED`.
+- Produces: `check_reference_metadata(context) -> list[PreflightFinding]`; codes `PF-REF-NO-TABLE`, `PF-REF-TABLE`, `PF-REF-COLUMN`, `PF-REF-UNMATCHED`, `PF-REF-AMBIGUOUS`, `PF-REF-SELF`, `PF-REF-UNRESOLVED`. Scope: only reference ops returned by `operations_in_scope(context)` (`_cli_preflight.py:1462`, the module's mode-scoping rule). Severity escalates on the **union** of failing images: when every input image fails for one reason or another, every `PF-REF-*` per-image finding is an error.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2146,6 +2328,15 @@ def test_every_image_unresolved_escalates_to_error(tmp_path):
     assert _codes(check_reference_metadata(_context(tmp_path, rows))) == {("PF-REF-UNRESOLVED", "error")}
 
 
+def test_mixed_failures_covering_every_image_escalate_together(tmp_path):
+    """Half unmatched + half unresolved: every image fails, so both are errors."""
+    rows = {"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["nope"]}
+    assert _codes(check_reference_metadata(_context(tmp_path, rows))) == {
+        ("PF-REF-UNMATCHED", "error"),
+        ("PF-REF-UNRESOLVED", "error"),
+    }
+
+
 def test_ambiguous_and_self_are_reported(tmp_path):
     rows = {
         "Metadata_ImageName": ["t01", "t01", "t02"],
@@ -2216,9 +2407,11 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
     """
     if context.mode not in ("full", "process"):
         return []
-    needs = context.pipeline.reference_columns()
-    if not needs:
+    from phenotypic.abc_ import RefMetadata
+
+    if not any(isinstance(op, RefMetadata) for _, op in operations_in_scope(context)):
         return []
+    needs = context.pipeline.reference_columns()
     from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
 
     from ._cli_reference import plan_references, resolve_reference_table_path
@@ -2246,6 +2439,8 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
             subjects=missing,
         )]
     plan = plan_references(table, context.pipeline, context.datasets, hash_images=False)
+    failing = {*plan.unmatched, *plan.ambiguous, *plan.self_referenced, *plan.unresolved}
+    severity: Severity = "error" if failing and len(failing) >= plan.total_images else "warning"
     findings: list[PreflightFinding] = []
     for code, labels, what in (
         ("PF-REF-UNMATCHED", plan.unmatched, "have no row in the reference table"),
@@ -2254,7 +2449,6 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
         ("PF-REF-UNRESOLVED", plan.unresolved, "name a reference image that matches no single file"),
     ):
         if labels:
-            severity: Severity = "error" if len(labels) >= plan.total_images else "warning"
             findings.append(PreflightFinding(
                 code, severity, f"{len(labels)} of {plan.total_images} input images {what}.",
                 subjects=labels,
@@ -2300,7 +2494,8 @@ git commit -m "feat(cli): PF-REF-* run preflight for reference metadata"
 - Modify: `src/phenotypic/_cli/_cli_process_single.py` (`_worker_work_identity` ~123 and its callers; `process_single_image_core` apply at ~331; apply-only call at ~882)
 - Modify: `src/phenotypic/_cli/_cli_process_only.py` (`process_single_apply_only_core` ~262, apply at ~346)
 - Modify: `src/phenotypic/_cli/_cli_execution_strategies.py` (~600: pass `dataset_name`)
-- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` (Stage-1 apply ~369, Stage-3 apply ~592)
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` (Stage-1 apply ~369, Stage-2 prefix ~457, Stage-3 apply ~592)
+- Modify: `src/phenotypic/_cli/_cli_staged_strategy.py` (`StagedGpuStrategy._export_objmap_layer` residual apply ~518)
 - Test: `tests/unit/cli/test_cli_reference_wiring.py`
 
 **Interfaces:**
@@ -2321,7 +2516,12 @@ from __future__ import annotations
 import inspect
 
 from phenotypic._cli import _cli_failure_tracker as ft
-from phenotypic._cli import _cli_process_only, _cli_process_single, _cli_staged_workers
+from phenotypic._cli import (
+    _cli_process_only,
+    _cli_process_single,
+    _cli_staged_strategy,
+    _cli_staged_workers,
+)
 
 
 def _ids(**overrides):
@@ -2343,13 +2543,15 @@ def test_work_id_changes_with_the_reference_digest():
 
 
 def test_every_worker_core_enters_the_reference_context():
-    for module, name in (
+    for owner, name in (
         (_cli_process_single, "process_single_image_core"),
         (_cli_process_only, "process_single_apply_only_core"),
         (_cli_staged_workers, "stage1_preprocess_core"),
+        (_cli_staged_workers, "stage2_detect_core"),
         (_cli_staged_workers, "stage3_merge_measure_core"),
+        (_cli_staged_strategy.StagedGpuStrategy, "_export_objmap_layer"),
     ):
-        assert "worker_reference_context(" in inspect.getsource(getattr(module, name)), name
+        assert "worker_reference_context(" in inspect.getsource(getattr(owner, name)), name
 ```
 
 (The source-inspection test is a cheap tripwire against a fifth apply site being added without the context; Task 7's end-to-end runs are the behavioural proof.)
@@ -2373,11 +2575,11 @@ In `work_id_for_image`, pass:
 
 ```python
             reference_digest=reference_digest_for(
-                config.output_dir, dataset, Path(image_path).stem
+                config.output_dir, dataset, source_image_stem(Path(image_path))
             ),
 ```
 
-with `from ._cli_reference import reference_digest_for` imported inside the function. In `_cli_process_single._worker_work_identity` add `output_dir: Path | None = None` and pass `reference_digest=reference_digest_for(output_dir, dataset_name, Path(image).stem)` to `compute_work_id`; update every caller of `_worker_work_identity` (grep `_worker_work_identity(`) to pass `output_dir=output_dir`.
+with `from ._cli_reference import reference_digest_for` and `from phenotypic.sdk_._io_constants import source_image_stem` imported inside the function (`_cli_process_single.py` already uses `source_image_stem`, line ~225). In `_cli_process_single._worker_work_identity` add `output_dir: Path | None = None` and pass `reference_digest=reference_digest_for(output_dir, dataset_name, source_image_stem(Path(image)))` to `compute_work_id`; update every caller of `_worker_work_identity` (grep `_worker_work_identity(`) to pass `output_dir=output_dir`.
 
 - [ ] **Step 4: Startup publication** — append to `_cli_reference.py`:
 
@@ -2394,8 +2596,12 @@ def publish_reference_inputs(
     from phenotypic import ImagePipeline
     from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
 
+    if config.measure_only:
+        # Measure mode applies no ops, and may run beside live forward
+        # workers that read this manifest: never touch it here.
+        return
     pipeline = ImagePipeline.from_json(config.pipeline_json)
-    if config.measure_only or not pipeline.reference_columns():
+    if not pipeline.reference_columns():
         remove_reference_manifest(output_dir)
         return
     if config.process_only_layer is not None:
@@ -2426,6 +2632,29 @@ In `phenotypicCLI._prepare_incremental_startup`, insert directly **after** the f
 
 At the `_refuse_run_inputs_the_run_would_delete` call (~line 2334), change the `--metadata` entry to `metadata_csv if cli_mode in ("full", "process") else None`.
 
+Early, un-skippable table checks (review minors). Directly after the pipeline is loaded in the read-only half of `phenotypic_cli` (before `--overwrite` clears anything, before `--dry-run`, and **not** gated by `--skip-validation`, matching the existing `--metadata` parse at ~line 2355), add:
+
+```python
+        if cli_mode in ("full", "process") and pipeline.reference_columns():
+            from phenotypic._core._reference_context import (
+                ReferenceContext,
+                ReferenceTableError,
+            )
+
+            if metadata_csv is None and overwrite:
+                raise click.UsageError(
+                    "--overwrite deletes the run's reference metadata snapshot; "
+                    "pass --metadata with the table this pipeline reads."
+                )
+            if metadata_csv is not None:
+                try:
+                    ReferenceContext(metadata_csv)
+                except ReferenceTableError as exc:
+                    raise click.UsageError(f"--metadata: {exc}") from exc
+```
+
+(use the variable names the function already has for the loaded pipeline and the mode). And update the process-mode warning at ~lines 2064-2079 so `--metadata` is reported as ignored only when the pipeline has no reference columns (load the pipeline lazily there, or move the warning below the pipeline load).
+
 Confirm by reading the main flow that no `work_id_for_image` call precedes `_prepare_incremental_startup` in the same invocation (grep `work_id_for_image(` in `phenotypicCLI.py` and check each is below the startup call or inside a worker). Record the result in the commit message body.
 
 - [ ] **Step 5: Worker entry points** — wrap each apply with the context (import `from ._cli_reference import worker_reference_context` at the top of each module; `_cli_reference` imports nothing heavy at module level):
@@ -2454,6 +2683,18 @@ Pass `dataset_name=dataset.name` at `_cli_execution_strategies.py:600` and `data
 
 `_cli_staged_workers.py` Stage 1 (~369) and Stage 3 (~592): wrap the existing `plan.pre_pipeline.apply(image, inplace=True)` and `replay_pipeline.apply(image, inplace=True)` in `with worker_reference_context(output_dir, dataset_name):`. Stage 3 matters: it re-runs the detector's whole top-level ancestor, which can contain a `SubtractBlank` sibling.
 
+Stage 2 (review B1): in `stage2_detect_core` (~457), wrap the prefix application:
+
+```python
+    if stage2_prefix:
+        with worker_reference_context(output_dir, dataset_name):
+            image = _apply_stage2_prefix(image, stage2_prefix)
+```
+
+A `SubtractBlank` inside the GPU detector's own sequence branch lands in `stage2_prefix` (`_cli_pipeline_split.py:84-97`), so without this every image fails in Stage 2. Also move that call inside the function's existing `try` (it sits outside it today, `_cli_staged_workers.py:457-458`), so a reference failure is classified like any other per-image failure rather than escaping as a raw exception — check what the `try` catches and that a `ReferenceContextError` is recorded as a per-image failure.
+
+`--layer objmap` export (`StagedGpuStrategy._export_objmap_layer`, ~518): wrap `residual.apply(image, inplace=True)` inside the existing `with continuing_provenance_application(image):` with `worker_reference_context(output_dir, dataset.name)` (use the loop's dataset variable).
+
 - [ ] **Step 6: Run to verify pass**
 
 Run: `uv run pytest tests/unit/cli/test_cli_reference_wiring.py tests/unit/cli/test_cli_reference.py -q`
@@ -2481,7 +2722,7 @@ git commit -m "feat(cli): publish reference plan at startup; workers enter Refer
 - Test: `tests/unit/cli/test_cli_reference_e2e.py`
 
 **Interfaces:**
-- Consumes: everything in Phase 2; `phenotypic_cli` (click) invoked with `CliRunner` as in `tests/unit/cli/test_cli_preflight_ordering.py`.
+- Consumes: everything in Phase 2; `phenotypic_cli` (click) invoked with `CliRunner` as in `tests/unit/cli/test_cli_preflight_ordering.py`; `FakeGpuDetector` (`tests/_fakes/fake_gpu_detector.py`) for the staged run, registered for CLI deserialization the way `tests/integration/cli/conftest.py` does (e.g. `PHENOTYPIC_PRELOAD_MODULES=tests._fakes.fake_gpu_detector` via `monkeypatch.setenv`).
 
 - [ ] **Step 1: Write the tests**
 
@@ -2589,6 +2830,59 @@ def test_continuation_reruns_only_the_image_whose_blank_changed(run_inputs):
     assert _output(base, "t02").stat().st_mtime_ns == before[t02.name][0]
 
 
+def test_same_named_blanks_resolve_per_dataset(tmp_path):
+    """Two datasets each hold their own "blank"; each frame uses its own (spec §9)."""
+    images = tmp_path / "images"
+    for plate, level in (("plate1", 20), ("plate2", 60)):
+        root = images / plate
+        root.mkdir(parents=True)
+        tifffile.imwrite(root / "blank.tiff", _rgb(level))
+        tifffile.imwrite(root / "t01.tiff", _rgb(level, (slice(10, 16), slice(10, 16))))
+    manifest = tmp_path / "frames.txt"
+    manifest.write_text("plate1/t01.tiff\nplate2/t01.tiff\n", encoding="utf-8")
+    table = tmp_path / "blank_map.csv"
+    pd.DataFrame({
+        "Dataset": ["plate1", "plate2"],
+        "ImageName": ["t01", "t01"],
+        "BlankImage": ["blank", "blank"],
+    }).to_csv(table, index=False)
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text(ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8")
+    result = _cli(
+        "--pipeline", str(pipeline), "--input", str(images), "--output", str(tmp_path / "out"),
+        "--image-manifest", str(manifest), "--metadata", str(table),
+        "--mode", "process", "--layer", "detect_mat",
+    )
+    assert result.exit_code == 0, result.output
+    for plate in ("plate1", "plate2"):
+        frame = Image.imread(images / plate / "t01.tiff")
+        blank = Image.imread(images / plate / "blank.tiff")
+        (out,) = (tmp_path / "out").rglob(f"{plate}/t01.*")
+        np.testing.assert_allclose(
+            tifffile.imread(out), np.clip(frame.gray[:] - blank.gray[:], 0.0, 1.0), atol=1e-6
+        )
+
+
+def test_staged_gpu_run_with_subtract_blank_in_the_detector_branch(run_inputs, monkeypatch):
+    """Review B1: SubtractBlank before a GpuDetector inside one branch runs in Stage 2."""
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", "tests._fakes.fake_gpu_detector")
+    base, _, manifest, table, _ = run_inputs
+    staged = base / "staged_pipeline.json"
+    branch = ImagePipeline(ops={"sb": SubtractBlank(), "gpu": FakeGpuDetector()})
+    staged.write_text(
+        ImagePipeline(ops={"branch": branch}, meas={"size": MeasureSize()}).to_json(),
+        encoding="utf-8",
+    )
+    common = ["--pipeline", str(staged), "--input", str(base / "images"),
+              "--image-manifest", str(manifest), "--metadata", str(table)]
+    full = _cli(*common, "--output", str(base / "staged_full"))
+    assert full.exit_code == 0, full.output
+    objmap = _cli(*common, "--output", str(base / "staged_objmap"), "--mode", "process", "--layer", "objmap")
+    assert objmap.exit_code == 0, objmap.output
+
+
 def test_full_mode_runs_and_joins_the_blank_column(run_inputs):
     base, _, manifest, table, pipeline = run_inputs
     result = _cli(
@@ -2625,14 +2919,13 @@ git commit -m "test(cli): SubtractBlank end-to-end in process and full mode, wit
 
 ## Phase 3 — GUI
 
-### Task 8: Builder — reference-metadata picker, preview context, column dropdowns
+### Task 8: Builder — reference-metadata picker and preview context
 
 **Files:**
 - Create: `src/phenotypic/_gui/builder/_reference_metadata.py`
 - Modify: `src/phenotypic/_gui/builder/_ids.py` (three ids, export list ~line 1098)
-- Modify: `src/phenotypic/_gui/builder/_layout.py` (picker under `ACTIVE_IMAGE_LABEL` ~4126; store beside `STORE_IMAGE_PATH` ~4481; `build_inspector`/`_build_dag_inspector` gain `columns_provider`)
-- Modify: `src/phenotypic/_gui/builder/_param_form.py` (`param_form` gains `columns_provider`)
-- Modify: `src/phenotypic/_gui/builder/_callbacks.py` (picker callback; inspector render ~4017; preview request ~3672 and its `State`s ~5933/5977; preview run ~6090)
+- Modify: `src/phenotypic/_gui/builder/_layout.py` (picker under `ACTIVE_IMAGE_LABEL` ~4126; store beside `STORE_IMAGE_PATH` ~4481)
+- Modify: `src/phenotypic/_gui/builder/_callbacks.py` (picker callback; preview request ~3672 and its `State`s ~5933/5977; preview run ~6090)
 - Modify: `src/phenotypic/_gui/builder/_preview_cache.py` (`compute_scope` ~312, apply ~386)
 - Modify: `src/phenotypic/_gui/builder/_preview_callbacks.py` (~121)
 - Test: `tests/unit/gui/builder/test_reference_metadata.py`, extend `tests/unit/gui/test_operation_registry.py`
@@ -2641,12 +2934,11 @@ git commit -m "test(cli): SubtractBlank end-to-end in process and full mode, wit
 - Consumes: Task 1 (`ReferenceContext`, `ReferenceTableError`), Task 2 (`_ColumnRefMarker("reference_metadata")`).
 - Produces:
   - ids `STORE_REFERENCE_METADATA_PATH = "store-reference-metadata-path"`, `INPUT_REFERENCE_METADATA = "input-reference-metadata"`, `REFERENCE_METADATA_STATUS = "reference-metadata-status"`
-  - `describe_reference_table(path: str | None) -> tuple[str, str]` → `(store_value, status_message)`
-  - `reference_columns_provider(path: str | None) -> Callable[[str], list[str]] | None`
+  - `describe_reference_table(path: str | None) -> tuple[str, str]` → `(store_value, status_message)`; the message lists the table's columns, which is how v1 tells the user what to type into a `RefColumn` field (S11)
   - `preview_reference_context(reference_metadata: str | None, image_path: str | None)` — context manager
   - `reference_identity(reference_metadata: str | None) -> str` (`""` when unset)
   - `compute_scope(..., reference_metadata: str | None = None)`
-  - `build_inspector(state, registry, *, columns_provider=None)`, builder `param_form(..., columns_provider=None)`
+  - `RefColumn` fields keep the builder's free-text widget in v1 (no `columns_provider` on the builder path; live dropdowns are a follow-up — S11)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2673,14 +2965,8 @@ def test_describe_empty_missing_and_valid(tmp_path):
     assert value == "" and "not found" in message.lower()
     value, message = rm.describe_reference_table(str(_table(tmp_path)))
     assert value.endswith("blank_map.csv")
-    assert "1 rows" in message and "2 columns" in message
-
-
-def test_columns_provider_serves_only_reference_metadata(tmp_path):
-    provide = rm.reference_columns_provider(str(_table(tmp_path)))
-    assert "Metadata_BlankImage" in provide("reference_metadata")
-    assert provide("measurements") == []
-    assert rm.reference_columns_provider("") is None
+    assert "1 rows" in message
+    assert "Metadata_BlankImage" in message   # the columns a RefColumn field may name
 
 
 def test_preview_context_activates_with_the_image_directory_as_root(tmp_path):
@@ -2744,9 +3030,7 @@ from __future__ import annotations
 import hashlib
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Iterator, Optional
-
-REFERENCE_SOURCE = "reference_metadata"
+from typing import Iterator, Optional
 
 
 def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
@@ -2764,25 +3048,9 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
         return "", str(exc)
     return (
         str(candidate.resolve()),
-        f"{candidate.name} · {context.table.height} rows · {len(context.columns)} columns",
+        f"{candidate.name} · {context.table.height} rows · columns: "
+        f"{', '.join(context.columns)}",
     )
-
-
-def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], list[str]]]:
-    """A ``columns_provider`` for the shared param form, or ``None`` without a table."""
-    if not path:
-        return None
-    from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
-
-    try:
-        columns = list(ReferenceContext(path).columns)
-    except ReferenceTableError:
-        return None
-
-    def provide(source: str) -> list[str]:
-        return list(columns) if source == REFERENCE_SOURCE else []
-
-    return provide
 
 
 def reference_identity(reference_metadata: Optional[str]) -> str:
@@ -2890,7 +3158,7 @@ In `_callbacks.py`, register:
         return describe_reference_table(path if isinstance(path, str) else None)
 ```
 
-- [ ] **Step 7: Dropdowns** — builder `_param_form.param_form` gains `columns_provider: Callable[[str], list[str]] | None = None` and passes it to `_shared_param_form(..., columns_provider=columns_provider)`. Update the stale comment in `_gui/_param_forms.py` (~line 585: "builder ops carry no column-ref params, so this branch is dead code on the builder path") to say the builder supplies a provider for `reference_metadata`. `build_inspector` and `_build_dag_inspector` gain `*, columns_provider=None` and pass it to both `param_form(` calls (~3789, ~3931). The inspector callback (~4017) gains `State(ids.STORE_REFERENCE_METADATA_PATH, "data")` as its last `State` and calls `build_inspector(state, registry, columns_provider=reference_columns_provider(reference_path))`. (The dropdown refreshes the next time the inspector renders; the linear side loader at `_linear_layout.py:1087` keeps free text.)
+- [ ] **Step 7: Correct the stale comment** in `_gui/_param_forms.py` (~line 585: "builder ops carry no column-ref params, so this branch is dead code on the builder path"): builder ops now do carry `reference_metadata` column refs, which render as free text there because the builder passes no provider (S11; the inspector is rendered by `_render_views` from 12 callbacks, `builder/_callbacks.py:3943`, so a live dropdown needs the picked path carried in builder state — a follow-up).
 
 - [ ] **Step 8: Run**
 
@@ -2900,9 +3168,9 @@ Expected: pass (the last file proves every Dash app still builds with the new id
 - [ ] **Step 9: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/_gui/builder/_reference_metadata.py src/phenotypic/_gui/builder/_ids.py src/phenotypic/_gui/builder/_layout.py src/phenotypic/_gui/builder/_param_form.py src/phenotypic/_gui/builder/_callbacks.py src/phenotypic/_gui/builder/_preview_cache.py src/phenotypic/_gui/builder/_preview_callbacks.py src/phenotypic/_gui/_param_forms.py tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py
+uv run ruff check --fix src/phenotypic/_gui/builder/_reference_metadata.py src/phenotypic/_gui/builder/_ids.py src/phenotypic/_gui/builder/_layout.py src/phenotypic/_gui/builder/_callbacks.py src/phenotypic/_gui/builder/_preview_cache.py src/phenotypic/_gui/builder/_preview_callbacks.py src/phenotypic/_gui/_param_forms.py tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py
 git add src/phenotypic/_gui tests/unit/gui
-git commit -m "feat(gui): builder reference-metadata picker, preview context, column dropdowns"
+git commit -m "feat(gui): builder reference-metadata picker and preview context"
 ```
 
 ---
@@ -2917,7 +3185,7 @@ git commit -m "feat(gui): builder reference-metadata picker, preview context, co
 
 **Interfaces:**
 - Consumes: Task 2 (`ImagePipeline.reference_columns`); the form-state store `RC_STORE_FORM_STATE` whose payload has `"metadata_csv"` (`_callbacks.py:705`).
-- Produces: `reference_metadata_requirement(pipeline_path: object, metadata_csv: object) -> str | None`; id `RC_REFERENCE_METADATA_REQUIRED = "rc-reference-metadata-required"`.
+- Produces: `reference_metadata_requirement(pipeline_path: object, metadata_csv: object) -> str | None`; `_pipeline_reference_columns(path: str, mtime_ns: int) -> dict` (`functools.lru_cache`, so the form-state callback does not re-parse the pipeline on every keystroke); id `RC_REFERENCE_METADATA_REQUIRED = "rc-reference-metadata-required"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2969,10 +3237,8 @@ def reference_metadata_requirement(pipeline_path: object, metadata_csv: object) 
         return None
     if isinstance(metadata_csv, str) and metadata_csv:
         return None
-    from phenotypic import ImagePipeline
-
     try:
-        needs = ImagePipeline.from_json(Path(pipeline_path)).reference_columns()
+        needs = _pipeline_reference_columns(pipeline_path, Path(pipeline_path).stat().st_mtime_ns)
     except (OSError, ValueError, TypeError):
         return None
     if not needs:
@@ -2983,6 +3249,27 @@ def reference_metadata_requirement(pipeline_path: object, metadata_csv: object) 
         f"CSV with those columns before running."
     )
 ```
+
+and above it:
+
+```python
+@functools.lru_cache(maxsize=8)
+def _pipeline_reference_columns(path: str, mtime_ns: int) -> dict[str, tuple[str, ...]]:
+    """``reference_columns()`` of the pipeline file, cached per (path, mtime)."""
+    from phenotypic import ImagePipeline
+
+    return ImagePipeline.from_json(Path(path)).reference_columns()
+```
+
+Mirror the staged-GPU server-side guard in `click_action` (`_callbacks.py:1944-1948`: "a click racing a pipeline change still arrives here"): right after that refusal, add
+
+```python
+            missing = reference_metadata_requirement(state.pipeline_path, state.metadata_csv)
+            if missing is not None:
+                raise ValueError(missing)
+```
+
+and a test that `reference_metadata_requirement` is what `click_action` consults (or, if `click_action` is reachable in `tests/unit/gui/run_console/test_runner.py`'s harness, drive it with a reference pipeline and no metadata and assert the refusal).
 
 Id in `_ids.py`: `RC_REFERENCE_METADATA_REQUIRED = "rc-reference-metadata-required"` (+ export). In `_form.py`, after the `RC_STAGED_GPU_REFUSAL` alert:
 
@@ -3046,6 +3333,7 @@ git commit -m "feat(gui): run console requires a metadata table for reference pi
 - Create: `docs/source/how_to/pages/reference_metadata.md`
 - Modify: `docs/source/how_to/index.rst` (toctree, beside `pages/migrate_ome_zarr`)
 - Modify: `src/phenotypic/abc_/CLAUDE.md` (a `RefMetadata` entry beside the `PlotImage` capability)
+- Modify: the API reference page that lists `SubtractGaussian` (find it with `grep -rln "SubtractGaussian" docs/source`) — add `SubtractBlank` beside it, and `ReferenceContext` beside `Image`/`ImagePipeline` in the top-level API page (spec §10)
 - Modify: `CLAUDE.md` (one Gotchas bullet)
 
 - [ ] **Step 1: How-to page** — sections, each with a runnable snippet:

@@ -149,7 +149,9 @@ keeps the parent's value). A single instance must not be entered concurrently fr
 the same kwargs it uses for inputs; empty in Python). Loaded images are held in
 a process-level LRU keyed by `(resolved_path, st_mtime_ns, st_size,
 read_kwargs)`, so a worker reads each blank once across all its images. An
-`images=` entry that is already an `Image` is returned as-is (copied).
+`images=` entry that is already an `Image` is returned as-is (shared, not
+copied — callers must not modify it). A store directory (`x.ome.zarr`) resolves
+by its source stem (`x`), and its identity digest is its root `zarr.json`.
 
 **Errors** (all in the same module, all `ValueError` subclasses rooted at
 `ReferenceContextError`, re-exported from `phenotypic.sdk_`, §8):
@@ -235,8 +237,9 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):   # BackgroundSubtracti
    - `np.array_equal(image.detect_mat[:], get_detection_mode(image.detect_mode).compute(image))`
      must hold, else `StaleDetectMatError` ("place SubtractBlank before any
      enhancer, or directly after SetDetectMode").
-   - No operation record in the image's current provenance application has an
-     `operation_class` naming a loaded `ImageCorrector` subclass, else
+   - No operation record in **any** of the image's provenance applications
+     (a staged Stage-2 probe copy opens a fresh one) has an `operation_class`
+     naming a loaded `ImageCorrector` subclass, else
      `StaleDetectMatError` (a corrector changed the target's pixels; the raw
      blank does not share that change). Limitation: a corrector inside the
      same composite branch is recorded only when the composite finishes, so it
@@ -352,17 +355,32 @@ Preflight runs before `--overwrite` clears anything and before `--dry-run`
 exits, like the staged-GPU refusal. It resolves reference-image *names* to
 files but never opens or hashes them; startup does the hashing.
 
-**SLURM / staged GPU.** No new jobs. `SubtractBlank` is an enhancer, so in a
-staged run it lands in Stage 1 by construction; Stage 3 also enters the
-context, because it re-runs the detector's whole top-level ancestor, which can
-contain a `SubtractBlank` sibling. The snapshot is on shared
+**SLURM / staged GPU.** No new jobs. Every stage that applies operations
+enters the context: Stage 1 (pre-detector ops); **Stage 2**, because a
+`SubtractBlank` inside the GPU detector's own sequence branch is moved into the
+`stage2_prefix` (`_cli_pipeline_split.py:84-97`) and applied before inference;
+Stage 3, because it re-runs the detector's whole top-level ancestor; and the
+`--layer objmap` export, which re-applies the post-detector chain. (An earlier
+draft said SubtractBlank "lands in Stage 1 by construction" — false for the
+in-branch placement; corrected after plan review B1.)
+
+**Image identity.** The planner, work-ids and resolution all key an image by
+`source_image_stem` — what `Image.imread` names it — so `x.ome.zarr` is `x`.
+
+**Guards around the snapshot.** Measure mode never touches the manifest (it
+may run beside live forward workers). A run that needs references and passes
+`--overwrite` must pass `--metadata` (the snapshot it would fall back to is
+deleted). The reference table is parsed early, before any output change and
+regardless of `--skip-validation`. The snapshot is on shared
 storage under `--output`; workers read it, never the user's original.
 
 ### 5.3 GUI
 
-- **Builder parameter form** (`_gui/builder/_param_form.py`): any field
-  carrying the `RefColumn` marker renders as a dropdown of the active preview
-  table's headers; free text when no table is picked.
+- **Builder parameter form**: `RefColumn` fields are free text in v1; the
+  picker's status line lists the picked table's columns. A live dropdown needs
+  the picked path carried in builder state (the inspector is rendered by
+  `_render_views` from 12 callbacks) and is a follow-up. The GUI registry
+  already reports these fields as `column_ref.source == "reference_metadata"`.
 - **Builder preview** (`_preview_cache.py:386`, `_callbacks.py:6090`): a
   session-level **Reference metadata** file picker in the preview panel. When
   set, `apply_with_intermediates` runs inside
@@ -422,7 +440,7 @@ out of `--input` via `--image-manifest` (otherwise `PF-REF-SELF`).
 | Image names itself | `ReferenceLookupError`; CLI `PF-REF-SELF` |
 | Blank name resolves to 0 or >1 files | `ReferenceImageError`; CLI `PF-REF-UNRESOLVED` |
 | Shape or bit-depth mismatch | `ReferenceImageError` at run (per image) |
-| `SubtractBlank` after an enhancer or a corrector | `StaleDetectMatError` at run |
+| `SubtractBlank` after an enhancer or a corrector | `StaleDetectMatError` at run (inside an `ImagePipeline`, wrapped in the pipeline's `RuntimeError`, original as `__cause__`) |
 | A later `SetDetectMode` would discard the subtraction | not caught at run; documented in the docstring and the how-to (§11 R2) |
 | Well-formed table from the wrong experiment | not detectable; traceable via `table_sha256`, `deliverables/metadata.csv`, and the joined `Metadata_BlankImage` |
 
@@ -450,18 +468,23 @@ Unit (`tests/unit/`):
   shape and bit-depth refusal; self-reference refusal; `rgb`/`gray`
   unchanged; JSON round-trip.
 - `ImagePipeline.reference_columns()` on nested trees.
-- CLI preflight: one test per `PF-REF-*` code and severity escalation.
-- CLI run: full and process mode, local, on a tiny synthetic time series
-  (blank + 2 frames, two datasets); process-mode snapshot written and reused
-  on continuation; table edit invalidates process work-ids; a pipeline
-  without `RefMetadata` ops has unchanged process work-ids.
+- CLI preflight: one test per `PF-REF-*` code and severity escalation
+  (including escalation on the union of failure reasons).
+- CLI run: full and process mode, local, on a tiny synthetic time series;
+  two datasets with same-named blanks (proves per-dataset resolution);
+  process-mode snapshot written and reused on continuation; a blank edit
+  re-runs only the affected image; a staged GPU run with `SubtractBlank`
+  inside the detector's branch (Stage 2), in full mode and `--layer objmap`.
+- Existing gates stay honest: the zero-arg enhancer invariant gate applies
+  reference ops inside a context; the enhancer taxonomy lists `SubtractBlank`.
 - Tune refusal.
-- GUI: param-form dropdown; preview with and without a picked table; run
-  console Run gating.
-- Startup guards: `import phenotypic` and `phenotypic.ReferenceContext`
-  attribute access load nothing in `HEAVY_STARTUP_MODULES` until a context is
-  constructed (`tests/unit/ci/test_startup_imports.py`,
-  `test_deferred_imports.py`).
+- GUI: registry reports the reference column source; preview with and
+  without a picked table (and fingerprint change); run console Run gating.
+- Startup guard: `import phenotypic` still loads nothing in
+  `HEAVY_STARTUP_MODULES` (existing `tests/unit/ci/test_startup_imports.py`).
+  Accessing `phenotypic.ReferenceContext` loads `phenotypic._core`, which is
+  already heavy, exactly as `phenotypic.Image` does — no guard is possible
+  there (plan review M5).
 - Doctests for `ReferenceContext` and `SubtractBlank` run with
   `load_synth_yeast_plate()`.
 
