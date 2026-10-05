@@ -228,10 +228,13 @@ Whenever a valid frame exists, padded or not, the root `attributes.phenotypic`
 block gains:
 
 ```json
-"crop_frame": {"canvas_shape": [H, W], "offset": [r, c], "padded": true}
+"crop_frame": {"canvas_shape": [H, W], "offset": [r, c], "roi_shape": [h, w], "padded": true}
 ```
 
-An unpadded `objects[i]` store therefore still records where it came from.
+`roi_shape` is the image's own 2-D shape at write time. The reader needs it to slice
+a padded layer back to the ROI, because `canvas_shape` and `offset` alone do not
+determine the ROI's extent. An unpadded `objects[i]` store therefore still records
+where it came from.
 
 **Versioning, scoped to padded stores only.** The read gate is exact equality,
 `found != STORE_SCHEMA_VERSION` (= 3, `ngff_.py:697`). A padded store means
@@ -281,8 +284,12 @@ branches:
 
 - `zarr` (`rgb`/`gray`): `_save_store(..., pad_on_save=None)`, which resolves to
   the image's value. The level count comes from the canvas when padded.
-- `tiff` (flat `rgb`/`gray`/`detect_mat` TIFF, `objmap` PNG): pad the layer before
-  `accessor.imsave` when padding is in effect.
+- `tiff` (flat `rgb`/`gray`/`detect_mat` TIFF, `objmap` PNG): the flat branch
+  writes through the accessor `imsave` methods. Those methods
+  (`AccessorIOHandler.imsave`, `MultiChannelAccessor.imsave`, `ObjectMap.imsave`)
+  gain the same `pad_on_save: bool | None = None` keyword with the same
+  resolution rule, so every way of saving an image layer honours one rule. Overlay
+  writers (`save_overlay`) are not padded (non-goal).
 
 `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py:209`) goes from **3 to
 4**, so a process tree from before the change is re-derived.
@@ -318,9 +325,15 @@ coordinates onto stored pixels** must add the offset:
   `_qc_tab/review/_callbacks.py:1551`) use `Max − Min` and don't change with an
   offset. Confirm each one; no change expected.
 
-One shared helper, `to_canvas_coords(...)`, decides "is this pixel source padded?"
-in a single place. Masters without `Frame_*` columns (older runs) default to an
-offset of 0.
+One shared helper, `ngff_.padded_crop_offset(block)`, decides "is this pixel source
+padded?" in a single place. It reads the store's own `crop_frame` attribute and
+returns its offset when `padded` is true, otherwise `(0, 0)`. The **store**, not the
+measurement table, is the source of truth for the shift. This means old masters
+without `Frame_*` columns need no special case, and the overlay fallback (which has
+no store) is never shifted. `_crop_store_layer_window` (`tiles.py`) applies it to
+the centre and the dim bbox before computing the read window. Curation labels
+(`_curation_labels.py`) use centroids only as identity fingerprints compared
+against the same table, never placed onto pixels, so they need no change.
 
 ## 8. Testing
 
