@@ -25,6 +25,7 @@ from phenotypic._cli._cli_failure_tracker import work_identity_for_image
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_stage2_token import detector_slot, stage2_result_replayable
 from phenotypic._cli._cli_staged_orchestration import (
+    initialize_orchestration,
     load_staged_manifest,
     write_staged_manifest,
 )
@@ -499,6 +500,21 @@ def _slurm_setup(run_inputs, pipeline: Path, out: Path):
     return config, dataset, manifest
 
 
+def _active_epoch(out: Path) -> str:
+    """A live staged epoch, as the submitter initialises one.
+
+    Without it the SLURM recorder (``_record_terminal_scientific_failure``)
+    returns early on ``epoch is None``, and "no terminal failure was recorded"
+    would hold whatever the stages raised (review T2).
+    """
+    epoch = "epoch-reference-pin"
+    initialize_orchestration(
+        out, epoch=epoch, mode="fresh",
+        controller_config_path=out / "staged_controller.json",
+    )
+    return epoch
+
+
 def test_the_staged_slurm_manifest_carries_each_images_reference_digest(run_inputs):
     """The submitter's one identity per image holds the digest its work-id names."""
     base = run_inputs[0]
@@ -556,8 +572,11 @@ def test_an_old_shape_entry_is_refused_under_a_reference_plan(
     out = run_inputs[0] / "slurm_out"
     _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
     old_shape = [replace(entry, reference_digest=None) for entry in manifest]
+    epoch = _active_epoch(out)
     with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
-        worker.run_stage1_step(pipeline, out, "Image", old_shape, 0, ".tiff")
+        worker.run_stage1_step(
+            pipeline, out, "Image", old_shape, 0, ".tiff", epoch=epoch
+        )
     assert _no_terminal_failures(out)
 
 
@@ -577,15 +596,20 @@ def test_the_staged_slurm_workers_refuse_an_image_replanned_after_submission(
     pipeline = _staged_pipeline(run_inputs, monkeypatch, placement)
     out = run_inputs[0] / "slurm_out"
     _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
+    epoch = _active_epoch(out)
     slot = detector_slot(
         split_pipeline_at_gpu(ImagePipeline.from_json(pipeline)).gpu_path
     )
 
     def stage1(index: int) -> None:
-        worker.run_stage1_step(pipeline, out, "Image", manifest, index, ".tiff")
+        worker.run_stage1_step(
+            pipeline, out, "Image", manifest, index, ".tiff", epoch=epoch
+        )
 
     def stage3(index: int) -> None:
-        worker.run_stage3_step(pipeline, out, "Image", manifest, index, ".tiff")
+        worker.run_stage3_step(
+            pipeline, out, "Image", manifest, index, ".tiff", epoch=epoch
+        )
 
     if replan_before == 1:
         _replan(out, "plate1", "t01")
@@ -598,7 +622,7 @@ def test_the_staged_slurm_workers_refuse_an_image_replanned_after_submission(
     if replan_before == 2:
         _replan(out, "plate1", "t01")
     # One shard over both images: a refusal must not stop the control.
-    worker.run_stage2_shard(pipeline, out, "Image", manifest, 0, 1)
+    worker.run_stage2_shard(pipeline, out, "Image", manifest, 0, 1, epoch=epoch)
     assert stage2_result_replayable(out, "plate1", "t01", slot) is (replan_before == 3)
     assert stage2_result_replayable(out, "plate1", "t02", slot)
 
@@ -610,4 +634,47 @@ def test_the_staged_slurm_workers_refuse_an_image_replanned_after_submission(
 
     assert not image_record_path(out, "plate1", "t01").exists()
     assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)
+
+
+def test_stage3_measure_refuses_a_replan_between_apply_and_measure(
+    run_inputs, monkeypatch
+):
+    """Review M1: Stage 3's measure pins on its own, not through its apply.
+
+    Each context checks the pin once, on entry. A re-plan that lands after the
+    replay apply's check would otherwise be measured under the new plan and
+    published under the old work-id -- F1 again.
+    """
+    from phenotypic._cli import _cli_staged_slurm_worker as worker
+
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    pipeline = _staged_pipeline(run_inputs, monkeypatch, "stage1")
+    out = run_inputs[0] / "slurm_out"
+    _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
+    epoch = _active_epoch(out)
+    worker.run_stage1_step(
+        pipeline, out, "Image", manifest, 0, ".tiff", epoch=epoch
+    )
+    worker.run_stage2_shard(pipeline, out, "Image", manifest, 0, 1, epoch=epoch)
+
+    # Installed only around Stage 3: the replay pipeline is a plain
+    # ImagePipeline (`substitute_at_path` copies `post_pipeline`).
+    real_apply = ImagePipeline.apply
+    applied: list[str] = []
+
+    def apply_then_replan(self, image, *args, **kwargs):
+        result = real_apply(self, image, *args, **kwargs)
+        applied.append(image.name)
+        _replan(out, "plate1", "t01")  # after the apply context's check
+        return result
+
+    monkeypatch.setattr(ImagePipeline, "apply", apply_then_replan)
+    with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
+        worker.run_stage3_step(
+            pipeline, out, "Image", manifest, 0, ".tiff", epoch=epoch
+        )
+    # The replay apply passed its own check, so the refusal is the measure's.
+    assert applied, "the replay apply never ran; the apply context refused"
+    assert not image_record_path(out, "plate1", "t01").exists()
     assert _no_terminal_failures(out)

@@ -153,7 +153,10 @@ table as an argument; they read a run-level plan.
   which every stage worker pins (`_reference_pin`). An entry written before
   that field existed loads with `None`, which pins "no reference plan": under
   a reference manifest such an entry is refused, never applied unpinned. Each
-  staged core takes the pin as `reference_pin=`.
+  staged core takes the pin as `reference_pin=`. The staged controller's
+  `_classify_stage2` lists an entry whose pin no longer matches the manifest
+  as `terminal`, not `retryable`: another GPU round would refuse the same pin.
+  That list records nothing, so the next invocation re-plans the image.
 - **`ReferencePlanStaleError` is never terminal.** It is raised for a pin
   mismatch or a table whose bytes no longer match the manifest. It is a
   `RuntimeError`, not a `ReferenceContextError`, and every scientific wrapper
@@ -522,22 +525,43 @@ then writes a `submitted` row, all into the one lifecycle ledger
 reference-metadata change did, and concluded wrongly that ordinary arrays were
 invisible to the guard.
 
-How `live_slurm_job_ids` answers, and when it asks the scheduler:
+How `live_slurm_job_ids` answers, and when it asks the scheduler. It returns
+a `LiveSlurmJobs(live, unverified, unresolved)`, falsy only when all three are
+empty:
 
-- A closed lifecycle fence (`active is False`) answers `[]` with **no**
+- A closed lifecycle fence (`active is False`) answers empty with **no**
   scheduler query, so a cancelled or finalized run whose history SLURM has
   purged never blocks.
-- Otherwise every ledgered job ID that `scheduler_job_is_active` does not
-  report `False` counts as live (`active_ledger_job_ids`, unchanged).
+- **Only the fence's own generation is consulted.** A new generation is
+  published only when the previous one is inactive (`initialize_slurm_lifecycle`
+  refuses to replace an active one) or after this guard passed for it, so an
+  older generation is either fenced or already judged not live. That keeps the
+  per-job `squeue`/`sacct` calls bounded by one run, not the output's whole
+  history. A ledger with no readable fence (a legacy staged tree) is walked
+  across every generation instead.
+- Each unterminated ledgered job ID is classified by `scheduler_job_is_active`:
+  truthy is `live`, `None` is `unverified`, and `False` is dropped. The walk is
+  shared with `active_ledger_job_ids`, whose own return is unchanged because
+  cancellation reads it.
 - A token whose latest ledger row is `intent` or `blocked` may own a live job
   whose `submitted` row was never written (the submitter died after `sbatch`).
   Only then does it make one `squeue`-only `query_scheduler_comments` call and
-  match the exact `phenotypic:<generation>:<token>` comment. A clean ledger,
-  and every local run (no lifecycle, no ledger), never queries.
-- **It fails closed.** An unknown answer counts as live, as it does in the staged
-  controller: `scheduler_job_is_active` returning `None` for a ledgered ID, and
-  `SchedulerQueryUnavailable` for an unresolved token, which becomes a
-  descriptive `unknown (...)` entry in the refusal instead of a job ID.
+  match the exact `phenotypic:<generation>:<token>` comment. A match is `live`.
+  If the query raises `SchedulerQueryUnavailable`, the comment stays in
+  `unresolved`. A clean ledger, and every local run (no lifecycle, no ledger),
+  never queries.
+
+**It fails closed, but never calls an unknown job active.** Any non-empty
+group refuses. `_refuse_live_slurm_run` prints one sentence per group:
+`SLURM jobs are active: <ids>` with `scancel <ids>` for `live`;
+`Ledgered SLURM jobs are unverified: <ids>` (may be running or long finished)
+for `unverified`; and "the scheduler could not be queried from this host"
+naming each `<generation>:<token>` for `unresolved`. When either unknown group
+is non-empty it adds the one remedy that works: run the same command on a
+cluster node where `squeue` works. It then lists `sacct -j <id>` and
+`squeue --noheader --format='%i|%k' | grep 'phenotypic:<gen>:<token>'` for
+checking by hand. There is no override flag. A host that cannot reach the
+scheduler cannot clear a stuck fence.
 
 **A stuck `active: true` does not refuse on its own, deliberately.** A
 finalizer that is OOM-killed or cancelled outside PhenoTypic leaves the fence

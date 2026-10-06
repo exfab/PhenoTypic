@@ -787,26 +787,59 @@ def _print_dry_run_mutation_preview(
 
 
 def _refuse_live_slurm_run(output_dir: Path) -> None:
-    """Exit when a live SLURM run still owns *output_dir*.
+    """Exit when a live SLURM run may still own *output_dir*.
 
     Read-only, and called before the first write of every mode that rewrites
     run state over an existing output (forward modes and recompile). An
-    unknown scheduler answer counts as live; a closed lifecycle fence never
-    queries the scheduler. See ``live_slurm_job_ids``.
+    unknown scheduler answer refuses too, but is reported as unknown -- never
+    as an active job -- with where and how it can be checked. A closed
+    lifecycle fence never queries the scheduler. See ``live_slurm_job_ids``.
     """
     if not output_dir.exists():
         return
     from phenotypic._cli._cli_staged_orchestration import live_slurm_job_ids
 
-    live_jobs = live_slurm_job_ids(output_dir)
-    if live_jobs:
-        click.echo(
-            "Error: Cannot continue, restart, overwrite or recompile while "
-            f"SLURM jobs are active: {', '.join(live_jobs)}. Wait for them "
-            "to finish or cancel them (scancel), then run the command again.",
-            err=True,
+    jobs = live_slurm_job_ids(output_dir)
+    if not jobs:
+        return
+    lines = [
+        "Error: Cannot continue, restart, overwrite or recompile "
+        f"{output_dir}: an earlier SLURM run may still own it."
+    ]
+    if jobs.live:
+        lines.append(
+            f"SLURM jobs are active: {', '.join(jobs.live)}. Wait for them to "
+            f"finish or cancel them (scancel {' '.join(jobs.live)}), then run "
+            "the command again."
         )
-        sys.exit(1)
+    if jobs.unverified:
+        lines.append(
+            "Ledgered SLURM jobs are unverified: "
+            f"{', '.join(jobs.unverified)}. The scheduler could not report "
+            "their state from this host, so they may be running or long "
+            "finished."
+        )
+    if jobs.unresolved:
+        submissions = ", ".join(
+            comment.removeprefix("phenotypic:") for comment in jobs.unresolved
+        )
+        lines.append(
+            "The scheduler could not be queried from this host, so PhenoTypic "
+            "cannot tell whether these unrecorded submissions are running: "
+            f"{submissions}."
+        )
+    if jobs.unverified or jobs.unresolved:
+        lines.append(
+            "Run the same command on a cluster node where `squeue` works. "
+            "To check by hand:"
+        )
+        lines.extend(f"  sacct -j {job_id}" for job_id in jobs.unverified)
+        lines.extend(
+            f"  squeue --noheader --format='%i|%k' | grep '{comment}'"
+            for comment in jobs.unresolved
+        )
+    click.echo("\n".join(lines), err=True)
+    sys.exit(1)
 
 
 def _snapshot_metadata_csv(
@@ -1786,7 +1819,12 @@ def _print_process_only_dry_run_plan(
     # Only 8 and 16 mean anything downstream (``_image_data_manager.py``);
     # any other integer used to be accepted and fail per image (spec F15).
     callback=lambda _ctx, _param, value: None if value is None else int(value),
-    help="Bit depth of input images (8 or 16)",
+    help=(
+        "Bit depth of input images (8 or 16). Pass it for integer inputs "
+        "that are not uint8/uint16 (e.g. int32 TIFFs): otherwise each image "
+        "takes the narrowest width its own values fit, so a dark frame and a "
+        "bright one can land on different scales."
+    ),
 )
 @click.option(
     "--detect-mode",

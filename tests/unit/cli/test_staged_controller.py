@@ -867,6 +867,57 @@ def test_a_token_without_its_raw_array_is_retryable_not_done(
     assert terminal == []
 
 
+@pytest.mark.parametrize(
+    ("pinned", "planned", "stale"),
+    [
+        ("d-planned", "d-replanned", True),
+        # An old-shape entry (no digest) under a reference plan is refused by
+        # every stage, so it is stale here too.
+        (None, "d-replanned", True),
+        ("d-planned", "d-planned", False),
+        (None, None, False),
+    ],
+)
+def test_a_stale_pinned_image_is_not_retried_within_the_run(
+    tmp_path: Path, pinned, planned, stale
+) -> None:
+    """Review M3: another GPU round would refuse the same pin again.
+
+    The entry's pin cannot change within a run, so a re-planned image is done
+    for this run -- not retryable -- and nothing is recorded for it: the next
+    invocation re-plans it under a new work-id.
+    """
+    from phenotypic._cli._cli_staged_controller import _classify_stage2
+    from phenotypic.sdk_._io_constants import (
+        reference_manifest_path,
+        terminal_failures_jsonl_path,
+    )
+
+    config = json.loads(
+        _controller_fixture(tmp_path).read_text(encoding="utf-8")
+    )
+    if planned is not None:
+        manifest = reference_manifest_path(tmp_path)
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(
+            json.dumps({"datasets": {"plate": {"digests": {"image": planned}}}}),
+            encoding="utf-8",
+        )
+    entries = [
+        StagedManifestEntry(
+            "plate", "image.tif", "image", "/in/image.tif",
+            work_id="w", reference_digest=pinned,
+        )
+    ]
+
+    retryable, terminal = _classify_stage2(config, entries, 0)
+
+    assert [e.stem for e in (terminal if stale else retryable)] == ["image"]
+    assert (retryable if stale else terminal) == []
+    failures = terminal_failures_jsonl_path(tmp_path)
+    assert not failures.exists() or not failures.read_text(encoding="utf-8").strip()
+
+
 def test_restart_cleanup_removes_only_transient_stage2_state(
     tmp_path: Path,
 ) -> None:
