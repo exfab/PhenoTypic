@@ -734,6 +734,13 @@ STORE_IMAGE_PATH = "store-image-path"
 #: plate" buttons.
 ACTIVE_IMAGE_LABEL = "active-image-label"
 
+#: Text input for the session's reference metadata table path (the value is
+#: stored on the builder state as ``reference_metadata_path``).
+INPUT_REFERENCE_METADATA = "input-reference-metadata"
+
+#: One-line status under the reference metadata input (rows/columns or error).
+REFERENCE_METADATA_STATUS = "reference-metadata-status"
+
 #: Opens the Load Image modal. Replaces the inline directory picker that used
 #: to live in the footer.
 BTN_LOAD_IMAGE = "btn-load-image"
@@ -1097,6 +1104,8 @@ __all__ = [
     "STORE_CANVAS_CONTROL",
     "STORE_IMAGE_PATH",
     "ACTIVE_IMAGE_LABEL",
+    "INPUT_REFERENCE_METADATA",
+    "REFERENCE_METADATA_STATUS",
     "BTN_LOAD_IMAGE",
     "BTN_USE_SYNTHETIC",
     "BTN_USE_SYNTHETIC_MODAL",

@@ -59,6 +59,7 @@ from phenotypic._gui.builder._modal_browser import (
 )
 from phenotypic._gui.builder._param_form import param_form
 from phenotypic._gui.builder._point_picker import build_point_picker_modal
+from phenotypic._gui.builder._reference_metadata import reference_columns_provider
 from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -3790,6 +3791,9 @@ def _build_dag_inspector(
                 op_info,
                 current_values=block.params,
                 form_id_prefix=block.block_id,
+                columns_provider=reference_columns_provider(
+                    getattr(state, "reference_metadata_path", None)
+                ),
             ),
             id=ids.INSPECTOR_PARAM_FORM,
         )
@@ -3932,6 +3936,9 @@ def build_inspector(
                 op_info,
                 current_values=render_node.params,
                 form_id_prefix=render_node.node_id,
+                columns_provider=reference_columns_provider(
+                    getattr(state, "reference_metadata_path", None)
+                ),
             ),
             id=ids.INSPECTOR_PARAM_FORM,
         )
@@ -4028,7 +4035,11 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
       yeast plate without opening any modal — useful for quick iteration
       without a real plate image. The :data:`ids.ACTIVE_IMAGE_LABEL` below
       the buttons shows the basename of the currently active image so the
-      user can confirm the selection before running.
+      user can confirm the selection before running. Below it, the optional
+      **Reference metadata** input (:data:`ids.INPUT_REFERENCE_METADATA`)
+      takes a table path for operations that read per-image metadata
+      (``SubtractBlank``); :data:`ids.REFERENCE_METADATA_STATUS` reports its
+      rows/columns or why it was refused.
     * **Grid** (right column): optional ``nrows`` / ``ncols`` inputs
       (:data:`ids.INPUT_NROWS`, :data:`ids.INPUT_NCOLS`) for pipelines that
       contain :class:`~phenotypic.abc_.GridOperation` steps. Leave blank to
@@ -4125,6 +4136,24 @@ def build_footer(image_root: Optional[Path]) -> dbc.Card:
                 "(no image loaded)",
                 id=ids.ACTIVE_IMAGE_LABEL,
                 className="text-muted small text-monospace",
+                style={"wordBreak": "break-all"},
+            ),
+            dbc.InputGroup(
+                [
+                    dbc.InputGroupText("Reference metadata"),
+                    dbc.Input(
+                        id=ids.INPUT_REFERENCE_METADATA,
+                        type="text",
+                        placeholder="/path/to/blank_map.csv (optional)",
+                        debounce=True,
+                    ),
+                ],
+                size="sm",
+                className="mt-2",
+            ),
+            html.Div(
+                id=ids.REFERENCE_METADATA_STATUS,
+                className="small text-muted",
                 style={"wordBreak": "break-all"},
             ),
         ]

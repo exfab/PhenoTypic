@@ -276,6 +276,12 @@ class TestColumnRefDetection:
             assert p is not None
             assert p.column_ref is None, f"{name} should not be a column ref"
 
+    def test_subtract_blank_column_is_a_reference_metadata_dropdown(self, registry):
+        p = registry.get("SubtractBlank").parameters["blank_column"]
+        assert p.column_ref is not None
+        assert p.column_ref.source == "reference_metadata"
+        assert p.column_ref.multi is False
+
     def test_non_analyzer_op_has_no_column_ref(self, registry):
         """Builder-side operations don't carry the marker."""
         blur = registry.get("BlurGauss")

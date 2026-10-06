@@ -10,7 +10,7 @@ rewiring.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import numpy as np
@@ -103,6 +103,7 @@ def param_form(
     current_values: dict[str, Any],
     *,
     form_id_prefix: str,
+    columns_provider: Callable[[str], list[str]] | None = None,
 ) -> dbc.Form:
     """Builder-flavoured ``param_form`` that injects the point picker.
 
@@ -124,12 +125,29 @@ def param_form(
             typically the consumer node's ``node_id`` (or the focused
             aux node's ``node_id`` when the inspector is focused on a
             wired aux).
+        columns_provider: Column choices for ``RefColumn`` parameters, from
+            the session's reference metadata table
+            (:func:`._reference_metadata.reference_columns_provider`).
+            ``None`` without a table: those parameters stay free text.
     """
+    if columns_provider is not None:
+        # A column dropdown shows only ``current_values`` (unlike the text
+        # input, which falls back to the default), so an untouched param
+        # would read "Pick a column…" while its default is what runs.
+        current_values = {
+            **{
+                name: p.default
+                for name, p in op_info.parameters.items()
+                if p.column_ref is not None and p.has_default
+            },
+            **current_values,
+        }
     return _shared_param_form(
         op_info,
         current_values,
         form_id_prefix=form_id_prefix,
         picker_factory=_picker_widget,
+        columns_provider=columns_provider,
     )
 
 
