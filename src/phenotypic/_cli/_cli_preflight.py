@@ -1303,21 +1303,19 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
     """
     if context.mode not in ("full", "process"):
         return []
-    from phenotypic.abc_._ref_metadata import RefMetadata
+    from ._cli_reference import (
+        plan_references,
+        reference_operations_with_paths,
+        resolve_reference_table_path,
+    )
 
-    in_scope = [
-        (path, operation)
-        for path, operation in operations_in_scope(context)
-        if isinstance(operation, RefMetadata) and operation._ref_columns()
-    ]
+    in_scope = reference_operations_with_paths(context.pipeline, context.mode)
     if not in_scope:
         return []
     from phenotypic._core._reference_context import (
         ReferenceContext,
         ReferenceTableError,
     )
-
-    from ._cli_reference import plan_references, resolve_reference_table_path
 
     needs = {"/".join(path): op._ref_columns() for path, op in in_scope}
     described = "; ".join(f"{path} reads {list(cols)}" for path, cols in needs.items())

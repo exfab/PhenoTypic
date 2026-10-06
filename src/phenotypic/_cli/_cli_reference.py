@@ -234,9 +234,11 @@ def plan_references(
     )
 
 
-def _reference_operations_with_paths(
+def reference_operations_with_paths(
     pipeline: "ImagePipeline", mode: "RunMode"
 ) -> list[tuple[tuple[str, ...], Any]]:
+    """``(path, operation)`` for each operation a run in *mode* executes that
+    reads at least one reference column, in depth-first order."""
     from phenotypic.abc_._ref_metadata import RefMetadata
 
     from ._cli_preflight import operations_run_in_mode
@@ -258,12 +260,12 @@ def reference_operations_in_scope(
     inside a measurer never runs in ``process`` mode, so a process run never
     needs the column it reads.
     """
-    return [op for _, op in _reference_operations_with_paths(pipeline, mode)]
+    return [op for _, op in reference_operations_with_paths(pipeline, mode)]
 
 
 def reference_operation_paths(pipeline: "ImagePipeline", mode: "RunMode") -> list[str]:
     """Tree paths (``/``-joined) of :func:`reference_operations_in_scope`."""
-    return ["/".join(path) for path, _ in _reference_operations_with_paths(pipeline, mode)]
+    return ["/".join(path) for path, _ in reference_operations_with_paths(pipeline, mode)]
 
 
 def publish_reference_inputs(
@@ -327,23 +329,33 @@ def resolve_reference_table_path(
     back to ``deliverables/metadata.csv``, process mode to
     ``.phenotypic/reference_metadata.csv``.
     """
-    from phenotypic.sdk_._io_constants import (
-        metadata_csv_deliverable_path,
-        reference_metadata_snapshot_path,
-    )
-
     if config.measure_only:
         return None
     if config.metadata_csv is not None:
         return Path(config.metadata_csv)
     if output_dir is None:
         return None
-    snapshot = (
-        reference_metadata_snapshot_path(output_dir)
-        if config.process_only_layer is not None
-        else metadata_csv_deliverable_path(output_dir)
+    snapshot = reference_table_snapshot_path(
+        output_dir, process_mode=config.process_only_layer is not None
     )
     return snapshot if snapshot.is_file() else None
+
+
+def reference_table_snapshot_path(output_dir: Path, *, process_mode: bool) -> Path:
+    """The snapshot a run without ``--metadata`` falls back to.
+
+    Full mode: ``deliverables/metadata.csv``; process mode:
+    ``.phenotypic/reference_metadata.csv``. Whether it exists is the caller's
+    question.
+    """
+    from phenotypic.sdk_._io_constants import (
+        metadata_csv_deliverable_path,
+        reference_metadata_snapshot_path,
+    )
+
+    if process_mode:
+        return reference_metadata_snapshot_path(output_dir)
+    return metadata_csv_deliverable_path(output_dir)
 
 
 def input_read_kwargs(config: "ExecutionConfig") -> dict[str, Any]:

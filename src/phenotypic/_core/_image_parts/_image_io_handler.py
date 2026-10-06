@@ -1824,20 +1824,17 @@ class ImageIOHandler(ImageColorSpace):
         """
         img = cls(**kwargs)
         img._restore_array(matrix)
-        if (
-            np.issubdtype(matrix.dtype, np.floating)
-            and matrix.size
-            and (np.nanmin(matrix) < 0 or np.nanmax(matrix) > 1)
-        ):
-            warnings.warn(
-                f"{source}: the stored gray layer spans "
-                f"[{float(np.nanmin(matrix)):.4g}, {float(np.nanmax(matrix)):.4g}], "
-                f"outside [0, 1]; it was written before single-channel inputs "
-                f"were normalised and is loaded as stored. Operations that assume "
-                f"[0, 1] will misread it; rebuild it from the source scan.",
-                UserWarning,
-                stacklevel=3,
-            )
+        if np.issubdtype(matrix.dtype, np.floating) and matrix.size:
+            lo, hi = float(np.nanmin(matrix)), float(np.nanmax(matrix))
+            if lo < 0 or hi > 1:
+                warnings.warn(
+                    f"{source}: the stored gray layer spans [{lo:.4g}, {hi:.4g}], "
+                    f"outside [0, 1]; it was written before single-channel inputs "
+                    f"were normalised and is loaded as stored. Operations that assume "
+                    f"[0, 1] will misread it; rebuild it from the source scan.",
+                    UserWarning,
+                    stacklevel=3,
+                )
         return img
 
     @staticmethod

@@ -669,10 +669,8 @@ def _reference_operation_paths_for(
         pipeline = ImagePipeline.from_json(pipeline_json)
     except Exception:  # noqa: BLE001 - reported by the pipeline validation
         return []
-    mode: RunMode = (
-        "full" if cli_mode == "full" else "process" if cli_mode == "process" else "measure"
-    )
-    return reference_operation_paths(pipeline, mode)
+    # The guard above admits only full/process/measure, which is RunMode.
+    return reference_operation_paths(pipeline, cast(RunMode, cli_mode))
 
 
 def _refuse_measuring_reference_pipeline(paths: Sequence[str]) -> None:
@@ -722,7 +720,7 @@ def _refuse_unusable_reference_table(
         ReferenceContext,
         ReferenceTableError,
     )
-    from phenotypic.sdk_._io_constants import reference_metadata_snapshot_path
+    from phenotypic._cli._cli_reference import reference_table_snapshot_path
 
     if metadata_csv is not None:
         table, label = Path(metadata_csv), "--metadata"
@@ -732,11 +730,7 @@ def _refuse_unusable_reference_table(
             "pass --metadata with the table this pipeline reads."
         )
     else:
-        table = (
-            reference_metadata_snapshot_path(output_dir)
-            if process_mode
-            else metadata_csv_deliverable_path(output_dir)
-        )
+        table = reference_table_snapshot_path(output_dir, process_mode=process_mode)
         label = f"reference metadata snapshot {table}"
         if not table.is_file():
             raise click.UsageError(

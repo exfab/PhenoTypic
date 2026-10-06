@@ -154,19 +154,17 @@ def _read_table(source: Any) -> "tuple[pl.DataFrame, str | None]":
         if not path.is_file():
             raise ReferenceTableError(f"Reference metadata table not found: {path}")
         suffix = path.suffix.lower()
+        if suffix not in (".csv", ".parquet"):
+            raise ReferenceTableError(
+                f"Reference metadata must be .csv or .parquet, got {path.name!r}"
+            )
         try:
             if suffix == ".csv":
                 # infer_schema=False: every value is a name, and inference would
                 # turn the stem "000123" into the integer 123 (Review Focus 1).
                 frame = pl.read_csv(path, infer_schema=False)
-            elif suffix == ".parquet":
-                frame = pl.read_parquet(path)
             else:
-                raise ReferenceTableError(
-                    f"Reference metadata must be .csv or .parquet, got {path.name!r}"
-                )
-        except ReferenceTableError:
-            raise
+                frame = pl.read_parquet(path)
         except Exception as exc:  # noqa: BLE001 -- any parse failure is the error
             raise ReferenceTableError(f"Cannot read reference metadata {path}: {exc}") from exc
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
