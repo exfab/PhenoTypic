@@ -137,6 +137,30 @@ def test_rgb_values_outside_an_explicit_bit_depth_are_refused() -> None:
         Image(arr=_rgb(np.int64, 100, 300), bit_depth=8)
 
 
+@pytest.mark.parametrize(
+    "peak,expected",
+    [(255, np.uint8), (256, np.uint16), (65535, np.uint16)],
+)
+def test_the_width_boundary_is_the_largest_representable_value(peak, expected) -> None:
+    """255 is the last 8-bit value and 65535 the last 16-bit one.
+
+    An off-by-one here stores 256 as uint8, where it wraps to 0 -- a colony
+    that silently becomes agar.
+    """
+    arr = np.zeros((4, 4, 3), dtype=np.int64)
+    arr[0, 0] = peak
+    image = Image(arr=arr)
+    assert image.rgb[:].dtype == expected
+    assert int(image.rgb[:].max()) == peak
+
+
+def test_one_past_the_16_bit_range_is_refused() -> None:
+    arr = np.zeros((4, 4, 3), dtype=np.int64)
+    arr[0, 0] = 65536
+    with pytest.raises(ValueError, match=r"\[0, 65536\]"):
+        Image(arr=arr)
+
+
 # ------------------------------------------------- uint8 / uint16 unchanged
 
 
