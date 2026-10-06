@@ -260,7 +260,8 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
                 raise StaleDetectMatError(
                     f"SubtractBlank cannot resolve {recorded!r} in the image's recorded "
                     f"history, so it cannot rule out an ImageCorrector there; import "
-                    f"the module that defines it, or start from the raw image."
+                    f"the module that defines it (on the CLI or SLURM, list it in "
+                    f"PHENOTYPIC_PRELOAD_MODULES), or start from the raw image."
                 )
             if issubclass(cls, ImageCorrector):
                 raise StaleDetectMatError(

@@ -517,10 +517,10 @@ clipped difference, which the unit tests pin directly.
 
 Review: `docs/superpowers/reports/2026-10-05-ref-metadata-ops/phase1-review.md`; fixes in `33e24fdd`.
 
-- **SubtractBlank refuses rather than computes** when the target `detect_mat` is
-  an integer dtype, when exactly one of target/blank is RGB, or when the target or
-  the projected blank falls outside [0, 1]. Single-channel integer scans are not
-  supported until the core gray-mode issue below is fixed.
+- **SubtractBlank refuses rather than computes** when exactly one of target/blank
+  is RGB, or when the target or the projected blank falls outside [0, 1].
+  (An interim integer-`detect_mat` refusal was removed once the core gray-mode
+  fix below landed: single-channel integer scans now arrive as float [0, 1].)
 - **The blank is projected through the target's colour configuration**
   (`compute_from_rgb(..., image=target)`) for RGB-derived modes.
 - **Corrector history is resolved by class.** Every recorded `operation_class` is
@@ -534,10 +534,20 @@ Review: `docs/superpowers/reports/2026-10-05-ref-metadata-ops/phase1-review.md`;
   names that are absolute or contain a path separator / `..` are refused.
 - **Values** are stripped at load and blank cells are null.
 
-Pre-existing core issues found by the review, **out of scope for this branch**:
-1. `GrayDetectionMode.compute` returns raw integer gray for single-channel inputs
-   (and `Image(arr=<2-D float>)` keeps out-of-range floats), violating
-   `DetectionMode.compute`'s [0, 1] contract; `SubtractGaussian` and other
-   enhancers that clip to [0, 1] are affected today.
-2. `Image.copy()` drops `illuminant`/`gamma`, so Lab/XYZ ops applied with
-   `inplace=False` to a non-default image run under D65/sRGB.
+Pre-existing core issues found by the review — **folded into this branch at the
+user's request (2026-10-06)**; analysis in
+`docs/superpowers/reports/2026-10-05-ref-metadata-ops/core-bugs-impact.md`:
+1. Single-channel integer images kept raw integer gray/detect_mat (detectors found
+   nothing, MeasureIntensity/Texture raised, enhancers truncated to 0/1). **Fixed in
+   `24b6fece`:** normalised to float32 [0, 1] at construction (and on loading legacy
+   stores/HDF/pickles); out-of-range single-channel floats are refused; change notes
+   on SIZE/INTENSITY/TEXTURE tell users to re-run affected single-channel runs with
+   `--overwrite`; `PROCESS_LAYER_SEMANTICS_REVISION` 3 → 4.
+2. `Image.copy()`, `Image(other)`, crops and grid sections dropped
+   `illuminant`/`gamma`/`observer`. **Fixed in `1d6bffbe`** (explicit constructor
+   args still win; `GridImage.copy()` no longer shares its grid_finder; crops keep
+   `detect_mode`).
+
+Still out of scope (reported): `load_pickle` does not restore gamma/illuminant;
+`PadImage(constant_value=255)` writes 255 into float gray (a later crop now refuses
+it loudly); scalar indexing `img.gray[0, 0]` raises in the accessor.
