@@ -859,7 +859,7 @@ Note: `ReferenceContext` is documented as single-threaded per instance — enter
 
 ```text
     A context is per-process and per-thread: worker processes build their own,
-    and one instance must not be entered concurrently from two threads.
+    and one instance may be entered from several threads (token stack in a ContextVar).
 ```
 
 - [ ] **Step 4: Export it**
@@ -3503,6 +3503,7 @@ git commit -m "feat(gui): run console requires a metadata table for reference pi
   4. *CLI* — `--metadata blank_map.csv`, `--image-manifest` to leave blank frames out, `PF-REF-*` codes, continuation re-runs only images whose blank changed; process mode snapshot under `.phenotypic/`.
   5. *GUI* — builder *Reference metadata* input; run console gate.
   6. *Placement* — before any enhancer or directly after `SetDetectMode`; a later `SetDetectMode` discards it; `polarity` with the brighter/darker/both table from the spec.
+  7. *Limits and errors* (Phase 1 review): integer single-channel scans and out-of-range float images are refused (known core issue); a store whose history names a custom op from a module that is not importable (not under `phenotypic.`, not imported, not in `PHENOTYPIC_PRELOAD_MODULES`) is refused; on macOS a blank name differing from its file only in letter case does not resolve (loud "matches 0 files"); inside a pipeline the typed error is nested — walk `__cause__` to the `ReferenceContextError`; a third-party OME-Zarr blank's identity digest covers only its root `zarr.json` (F13); the CLI's measurement join reads `--metadata` with type inference, so a digit-only `Metadata_BlankImage` joins onto `measurements.csv` without its leading zeros even though the subtraction used the right file (F12).
 - [ ] **Step 2: CLAUDE.md bullet** (Gotchas):
 
 ```markdown

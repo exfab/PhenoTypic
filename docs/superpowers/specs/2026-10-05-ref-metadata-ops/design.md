@@ -121,7 +121,7 @@ on the instance; `__exit__` resets it in all cases. An inner context
 **replaces** the outer one entirely (no field merging);
 `narrow(*, dataset=None, image_root=None, images=None)` is the explicit way to
 derive a context that shares the parsed table and lookup indexes (each `None`
-keeps the parent's value). A single instance must not be entered concurrently from two threads
+keeps the parent's value). One instance may be entered from several threads at once (the activation token stack lives in a ContextVar, Phase 1 review F11)
 (documented).
 
 **`lookup(image, columns)`** — the semantics every op inherits:
@@ -512,3 +512,32 @@ clipped difference, which the unit tests pin directly.
 - **R3 — tune support.** Enter a context in the tune evaluator.
 - **R4 — RefMetadata measurers.** Relax the `__init_subclass__` restriction
   once a measurer needs it; `measure` mode would then need a context too.
+
+## 12. Phase 1 review outcomes (2026-10-06)
+
+Review: `docs/superpowers/reports/2026-10-05-ref-metadata-ops/phase1-review.md`; fixes in `33e24fdd`.
+
+- **SubtractBlank refuses rather than computes** when the target `detect_mat` is
+  an integer dtype, when exactly one of target/blank is RGB, or when the target or
+  the projected blank falls outside [0, 1]. Single-channel integer scans are not
+  supported until the core gray-mode issue below is fixed.
+- **The blank is projected through the target's colour configuration**
+  (`compute_from_rgb(..., image=target)`) for RGB-derived modes.
+- **Corrector history is resolved by class.** Every recorded `operation_class` is
+  resolved and `issubclass`-checked against `ImageCorrector`; an unresolvable class
+  is refused. For safety, only modules under `phenotypic.` are imported; any other
+  module must already be imported or listed in `PHENOTYPIC_PRELOAD_MODULES`. A
+  notebook-defined custom op recorded in a store's history therefore blocks
+  SubtractBlank until its module is importable that way.
+- **Resolution** is a per-root `os.scandir` index (rebuilt when the directory's
+  mtime changes), restricted to accepted image suffixes and `.ome.zarr` stores;
+  names that are absolute or contain a path separator / `..` are refused.
+- **Values** are stripped at load and blank cells are null.
+
+Pre-existing core issues found by the review, **out of scope for this branch**:
+1. `GrayDetectionMode.compute` returns raw integer gray for single-channel inputs
+   (and `Image(arr=<2-D float>)` keeps out-of-range floats), violating
+   `DetectionMode.compute`'s [0, 1] contract; `SubtractGaussian` and other
+   enhancers that clip to [0, 1] are affected today.
+2. `Image.copy()` drops `illuminant`/`gamma`, so Lab/XYZ ops applied with
+   `inplace=False` to a non-default image run under D65/sRGB.
