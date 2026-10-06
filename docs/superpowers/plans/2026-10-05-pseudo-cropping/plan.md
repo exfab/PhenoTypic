@@ -3480,3 +3480,109 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 - [ ] **Step 3:** `uv run ruff check <every file changed on the branch>`. List them with `git diff --name-only main...HEAD -- '*.py'`.
 - [ ] **Step 4:** Guards for lazy imports: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py tests/unit/gui/shell/test_hub_startup_imports.py -q --capture=fd -p no:cacheprovider`.
 - [ ] **Step 5: Full sharded regression, once.** Use the `run-phenotypic-test` skill and the `slurm-job` skill. Run it in a worktree detached at the branch HEAD SHA, sharded across a Slurm array, with an `afterany` cleanup finalizer. Compare the results with the latest `main` baseline (memory: `phenotypic-regression-baseline`). Run every new failure in isolation before attributing it, and record the result.
+
+
+---
+
+## Execution orchestration
+
+This is a derived view of the task blocks above, produced with the `execute-plan-orchestration` skill on 2026-10-06. When a task's `Files`/`Interfaces` change, update this section too.
+
+### Dependency DAG
+
+`A → B` means A must finish before B starts.
+
+```
+T1 ─→ T2 ─→ T3 ─→ T4 ─→ T5
+       │            │
+       │            ├────────────→ T7 ←── T6
+       │            │               │
+T1 ───────────────────→ T8          │
+       │            │    │          │
+       └────────────┴────┴─→ T9 ─→ T10 ←┘
+                    │          │     │
+                    └→ T11 ←───┘     │
+                         │           │
+                 T8,T9,T11 ─→ T12    │
+                                     │
+            T7,T8,T9,T10 ─────────→ T14
+            T7,T8,T9 ─────────────→ T15
+T13  (independent: needs only the existing CropImage class)
+all ──→ T16 ──→ T17
+```
+
+**Shared files**, which determine whether two clusters can run in parallel:
+
+| File | Tasks |
+|---|---|
+| `_core/_image_parts/_image_data_manager.py` | T2, T7 |
+| `_core/_crop_frame.py` | T1, T7 |
+| `_core/_image_parts/_image_io_handler.py` | T9, T10 |
+| `_cli/_cli_failure_tracker.py` | **T12, T13** |
+| `tests/unit/core/test_image_zarr_roundtrip.py` | T8 (sentinel migration); T9/T10 run it |
+
+### Shapes
+
+| Task | Shape | Why |
+|---|---|---|
+| T1 | Keystone | the type every later task consumes |
+| T2 | Keystone | the validity guard and carry-through; ordering-sensitive |
+| T3 | Keystone | composition semantics |
+| T4 | Leaf → folded into C1 | small; same intent |
+| T5 | **Seam** | the provenance apply wrapper runs on every operation |
+| T6 | Leaf → folded into C3 | schema scaffold |
+| T7 | Keystone (with a pin sweep) | the null rule, plus updating column-set pins across the suite |
+| T8 | **Seam** | the store version gate; every reader passes through it |
+| T9, T10 | Keystone | writer and reader are one contract over one file |
+| T11 | Leaf → folded into C5 | three small `imsave` edits |
+| T12 | Leaf → folded into C7 | the revision bump and level count |
+| T13 | **Seam** | the continuation digest; a mistake cold-starts or wrongly reuses in-flight runs |
+| T14 | Seam (verification) | end-to-end staged run; edits existing integration pins |
+| T15 | **Seam** | GUI pixel/coordinate wiring |
+| T16 | Sweep | docs across 6–7 files |
+| T17 | Gate | orchestrator-run; Slurm |
+
+### Clusters
+
+Model and effort follow the skill's rules. The session model is Opus 5.5 (`claude-opus-5-5`); the mid-tier is Sonnet 5.5 (`claude-sonnet-5-5`). Reviews never use a weaker model than the implementer.
+
+| Cluster | Tasks | Model / effort | Depends on | Parallel? |
+|---|---|---|---|---|
+| **C1** In-memory frame core | T1–T4 | Opus, high | — | ∥ C6 |
+| **C2** Provenance carry | T5 | Opus, high | C1 | ∥ C6 |
+| **C3** Schema + info offsets | T6, T7 | Opus, high | C2 | ∥ C4, ∥ C6 |
+| **C4** Store version gate | T8 | Opus, high | C1 | ∥ C3, ∥ C6 |
+| **C5** Persistence | T9, T10, T11 | Opus, high | C3, C4 | — |
+| **C6** Crop work-id key | T13 | Opus, high | — | ∥ C1–C5 (no shared files) |
+| **C7** Process mode + staged round trip | T12, T14 | Opus, high | C5, **C6** (both edit `_cli_failure_tracker.py`) | — |
+| **C8** GUI | T15 | Opus, high | C5 | — |
+| **C9** Docs | T16 | Sonnet, medium, **plus an Opus verify pass** (doc claims must match code) | C7, C8 | — |
+| — Final | T17 | orchestrator | all | Slurm array |
+
+**Parallel candidates**, each in its own git worktree, merged back by cherry-pick:
+- **C6** runs alongside C1–C5 from the start. Its only file contact with later work is `_cli_failure_tracker.py`, and C7 waits for it.
+- **C3 ∥ C4** after C2. C3 touches the schema, `_image_data_manager.py`, the accessors and the README generator. C4 touches `ngff_.py`, the browse tile routes, and two sentinel test files. They share no files. C3's Step 5 pin sweep must not edit `test_image_zarr_roundtrip.py` or `test_ngff_validity.py`; if it needs to, C3 waits for C4 to merge.
+
+Everything else is sequential.
+
+### Gates
+
+1. **Before dispatch: plan review.** ✅ Done in two rounds: `docs/superpowers/reports/2026-10-05-pseudo-cropping/plan-review.md` (NOT READY) and `plan-review-round2.md` (READY WITH FIXES). All findings are applied.
+2. **Per cluster (light, orchestrator):** read the diff; run the cluster's own test steps verbatim (subagents send commands; the orchestrator runs them); ruff on the changed paths; commit with the plan's messages. Before the next cluster, stop and ask the user about any open design question a cluster surfaces.
+3. **Per phase (deep, fresh Opus `implementation-test-reviewer` over the combined phase diff, report written to `docs/superpowers/reports/2026-10-05-pseudo-cropping/`):**
+   - after **C1 + C2** (Phase 1) → `phase1-review.md`
+   - after **C3** (Phase 2) → `phase2-review.md`
+   - after **C4 + C5** (Phase 3) → `phase3-review.md`
+   - after **C6 + C7** (Phase 4) → `phase4-review.md`
+   - after **C8** (Phase 5) → `phase5-review.md`
+
+   Each phase's affected-surface run happens once, at its gate; anything over 10 minutes goes to Slurm.
+4. **Backend simplify before the GUI** (user preference): after the Phase 4 review, one `code-simplifier` pass over the core/IO/CLI diff (C1–C7). Quality only; revert anything that breaks a test. Re-run the Phase 1–4 surfaces.
+5. **End:** a `code-simplifier` pass over C8 + C9 and the seams; then **T17**: the logic-validation script, mypy, ruff, lazy-import guards, and **one** full sharded regression as a Slurm array in a worktree detached at the HEAD SHA, with an `afterany` finalizer. Compare failure **names** with the `main` baseline.
+
+### Subagent protocol (every dispatch)
+
+- Brief with the `orchestrate-subagent` block. Subagents edit files directly, and run `grep`/`ls`/`sed -n`. Every pytest, ruff, mypy, git, uv or probe command is sent to the orchestrator, which runs it verbatim and returns the output verbatim.
+- Subagents never commit. The orchestrator commits per task, with explicit paths and the plan's messages, recording any substitution the subagent made.
+- A behaviour change not in the plan is reported, not made.
+- Worktree clusters (C6, and C3/C4 if parallelised) run `uv sync --group dev --group test-qt --extra gui --extra napari` once, via the orchestrator, before their first test.
