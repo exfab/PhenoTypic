@@ -50,7 +50,11 @@ def _apply_gate_enhancer(op: object):
         return op.apply(plate)
     row = {"Metadata_ImageName": [plate.name]}
     row.update({column: ["gate_reference"] for column in op._ref_columns()})
-    with ReferenceContext(pd.DataFrame(row), images={"gate_reference": load_synth_yeast_plate()}):
+    # Renamed: an in-memory reference carrying the target's own name is the
+    # target, which SubtractBlank refuses as self-reference.
+    reference = load_synth_yeast_plate()
+    reference.name = "gate_reference"
+    with ReferenceContext(pd.DataFrame(row), images={"gate_reference": reference}):
         return op.apply(plate)
 
 

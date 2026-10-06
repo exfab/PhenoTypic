@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -204,7 +206,7 @@ def test_load_image_reads_each_file_once_and_rereads_on_change(tmp_path, monkeyp
     os.utime(blank_path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 10_000_000))
     ctx.load_image("t00")
     assert len(calls) == 2
-    assert ctx.reference_image_digest("t00") is not None
+    assert ctx.reference_image_digest("t00") == hashlib.sha256(blank_path.read_bytes()).hexdigest()
 
 
 def test_current_is_none_outside_any_context():
@@ -238,3 +240,266 @@ def test_resolve_ome_zarr_store_by_its_source_stem(tmp_path):
     ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
     assert ctx.resolve_image("t00") == root / "t00.ome.zarr"
     assert rc.reference_file_digest(root / "t00.ome.zarr") is not None
+
+
+# ------------------------------------------------------------ table reading
+def test_parquet_tables_are_read_as_strings(tmp_path):
+    path = tmp_path / "layout.parquet"
+    pl.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["t00"]}).write_parquet(path)
+    ctx = ReferenceContext(path)
+    assert ctx.lookup("t04", ["Metadata_BlankImage"]) == {"Metadata_BlankImage": "t00"}
+    assert ctx.table_sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_unsupported_suffix_is_a_table_error(tmp_path):
+    path = tmp_path / "layout.xlsx"
+    path.write_bytes(b"not a table")
+    with pytest.raises(ReferenceTableError, match=r"\.csv or \.parquet"):
+        ReferenceContext(path)
+
+
+@pytest.mark.parametrize("value", ["", " ", " \t "])
+def test_blank_string_values_are_null(value):
+    frame = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": [value]})
+    with pytest.raises(ReferenceLookupError) as info:
+        ReferenceContext(frame).lookup("t04", ["Metadata_BlankImage"])
+    assert info.value.reason == "null"
+
+
+def test_whitespace_only_csv_cell_is_null(tmp_path):
+    path = tmp_path / "layout.csv"
+    path.write_text("Metadata_ImageName,Metadata_BlankImage\nt04, \n", encoding="utf-8")
+    with pytest.raises(ReferenceLookupError) as info:
+        ReferenceContext(path).lookup("t04", ["Metadata_BlankImage"])
+    assert info.value.reason == "null"
+
+
+def test_values_are_stripped_at_load(tmp_path):
+    path = tmp_path / "layout.csv"
+    path.write_text("Metadata_ImageName,Metadata_BlankImage\n t04 , t00 \n", encoding="utf-8")
+    assert ReferenceContext(path).lookup("t04", ["Metadata_BlankImage"]) == {
+        "Metadata_BlankImage": "t00"
+    }
+
+
+def test_two_spellings_of_one_column_are_both_served(tmp_path):
+    path = _table(tmp_path, {"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["t00"]})
+    assert ReferenceContext(path).lookup("t04", ["BlankImage", "Metadata_BlankImage"]) == {
+        "BlankImage": "t00",
+        "Metadata_BlankImage": "t00",
+    }
+
+
+def test_key_columns_are_served_from_the_key(tmp_path):
+    path = _table(tmp_path, {
+        "Metadata_Dataset": ["A", "B"],
+        "Metadata_ImageName": ["t04", "t04"],
+        "Metadata_BlankImage": ["a0", "b0"],
+    })
+    ctx = ReferenceContext(path)
+    assert ctx.lookup("t04", ["Metadata_ImageName"]) == {"Metadata_ImageName": "t04"}
+    assert ctx.narrow(dataset="B").lookup(
+        "t04", ["Metadata_Dataset", "ImageName", "Metadata_BlankImage"]
+    ) == {"Metadata_Dataset": "B", "ImageName": "t04", "Metadata_BlankImage": "b0"}
+
+
+# ---------------------------------------------------------- image resolution
+def _counting_directory_reads(monkeypatch, root: Path) -> list:
+    """Count every scandir/listdir of *root* (Path.iterdir uses listdir)."""
+    reads: list = []
+    real_scandir, real_listdir = os.scandir, os.listdir
+
+    def is_root(path) -> bool:
+        return isinstance(path, (str, os.PathLike)) and Path(path) == root
+
+    def scandir(path=".", *args, **kwargs):
+        if is_root(path):
+            reads.append(("scandir", path))
+        return real_scandir(path, *args, **kwargs)
+
+    def listdir(path=".", *args, **kwargs):
+        if is_root(path):
+            reads.append(("listdir", path))
+        return real_listdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", scandir)
+    monkeypatch.setattr(os, "listdir", listdir)
+    return reads
+
+
+def test_resolving_many_names_reads_the_root_once(tmp_path, monkeypatch):
+    """The planner resolves once per input image; a rescan per name is O(N^2)."""
+    root = tmp_path / "imgs"
+    root.mkdir()
+    names = [f"t{i:02d}" for i in range(20)]
+    for name in names:
+        (root / f"{name}.tif").write_bytes(b"x")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    reads = _counting_directory_reads(monkeypatch, root)
+    for name in names:
+        assert ctx.resolve_image(name) == root / f"{name}.tif"
+        assert ctx.resolve_image(f"{name}.tif") == root / f"{name}.tif"
+    assert ctx.narrow(dataset="B").resolve_image("t03") == root / "t03.tif"
+    assert len(reads) == 1
+
+
+def test_root_index_sees_a_file_added_later(tmp_path):
+    root = tmp_path / "imgs"
+    root.mkdir()
+    (root / "t00.tif").write_bytes(b"x")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    assert ctx.resolve_image("t00") == root / "t00.tif"
+    (root / "t01.tif").write_bytes(b"x")
+    stat = root.stat()
+    os.utime(root, ns=(stat.st_atime_ns, stat.st_mtime_ns + 10_000_000))
+    assert ctx.resolve_image("t01") == root / "t01.tif"
+
+
+def test_sidecar_files_do_not_count_as_candidates(tmp_path):
+    root = tmp_path / "imgs"
+    root.mkdir()
+    for name in ("t00.tif", "t00.json", "t00.xmp", "t00.txt"):
+        (root / name).write_bytes(b"x")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    assert ctx.resolve_image("t00") == root / "t00.tif"
+
+
+def test_uppercase_image_suffixes_are_candidates(tmp_path):
+    root = tmp_path / "imgs"
+    root.mkdir()
+    (root / "t00.TIF").write_bytes(b"x")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    assert ctx.resolve_image("t00") == root / "t00.TIF"
+
+
+@pytest.mark.parametrize("kind", ["parent", "absolute", "subdirectory"])
+def test_names_outside_the_root_are_refused(tmp_path, kind):
+    root = tmp_path / "imgs"
+    (root / "sub").mkdir(parents=True)
+    (tmp_path / "x.tif").write_bytes(b"x")
+    (root / "sub" / "x.tif").write_bytes(b"x")
+    name = {
+        "parent": "../x.tif",
+        "absolute": str(tmp_path / "x.tif"),
+        "subdirectory": "sub/x.tif",
+    }[kind]
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    with pytest.raises(ReferenceImageError, match="image_root"):
+        ctx.resolve_image(name)
+
+
+# ------------------------------------------------------------- image cache
+def test_read_kwargs_are_part_of_the_cache_key(tmp_path, monkeypatch):
+    root = tmp_path / "imgs"
+    root.mkdir()
+    tifffile.imwrite(root / "t00.tif", np.full((8, 8), 40, dtype=np.uint8))
+    calls: list = []
+    real = rc._read_image
+
+    def counting(path, read_kwargs):
+        calls.append(dict(read_kwargs))
+        return real(path, read_kwargs)
+
+    monkeypatch.setattr(rc, "_read_image", counting)
+    table = _table(tmp_path, {"Metadata_ImageName": ["t04"]})
+    plain = ReferenceContext(table, image_root=root)
+    eight_bit = ReferenceContext(table, image_root=root, read_kwargs={"bit_depth": 8})
+    plain.load_image("t00")
+    eight_bit.load_image("t00")
+    plain.load_image("t00")
+    assert calls == [{}, {"bit_depth": 8}]
+
+
+def test_cache_holds_at_most_its_bound_and_evicts_least_recent(tmp_path, monkeypatch):
+    root = tmp_path / "imgs"
+    root.mkdir()
+    names = [f"t{i:02d}" for i in range(rc._IMAGE_CACHE_SIZE + 1)]
+    for i, name in enumerate(names):
+        tifffile.imwrite(root / f"{name}.tif", np.full((4, 4), i, dtype=np.uint8))
+    calls: list = []
+    real = rc._read_image
+
+    def counting(path, read_kwargs):
+        calls.append(Path(path).name)
+        return real(path, read_kwargs)
+
+    monkeypatch.setattr(rc, "_read_image", counting)
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    for name in names:
+        ctx.load_image(name)
+    assert len(rc._IMAGE_CACHE) == rc._IMAGE_CACHE_SIZE
+    ctx.load_image(names[-1])          # still cached
+    ctx.load_image(names[0])           # evicted first, so read again
+    assert calls == [f"{n}.tif" for n in names] + [f"{names[0]}.tif"]
+
+
+def test_store_cache_key_follows_its_root_zarr_json(tmp_path, monkeypatch):
+    """Rewriting a store leaves its directory's mtime/size alone; the root
+    zarr.json is what changes, so it must be in the key."""
+    root = tmp_path / "imgs"
+    store = root / "t00.ome.zarr"
+    store.mkdir(parents=True)
+    zarr_json = store / "zarr.json"
+    zarr_json.write_text("{}", encoding="utf-8")
+    calls: list = []
+
+    def fake_read(path, read_kwargs):
+        calls.append(path)
+        return Image(arr=np.zeros((4, 4), dtype=np.float32), name="t00")
+
+    monkeypatch.setattr(rc, "_read_image", fake_read)
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    ctx.load_image("t00")
+    store_stat = store.stat()
+    json_stat = zarr_json.stat()
+    zarr_json.write_text('{"rewritten": true}', encoding="utf-8")
+    os.utime(zarr_json, ns=(json_stat.st_atime_ns, json_stat.st_mtime_ns + 10_000_000))
+    os.utime(store, ns=(store_stat.st_atime_ns, store_stat.st_mtime_ns))
+    ctx.load_image("t00")
+    assert len(calls) == 2
+    assert ctx.reference_image_digest("t00") == hashlib.sha256(zarr_json.read_bytes()).hexdigest()
+
+
+# --------------------------------------------------------------- activation
+def test_one_instance_entered_from_two_threads_restores_cleanly(tmp_path):
+    """Each thread's exit must reset its own activation. The order is forced:
+    a enters, then b; a leaves while b is still inside, so a shared stack
+    would hand a the token b pushed."""
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}))
+    a_inside, b_inside, a_left = threading.Event(), threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+    seen: list[tuple[str, bool]] = []
+
+    def thread_a() -> None:
+        try:
+            with ctx:
+                a_inside.set()
+                b_inside.wait(timeout=10)
+                seen.append(("a", ReferenceContext.current() is ctx))
+            seen.append(("a", ReferenceContext.current() is None))
+        except BaseException as exc:  # noqa: BLE001 -- surfaced by the assert
+            errors.append(exc)
+        finally:
+            a_inside.set()
+            a_left.set()
+
+    def thread_b() -> None:
+        try:
+            a_inside.wait(timeout=10)
+            with ctx:
+                b_inside.set()
+                a_left.wait(timeout=10)
+                seen.append(("b", ReferenceContext.current() is ctx))
+            seen.append(("b", ReferenceContext.current() is None))
+        except BaseException as exc:  # noqa: BLE001 -- surfaced by the assert
+            errors.append(exc)
+        finally:
+            b_inside.set()
+
+    threads = [threading.Thread(target=thread_a), threading.Thread(target=thread_b)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+    assert errors == []
+    assert sorted(seen) == [("a", True), ("a", True), ("b", True), ("b", True)]

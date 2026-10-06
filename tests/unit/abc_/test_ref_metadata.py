@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
+import tifffile
 
 from phenotypic import Image, ImagePipeline, ReferenceContext
 from phenotypic._core._provenance import current_application_operations
@@ -85,7 +89,9 @@ def test_pipeline_reports_reference_columns_tree_wide():
     found = pipe.reference_columns()
     assert list(found.values()) == [("Metadata_Strain", "Metadata_BlankImage")]
     assert next(iter(found)).startswith("comp")
-    assert list(pipe.reference_columns(images_only=True).values()) == [("Metadata_BlankImage",)]
+    # The exact spelling: the CLI preflight names the op by this path.
+    assert found == {"comp/ops[0]": ("Metadata_Strain", "Metadata_BlankImage")}
+    assert pipe.reference_columns(images_only=True) == {"comp/ops[0]": ("Metadata_BlankImage",)}
     assert ImagePipeline(ops={}).reference_columns() == {}
 
 
@@ -109,3 +115,106 @@ def test_other_errors_are_still_double_wrapped_by_apply():
         _Boom().apply(_image())
     assert type(info.value.__cause__) is Exception
     assert isinstance(info.value.__cause__.__cause__, KeyError)
+
+
+class _ReadsBlank(ImageEnhancer, RefMetadata):
+    """Test op: looks up its blank and loads it."""
+
+    blank_column: RefImageColumn = "Metadata_BlankImage"
+
+    def _operate(self, image):
+        self._ref_image(self._ref_values(image)[self.blank_column])
+        return image
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_provenance_records_the_table_and_the_blank_it_used(tmp_path):
+    """Success criterion 4: the journal says which table and which blank file."""
+    root = tmp_path / "imgs"
+    root.mkdir()
+    blank_path = root / "t00.tif"
+    tifffile.imwrite(blank_path, np.full((6, 6), 40, dtype=np.uint8))
+    csv = tmp_path / "layout.csv"
+    pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["t00"]}).to_csv(
+        csv, index=False
+    )
+    with ReferenceContext(csv, image_root=root):
+        out = ImagePipeline(ops={"reads": _ReadsBlank()}).apply(_image())
+    records = [
+        r for r in current_application_operations(out) if r["operation_name"] == "_ReadsBlank"
+    ]
+    assert records[-1]["parameters"]["_references"] == {
+        "table_sha256": _sha256(csv),
+        "values": {"Metadata_BlankImage": "t00"},
+        "images": {"t00": {"sha256": _sha256(blank_path)}},
+    }
+
+
+def test_ref_image_loads_the_reference_once(monkeypatch):
+    """Image and digest come from one load, so they describe the same bytes."""
+    calls: list[str] = []
+    real = ReferenceContext._load
+
+    def counting(self, name):
+        calls.append(name)
+        return real(self, name)
+
+    monkeypatch.setattr(ReferenceContext, "_load", counting)
+    with ReferenceContext(_layout(), images={"t00": _image("t00")}):
+        _ReadsBlank().apply(_image())
+    assert calls == ["t00"]
+
+
+class _FailsAfterLookup(ImageEnhancer, RefMetadata):
+    """Test op: resolves its columns, then fails (ordinary or reference error)."""
+
+    strain_column: RefColumn = "Metadata_Strain"
+    reference_failure: bool = False
+
+    def _operate(self, image):
+        self._ref_values(image)
+        if self.reference_failure:
+            self._ref_image("not_in_the_context")
+        raise KeyError("after the lookup")
+
+
+@pytest.mark.parametrize("reference_failure", [False, True])
+def test_a_failed_apply_leaves_no_resolved_record(reference_failure):
+    """A record left by a failed apply could be inherited by a later op that
+    reuses the same id() and skips its lookup."""
+    from phenotypic.abc_._ref_metadata import _resolved
+
+    store = _resolved()
+    before = dict(store)
+    with ReferenceContext(_layout()):
+        for _ in range(3):
+            with pytest.raises((RuntimeError, ValueError)):
+                _FailsAfterLookup(reference_failure=reference_failure).apply(_image())
+    assert store == before
+
+
+class _ComputedColumns(ImageEnhancer, RefMetadata):
+    """Test op: derives its column from a parameter instead of marked fields."""
+
+    channel: str = "Red"
+
+    def _ref_columns(self) -> tuple[str, ...]:
+        return (f"Metadata_Exposure{self.channel}",)
+
+    def _operate(self, image):
+        SEEN.append(self._ref_values(image))
+        return image
+
+
+def test_a_subclass_may_compute_its_columns():
+    pipe = ImagePipeline(ops={"exposure": _ComputedColumns(channel="Green")})
+    assert pipe.reference_columns() == {"exposure": ("Metadata_ExposureGreen",)}
+    assert pipe.reference_columns(images_only=True) == {}
+    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_ExposureGreen": ["120ms"]})
+    SEEN.clear()
+    with ReferenceContext(layout):
+        pipe.apply(_image())
+    assert SEEN == [{"Metadata_ExposureGreen": "120ms"}]

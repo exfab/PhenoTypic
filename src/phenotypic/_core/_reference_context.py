@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import threading
 from collections import OrderedDict
 from contextvars import ContextVar, Token
@@ -82,6 +83,13 @@ class ReferenceImageError(ReferenceContextError):
 
 _ACTIVE: ContextVar["ReferenceContext | None"] = ContextVar(
     "phenotypic_reference_context", default=None
+)
+#: The activation tokens of the enclosing ``with`` blocks, innermost last. A
+#: ContextVar rather than a list on the instance: each thread (and each asyncio
+#: task) then unwinds only its own activations, even when one instance is
+#: entered from several threads at once (GUI request threads).
+_TOKENS: "ContextVar[tuple[Token, ...]]" = ContextVar(
+    "phenotypic_reference_context_tokens", default=()
 )
 
 #: Loaded reference images, most recently used last. A worker processes many
@@ -167,6 +175,14 @@ def _read_table(source: Any) -> "tuple[pl.DataFrame, str | None]":
     except ValueError as exc:
         raise ReferenceTableError(f"Reference metadata headers conflict: {exc}") from exc
     frame = frame.with_columns(pl.all().cast(pl.String))
+    # Strip every value, and make a blank one null: an Excel cell holding " "
+    # names no image, and must fail as "null" rather than as "matches 0 files".
+    frame = frame.with_columns([
+        pl.when(pl.col(c).str.strip_chars().str.len_chars() > 0)
+        .then(pl.col(c).str.strip_chars())
+        .alias(c)
+        for c in frame.columns
+    ])
     if _image_name_header() not in frame.columns:
         raise ReferenceTableError(
             f"Reference metadata needs a {_image_name_header()} column "
@@ -175,15 +191,60 @@ def _read_table(source: Any) -> "tuple[pl.DataFrame, str | None]":
     return frame, digest
 
 
+class _RootIndex:
+    """One directory listing of an image root, keyed for name and stem lookup.
+
+    Keys pass through ``os.path.normcase``, so a case-insensitive Windows
+    filesystem matches case-insensitively.
+    """
+
+    __slots__ = ("mtime_ns", "by_name", "by_stem")
+
+    def __init__(self, mtime_ns: int) -> None:
+        self.mtime_ns = mtime_ns
+        self.by_name: dict[str, Path] = {}
+        self.by_stem: dict[str, list[Path]] = {}
+
+
+def _scan_image_root(root: Path, mtime_ns: int) -> _RootIndex:
+    """List *root* once: image files by accepted suffix, and Zarr stores.
+
+    ``DirEntry.is_file``/``is_dir`` reuse the directory read on Linux, so this
+    costs one listing rather than a ``stat`` per entry. Sidecars (``.json``,
+    ``.xmp``, ``.txt``) are not candidates.
+    """
+    from phenotypic.sdk_._io_constants import is_zarr_store_name, source_image_stem
+    from phenotypic.sdk_.constants_ import IO
+
+    suffixes = {suffix.lower() for suffix in IO.ACCEPTED_FILE_EXTENSIONS}
+    index = _RootIndex(mtime_ns)
+    with os.scandir(root) as entries:
+        for entry in entries:
+            if is_zarr_store_name(entry.name):
+                accepted = entry.is_dir()
+            else:
+                accepted = Path(entry.name).suffix.lower() in suffixes and entry.is_file()
+            if not accepted:
+                continue
+            path = root / entry.name
+            index.by_name[os.path.normcase(entry.name)] = path
+            index.by_stem.setdefault(os.path.normcase(source_image_stem(path)), []).append(path)
+    for paths in index.by_stem.values():
+        paths.sort()
+    return index
+
+
 class _SharedTable:
     """The parsed table and lookup indexes shared by a context and its narrowings."""
 
-    __slots__ = ("table", "sha256", "indexes")
+    __slots__ = ("table", "sha256", "indexes", "roots")
 
     def __init__(self, table: "pl.DataFrame", sha256: str | None) -> None:
         self.table = table
         self.sha256 = sha256
         self.indexes: dict[tuple, dict[tuple, dict[str, list[str]]]] = {}
+        #: Image-root listings by root path, rebuilt when the root's mtime moves.
+        self.roots: dict[str, _RootIndex] = {}
 
 
 class ReferenceContext:
@@ -194,8 +255,9 @@ class ReferenceContext:
     for the image being processed, and may load the reference images those
     columns name (a media-blank frame, say).
 
-    A context is per-process and per-thread: worker processes build their own,
-    and one instance must not be entered concurrently from two threads.
+    A context is per-process: worker processes build their own. Activation is
+    per-thread, so one instance may be entered from several threads at once
+    (each ``with`` block sees and restores only its own thread's state).
 
     Args:
         metadata: A ``.csv``/``.parquet`` path, or a pandas/polars frame. It must
@@ -246,15 +308,16 @@ class ReferenceContext:
         self.images: dict[str, Any] = dict(images) if images is not None else {}
         self.dataset = dataset
         self.read_kwargs: dict[str, Any] = dict(read_kwargs or {})
-        self._tokens: list[Token] = []
 
     # ------------------------------------------------------------- activation
     def __enter__(self) -> "ReferenceContext":
-        self._tokens.append(_ACTIVE.set(self))
+        _TOKENS.set(_TOKENS.get() + (_ACTIVE.set(self),))
         return self
 
     def __exit__(self, *exc: object) -> None:
-        _ACTIVE.reset(self._tokens.pop())
+        tokens = _TOKENS.get()
+        _TOKENS.set(tokens[:-1])
+        _ACTIVE.reset(tokens[-1])
 
     @classmethod
     def current(cls) -> "ReferenceContext | None":
@@ -340,7 +403,11 @@ class ReferenceContext:
             resolved.append(column)
         keys = self._key_columns()
         key = (self.dataset, name) if len(keys) == 2 else (name,)
-        entry = self._index(keys, tuple(resolved)).get(key)
+        # Two spellings of one column resolve to one name, and a key column is
+        # answered by the key itself; neither may reach the aggregation, where
+        # a repeated name is a polars DuplicateError.
+        aggregated = tuple(dict.fromkeys(c for c in resolved if c not in keys))
+        entry = self._index(keys, aggregated).get(key)
         where = f" in dataset {self.dataset!r}" if len(keys) == 2 else ""
         if entry is None:
             raise ReferenceLookupError(
@@ -348,8 +415,12 @@ class ReferenceContext:
                 reason="unmatched",
                 image_name=name,
             )
+        from_key = dict(zip(keys, key))
         values: dict[str, str] = {}
         for requested, column in zip(columns, resolved):
+            if column in from_key:
+                values[requested] = str(from_key[column])
+                continue
             found = entry[column]
             if not found:
                 raise ReferenceLookupError(
@@ -373,9 +444,14 @@ class ReferenceContext:
     def resolve_image(self, name: str) -> "Path | Image":
         """Return the in-memory image or the file that *name* refers to.
 
+        Only image files (by accepted suffix) and Zarr stores directly inside
+        ``image_root`` are candidates. The directory is listed once and the
+        listing reused until its modification time changes.
+
         Raises:
-            ReferenceImageError: No ``images`` entry and no ``image_root``, or
-                the name matches zero or several files in ``image_root``.
+            ReferenceImageError: No ``images`` entry and no ``image_root``; the
+                name is a path rather than a file name or stem; or it matches
+                zero or several images in ``image_root``.
         """
         if name in self.images:
             target = self.images[name]
@@ -385,19 +461,19 @@ class ReferenceContext:
                 f"Cannot resolve reference image {name!r}: the ReferenceContext has "
                 f"no image_root and no images entry for it"
             )
-        from phenotypic.sdk_._io_constants import is_zarr_store_name, source_image_stem
-
-        def is_image(p: Path) -> bool:
-            return p.is_file() or (p.is_dir() and is_zarr_store_name(p))
-
         root = self.image_root
-        exact = root / name
-        if is_image(exact):
+        if not name or name in (".", "..") or os.path.isabs(name) or "/" in name or "\\" in name:
+            raise ReferenceImageError(
+                f"Reference image {name!r} must be a file name or stem inside "
+                f"image_root {root}, not a path"
+            )
+        index = self._root_index(root)
+        wanted = os.path.normcase(name)
+        exact = index.by_name.get(wanted)
+        if exact is not None:
             return exact
-        # source_image_stem is what Image.imread names an image: "x.ome.zarr" -> "x".
-        candidates = sorted(
-            p for p in root.iterdir() if is_image(p) and source_image_stem(p) == name
-        )
+        # Stems are what Image.imread names an image: "x.ome.zarr" -> "x".
+        candidates = index.by_stem.get(wanted, [])
         if len(candidates) != 1:
             raise ReferenceImageError(
                 f"Reference image {name!r} matches {len(candidates)} files in {root}: "
@@ -405,15 +481,32 @@ class ReferenceContext:
             )
         return candidates[0]
 
+    def _root_index(self, root: Path) -> _RootIndex:
+        try:
+            mtime_ns = os.stat(root).st_mtime_ns
+        except OSError as exc:
+            raise ReferenceImageError(f"Cannot read image_root {root}: {exc}") from exc
+        index = self._shared.roots.get(str(root))
+        if index is None or index.mtime_ns != mtime_ns:
+            index = _scan_image_root(root, mtime_ns)
+            self._shared.roots[str(root)] = index
+        return index
+
     def _load(self, name: str) -> "tuple[Image, str | None]":
+        """Return the reference image and its digest, from one resolution."""
         target = self.resolve_image(name)
         if not isinstance(target, Path):
             return target, None
         stat = target.stat()
+        # A store's directory entry does not change when its content is
+        # rewritten; its root zarr.json (which the digest hashes) does.
+        manifest = target / "zarr.json"
+        manifest_stat = manifest.stat() if target.is_dir() and manifest.is_file() else None
         key = (
             str(target.resolve()),
             stat.st_mtime_ns,
             stat.st_size,
+            (manifest_stat.st_mtime_ns, manifest_stat.st_size) if manifest_stat else None,
             json.dumps(self.read_kwargs, sort_keys=True, default=str),
         )
         with _IMAGE_CACHE_LOCK:
@@ -448,7 +541,7 @@ class ReferenceContext:
         image_root: str | Path | None = None,
         images: Mapping[str, Any] | None = None,
     ) -> "ReferenceContext":
-        """Return a context sharing this table and its indexes.
+        """Return a context sharing this table, its indexes and its root listings.
 
         Each argument left ``None`` keeps this context's value.
         """
@@ -458,7 +551,6 @@ class ReferenceContext:
         clone.image_root = Path(image_root) if image_root is not None else self.image_root
         clone.images = dict(images) if images is not None else dict(self.images)
         clone.read_kwargs = dict(self.read_kwargs)
-        clone._tokens = []
         return clone
 
     def __repr__(self) -> str:

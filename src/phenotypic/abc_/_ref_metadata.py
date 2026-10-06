@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import functools
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic._core._image import Image
@@ -23,6 +24,26 @@ def _resolved() -> dict[int, dict[str, Any]]:
         store = {}
         _RESOLVED.set(store)
     return store
+
+
+def _discard_record_on_failure(operate: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a subclass's ``_operate`` so a failed apply drops its record.
+
+    ``provenance_parameters`` pops the record only after success, so without
+    this a failure leaves it keyed by ``id(op)``; a later op given the same id
+    that skips its lookup would inherit it. ``apply`` cannot be overridden for
+    this, because RefMetadata may sit last in the MRO.
+    """
+
+    @functools.wraps(operate)
+    def _operate(self: Any, *args: Any, **kwargs: Any) -> Any:
+        try:
+            return operate(self, *args, **kwargs)
+        except BaseException:
+            _resolved().pop(id(self), None)
+            raise
+
+    return _operate
 
 
 def _marked_fields(cls: type, marker_type: type, *, source: str | None = None) -> tuple[str, ...]:
@@ -64,6 +85,9 @@ class RefMetadata:
             raise TypeError(
                 f"{cls.__name__}: RefMetadata may only be mixed into an ImageOperation"
             )
+        operate = cls.__dict__.get("_operate")
+        if operate is not None and not getattr(operate, "__isabstractmethod__", False):
+            cls._operate = _discard_record_on_failure(operate)  # type: ignore[method-assign]
 
     def _ref_columns(self) -> tuple[str, ...]:
         """Every column this op reads, in field declaration order."""
@@ -115,11 +139,12 @@ class RefMetadata:
         raised cannot leak into this one.
         """
         ctx = self._require_context()
-        image = ctx.load_image(name)
+        # One load for both: the digest recorded is that of the pixels used.
+        image, digest = ctx._load(name)
         record = _resolved().setdefault(
             id(self), {"table_sha256": ctx.table_sha256, "values": {}, "images": {}}
         )
-        record["images"][name] = {"sha256": ctx.reference_image_digest(name)}
+        record["images"][name] = {"sha256": digest}
         return image
 
     def provenance_parameters(self) -> dict[str, Any]:
