@@ -40,7 +40,10 @@ else:
 
 import skimage as ski
 
-from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
+from phenotypic.sdk_.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    UnsupportedFileTypeError,
+)
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     ensure_metadata_prefix,
@@ -1611,7 +1614,7 @@ class ImageIOHandler(ImageColorSpace):
         if "rgb" in layers:
             array_data = layers["rgb"][()]
             img = cls(arr=array_data, **kwargs)
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=group.file.filename)
         else:
             img = cls._from_stored_matrix(
                 matrix_data, source=group.file.filename, **kwargs
@@ -1743,7 +1746,7 @@ class ImageIOHandler(ImageColorSpace):
                 arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
                 **kwargs,
             )
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=path)
         else:
             img = cls._from_stored_matrix(
                 matrix_data, source=path, **kwargs
@@ -1824,18 +1827,50 @@ class ImageIOHandler(ImageColorSpace):
         """
         img = cls(**kwargs)
         img._restore_array(matrix)
-        if np.issubdtype(matrix.dtype, np.floating) and matrix.size:
-            lo, hi = float(np.nanmin(matrix)), float(np.nanmax(matrix))
-            if lo < 0 or hi > 1:
-                warnings.warn(
-                    f"{source}: the stored gray layer spans [{lo:.4g}, {hi:.4g}], "
-                    f"outside [0, 1]; it was written before single-channel inputs "
-                    f"were normalised and is loaded as stored. Operations that assume "
-                    f"[0, 1] will misread it; rebuild it from the source scan.",
-                    UserWarning,
-                    stacklevel=3,
-                )
+        cls._warn_if_stored_gray_outside_unit_range(matrix, source)
         return img
+
+    def _restore_stored_gray(self, matrix: np.ndarray, *, source) -> None:
+        """Put an RGB image's stored gray layer back, as stored.
+
+        The image was rebuilt from its stored ``rgb``; the stored ``gray`` then
+        replaces the one derived from it. It is stored state, so it skips the
+        public setter's ``[0, 1]`` assertion: an old ``PadImage(constant_value=255)``
+        wrote 255 into the float gray, and such a store must still load and
+        migrate. It is loaded as written, with a warning.
+
+        Args:
+            matrix: The stored gray layer.
+            source: What it was read from, for the warning.
+
+        Raises:
+            ArrayKeyValueShapeMismatchError: If the stored gray does not match
+                the stored rgb's shape.
+        """
+        image = cast("Image", self)
+        if matrix.shape != image._data.gray.shape:
+            raise ArrayKeyValueShapeMismatchError
+        self._warn_if_stored_gray_outside_unit_range(matrix, source)
+        image._data.gray = np.array(matrix, dtype=np.float32, copy=True)
+        image.detect_mat.reset()
+        image.objmap.reset()
+
+    @staticmethod
+    def _warn_if_stored_gray_outside_unit_range(matrix: np.ndarray, source) -> None:
+        """Warn that a stored float gray layer outside ``[0, 1]`` is loaded as is."""
+        if not (np.issubdtype(matrix.dtype, np.floating) and matrix.size):
+            return
+        lo, hi = float(np.nanmin(matrix)), float(np.nanmax(matrix))
+        if lo < 0 or hi > 1:
+            warnings.warn(
+                f"{source}: the stored gray layer spans [{lo:.4g}, {hi:.4g}], "
+                f"outside [0, 1]; it was written by an earlier version (before "
+                f"single-channel inputs were normalised, or by a PadImage that "
+                f"filled gray in counts) and is loaded as stored. Operations that "
+                f"assume [0, 1] will misread it; rebuild it from the source scan.",
+                UserWarning,
+                stacklevel=4,
+            )
 
     @staticmethod
     def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
@@ -1880,7 +1915,7 @@ class ImageIOHandler(ImageColorSpace):
         if "rgb" in group:
             array_data = group["rgb"][()]
             img = cls(arr=array_data, **kwargs)
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=group.file.filename)
         else:
             img = cls._from_stored_matrix(
                 matrix_data, source=group.file.filename, **kwargs

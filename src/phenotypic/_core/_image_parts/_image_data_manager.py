@@ -329,17 +329,19 @@ class ImageDataManager:
     def _handle_array_input(self, arr: np.ndarray, *, validate: bool = True):
         """Handle array input and set bit depth if needed.
 
-        A single-channel (``H x W`` or ``H x W x 1``) integer array is normalised
-        to float32 ``[0, 1]`` by its full-scale value: ``uint8``/``uint16`` by
-        their dtype's maximum, any other integer dtype by the narrowest of 8 or
-        16 bits its values fit (the explicit ``bit_depth``, when given). A
-        ``bool`` array becomes float32 0/1. A single-channel float array
-        carries no scale, so with ``validate`` one outside ``[0, 1]`` or holding
-        a non-finite value is refused, as a float RGB array is.
+        An integer array of any channel count whose dtype is not ``uint8`` or
+        ``uint16`` is first narrowed to the narrowest of 8 or 16 bits its values
+        fit (the explicit ``bit_depth``, when given), so ``bit_depth``, ``rgb``
+        and the derived ``gray`` agree. A single-channel (``H x W`` or
+        ``H x W x 1``) integer array is then normalised to float32 ``[0, 1]`` by
+        its dtype's maximum. A ``bool`` array becomes float32 0/1. A
+        single-channel float array carries no scale, so with ``validate`` one
+        outside ``[0, 1]`` or holding a non-finite value is refused, as a float
+        RGB array is.
         """
         single_channel = arr.ndim == 2 or (arr.ndim == 3 and arr.shape[2] == 1)
-        if single_channel and np.issubdtype(arr.dtype, np.integer):
-            arr = self._as_unsigned_matrix(arr)
+        if np.issubdtype(arr.dtype, np.integer):
+            arr = self._as_unsigned_array(arr)
 
         if self.bit_depth is None:
             bit_depth = self._infer_bit_depth(arr)
@@ -358,14 +360,15 @@ class ImageDataManager:
             arr = self._convert_float_array_to_int(arr, bit_depth=self.bit_depth)
         self._set_from_array(arr)
 
-    def _as_unsigned_matrix(self, arr: np.ndarray) -> np.ndarray:
-        """Return a single-channel integer array as ``uint8`` or ``uint16``.
+    def _as_unsigned_array(self, arr: np.ndarray) -> np.ndarray:
+        """Return an integer image array as ``uint8`` or ``uint16``.
 
         ``uint8``/``uint16`` pass through. Any other integer dtype (an ``int64``
         from a Python literal, an ``int32`` TIFF) carries no bit depth, so its
         values choose one: the explicit ``bit_depth`` when given, else the
         narrowest of 8 and 16 bits they fit. Dividing by the dtype's own
-        maximum instead would scale an ``int64`` plate to ~1e-17.
+        maximum instead (as ``rgb2gray`` and a single-channel normalisation
+        would) scales an ``int64`` plate to ~1e-17.
 
         Raises:
             ValueError: If a value is negative or does not fit 16 bits (or the
@@ -376,11 +379,15 @@ class ImageDataManager:
         widths = (8, 16) if self.bit_depth is None else (self.bit_depth,)
         if arr.size == 0:
             return arr.astype(np.uint8 if widths[0] == 8 else np.uint16)
+        channels = arr.shape[2] if arr.ndim == 3 else 1
+        kind = {1: "Single-channel", 3: "RGB", 4: "RGBA"}.get(
+            channels, f"{channels}-channel"
+        )
         lo, hi = int(arr.min()), int(arr.max())
         if lo < 0:
             raise ValueError(
-                    f"Single-channel {arr.dtype} image has negative values (min {lo}). "
-                    f"A single-channel integer image must hold unsigned intensities "
+                    f"{kind} {arr.dtype} image has negative values (min {lo}). "
+                    f"An integer image must hold unsigned intensities "
                     f"in [0, 255] (8-bit) or [0, 65535] (16-bit)."
             )
         for bits in widths:
@@ -392,7 +399,7 @@ class ImageDataManager:
             else "8-bit [0, 255] or 16-bit [0, 65535]"
         )
         raise ValueError(
-                f"Single-channel {arr.dtype} image has values in [{lo}, {hi}], which "
+                f"{kind} {arr.dtype} image has values in [{lo}, {hi}], which "
                 f"do not fit {fits}. Rescale it to 16 bits, or pass a float array "
                 f"in [0, 1]."
         )

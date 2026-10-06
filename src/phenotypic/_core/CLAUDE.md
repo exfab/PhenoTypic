@@ -21,21 +21,28 @@ Data accessed through accessors (not direct attributes) — ensures consistency,
 
 - `image.rgb[:]` — raw RGB array (uint8/uint16)
 - `image.gray[:]` — grayscale (weighted luminance), float32 in `[0, 1]` for every
-  array input. At construction a single-channel `uint8`/`uint16` array is divided
-  by its dtype's maximum (the divisor `rgb2gray` uses for RGB); any other integer
-  dtype takes the narrowest of 8/16 bits its values fit (or the explicit
-  `bit_depth`) and is refused if negative or wider; `bool` becomes 0.0/1.0; a
-  single-channel float array outside `[0, 1]` or non-finite is refused.
-  `_retain_original` gives back the decoded integers.
+  array input. At construction an integer array of **any** channel count whose
+  dtype is not `uint8`/`uint16` is first narrowed (`_as_unsigned_array`) to the
+  narrowest of 8/16 bits its values fit (or the explicit `bit_depth`), and is
+  refused if negative or wider — so an int64 RGB plate is stored as `uint8` RGB,
+  never divided by 2**63 − 1 in `rgb2gray`. A single-channel `uint8`/`uint16`
+  array is then divided by its dtype's maximum (the divisor `rgb2gray` uses for
+  RGB); `bool` becomes 0.0/1.0; a single-channel float array outside `[0, 1]` or
+  non-finite is refused. `_retain_original` gives back the decoded integers (for
+  narrowed RGB, in the narrowed dtype).
 - **Stored and derived state is restored, not re-validated.** Loaders
   (`load_zarr`, the legacy HDF readers, `load_pickle`) rebuild a gray-only image
   through `_from_stored_matrix` → `_restore_array`, and crops through
   `_restore_crop_of`: a legacy *integer* layer is normalised, but a stored float
   layer is taken as written (a pre-0.20 float-counts store loads with a warning,
-  so it can still be read and migrated). Only user input goes through the
-  `[0, 1]` refusal. Raw readers are the exception to "normalised on load":
-  `Image.load_layer_zarr` and the GUI's Viv chunk reads return a legacy store's
-  integers as stored.
+  so it can still be read and migrated). An RGB store is rebuilt from its `rgb`,
+  and its stored `gray` is put back through `_restore_stored_gray` — never the
+  public `image.gray[:] =` setter, whose `[0, 1]` assertion refused stores an old
+  `PadImage(constant_value=255)` wrote; it too loads as written, with the same
+  warning. (`load_pickle` re-derives an RGB image's gray from `rgb` instead.)
+  Only user input goes through the `[0, 1]` refusal. Raw readers are the
+  exception to "normalised on load": `Image.load_layer_zarr` and the GUI's Viv
+  chunk reads return a legacy store's integers as stored.
 - `image.detect_mat[:]` — enhanced grayscale for processing
 - `image.objmask[:]` — binary mask of detected objects
 - `image.objmap[:]` — labeled object map (integer labels)

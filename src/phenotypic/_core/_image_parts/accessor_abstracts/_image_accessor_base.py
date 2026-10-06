@@ -59,6 +59,17 @@ class ImageAccessorBase(AccessorDashHandler):
             for colony segmentation or measurement.
     """
 
+    @staticmethod
+    def _read_only(selection):
+        """Return an indexed selection of a layer, read-only when it is an array.
+
+        A key that selects one element makes numpy return a scalar, which has
+        no flags to set; it is returned as it is.
+        """
+        if isinstance(selection, np.ndarray):
+            selection.flags.writeable = False
+        return selection
+
     def napari(
         self,
         name: str | None = None,
