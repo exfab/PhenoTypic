@@ -194,6 +194,19 @@ def test_refuses_self_reference():
     assert info.value.reason == "self"
 
 
+def test_refuses_self_reference_written_with_its_extension(tmp_path):
+    """'t04.tif' for image 't04' resolves to the frame's own file; subtracting
+    it would zero the frame silently, so it must be refused like 't04'."""
+    import tifffile
+
+    tifffile.imwrite(tmp_path / "t04.tif", np.full((8, 8), 100, dtype=np.uint8))
+    target = Image.imread(tmp_path / "t04.tif")
+    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["t04.tif"]})
+    with ReferenceContext(layout, image_root=tmp_path), pytest.raises(ReferenceLookupError) as info:
+        SubtractBlank().apply(target)
+    assert info.value.reason == "self"
+
+
 def test_refuses_shape_mismatch():
     target, _ = _pair()
     small = _gray(np.zeros((4, 4)), "t00")

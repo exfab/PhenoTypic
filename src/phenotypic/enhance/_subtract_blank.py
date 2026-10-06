@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -80,8 +81,13 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             shape or bit depth differs from the target's.
         StaleDetectMatError: ``detect_mat`` was already enhanced, or an
             ``ImageCorrector`` appears anywhere in the image's recorded
-            history. Inside an ``ImagePipeline`` these arrive wrapped in the
-            pipeline's ``RuntimeError`` (the original is its ``__cause__``).
+            history.
+
+        All of these are :class:`~phenotypic.sdk_.ReferenceContextError`
+        subclasses and reach a bare ``op.apply`` caller unwrapped. Inside an
+        ``ImagePipeline`` each enclosing pipeline (and a composite holding a
+        branch pipeline) wraps them in a ``RuntimeError``, so walk
+        ``__cause__`` until you reach a ``ReferenceContextError``.
 
     Examples:
         A frame identical to its blank cancels to zero:
@@ -111,8 +117,16 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             ReferenceLookupError,
         )
 
+        from phenotypic.sdk_._io_constants import source_image_stem
+
         name = self._ref_values(image)[self.blank_column]
-        if name == image.name:
+        # Compare by the resolved file too: a blank written with its extension
+        # ("t04.tif" for image "t04") resolves to the image's own file, and
+        # subtracting a frame from itself would zero it with no error.
+        target_file = self._require_context().resolve_image(name)
+        if name == image.name or (
+            isinstance(target_file, Path) and source_image_stem(target_file) == image.name
+        ):
             raise ReferenceLookupError(
                 f"Image {image.name!r} names itself as its blank in {self.blank_column}; "
                 f"leave blank frames out of the input",
@@ -153,14 +167,14 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
         # Every application, not only the last: a staged run's Stage-2 probe
         # copy opens a fresh application, and a corrector recorded by Stage 1
         # must still be seen there (else GPU time is spent, then Stage 3 refuses).
-        journal = image._metadata.provenance_journal
+        # _operations flattens both journal schemas (v1 top-level "operations",
+        # v2 per-application). Correctors are matched against the ImageCorrector
+        # subclasses imported in this process -- every class the running
+        # pipeline uses is imported by deserializing it.
+        from phenotypic._core._provenance import _operations
+
         correctors = _corrector_class_names()
-        records = [
-            record
-            for application in journal.get("applications") or []
-            for record in application.get("operations", [])
-        ]
-        for record in records:
+        for record in _operations(image._metadata.provenance_journal):
             if record.get("operation_class") in correctors:
                 raise StaleDetectMatError(
                     f"SubtractBlank follows {record.get('operation_name')}, an "
