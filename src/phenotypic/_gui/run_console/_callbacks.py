@@ -34,6 +34,7 @@ Wired effects (per ``GUI_SPEC_V1.md`` section 5):
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import logging
@@ -269,6 +270,45 @@ def _staged_gpu_capability(path_value: object) -> tuple[bool, str | None]:
         return False, str(exc)
     except (OSError, ValueError, TypeError):
         return False, None
+
+
+@functools.lru_cache(maxsize=8)
+def _pipeline_reference_columns(
+    path: str, mtime_ns: int
+) -> dict[str, tuple[str, ...]]:
+    """``reference_columns()`` of the pipeline file, cached per (path, mtime)."""
+    from phenotypic import ImagePipeline
+
+    return ImagePipeline.from_json(Path(path)).reference_columns()
+
+
+def reference_metadata_requirement(
+    pipeline_path: object, metadata_csv: object
+) -> str | None:
+    """Why Run must wait for a metadata table, or ``None`` when it need not.
+
+    An unreadable pipeline is not reported here: the CLI's pipeline
+    validation owns that message.
+    """
+    if not isinstance(pipeline_path, str) or not pipeline_path:
+        return None
+    if isinstance(metadata_csv, str) and metadata_csv:
+        return None
+    try:
+        needs = _pipeline_reference_columns(
+            pipeline_path, Path(pipeline_path).stat().st_mtime_ns
+        )
+    except (OSError, ValueError, TypeError):
+        return None
+    if not needs:
+        return None
+    reads = "; ".join(
+        f"{path} reads {', '.join(cols)}" for path, cols in needs.items()
+    )
+    return (
+        f"This pipeline reads reference metadata ({reads}). Include a "
+        f"metadata CSV with those columns before running."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1793,6 +1833,24 @@ def register_callbacks(
             refusal is not None,
         )
 
+    @app.callback(
+        Output(ids.RC_REFERENCE_METADATA_REQUIRED, "children"),
+        Output(ids.RC_REFERENCE_METADATA_REQUIRED, "is_open"),
+        Input(ids.RC_STORE_PIPELINE_PATH, "data"),
+        Input(ids.RC_STORE_FORM_STATE, "data"),
+    )
+    def show_reference_metadata_requirement(
+        pipeline_path: object, form_state: object
+    ) -> tuple[str, bool]:
+        """Explain, and gate Run, when a reference pipeline has no metadata table."""
+        metadata = (
+            form_state.get("metadata_csv")
+            if isinstance(form_state, dict)
+            else None
+        )
+        message = reference_metadata_requirement(pipeline_path, metadata)
+        return message or "", message is not None
+
     # ----------------------------------------------------------------------
     # 7. Form-state sync — every input writes back to the form state store.
     # ----------------------------------------------------------------------
@@ -1945,6 +2003,11 @@ def register_callbacks(
             _, refusal = _staged_gpu_capability(state.pipeline_path)
             if refusal is not None:
                 raise ValueError(f"This pipeline cannot be run: {refusal}")
+            missing = reference_metadata_requirement(
+                state.pipeline_path, state.metadata_csv
+            )
+            if missing is not None:
+                raise ValueError(missing)
         except Exception as exc:  # noqa: BLE001
             detail = _format_exception(exc)
             return (
@@ -2735,18 +2798,21 @@ def register_callbacks(
         Input(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
         Input(ids.RC_RADIO_MODE, "value"),
         Input(ids.RC_STAGED_GPU_REFUSAL, "is_open"),
+        Input(ids.RC_REFERENCE_METADATA_REQUIRED, "is_open"),
     )
     def update_run_disabled(
         _n: Optional[int],
         _active: Optional[str],
         mode: Optional[RunMode],
         pipeline_refused: Optional[bool],
+        reference_missing: Optional[bool],
     ) -> bool:
-        """Disable Run for a refused pipeline, or while a Local run is active.
+        """Disable Run for a refused pipeline or a missing reference table.
 
-        SLURM runs are otherwise unconstrained.
+        Otherwise Run is disabled only while a Local run is active; SLURM
+        runs are unconstrained.
         """
-        if pipeline_refused:
+        if pipeline_refused or reference_missing:
             return True
         if mode == "slurm":
             return False

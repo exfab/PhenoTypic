@@ -906,7 +906,7 @@ def _run_disabled_after_selecting(
         app, "show_staged_gpu_controls"
     )(str(pipeline), mode)
     run_disabled = _callback_by_name(app, "update_run_disabled")(
-        0, None, mode, is_open
+        0, None, mode, is_open, False
     )
     return section, message, is_open, run_disabled
 
@@ -1025,6 +1025,33 @@ def test_run_action_refuses_the_pipeline_before_allocating_or_submitting(
     response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
 
     assert _REFUSED_CONTAINER in response[1]
+    assert registry.list() == []
+
+
+def test_run_action_refuses_a_reference_pipeline_without_a_metadata_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A click racing the alert still reaches ``click_action``; it must refuse."""
+    from phenotypic import ImagePipeline
+    from phenotypic.enhance import SubtractBlank
+
+    pipeline = tmp_path / "reference.json"
+    pipeline.write_text(
+        ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8"
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    monkeypatch.setattr(
+        callbacks_module._SLURM_EXECUTOR,
+        "submit",
+        lambda *args, **kwargs: pytest.fail("submitter was invoked"),
+    )
+    controls = _slurm_action_controls(sandbox, tmp_path, pipeline)
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert "Metadata_BlankImage" in response[1]
     assert registry.list() == []
 
 

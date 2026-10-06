@@ -813,6 +813,12 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
             is_open=False,
             className="py-2",
         ),
+        dbc.Alert(
+            id=ids.RC_REFERENCE_METADATA_REQUIRED,
+            color="warning",
+            is_open=False,
+            className="py-2",
+        ),
         _build_action_buttons(),
     ]
 
