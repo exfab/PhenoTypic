@@ -31,8 +31,8 @@ class Image(ImageIOHandler):
 
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
-          An integer one is normalised to float32 [0, 1] by its dtype's maximum;
-          a float one must already lie in [0, 1].
+          An integer one is normalised to float32 [0, 1] by its 8- or 16-bit
+          full scale; a float one must already lie in [0, 1].
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
         - Color space properties (gamma, illuminant, _observer) are inherited
           from a source Image (copy, crop, grid section) unless passed explicitly.

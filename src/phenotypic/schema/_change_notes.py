@@ -72,8 +72,16 @@ SIZE_SHAPE_SPLIT_NOTE = """\
 _SINGLE_CHANNEL_NORMALISATION = """\
 A single-channel (grayscale) integer image, such as an 8- or 16-bit
    grayscale PNG, TIFF or JPEG, is now normalised to ``[0, 1]`` when it is
-   read, by dividing by its dtype's maximum (255 or 65535). An RGB image's
-   grayscale was already on that scale, and RGB inputs are unchanged."""
+   read, by dividing by its full-scale value (255 for 8-bit, 65535 for
+   16-bit; another integer dtype takes the narrower of the two its values
+   fit). An RGB image's grayscale was already on that scale, and RGB inputs
+   are unchanged."""
+
+_SINGLE_CHANNEL_SEGMENTATION = """\
+Detectors and enhancers that assume ``[0, 1]`` now see it, so the
+   segmentation of such an image changes, and with it every column measured
+   on its detected objects: ``Size_*``, ``Shape_*``, ``Bbox_*`` and the zone
+   columns included."""
 
 _SINGLE_CHANNEL_RESUME = """\
 A single-channel run started before this change must be re-run with
@@ -84,8 +92,13 @@ SINGLE_CHANNEL_SIZE_NOTE = f"""\
 .. versionchanged:: 0.20.0
    {_SINGLE_CHANNEL_NORMALISATION} ``Size_IntegratedIntensity`` of such an
    image is therefore in normalised units: the earlier value divided by 255 or
-   65535. Segmentation can change too, because detectors and enhancers that
-   assume ``[0, 1]`` now see it.
+   65535. {_SINGLE_CHANNEL_SEGMENTATION}
+   {_SINGLE_CHANNEL_RESUME}
+"""
+
+SINGLE_CHANNEL_SEGMENTATION_NOTE = f"""\
+.. versionchanged:: 0.20.0
+   {_SINGLE_CHANNEL_NORMALISATION} {_SINGLE_CHANNEL_SEGMENTATION}
    {_SINGLE_CHANNEL_RESUME}
 """
 
@@ -94,5 +107,6 @@ SINGLE_CHANNEL_PRODUCED_NOTE = f"""\
    {_SINGLE_CHANNEL_NORMALISATION} These columns are now produced for such
    an image; earlier versions raised on it instead. Their values equal those
    of the same scan supplied as a float array in ``[0, 1]``.
+   {_SINGLE_CHANNEL_SEGMENTATION}
    {_SINGLE_CHANNEL_RESUME}
 """

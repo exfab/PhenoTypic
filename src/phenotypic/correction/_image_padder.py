@@ -76,9 +76,12 @@ class PadImage(ImageCorrector):
             the nearest border pixel (safest for colony analysis); ``'reflect'``
             reduces convolution boundary artefacts; ``'constant'`` fills with a
             uniform value. Default: ``'constant'``.
-        constant_value: Fill value used when ``mode='constant'``. Use ``0``
-            for black borders or ``255`` for white borders matching bright-agar
-            backgrounds. Default: ``0``.
+        constant_value: Fill value used when ``mode='constant'``, on the
+            image's integer scale. Use ``0`` for black borders or ``255`` for
+            white borders matching bright-agar backgrounds on an 8-bit image
+            (``65535`` on a 16-bit one). ``rgb`` is filled with this value;
+            ``gray`` and ``detect_mat``, which are on ``[0, 1]``, with it divided
+            by the image's full-scale value (255 or 65535). Default: ``0``.
 
     Returns:
         Image: Input image with all components padded by the specified
@@ -122,6 +125,15 @@ class PadImage(ImageCorrector):
         if value is not None and value < 0:
             raise ValueError(f"{info.field_name} cannot be negative")
         return value
+
+    @staticmethod
+    def _full_scale(image: Image) -> int:
+        """The integer value that maps to 1.0 on ``image``'s float layers."""
+        if not image.rgb.isempty():
+            return int(np.iinfo(image.rgb[:].dtype).max)
+        if image._gray_source_dtype is not None:
+            return int(np.iinfo(image._gray_source_dtype).max)
+        return 2 ** (image.bit_depth or 8) - 1
 
     def _get_pad_width_2d(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         """Calculate pad_width tuple for 2D arrays (gray, detect_mat, objmap).
@@ -219,10 +231,16 @@ class PadImage(ImageCorrector):
         pad_width_2d = self._get_pad_width_2d()
         pad_width_3d = self._get_pad_width_3d()
 
-        # Prepare kwargs for np.pad
+        # Prepare kwargs for np.pad. constant_value is on the image's integer
+        # scale; the float layers (gray, detect_mat) are on [0, 1], so they
+        # get it divided by the image's full-scale value.
         pad_kwargs: dict[str, Any] = {}
+        float_pad_kwargs: dict[str, Any] = {}
         if self.mode == "constant":
             pad_kwargs["constant_values"] = self.constant_value
+            float_pad_kwargs["constant_values"] = (
+                self.constant_value / self._full_scale(image)
+            )
 
         # Pad RGB if it exists (3D array, spatial dims only)
         if not image.rgb.isempty():
@@ -238,7 +256,7 @@ class PadImage(ImageCorrector):
             image._data.gray,
             pad_width=pad_width_2d,
             mode=self.mode,
-            **pad_kwargs,
+            **float_pad_kwargs,
         )
 
         # Pad detect_mat (2D array)
@@ -246,7 +264,7 @@ class PadImage(ImageCorrector):
             image._data.detect_mat,
             pad_width=pad_width_2d,
             mode=self.mode,
-            **pad_kwargs,
+            **float_pad_kwargs,
         )
 
         # CRITICAL: Pad objmap with constant mode and value 0 ALWAYS

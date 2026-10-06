@@ -120,7 +120,6 @@ def test_size_note_keeps_the_split_note_and_adds_integrated_intensity_units():
     assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
     assert "``Size_IntegratedIntensity``" in note
     assert "normalised units" in note
-    assert SINGLE_CHANNEL not in " ".join(SHAPE.change_note().split())
 
 
 @pytest.mark.parametrize("info", [INTENSITY, TEXTURE], ids=["INTENSITY", "TEXTURE"])
@@ -131,7 +130,29 @@ def test_intensity_and_texture_notes_say_the_columns_are_now_produced(info):
     assert "now produced" in note
 
 
-@pytest.mark.parametrize("info", [SIZE, INTENSITY, TEXTURE], ids=["SIZE", "INTENSITY", "TEXTURE"])
+_SINGLE_CHANNEL_INFOS = pytest.mark.parametrize(
+    "info", [SIZE, SHAPE, INTENSITY, TEXTURE], ids=["SIZE", "SHAPE", "INTENSITY", "TEXTURE"]
+)
+
+
+@_SINGLE_CHANNEL_INFOS
+def test_single_channel_note_says_detection_derived_columns_change(info):
+    """Detectors now find colonies on single-channel scans, so every column
+    measured on a detected object can change, not only the intensity ones."""
+    note = " ".join(info.change_note().split())
+    assert SINGLE_CHANNEL in note
+    assert "segmentation" in note
+    for prefix in ("``Shape_*``", "``Bbox_*``"):
+        assert prefix in note, prefix
+
+
+def test_shape_note_keeps_the_split_note_first():
+    note = " ".join(SHAPE.change_note().split())
+    assert note.count(MARKER) == 2
+    assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
+
+
+@_SINGLE_CHANNEL_INFOS
 def test_single_channel_note_warns_against_resuming(info):
     """No work-id fence covers this change, so the note is the only guard."""
     note = " ".join(info.change_note().split())

@@ -317,3 +317,235 @@ def test_integrated_intensity_is_in_normalised_units() -> None:
     df = MeasureSize().measure(_seeded(_plate()))
     col = next(c for c in df.columns if "IntegratedIntensity" in str(c))
     assert float(df[col].iloc[0]) == pytest.approx(400 * 200 / 255, rel=1e-5)
+
+
+# ------------------------------------------- other integer dtypes, bool, NaN
+
+
+@pytest.mark.parametrize(
+    "dtype,agar,colony,bits",
+    [
+        (np.int64, 100, 200, 8),
+        (np.int32, 10000, 30000, 16),
+        (np.uint32, 10000, 30000, 16),
+        (np.int16, 100, 200, 8),
+        (np.int8, 10, 100, 8),
+        (np.uint64, 300, 65535, 16),
+    ],
+)
+def test_other_integer_dtypes_take_the_narrowest_width_their_values_fit(
+    dtype, agar, colony, bits
+) -> None:
+    """Not their own dtype's maximum: an int64 plate divided by 2**63 - 1 is ~1e-17."""
+    arr = _plate(dtype, agar, colony)
+    img = Image(arr=arr)
+    full_scale = 2**bits - 1
+    assert img.bit_depth == bits
+    _assert_unit_float(img, arr.astype(np.float32) / np.float32(full_scale))
+
+
+def test_a_python_literal_int64_plate_is_read_as_8_bit() -> None:
+    arr = np.array([[100, 200], [150, 250]])
+    assert arr.dtype == np.int64
+    img = Image(arr=arr)
+    assert img.bit_depth == 8
+    _assert_unit_float(img, arr.astype(np.float32) / 255)
+
+
+def test_other_integer_dtypes_raise_no_unknown_dtype_warning() -> None:
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        Image(arr=_plate(np.int64, 100, 200))
+
+
+def test_an_explicit_bit_depth_chooses_the_width_for_other_integer_dtypes() -> None:
+    arr = _plate(np.int64, 100, 200)
+    img = Image(arr=arr, bit_depth=16)
+    assert img.bit_depth == 16
+    _assert_unit_float(img, arr.astype(np.float32) / 65535)
+
+
+def test_negative_signed_integers_are_refused_as_integers() -> None:
+    arr = _plate(np.int16, 100, 200)
+    arr[0, 0] = -5
+    with pytest.raises(ValueError, match="negative") as info:
+        Image(arr=arr)
+    assert "int16" in str(info.value)
+    assert "float" not in str(info.value)
+
+
+def test_integers_wider_than_16_bit_are_refused_with_their_range() -> None:
+    with pytest.raises(ValueError, match=r"int32.*\[100, 70000\]"):
+        Image(arr=_plate(np.int32, 100, 70000))
+
+
+def test_integers_outside_an_explicit_bit_depth_are_refused() -> None:
+    with pytest.raises(ValueError, match="8-bit"):
+        Image(arr=_plate(np.int64, 100, 300), bit_depth=8)
+
+
+def test_retained_original_of_a_uint32_scan_is_its_16_bit_values() -> None:
+    arr = _plate(np.uint32, 7, 65534)
+    img = Image(arr=arr)
+    img._retain_original()
+    assert img._original.dtype == np.uint16
+    np.testing.assert_array_equal(img._original, arr)
+
+
+def test_bool_single_channel_becomes_float_zero_one() -> None:
+    import warnings
+
+    mask = _plate(np.uint8, 0, 1).astype(bool)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        img = Image(arr=mask)
+    assert img.bit_depth == 8
+    _assert_unit_float(img, mask.astype(np.float32))
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_non_finite_single_channel_float_is_refused(bad) -> None:
+    arr = _plate(np.float32, 0.4, 0.8)
+    arr[3, 3] = bad
+    with pytest.raises(ValueError, match="non-finite"):
+        Image(arr=arr)
+
+
+def test_set_image_with_float_resets_the_integer_source_dtype() -> None:
+    """A stale uint8 source dtype would rebuild float data as 'decoded integers'."""
+    img = Image(arr=_plate())
+    replacement = _plate(np.float32, 0.25, 0.75)
+    img.set_image(replacement)
+    img._retain_original()
+    assert img._original.dtype == np.float32
+    np.testing.assert_array_equal(img._original, replacement)
+
+
+# ------------------------------------- stored and derived state is restored
+
+
+def _with_float_gray(img: Image, gray: np.ndarray) -> Image:
+    """Stand in for a store written before the [0, 1] refusal: float gray in counts."""
+    img._data.gray = gray.copy()
+    img._data.detect_mat = gray.copy()
+    return img
+
+
+@pytest.mark.parametrize("dtype,fill", [(np.uint8, 1.0), (np.uint16, 255 / 65535)])
+def test_pad_image_fills_float_layers_on_the_unit_scale(dtype, fill) -> None:
+    from phenotypic.correction import PadImage
+
+    arr = _plate(dtype, 100, 200) if dtype is np.uint8 else _plate(dtype, 10000, 30000)
+    padded = PadImage(left=4, right=4, top=4, bottom=4, constant_value=255).apply(
+        Image(arr=arr)
+    )
+    for layer in (padded.gray[:], padded.detect_mat[:]):
+        np.testing.assert_allclose(layer[0:4, :], fill, rtol=1e-6)
+        assert float(layer.max()) <= 1.0
+
+
+def test_pad_image_keeps_the_integer_fill_on_rgb_and_scales_gray() -> None:
+    from phenotypic.correction import PadImage
+
+    rgb = np.dstack([_plate()] * 3)
+    padded = PadImage(left=4, right=4, top=4, bottom=4, constant_value=255).apply(
+        Image(arr=rgb)
+    )
+    assert np.all(padded.rgb[:][0:4] == 255)
+    np.testing.assert_allclose(padded.gray[:][0:4], 1.0, rtol=1e-6)
+
+
+@pytest.mark.parametrize("cls", [Image, GridImage])
+def test_gray_only_pad_255_then_crop_and_reload(tmp_path, cls) -> None:
+    from phenotypic.correction import PadImage
+
+    padded = PadImage(left=4, right=4, top=4, bottom=4, constant_value=255).apply(
+        cls(arr=_plate(), name="padded")
+    )
+    crop = padded[0:32, 0:32]
+    np.testing.assert_allclose(crop.gray[:], padded.gray[:][0:32, 0:32])
+
+    loaded = Image.load_zarr(padded.save2zarr(tmp_path / "padded.ome.zarr"))
+    np.testing.assert_array_equal(loaded.gray[:], padded.gray[:])
+    np.testing.assert_array_equal(loaded.detect_mat[:], padded.detect_mat[:])
+
+
+@pytest.mark.parametrize("cls", [Image, GridImage])
+def test_a_crop_takes_out_of_range_gray_as_it_is(cls) -> None:
+    """A crop copies derived state; it does not re-validate it as user input."""
+    counts = _plate(np.float32, 100.0, 200.0)
+    img = _with_float_gray(cls(arr=_plate()), counts)
+    crop = img[0:32, 0:32]
+    np.testing.assert_array_equal(crop.gray[:], counts[0:32, 0:32])
+    assert not np.shares_memory(crop._data.gray, img._data.gray)
+
+
+def test_load_zarr_loads_a_legacy_float_store_in_counts_as_stored(tmp_path) -> None:
+    counts = _plate(np.float32, 100.0, 200.0)
+    store = _with_float_gray(Image(arr=_plate(), name="counts"), counts).save2zarr(
+        tmp_path / "counts.ome.zarr"
+    )
+    with pytest.warns(UserWarning, match=r"outside \[0, 1\]"):
+        loaded = Image.load_zarr(store)
+    np.testing.assert_array_equal(loaded.gray[:], counts)
+    np.testing.assert_array_equal(loaded.detect_mat[:], counts)
+
+
+def test_legacy_hdf_with_float_gray_in_counts_still_migrates(tmp_path) -> None:
+    from tests.fixtures.legacy_hdf import _generate
+
+    counts = _plate(np.float32, 100.0, 200.0)
+    path = _generate.write_v2_grouped(
+        tmp_path / "img.h5", _with_float_gray(Image(arr=_plate(), name="img"), counts)
+    )
+    with pytest.warns(UserWarning, match=r"outside \[0, 1\]"):
+        loaded = Image._load_hdf5_for_migration(path)
+    np.testing.assert_array_equal(loaded.gray[:], counts)
+
+
+def test_load_pickle_loads_float_gray_in_counts_as_stored(tmp_path) -> None:
+    counts = _plate(np.float32, 100.0, 200.0)
+    path = tmp_path / "counts.pkl"
+    _with_float_gray(Image(arr=_plate()), counts).save2pickle(str(path))
+    with pytest.warns(UserWarning, match=r"outside \[0, 1\]"):
+        loaded = Image.load_pickle(path)
+    np.testing.assert_array_equal(loaded.gray[:], counts)
+
+
+def test_load_zarr_restores_the_integer_source_dtype(tmp_path) -> None:
+    arr = _plate()
+    img = Image(arr=arr, name="g8")
+    img._retain_original()
+    loaded = Image.load_zarr(img.save2zarr(tmp_path / "g8.ome.zarr"))
+    loaded._retain_original()
+    assert loaded._original.dtype == np.uint8
+    np.testing.assert_array_equal(loaded._original, arr)
+
+
+@pytest.mark.parametrize("cls", [Image, GridImage])
+def test_a_crop_keeps_the_integer_source_dtype(cls) -> None:
+    arr = _plate()
+    crop = cls(arr=arr)[0:32, 0:32]
+    crop._retain_original()
+    assert crop._original.dtype == np.uint8
+    np.testing.assert_array_equal(crop._original, arr[0:32, 0:32])
+
+
+def test_load_pickle_keeps_the_colour_configuration(tmp_path) -> None:
+    from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+
+    rng = np.random.default_rng(3)
+    rgb = rng.integers(30, 220, size=(32, 32, 3), dtype=np.uint8)
+    img = Image(arr=rgb, illuminant="D50", gamma=None)
+    img._observer = "CIE 1964 10 Degree Standard Observer"
+    img.set_detect_mode("LabL")
+    path = tmp_path / "d50.pkl"
+    img.save2pickle(str(path))
+
+    loaded = Image.load_pickle(path)
+    assert loaded.illuminant == "D50"
+    assert loaded.gamma == GAMMA_ENCODINGS.LINEAR
+    assert loaded._observer == "CIE 1964 10 Degree Standard Observer"
+    np.testing.assert_allclose(loaded.detect_mat[:], img.detect_mat[:], atol=1e-6)

@@ -247,8 +247,8 @@ class TestImagePadderDataPreservation:
         padded = padder.apply(image)
 
         assert padded.shape == (320, 400)
-        # Check edges are padding value
-        assert np.all(padded.gray[0:60, :] == 50)
+        # gray is on the [0, 1] scale, so the 8-bit fill value 50 lands as 50/255
+        np.testing.assert_allclose(padded.gray[0:60, :], 50 / 255, rtol=1e-6)
 
     def test_padding_with_detection_results(self):
         """Test that padding preserves and adjusts detection results."""

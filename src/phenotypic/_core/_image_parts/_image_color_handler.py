@@ -138,6 +138,20 @@ class ImageColorSpace(ImageVisualizationHandler):
         self.illuminant = source.illuminant
         self._observer = source._observer
 
+    def _restore_crop_of(self, source, key) -> None:
+        """Fill this empty image with ``source[key]`` and ``source``'s configuration.
+
+        The pixels are copied, and restored as derived state rather than
+        re-validated as user input, so a crop never refuses what its source
+        already holds (a gray layer padded outside ``[0, 1]``, say).
+        """
+        gray_only = source.rgb.isempty()
+        layer = source.gray if gray_only else source.rgb
+        self._restore_array(np.array(layer[key], copy=True))
+        if gray_only:
+            self._gray_source_dtype = source._gray_source_dtype
+        self._adopt_color_config(source)
+
     def _set_from_class_instance(self, input_cls) -> None:
         """Copy data from another Image instance, including its colour configuration."""
         super()._set_from_class_instance(input_cls)

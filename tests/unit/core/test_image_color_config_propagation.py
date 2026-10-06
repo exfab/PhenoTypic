@@ -147,6 +147,9 @@ def test_crop_keeps_detect_mode(cls) -> None:
     crop = img[0:48, 0:48]
     assert crop.detect_mode == "LabL"
     np.testing.assert_array_equal(crop.detect_mat[:], img.detect_mat[0:48, 0:48])
+    # Recomputing on the crop needs its D50/linear config, not only the mode.
+    crop.detect_mat.reset()
+    np.testing.assert_allclose(crop.detect_mat[:], img.detect_mat[0:48, 0:48], atol=1e-6)
 
 
 def test_single_colony_keeps_illuminant_and_gamma() -> None:

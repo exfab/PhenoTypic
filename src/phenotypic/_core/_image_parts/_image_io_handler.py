@@ -1613,7 +1613,9 @@ class ImageIOHandler(ImageColorSpace):
             img = cls(arr=array_data, **kwargs)
             img.gray[:] = matrix_data
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=group.file.filename, **kwargs
+            )
 
         # Detection matrix + mode. Backward compat: 'enh_gray' is the
         # pre-rename name, still accepted by valid_staged_hdf in
@@ -1743,7 +1745,9 @@ class ImageIOHandler(ImageColorSpace):
             )
             img.gray[:] = matrix_data
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=path, **kwargs
+            )
 
         # A single-channel store written before normalisation holds raw integers;
         # the gray series is normalised by the constructor above.
@@ -1767,6 +1771,10 @@ class ImageIOHandler(ImageColorSpace):
                 if original.ndim == 3
                 else original
             )
+            # A gray-only image's float gray came from these integers, so a
+            # later _retain_original must give them back, not float32.
+            if img.rgb.isempty() and np.issubdtype(original.dtype, np.integer):
+                img._gray_source_dtype = original.dtype
 
         provenance = block.get(ngff_.PhenotypicAttr.PROVENANCE)
         if isinstance(provenance, dict):
@@ -1795,6 +1803,42 @@ class ImageIOHandler(ImageColorSpace):
         # shape; this one is new, so it is narrowed here rather than adding a
         # fourth instance of the pattern.
         return cast("Image", img)
+
+    @classmethod
+    def _from_stored_matrix(cls, matrix: np.ndarray, *, source, **kwargs):
+        """Rebuild a gray-only image from its stored gray layer, as stored.
+
+        Stored state is not user input, so it skips the constructor's
+        ``[0, 1]`` refusal: a store, HDF file or pickle written before 0.20.0
+        from a float scan in counts must still load and migrate. Such a layer
+        is loaded as written, with a warning, because its scale is unknown. A
+        legacy integer layer is normalised as at construction.
+
+        Args:
+            matrix: The stored gray layer.
+            source: What it was read from, for the warning.
+            **kwargs: Constructor arguments (``name``, ``bit_depth``, ...).
+
+        Returns:
+            The rebuilt image.
+        """
+        img = cls(**kwargs)
+        img._restore_array(matrix)
+        if (
+            np.issubdtype(matrix.dtype, np.floating)
+            and matrix.size
+            and (np.nanmin(matrix) < 0 or np.nanmax(matrix) > 1)
+        ):
+            warnings.warn(
+                f"{source}: the stored gray layer spans "
+                f"[{float(np.nanmin(matrix)):.4g}, {float(np.nanmax(matrix)):.4g}], "
+                f"outside [0, 1]; it was written before single-channel inputs "
+                f"were normalised and is loaded as stored. Operations that assume "
+                f"[0, 1] will misread it; rebuild it from the source scan.",
+                UserWarning,
+                stacklevel=3,
+            )
+        return img
 
     @staticmethod
     def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
@@ -1841,7 +1885,9 @@ class ImageIOHandler(ImageColorSpace):
             img = cls(arr=array_data, **kwargs)
             img.gray[:] = matrix_data
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=group.file.filename, **kwargs
+            )
 
         # Load detection matrix and object map with proper dtype casting.
         # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'.
@@ -2091,6 +2137,9 @@ class ImageIOHandler(ImageColorSpace):
                 "objmap": self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata": self._metadata.public,
+                "gamma": self.gamma.name,
+                "illuminant": self.illuminant,
+                "_observer": self._observer,
             }
 
             if hasattr(self, "grid_finder"):
@@ -2188,14 +2237,18 @@ class ImageIOHandler(ImageColorSpace):
             else:
                 instance = target_class(arr=loaded["_data.rgb"], name=None)
         else:
-            if has_grid_finder:
-                instance = target_class(
-                    arr=loaded["_data.gray"],
-                    name=None,
-                    grid_finder=grid_finder,
-                )
-            else:
-                instance = target_class(arr=loaded["_data.gray"], name=None)
+            finder_kwargs = {"grid_finder": grid_finder} if has_grid_finder else {}
+            instance = target_class._from_stored_matrix(
+                loaded["_data.gray"], source=filename, name=None, **finder_kwargs
+            )
+
+        # Pickles written before the colour configuration was stored load
+        # with the defaults, as they always did.
+        gamma_name = loaded.get("gamma")
+        if gamma_name is not None:
+            instance.gamma = GAMMA_ENCODINGS[gamma_name]
+        instance.illuminant = loaded.get("illuminant", instance.illuminant)
+        instance._observer = loaded.get("_observer", instance._observer)
 
         # Restore detection matrix, object map, and metadata
         instance.detect_mat.reset()
