@@ -189,8 +189,8 @@ HINTS: dict[str, str] = {
         "(e.g. a Metadata_BlankImage column), or remove the reference operation."
     ),
     "PF-REF-TABLE": (
-        "Fix the reference table: it must be a readable CSV with a "
-        "Metadata_ImageName (or ImageName) column."
+        "Fix the reference table: it must be a readable CSV with an "
+        "ImageName (or Metadata_ImageName) column."
     ),
     "PF-REF-COLUMN": (
         "Add the column the operation names to the table, or change the "
