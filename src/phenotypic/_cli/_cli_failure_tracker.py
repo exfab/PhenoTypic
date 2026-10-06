@@ -314,12 +314,16 @@ def compute_work_id(
     pipeline_fingerprint: str,
     processing_config_digest: str,
     mode: str,
+    reference_digest: str | None = None,
 ) -> str:
     """Return the stable identity of one exact per-image computation.
 
     A camera-RAW input (by the suffix of ``relative_image_path``) also carries
     :data:`RAW_DECODE_REVISION`, so a run resumed across the RAW decoding fix
     re-derives those images instead of reusing outputs decoded the old way.
+    ``reference_digest`` is the image's entry in the run's reference manifest
+    (:func:`image_reference_digest`), ``None`` when the run reads no
+    reference metadata.
     """
     payload: dict[str, Any] = {
         "schema_version": WORK_ID_SCHEMA_VERSION,
@@ -332,7 +336,34 @@ def compute_work_id(
     }
     if Path(relative_image_path).suffix.lower() in _RAW_SUFFIXES:
         payload["raw_decode_revision"] = RAW_DECODE_REVISION
+    if reference_digest is not None:
+        # Present only for pipelines that read reference metadata, so every
+        # existing work-id is unchanged. Per image, not per table: editing one
+        # plate's blank re-runs that plate's frames and nothing else.
+        payload["reference_digest"] = reference_digest
     return canonical_digest(payload)
+
+
+def image_reference_digest(
+    output_dir: Path | None, dataset: str, image_path: Path, mode: str
+) -> str | None:
+    """The image's reference digest for its work-id, read from the run's manifest.
+
+    The one reader both work-id producers share -- selection
+    (:func:`work_id_for_image`) and the SLURM worker
+    (``_cli_process_single._worker_work_identity``) -- so the two cannot
+    disagree. Measure mode applies no operation and its runs never touch the
+    manifest, so its work-ids never carry the digest.
+    """
+    if mode == "measure":
+        return None
+    from phenotypic.sdk_._io_constants import source_image_stem
+
+    from ._cli_reference import reference_digest_for
+
+    return reference_digest_for(
+        output_dir, dataset, source_image_stem(Path(image_path))
+    )
 
 
 #: Lower-cased camera-RAW suffixes, from the one list the reader uses.
@@ -399,6 +430,9 @@ def work_id_for_image(
             pipeline_fingerprint=pipeline_fingerprint,
             processing_config_digest=processing_configuration_digest(config),
             mode=mode,
+            reference_digest=image_reference_digest(
+                getattr(config, "output_dir", None), dataset, image_path, mode
+            ),
         ),
         relative_path.as_posix(),
     )

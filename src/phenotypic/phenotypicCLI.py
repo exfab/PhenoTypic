@@ -651,6 +651,60 @@ def _refuse_run_inputs_the_run_would_delete(
                 )
 
 
+def _reference_operations_for(
+    pipeline_json: Optional[Path], cli_mode: str
+) -> list[Any]:
+    """The reference-metadata operations a ``full``/``process`` run executes.
+
+    Empty in every other mode and when the pipeline cannot be loaded: the
+    pipeline validation reports a load failure in its own words.
+    """
+    if pipeline_json is None or cli_mode not in ("full", "process"):
+        return []
+    from phenotypic._cli._cli_reference import reference_operations_in_scope
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_json)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return []
+    return reference_operations_in_scope(
+        pipeline, "full" if cli_mode == "full" else "process"
+    )
+
+
+def _refuse_unusable_reference_table(
+    *, metadata_csv: Optional[Path], overwrite: bool
+) -> None:
+    """Refuse a reference-metadata run whose table cannot serve it.
+
+    Called in the read-only half, above ``--overwrite`` and ``--dry-run``, and
+    outside ``--skip-validation`` like the ``--metadata`` parse it extends:
+    a bad table must not cost the user a deleted output first.
+
+    Raises:
+        click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
+            the run would fall back to is deleted), or a ``--metadata`` table
+            that is not a valid reference table.
+    """
+    from phenotypic._core._reference_context import (
+        ReferenceContext,
+        ReferenceTableError,
+    )
+
+    if metadata_csv is None:
+        if overwrite:
+            raise click.UsageError(
+                "--overwrite deletes the run's reference metadata snapshot; "
+                "pass --metadata with the table this pipeline reads."
+            )
+        return
+    try:
+        ReferenceContext(metadata_csv)
+    except ReferenceTableError as exc:
+        raise click.UsageError(f"--metadata: {exc}") from exc
+
+
 def _print_dry_run_mutation_preview(
     output_dir: Path, *, restart: bool, will_overwrite: bool
 ) -> None:
@@ -761,6 +815,12 @@ def _prepare_incremental_startup(
         config.metadata_csv = _snapshot_metadata_csv(
             output_dir, config.metadata_csv
         )
+
+    # Before the first work-id below: work-ids read the per-image reference
+    # digests this publishes (and a stale manifest must be gone first).
+    from phenotypic._cli._cli_reference import publish_reference_inputs
+
+    publish_reference_inputs(config, datasets, output_dir)
 
     migrated_failures = 0
     if not config.measure_only:
@@ -2066,8 +2126,9 @@ def phenotypic_cli(
                 raise click.UsageError(
                     "--mode process requires --pipeline and --input."
                 )
+            # --metadata is reported below, once the pipeline is loaded: it
+            # is ignored only when the pipeline reads no reference metadata.
             for val, name in (
-                (metadata_csv, "--metadata"),
                 (no_qc, "--no-qc"),
                 (no_dataset_column, "--no-dataset-column"),
             ):
@@ -2321,7 +2382,21 @@ def phenotypic_cli(
         # (--restart with --overwrite, --mode measure with --overwrite), only
         # in the modes that reach those deletes, and regardless of
         # --skip-validation (spec §1, F3/F27; phase-A review A2). Process mode
-        # ignores --metadata, so it is not a run input there (A6).
+        # ignores --metadata, so it is not a run input there (A6) -- unless
+        # the pipeline reads reference metadata from it.
+        reads_reference_metadata = bool(
+            _reference_operations_for(pipeline_json, cli_mode)
+        )
+        if (
+            process_only_layer is not None
+            and metadata_csv is not None
+            and not reads_reference_metadata
+        ):
+            click.echo(
+                "Warning: --metadata is ignored in --mode process "
+                "(no measurement/aggregation output).",
+                err=True,
+            )
         if cli_mode in ("full", "process"):
             _refuse_run_inputs_the_run_would_delete(
                 output_dir=Path(output_dir),
@@ -2332,7 +2407,9 @@ def phenotypic_cli(
                     ("--pipeline", pipeline_json),
                     (
                         "--metadata",
-                        metadata_csv if cli_mode == "full" else None,
+                        metadata_csv
+                        if cli_mode == "full" or reads_reference_metadata
+                        else None,
                     ),
                     ("--image-manifest", image_manifest),
                 ),
@@ -2364,6 +2441,13 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
+
+        # The reference table, likewise outside --skip-validation and above
+        # every mutation (the --dry-run exit, the --overwrite rmtree).
+        if reads_reference_metadata:
+            _refuse_unusable_reference_table(
+                metadata_csv=metadata_csv, overwrite=overwrite
+            )
 
         continuing = (
             not measure_only

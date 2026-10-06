@@ -1597,18 +1597,36 @@ def operations_in_scope(
     Returns:
         In-scope ``(path, operation)`` pairs in depth-first order.
     """
+    return operations_run_in_mode(context.pipeline, context.mode)
+
+
+def operations_run_in_mode(
+    pipeline: "ImagePipeline", mode: RunMode
+) -> list[tuple[tuple[str, ...], Any]]:
+    """:func:`operations_in_scope` for callers that hold no ``PreflightContext``.
+
+    Startup (``publish_reference_inputs``) and the CLI's early reference-table
+    check scope by mode exactly as the preflight does, from the same walk.
+
+    Args:
+        pipeline: The loaded pipeline.
+        mode: Which part of the pipeline the run executes.
+
+    Returns:
+        In-scope ``(path, operation)`` pairs in depth-first order.
+    """
     from phenotypic.sdk_._operation_tree import (
         get_at_path,
         pipeline_slot_of,
         walk_operations,
     )
 
-    root_slots = MODE_SLOTS[context.mode]
+    root_slots = MODE_SLOTS[mode]
     in_scope: list[tuple[tuple[str, ...], Any]] = []
-    for path, operation in walk_operations(context.pipeline):
+    for path, operation in walk_operations(pipeline):
         if all(
             _segment_runs(
-                get_at_path(context.pipeline, path[:depth]),
+                get_at_path(pipeline, path[:depth]),
                 segment,
                 allowed=root_slots if depth == 0 else frozenset({"ops"}),
                 pipeline_slot_of=pipeline_slot_of,

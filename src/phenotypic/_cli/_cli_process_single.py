@@ -34,6 +34,7 @@ from phenotypic._core._provenance import (
     write_provenance_checkpoint,
 )
 from ._cli_output_manager import OutputManager
+from ._cli_reference import worker_reference_context
 from ._cli_process_only import (
     process_only_output_path,
     process_single_apply_only_core,
@@ -53,6 +54,7 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     compute_work_id,
     file_sha256,
+    image_reference_digest,
     processing_configuration_digest_from_values,
 )
 from ._cli_slurm_lifecycle import (
@@ -139,8 +141,13 @@ def _worker_work_identity(
     save_overlays: bool,
     drop_originals: bool = False,
     mode: str,
+    output_dir: Path | None = None,
 ) -> tuple[str, str]:
-    """Calculate the same work identity used by top-level selection."""
+    """Calculate the same work identity used by top-level selection.
+
+    ``output_dir`` is the run root, where the reference manifest supplies the
+    image's reference digest; ``None`` reads no manifest.
+    """
     relative_path = _normalized_input_relative_path(
         input_root, image
     ).as_posix()
@@ -170,6 +177,9 @@ def _worker_work_identity(
                 drop_originals=drop_originals,
             ),
             mode=mode,
+            reference_digest=image_reference_digest(
+                output_dir, dataset_name, image, mode
+            ),
         ),
         relative_path,
     )
@@ -330,7 +340,7 @@ def process_single_image_core(
             image.set_detect_mode(detect_mode)
         with continuing_provenance_application(image), provenance_success_sink(
             _write_checkpoint
-        ):
+        ), worker_reference_context(output_dir, dataset_name):
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
@@ -844,6 +854,7 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
+                output_dir=output_dir,
             )
             if actual_work_id != expected_work_id:
                 raise RuntimeError(
@@ -892,6 +903,7 @@ def main(
                 commit_guard=commit_guard,
                 process_format=resolved_process_format,
                 run_initiation=run_initiation,
+                dataset_name=dataset_name,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -911,6 +923,7 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
+                output_dir=output_dir,
             )
             publish_image_success(
                 output_dir,
@@ -1032,6 +1045,7 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
+                output_dir=output_dir,
             )
             process_single_image_core(
                 pipeline_path=pipeline,
@@ -1122,6 +1136,7 @@ def main(
                     save_overlays=save_overlays,
                     drop_originals=drop_originals,
                     mode=mode,
+                    output_dir=output_dir,
                 )
                 committed = append_terminal_failure(
                     output_dir,

@@ -609,6 +609,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_ncols=self.config.ncols,
                 process_format=self.config.process_format,
                 run_initiation=self.config.run_initiation,
+                dataset_name=dataset.name,
             )
             _publish_local_image_success(
                 self.config,

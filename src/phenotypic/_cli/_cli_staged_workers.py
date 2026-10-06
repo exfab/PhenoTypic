@@ -46,6 +46,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
+from ._cli_reference import worker_reference_context
 from ._cli_replay_detector import build_replay_pipeline
 from ._cli_stage2_token import (
     delete_stage2_raw,
@@ -365,7 +366,7 @@ def stage1_preprocess_core(
                 active_check,
                 commit_guard=commit_guard,
             )
-        ):
+        ), worker_reference_context(output_dir, dataset_name):
             plan.pre_pipeline.apply(image, inplace=True)
         operation_count = len(current_application_operations(image))
         from phenotypic.plotting._pipeline._store_figures import (
@@ -450,14 +451,19 @@ def stage2_detect_core(
     that sit ahead of the detector *inside its own branch*. Stage 1 never ran
     them -- it stopped at the detector's top-level ancestor -- so the store
     holds pre-branch pixels and the detector must see the branch-prefixed ones.
+    A ``SubtractBlank`` in that prefix reads the run's reference metadata, so
+    the prefix runs inside :func:`worker_reference_context`, and inside the
+    ``try``: a prefix failure is this image's scientific failure, not an
+    unclassified exception.
     """
     image_cls = _image_class(image_type)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image = image_cls.load_zarr(store)  # read-only use; never re-promoted here
-    if stage2_prefix:
-        image = _apply_stage2_prefix(image, stage2_prefix)
-    array = getattr(image, detector.input_layer)[:]
     try:
+        if stage2_prefix:
+            with worker_reference_context(output_dir, dataset_name):
+                image = _apply_stage2_prefix(image, stage2_prefix)
+        array = getattr(image, detector.input_layer)[:]
         compute_started = perf_counter()
         sample = detector._preprocess(array)
         batch = detector._collate([sample])
@@ -588,9 +594,13 @@ def stage3_merge_measure_core(
                 active_check,
                 commit_guard=commit_guard,
             )
-        ):
+        ), worker_reference_context(output_dir, dataset_name):
             replay_pipeline.apply(image, inplace=True)
-        measurements = replay_pipeline.measure(image, apply_post=False)
+        # A measurer's private detector may read reference metadata too (it
+        # runs in full mode, so startup planned it), as in the single-pass
+        # ``apply_and_measure``.
+        with worker_reference_context(output_dir, dataset_name):
+            measurements = replay_pipeline.measure(image, apply_post=False)
 
         if output_manager.save_overlays:
             _check_active(active_check)

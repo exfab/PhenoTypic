@@ -36,6 +36,7 @@ from ._cli_execution_strategies import (
     _record_local_terminal_failure,
 )
 from ._cli_pipeline_split import split_pipeline_at_gpu
+from ._cli_reference import worker_reference_context
 from ._cli_replay_detector import build_replay_pipeline
 from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
@@ -515,7 +516,9 @@ class StagedGpuStrategy(ExecutionStrategy):
                     # raise, and an unwrapped exception changes how
                     # `_record_local_terminal_failure` classifies the image.
                     try:
-                        with continuing_provenance_application(image):
+                        with continuing_provenance_application(
+                            image
+                        ), worker_reference_context(output_dir, ds.name):
                             # Ops only; never `.measure()` -- `apply()` runs
                             # `_run_operations` alone, so meas/post/filters/
                             # model are not triggered by this call.

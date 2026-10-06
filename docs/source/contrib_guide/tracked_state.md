@@ -216,9 +216,9 @@ contributor writing a counter.
 |---|---|---|
 | *Is this run done?* | (a) 1–4 plus the proofs in (b) | `resolve_run_state(output_dir, depth=...)` |
 | `processing_generation` | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` | `derive_processing_generation` (`_cli_identity.py:148`) |
-| `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` (`_cli_failure_tracker.py:310`) |
+| `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode, and the per-image reference digest (when the pipeline reads reference metadata, outside `--mode measure`) | `work_id_for_image` (`_cli_failure_tracker.py:404`); the SLURM worker's `_worker_work_identity` reads the same digest through `image_reference_digest` |
 | per-dataset completed / failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on these** |
-| each image's reference plan and per-image reference digest (`.phenotypic/reference_manifest.json`) | the reference table (`--metadata`, else its snapshot), the input directories' listings, and the reference images' bytes (a store's root `zarr.json`) | `plan_references` (`_cli/_cli_reference.py`), published by `publish_reference_inputs` at every forward startup; read by the worker cores through `worker_reference_context` and by `work_id_for_image` / `_worker_work_identity` through `reference_digest_for` |
+| each image's reference plan and per-image reference digest (`.phenotypic/reference_manifest.json`) | the reference table (`--metadata`, else its snapshot), the input directories' listings, and the reference images' bytes (a store's root `zarr.json`) | `plan_references` (`_cli/_cli_reference.py`), published by `publish_reference_inputs` at every forward startup; read by the worker cores through `worker_reference_context` and by `work_id_for_image` / `_worker_work_identity` through `image_reference_digest` → `reference_digest_for` |
 | the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
 | *how many verified images the published master does not carry* | the aggregate proof's `source_image_count` vs. the live verified count | `resolve_run_state` → `RunState.advisories` (count clause) |
 | *which store a re-finalization will exclude again* | each verified image's record (does it declare a `measurements` artifact?) and its store root (does it declare a projectable `measurement_columns`?) | `resolve_run_state` → `RunState.advisories` (naming clause) |
@@ -226,8 +226,10 @@ contributor writing a counter.
 **The reference manifest is written down only so other processes read one
 derivation.** Stage-3 and SLURM workers know the run root and a dataset name,
 not the input tree, so startup plans every image once and publishes the result;
-it is never a source of truth. It is rewritten at every forward startup, removed
-when the pipeline reads no reference metadata, cleared by `--restart` (the next
+it is never a source of truth. It is rewritten at every forward startup
+(`_prepare_incremental_startup`, before that invocation's first work-id),
+removed when the operations the mode runs read no reference metadata, cleared
+by `--restart` (the next
 startup derives it again), and never touched by `--mode measure`. A worker
 refuses it when the table's bytes no longer match its recorded SHA-256, rather
 than apply a plan made against a different table.

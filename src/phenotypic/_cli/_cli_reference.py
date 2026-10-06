@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Iterator, Sequence
 if TYPE_CHECKING:  # pragma: no cover
     from phenotypic import ImagePipeline, ReferenceContext
 
+    from ._cli_preflight import RunMode
     from ._cli_types import Dataset, ExecutionConfig
 
 MANIFEST_SCHEMA_VERSION = 1
@@ -178,6 +179,79 @@ def plan_references(
         unresolved=tuple(unresolved),
         images_by_dataset=images_by_dataset,
         digests=digests,
+    )
+
+
+def reference_operations_in_scope(
+    pipeline: "ImagePipeline", mode: "RunMode"
+) -> list[Any]:
+    """The reference-metadata operations a run in *mode* executes.
+
+    The preflight's mode walk (:func:`~._cli_preflight.operations_run_in_mode`),
+    kept to operations that read at least one column: a ``SubtractBlank``
+    inside a measurer never runs in ``process`` mode, so a process run never
+    needs the column it reads.
+    """
+    from phenotypic.abc_._ref_metadata import RefMetadata
+
+    from ._cli_preflight import operations_run_in_mode
+
+    return [
+        operation
+        for _, operation in operations_run_in_mode(pipeline, mode)
+        if isinstance(operation, RefMetadata) and operation._ref_columns()
+    ]
+
+
+def publish_reference_inputs(
+    config: "ExecutionConfig", datasets: Sequence["Dataset"], output_dir: Path
+) -> None:
+    """Snapshot the table (process mode) and publish the run's reference manifest.
+
+    Must run before the invocation computes any work-id, because work-ids read
+    the manifest's per-image digests. Removes a stale manifest when the
+    operations this mode runs read no reference metadata. Measure mode returns
+    without touching the manifest: it applies no operation, and may run beside
+    live forward workers that read it.
+
+    In process mode the manifest names the snapshot, never the user's file,
+    and ``config.metadata_csv`` is left as given: the run identity and the
+    processing state digest it exactly as before this feature.
+
+    Raises:
+        ReferenceTableError: The pipeline reads reference metadata and the run
+            has no table, or the table lacks a planned column.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
+
+    from ._cli_preflight import run_mode_of
+
+    if config.measure_only:
+        return
+    pipeline = ImagePipeline.from_json(config.pipeline_json)
+    operations = reference_operations_in_scope(pipeline, run_mode_of(config))
+    if not operations:
+        remove_reference_manifest(output_dir)
+        return
+    if config.process_only_layer is not None:
+        table_path = snapshot_reference_metadata(output_dir, config.metadata_csv)
+    else:
+        table_path = resolve_reference_table_path(config, output_dir)
+    if table_path is None:
+        raise ReferenceTableError(
+            "The pipeline reads reference metadata but the run has no table; pass --metadata"
+        )
+    context = ReferenceContext(table_path)
+    plan = plan_references(
+        context, pipeline, datasets, hash_images=True, operations=operations
+    )
+    write_reference_manifest(
+        output_dir,
+        plan=plan,
+        table_path=table_path,
+        table_sha256=context.table_sha256 or "",
+        read_kwargs=input_read_kwargs(config),
     )
 
 

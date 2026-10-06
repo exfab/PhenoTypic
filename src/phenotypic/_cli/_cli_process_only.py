@@ -27,6 +27,7 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
+from ._cli_reference import worker_reference_context
 
 if TYPE_CHECKING:
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
@@ -272,6 +273,7 @@ def process_single_apply_only_core(
     commit_guard: CommitGuard | None = None,
     process_format: ProcessFormat = "tiff",
     run_initiation: RunInitiation | None = None,
+    dataset_name: str | None = None,
 ) -> bool:
     """Apply the pipeline to one image and export ``layer``. No measurement.
 
@@ -283,6 +285,10 @@ def process_single_apply_only_core(
     UTC). Its timestamp and pid are deliberately left out of the store, so
     same-day process stores stay byte-identical. Process mode has no
     ``OutputManager`` to carry it, so it is passed here.
+
+    ``dataset_name`` selects the image's entry in the run's reference
+    manifest; it is required when the run has one (a pipeline that reads
+    reference metadata) and unused otherwise.
     """
     image: Image | None = None
     provenance_application_opened = False
@@ -343,7 +349,9 @@ def process_single_apply_only_core(
             basename_only=True,
         )
         provenance_application_opened = True
-        with continuing_provenance_application(image):
+        with continuing_provenance_application(image), worker_reference_context(
+            output_dir, dataset_name
+        ):
             pipeline.apply(image, inplace=True)
         # Figures only when there is a store to hold them (spec §3 by mode),
         # and before the status is closed, as in full mode. Measurer-backed
