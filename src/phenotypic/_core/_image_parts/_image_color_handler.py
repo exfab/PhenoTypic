@@ -148,6 +148,9 @@ class ImageColorSpace(ImageVisualizationHandler):
         gray_only = source.rgb.isempty()
         layer = source.gray if gray_only else source.rgb
         self._restore_array(np.array(layer[key], copy=True))
+        # The crop was built with source.bit_depth; it is explicit only if the
+        # source's was.
+        self._bit_depth_explicit = source._bit_depth_explicit
         if gray_only:
             self._gray_source_dtype = source._gray_source_dtype
         self._adopt_color_config(source)

@@ -197,6 +197,10 @@ class ImageDataManager:
         # dtype of the integer matrix a gray-only image was normalised from, so
         # _retain_original can give back the decoded integers; None otherwise.
         self._gray_source_dtype: np.dtype | None = None
+        # An explicit bit_depth constrains every later array; an inferred one
+        # only describes the array it came from, so a new integer array
+        # re-infers it (_handle_array_input).
+        self._bit_depth_explicit: bool = bit_depth is not None
 
     @property
     def bit_depth(self) -> Literal[8, 16]:
@@ -329,18 +333,25 @@ class ImageDataManager:
     def _handle_array_input(self, arr: np.ndarray, *, validate: bool = True):
         """Handle array input and set bit depth if needed.
 
-        An integer array of any channel count whose dtype is not ``uint8`` or
-        ``uint16`` is first narrowed to the narrowest of 8 or 16 bits its values
-        fit (the explicit ``bit_depth``, when given), so ``bit_depth``, ``rgb``
-        and the derived ``gray`` agree. A single-channel (``H x W`` or
+        An unsupported shape is refused first. An integer array of any channel
+        count whose dtype is not ``uint8`` or ``uint16`` is narrowed to the
+        narrowest of 8 or 16 bits its values fit (the explicit ``bit_depth``,
+        when given), so ``bit_depth``, ``rgb`` and the derived ``gray`` agree.
+        A ``bit_depth`` that was inferred rather than given is re-inferred from
+        each new integer array; a float array carries no width, so it keeps it. A single-channel (``H x W`` or
         ``H x W x 1``) integer array is then normalised to float32 ``[0, 1]`` by
         its dtype's maximum. A ``bool`` array becomes float32 0/1. A
         single-channel float array carries no scale, so with ``validate`` one
         outside ``[0, 1]`` or holding a non-finite value is refused, as a float
         RGB array is.
         """
+        # Refuse an unsupported shape as a shape, before narrowing reads (or
+        # copies) the values.
+        self._guess_image_format(arr)
         single_channel = arr.ndim == 2 or (arr.ndim == 3 and arr.shape[2] == 1)
         if np.issubdtype(arr.dtype, np.integer):
+            if not self._bit_depth_explicit:
+                self._metadata.protected[IMAGE.BIT_DEPTH] = None
             arr = self._as_unsigned_array(arr)
 
         if self.bit_depth is None:
@@ -370,6 +381,9 @@ class ImageDataManager:
         maximum instead (as ``rgb2gray`` and a single-channel normalisation
         would) scales an ``int64`` plate to ~1e-17.
 
+        The caller has already refused any shape but ``H x W`` and
+        ``H x W x {1, 3, 4}``.
+
         Raises:
             ValueError: If a value is negative or does not fit 16 bits (or the
                 explicit ``bit_depth``).
@@ -380,9 +394,7 @@ class ImageDataManager:
         if arr.size == 0:
             return arr.astype(np.uint8 if widths[0] == 8 else np.uint16)
         channels = arr.shape[2] if arr.ndim == 3 else 1
-        kind = {1: "Single-channel", 3: "RGB", 4: "RGBA"}.get(
-            channels, f"{channels}-channel"
-        )
+        kind = {1: "Single-channel", 3: "RGB", 4: "RGBA"}[channels]
         lo, hi = int(arr.min()), int(arr.max())
         if lo < 0:
             raise ValueError(
@@ -496,6 +508,7 @@ class ImageDataManager:
             else np.array(input_cls._original, copy=True)
         )
         self._gray_source_dtype = input_cls._gray_source_dtype
+        self._bit_depth_explicit = input_cls._bit_depth_explicit
         return
 
     def _retain_original(self) -> None:

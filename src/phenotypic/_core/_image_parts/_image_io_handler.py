@@ -1827,7 +1827,7 @@ class ImageIOHandler(ImageColorSpace):
         """
         img = cls(**kwargs)
         img._restore_array(matrix)
-        cls._warn_if_stored_gray_outside_unit_range(matrix, source)
+        cls._warn_if_stored_gray_off_scale(matrix, source)
         return img
 
     def _restore_stored_gray(self, matrix: np.ndarray, *, source) -> None:
@@ -1837,7 +1837,9 @@ class ImageIOHandler(ImageColorSpace):
         replaces the one derived from it. It is stored state, so it skips the
         public setter's ``[0, 1]`` assertion: an old ``PadImage(constant_value=255)``
         wrote 255 into the float gray, and such a store must still load and
-        migrate. It is loaded as written, with a warning.
+        migrate. A float layer is loaded as written, with a warning when it is
+        outside ``[0, 1]`` or non-finite; a legacy integer layer is normalised
+        by its dtype's maximum, as a gray-only store's is.
 
         Args:
             matrix: The stored gray layer.
@@ -1850,17 +1852,37 @@ class ImageIOHandler(ImageColorSpace):
         image = cast("Image", self)
         if matrix.shape != image._data.gray.shape:
             raise ArrayKeyValueShapeMismatchError
-        self._warn_if_stored_gray_outside_unit_range(matrix, source)
+        matrix = normalize_integer_matrix(matrix)
+        self._warn_if_stored_gray_off_scale(matrix, source)
         image._data.gray = np.array(matrix, dtype=np.float32, copy=True)
         image.detect_mat.reset()
         image.objmap.reset()
 
     @staticmethod
-    def _warn_if_stored_gray_outside_unit_range(matrix: np.ndarray, source) -> None:
-        """Warn that a stored float gray layer outside ``[0, 1]`` is loaded as is."""
+    def _warn_if_stored_gray_off_scale(matrix: np.ndarray, source) -> None:
+        """Warn that a stored float gray layer is loaded as is, though unusable.
+
+        It is off scale when it holds a non-finite value or lies outside
+        ``[0, 1]``. The finite values alone are ranged, so an all-NaN layer
+        raises no numpy ``RuntimeWarning`` of its own.
+        """
         if not (np.issubdtype(matrix.dtype, np.floating) and matrix.size):
             return
-        lo, hi = float(np.nanmin(matrix)), float(np.nanmax(matrix))
+        finite = np.isfinite(matrix)
+        values = matrix
+        if not finite.all():
+            warnings.warn(
+                f"{source}: the stored gray layer holds non-finite values (NaN or "
+                f"inf) and is loaded as stored. Operations that assume finite "
+                f"intensities in [0, 1] will misread it; rebuild it from the "
+                f"source scan.",
+                UserWarning,
+                stacklevel=4,
+            )
+            if not finite.any():
+                return
+            values = matrix[finite]
+        lo, hi = float(values.min()), float(values.max())
         if lo < 0 or hi > 1:
             warnings.warn(
                 f"{source}: the stored gray layer spans [{lo:.4g}, {hi:.4g}], "

@@ -235,3 +235,43 @@ def test_the_public_gray_setter_stays_strict() -> None:
     target = Image(arr=img.rgb[:])
     with pytest.raises(AssertionError, match="between 0 and 1"):
         target.gray[:] = gray
+
+
+def test_an_integer_stored_gray_in_an_rgb_store_is_normalised(tmp_path) -> None:
+    """As a gray-only store's legacy integer gray is: by its dtype's maximum."""
+    img = Image(arr=_rgb(np.uint8, 100, 200), name="intgray")
+    stored = np.full(img.gray.shape, 200, dtype=np.uint8)
+    img._data.gray = stored
+    store = img.save2zarr(tmp_path / "intgray.ome.zarr")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        loaded = Image.load_zarr(store)
+    assert not [w for w in caught if "stored gray layer" in str(w.message)]
+    assert loaded.gray[:].dtype == np.float32
+    np.testing.assert_allclose(loaded.gray[:], 200 / 255, rtol=1e-6)
+
+
+@pytest.mark.parametrize("fill", ["all", "part"])
+def test_a_non_finite_stored_rgb_gray_warns_and_loads_as_stored(fill) -> None:
+    img = Image(arr=_rgb(np.uint8, 100, 200))
+    stored = img.gray[:].copy()
+    if fill == "all":
+        stored[:] = np.nan
+    else:
+        stored[0, 0] = np.nan
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        img._restore_stored_gray(stored, source="legacy.ome.zarr")
+    messages = [str(w.message) for w in caught if issubclass(w.category, UserWarning)]
+    assert any("non-finite" in m and "legacy.ome.zarr" in m for m in messages), messages
+    assert not [w for w in caught if issubclass(w.category, RuntimeWarning)]
+    np.testing.assert_array_equal(img.gray[:], stored)
+
+
+def test_a_non_finite_stored_gray_only_layer_warns(tmp_path) -> None:
+    gray = np.full((32, 32), 0.5, dtype=np.float32)
+    gray[0, 0] = np.nan
+    with pytest.warns(UserWarning, match="non-finite"):
+        img = Image._from_stored_matrix(gray, source="legacy.ome.zarr")
+    np.testing.assert_array_equal(img.gray[:], gray)

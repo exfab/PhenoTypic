@@ -34,6 +34,17 @@ class Image(ImageIOHandler):
           An integer one is normalised to float32 [0, 1] by its 8- or 16-bit
           full scale; a float one must already lie in [0, 1].
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
+        - A ``uint8``/``uint16`` RGB array, and a ``float32`` 2-D array, is
+          adopted by reference, not copied, to save memory on large plates.
+          Do not mutate it afterwards: the derived layers (``gray``,
+          ``detect_mat``) would no longer match it. Pass ``arr.copy()`` if you
+          need to keep editing your array.
+        - ``bit_depth`` given explicitly is a constraint every later array must
+          fit. Left as ``None`` it is inferred, and re-inferred from each new
+          integer array passed to ``set_image``. For a dataset of integer
+          images that are not ``uint8``/``uint16`` (an ``int32`` TIFF, say),
+          pass ``bit_depth`` so every frame lands on the same scale: otherwise
+          each frame's width is chosen from its own values.
         - Color space properties (gamma, illuminant, _observer) are inherited
           from a source Image (copy, crop, grid section) unless passed explicitly.
         - Object detection and measurements require an ObjectDetector first.
@@ -73,7 +84,9 @@ class Image(ImageIOHandler):
             arr (np.ndarray | Image | None): Optional image data. Can be:
 
                 - A NumPy array of shape (height, width) for grayscale or
-                  (height, width, channels) for RGB/RGBA
+                  (height, width, channels) for RGB/RGBA. A ``uint8``/``uint16``
+                  RGB or ``float32`` grayscale array is adopted by reference,
+                  not copied; do not mutate it afterwards.
                 - An existing Image instance to copy from
                 - None to create an empty image
 
@@ -82,7 +95,10 @@ class Image(ImageIOHandler):
                 the image UUID will be used as the name. Defaults to None.
             bit_depth (Literal[8, 16] | None): The bit depth of the image data (8 or 16 bits).
                 If not specified and arr is provided, bit depth is automatically inferred
-                from the array dtype. Defaults to None.
+                from the array dtype (for an integer dtype other than uint8/uint16, from
+                the narrowest width its values fit), and re-inferred by a later
+                ``set_image`` of an integer array. If specified, every array must fit it.
+                Defaults to None.
             gamma (GAMMA_ENCODINGS): The gamma encoding used for color correction.
                 GAMMA_ENCODINGS.SRGB: applies sRGB gamma correction (standard display gamma)
                 GAMMA_ENCODINGS.LINEAR: assumes linear RGB data

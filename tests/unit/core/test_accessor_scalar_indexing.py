@@ -89,3 +89,12 @@ def test_reading_the_whole_rgb_layer_leaves_it_writable_through_the_setter() -> 
     assert img.rgb.vmax() == 255
     img.rgb[0:2, 0:2] = 10
     assert np.all(img.rgb[:][0:2, 0:2] == 10)
+
+
+def test_the_whole_rgb_layer_is_a_read_only_view_over_a_writable_array() -> None:
+    img = Image(arr=_rgb_plate())
+    view = np.asarray(img.rgb)
+    assert not view.flags.writeable
+    assert img._data.rgb.flags.writeable
+    with pytest.raises(ValueError, match="read-only"):
+        view[0, 0, 0] = 1
