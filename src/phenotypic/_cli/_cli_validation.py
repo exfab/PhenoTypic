@@ -450,7 +450,8 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
 
     - **GUI** -- ``_gui/run_console/_callbacks.py:_staged_gpu_capability``
       catches ``UnstageableGpuDetectorError`` *before* its generic
-      ``(OSError, ValueError, TypeError)`` handler; the refusal IS a
+      ``(OSError, ValueError, TypeError, AttributeError, ImportError)``
+      handler; the refusal IS a
       ``ValueError``, so that clause order is load-bearing. It shows the
       message in a red alert, disables Run, and refuses Validate/Run at the
       launch seam before any generation is allocated. An unreadable pipeline

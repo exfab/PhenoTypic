@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 from types import SimpleNamespace
 
 import numpy as np
@@ -93,6 +95,14 @@ def test_older_state_json_without_the_key_loads_as_none():
     assert state_from_json(data).reference_metadata_path is None
 
 
+@pytest.mark.parametrize("stored", [123, ["/x/blank_map.csv"], {"path": "x"}, ""])
+def test_a_non_string_reference_path_loads_as_none(stored):
+    """Store data is client-writable; a non-string must not reach ``Path(...)``."""
+    data = state_to_json(_DagBuilderState())
+    data["reference_metadata_path"] = stored
+    assert state_from_json(data).reference_metadata_path is None
+
+
 def test_the_path_is_never_written_into_the_pipeline(tmp_path):
     from phenotypic._gui.builder._conversion_dag import to_pipeline_dag
 
@@ -142,6 +152,60 @@ def test_preview_context_activates_with_the_image_directory_as_root(tmp_path):
         assert ctx is None and ReferenceContext.current() is None
 
 
+@pytest.mark.parametrize("image_path", [None, ""])
+def test_preview_context_without_an_image_has_no_root(tmp_path, image_path):
+    with rm.preview_reference_context(str(_table(tmp_path)), image_path) as ctx:
+        assert ctx.image_root is None
+
+
+def test_the_synthetic_sentinel_does_not_root_at_the_working_directory(tmp_path):
+    """``Path("<synthetic>").parent`` is ``.``: blanks would resolve in the cwd."""
+    from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
+
+    with rm.preview_reference_context(str(_table(tmp_path)), SYNTHETIC_SENTINEL) as ctx:
+        assert ctx.image_root is None
+
+
+def _two_dataset_table(tmp_path, *, with_dataset: bool = True):
+    """``plateA/t01 -> t00`` and ``plateB/t01 -> t00b``, as the CLI plans them."""
+    from phenotypic.schema import EXPERIMENT
+
+    frame = pd.DataFrame({"ImageName": ["t01", "t01"], "BlankImage": ["t00", "t00b"]})
+    if with_dataset:
+        frame.insert(0, str(EXPERIMENT.DATASET), ["plateA", "plateB"])
+    path = tmp_path / "two_datasets.csv"
+    frame.to_csv(path, index=False)
+    return path
+
+
+@pytest.mark.parametrize("dataset,blank", [("plateA", "t00"), ("plateB", "t00b")])
+def test_preview_context_narrows_to_the_image_directorys_dataset(tmp_path, dataset, blank):
+    """The CLI narrows each dataset by its input directory name; so must the preview."""
+    image = tmp_path / dataset / "t01.tif"
+    with rm.preview_reference_context(str(_two_dataset_table(tmp_path)), str(image)) as ctx:
+        assert ctx.dataset == dataset
+        assert ctx.lookup("t01", ["BlankImage"]) == {"BlankImage": blank}
+
+
+def test_preview_context_does_not_narrow_without_a_dataset_column(tmp_path):
+    table = _two_dataset_table(tmp_path, with_dataset=False)
+    with rm.preview_reference_context(str(table), str(tmp_path / "plateA" / "t01.tif")) as ctx:
+        assert ctx.dataset is None
+
+
+def test_preview_context_does_not_narrow_to_a_directory_the_table_does_not_name(tmp_path):
+    """Narrowing to an unknown dataset would make every lookup "unmatched"."""
+    from phenotypic.schema import EXPERIMENT
+
+    table = tmp_path / "one_dataset.csv"
+    pd.DataFrame(
+        {str(EXPERIMENT.DATASET): ["plateA"], "ImageName": ["t01"], "BlankImage": ["t00"]}
+    ).to_csv(table, index=False)
+    with rm.preview_reference_context(str(table), str(tmp_path / "scans" / "t01.tif")) as ctx:
+        assert ctx.dataset is None
+        assert ctx.lookup("t01", ["BlankImage"]) == {"BlankImage": "t00"}
+
+
 def test_reference_identity_follows_file_content(tmp_path):
     path = _table(tmp_path)
     first = rm.reference_identity(str(path))
@@ -165,8 +229,41 @@ def test_reference_error_message_reaches_through_pipeline_wrappers():
             raise RuntimeError("outer") from wrapped
         except RuntimeError as outer:
             message = rm.reference_error_message(outer)
-    assert message == "ReferenceLookupError: t01 has no row"
+    # "outer" carries no step prefix, so the wrapper below it supplies one.
+    assert message == "[SubtractBlank] (step 1/1, key='sb'): ReferenceLookupError: t01 has no row"
+    assert rm.reference_error_message(inner) == "ReferenceLookupError: t01 has no row"
     assert rm.reference_error_message(ValueError("plain")) is None
+
+
+def test_reference_error_message_names_the_failing_op_through_nested_pipelines():
+    """With two reference ops, the bare lookup message does not say which failed."""
+    from phenotypic import Image, ImagePipeline
+    from phenotypic.enhance import SubtractBlank
+
+    target = Image(arr=np.full((8, 8), 0.5, dtype=np.float32), name="t04")
+    layout = pd.DataFrame({"ImageName": ["t99"], "BlankImage": ["t00"]})
+    pipeline = ImagePipeline(ops={"branch": ImagePipeline(ops={"sb": SubtractBlank()})})
+    with ReferenceContext(layout), pytest.raises(RuntimeError) as info:
+        pipeline.apply(target)
+
+    assert rm.reference_error_message(info.value) == (
+        "[ImagePipeline] (step 1/1, key='branch'): "
+        "[SubtractBlank] (step 1/1, key='sb'): "
+        "ReferenceLookupError: No row in the reference metadata for image 't04'"
+    )
+
+
+def test_reference_error_message_ignores_a_suppressed_context():
+    """``raise ... from None`` hides the handled error, as the traceback module does."""
+    from phenotypic._core._reference_context import ReferenceLookupError
+
+    try:
+        try:
+            raise ReferenceLookupError("handled", reason="unmatched", image_name="t01")
+        except ReferenceLookupError:
+            raise KeyError("unrelated") from None
+    except KeyError as exc:
+        assert rm.reference_error_message(exc) is None
 
 
 def test_reference_error_message_points_a_missing_table_at_the_picker():
@@ -207,6 +304,57 @@ def test_side_loader_renders_the_dropdown_with_the_default_selected(tmp_path, re
     assert "Metadata_BlankImage" in {o["value"] for o in widget.options}
     # Unset in params, so the operation's default is what runs -- and shows.
     assert widget.value == "Metadata_BlankImage"
+
+
+def _components_with_class(component, class_name: str) -> list:
+    found = []
+    stack = [component]
+    while stack:
+        node = stack.pop()
+        if class_name in (getattr(node, "className", None) or "").split():
+            found.append(node)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            stack.extend(children)
+        elif children is not None and not isinstance(children, str):
+            stack.append(children)
+    return found
+
+
+def test_a_bare_header_value_selects_its_prefixed_column(registry):
+    """``ReferenceContext`` resolves ``BlankImage`` to ``Metadata_BlankImage``,
+    so the dropdown must show it selected rather than as stale."""
+    from phenotypic._gui.builder._param_form import param_form
+    from phenotypic.sdk_ import ensure_metadata_prefix
+
+    prefixed = ensure_metadata_prefix("BlankImage")
+    columns = [ensure_metadata_prefix("ImageName"), prefixed]
+    form = param_form(
+        registry.get("SubtractBlank"),
+        {"blank_column": "BlankImage"},
+        form_id_prefix="b",
+        columns_provider=lambda source: columns if source == rm.REFERENCE_SOURCE else [],
+    )
+    widget = _column_widget_for(form, "blank_column")
+    assert widget is not None
+    assert widget.value == prefixed
+    assert _components_with_class(form, "param-column-stale") == []
+
+
+def test_an_unresolvable_value_is_still_shown_as_stale(registry):
+    """Control for the test above: the mapping is not a blanket "accept"."""
+    from phenotypic._gui.builder._param_form import param_form
+    from phenotypic.sdk_ import ensure_metadata_prefix
+
+    columns = [ensure_metadata_prefix("ImageName"), ensure_metadata_prefix("BlankImage")]
+    form = param_form(
+        registry.get("SubtractBlank"),
+        {"blank_column": "Blank2"},
+        form_id_prefix="b",
+        columns_provider=lambda source: columns if source == rm.REFERENCE_SOURCE else [],
+    )
+    assert _column_widget_for(form, "blank_column").value is None
+    assert len(_components_with_class(form, "param-column-stale")) == 1
 
 
 def test_a_dropdown_choice_is_written_into_the_block(tmp_path, monkeypatch):
@@ -280,6 +428,151 @@ def test_loading_a_pipeline_keeps_the_picked_table(tmp_path, monkeypatch):
     assert state_dict["reference_metadata_path"] is None
 
 
+# ------------------------------------------------------------- Dash wiring
+
+
+def _builder_app(tmp_path, monkeypatch, registry):
+    from phenotypic._gui.builder import _preview_cache as pc
+    from phenotypic._gui.builder._app import create_app
+
+    # create_app wipes the preview cache root; keep it inside tmp_path.
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "preview-cache")
+    return create_app(image_root=tmp_path, registry=registry)
+
+
+def _spec(app, name: str):
+    return next(
+        (key, spec)
+        for key, spec in app.callback_map.items()
+        if getattr(spec.get("callback"), "__wrapped__", None) is not None
+        and spec["callback"].__wrapped__.__name__ == name
+    )
+
+
+def _with_table(state: _DagBuilderState, tmp_path) -> dict:
+    return {**state_to_json(state), "reference_metadata_path": str(_table(tmp_path))}
+
+
+def test_picker_is_wired_to_value_and_enter(tmp_path, monkeypatch, registry):
+    """``n_submit``: Enter re-validates an unchanged path (an edited/deleted table)."""
+    from phenotypic._gui.builder import _ids as ids
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    key, spec = _spec(app, "set_reference_metadata")
+    assert spec["inputs"] == [
+        {"id": ids.INPUT_REFERENCE_METADATA, "property": "value"},
+        {"id": ids.INPUT_REFERENCE_METADATA, "property": "n_submit"},
+    ]
+    assert spec["state"] == [{"id": ids.STORE_BUILDER_STATE, "property": "data"}]
+    for output in (
+        f"{ids.STORE_BUILDER_STATE}.data",
+        f"{ids.INSPECTOR_CONTENT}.children",
+        f"{ids.REFERENCE_METADATA_STATUS}.children",
+    ):
+        assert output in key
+
+
+def test_a_column_choice_reaches_the_block_through_the_fan_in(tmp_path, monkeypatch, registry):
+    """Pins both the subscription and the dispatch-set membership."""
+    from phenotypic._gui.builder import _callbacks
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    _, fan_in = _spec(app, "fan_in_state_mutation")
+    # callback_map holds a pattern id as Dash's stringified JSON, ALL as ["ALL"].
+    assert {
+        "id": json.dumps(
+            {"type": _COLUMN_SCALAR, "prefix": ["ALL"], "name": ["ALL"]},
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        "property": "value",
+    } in fan_in["inputs"]
+
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    state = _state_with_selected_block("SubtractBlank")
+    block_id = state.selected_block_id
+    triggered = {"type": _COLUMN_SCALAR, "prefix": block_id, "name": "blank_column"}
+    monkeypatch.setattr(
+        _callbacks,
+        "ctx",
+        SimpleNamespace(triggered_id=triggered, triggered=[{"value": "Metadata_Blank2"}]),
+    )
+    n_args = len(fan_in["inputs"]) + len(fan_in["state"])
+    args = [[] for _ in range(n_args - 1)] + [state_to_json(state)]
+
+    result = fan_in["callback"].__wrapped__(*args)
+
+    block = next(b for b in state_from_json(result[0]).root.blocks if b.block_id == block_id)
+    assert block.params["blank_column"] == "Metadata_Blank2"
+
+
+def test_starting_a_new_state_keeps_the_picked_table(tmp_path, monkeypatch, registry):
+    """The picker still shows the table, so the reset state must still hold it."""
+    from phenotypic._gui.builder import _callbacks
+    from phenotypic._gui.builder import _ids as ids
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    _, spec = _spec(app, "start_new_builder_state")
+    assert {"id": ids.STORE_BUILDER_STATE, "property": "data"} in spec["state"]
+    data = _with_table(_state_with_selected_block("SubtractBlank"), tmp_path)
+
+    result = spec["callback"].__wrapped__([1], data)
+
+    fresh = state_from_json(result[0])
+    assert fresh.reference_metadata_path == data["reference_metadata_path"]
+    assert all(b.class_name != "SubtractBlank" for b in fresh.root.blocks)
+
+
+def test_loading_a_prefab_keeps_the_picked_table(tmp_path, monkeypatch, registry):
+    from phenotypic._gui.builder import _callbacks
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    monkeypatch.setattr(
+        _callbacks,
+        "ctx",
+        SimpleNamespace(
+            triggered_id={"type": "prefab-card", "class_name": "HeavyOtsuPipeline"},
+            triggered=[{"value": 1}],
+        ),
+    )
+    data = _with_table(_DagBuilderState(), tmp_path)
+
+    result = _spec(app, "click_prefab_card")[1]["callback"].__wrapped__([1], data)
+
+    assert result[4] is False, result  # the modal closed: the load succeeded
+    assert state_from_json(result[0]).reference_metadata_path == data["reference_metadata_path"]
+
+
+def test_loading_a_pipeline_json_keeps_the_picked_table(tmp_path, monkeypatch, registry):
+    from phenotypic import ImagePipeline
+    from phenotypic._gui.builder import _callbacks
+    from phenotypic._gui.builder import _ids as ids
+    from phenotypic.enhance import SubtractBlank
+
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text(ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8")
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    monkeypatch.setattr(
+        _callbacks,
+        "ctx",
+        SimpleNamespace(
+            triggered_id={"type": ids.DIR_ENTRY_TYPE_JSON, "kind": "file", "path": str(pipeline)},
+            triggered=[{"value": 1}],
+        ),
+    )
+    data = _with_table(_DagBuilderState(), tmp_path)
+
+    result = _spec(app, "click_json_entry")[1]["callback"].__wrapped__([1], data)
+
+    assert result[5] is False, result  # the modal closed: the load succeeded
+    loaded = state_from_json(result[1])
+    assert loaded.reference_metadata_path == data["reference_metadata_path"]
+    assert any(b.class_name == "SubtractBlank" for b in loaded.root.blocks)
+
+
 # ------------------------------------------------------------------ preview
 
 
@@ -292,14 +585,39 @@ def test_pipeline_revision_changes_only_when_a_table_is_set(tmp_path):
     assert _pipeline_revision({**data, "reference_metadata_path": str(_table(tmp_path))}) != plain
 
 
-def _plate_and_blank(tmp_path):
-    plates = tmp_path / "plates"
+def test_pipeline_revision_follows_the_tables_content(tmp_path):
+    """Same path, new content: the preview it computed is no longer current."""
+    from phenotypic._gui.builder._callbacks import _pipeline_revision
+
+    path = _table(tmp_path)
+    data = {**state_to_json(_DagBuilderState()), "reference_metadata_path": str(path)}
+    before = _pipeline_revision(data)
+    stat = path.stat()
+    path.write_text(path.read_text() + "t02,t00\n", encoding="utf-8")
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    assert _pipeline_revision(data) != before
+
+
+def _plate_and_blank(tmp_path, directory: str = "plates"):
+    plates = tmp_path / directory
     plates.mkdir()
     target = np.full((64, 64), 120, dtype=np.uint8)
     target[24:40, 24:40] = 220
     tifffile.imwrite(plates / "t01.tif", target)
     tifffile.imwrite(plates / "t00.tif", np.full((64, 64), 120, dtype=np.uint8))
     return plates / "t01.tif"
+
+
+def _node_detect_mat(pc, manifest, session_id: str, block_id: str) -> np.ndarray:
+    from phenotypic.sdk_ import load_image_from_store
+
+    store = pc.scope_dir(session_id, []) / manifest["nodes"][block_id]["store"]
+    return load_image_from_store(store).detect_mat[:]
+
+
+#: The colony is 220 over a 120 background, both uint8, so subtracting the
+#: 120 blank leaves 100/255 on the colony and 0 everywhere else.
+_COLONY_OVER_BLANK = 100 / 255
 
 
 def test_node_preview_runs_subtract_blank_against_the_picked_table(tmp_path, monkeypatch):
@@ -318,3 +636,26 @@ def test_node_preview_runs_subtract_blank_against_the_picked_table(tmp_path, mon
     assert with_table["error"] is None, with_table["error"]
     assert with_table["fingerprint"] != without["fingerprint"]
     assert ReferenceContext.current() is None
+
+    detect_mat = _node_detect_mat(pc, with_table, "s", state.selected_block_id)
+    assert float(detect_mat.max()) == pytest.approx(_COLONY_OVER_BLANK, abs=1e-6)
+    assert float(detect_mat.min()) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_node_preview_subtracts_the_blank_of_the_images_own_dataset(tmp_path, monkeypatch):
+    """plateA/t01 -> t00 and plateB/t01 -> t00b: un-narrowed, t01 is ambiguous."""
+    from phenotypic._gui.builder import _preview_cache as pc
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
+    image = _plate_and_blank(tmp_path, "plateA")
+    # plateB's blank, present beside plateA's images so a wrong pick would resolve.
+    tifffile.imwrite(image.parent / "t00b.tif", np.full((64, 64), 60, dtype=np.uint8))
+    state = _state_with_selected_block("SubtractBlank")
+    state.reference_metadata_path = str(_two_dataset_table(tmp_path))
+
+    manifest = pc.compute_scope("s", state, [], str(image), None, None)
+
+    assert manifest["error"] is None, manifest["error"]
+    detect_mat = _node_detect_mat(pc, manifest, "s", state.selected_block_id)
+    assert float(detect_mat.max()) == pytest.approx(_COLONY_OVER_BLANK, abs=1e-6)
+    assert float(detect_mat.min()) == pytest.approx(0.0, abs=1e-6)

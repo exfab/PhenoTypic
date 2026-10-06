@@ -1659,6 +1659,9 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
 
     root_data = data.get("root") or {}
     root = _dag_scope_from_dict(root_data)
+    # Store data is client-writable: anything but a non-empty string would
+    # fail later at ``Path(...)`` on every inspector render.
+    reference = data.get("reference_metadata_path")
     state = _DagBuilderState(
         root=root,
         breadcrumb=list(data.get("breadcrumb") or []),
@@ -1669,7 +1672,7 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
         pending_delete_block_id=data.get("pending_delete_block_id"),
         pending_aux_replacement=data.get("pending_aux_replacement"),
         toast_queue=list(data.get("toast_queue") or []),
-        reference_metadata_path=data.get("reference_metadata_path"),
+        reference_metadata_path=reference if isinstance(reference, str) and reference else None,
     )
     _heal_dag_scope_tree(state.root)
     return state

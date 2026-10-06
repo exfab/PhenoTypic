@@ -268,15 +268,17 @@ def _staged_gpu_capability(path_value: object) -> tuple[bool, str | None]:
     # below would swallow it and report "not a GPU pipeline".
     except UnstageableGpuDetectorError as exc:
         return False, str(exc)
-    except (OSError, ValueError, TypeError):
+    # AttributeError/ImportError: ``from_json`` on an op class it cannot
+    # resolve (``UnknownOperationClassError`` is an AttributeError).
+    except (OSError, ValueError, TypeError, AttributeError, ImportError):
         return False, None
 
 
 @functools.lru_cache(maxsize=8)
 def _pipeline_reference_columns(
-    path: str, mtime_ns: int
+    path: str, mtime_ns: int, size: int
 ) -> dict[str, tuple[str, ...]]:
-    """``reference_columns()`` of the pipeline file, cached per (path, mtime)."""
+    """``reference_columns()`` of the pipeline file, cached per (path, mtime, size)."""
     from phenotypic import ImagePipeline
 
     return ImagePipeline.from_json(Path(path)).reference_columns()
@@ -295,10 +297,11 @@ def reference_metadata_requirement(
     if isinstance(metadata_csv, str) and metadata_csv:
         return None
     try:
+        stat = Path(pipeline_path).stat()
         needs = _pipeline_reference_columns(
-            pipeline_path, Path(pipeline_path).stat().st_mtime_ns
+            pipeline_path, stat.st_mtime_ns, stat.st_size
         )
-    except (OSError, ValueError, TypeError):
+    except (OSError, ValueError, TypeError, AttributeError, ImportError):
         return None
     if not needs:
         return None

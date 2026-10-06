@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from phenotypic import ImagePipeline
 from phenotypic._gui.run_console._app import create_app
 from phenotypic._gui.run_console._callbacks import (
+    _staged_gpu_capability,
     reference_metadata_requirement,
 )
 from phenotypic._gui.shell._sandbox import SandboxRoot
@@ -78,3 +81,78 @@ def test_callback_stays_quiet_for_an_ordinary_pipeline(tmp_path):
     app = create_app(SandboxRoot.from_path(tmp_path))
     show = _callback_by_name(app, "show_reference_metadata_requirement")
     assert show(_write(tmp_path, {"d": OtsuDetector()}), {}) == ("", False)
+
+
+def _spec(app: Any, name: str) -> tuple[str, dict[str, Any]]:
+    return next(
+        (key, spec)
+        for key, spec in app.callback_map.items()
+        if (callback := spec.get("callback")) is not None
+        and callback.__wrapped__.__name__ == name
+    )
+
+
+def test_the_alert_and_the_run_gate_are_wired(tmp_path):
+    """The callbacks above are called directly; this pins what Dash feeds them."""
+    from phenotypic._gui.run_console import _ids as ids
+
+    app = create_app(SandboxRoot.from_path(tmp_path))
+
+    _, run_disabled = _spec(app, "update_run_disabled")
+    assert {
+        "id": ids.RC_REFERENCE_METADATA_REQUIRED,
+        "property": "is_open",
+    } in run_disabled["inputs"]
+
+    key, show = _spec(app, "show_reference_metadata_requirement")
+    assert show["inputs"] == [
+        {"id": ids.RC_STORE_PIPELINE_PATH, "property": "data"},
+        {"id": ids.RC_STORE_FORM_STATE, "property": "data"},
+    ]
+    assert f"{ids.RC_REFERENCE_METADATA_REQUIRED}.children" in key
+    assert f"{ids.RC_REFERENCE_METADATA_REQUIRED}.is_open" in key
+
+
+def _unknown_class_pipeline(tmp_path):
+    path = tmp_path / "unknown.json"
+    path.write_text(
+        ImagePipeline(ops={"sb": SubtractBlank()})
+        .to_json()
+        .replace("SubtractBlank", "NoSuchOp"),
+        encoding="utf-8",
+    )
+    return str(path)
+
+
+def test_unknown_class_pipeline_is_not_blocked(tmp_path):
+    """``from_json`` raises ``UnknownOperationClassError`` (an AttributeError)."""
+    path = _unknown_class_pipeline(tmp_path)
+    assert reference_metadata_requirement(path, None) is None
+    assert _staged_gpu_capability(path) == (False, None)
+
+
+def test_switching_to_an_unknown_class_pipeline_closes_the_alert(tmp_path):
+    """Before the fix the callback raised, leaving the previous alert open."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    show = _callback_by_name(app, "show_reference_metadata_requirement")
+
+    _, is_open = show(_write(tmp_path, {"sb": SubtractBlank()}), {})
+    assert is_open is True
+    assert show(_unknown_class_pipeline(tmp_path), {}) == ("", False)
+
+
+def test_requirement_follows_a_rewrite_that_keeps_the_mtime(tmp_path):
+    """``cp -p`` / coarse mtimes: the same mtime must not serve a stale answer."""
+    path = Path(_write(tmp_path, {"sb": SubtractBlank()}))
+    assert reference_metadata_requirement(str(path), None) is not None
+
+    before = path.stat()
+    path.write_text(
+        ImagePipeline(ops={"d": OtsuDetector()}).to_json(), encoding="utf-8"
+    )
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    after = path.stat()
+    assert after.st_mtime_ns == before.st_mtime_ns
+    assert after.st_size != before.st_size
+
+    assert reference_metadata_requirement(str(path), None) is None

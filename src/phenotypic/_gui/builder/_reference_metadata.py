@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import re
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Optional
@@ -25,6 +26,10 @@ _PICK_A_TABLE_HINT = (
     "Pick a table in the builder's Reference metadata field "
     "(under Image source) and run the preview again."
 )
+
+#: One or more ``ImagePipeline`` step wrappers, outermost first, as
+#: ``_image_pipeline_core.py`` formats them: ``[Op] (step i/n, key='k'): ``.
+_STEP_PREFIXES = re.compile(r"(?:\[\w+\] \(step \d+/\d+, key='[^\n]*?'\): )+")
 
 
 def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
@@ -110,17 +115,30 @@ def preview_reference_context(
 ) -> Iterator[object]:
     """Activate the picked table around a preview.
 
-    Reference images resolve beside the preview image. With no table this
-    activates nothing, so a reference operation fails exactly as a bare
-    ``apply`` would.
+    Reference images resolve beside the preview image. When the table has a
+    ``Metadata_Dataset`` column naming the image's directory, lookups narrow
+    to that dataset, as the CLI narrows each dataset by its input directory's
+    name. With no table this activates nothing, so a reference operation
+    fails exactly as a bare ``apply`` would.
     """
     if not path:
         yield None
         return
     from phenotypic._core._reference_context import ReferenceContext
+    from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
+    from phenotypic.schema import EXPERIMENT
 
-    root = Path(image_path).parent if image_path else None
-    with ReferenceContext(path, image_root=root) as context:
+    # The synthetic plate has no directory; its sentinel's parent is the cwd.
+    root = Path(image_path).parent if image_path and image_path != SYNTHETIC_SENTINEL else None
+    context = ReferenceContext(path, image_root=root)
+    dataset_column = str(EXPERIMENT.DATASET)
+    if (
+        root is not None
+        and dataset_column in context.columns
+        and root.name in context.table.get_column(dataset_column).to_list()
+    ):
+        context = context.narrow(dataset=root.name)
+    with context:
         yield context
 
 
@@ -129,10 +147,12 @@ def reference_error_message(exc: BaseException) -> Optional[str]:
 
     ``ImagePipeline`` wraps an operation's error in a ``RuntimeError`` (once
     per nesting level), so the message a user can act on sits at the bottom
-    of the ``__cause__`` chain.
+    of the ``__cause__`` chain. The wrappers' ``[Op] (step i/n, key='k'): ``
+    prefixes are kept in front of it: with two reference operations, the
+    bare message does not say which one failed.
 
     Returns:
-        ``"<ErrorType>: <message>"`` for the innermost
+        ``"<step prefixes><ErrorType>: <message>"`` for the innermost
         ``ReferenceContextError``, or ``None`` when the chain holds none.
     """
     from phenotypic._core._reference_context import (
@@ -140,17 +160,30 @@ def reference_error_message(exc: BaseException) -> Optional[str]:
         ReferenceContextError,
     )
 
-    found: Optional[BaseException] = None
+    chain: list[BaseException] = []
     seen: set[int] = set()
     current: Optional[BaseException] = exc
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        if isinstance(current, ReferenceContextError):
-            found = current
-        current = current.__cause__ or current.__context__
+        chain.append(current)
+        # The traceback module's rule: ``raise ... from None`` hides the context.
+        current = current.__cause__ or (
+            None if current.__suppress_context__ else current.__context__
+        )
+    found = next(
+        (e for e in reversed(chain) if isinstance(e, ReferenceContextError)), None
+    )
     if found is None:
         return None
     message = f"{type(found).__name__}: {found}"
+    detail = str(found)
+    for wrapper in chain:
+        text = str(wrapper)
+        if wrapper is not found and text.endswith(detail):
+            prefix = text[: len(text) - len(detail)]
+            if prefix and _STEP_PREFIXES.fullmatch(prefix):
+                message = prefix + message
+                break
     if isinstance(found, RefMetadataUnavailableError):
         message = f"{message}\n{_PICK_A_TABLE_HINT}"
     return message

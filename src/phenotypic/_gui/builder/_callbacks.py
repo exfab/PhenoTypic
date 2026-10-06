@@ -4707,17 +4707,23 @@ def register_callbacks(app: dash.Dash) -> None:
             },
             "n_clicks",
         ),
+        State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
     def start_new_builder_state(
         n_clicks: List[Optional[int]],
+        state_data: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, ...]:
-        """Reset an unsupported development DAG to a fresh linear state."""
+        """Reset an unsupported development DAG to a fresh linear state.
+
+        The session's reference table carries over: the picker still shows it.
+        """
 
         noop = (no_update,) * 4
         if not any(click or 0 for click in n_clicks or []):
             return noop
         new_state = BuilderState()
+        new_state.reference_metadata_path = _session_reference_path(state_data)
         new_state_dict = state_to_json(new_state)
         breadcrumb, canvas_elements, inspector = _render_views(new_state)
         return (
@@ -4732,11 +4738,15 @@ def register_callbacks(app: dash.Dash) -> None:
         Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.REFERENCE_METADATA_STATUS, "children"),
         Input(ids.INPUT_REFERENCE_METADATA, "value"),
+        # Enter re-validates an unchanged path, so an edited or deleted table
+        # is re-read without retyping it.
+        Input(ids.INPUT_REFERENCE_METADATA, "n_submit"),
         State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
     def set_reference_metadata(
         path: object,
+        _n_submit: Optional[int],
         state_data: object,
     ) -> Tuple[Any, Any, str]:
         """Validate the picked table, put it on the session state, re-render the inspector."""

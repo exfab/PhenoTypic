@@ -24,6 +24,8 @@ from phenotypic._gui._param_forms import (
 )
 from phenotypic._gui._param_forms import param_form as _shared_param_form  # noqa: F401  - re-export
 from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._reference_metadata import REFERENCE_SOURCE
+from phenotypic.sdk_ import ensure_metadata_prefix
 
 
 def _initial_picker_data(current_value: Any) -> list[list[float]]:
@@ -98,6 +100,33 @@ def _picker_widget(
     )
 
 
+def _prefixed_reference_columns(
+    op_info: OperationInfo,
+    current_values: dict[str, Any],
+    columns: list[str],
+) -> dict[str, Any]:
+    """Show a bare ``BlankImage`` as the ``Metadata_BlankImage`` it resolves to.
+
+    ``ReferenceContext`` accepts either spelling, but the dropdown matches
+    its normalized columns literally, so the bare one would render as stale
+    although the run succeeds.
+    """
+    resolved = dict(current_values)
+    for name, p in op_info.parameters.items():
+        value = resolved.get(name)
+        if (
+            p.column_ref is None
+            or p.column_ref.source != REFERENCE_SOURCE
+            or not isinstance(value, str)
+            or value in columns
+        ):
+            continue
+        prefixed = ensure_metadata_prefix(value)
+        if prefixed in columns:
+            resolved[name] = prefixed
+    return resolved
+
+
 def param_form(
     op_info: OperationInfo,
     current_values: dict[str, Any],
@@ -142,6 +171,9 @@ def param_form(
             },
             **current_values,
         }
+        current_values = _prefixed_reference_columns(
+            op_info, current_values, columns_provider(REFERENCE_SOURCE)
+        )
     return _shared_param_form(
         op_info,
         current_values,
