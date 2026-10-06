@@ -45,7 +45,7 @@ Applied after the independent plan review (`docs/superpowers/reports/2026-10-05-
 - **S8 (B1) — Stage 2 needs the context too.** A `SubtractBlank` inside the GPU detector's own sequence branch is moved into `stage2_prefix` (`_cli_pipeline_split.py:84-97`) and applied by `_apply_stage2_prefix` in Stage 2 (`_cli_staged_workers.py:457-458`); the `--layer objmap` export re-applies the residual pipeline (`_cli_staged_strategy.py:518-522`). Both enter the context (Task 6); spec §5.2's "lands in Stage 1 by construction" is corrected.
 - **S9 (M1) — one image identity.** Planner, work-ids and resolution use `source_image_stem` (`sdk_/_io_constants.py:1887`), which is what `imread` names an image (`x.ome.zarr` → `x`); `resolve_image` accepts OME-Zarr store directories; a store's identity digest is its root `zarr.json`.
 - **S10 (M5) — no attribute-access import guard** (impossible under `_core`; see Global Constraints).
-- **S11 (M6) — builder column fields stay free text in v1.** The inspector is rendered by `_render_views` from 12 callbacks (`builder/_callbacks.py:3943`); live dropdowns need the picked path carried in builder state. v1 shows the table's columns in the picker's status line instead. Spec §5.3 updated; the dropdown is a follow-up the user may promote.
+- **S11 (M6) — the picked table lives on builder state.** The inspector is rendered by `_render_views(state)` from 12 callbacks (`builder/_callbacks.py:3943`), so instead of threading a new `State` through each, the path is a field `_DagBuilderState.reference_metadata_path`: every render, both preview paths and the preview fingerprint already receive the state. The live RefColumn dropdown ships in v1 (user decision, 2026-10-05).
 - **S12 — tune refusal is a `TuningSpec` validator** (spec: "at spec load"), not in `TuningEngine.__init__`.
 - **S13 — details.** An `images=` in-memory `Image` is returned shared, not copied (spec §4.1 updated); the corrector check scans every provenance application, not only the last (Stage 2's probe copy opens a fresh one); measure mode never touches the manifest; an `--overwrite` run that needs references must pass `--metadata` (the snapshot it would fall back to is deleted).
 
@@ -56,6 +56,43 @@ Applied after the independent plan review (`docs/superpowers/reports/2026-10-05-
 3. **Bare headers** (`ImageName`, `BlankImage`) must behave like `Metadata_ImageName`/`Metadata_BlankImage`, as the CLI join treats them. Pinned in Task 1.
 4. **The same stem in two datasets with no `Metadata_Dataset` column** and different blanks must raise *ambiguous*, never silently take the first row. Pinned in Task 1.
 5. **A `GridImage` target** must subtract like a plain `Image`. Pinned in Task 3.
+
+
+## Execution (cluster-and-isolate orchestration)
+
+Executed subagent-driven per the `orchestrate-subagent` protocol (subagents never run side-effecting commands; the orchestrator runs them and returns output verbatim; the orchestrator commits). Derived from each task's Files/Interfaces blocks.
+
+**Dependency DAG** (→ = must finish before):
+
+```
+T0 → T1 → T2 → T3 ─┬→ T4 → T5 ─┐
+                   │      └→ T6 → T7      (T6 also needs T5's codes for the e2e refusal test)
+                   ├→ T8 → T10
+                   └→ T9 → T10
+T7, T10 → T11 → T12
+Shared files: sdk_/__init__.py (T1, T2, T3); _cli_reference.py (T4, T6);
+FEATURES.md (T10 only); phenotypicCLI.py (T6 only).
+```
+
+**Clusters** (shape · model · effort):
+
+| Cluster | Tasks | Shape | Model | Why this boundary |
+|---|---|---|---|---|
+| A | T0, T1, T2 | Keystone | opus · high | The public core API: context, mixin, markers, `reference_columns`; one interface everyone consumes |
+| B | T3 | Keystone | opus · high | The operation + guards + existing-gate edits; its own reviewable diff |
+| C | T4, T5 | Keystone | opus · high | Planner and preflight share `plan_references` semantics |
+| D | T6, T7 | Seam | opus · high | Risky CLI wiring (startup order, work-ids, 6 apply sites, staged); its e2e tests are its self-verification |
+| F | T8 | Seam | opus · high | Builder state field + 12-render-path dropdown + preview fingerprint/revision |
+| G | T9, T10 | Leaf | sonnet · medium | Run-console gate + ledgers; small and pattern-following |
+| H | T11 | Sweep | sonnet · medium | Docs |
+| — | T12 | — | orchestrator | Slurm regression run |
+
+**Parallelism:** Phase 2 (C, D) and Phase 3 (F, G) share no files and are parallel-worktree candidates, but run **sequentially** in this worktree: verification must never run against a tree another agent is mid-edit in, and the saving does not justify a second worktree and a merge.
+
+**Gates:**
+- Per cluster (light): orchestrator reads the diff, runs the cluster's tests + ruff on touched paths, commits; open design questions surface to the user before the next cluster.
+- Per phase (deep): a fresh `implementation-test-reviewer` (opus) over the phase's combined diff, report written to `docs/superpowers/reports/2026-10-05-ref-metadata-ops/phase<N>-review.md`; high-signal findings fixed before the next phase.
+- End: one `code-simplifier` pass (quality only), then T12's sharded regression once.
 
 ---
 
@@ -2919,44 +2956,65 @@ git commit -m "test(cli): SubtractBlank end-to-end in process and full mode, wit
 
 ## Phase 3 — GUI
 
-### Task 8: Builder — reference-metadata picker and preview context
+### Task 8: Builder — reference-metadata picker, preview context, live column dropdowns
+
+The picked table lives **on the builder state** (`_DagBuilderState.reference_metadata_path`), not in a separate store. Every view render (`_render_views(state)`, called from 12 callbacks, `builder/_callbacks.py:3943`), both preview paths, and the preview fingerprint already receive that state, so the dropdown and the preview context need no per-callback plumbing. The path is session-level: it is serialized with the builder state but never into the pipeline (`to_pipeline*` ignores it).
 
 **Files:**
 - Create: `src/phenotypic/_gui/builder/_reference_metadata.py`
-- Modify: `src/phenotypic/_gui/builder/_ids.py` (three ids, export list ~line 1098)
-- Modify: `src/phenotypic/_gui/builder/_layout.py` (picker under `ACTIVE_IMAGE_LABEL` ~4126; store beside `STORE_IMAGE_PATH` ~4481)
-- Modify: `src/phenotypic/_gui/builder/_callbacks.py` (picker callback; preview request ~3672 and its `State`s ~5933/5977; preview run ~6090)
+- Modify: `src/phenotypic/_gui/builder/_state.py` (`_DagBuilderState` field ~line 258; `state_to_json` ~1547; `state_from_json` ~1663)
+- Modify: `src/phenotypic/_gui/builder/_ids.py` (two ids + export list ~line 1098)
+- Modify: `src/phenotypic/_gui/builder/_layout.py` (picker under `ACTIVE_IMAGE_LABEL` ~4126; `_build_dag_inspector` ~3675 and `build_inspector` ~3819 pass a provider to `param_form`)
+- Modify: `src/phenotypic/_gui/builder/_linear_layout.py` (`build_linear_side_loader` ~1004, its `param_form(` ~1087)
+- Modify: `src/phenotypic/_gui/builder/_param_form.py` (`param_form` gains `columns_provider`)
+- Modify: `src/phenotypic/_gui/_param_forms.py` (stale comment ~585)
+- Modify: `src/phenotypic/_gui/builder/_callbacks.py` (picker callback; `_pipeline_revision` ~3607; top-level preview run ~6090)
 - Modify: `src/phenotypic/_gui/builder/_preview_cache.py` (`compute_scope` ~312, apply ~386)
-- Modify: `src/phenotypic/_gui/builder/_preview_callbacks.py` (~121)
-- Test: `tests/unit/gui/builder/test_reference_metadata.py`, extend `tests/unit/gui/test_operation_registry.py`
+- Test: `tests/unit/gui/builder/test_reference_metadata.py`; extend `tests/unit/gui/test_operation_registry.py` and `tests/unit/gui/builder/test_preview_cache_manifest.py`
 
 **Interfaces:**
-- Consumes: Task 1 (`ReferenceContext`, `ReferenceTableError`), Task 2 (`_ColumnRefMarker("reference_metadata")`).
+- Consumes: Task 1 (`ReferenceContext`, `ReferenceTableError`), Task 2 (`_ColumnRefMarker("reference_metadata")`), Task 3 (`SubtractBlank`).
 - Produces:
-  - ids `STORE_REFERENCE_METADATA_PATH = "store-reference-metadata-path"`, `INPUT_REFERENCE_METADATA = "input-reference-metadata"`, `REFERENCE_METADATA_STATUS = "reference-metadata-status"`
-  - `describe_reference_table(path: str | None) -> tuple[str, str]` → `(store_value, status_message)`; the message lists the table's columns, which is how v1 tells the user what to type into a `RefColumn` field (S11)
-  - `preview_reference_context(reference_metadata: str | None, image_path: str | None)` — context manager
-  - `reference_identity(reference_metadata: str | None) -> str` (`""` when unset)
-  - `compute_scope(..., reference_metadata: str | None = None)`
-  - `RefColumn` fields keep the builder's free-text widget in v1 (no `columns_provider` on the builder path; live dropdowns are a follow-up — S11)
+  - `_DagBuilderState.reference_metadata_path: Optional[str] = None` (round-trips through `state_to_json`/`state_from_json`; absent key → `None`)
+  - ids `INPUT_REFERENCE_METADATA = "input-reference-metadata"`, `REFERENCE_METADATA_STATUS = "reference-metadata-status"`
+  - in `_reference_metadata.py`:
+    - `describe_reference_table(path: str | None) -> tuple[str, str]` → `(value_to_store, status_message)`
+    - `reference_columns_provider(path: str | None) -> Callable[[str], list[str]] | None` (cached on `(path, st_mtime_ns)`)
+    - `reference_identity(path: str | None) -> str` (`""` when unset)
+    - `preview_reference_context(path: str | None, image_path: str | None)` — context manager
+  - builder `param_form(..., columns_provider=None)`
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the failing tests** — `tests/unit/gui/builder/test_reference_metadata.py`:
 
 ```python
-"""Builder reference-metadata helpers and the preview fingerprint."""
+"""Builder reference metadata: state field, helpers, dropdown, preview."""
 
 from __future__ import annotations
 
 import pandas as pd
+from dash import dcc
 
 from phenotypic import ReferenceContext
 from phenotypic._gui.builder import _reference_metadata as rm
+from phenotypic._gui.builder._state import _DagBuilderState, state_from_json, state_to_json
 
 
 def _table(tmp_path):
     path = tmp_path / "blank_map.csv"
     pd.DataFrame({"ImageName": ["t01"], "BlankImage": ["t00"]}).to_csv(path, index=False)
     return path
+
+
+def test_state_round_trips_the_reference_path(tmp_path):
+    state = _DagBuilderState()
+    state.reference_metadata_path = str(_table(tmp_path))
+    assert state_from_json(state_to_json(state)).reference_metadata_path == state.reference_metadata_path
+
+
+def test_older_state_json_without_the_key_loads_as_none():
+    data = state_to_json(_DagBuilderState())
+    data.pop("reference_metadata_path", None)
+    assert state_from_json(data).reference_metadata_path is None
 
 
 def test_describe_empty_missing_and_valid(tmp_path):
@@ -2966,7 +3024,14 @@ def test_describe_empty_missing_and_valid(tmp_path):
     value, message = rm.describe_reference_table(str(_table(tmp_path)))
     assert value.endswith("blank_map.csv")
     assert "1 rows" in message
-    assert "Metadata_BlankImage" in message   # the columns a RefColumn field may name
+
+
+def test_columns_provider_serves_only_reference_metadata(tmp_path):
+    provide = rm.reference_columns_provider(str(_table(tmp_path)))
+    assert "Metadata_BlankImage" in provide("reference_metadata")
+    assert provide("measurements") == []
+    assert rm.reference_columns_provider("") is None
+    assert rm.reference_columns_provider(str(tmp_path / "nope.csv")) is None
 
 
 def test_preview_context_activates_with_the_image_directory_as_root(tmp_path):
@@ -2984,9 +3049,44 @@ def test_reference_identity_follows_file_content(tmp_path):
     assert rm.reference_identity(None) == ""
     path.write_text(path.read_text() + "t02,t00\n", encoding="utf-8")
     assert rm.reference_identity(str(path)) != first
+
+
+def _dropdowns(component) -> list:
+    found = []
+    stack = [component]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dcc.Dropdown):
+            found.append(node)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            stack.extend(children)
+        elif children is not None and not isinstance(children, str):
+            stack.append(children)
+    return found
+
+
+def test_inspector_renders_a_dropdown_of_the_tables_columns(tmp_path):
+    """The live dropdown: a selected SubtractBlank block + a picked table."""
+    from phenotypic._gui._operation_registry import OperationRegistry
+    from phenotypic._gui.builder._layout import build_inspector
+
+    registry = OperationRegistry()
+    registry.discover()
+    state = _state_with_selected_block("SubtractBlank")
+    state.reference_metadata_path = str(_table(tmp_path))
+    options = [
+        option
+        for dropdown in _dropdowns(build_inspector(state, registry))
+        for option in (dropdown.options or [])
+    ]
+    values = {o["value"] if isinstance(o, dict) else o for o in options}
+    assert "Metadata_BlankImage" in values
 ```
 
-Extend `tests/unit/gui/test_operation_registry.py::TestColumnRefDetection` with:
+`_state_with_selected_block(class_name)` is a local helper: build a `_DagBuilderState` whose root scope holds one `BlockNode(class_name=class_name, params={})` and set `selected_block_id` to it — copy the construction pattern from `tests/unit/gui/builder/test_dispatch.py:182-250` (it builds `_DagBuilderState(...)` with blocks and a selection). Also assert the same state **without** a table renders no dropdown for `blank_column` (free text), so the test can fail.
+
+Extend `tests/unit/gui/test_operation_registry.py::TestColumnRefDetection`:
 
 ```python
     def test_subtract_blank_column_is_a_reference_metadata_dropdown(self, registry):
@@ -2996,7 +3096,7 @@ Extend `tests/unit/gui/test_operation_registry.py::TestColumnRefDetection` with:
         assert p.column_ref.multi is False
 ```
 
-And in `tests/unit/gui/builder/test_preview_cache_manifest.py` add (reuse that file's `_linear_root_state` helper and the `cached_scope` setup it uses for `tmp_path`/monkeypatch of the cache root):
+In `tests/unit/gui/builder/test_preview_cache_manifest.py` (reuse its `_linear_root_state` helper and cache-root fixture):
 
 ```python
 def test_reference_table_changes_the_root_fingerprint(tmp_path, monkeypatch) -> None:
@@ -3004,33 +3104,56 @@ def test_reference_table_changes_the_root_fingerprint(tmp_path, monkeypatch) -> 
     table.write_text("ImageName,BlankImage\nt01,t00\n", encoding="utf-8")
     state = _linear_root_state([])
     plain = pc.compute_scope("s", state, [], None, None, None)
-    with_ref = pc.compute_scope("s", state, [], None, None, None, reference_metadata=str(table))
+    state.reference_metadata_path = str(table)
+    with_ref = pc.compute_scope("s", state, [], None, None, None)
     assert plain["fingerprint"] != with_ref["fingerprint"]
 ```
 
-(Match `_linear_root_state`'s real argument shape and the cache-root fixture in that file.)
+And for the revision (in `test_reference_metadata.py`):
+
+```python
+def test_pipeline_revision_changes_only_when_a_table_is_set(tmp_path):
+    from phenotypic._gui.builder._callbacks import _pipeline_revision
+
+    data = state_to_json(_DagBuilderState())
+    plain = _pipeline_revision(data)
+    assert _pipeline_revision({**data, "reference_metadata_path": None}) == plain
+    assert _pipeline_revision({**data, "reference_metadata_path": str(_table(tmp_path))}) != plain
+```
 
 - [ ] **Step 2: Run to verify failure**
 
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder/test_reference_metadata.py -q`
 Expected: `ImportError` for `_reference_metadata`.
 
-- [ ] **Step 3: Helpers** — create `src/phenotypic/_gui/builder/_reference_metadata.py`:
+- [ ] **Step 3: State field** — in `_state.py`, add to `_DagBuilderState` (after `toast_queue`, with an `Attributes:` docstring entry: "Session-level reference metadata table the preview runs against and the inspector's RefColumn dropdowns list; never written into the pipeline"):
 
 ```python
-"""Builder-side reference metadata: the preview's ReferenceContext and column list.
+    reference_metadata_path: Optional[str] = None
+```
 
-The builder never stores a table on an operation. The session's picked table
-acts as the preview's ambient context, exactly as ``--metadata`` does for the
-CLI, and supplies the dropdown choices for ``RefColumn`` parameters.
+In `state_to_json`'s DAG branch add `"reference_metadata_path": getattr(state, "reference_metadata_path", None),`; in `state_from_json`'s DAG branch add `reference_metadata_path=data.get("reference_metadata_path"),`.
+
+- [ ] **Step 4: Helpers** — create `src/phenotypic/_gui/builder/_reference_metadata.py`:
+
+```python
+"""Builder-side reference metadata: preview context and RefColumn dropdown choices.
+
+The builder never stores a table on an operation. The table picked for the
+session (``_DagBuilderState.reference_metadata_path``) is the preview's ambient
+ReferenceContext, as ``--metadata`` is for the CLI, and supplies the dropdown
+choices for ``RefColumn`` parameters.
 """
 
 from __future__ import annotations
 
+import functools
 import hashlib
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
+
+REFERENCE_SOURCE = "reference_metadata"
 
 
 def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
@@ -3048,73 +3171,78 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
         return "", str(exc)
     return (
         str(candidate.resolve()),
-        f"{candidate.name} · {context.table.height} rows · columns: "
-        f"{', '.join(context.columns)}",
+        f"{candidate.name} · {context.table.height} rows · {len(context.columns)} columns",
     )
 
 
-def reference_identity(reference_metadata: Optional[str]) -> str:
-    """Content identity of the picked table for preview fingerprints."""
-    if not reference_metadata:
+@functools.lru_cache(maxsize=8)
+def _columns_for(path: str, mtime_ns: int) -> tuple[str, ...]:
+    from phenotypic._core._reference_context import ReferenceContext
+
+    return ReferenceContext(path).columns
+
+
+def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], list[str]]]:
+    """A ``columns_provider`` for the shared param form, or ``None`` without a table.
+
+    Cached on the file's mtime: the inspector re-renders on every edit.
+    """
+    if not path:
+        return None
+    from phenotypic._core._reference_context import ReferenceTableError
+
+    try:
+        columns = _columns_for(path, Path(path).stat().st_mtime_ns)
+    except (OSError, ReferenceTableError):
+        return None
+
+    def provide(source: str) -> list[str]:
+        return list(columns) if source == REFERENCE_SOURCE else []
+
+    return provide
+
+
+def reference_identity(path: Optional[str]) -> str:
+    """Content identity of the picked table for preview fingerprints and revisions."""
+    if not path:
         return ""
-    path = Path(reference_metadata)
-    if not path.is_file():
-        return f"missing:{path}"
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    candidate = Path(path)
+    if not candidate.is_file():
+        return f"missing:{candidate}"
+    return hashlib.sha256(candidate.read_bytes()).hexdigest()
 
 
 @contextmanager
 def preview_reference_context(
-    reference_metadata: Optional[str], image_path: Optional[str]
+    path: Optional[str], image_path: Optional[str]
 ) -> Iterator[object]:
     """Activate the picked table around a preview; reference images resolve
     beside the preview image."""
-    if not reference_metadata:
+    if not path:
         yield None
         return
     from phenotypic._core._reference_context import ReferenceContext
 
     root = Path(image_path).parent if image_path else None
-    with ReferenceContext(reference_metadata, image_root=root) as context:
+    with ReferenceContext(path, image_root=root) as context:
         yield context
 ```
 
-- [ ] **Step 4: Preview cache** — in `_preview_cache.compute_scope`, add `reference_metadata: str | None = None` as the last parameter; pass it to the recursive parent call; after `fingerprint_inputs = [sig, input_identity]`:
+- [ ] **Step 5: Dropdowns from state** — builder `_param_form.param_form` gains `columns_provider: Callable[[str], list[str]] | None = None` and passes `columns_provider=columns_provider` to `_shared_param_form`. In `_layout.py`, at both `param_form(` calls inside `_build_dag_inspector` (~3789) and `build_inspector`'s legacy branch (~3931), and in `_linear_layout.build_linear_side_loader` (~1087), pass:
 
 ```python
-    if not scope_path and reference_metadata:
-        # Root only: nested scopes inherit it through parent_fp. Appended only
-        # when set, so every existing fingerprint (and cache) is unchanged.
-        fingerprint_inputs.append(reference_identity(reference_metadata))
+            columns_provider=reference_columns_provider(
+                getattr(state, "reference_metadata_path", None)
+            ),
 ```
 
-and wrap line ~386:
+(import `reference_columns_provider` from `._reference_metadata` at the top of each module; that module imports nothing heavy at module level). Correct the stale comment in `_gui/_param_forms.py` (~585, "builder ops carry no column-ref params, so this branch is dead code on the builder path") to say the builder supplies a provider for `reference_metadata` columns from the session's picked table.
+
+- [ ] **Step 6: Picker** — ids in `_ids.py` (docstrings like their neighbours; add to the export list):
 
 ```python
-        with preview_reference_context(reference_metadata, image_path):
-            pipeline.apply_with_intermediates(image, output_dir=sdir, full_layers=True)
-```
-
-(import both from `._reference_metadata` inside the function, like the module's other imports). In `_preview_callbacks.py:121`, pass `reference_metadata=` from the same place `image_path` comes from: add `State(ids.STORE_REFERENCE_METADATA_PATH, "data")` to that callback beside the image-path input it already reads, and thread the value.
-
-- [ ] **Step 5: Top-level preview** — in `_callbacks.py`, at the request builder (~3655–3677) add `"reference_metadata": reference_metadata,` to the `request` dict and a `reference_metadata` parameter; add `State(ids.STORE_REFERENCE_METADATA_PATH, "data")` next to each `State(STORE_IMAGE_PATH, "data")` that feeds it (~5933, ~5977) and pass it through. At ~6090:
-
-```python
-            with preview_reference_context(
-                request_data.get("reference_metadata"),
-                image_path if isinstance(image_path, str) else None,
-            ):
-                result = pipeline.apply_with_intermediates(image)
-```
-
-- [ ] **Step 6: Picker** — ids in `_ids.py` (with docstrings like their neighbours, and in the export list):
-
-```python
-#: Session-level reference metadata table (path). Read by Run preview and by
-#: the inspector's RefColumn dropdowns; never saved into the pipeline.
-STORE_REFERENCE_METADATA_PATH = "store-reference-metadata-path"
-
-#: Text input for the reference metadata table path.
+#: Text input for the session's reference metadata table path (the value is
+#: stored on the builder state as ``reference_metadata_path``).
 INPUT_REFERENCE_METADATA = "input-reference-metadata"
 
 #: One-line status under the reference metadata input (rows/columns or error).
@@ -3140,38 +3268,54 @@ In `_layout.py`, directly below the `ACTIVE_IMAGE_LABEL` div (~4126):
             html.Div(id=ids.REFERENCE_METADATA_STATUS, className="small text-muted"),
 ```
 
-and beside the `STORE_IMAGE_PATH` store (~4481): `dcc.Store(id=ids.STORE_REFERENCE_METADATA_PATH, data=""),`.
-
-In `_callbacks.py`, register:
+In `_callbacks.py`, beside the other state-mutating callbacks (their Output pattern is at ~4628: `STORE_BUILDER_STATE` + `INSPECTOR_CONTENT`, both `allow_duplicate=True`):
 
 ```python
     @app.callback(
-        Output(ids.STORE_REFERENCE_METADATA_PATH, "data"),
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
         Output(ids.REFERENCE_METADATA_STATUS, "children"),
         Input(ids.INPUT_REFERENCE_METADATA, "value"),
+        State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
-    def set_reference_metadata(path: object) -> tuple[str, str]:
-        """Validate and store the session's reference metadata table."""
+    def set_reference_metadata(path: object, state_data: object):
+        """Validate the picked table, put it on the session state, re-render the inspector."""
         from ._reference_metadata import describe_reference_table
 
-        return describe_reference_table(path if isinstance(path, str) else None)
+        value, message = describe_reference_table(path if isinstance(path, str) else None)
+        state = state_from_json(state_data) if isinstance(state_data, dict) else BuilderState()
+        state.reference_metadata_path = value or None
+        _, _, inspector = _render_views(state)
+        return state_to_json(state), inspector, message
 ```
 
-- [ ] **Step 7: Correct the stale comment** in `_gui/_param_forms.py` (~line 585: "builder ops carry no column-ref params, so this branch is dead code on the builder path"): builder ops now do carry `reference_metadata` column refs, which render as free text there because the builder passes no provider (S11; the inspector is rendered by `_render_views` from 12 callbacks, `builder/_callbacks.py:3943`, so a live dropdown needs the picked path carried in builder state — a follow-up).
+(use the module's existing names for `state_from_json`/`state_to_json`/`BuilderState`; match how neighbouring callbacks handle a missing state store).
+
+- [ ] **Step 7: Preview runs and staleness** — `_preview_cache.compute_scope`: read `reference = getattr(state, "reference_metadata_path", None)`; after `fingerprint_inputs = [sig, input_identity]`:
+
+```python
+    if not scope_path and reference:
+        # Root only: nested scopes inherit it through parent_fp. Appended only
+        # when set, so every existing fingerprint (and cache) is unchanged.
+        fingerprint_inputs.append(reference_identity(reference))
+```
+
+and wrap the apply (~386) in `with preview_reference_context(reference, image_path):`. Top-level preview (`_callbacks.py` ~6090): wrap `result = pipeline.apply_with_intermediates(image)` in `with preview_reference_context(getattr(state, "reference_metadata_path", None), image_path if isinstance(image_path, str) else None):` (the `state` there is the one `pipeline` is derived from). `_pipeline_revision` (~3607): when `state_data.get("reference_metadata_path")` is set, digest `{"root": root, "reference": reference_identity(path)}` instead of `root` alone — unchanged digest when unset — so a preview made against another table is not shown as current.
 
 - [ ] **Step 8: Run**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py tests/unit/gui/test_param_forms.py tests/unit/gui/test_apps_build_after_simplification.py -q`
-Expected: pass (the last file proves every Dash app still builds with the new ids and callbacks).
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py tests/unit/gui/test_param_forms.py tests/unit/gui/test_apps_build_after_simplification.py tests/unit/gui/builder/test_dispatch.py -q`
+Expected: pass (the apps-build file proves every Dash app still builds with the new ids and callback; `test_dispatch.py` exercises state round-trips).
 
 - [ ] **Step 9: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/_gui/builder/_reference_metadata.py src/phenotypic/_gui/builder/_ids.py src/phenotypic/_gui/builder/_layout.py src/phenotypic/_gui/builder/_callbacks.py src/phenotypic/_gui/builder/_preview_cache.py src/phenotypic/_gui/builder/_preview_callbacks.py src/phenotypic/_gui/_param_forms.py tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py
-git add src/phenotypic/_gui tests/unit/gui
-git commit -m "feat(gui): builder reference-metadata picker and preview context"
+uv run ruff check --fix src/phenotypic/_gui/builder/_reference_metadata.py src/phenotypic/_gui/builder/_state.py src/phenotypic/_gui/builder/_ids.py src/phenotypic/_gui/builder/_layout.py src/phenotypic/_gui/builder/_linear_layout.py src/phenotypic/_gui/builder/_param_form.py src/phenotypic/_gui/_param_forms.py src/phenotypic/_gui/builder/_callbacks.py src/phenotypic/_gui/builder/_preview_cache.py tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py
+git add src/phenotypic/_gui/builder/_reference_metadata.py src/phenotypic/_gui/builder/_state.py src/phenotypic/_gui/builder/_ids.py src/phenotypic/_gui/builder/_layout.py src/phenotypic/_gui/builder/_linear_layout.py src/phenotypic/_gui/builder/_param_form.py src/phenotypic/_gui/_param_forms.py src/phenotypic/_gui/builder/_callbacks.py src/phenotypic/_gui/builder/_preview_cache.py tests/unit/gui/builder/test_reference_metadata.py tests/unit/gui/builder/test_preview_cache_manifest.py tests/unit/gui/test_operation_registry.py
+git commit -m "feat(gui): builder reference-metadata picker, preview context, RefColumn dropdowns"
 ```
+
 
 ---
 

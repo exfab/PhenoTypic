@@ -376,13 +376,14 @@ storage under `--output`; workers read it, never the user's original.
 
 ### 5.3 GUI
 
-- **Builder parameter form**: `RefColumn` fields are free text in v1; the
-  picker's status line lists the picked table's columns. A live dropdown needs
-  the picked path carried in builder state (the inspector is rendered by
-  `_render_views` from 12 callbacks) and is a follow-up. The GUI registry
-  already reports these fields as `column_ref.source == "reference_metadata"`.
+- **Builder parameter form**: `RefColumn` fields render as a dropdown of the
+  picked table's headers (free text when none is picked). The picked path is a
+  field on the builder state (`reference_metadata_path`), so every inspector
+  render (`_render_views`, 12 callbacks), both preview paths and the preview
+  fingerprint see it without per-callback plumbing; it is serialized with the
+  session state, never into the pipeline.
 - **Builder preview** (`_preview_cache.py:386`, `_callbacks.py:6090`): a
-  session-level **Reference metadata** file picker in the preview panel. When
+  session-level **Reference metadata** path input in the preview panel. When
   set, `apply_with_intermediates` runs inside
   `ReferenceContext(table, image_root=<preview image's directory>)`. It is not
   saved into the pipeline. With no table, a `RefMetadata` node shows the
