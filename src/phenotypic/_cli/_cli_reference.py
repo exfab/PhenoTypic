@@ -1,0 +1,391 @@
+"""Reference metadata for CLI runs: plan once at startup, read in every worker.
+
+The main process resolves every input image's references (the run preflight
+calls the same planner without hashing). Startup writes the result to
+``.phenotypic/reference_manifest.json``; each worker core enters
+:func:`worker_reference_context` around its apply call, so no worker needs a
+new argument and SLURM workers need nothing but the run root.
+
+This module imports only the standard library at module level.
+"""
+
+from __future__ import annotations
+
+import functools
+import json
+import os
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Sequence
+
+if TYPE_CHECKING:  # pragma: no cover
+    from phenotypic import ImagePipeline, ReferenceContext
+
+    from ._cli_types import Dataset, ExecutionConfig
+
+MANIFEST_SCHEMA_VERSION = 1
+#: The digest of an image the manifest does not plan (it failed planning, or
+#: arrived after startup). Distinct from every real digest, so such an image's
+#: work-id never matches a planned one.
+UNPLANNED_DIGEST = "unplanned"
+
+
+@dataclass(frozen=True)
+class ReferencePlan:
+    """Every input image's reference resolution, classified.
+
+    Attributes:
+        total_images: Input images planned, across every dataset.
+        unmatched: ``"<dataset>/<stem>"`` labels with no table row.
+        ambiguous: Labels whose rows are empty or disagree for a column.
+        self_referenced: Labels that name themselves as a reference image.
+        unresolved: Labels naming a reference image that matches no single
+            file in the dataset's input directory.
+        images_by_dataset: ``{dataset: {name as written: absolute path}}``.
+        digests: ``{dataset: {stem: digest}}``; empty without hashing.
+    """
+
+    total_images: int
+    unmatched: tuple[str, ...]
+    ambiguous: tuple[str, ...]
+    self_referenced: tuple[str, ...]
+    unresolved: tuple[str, ...]
+    images_by_dataset: dict[str, dict[str, str]]
+    digests: dict[str, dict[str, str]]
+
+
+def _union(groups: Iterable[tuple[str, ...]]) -> tuple[str, ...]:
+    seen: dict[str, None] = {}
+    for columns in groups:
+        for column in columns:
+            seen.setdefault(column, None)
+    return tuple(seen)
+
+
+def plan_references(
+    context: "ReferenceContext",
+    pipeline: "ImagePipeline",
+    datasets: Sequence["Dataset"],
+    *,
+    hash_images: bool,
+    operations: Sequence[Any] | None = None,
+) -> ReferencePlan:
+    """Resolve every input image's reference values and reference images.
+
+    Args:
+        context: The run's reference table (dataset and root are set per dataset).
+        pipeline: The run's pipeline; its ``reference_columns()`` decide what
+            is looked up and which values are resolved to files.
+        datasets: The scanned inputs.
+        hash_images: Hash reference-image files for the per-image digests.
+            The preflight passes ``False`` (headers-only contract); startup
+            passes ``True``.
+        operations: The reference-metadata operations the run executes, when
+            narrower than the whole pipeline (the preflight passes those
+            :func:`~._cli_preflight.operations_in_scope` keeps). ``None``
+            plans for every one in *pipeline*.
+
+    Returns:
+        The classified plan. An image appears in at most one failure list.
+
+    Raises:
+        ReferenceTableError: A planned column is not in the table.
+    """
+    from phenotypic._core import _reference_context
+    from phenotypic._core._reference_context import (
+        ReferenceImageError,
+        ReferenceLookupError,
+    )
+    from phenotypic.sdk_._digests import canonical_digest
+    from phenotypic.sdk_._io_constants import source_image_stem
+
+    if operations is None:
+        value_columns = _union(pipeline.reference_columns().values())
+        image_columns = set(
+            _union(pipeline.reference_columns(images_only=True).values())
+        )
+    else:
+        value_columns = _union(op._ref_columns() for op in operations)
+        image_columns = set(_union(op._ref_image_columns() for op in operations))
+    unmatched: list[str] = []
+    ambiguous: list[str] = []
+    self_referenced: list[str] = []
+    unresolved: list[str] = []
+    images_by_dataset: dict[str, dict[str, str]] = {}
+    digests: dict[str, dict[str, str]] = {}
+    sha_cache: dict[str, str] = {}
+    total = 0
+    for dataset in datasets:
+        scoped = context.narrow(dataset=dataset.name, image_root=dataset.input_dir)
+        resolved = images_by_dataset.setdefault(dataset.name, {})
+        dataset_digests = digests.setdefault(dataset.name, {})
+        for image_path in dataset.images:
+            total += 1
+            # The name Image.imread gives this input ("x.ome.zarr" -> "x").
+            stem = source_image_stem(Path(image_path))
+            label = f"{dataset.name}/{stem}"
+            try:
+                values = scoped.lookup(stem, value_columns)
+            except ReferenceLookupError as exc:
+                (unmatched if exc.reason == "unmatched" else ambiguous).append(label)
+                continue
+            image_shas: dict[str, str] = {}
+            failure: list[str] | None = None
+            for column in value_columns:
+                if column not in image_columns:
+                    continue
+                name = values[column]
+                if name == stem:
+                    failure = self_referenced
+                    break
+                try:
+                    target = scoped.resolve_image(name)
+                except ReferenceImageError:
+                    failure = unresolved
+                    break
+                if not isinstance(target, Path):
+                    # An in-memory ``images`` entry (never the CLI's): no file
+                    # to record or hash.
+                    continue
+                # Same rule as SubtractBlank: "t04.tif" for image "t04" resolves
+                # to the frame's own file and is a self-reference too.
+                if source_image_stem(target) == stem:
+                    failure = self_referenced
+                    break
+                key = str(target.resolve())
+                resolved[name] = key
+                if hash_images:
+                    if key not in sha_cache:
+                        # Looked up on the module so a test can prove the
+                        # preflight path never reaches it.
+                        sha_cache[key] = _reference_context.reference_file_digest(
+                            Path(key)
+                        )
+                    image_shas[name] = sha_cache[key]
+            if failure is not None:
+                failure.append(label)
+                continue
+            if hash_images:
+                dataset_digests[stem] = canonical_digest(
+                    {"values": values, "images": image_shas}
+                )
+    return ReferencePlan(
+        total_images=total,
+        unmatched=tuple(unmatched),
+        ambiguous=tuple(ambiguous),
+        self_referenced=tuple(self_referenced),
+        unresolved=tuple(unresolved),
+        images_by_dataset=images_by_dataset,
+        digests=digests,
+    )
+
+
+def resolve_reference_table_path(
+    config: "ExecutionConfig", output_dir: Path | None
+) -> Path | None:
+    """The table a run's reference ops read: ``--metadata``, else the run's snapshot.
+
+    Measure mode applies no operation and so reads no table. Full mode falls
+    back to ``deliverables/metadata.csv``, process mode to
+    ``.phenotypic/reference_metadata.csv``.
+    """
+    from phenotypic.sdk_._io_constants import (
+        metadata_csv_deliverable_path,
+        reference_metadata_snapshot_path,
+    )
+
+    if config.measure_only:
+        return None
+    if config.metadata_csv is not None:
+        return Path(config.metadata_csv)
+    if output_dir is None:
+        return None
+    snapshot = (
+        reference_metadata_snapshot_path(output_dir)
+        if config.process_only_layer is not None
+        else metadata_csv_deliverable_path(output_dir)
+    )
+    return snapshot if snapshot.is_file() else None
+
+
+def input_read_kwargs(config: "ExecutionConfig") -> dict[str, Any]:
+    """``Image.imread`` kwargs for reference images: the inputs' reader settings."""
+    return {"bit_depth": config.bit_depth} if config.bit_depth else {}
+
+
+def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path | None:
+    """Byte-copy *source* to the process-mode snapshot; reuse it when *source* is None.
+
+    Args:
+        output_dir: The run's ``--output``.
+        source: The ``--metadata`` table, or ``None`` on a continuation.
+
+    Returns:
+        The snapshot, or ``None`` when there is no source and no snapshot.
+
+    Raises:
+        ValueError: *source* does not parse as CSV (pandas' ``ParserError``
+            or ``EmptyDataError``); an existing snapshot is left untouched.
+    """
+    import io
+
+    import pandas as pd
+
+    from phenotypic.sdk_._atomic_io import atomic_write_bytes
+    from phenotypic.sdk_._io_constants import reference_metadata_snapshot_path
+
+    destination = reference_metadata_snapshot_path(output_dir)
+    if source is None:
+        return destination if destination.is_file() else None
+    payload = Path(source).read_bytes()
+    # Never replace a valid snapshot with unparseable bytes; pandas refuses an
+    # unterminated quote that Polars reads as a header (as in
+    # phenotypicCLI._snapshot_metadata_csv).
+    pd.read_csv(io.BytesIO(payload))
+    if destination.is_file() and destination.read_bytes() == payload:
+        return destination
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_bytes(destination, payload)
+    if destination.read_bytes() != payload:
+        raise OSError(f"Reference metadata snapshot verification failed: {destination}")
+    return destination
+
+
+def write_reference_manifest(
+    output_dir: Path,
+    *,
+    plan: ReferencePlan,
+    table_path: Path,
+    table_sha256: str,
+    read_kwargs: dict[str, Any],
+) -> Path:
+    """Atomically publish the run's reference manifest."""
+    from phenotypic.sdk_._atomic_io import atomic_write_json
+    from phenotypic.sdk_._io_constants import reference_manifest_path
+
+    path = reference_manifest_path(output_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    datasets = {
+        name: {
+            "images": plan.images_by_dataset.get(name, {}),
+            "digests": plan.digests.get(name, {}),
+        }
+        for name in sorted(set(plan.images_by_dataset) | set(plan.digests))
+    }
+    atomic_write_json(
+        path,
+        {
+            "schema_version": MANIFEST_SCHEMA_VERSION,
+            "table": str(Path(table_path).resolve()),
+            "table_sha256": table_sha256,
+            "read_kwargs": read_kwargs,
+            "datasets": datasets,
+        },
+    )
+    _MANIFEST_CACHE.pop(str(path), None)
+    return path
+
+
+#: Parsed manifests keyed by path, stamped with ``(st_ino, st_mtime_ns,
+#: st_size)``. A 34,500-image manifest is ~3 MB and parses in ~19 ms (review
+#: M2 probe), and work-ids are computed per image in several startup passes
+#: and per image in every worker -- re-parsing each time would cost minutes
+#: per pass. The inode is in the stamp because every publication is an atomic
+#: replace (a new file): a re-plan that changes a blank name to one of the
+#: same length keeps the size, and two writes inside one timestamp tick keep
+#: the mtime.
+_MANIFEST_CACHE: dict[str, tuple[tuple[int, int, int], dict]] = {}
+
+
+def _parse_manifest(text: str) -> dict:
+    return json.loads(text)
+
+
+def read_reference_manifest(output_dir: Path) -> dict | None:
+    """The run's reference manifest, or ``None`` when the run needs none."""
+    from phenotypic.sdk_._io_constants import reference_manifest_path
+
+    path = reference_manifest_path(output_dir)
+    try:
+        stat = os.stat(path)
+    except FileNotFoundError:
+        _MANIFEST_CACHE.pop(str(path), None)
+        return None
+    stamp = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+    cached = _MANIFEST_CACHE.get(str(path))
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, _parse_manifest(path.read_text(encoding="utf-8")))
+        _MANIFEST_CACHE[str(path)] = cached
+    return cached[1]
+
+
+def remove_reference_manifest(output_dir: Path) -> None:
+    """Delete a stale manifest (the pipeline no longer reads reference metadata)."""
+    from phenotypic.sdk_._io_constants import reference_manifest_path
+
+    path = reference_manifest_path(output_dir)
+    path.unlink(missing_ok=True)
+    _MANIFEST_CACHE.pop(str(path), None)
+
+
+@functools.lru_cache(maxsize=4)
+def _manifest_base_context(
+    table: str, table_sha256: str, read_kwargs_json: str
+) -> "ReferenceContext":
+    """One parsed table per process, refused if its bytes moved since planning."""
+    from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
+
+    context = ReferenceContext(Path(table), read_kwargs=json.loads(read_kwargs_json))
+    if context.table_sha256 != table_sha256:
+        raise ReferenceTableError(
+            f"Reference table {table} changed since this run planned its references; "
+            f"run the same command again to re-plan"
+        )
+    return context
+
+
+@contextmanager
+def worker_reference_context(
+    output_dir: Path, dataset_name: str | None
+) -> Iterator["ReferenceContext | None"]:
+    """Activate the run's ReferenceContext for one image of *dataset_name*.
+
+    Yields ``None`` (and activates nothing) when the run has no manifest. The
+    context resolves only the reference images the manifest planned for the
+    dataset; it has no ``image_root``.
+
+    Raises:
+        ValueError: The run has a manifest and *dataset_name* is ``None``.
+        ReferenceTableError: The table's bytes no longer match the manifest.
+    """
+    manifest = read_reference_manifest(output_dir)
+    if manifest is None:
+        yield None
+        return
+    if dataset_name is None:
+        raise ValueError("A run with reference metadata needs the image's dataset name")
+    base = _manifest_base_context(
+        manifest["table"],
+        manifest["table_sha256"],
+        json.dumps(manifest["read_kwargs"], sort_keys=True),
+    )
+    images = manifest["datasets"].get(dataset_name, {}).get("images", {})
+    with base.narrow(dataset=dataset_name, images=images) as context:
+        yield context
+
+
+def reference_digest_for(
+    output_dir: Path | None, dataset_name: str, image_stem: str
+) -> str | None:
+    """The image's reference digest for its work-id; ``None`` when the run has none.
+
+    An image the manifest does not plan gets :data:`UNPLANNED_DIGEST`.
+    """
+    if output_dir is None:
+        return None
+    manifest = read_reference_manifest(output_dir)
+    if manifest is None:
+        return None
+    dataset = manifest["datasets"].get(dataset_name, {})
+    return dataset.get("digests", {}).get(image_stem, UNPLANNED_DIGEST)

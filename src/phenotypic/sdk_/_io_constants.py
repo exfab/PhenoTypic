@@ -718,6 +718,19 @@ VERIFICATION_CACHE_JSON: Final[str] = "verification_cache.json"
 #: :data:`_PRESERVED_ON_RESTART`.
 RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 
+#: ``<output>/.phenotypic/reference_metadata.csv`` -- byte-exact snapshot of the
+#: ``--metadata`` table for a ``--mode process`` run whose pipeline reads
+#: reference metadata (full mode reads ``deliverables/metadata.csv`` instead).
+#: Preserved across ``--restart``, as ``deliverables/metadata.csv`` is; the
+#: reason is at :data:`_PRESERVED_ON_RESTART`.
+REFERENCE_METADATA_CSV: Final[str] = "reference_metadata.csv"
+
+#: ``<output>/.phenotypic/reference_manifest.json`` -- the run's resolved
+#: reference plan (table, reader settings, reference-image paths, per-image
+#: digests), rewritten at every forward startup. Workers build their
+#: ReferenceContext from it. Re-derived, so ``--restart`` clears it.
+REFERENCE_MANIFEST_JSON: Final[str] = "reference_manifest.json"
+
 #: Schema version of the persisted verification cache.
 #:
 #: **Bump this when the deep-verification RULES change, not only when the JSON
@@ -1077,6 +1090,24 @@ def restart_epoch_path(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / RESTART_EPOCH_JSON
 
 
+def reference_metadata_snapshot_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/reference_metadata.csv``.
+
+    Pure path expression. The writer is
+    :func:`phenotypic._cli._cli_reference.snapshot_reference_metadata`.
+    """
+    return phenotypic_cache_dir(output_dir) / REFERENCE_METADATA_CSV
+
+
+def reference_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/reference_manifest.json``.
+
+    Pure path expression. The writer and readers live in
+    :mod:`phenotypic._cli._cli_reference`.
+    """
+    return phenotypic_cache_dir(output_dir) / REFERENCE_MANIFEST_JSON
+
+
 def verification_cache_path(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/verification_cache.json``.
 
@@ -1310,8 +1341,21 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
 #: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set
 #: those phases must find and extend does not belong in a function body where
 #: it can carry no documentation.
+#:
+#: ``reference_metadata.csv`` qualifies as a **run input**, not a verdict: it
+#: is the process-mode twin of ``deliverables/metadata.csv`` (which lives
+#: outside ``.phenotypic/`` and so already survives a restart), and the table a
+#: continuation without ``--metadata`` falls back to. Losing it would make a
+#: ``--restart`` without ``--metadata`` unrunnable, and nothing about it is a
+#: judgement made before the fence. ``reference_manifest.json`` does **not**
+#: qualify: it is derived from that table at every startup.
 _PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
-    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2}
+    {
+        TERMINAL_FAILURES_JSONL,
+        RESTART_EPOCH_JSON,
+        DIR_LEGACY_V2,
+        REFERENCE_METADATA_CSV,
+    }
 )
 
 
