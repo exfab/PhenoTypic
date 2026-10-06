@@ -197,8 +197,8 @@ class Sam2(GpuDetector):
             crops).  Typical range 0.5--0.9.  Default 0.7 (the SAM2 default).
         device: PyTorch device for inference.  ``"auto"`` probes
             accelerators in priority order (CUDA, MPS, XPU, HPU) and
-            raises ``RuntimeError`` if none is found.  Pass ``"cpu"``
-            to force CPU inference (very slow).
+            falls back to CPU with a warning if none is found.  Pass
+            ``"cpu"`` to force CPU inference (much slower).
         checkpoint: Path to a custom SAM2 checkpoint file.  When *None*
             (default), the standard checkpoint for *model_size* is
             downloaded automatically to the ``torch.hub`` cache.  Use
@@ -222,8 +222,8 @@ class Sam2(GpuDetector):
     Raises:
         ImportError: If ``sam2`` or ``torch`` is not installed.  Install
             with ``pip install phenotypic[torch]``.
-        RuntimeError: If ``device="auto"`` and no GPU/accelerator is
-            available.
+        RuntimeError: If an explicitly requested accelerator (e.g.
+            ``device="cuda"``) is unavailable.
 
     Best For:
         * Plates where colony appearance varies widely (mixed species,

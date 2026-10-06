@@ -306,7 +306,7 @@ class FssDinoDetector(GpuDetector):
         tile_overlap: Fractional overlap between neighbouring tiles. Default
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
-            raises ``RuntimeError`` if none is found.
+            falls back to CPU with a warning if none is found.
         input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
             layer the DINOv2 backbone was trained on), ``"gray"``, or
             ``"detect_mat"``. Single-channel layers are stacked to 3 channels
@@ -321,7 +321,7 @@ class FssDinoDetector(GpuDetector):
             with ``pip install phenotypic[foundation]``.
         ValueError: If the support set is empty or the image/mask lists differ
             in length.
-        RuntimeError: If ``device="auto"`` and no accelerator is available, or
+        RuntimeError: If an explicitly requested accelerator is unavailable, or
             (``dino_version=3``) the gated DINOv3 license was not accepted.
 
     Best For:

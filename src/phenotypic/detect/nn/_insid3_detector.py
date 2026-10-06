@@ -193,7 +193,7 @@ class Insid3Detector(GpuDetector):
         tile_overlap: Fractional overlap between neighbouring tiles. Default
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
-            raises ``RuntimeError`` if none is found.
+            falls back to CPU with a warning if none is found.
         input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
             layer the DINOv3 backbone was trained on), ``"gray"``, or
             ``"detect_mat"``. Single-channel layers are stacked to 3 channels
@@ -207,7 +207,7 @@ class Insid3Detector(GpuDetector):
         ImportError: If ``transformers`` / ``torch`` are not installed. Install
             with ``pip install phenotypic[foundation]``.
         ValueError: If ``reference_image``/``reference_mask`` are unset.
-        RuntimeError: If ``device="auto"`` and no accelerator is available, or
+        RuntimeError: If an explicitly requested accelerator is unavailable, or
             (``dino_version=3``) the gated DINOv3 license was not accepted.
 
     Best For:
