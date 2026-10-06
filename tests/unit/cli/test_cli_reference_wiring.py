@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
+import json
 from pathlib import Path
 
 import numpy as np
@@ -29,8 +31,11 @@ from phenotypic.enhance import SubtractBlank
 from phenotypic.measure import MeasureSize, MeasureSymZones
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_._io_constants import (
+    image_record_path,
+    metadata_csv_deliverable_path,
     reference_manifest_path,
     reference_metadata_snapshot_path,
+    terminal_failures_jsonl_path,
 )
 from tests.unit.cli._preflight_support import make_config, make_context
 
@@ -109,6 +114,23 @@ def test_operations_in_scope_is_the_mode_walk(mode):
     assert _cli_preflight.operations_in_scope(context) == (
         _cli_preflight.operations_run_in_mode(pipeline, mode)
     )
+
+
+def test_startup_plans_only_the_operations_the_mode_runs(run):
+    """A process run never needs a column only a measurer's private op reads."""
+    base, table, dataset = run
+    pipeline = ImagePipeline(
+        ops={"sb": SubtractBlank(), "det": OtsuDetector()},
+        meas={"zones": MeasureSymZones(center_detector=ImagePipeline(
+            ops={"sb": SubtractBlank(blank_column="Metadata_OtherBlank")}
+        ))},
+    )
+    config = _config(
+        base, _pipeline_file(base, pipeline), metadata_csv=table, process_only_layer="gray"
+    )
+    _cli_reference.publish_reference_inputs(config, [dataset], base / "out")
+    manifest = _cli_reference.read_reference_manifest(base / "out")
+    assert set(manifest["datasets"]["plate1"]["digests"]) == {"t01", "t02"}
 
 
 def test_reference_operations_follow_the_mode():
@@ -270,7 +292,7 @@ def _worker_identity(config, dataset, image, *, output_dir):
         save_overlays=config.save_overlays,
         drop_originals=config.drop_originals,
         mode="full",
-        output_dir=output_dir,
+        reference_digest=ft.image_reference_digest(output_dir, dataset, image, "full"),
     )
 
 
@@ -395,3 +417,190 @@ def test_process_mode_reports_metadata_ignored_only_without_reference_columns(ru
     used = _invoke(*_common(base, reference, *process), "--metadata", str(table), "--dry-run")
     assert used.exit_code == 0, used.output
     assert "--metadata is ignored" not in used.output
+
+
+def _tree(root: Path) -> dict[str, str]:
+    """Every file under *root* and its bytes' digest; empty when *root* is absent."""
+    if not root.exists():
+        return {}
+    return {
+        p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(root.rglob("*"))
+        if p.is_file()
+    }
+
+
+@pytest.mark.parametrize(
+    ("mode", "snapshot"),
+    [((), metadata_csv_deliverable_path),
+     (("--mode", "process", "--layer", "gray"), reference_metadata_snapshot_path)],
+)
+def test_an_invalid_fallback_snapshot_is_refused_even_when_validation_is_skipped(
+    cli_run, mode, snapshot
+):
+    """Review F3: without --metadata the early check reads the snapshot the run would use."""
+    base, _, pipeline = cli_run
+    path = snapshot(base / "out")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("Strain\nWT\n", encoding="utf-8")
+    before = _tree(base / "out")
+    result = _invoke(*_common(base, pipeline, *mode), "--skip-validation", "--restart")
+    assert result.exit_code == 2, result.output
+    assert str(path) in result.output
+    assert _tree(base / "out") == before
+
+
+@pytest.mark.parametrize("mode", [(), ("--mode", "process", "--layer", "gray")])
+def test_no_table_at_all_is_refused_before_anything_is_written(run, mode):
+    """Review F3: refused in the read-only half, so nothing is created under --output."""
+    base, _, _ = run
+    pipeline = _pipeline_file(base, _reference_pipeline())
+    result = _invoke(*_common(base, pipeline, *mode), "--skip-validation", "--restart")
+    assert result.exit_code == 2, result.output
+    assert "PF-REF-NO-TABLE" in result.output
+    assert not (base / "out").exists()
+
+
+def test_measure_mode_refuses_a_pipeline_that_reads_reference_metadata(cli_run):
+    """User decision: re-measuring a reference pipeline is refused up front."""
+    base, _, _ = cli_run
+    pipeline = _pipeline_file(base, _measurer_only_pipeline(), "measure.json")
+    before = _tree(base / "out")
+    result = _invoke(
+        "--mode", "measure", "--pipeline", str(pipeline),
+        "--output", str(base / "out"), "--skip-validation",
+    )
+    assert result.exit_code == 2, result.output
+    assert "center_detector" in result.output
+    assert "--mode full" in result.output
+    assert _tree(base / "out") == before
+
+
+
+# ---- one plan per image: identity and context agree (review F1) -----------
+
+
+def _replan(out: Path, dataset: str, stem: str) -> None:
+    """A concurrent invocation re-planned *stem*: its manifest digest changed."""
+    path = reference_manifest_path(out)
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["datasets"][dataset]["digests"][stem] = "replanned-by-another-invocation"
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(manifest), encoding="utf-8")
+    tmp.replace(path)
+
+
+def test_a_pinned_context_refuses_an_image_planned_differently(run):
+    base, table, dataset = run
+    out = base / "out"
+    config = _config(base, _pipeline_file(base, _reference_pipeline()), metadata_csv=table)
+    _cli_reference.publish_reference_inputs(config, [dataset], out)
+    pins = {
+        stem: _cli_reference.ReferencePin(
+            stem, _cli_reference.reference_digest_for(out, "plate1", stem)
+        )
+        for stem in ("t01", "t02")
+    }
+    with _cli_reference.worker_reference_context(out, "plate1", pin=pins["t01"]) as active:
+        assert active is not None
+    _replan(out, "plate1", "t01")
+    with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
+        with _cli_reference.worker_reference_context(out, "plate1", pin=pins["t01"]):
+            pass
+    with _cli_reference.worker_reference_context(out, "plate1", pin=pins["t02"]) as active:
+        assert active is not None
+
+
+def _rgb(level: int, colony: bool) -> np.ndarray:
+    image = np.full((32, 32, 3), level, dtype=np.uint8)
+    if colony:
+        image[10:18, 10:18] = 230
+    return image
+
+
+@pytest.fixture
+def worker_run(tmp_path, monkeypatch):
+    """One reference frame ready for the ordinary SLURM worker, startup already done."""
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    root = tmp_path / "images" / "plate1"
+    root.mkdir(parents=True)
+    tifffile.imwrite(root / "blank.tiff", _rgb(20, False))
+    tifffile.imwrite(root / "t01.tiff", _rgb(20, True))
+    table = tmp_path / "layout.csv"
+    pd.DataFrame({"ImageName": ["t01"], "BlankImage": ["blank"]}).to_csv(table, index=False)
+    pipeline = _pipeline_file(
+        tmp_path,
+        ImagePipeline(
+            ops={"sb": SubtractBlank(), "det": OtsuDetector()}, meas={"size": MeasureSize()}
+        ),
+    )
+    dataset = Dataset(
+        name="plate1", images=[root / "t01.tiff"], input_dir=root,
+        output_dir=tmp_path / "out" / "plate1",
+    )
+    return tmp_path, table, pipeline, dataset
+
+
+_WORKER_MODES = {
+    "full": (dict(), ["--mode", "full"]),
+    "process": (
+        dict(process_only_layer="detect_mat"),
+        ["--mode", "process", "--layer", "detect_mat"],
+    ),
+}
+
+
+def _start_worker(base, table, pipeline, dataset, mode):
+    """Startup + selection as the submitter does them; returns the worker's argv."""
+    overrides, mode_args = _WORKER_MODES[mode]
+    out = base / "out"
+    config = _config(
+        base, pipeline, metadata_csv=table, save_overlays=False, **overrides
+    )
+    _cli_reference.publish_reference_inputs(config, [dataset], out)
+    image = dataset.images[0]
+    expected, _ = ft.work_id_for_image(config, "plate1", image)
+    argv = [
+        "--pipeline", str(pipeline), "--image", str(image), "--output-dir", str(out),
+        "--dataset-name", "plate1", "--image-type", "Image",
+        "--input-root", str(base / "images"), "--no-save-overlays", *mode_args,
+        "--expected-work-id", expected,
+        "--expected-input-sha256", ft.file_sha256(image),
+        "--expected-pipeline-sha256", ft.file_sha256(pipeline),
+    ]
+    return out, expected, argv
+
+
+@pytest.mark.parametrize("mode", ["full", "process"])
+def test_the_slurm_worker_publishes_under_the_reference_work_id(worker_run, mode):
+    """Review F6 (M4): the worker's identity check carries the manifest digest."""
+    base, table, pipeline, dataset = worker_run
+    out, expected, argv = _start_worker(base, table, pipeline, dataset, mode)
+    result = CliRunner().invoke(_cli_process_single.main, argv)
+    assert result.exit_code == 0, result.output
+    record = json.loads(image_record_path(out, "plate1", "t01").read_text(encoding="utf-8"))
+    assert record["work_id"] == expected
+
+
+@pytest.mark.parametrize("mode", ["full", "process"])
+def test_the_slurm_worker_refuses_a_plan_replaced_after_its_identity_check(
+    worker_run, mode, monkeypatch
+):
+    """Review F1: a re-plan between identity and apply is refused, never certified."""
+    base, table, pipeline, dataset = worker_run
+    out, _, argv = _start_worker(base, table, pipeline, dataset, mode)
+    identity = _cli_process_single._worker_work_identity
+
+    def identity_then_replan(**kwargs):
+        computed = identity(**kwargs)
+        _replan(out, "plate1", "t01")
+        return computed
+
+    monkeypatch.setattr(_cli_process_single, "_worker_work_identity", identity_then_replan)
+    result = CliRunner().invoke(_cli_process_single.main, argv)
+    assert result.exit_code == 1, result.output
+    assert "ReferencePlanStaleError" in result.output
+    assert not image_record_path(out, "plate1", "t01").exists()
+    # Not the image's fault: no terminal record, so the next run retries it (F2).
+    failures = terminal_failures_jsonl_path(out)
+    assert not failures.exists() or not failures.read_text(encoding="utf-8").strip()

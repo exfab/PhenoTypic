@@ -27,7 +27,11 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
-from ._cli_reference import worker_reference_context
+from ._cli_reference import (
+    ReferencePin,
+    ReferencePlanStaleError,
+    worker_reference_context,
+)
 
 if TYPE_CHECKING:
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
@@ -274,6 +278,7 @@ def process_single_apply_only_core(
     process_format: ProcessFormat = "tiff",
     run_initiation: RunInitiation | None = None,
     dataset_name: str | None = None,
+    reference_pin: ReferencePin | None = None,
 ) -> bool:
     """Apply the pipeline to one image and export ``layer``. No measurement.
 
@@ -288,7 +293,9 @@ def process_single_apply_only_core(
 
     ``dataset_name`` selects the image's entry in the run's reference
     manifest; it is required when the run has one (a pipeline that reads
-    reference metadata) and unused otherwise.
+    reference metadata) and unused otherwise. ``reference_pin`` is the
+    reference digest the caller's work-id was computed from; the apply
+    refuses a manifest that has since re-planned the image.
     """
     image: Image | None = None
     provenance_application_opened = False
@@ -350,7 +357,7 @@ def process_single_apply_only_core(
         )
         provenance_application_opened = True
         with continuing_provenance_application(image), worker_reference_context(
-            output_dir, dataset_name
+            output_dir, dataset_name, pin=reference_pin
         ):
             pipeline.apply(image, inplace=True)
         # Figures only when there is a store to hold them (spec §3 by mode),
@@ -385,6 +392,10 @@ def process_single_apply_only_core(
         # convention would reject every store we publish (spec 2.3.4).
         set_provenance_status(image, "complete")
     except MemoryError:
+        raise
+    except ReferencePlanStaleError:
+        # Not this image's fault: never a terminal scientific failure.
+        _mark_provenance_failed()
         raise
     except Exception as exc:
         _mark_provenance_failed()

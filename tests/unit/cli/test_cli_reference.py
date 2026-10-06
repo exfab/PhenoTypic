@@ -13,7 +13,7 @@ import tifffile
 from phenotypic import ImagePipeline, ReferenceContext
 from phenotypic._cli import _cli_reference as ref
 from phenotypic._cli._cli_types import Dataset
-from phenotypic._core._reference_context import ReferenceTableError
+from phenotypic._core._reference_context import ReferenceContextError
 from phenotypic.enhance import SubtractBlank
 from phenotypic.sdk_._io_constants import (
     metadata_csv_deliverable_path,
@@ -141,7 +141,10 @@ def test_manifest_round_trip_and_worker_context(tree, tmp_path):
         assert active.load_image("blank").gray.shape == (8, 8)
     assert ReferenceContext.current() is None
     assert ref.reference_digest_for(out, "plate1", "t01") == plan.digests["plate1"]["t01"]
-    assert ref.reference_digest_for(out, "plate1", "orphan") == "unplanned"
+    # An image planning failed is pinned to WHY it failed (review F4).
+    assert ref.reference_digest_for(out, "plate1", "orphan") == "unplanned:unmatched"
+    # An image the manifest does not know at all (arrived after startup).
+    assert ref.reference_digest_for(out, "plate1", "late") == ref.UNPLANNED_DIGEST
 
 
 def test_no_manifest_means_no_context_and_no_digest(tmp_path):
@@ -183,9 +186,36 @@ def test_worker_refuses_a_table_changed_after_planning(tree, tmp_path):
     ref.write_reference_manifest(out, plan=plan, table_path=table, table_sha256=ctx.table_sha256, read_kwargs={})
     table.write_text(table.read_text() + "t09,blank\n", encoding="utf-8")
     ref._manifest_base_context.cache_clear()
-    with pytest.raises(ReferenceTableError, match="changed"):
+    with pytest.raises(ref.ReferencePlanStaleError, match="changed") as caught:
         with ref.worker_reference_context(out, "plate1"):
             pass
+    # Not a property of the image, so not a ReferenceContextError that an apply
+    # site would wrap as a per-image scientific failure (review F2).
+    assert not isinstance(caught.value, ReferenceContextError)
+
+
+def test_an_unplanned_digest_follows_the_failure_reason(tree, tmp_path):
+    """Review F4: fixing one cause and hitting another re-derives the image."""
+    table, dataset = tree
+    single = Dataset(name="plate1", images=[dataset.input_dir / "t01.tif"],
+                     input_dir=dataset.input_dir, output_dir=dataset.output_dir)
+
+    def unplanned(rows):
+        path = tmp_path / "rows.csv"
+        pd.DataFrame(rows).to_csv(path, index=False)
+        plan = ref.plan_references(ReferenceContext(path), _pipe(), [single], hash_images=True)
+        assert plan.digests == {"plate1": {}}
+        return plan.unplanned["plate1"]["t01"]
+
+    unmatched = unplanned({"Metadata_ImageName": ["t99"], "Metadata_BlankImage": ["blank"]})
+    missing = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["nope"]})
+    other_missing = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["gone"]})
+    itself = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["t01"]})
+    assert unmatched == "unplanned:unmatched"
+    assert missing.startswith("unplanned:unresolved:")
+    assert len({unmatched, missing, other_missing, itself}) == 4
+    # Never equal to a real (hex) digest.
+    assert all(value.startswith("unplanned") for value in (missing, itself))
 
 
 def test_snapshot_copies_bytes_and_reuses_existing(tmp_path, tree):

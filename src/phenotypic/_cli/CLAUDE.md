@@ -61,7 +61,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 The read-only half parses and validates options, scans the inputs, runs the
 refusals that cannot be skipped (the GPU placement refusal, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
-`--metadata`, `--bit-depth` and `--gpu-slurm` parses), loads the pipeline,
+`--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
+reference-metadata refusals in **Reference metadata** below), loads the pipeline,
 runs the **run preflight**, and ends at the `--dry-run` exit. Only then does
 the mutating half run: the `--restart` clear, the `--overwrite` rmtree,
 `mint_run_identity`, and everything after. **A new step that writes, deletes
@@ -90,6 +91,65 @@ Walking everything would refuse a `process` run over a measurer it never runs.
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## Reference metadata (`_cli_reference.py`)
+
+Spec `docs/superpowers/specs/2026-10-05-ref-metadata-ops/design.md` §5.2. An
+operation mixing in `RefMetadata` (`SubtractBlank`) reads per-image values from
+the `--metadata` table through a `ReferenceContext`. Workers never receive the
+table as an argument; they read a run-level plan.
+
+- **Only the operations the mode runs count.** `reference_operations_in_scope`
+  is the preflight's mode walk (`operations_run_in_mode`, the function behind
+  `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
+  in `full` mode and not in `process` mode.
+- **Process mode uses `--metadata` only when those operations exist.** It is
+  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.csv`
+  (preserved across `--restart`), a continuation may omit it, and a table
+  inside `--output` is refused like any run input. Otherwise the old
+  "`--metadata` is ignored in --mode process" warning still prints.
+- **Two un-skippable refusals in the read-only half**, above `--restart`,
+  `--overwrite`, `mint_run_identity` and `--dry-run`:
+  - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
+    (the snapshot it would fall back to is deleted); no `--metadata` and no
+    snapshot (`[PF-REF-NO-TABLE]`); or a table, given or snapshotted, that
+    `ReferenceContext` cannot read.
+  - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
+    whose measurers read reference metadata. Measure mode plans nothing, never
+    touches the manifest and carries no reference digest in its work-ids, so
+    re-measuring such a pipeline is not supported (user decision, 2026-10-06);
+    the message points at `--mode full`.
+- **Startup publishes the plan before any work-id.** `publish_reference_inputs`
+  runs in `_prepare_incremental_startup` and writes
+  `.phenotypic/reference_manifest.json` (table path and sha, reader kwargs,
+  each dataset's resolved reference images, each image's digest). An image
+  whose planning failed gets `"unplanned:<reason>[:<values digest>]"`, so a
+  changed cause re-derives it rather than matching a terminal failure recorded
+  for the old one. Measure mode returns without touching the manifest. A
+  pipeline that reads no reference metadata removes a stale one.
+- **Every apply site enters `worker_reference_context`.** Seven call sites:
+  `process_single_image_core` (`apply_and_measure`),
+  `process_single_apply_only_core`, Stage 1's `pre_pipeline.apply`, Stage 2's
+  `_apply_stage2_prefix` (inside its `try`), Stage 3's replay `apply` **and**
+  its `measure` (a measurer's private op reads the table too), and
+  `StagedGpuStrategy._export_objmap_layer`. A new site added bare fails every
+  image with `RefMetadataUnavailableError`. Guards:
+  `test_every_worker_core_enters_the_reference_context` (a source tripwire)
+  and the behavioural runs in `tests/unit/cli/test_cli_reference_e2e.py`.
+- **One identity per image, before the apply.** The manifest is the first
+  work-id input that a later invocation rewrites in place, so a worker reads
+  the image's digest **once** (`work_identity_for_image`, or `image_reference_digest`
+  in the SLURM worker), publishes and records failures under that identity,
+  and hands the same digest to the context as a `ReferencePin`. The context
+  refuses a manifest whose digest for the image has since changed. Never
+  recompute a work-id after the apply on these paths. Staged Stages 1–3 are
+  not pinned: the staged SLURM path refuses a concurrent invocation through
+  its job ledger.
+- **`ReferencePlanStaleError` is never terminal.** It is raised for a pin
+  mismatch or a table whose bytes no longer match the manifest. It is a
+  `RuntimeError`, not a `ReferenceContextError`, and every scientific wrapper
+  re-raises it unwrapped (beside `MemoryError`), so no terminal record is
+  written and the next run re-attempts the image without `--retry-failures`.
 
 ## Staged GPU engine
 

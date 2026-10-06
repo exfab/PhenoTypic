@@ -99,6 +99,18 @@ def test_a_clean_table_has_no_findings(tmp_path):
     assert check_reference_metadata(_context(tmp_path, rows)) == []
 
 
+def test_the_check_never_hashes_a_reference_image(tmp_path, monkeypatch):
+    """The module contract is headers only (S7): the check itself, not just the planner."""
+    from phenotypic._core import _reference_context
+
+    def refuse(path):
+        raise AssertionError(f"the preflight hashed {path}")
+
+    monkeypatch.setattr(_reference_context, "reference_file_digest", refuse)
+    rows = {"Metadata_ImageName": ["t01", "t02"], "Metadata_BlankImage": ["blank", "blank"]}
+    assert check_reference_metadata(_context(tmp_path, rows)) == []
+
+
 def test_bare_headers_are_accepted(tmp_path):
     """ImageName/BlankImage behave like their Metadata_ spellings (Review Focus 3)."""
     rows = {"ImageName": ["t01", "t02"], "BlankImage": ["blank", "blank"]}

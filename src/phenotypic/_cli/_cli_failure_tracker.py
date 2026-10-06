@@ -16,7 +16,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, NamedTuple, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
@@ -401,6 +401,19 @@ def _normalized_input_relative_path(
     return Path(source.name) if relative == Path(".") else relative
 
 
+class WorkIdentity(NamedTuple):
+    """An image's work-id, its input-relative path, and the reference digest in it.
+
+    ``reference_digest`` is what a worker pins its reference context to
+    (``_cli_reference.ReferencePin``), so the plan it applies is the plan its
+    work-id names.
+    """
+
+    work_id: str
+    relative_path: str
+    reference_digest: str | None
+
+
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
@@ -410,6 +423,20 @@ def work_id_for_image(
     does not take the ``is_file`` branch. It falls through to ``relative_to``,
     which yields ``Path(".")`` when the two paths are the same -- see the
     degenerate-path recovery below.
+    """
+    identity = work_identity_for_image(config, dataset, image_path)
+    return identity.work_id, identity.relative_path
+
+
+def work_identity_for_image(
+    config: "ExecutionConfig", dataset: str, image_path: Path
+) -> WorkIdentity:
+    """:func:`work_id_for_image`, keeping the reference digest it was computed from.
+
+    A worker that applies the pipeline computes this once, before the apply,
+    and uses it for the context pin and for its success or failure record:
+    the manifest is rewritten by every forward startup, so recomputing after
+    the apply could name a plan the apply never used (review F1).
     """
     relative_path = _normalized_input_relative_path(
         config.input_path, image_path
@@ -422,7 +449,10 @@ def work_id_for_image(
         else "full"
     )
     pipeline_fingerprint = file_sha256(config.pipeline_json)
-    return (
+    reference_digest = image_reference_digest(
+        getattr(config, "output_dir", None), dataset, image_path, mode
+    )
+    return WorkIdentity(
         compute_work_id(
             dataset=dataset,
             relative_image_path=relative_path.as_posix(),
@@ -430,11 +460,10 @@ def work_id_for_image(
             pipeline_fingerprint=pipeline_fingerprint,
             processing_config_digest=processing_configuration_digest(config),
             mode=mode,
-            reference_digest=image_reference_digest(
-                getattr(config, "output_dir", None), dataset, image_path, mode
-            ),
+            reference_digest=reference_digest,
         ),
         relative_path.as_posix(),
+        reference_digest,
     )
 
 

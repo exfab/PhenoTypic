@@ -46,7 +46,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
-from ._cli_reference import worker_reference_context
+from ._cli_reference import ReferencePlanStaleError, worker_reference_context
 from ._cli_replay_detector import build_replay_pipeline
 from ._cli_stage2_token import (
     delete_stage2_raw,
@@ -410,7 +410,8 @@ def stage1_preprocess_core(
             )
     except SlurmGenerationInactiveError:
         raise
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
+        # A stale reference plan is not this image's fault: never terminal.
         if image is not None and checkpoint_ready:
             _mark_failed_checkpoint(
                 store, image, active_check, commit_guard=commit_guard
@@ -469,7 +470,7 @@ def stage2_detect_core(
         batch = detector._collate([sample])
         result = detector._infer_batch(batch)[0]
         detector_duration = perf_counter() - compute_started
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
         raise
     except Exception as exc:
         raise PerImageScientificError(STAGE_GPU_DETECT, exc) from exc
@@ -698,7 +699,7 @@ def stage3_merge_measure_core(
             )
     except SlurmGenerationInactiveError:
         raise
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
         _mark_failed_checkpoint(
             store, image, active_check, commit_guard=commit_guard
         )

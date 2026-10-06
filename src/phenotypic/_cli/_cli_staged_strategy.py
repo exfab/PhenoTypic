@@ -36,10 +36,18 @@ from ._cli_execution_strategies import (
     _record_local_terminal_failure,
 )
 from ._cli_pipeline_split import split_pipeline_at_gpu
-from ._cli_reference import worker_reference_context
+from ._cli_reference import (
+    ReferencePin,
+    ReferencePlanStaleError,
+    worker_reference_context,
+)
 from ._cli_replay_detector import build_replay_pipeline
 from ._cli_completion import valid_image_success
-from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
+from ._cli_failure_tracker import (
+    PerImageScientificError,
+    work_id_for_image,
+    work_identity_for_image,
+)
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
@@ -453,7 +461,10 @@ class StagedGpuStrategy(ExecutionStrategy):
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap", fmt="tiff"
             )
-            work_id, _ = work_id_for_image(cfg, ds.name, img)
+            # One identity, before the residual apply: it pins the context and
+            # is the identity the export is published under (review F1).
+            identity = work_identity_for_image(cfg, ds.name, img)
+            work_id = identity.work_id
             if cfg.resume and valid_image_success(
                 output_dir,
                 dataset=ds.name,
@@ -518,12 +529,18 @@ class StagedGpuStrategy(ExecutionStrategy):
                     try:
                         with continuing_provenance_application(
                             image
-                        ), worker_reference_context(output_dir, ds.name):
+                        ), worker_reference_context(
+                            output_dir,
+                            ds.name,
+                            pin=ReferencePin(
+                                source_image_stem(img), identity.reference_digest
+                            ),
+                        ):
                             # Ops only; never `.measure()` -- `apply()` runs
                             # `_run_operations` alone, so meas/post/filters/
                             # model are not triggered by this call.
                             residual.apply(image, inplace=True)
-                    except MemoryError:
+                    except (MemoryError, ReferencePlanStaleError):
                         raise
                     except Exception as exc:
                         raise PerImageScientificError(
@@ -537,6 +554,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ds.name,
                         img,
                         attempt_id,
+                        work_identity=(identity.work_id, identity.relative_path),
                     )
                     # Ordering (ledger FLOW-6): publish, then token, then raw.
                     delete_stage2_token(
@@ -555,5 +573,6 @@ class StagedGpuStrategy(ExecutionStrategy):
                     exc,
                     traceback.format_exc(),
                     attempt_id,
+                    work_identity=(identity.work_id, identity.relative_path),
                 )
                 results[ds.name]["failed"] += 1

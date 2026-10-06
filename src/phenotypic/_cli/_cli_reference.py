@@ -26,10 +26,52 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._cli_types import Dataset, ExecutionConfig
 
 MANIFEST_SCHEMA_VERSION = 1
-#: The digest of an image the manifest does not plan (it failed planning, or
-#: arrived after startup). Distinct from every real digest, so such an image's
-#: work-id never matches a planned one.
+#: The digest of an image the manifest does not know (it arrived after
+#: startup). An image whose planning *failed* gets ``"unplanned:<reason>"``
+#: instead (:func:`_unplanned_digest`). Neither is hex, so neither ever equals
+#: a planned image's digest.
 UNPLANNED_DIGEST = "unplanned"
+
+
+class ReferencePlanStaleError(RuntimeError):
+    """The run's reference plan changed under a worker; the image is not at fault.
+
+    Raised when the table's bytes no longer match the manifest, or when the
+    manifest's digest for an image no longer matches the one its work-id was
+    computed from (a later invocation re-planned it). Deliberately not a
+    ``ReferenceContextError``: every apply site lets it through rather than
+    wrapping it as a per-image scientific failure, so no terminal record is
+    written and the next run simply re-attempts the image.
+    """
+
+
+@dataclass(frozen=True)
+class ReferencePin:
+    """The reference digest an image's work-id was computed from.
+
+    Handed to :func:`worker_reference_context` so the context and the work-id
+    the result is published under always describe the same plan.
+
+    Attributes:
+        image_stem: The image's ``source_image_stem``.
+        digest: Its digest at identity time (``None`` without a manifest).
+    """
+
+    image_stem: str
+    digest: str | None
+
+
+def _unplanned_digest(reason: str, values: dict[str, str] | None = None) -> str:
+    """``"unplanned:<reason>"``, plus the looked-up values when there are any.
+
+    A changed reason, or a changed value for the same reason (a blank renamed
+    from one missing file to another), changes the work-id, so a terminal
+    failure recorded for the old cause never pins the image (review F4).
+    """
+    from phenotypic.sdk_._digests import canonical_digest
+
+    marker = f"{UNPLANNED_DIGEST}:{reason}"
+    return f"{marker}:{canonical_digest(values)}" if values else marker
 
 
 @dataclass(frozen=True)
@@ -45,6 +87,8 @@ class ReferencePlan:
             file in the dataset's input directory.
         images_by_dataset: ``{dataset: {name as written: absolute path}}``.
         digests: ``{dataset: {stem: digest}}``; empty without hashing.
+        unplanned: ``{dataset: {stem: "unplanned:<reason>[:<values digest>]"}}``
+            for every image in the four failure lists.
     """
 
     total_images: int
@@ -54,6 +98,7 @@ class ReferencePlan:
     unresolved: tuple[str, ...]
     images_by_dataset: dict[str, dict[str, str]]
     digests: dict[str, dict[str, str]]
+    unplanned: dict[str, dict[str, str]]
 
 
 def _union(groups: Iterable[tuple[str, ...]]) -> tuple[str, ...]:
@@ -115,12 +160,14 @@ def plan_references(
     unresolved: list[str] = []
     images_by_dataset: dict[str, dict[str, str]] = {}
     digests: dict[str, dict[str, str]] = {}
+    unplanned: dict[str, dict[str, str]] = {}
     sha_cache: dict[str, str] = {}
     total = 0
     for dataset in datasets:
         scoped = context.narrow(dataset=dataset.name, image_root=dataset.input_dir)
         resolved = images_by_dataset.setdefault(dataset.name, {})
         dataset_digests = digests.setdefault(dataset.name, {})
+        dataset_unplanned = unplanned.setdefault(dataset.name, {})
         for image_path in dataset.images:
             total += 1
             # The name Image.imread gives this input ("x.ome.zarr" -> "x").
@@ -129,7 +176,9 @@ def plan_references(
             try:
                 values = scoped.lookup(stem, value_columns)
             except ReferenceLookupError as exc:
-                (unmatched if exc.reason == "unmatched" else ambiguous).append(label)
+                reason = "unmatched" if exc.reason == "unmatched" else "ambiguous"
+                (unmatched if reason == "unmatched" else ambiguous).append(label)
+                dataset_unplanned[stem] = _unplanned_digest(reason)
                 continue
             image_shas: dict[str, str] = {}
             failure: list[str] | None = None
@@ -166,6 +215,8 @@ def plan_references(
                     image_shas[name] = sha_cache[key]
             if failure is not None:
                 failure.append(label)
+                reason = "self" if failure is self_referenced else "unresolved"
+                dataset_unplanned[stem] = _unplanned_digest(reason, values)
                 continue
             if hash_images:
                 dataset_digests[stem] = canonical_digest(
@@ -179,7 +230,22 @@ def plan_references(
         unresolved=tuple(unresolved),
         images_by_dataset=images_by_dataset,
         digests=digests,
+        unplanned=unplanned,
     )
+
+
+def _reference_operations_with_paths(
+    pipeline: "ImagePipeline", mode: "RunMode"
+) -> list[tuple[tuple[str, ...], Any]]:
+    from phenotypic.abc_._ref_metadata import RefMetadata
+
+    from ._cli_preflight import operations_run_in_mode
+
+    return [
+        (path, operation)
+        for path, operation in operations_run_in_mode(pipeline, mode)
+        if isinstance(operation, RefMetadata) and operation._ref_columns()
+    ]
 
 
 def reference_operations_in_scope(
@@ -192,15 +258,12 @@ def reference_operations_in_scope(
     inside a measurer never runs in ``process`` mode, so a process run never
     needs the column it reads.
     """
-    from phenotypic.abc_._ref_metadata import RefMetadata
+    return [op for _, op in _reference_operations_with_paths(pipeline, mode)]
 
-    from ._cli_preflight import operations_run_in_mode
 
-    return [
-        operation
-        for _, operation in operations_run_in_mode(pipeline, mode)
-        if isinstance(operation, RefMetadata) and operation._ref_columns()
-    ]
+def reference_operation_paths(pipeline: "ImagePipeline", mode: "RunMode") -> list[str]:
+    """Tree paths (``/``-joined) of :func:`reference_operations_in_scope`."""
+    return ["/".join(path) for path, _ in _reference_operations_with_paths(pipeline, mode)]
 
 
 def publish_reference_inputs(
@@ -343,9 +406,12 @@ def write_reference_manifest(
     datasets = {
         name: {
             "images": plan.images_by_dataset.get(name, {}),
-            "digests": plan.digests.get(name, {}),
+            # An image whose planning failed is pinned to why (review F4).
+            "digests": {**plan.unplanned.get(name, {}), **plan.digests.get(name, {})},
         }
-        for name in sorted(set(plan.images_by_dataset) | set(plan.digests))
+        for name in sorted(
+            set(plan.images_by_dataset) | set(plan.digests) | set(plan.unplanned)
+        )
     }
     atomic_write_json(
         path,
@@ -408,11 +474,11 @@ def _manifest_base_context(
     table: str, table_sha256: str, read_kwargs_json: str
 ) -> "ReferenceContext":
     """One parsed table per process, refused if its bytes moved since planning."""
-    from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
+    from phenotypic._core._reference_context import ReferenceContext
 
     context = ReferenceContext(Path(table), read_kwargs=json.loads(read_kwargs_json))
     if context.table_sha256 != table_sha256:
-        raise ReferenceTableError(
+        raise ReferencePlanStaleError(
             f"Reference table {table} changed since this run planned its references; "
             f"run the same command again to re-plan"
         )
@@ -421,7 +487,10 @@ def _manifest_base_context(
 
 @contextmanager
 def worker_reference_context(
-    output_dir: Path, dataset_name: str | None
+    output_dir: Path,
+    dataset_name: str | None,
+    *,
+    pin: ReferencePin | None = None,
 ) -> Iterator["ReferenceContext | None"]:
     """Activate the run's ReferenceContext for one image of *dataset_name*.
 
@@ -429,11 +498,34 @@ def worker_reference_context(
     context resolves only the reference images the manifest planned for the
     dataset; it has no ``image_root``.
 
+    Args:
+        output_dir: The run root.
+        dataset_name: The image's dataset.
+        pin: The digest the image's work-id was computed from. Checked against
+            the same manifest read the context is built from, so a later
+            invocation re-planning the image between the worker's identity
+            and its apply is refused rather than published under a work-id
+            that describes a different plan (review F1). ``None`` checks
+            nothing.
+
     Raises:
         ValueError: The run has a manifest and *dataset_name* is ``None``.
-        ReferenceTableError: The table's bytes no longer match the manifest.
+        ReferencePlanStaleError: The table's bytes no longer match the
+            manifest, or the manifest's digest for the pinned image changed.
     """
     manifest = read_reference_manifest(output_dir)
+    if pin is not None:
+        current = (
+            None
+            if manifest is None or dataset_name is None
+            else _digest_in(manifest, dataset_name, pin.image_stem)
+        )
+        if current != pin.digest:
+            raise ReferencePlanStaleError(
+                f"The reference plan for {dataset_name}/{pin.image_stem} changed "
+                f"after this worker computed its work identity (another invocation "
+                f"re-planned the run); run the same command again"
+            )
     if manifest is None:
         yield None
         return
@@ -454,12 +546,18 @@ def reference_digest_for(
 ) -> str | None:
     """The image's reference digest for its work-id; ``None`` when the run has none.
 
-    An image the manifest does not plan gets :data:`UNPLANNED_DIGEST`.
+    An image whose planning failed gets its recorded ``"unplanned:<reason>"``
+    marker; one the manifest does not know at all gets
+    :data:`UNPLANNED_DIGEST`.
     """
     if output_dir is None:
         return None
     manifest = read_reference_manifest(output_dir)
     if manifest is None:
         return None
+    return _digest_in(manifest, dataset_name, image_stem)
+
+
+def _digest_in(manifest: dict, dataset_name: str, image_stem: str) -> str:
     dataset = manifest["datasets"].get(dataset_name, {})
     return dataset.get("digests", {}).get(image_stem, UNPLANNED_DIGEST)

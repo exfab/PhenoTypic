@@ -34,7 +34,11 @@ from phenotypic._core._provenance import (
     write_provenance_checkpoint,
 )
 from ._cli_output_manager import OutputManager
-from ._cli_reference import worker_reference_context
+from ._cli_reference import (
+    ReferencePin,
+    ReferencePlanStaleError,
+    worker_reference_context,
+)
 from ._cli_process_only import (
     process_only_output_path,
     process_single_apply_only_core,
@@ -141,12 +145,13 @@ def _worker_work_identity(
     save_overlays: bool,
     drop_originals: bool = False,
     mode: str,
-    output_dir: Path | None = None,
+    reference_digest: str | None = None,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection.
 
-    ``output_dir`` is the run root, where the reference manifest supplies the
-    image's reference digest; ``None`` reads no manifest.
+    ``reference_digest`` is the image's entry in the run's reference manifest
+    (``image_reference_digest``), read once by the caller so the identity and
+    the context the apply runs in are pinned to the same plan.
     """
     relative_path = _normalized_input_relative_path(
         input_root, image
@@ -177,9 +182,7 @@ def _worker_work_identity(
                 drop_originals=drop_originals,
             ),
             mode=mode,
-            reference_digest=image_reference_digest(
-                output_dir, dataset_name, image, mode
-            ),
+            reference_digest=reference_digest,
         ),
         relative_path,
     )
@@ -200,6 +203,7 @@ def process_single_image_core(
     work_id: str | None = None,
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
+    reference_pin: ReferencePin | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -222,6 +226,8 @@ def process_single_image_core(
         active_check: Optional lifecycle ownership assertion for SLURM workers.
         commit_guard: Optional narrow lifecycle guard around each canonical
             filesystem commit point.
+        reference_pin: The reference digest ``work_id`` was computed from;
+            the apply refuses a manifest that has since re-planned the image.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -340,7 +346,7 @@ def process_single_image_core(
             image.set_detect_mode(detect_mode)
         with continuing_provenance_application(image), provenance_success_sink(
             _write_checkpoint
-        ), worker_reference_context(output_dir, dataset_name):
+        ), worker_reference_context(output_dir, dataset_name, pin=reference_pin):
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
@@ -398,7 +404,8 @@ def process_single_image_core(
         )
     except SlurmGenerationInactiveError:
         raise
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
+        # A stale reference plan is not this image's fault: never terminal.
         _mark_failed_checkpoint()
         raise
     except Exception as exc:
@@ -820,23 +827,18 @@ def main(
         else:
             pipeline_identity = None
 
-        expected_identity = (
-            expected_work_id,
-            expected_input_sha256,
-            expected_pipeline_sha256,
+        # One identity per image, computed before any apply and reused by the
+        # identity check, the context pin and the success or failure record.
+        # Every forward startup rewrites the reference manifest, so a
+        # recomputation after the apply could name a plan the apply never
+        # used, and certify the output under it (review F1).
+        reference_digest = image_reference_digest(
+            output_dir, dataset_name, image, mode
         )
-        if any(value is not None for value in expected_identity):
-            if not all(value for value in expected_identity):
-                raise RuntimeError("Incomplete immutable SLURM task identity")
-            if file_sha256(image) != expected_input_sha256:
-                raise RuntimeError(
-                    "Input changed after SLURM worklist creation"
-                )
-            if file_sha256(pipeline) != expected_pipeline_sha256:
-                raise RuntimeError(
-                    "Pipeline changed after SLURM worklist creation"
-                )
-            actual_work_id, _ = _worker_work_identity(
+        reference_pin = ReferencePin(source_image_stem(image), reference_digest)
+
+        def _identity() -> tuple[str, str]:
+            return _worker_work_identity(
                 pipeline=pipeline,
                 image=image,
                 input_root=input_root,
@@ -854,8 +856,28 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
-                output_dir=output_dir,
+                reference_digest=reference_digest,
             )
+
+        work_identity = None if measure_only else _identity()
+
+        expected_identity = (
+            expected_work_id,
+            expected_input_sha256,
+            expected_pipeline_sha256,
+        )
+        if any(value is not None for value in expected_identity):
+            if not all(value for value in expected_identity):
+                raise RuntimeError("Incomplete immutable SLURM task identity")
+            if file_sha256(image) != expected_input_sha256:
+                raise RuntimeError(
+                    "Input changed after SLURM worklist creation"
+                )
+            if file_sha256(pipeline) != expected_pipeline_sha256:
+                raise RuntimeError(
+                    "Pipeline changed after SLURM worklist creation"
+                )
+            actual_work_id, _ = work_identity or _identity()
             if actual_work_id != expected_work_id:
                 raise RuntimeError(
                     "SLURM task work identity does not match worklist "
@@ -904,27 +926,10 @@ def main(
                 process_format=resolved_process_format,
                 run_initiation=run_initiation,
                 dataset_name=dataset_name,
+                reference_pin=reference_pin,
             )
-            work_id, relative_path = _worker_work_identity(
-                pipeline=pipeline,
-                image=image,
-                input_root=input_root,
-                dataset_name=dataset_name,
-                image_type=image_type,
-                nrows=nrows,
-                ncols=ncols,
-                bit_depth=bit_depth,
-                detect_mode=detect_mode,
-                layer=layer,
-                ext=ext,
-                process_format=resolved_process_format,
-                include_dataset_column=include_dataset_column,
-                overlay_alpha=overlay_alpha,
-                save_overlays=save_overlays,
-                drop_originals=drop_originals,
-                mode=mode,
-                output_dir=output_dir,
-            )
+            assert work_identity is not None
+            work_id, relative_path = work_identity
             publish_image_success(
                 output_dir,
                 work_id=work_id,
@@ -1027,26 +1032,8 @@ def main(
             )
 
             click.echo(f"Processing {image.name}...")
-            work_id, relative_path = _worker_work_identity(
-                pipeline=pipeline,
-                image=image,
-                input_root=input_root,
-                dataset_name=dataset_name,
-                image_type=image_type,
-                nrows=nrows,
-                ncols=ncols,
-                bit_depth=bit_depth,
-                detect_mode=detect_mode,
-                layer=None,
-                ext=ext,
-                process_format=resolved_process_format,
-                include_dataset_column=include_dataset_column,
-                overlay_alpha=overlay_alpha,
-                save_overlays=save_overlays,
-                drop_originals=drop_originals,
-                mode=mode,
-                output_dir=output_dir,
-            )
+            assert work_identity is not None
+            work_id, relative_path = work_identity
             process_single_image_core(
                 pipeline_path=pipeline,
                 image_path=image,
@@ -1062,6 +1049,7 @@ def main(
                 work_id=work_id,
                 active_check=active_check,
                 commit_guard=commit_guard,
+                reference_pin=reference_pin,
             )
             # The same resolver the local strategy and the staged SLURM
             # worker use. It is what keeps this site from certifying a `.h5`
@@ -1118,26 +1106,7 @@ def main(
         if isinstance(e, PerImageScientificError):
             try:
                 lifecycle_epoch = _authoritative_lifecycle_epoch()
-                work_id, relative_path = _worker_work_identity(
-                    pipeline=pipeline,
-                    image=image,
-                    input_root=input_root,
-                    dataset_name=dataset_name,
-                    image_type=image_type,
-                    nrows=nrows,
-                    ncols=ncols,
-                    bit_depth=bit_depth,
-                    detect_mode=detect_mode,
-                    layer=layer,
-                    ext=ext,
-                    process_format=resolved_process_format,
-                    include_dataset_column=include_dataset_column,
-                    overlay_alpha=overlay_alpha,
-                    save_overlays=save_overlays,
-                    drop_originals=drop_originals,
-                    mode=mode,
-                    output_dir=output_dir,
-                )
+                work_id, relative_path = work_identity or _identity()
                 committed = append_terminal_failure(
                     output_dir,
                     work_id=work_id,

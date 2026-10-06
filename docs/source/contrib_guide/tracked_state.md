@@ -231,8 +231,13 @@ it is never a source of truth. It is rewritten at every forward startup
 removed when the operations the mode runs read no reference metadata, cleared
 by `--restart` (the next
 startup derives it again), and never touched by `--mode measure`. A worker
-refuses it when the table's bytes no longer match its recorded SHA-256, rather
-than apply a plan made against a different table.
+refuses it when the table's bytes no longer match its recorded SHA-256, or when
+the image's digest no longer matches the one its work-id was computed from (a
+later invocation re-planned it). In either case it refuses rather than apply a
+plan made against a different table, and the refusal is not a terminal failure,
+so the next run re-attempts the image. An image whose planning failed is
+recorded as `unplanned:<reason>`, so fixing one cause and hitting another gives
+it a new work-id.
 
 **An excluded store makes a fully verified run read `incomplete`.** The
 projection (P7 Task 4) leaves out a store whose table it cannot project safely —

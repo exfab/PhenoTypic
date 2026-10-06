@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -10,14 +11,25 @@ import pytest
 import tifffile
 from click.testing import CliRunner
 from PIL import Image as PILImage
+from pydantic import Field
 
 import phenotypic
 from phenotypic import Image, ImagePipeline
+from phenotypic._cli import _cli_execution_strategies, _cli_reference
+from phenotypic.abc_ import ImageOperation
+from phenotypic.abc_._ref_metadata import RefMetadata
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import SubtractBlank
 from phenotypic.measure import MeasureSize
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.sdk_ import resolve_event_log_path
+from phenotypic.sdk_ import RefColumn, resolve_event_log_path
+from phenotypic.sdk_._io_constants import (
+    image_record_path,
+    reference_manifest_path,
+    reference_metadata_snapshot_path,
+    terminal_failures_jsonl_path,
+)
+from phenotypic.sdk_.typing_ import OperationField
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 #: A lid scratch present in every frame of the plate, blank included. It is as
@@ -109,7 +121,8 @@ def test_process_mode_without_metadata_is_refused_before_any_write(run_inputs):
     result = _process(base, manifest, None, pipeline)
     assert result.exit_code != 0
     assert "PF-REF-NO-TABLE" in result.output
-    assert not (base / "out").exists() or not _outputs(base / "out", "t01.*")
+    # The refusal is in the read-only half: nothing under --output exists.
+    assert not (base / "out").exists()
 
 
 def _started(base: Path, image: str) -> int:
@@ -148,21 +161,101 @@ def test_continuation_reruns_only_the_image_whose_blank_changed(run_inputs):
     assert _started(base, "t02.tiff") == started["t02.tiff"]
 
 
-def test_same_named_blanks_resolve_per_dataset(tmp_path):
-    """Two datasets each hold their own "blank"; each frame uses its own (spec §9)."""
+def _no_terminal_failures(out: Path) -> bool:
+    path = terminal_failures_jsonl_path(out)
+    return not path.exists() or not path.read_text(encoding="utf-8").strip()
+
+
+def test_a_table_changed_after_planning_is_retried_without_retry_failures(
+    run_inputs, monkeypatch
+):
+    """Review F2: a stale plan is not the image's fault, so it is never terminal."""
+    base, _, manifest, table, pipeline = run_inputs
+    out = base / "out"
+    publish = _cli_reference.publish_reference_inputs
+
+    def publish_then_edit_the_snapshot(config, datasets, output_dir):
+        publish(config, datasets, output_dir)
+        snapshot = reference_metadata_snapshot_path(output_dir)
+        snapshot.write_text(
+            snapshot.read_text(encoding="utf-8") + "t09,blank\n", encoding="utf-8"
+        )
+
+    monkeypatch.setattr(
+        _cli_reference, "publish_reference_inputs", publish_then_edit_the_snapshot
+    )
+    first = _process(base, manifest, table, pipeline)
+    assert first.exit_code != 0, first.output
+    assert not _outputs(out, "t0*.tiff")
+    assert _no_terminal_failures(out)
+
+    monkeypatch.setattr(_cli_reference, "publish_reference_inputs", publish)
+    second = _process(base, manifest, table, pipeline)
+    assert second.exit_code == 0, second.output
+    assert "recorded failure" not in second.output
+    assert len(_outputs(out, "t0*.tiff")) == 2
+
+
+def _replan(out: Path, dataset: str, stem: str) -> None:
+    """A concurrent invocation re-planned *stem*: its manifest digest changed."""
+    path = reference_manifest_path(out)
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["datasets"][dataset]["digests"][stem] = "replanned-by-another-invocation"
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(manifest), encoding="utf-8")
+    tmp.replace(path)
+
+
+def test_a_local_worker_never_certifies_an_image_replanned_mid_run(run_inputs, monkeypatch):
+    """Review F1: the local process worker publishes under its pre-apply identity only."""
+    base, _, manifest, table, pipeline = run_inputs
+    out = base / "out"
+    identity = _cli_execution_strategies.work_identity_for_image
+
+    def identity_then_replan(config, dataset, image_path):
+        computed = identity(config, dataset, image_path)
+        if Path(image_path).name == "t01.tiff":
+            _replan(out, dataset, "t01")
+        return computed
+
+    monkeypatch.setattr(
+        _cli_execution_strategies, "work_identity_for_image", identity_then_replan
+    )
+    result = _process(base, manifest, table, pipeline)
+    assert result.exit_code != 0, result.output
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)
+
+    monkeypatch.setattr(_cli_execution_strategies, "work_identity_for_image", identity)
+    again = _process(base, manifest, table, pipeline)
+    assert again.exit_code == 0, again.output
+    assert image_record_path(out, "plate1", "t01").exists()
+
+
+def test_same_named_frames_resolve_per_dataset(tmp_path):
+    """Both plates have a t01 and both blank files; the dataset decides which (spec §9).
+
+    The rows name different blanks, so a lookup that drops the dataset key finds
+    two answers for "t01" and fails, and a resolver that drops the dataset's
+    directory reads the other plate's file (review F5).
+    """
     images = tmp_path / "images"
-    for plate, level in (("plate1", 20), ("plate2", 60)):
+    levels = {"plate1": {"blank": 20, "blank_b": 45}, "plate2": {"blank": 50, "blank_b": 60}}
+    for plate, blanks in levels.items():
         root = images / plate
         root.mkdir(parents=True)
-        tifffile.imwrite(root / "blank.tiff", _rgb(level))
-        tifffile.imwrite(root / "t01.tiff", _rgb(level, (slice(10, 16), slice(10, 16))))
+        for name, level in blanks.items():
+            tifffile.imwrite(root / f"{name}.tiff", _rgb(level))
+        frame = blanks["blank" if plate == "plate1" else "blank_b"]
+        tifffile.imwrite(root / "t01.tiff", _rgb(frame, (slice(10, 16), slice(10, 16))))
     manifest = tmp_path / "frames.txt"
     manifest.write_text("plate1/t01.tiff\nplate2/t01.tiff\n", encoding="utf-8")
     table = tmp_path / "blank_map.csv"
     pd.DataFrame({
         "Dataset": ["plate1", "plate2"],
         "ImageName": ["t01", "t01"],
-        "BlankImage": ["blank", "blank"],
+        "BlankImage": ["blank", "blank_b"],
     }).to_csv(table, index=False)
     pipeline = tmp_path / "pipeline.json"
     pipeline.write_text(ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8")
@@ -172,11 +265,11 @@ def test_same_named_blanks_resolve_per_dataset(tmp_path):
         "--mode", "process", "--layer", "detect_mat",
     )
     assert result.exit_code == 0, result.output
-    for plate in ("plate1", "plate2"):
+    for plate, blank in (("plate1", "blank"), ("plate2", "blank_b")):
         (out,) = _outputs(tmp_path / "out" / plate, "t01.*")
         np.testing.assert_allclose(
             tifffile.imread(out),
-            _expected_subtraction(images / plate / "t01.tiff", images / plate / "blank.tiff"),
+            _expected_subtraction(images / plate / "t01.tiff", images / plate / f"{blank}.tiff"),
             atol=1e-6,
         )
 
@@ -197,20 +290,54 @@ def test_full_mode_runs_and_joins_the_blank_column(run_inputs):
 # ---- staged GPU: SubtractBlank inside the detector's own branch (review B1) --
 
 
-@pytest.fixture
-def staged(run_inputs, monkeypatch):
+class ReadsBlankName(ImageOperation, RefMetadata):
+    """Test-only: reads this image's blank name from the active context."""
+
+    blank_column: RefColumn = "Metadata_BlankImage"
+
+    def _operate(self, image):
+        self._ref_values(image)
+        return image
+
+
+class MeasureSizeReadingReferences(MeasureSize):
+    """Test-only measurer whose private operation reads reference metadata."""
+
+    probe: OperationField = Field(default_factory=ReadsBlankName)  # type: ignore[valid-type]
+
+    def _operate(self, image):
+        self.probe._ref_values(image)
+        return super()._operate(image)
+
+
+def _placements() -> dict[str, dict]:
+    # The detector reads detect_mat, so the label count says whether the
+    # detector saw the subtracted frame: unsubtracted, the lid scratch is a
+    # second object as bright as the colony.
+    gpu = FakeGpuDetector(input_layer="detect_mat")
+    return {
+        # Inside the detector's branch: SubtractBlank runs in the Stage-2 prefix.
+        "branch": {"branch": ImagePipeline(ops={"sb": SubtractBlank(), "gpu": gpu})},
+        # Top level, before the detector: it runs in Stage 1 (review F6).
+        "stage1": {"sb": SubtractBlank(), "gpu": gpu},
+    }
+
+
+@pytest.fixture(params=["branch", "stage1"])
+def staged(run_inputs, monkeypatch, request):
     monkeypatch.setattr(phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False)
+    for cls in (ReadsBlankName, MeasureSizeReadingReferences):
+        monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
     monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", "tests._fakes.register_fake_gpu")
     base, root, manifest, table, _ = run_inputs
-    # The detector reads detect_mat, so the label count says whether Stage 2
-    # saw the subtracted frame: unsubtracted, the lid scratch is a second
-    # object as bright as the colony.
-    branch = ImagePipeline(
-        ops={"sb": SubtractBlank(), "gpu": FakeGpuDetector(input_layer="detect_mat")}
-    )
     pipeline = base / "staged_pipeline.json"
+    # The measurer reads reference metadata too, so Stage 3's measure step
+    # needs the context as much as its apply does (review F6).
     pipeline.write_text(
-        ImagePipeline(ops={"branch": branch}, meas={"size": MeasureSize()}).to_json(),
+        ImagePipeline(
+            ops=_placements()[request.param],
+            meas={"size": MeasureSizeReadingReferences()},
+        ).to_json(),
         encoding="utf-8",
     )
     common = [

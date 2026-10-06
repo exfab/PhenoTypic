@@ -3495,6 +3495,8 @@ git commit -m "feat(gui): run console requires a metadata table for reference pi
 - Modify: `src/phenotypic/abc_/CLAUDE.md` (a `RefMetadata` entry beside the `PlotImage` capability)
 - Modify: the API reference page that lists `SubtractGaussian` (find it with `grep -rln "SubtractGaussian" docs/source`) — add `SubtractBlank` beside it, and `ReferenceContext` beside `Image`/`ImagePipeline` in the top-level API page (spec §10)
 - Modify: `CLAUDE.md` (one Gotchas bullet)
+- Modify: `src/phenotypic/_cli/CLAUDE.md`: its **Reference metadata** section was written with the Phase 2 review fixes (F8). Reconcile it with the how-to, and keep its list of the seven `worker_reference_context` call sites in step with the code.
+- Also in the how-to's *CLI* section: `--mode measure` refuses a pipeline whose measurers read reference metadata (user decision, 2026-10-06), and process mode uses `--metadata` only when such operations run in that mode.
 
 - [ ] **Step 1: How-to page** — sections, each with a runnable snippet:
   1. *What it is for* — frame-0 media blank in time-lapse plates (ucr_033 as the motivating example, without project-private paths).

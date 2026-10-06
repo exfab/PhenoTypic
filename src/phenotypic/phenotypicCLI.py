@@ -651,58 +651,103 @@ def _refuse_run_inputs_the_run_would_delete(
                 )
 
 
-def _reference_operations_for(
+def _reference_operation_paths_for(
     pipeline_json: Optional[Path], cli_mode: str
-) -> list[Any]:
-    """The reference-metadata operations a ``full``/``process`` run executes.
+) -> list[str]:
+    """Tree paths of the reference-metadata operations a run in *cli_mode* executes.
 
-    Empty in every other mode and when the pipeline cannot be loaded: the
-    pipeline validation reports a load failure in its own words.
+    Empty for ``recompile``/``migrate`` and when the pipeline cannot be
+    loaded: the pipeline validation reports a load failure in its own words.
     """
-    if pipeline_json is None or cli_mode not in ("full", "process"):
+    if pipeline_json is None or cli_mode not in ("full", "process", "measure"):
         return []
-    from phenotypic._cli._cli_reference import reference_operations_in_scope
+    from phenotypic._cli._cli_preflight import RunMode
+    from phenotypic._cli._cli_reference import reference_operation_paths
     from phenotypic._core._image_pipeline import ImagePipeline
 
     try:
         pipeline = ImagePipeline.from_json(pipeline_json)
     except Exception:  # noqa: BLE001 - reported by the pipeline validation
         return []
-    return reference_operations_in_scope(
-        pipeline, "full" if cli_mode == "full" else "process"
+    mode: RunMode = (
+        "full" if cli_mode == "full" else "process" if cli_mode == "process" else "measure"
+    )
+    return reference_operation_paths(pipeline, mode)
+
+
+def _refuse_measuring_reference_pipeline(paths: Sequence[str]) -> None:
+    """Refuse ``--mode measure`` for a pipeline whose measurers read reference metadata.
+
+    Measure mode plans no references and never touches the run's manifest
+    (it may run beside live forward workers), and its work-ids carry no
+    reference digest, so there is no plan such an operation could read. A
+    refusal up front, un-skippable, is cheaper and truer than every image
+    failing one at a time (user decision, 2026-10-06).
+
+    Raises:
+        click.UsageError: Always, naming every such operation.
+    """
+    raise click.UsageError(
+        "--mode measure cannot re-measure a pipeline that reads reference "
+        f"metadata ({', '.join(paths)}); re-measuring reference pipelines is "
+        "not supported. Run --mode full instead."
     )
 
 
 def _refuse_unusable_reference_table(
-    *, metadata_csv: Optional[Path], overwrite: bool
+    *,
+    metadata_csv: Optional[Path],
+    overwrite: bool,
+    output_dir: Path,
+    process_mode: bool,
 ) -> None:
     """Refuse a reference-metadata run whose table cannot serve it.
 
-    Called in the read-only half, above ``--overwrite`` and ``--dry-run``, and
-    outside ``--skip-validation`` like the ``--metadata`` parse it extends:
-    a bad table must not cost the user a deleted output first.
+    Called in the read-only half, above ``--restart``, ``--overwrite``,
+    ``mint_run_identity`` and ``--dry-run``, and outside ``--skip-validation``
+    like the ``--metadata`` parse it extends: a bad table must not cost the
+    user a changed output first. Without ``--metadata`` it checks the snapshot
+    the run would fall back to, exactly as ``resolve_reference_table_path``
+    picks it (full: ``deliverables/metadata.csv``; process:
+    ``.phenotypic/reference_metadata.csv``).
 
     Raises:
         click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
-            the run would fall back to is deleted), or a ``--metadata`` table
-            that is not a valid reference table.
+            the run would fall back to is deleted); no table at all
+            (``PF-REF-NO-TABLE``); or a table that is not a valid reference
+            table.
     """
+    from phenotypic._cli._cli_preflight import HINTS
     from phenotypic._core._reference_context import (
         ReferenceContext,
         ReferenceTableError,
     )
+    from phenotypic.sdk_._io_constants import reference_metadata_snapshot_path
 
-    if metadata_csv is None:
-        if overwrite:
+    if metadata_csv is not None:
+        table, label = Path(metadata_csv), "--metadata"
+    elif overwrite:
+        raise click.UsageError(
+            "--overwrite deletes the run's reference metadata snapshot; "
+            "pass --metadata with the table this pipeline reads."
+        )
+    else:
+        table = (
+            reference_metadata_snapshot_path(output_dir)
+            if process_mode
+            else metadata_csv_deliverable_path(output_dir)
+        )
+        label = f"reference metadata snapshot {table}"
+        if not table.is_file():
             raise click.UsageError(
-                "--overwrite deletes the run's reference metadata snapshot; "
-                "pass --metadata with the table this pipeline reads."
+                "[PF-REF-NO-TABLE] The pipeline reads reference metadata but no "
+                "--metadata was given and the run has no snapshot to fall back to.\n"
+                f"    → {HINTS['PF-REF-NO-TABLE']}"
             )
-        return
     try:
-        ReferenceContext(metadata_csv)
+        ReferenceContext(table)
     except ReferenceTableError as exc:
-        raise click.UsageError(f"--metadata: {exc}") from exc
+        raise click.UsageError(f"{label}: {exc}") from exc
 
 
 def _print_dry_run_mutation_preview(
@@ -2384,9 +2429,10 @@ def phenotypic_cli(
         # --skip-validation (spec §1, F3/F27; phase-A review A2). Process mode
         # ignores --metadata, so it is not a run input there (A6) -- unless
         # the pipeline reads reference metadata from it.
-        reads_reference_metadata = bool(
-            _reference_operations_for(pipeline_json, cli_mode)
-        )
+        reference_paths = _reference_operation_paths_for(pipeline_json, cli_mode)
+        if measure_only and reference_paths:
+            _refuse_measuring_reference_pipeline(reference_paths)
+        reads_reference_metadata = bool(reference_paths)
         if (
             process_only_layer is not None
             and metadata_csv is not None
@@ -2446,7 +2492,10 @@ def phenotypic_cli(
         # every mutation (the --dry-run exit, the --overwrite rmtree).
         if reads_reference_metadata:
             _refuse_unusable_reference_table(
-                metadata_csv=metadata_csv, overwrite=overwrite
+                metadata_csv=metadata_csv,
+                overwrite=overwrite,
+                output_dir=Path(output_dir),
+                process_mode=process_only_layer is not None,
             )
 
         continuing = (
