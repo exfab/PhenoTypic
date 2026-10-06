@@ -1,9 +1,11 @@
 """Nested previews: faithful threaded input + scope coexistence + route serves."""
+import flask
 import numpy as np
 import pandas as pd
 import pytest
 import tifffile
 
+from phenotypic._gui._config import CFG_IMAGE_ROOT
 from phenotypic._gui.builder import _preview_cache as pc
 from phenotypic.sdk_ import load_image_from_store
 from phenotypic._gui.builder._app import create_app
@@ -119,8 +121,12 @@ def test_nested_subtract_blank_previews_against_the_picked_table(tmp_path, monke
     sid = "nestedsess0003"
     image = str(plates / "t01.tif")
 
-    assert pc.compute_scope(sid, state, [], image, None, None)["error"] is None
-    manifest = pc.compute_scope(sid, state, [container.block_id], image, None, None)
+    # The table is confined to the builder's image root, read from the app.
+    app = flask.Flask("nested-preview-test")
+    app.config[CFG_IMAGE_ROOT] = tmp_path
+    with app.app_context():
+        assert pc.compute_scope(sid, state, [], image, None, None)["error"] is None
+        manifest = pc.compute_scope(sid, state, [container.block_id], image, None, None)
     assert manifest["error"] is None, manifest["error"]
 
     store = pc.scope_dir(sid, [container.block_id]) / manifest["nodes"][subtract.block_id]["store"]

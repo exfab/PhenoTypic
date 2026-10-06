@@ -32,6 +32,24 @@ def _table(tmp_path):
     return path
 
 
+@pytest.fixture(autouse=True)
+def image_root(tmp_path):
+    """The builder's ``--image-root`` is ``tmp_path``, as a request would see it.
+
+    Every table path is confined to it, so each test runs inside an app
+    context carrying it; a table this file writes under ``tmp_path`` is
+    inside the root.
+    """
+    import flask
+
+    from phenotypic._gui._config import CFG_IMAGE_ROOT
+
+    app = flask.Flask("reference-metadata-tests")
+    app.config[CFG_IMAGE_ROOT] = tmp_path
+    with app.app_context():
+        yield tmp_path
+
+
 @pytest.fixture(scope="module")
 def registry():
     from phenotypic._gui._operation_registry import OperationRegistry
@@ -131,6 +149,154 @@ def test_describe_reports_an_invalid_table(tmp_path):
     value, message = rm.describe_reference_table(str(bad))
     assert value == ""
     assert "Metadata_ImageName" in message
+
+
+# ------------------------------------------------------------- confinement
+
+
+@pytest.fixture
+def outside(tmp_path_factory):
+    """A directory outside the image root, holding tables a user must not reach.
+
+    Their headers are distinctive, so a status line that leaks any of a
+    refused file's contents (header names, a parse error listing them) fails.
+    """
+    directory = tmp_path_factory.mktemp("outside")
+    pd.DataFrame({"ImageName": ["t01"], "SecretHeader": ["x"]}).to_csv(
+        directory / "secret.csv", index=False
+    )
+    (directory / "no_names.csv").write_text("SecretHeader,Other\nx,y\n", encoding="utf-8")
+    return directory
+
+
+def _refused(value: str, message: str) -> None:
+    assert value == ""
+    assert "image root" in message
+    assert "SecretHeader" not in message
+
+
+@pytest.mark.parametrize("name", ["secret.csv", "no_names.csv"])
+def test_picker_refuses_a_table_outside_the_image_root(outside, name):
+    _refused(*rm.describe_reference_table(str(outside / name)))
+
+
+def test_picker_refusal_stores_nothing(outside, monkeypatch, registry):
+    from phenotypic._gui.builder import _callbacks
+
+    monkeypatch.setattr(_callbacks, "_registry", lambda: registry)
+    data = state_to_json(_state_with_selected_block("SubtractBlank"))
+
+    new_data, inspector, message = _callbacks._reference_metadata_pick(
+        str(outside / "secret.csv"), data
+    )
+
+    assert state_from_json(new_data).reference_metadata_path is None
+    _refused("", message)
+    assert _column_widget_for(SimpleNamespace(children=inspector), "blank_column") is None
+
+
+def test_picker_refuses_traversal_out_of_the_image_root(tmp_path, outside):
+    _refused(*rm.describe_reference_table(str(tmp_path / ".." / outside.name / "secret.csv")))
+    _refused(*rm.describe_reference_table(f"../{outside.name}/secret.csv"))
+
+
+def test_picker_refuses_a_symlink_that_escapes_the_image_root(tmp_path, outside):
+    """``SandboxRoot`` follows symlinks and checks where they land."""
+    link = tmp_path / "linked.csv"
+    link.symlink_to(outside / "secret.csv")
+    _refused(*rm.describe_reference_table(str(link)))
+
+
+def test_picker_accepts_a_symlink_that_stays_inside_the_image_root(tmp_path):
+    """Control for the test above: a symlink is refused for where it lands."""
+    target = _table(tmp_path)
+    link = tmp_path / "alias.csv"
+    link.symlink_to(target)
+    value, message = rm.describe_reference_table(str(link))
+    assert value == str(target.resolve())
+    assert "1 rows" in message
+
+
+@pytest.mark.parametrize("name", ["blank_map.txt", "blank_map.json", "blank_map"])
+def test_picker_refuses_a_file_that_is_not_csv_or_parquet(tmp_path, name):
+    path = tmp_path / name
+    path.write_text("ImageName,SecretHeader\nt01,t00\n", encoding="utf-8")
+    _refused(*rm.describe_reference_table(str(path)))
+
+
+def test_picker_accepts_a_parquet_table_under_the_image_root(tmp_path):
+    import polars as pl
+
+    path = tmp_path / "blank_map.parquet"
+    pl.DataFrame({"ImageName": ["t01"], "BlankImage": ["t00"]}).write_parquet(path)
+    value, message = rm.describe_reference_table(str(path))
+    assert value == str(path.resolve())
+    assert "1 rows" in message
+
+
+def test_a_relative_path_resolves_against_the_image_root(tmp_path):
+    """Not against the server's working directory."""
+    nested = tmp_path / "maps"
+    nested.mkdir()
+    table = _table(nested)
+    value, message = rm.describe_reference_table("maps/blank_map.csv")
+    assert value == str(table.resolve())
+    assert "1 rows" in message
+
+
+def test_no_configured_image_root_refuses_every_table(tmp_path):
+    """The debug launcher without ``--image-root``: fail closed, not open."""
+    import flask
+
+    from phenotypic._gui._config import CFG_IMAGE_ROOT
+
+    flask.current_app.config[CFG_IMAGE_ROOT] = None
+    _refused(*rm.describe_reference_table(str(_table(tmp_path))))
+    assert rm.reference_columns_provider(str(_table(tmp_path))) is None
+
+
+def test_confined_reference_path_is_the_single_rule(tmp_path, outside):
+    assert rm.confined_reference_path(str(_table(tmp_path)), tmp_path) == (
+        tmp_path / "blank_map.csv"
+    ).resolve()
+    assert rm.confined_reference_path(str(outside / "secret.csv"), tmp_path) is None
+    assert rm.confined_reference_path(str(_table(tmp_path)), None) is None
+    assert rm.confined_reference_path("", tmp_path) is None
+    assert rm.confined_reference_path(123, tmp_path) is None
+
+
+def test_a_tampered_state_path_outside_the_root_is_treated_as_no_table(
+    tmp_path, outside, monkeypatch, registry
+):
+    """``store-builder-state`` is client-writable; it must not bypass the picker."""
+    from phenotypic._gui.builder import _preview_cache as pc
+    from phenotypic._gui.builder._linear_layout import build_linear_side_loader
+
+    secret = str(outside / "secret.csv")
+    assert rm.reference_columns_provider(secret) is None
+
+    def _never_read(*args):
+        raise AssertionError(f"read a refused table: {args}")
+
+    monkeypatch.setattr(rm, "_file_sha256", _never_read)
+    monkeypatch.setattr(rm, "_columns_for", _never_read)
+    assert rm.reference_identity(secret) == rm.reference_identity(None)
+    assert rm.reference_columns_provider(secret) is None
+    with rm.preview_reference_context(secret, str(tmp_path / "t01.tif")) as ctx:
+        assert ctx is None and ReferenceContext.current() is None
+
+    state = _state_with_selected_block("SubtractBlank")
+    state.reference_metadata_path = secret
+    assert _column_widget_for(build_linear_side_loader(state, registry), "blank_column") is None
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
+    image = _plate_and_blank(tmp_path)
+    tampered = pc.compute_scope("s", state, [], str(image), None, None)
+    state.reference_metadata_path = None
+    untouched = pc.compute_scope("s", state, [], str(image), None, None)
+    assert tampered["error"] is not None
+    assert tampered["error"] == untouched["error"]
+    assert "Reference metadata" in tampered["error"]
 
 
 def test_columns_provider_serves_only_reference_metadata(tmp_path):

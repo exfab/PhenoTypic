@@ -32,6 +32,61 @@ _PICK_A_TABLE_HINT = (
 _STEP_PREFIXES = re.compile(r"(?:\[\w+\] \(step \d+/\d+, key='[^\n]*?'\): )+")
 
 
+#: The whole status for a refused path. It says nothing about the file, so a
+#: path outside the image root cannot be probed for existence or contents.
+REFUSED_TABLE_MESSAGE = (
+    "Refused: the reference table must be a .csv or .parquet file under the image root."
+)
+
+_TABLE_SUFFIXES = (".csv", ".parquet")
+
+
+def confined_reference_path(path: object, image_root: object) -> Optional[Path]:
+    """Resolve a reference-table path the way the builder's other pickers are confined.
+
+    The one rule for every use of the table path: the picker, and each
+    consumer of the (client-writable) builder state, which re-checks at use.
+
+    Args:
+        path: The typed or stored path. A relative path resolves against
+            ``image_root``, not the server's working directory.
+        image_root: The builder's ``--image-root``; ``None`` refuses every path.
+
+    Returns:
+        The resolved path when it lies under ``image_root`` after following
+        symlinks (``SandboxRoot.resolve``) and ends in ``.csv`` or
+        ``.parquet``; otherwise ``None``.
+    """
+    if not isinstance(path, str) or not path or image_root is None:
+        return None
+    from phenotypic._gui.shell._sandbox import SandboxRoot
+
+    try:
+        sandbox = SandboxRoot.from_path(image_root)
+        resolved = sandbox.resolve(Path(path).expanduser())
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return None
+    if resolved.suffix.lower() not in _TABLE_SUFFIXES:
+        return None
+    return resolved
+
+
+def _confined(path: object) -> Optional[Path]:
+    """:func:`confined_reference_path` against the running builder's image root.
+
+    Outside an app context there is no image root, so every path is refused.
+    """
+    if not path:
+        return None
+    from flask import current_app, has_app_context
+
+    from phenotypic._gui._config import CFG_IMAGE_ROOT
+
+    if not has_app_context():
+        return None
+    return confined_reference_path(path, current_app.config.get(CFG_IMAGE_ROOT))
+
+
 def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
     """Validate a picked table: ``(value_to_store, status_message)``.
 
@@ -46,7 +101,9 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
         return "", ""
     from phenotypic._core._reference_context import ReferenceContext, ReferenceTableError
 
-    candidate = Path(path).expanduser()
+    candidate = _confined(path)
+    if candidate is None:
+        return "", REFUSED_TABLE_MESSAGE
     if not candidate.is_file():
         return "", f"Not found: {candidate}"
     try:
@@ -54,7 +111,7 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
     except ReferenceTableError as exc:
         return "", str(exc)
     return (
-        str(candidate.resolve()),
+        str(candidate),
         f"{candidate.name} · {context.table.height} rows · {len(context.columns)} columns",
     )
 
@@ -70,14 +127,16 @@ def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], 
     """A ``columns_provider`` for the shared param form, or ``None`` without a table.
 
     Cached on the file's ``(mtime, size)``: the inspector re-renders on every edit.
+    A path outside the image root is treated as no table.
     """
-    if not path:
+    confined = _confined(path)
+    if confined is None:
         return None
     from phenotypic._core._reference_context import ReferenceTableError
 
     try:
-        stat = Path(path).stat()
-        columns = _columns_for(path, stat.st_mtime_ns, stat.st_size)
+        stat = confined.stat()
+        columns = _columns_for(str(confined), stat.st_mtime_ns, stat.st_size)
     except (OSError, ReferenceTableError):
         return None
 
@@ -97,10 +156,11 @@ def reference_identity(path: Optional[str]) -> str:
 
     Cached on ``(path, mtime, size)``: the preview status is re-derived on
     every builder render, and the table is re-read only when it changes.
+    A path outside the image root is never read, and identifies as no table.
     """
-    if not path:
+    candidate = _confined(path)
+    if candidate is None:
         return ""
-    candidate = Path(path)
     try:
         stat = candidate.stat()
     except OSError:
@@ -119,10 +179,11 @@ def preview_reference_context(
     Reference images resolve beside the preview image. When the table has a
     ``Metadata_Dataset`` column naming the image's directory, lookups narrow
     to that dataset, as the CLI narrows each dataset by its input directory's
-    name. With no table this activates nothing, so a reference operation
-    fails exactly as a bare ``apply`` would.
+    name. With no table, or one outside the image root, this activates
+    nothing, so a reference operation fails exactly as a bare ``apply`` would.
     """
-    if not path:
+    confined = _confined(path)
+    if confined is None:
         yield None
         return
     from phenotypic._core._reference_context import ReferenceContext
@@ -131,7 +192,7 @@ def preview_reference_context(
 
     # The synthetic plate has no directory; its sentinel's parent is the cwd.
     root = Path(image_path).parent if image_path and image_path != SYNTHETIC_SENTINEL else None
-    context = ReferenceContext(path, image_root=root)
+    context = ReferenceContext(confined, image_root=root)
     dataset_column = str(EXPERIMENT.DATASET)
     if (
         root is not None

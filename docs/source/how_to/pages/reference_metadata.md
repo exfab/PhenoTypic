@@ -152,12 +152,13 @@ A warning that covers every input image is escalated to an error.
   of the table's headers, and previews run inside a `ReferenceContext` built
   from it, resolving blanks in the preview image's directory. The picked path is
   session state and is never saved into the pipeline. With no table, the node's
-  preview shows the unavailable-context message instead of an image. The field
-  is free text: it accepts any path the GUI server process can read, including
-  a relative path (resolved against the server's working directory), and unlike
-  the other builder file pickers it is not confined to the image root. On a
-  shared deployment such as Open OnDemand, the table's header names and row
-  count are shown to whoever uses that GUI.
+  preview shows the unavailable-context message instead of an image. Like the
+  builder's other file pickers, the field is confined to the GUI's image root
+  (`phenotypic-gui --root`): the table must be a `.csv` or `.parquet` file under
+  that directory, a relative path is resolved against it, and a symlink is
+  followed and judged by where it lands. Any other path is refused without
+  reading the file, so put the table under the image root (beside the images
+  is fine).
 - **Run console.** When the loaded pipeline reads reference metadata, a warning
   names the columns and **Run is disabled** until a metadata CSV is included.
   Validate and Run are also refused at launch. The check looks at the whole
