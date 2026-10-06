@@ -202,13 +202,16 @@ PIPELINE_DOC = {
     "ncols"    : 12,
 }
 
+# One row per plate, keyed by image stem. The join matches every column the
+# measurements share exactly, so the file name carries no extension and there
+# are no Grid_RowNum/Grid_ColNum columns: those are per-colony positions, and
+# a per-plate value there (the plate's 8x12 size) matched no colony at all.
 METADATA_ROWS = [
     "Metadata_ImageName,Metadata_StrainID,Metadata_MatingType,"
-    "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,"
-    "Metadata_Replicate,Grid_RowNum,Grid_ColNum",
-    "plate_001.tif,SYN_001,a,YPD,2026-05-01,1,1,8,12",
-    "plate_002.tif,SYN_002,A,YPD,2026-05-01,2,1,8,12",
-    "plate_003.tif,SYN_003,a,SGAL,2026-05-01,3,1,8,12",
+    "Metadata_Media,Metadata_RunDate,Metadata_PlateNum,Metadata_Replicate",
+    "plate_001,SYN_001,a,YPD,2026-05-01,1,1",
+    "plate_002,SYN_002,A,YPD,2026-05-01,2,1",
+    "plate_003,SYN_003,a,SGAL,2026-05-01,3,1",
 ]
 
 
@@ -275,7 +278,12 @@ def run_cli_once() -> None:
     exists — re-running this is expensive (~minutes on a real pipeline;
     ~seconds on the synthetic dataset but still avoidable).
     """
-    if (OUTPUT_DIR / "deliverables" / "master_measurements.parquet").exists():
+    deliverables = OUTPUT_DIR / "deliverables"
+    # The metadata snapshot is what --metadata writes; an output cached from a
+    # run without it has an un-joined mirror and is regenerated.
+    if (deliverables / "master_measurements.parquet").exists() and (
+        deliverables / "metadata.csv"
+    ).exists():
         print(
             f"[cli] reusing existing CLI output at {OUTPUT_DIR.relative_to(REPO_ROOT)}")
         return
