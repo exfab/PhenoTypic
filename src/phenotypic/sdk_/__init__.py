@@ -60,6 +60,7 @@ _LAZY_ATTRS: dict[str, str] = {
     "ReferenceImageError": "phenotypic._core._reference_context",
     "ReferenceLookupError": "phenotypic._core._reference_context",
     "ReferenceTableError": "phenotypic._core._reference_context",
+    "StaleDetectMatError": "phenotypic.enhance._subtract_blank",
 }
 
 
@@ -461,6 +462,7 @@ __all__ = [
     "ReferenceImageError",
     "ReferenceLookupError",
     "ReferenceTableError",
+    "StaleDetectMatError",
     "CommitGuard",
     "atomic_write_bytes",
     "atomic_write_json",

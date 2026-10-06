@@ -37,12 +37,29 @@ def _zero_arg_enhancers() -> list[tuple[str, object]]:
 _ENHANCERS = _zero_arg_enhancers()
 
 
+def _apply_gate_enhancer(op: object):
+    """Apply *op* to the synthetic plate; reference ops get a context whose
+    every reference column names a second copy of the plate."""
+    import pandas as pd
+
+    from phenotypic import ReferenceContext
+    from phenotypic.abc_ import RefMetadata
+
+    plate = load_synth_yeast_plate()
+    if not isinstance(op, RefMetadata):
+        return op.apply(plate)
+    row = {"Metadata_ImageName": [plate.name]}
+    row.update({column: ["gate_reference"] for column in op._ref_columns()})
+    with ReferenceContext(pd.DataFrame(row), images={"gate_reference": load_synth_yeast_plate()}):
+        return op.apply(plate)
+
+
 @pytest.mark.parametrize(
     ("name", "op"), _ENHANCERS, ids=[name for name, _ in _ENHANCERS]
 )
 def test_enhancer_keeps_detect_mat_in_unit_range(name: str, op: object) -> None:
     """Every zero-arg enhancer must leave ``detect_mat`` within [0, 1]."""
-    out = op.apply(load_synth_yeast_plate()).detect_mat[:]
+    out = _apply_gate_enhancer(op).detect_mat[:]
     mn, mx = float(out.min()), float(out.max())
     assert mn >= 0.0, f"{name} emits {mn:.4f} < 0"
     assert mx <= 1.0, f"{name} emits {mx:.4f} > 1"
