@@ -173,15 +173,15 @@ class FRAME(IdentityInfo):
     OFFSET_RR = Entry(
         "OffsetRR",
         "Row offset of the analysed region's top-left pixel within the original "
-        "image frame. 0 when the image was not cropped; null when it was cropped "
-        "but the offset was not recorded. Original-frame row = "
+        "image frame. 0 when no crop is recorded; null when a crop is recorded "
+        "but its offset is not. Original-frame row = "
         "Bbox_*RR + Frame_OffsetRR.",
     )
     OFFSET_CC = Entry(
         "OffsetCC",
         "Column offset of the analysed region's top-left pixel within the original "
-        "image frame. 0 when the image was not cropped; null when it was cropped "
-        "but the offset was not recorded. Original-frame column = "
+        "image frame. 0 when no crop is recorded; null when a crop is recorded "
+        "but its offset is not. Original-frame column = "
         "Bbox_*CC + Frame_OffsetCC.",
     )
 ```
@@ -191,9 +191,11 @@ authoring.
 
 ### 4.2 Behaviour
 
-- One private helper, `_append_frame_offsets(info, image) -> DataFrame`, is called
-  at the end of **both** `ObjectsAccessor.info` and `GridAccessor.info`, before
-  `insert_metadata`. It reads the frame via `_valid_crop_frame()`.
+- `ObjectsAccessor.info` and `GridAccessor.info` both end with
+  `append_frame_offsets(info, image._frame_offsets_for_info())`, before
+  `insert_metadata`. `_frame_offsets_for_info()` (on `ImageDataManager`) reads the
+  frame via `_valid_crop_frame()` and applies the rule below;
+  `append_frame_offsets` (in `_core/_crop_frame.py`) only writes the columns.
 - The columns are **always emitted**. Their value is:
   - the frame's offset when the image has a valid frame (`int64`);
   - **`0, 0`** when it has no frame and its provenance journal records no
@@ -304,6 +306,22 @@ coordinates.
 - **`load_layer_zarr`** (the GUI tile server's reader) and **`Image.imread(store)`**
   return the **on-disk canvas** unchanged. That is the "full-frame layers on disk"
   view.
+- **`Image.imread(store)` sets the frame that describes the pixels it returns**
+  (plan review round 2, R2-M4). `imread` copies the store's provenance journal, so
+  without a frame the §4.2 rule would report null offsets for a crop pipeline's
+  output read back as input (a documented workflow), even though its true offset
+  is known. At level 0:
+  - **padded** store: an identity frame `CropFrame(canvas_shape, (0, 0))`. The
+    pixels *are* the canvas, so offsets are 0 and later slicing composes correctly;
+  - **unpadded** store with a frame: the recorded frame.
+
+  In both cases `_pad_on_save = False`: `imread` reads plain pixels, and re-saving
+  them should not re-pad. A store read at a pyramid level > 0, or whose shape does
+  not match the record, gets no frame, so the §4.2 rule applies honestly.
+- **Known limitation:** slicing a cropped image that has no frame (e.g.
+  `objects[i]` of a re-measured pre-change store) composes onto the image's own
+  shape, so the child's offsets are relative to the ROI, not the original frame.
+  The child's fresh journal records no crop, so it cannot report null.
 
 ### 5.4 Embedded measurement table and figures
 

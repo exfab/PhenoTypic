@@ -48,7 +48,8 @@ The old item about pickling to workers was removed: CLI workers receive paths, n
 
 | File | Change |
 |---|---|
-| `src/phenotypic/_core/_crop_frame.py` | **Create.** `CropFrame`, `pad_to_canvas`, `rect_origin_from_key`, `append_frame_offsets`, `crop_frame_to_attribute`, `crop_frame_from_attribute` |
+| `src/phenotypic/sdk_/_crop_frame.py` | **Create.** `CropFrame`, `crop_frame_to_attribute`, `crop_frame_from_attribute` (stdlib only, so `ngff_` can use them on light paths) |
+| `src/phenotypic/_core/_crop_frame.py` | **Create.** `pad_to_canvas`, `rect_origin_from_key`, `journal_records_crop`, `append_frame_offsets`; re-exports the `sdk_` names |
 | `src/phenotypic/_core/_image_parts/_image_data_manager.py` | frame attrs, `_valid_crop_frame`, `_save_padding_frame`, `_pad_layer_for_save`, `_assign_child_frame`, carry-through, reshape drop |
 | `src/phenotypic/_core/_image_parts/_image_handler.py` | `__getitem__` composes the frame |
 | `src/phenotypic/_core/_image_parts/_grid_image_handler.py` | `GridImage.__getitem__` composes the frame |
@@ -78,7 +79,8 @@ The old item about pickling to workers was removed: CLI workers receive paths, n
 ### Task 1: `CropFrame` value type and pure helpers
 
 **Files:**
-- Create: `src/phenotypic/_core/_crop_frame.py`
+- Create: `src/phenotypic/sdk_/_crop_frame.py` (`CropFrame` + attribute codec; light)
+- Create: `src/phenotypic/_core/_crop_frame.py` (pixel helpers; re-exports the `sdk_` names)
 - Test: `tests/unit/core/test_crop_frame_helpers.py`
 
 **Interfaces:**
@@ -216,30 +218,28 @@ def test_malformed_attribute_raises(value):
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_helpers.py -q --capture=fd -p no:cacheprovider`
 Expected: collection error, `ModuleNotFoundError: No module named 'phenotypic._core._crop_frame'`.
 
-- [ ] **Step 3: Write the implementation**
+- [ ] **Step 3: Write the implementation (two modules)**
+
+`CropFrame` and its store-attribute codec live in **`sdk_`**, because `ngff_` (an `sdk_` module) needs them on light paths: GUI chunk routes, `valid_staged_store`, and the run-state probes. Importing anything under `phenotypic._core` runs `phenotypic/_core/__init__.py`, which loads the whole image stack. The pixel helpers live in `_core` and re-export the `sdk_` names, so every `_core` caller and test imports from one place. (Round-2 review R2-m1.)
+
+`src/phenotypic/sdk_/_crop_frame.py`:
 
 ```python
-"""Where an image's pixels sit inside the original image canvas.
+"""The crop frame value type and its OME-Zarr attribute codec.
 
-Spec: docs/superpowers/specs/2026-10-05-pseudo-cropping/design.md (§3, §5).
+Spec: docs/superpowers/specs/2026-10-05-pseudo-cropping/design.md (§3.1, §5.2).
 
-A cropped :class:`~phenotypic.Image` keeps compact in-memory arrays and records
-a :class:`CropFrame`: the original ``(H, W)`` canvas and the ``(row, col)`` of
-its own top-left pixel inside it. Writers zero-pad layers back into the canvas;
-the reader slices them out again. Everything here is pure and depends only on
-numpy, so it is safe on every import path.
+Light on purpose (stdlib only): ``ngff_`` calls this from GUI chunk routes and
+store-validity probes that must not load the image stack. The pixel helpers
+that build on it are in ``phenotypic._core._crop_frame``, which re-exports
+these names.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-import numpy as np
-
-if TYPE_CHECKING:
-    import pandas as pd
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -288,6 +288,90 @@ class CropFrame:
             slice(row, row + int(shape2d[0])),
             slice(col, col + int(shape2d[1])),
         )
+
+
+def crop_frame_to_attribute(
+    frame: CropFrame, roi_shape: tuple[int, int], padded: bool
+) -> dict:
+    """Serialise a frame into the store's ``attributes.phenotypic.crop_frame``."""
+    return {
+        "canvas_shape": [int(v) for v in frame.canvas_shape],
+        "offset": [int(v) for v in frame.offset],
+        "roi_shape": [int(roi_shape[0]), int(roi_shape[1])],
+        "padded": bool(padded),
+    }
+
+
+def crop_frame_from_attribute(
+    value: Any,
+) -> tuple[CropFrame, tuple[int, int], bool] | None:
+    """Parse ``crop_frame``; ``None`` when absent.
+
+    Raises:
+        ValueError: If the value is present but malformed or self-inconsistent.
+            Reading a padded store's canvas as the image would be silently
+            wrong, so a broken record is refused rather than ignored.
+    """
+    if value is None:
+        return None
+    try:
+        if not isinstance(value, Mapping):
+            raise TypeError("not a mapping")
+        canvas = value["canvas_shape"]
+        offset = value["offset"]
+        roi = value["roi_shape"]
+        if len(canvas) != 2 or len(offset) != 2 or len(roi) != 2:
+            raise TypeError("expected three length-2 sequences")
+        frame = CropFrame((canvas[0], canvas[1]), (offset[0], offset[1]))
+        roi_shape = (int(roi[0]), int(roi[1]))
+        padded = bool(value["padded"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"malformed crop_frame attribute {value!r}: {exc}") from exc
+    if not frame.fits(roi_shape):
+        raise ValueError(
+            f"malformed crop_frame attribute {value!r}: roi_shape does not fit"
+        )
+    return frame, roi_shape, padded
+```
+
+`src/phenotypic/_core/_crop_frame.py`:
+
+```python
+"""Pixel-side helpers for an image's crop frame.
+
+Spec: docs/superpowers/specs/2026-10-05-pseudo-cropping/design.md (§3, §5).
+
+A cropped :class:`~phenotypic.Image` keeps compact in-memory arrays and records
+a :class:`CropFrame`: the original ``(H, W)`` canvas and the ``(row, col)`` of
+its own top-left pixel inside it. Writers zero-pad layers back into the canvas;
+the reader slices them out again. ``CropFrame`` and its attribute codec are
+defined in :mod:`phenotypic.sdk_._crop_frame` (light, for ``ngff_``) and are
+re-exported here, so ``_core`` code imports everything from this module.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+from phenotypic.sdk_._crop_frame import (
+    CropFrame,
+    crop_frame_from_attribute,
+    crop_frame_to_attribute,
+)
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+__all__ = [
+    "CropFrame",
+    "crop_frame_from_attribute",
+    "crop_frame_to_attribute",
+    "pad_to_canvas",
+    "rect_origin_from_key",
+]
 
 
 def pad_to_canvas(
@@ -350,51 +434,26 @@ def rect_origin_from_key(
             return None
         origin.append(start)
     return origin[0], origin[1]
-
-
-def crop_frame_to_attribute(
-    frame: CropFrame, roi_shape: tuple[int, int], padded: bool
-) -> dict:
-    """Serialise a frame into the store's ``attributes.phenotypic.crop_frame``."""
-    return {
-        "canvas_shape": [int(v) for v in frame.canvas_shape],
-        "offset": [int(v) for v in frame.offset],
-        "roi_shape": [int(roi_shape[0]), int(roi_shape[1])],
-        "padded": bool(padded),
-    }
-
-
-def crop_frame_from_attribute(
-    value: Any,
-) -> tuple[CropFrame, tuple[int, int], bool] | None:
-    """Parse ``crop_frame``; ``None`` when absent.
-
-    Raises:
-        ValueError: If the value is present but malformed or self-inconsistent.
-            Reading a padded store's canvas as the image would be silently
-            wrong, so a broken record is refused rather than ignored.
-    """
-    if value is None:
-        return None
-    try:
-        if not isinstance(value, Mapping):
-            raise TypeError("not a mapping")
-        canvas = value["canvas_shape"]
-        offset = value["offset"]
-        roi = value["roi_shape"]
-        if len(canvas) != 2 or len(offset) != 2 or len(roi) != 2:
-            raise TypeError("expected three length-2 sequences")
-        frame = CropFrame((canvas[0], canvas[1]), (offset[0], offset[1]))
-        roi_shape = (int(roi[0]), int(roi[1]))
-        padded = bool(value["padded"])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError(f"malformed crop_frame attribute {value!r}: {exc}") from exc
-    if not frame.fits(roi_shape):
-        raise ValueError(
-            f"malformed crop_frame attribute {value!r}: roi_shape does not fit"
-        )
-    return frame, roi_shape, padded
 ```
+
+(`Mapping` and the `pd` type-checking import are used by the Task 7 additions to this module. If ruff flags them as unused at this point, drop them now and re-add them in Task 7.)
+
+Add a one-line guard to the test file, so the light module stays light:
+
+```python
+def test_sdk_codec_module_does_not_import_the_image_stack():
+    import subprocess
+    import sys
+
+    code = (
+        "import sys, phenotypic.sdk_._crop_frame; "
+        "print(any(m.startswith('phenotypic._core') for m in sys.modules))"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "False"
+```
+
+If this guard fails because `phenotypic.sdk_`'s own package `__init__` already loads `_core`, the test documents that `sdk_` is not a light import root. Report it and drop the guard; don't move the codec again.
 
 - [ ] **Step 4: Run the tests and check they pass**
 
@@ -404,8 +463,8 @@ Expected: all PASS.
 - [ ] **Step 5: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/_core/_crop_frame.py tests/unit/core/test_crop_frame_helpers.py
-git add src/phenotypic/_core/_crop_frame.py tests/unit/core/test_crop_frame_helpers.py
+uv run ruff check --fix src/phenotypic/sdk_/_crop_frame.py src/phenotypic/_core/_crop_frame.py tests/unit/core/test_crop_frame_helpers.py
+git add src/phenotypic/sdk_/_crop_frame.py src/phenotypic/_core/_crop_frame.py tests/unit/core/test_crop_frame_helpers.py
 git commit -m "feat(core): CropFrame value type and pad/slice helpers
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -1084,7 +1143,7 @@ def test_capture_does_not_mutate_the_callers_stale_input():
 - [ ] **Step 2: Run the tests and check they fail**
 
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_provenance_carry.py -q --capture=fd -p no:cacheprovider`
-Expected: `test_same_shape_rebuild_inherits_the_frame` FAILS (`None == CropFrame(...)`). The other two pass already; that's fine, they are regression pins. If `_RebuildFresh().apply` fails *before* the assertion (an `ImageCorrector` integrity check rejecting a fresh object), switch the base to `phenotypic.abc_.ImageOperation` and record the substitution in the commit message.
+Expected: `test_same_shape_rebuild_inherits_the_frame` FAILS (`None == CropFrame(...)`). The other three pass already; that's fine, they are regression pins. If `_RebuildFresh().apply` fails *before* the assertion (an `ImageCorrector` integrity check rejecting a fresh object), switch the base to `phenotypic.abc_.ImageOperation` and record the substitution in the commit message.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -1236,8 +1295,9 @@ class FRAME(IdentityInfo):
     coordinates, so every ``Bbox_*``/``Grid_*`` value is relative to the
     region's top-left corner. These two columns record where that corner sat in
     the original image, so original-frame coordinates can be regenerated
-    without changing any existing value. They are 0 for an image that was never
-    cropped, so every table carries the same columns.
+    without changing any existing value. They are 0 when no crop is recorded
+    and null when a crop is recorded but its offset is not (e.g. a store
+    written before crop frames existed), so every table carries the columns.
     """
 
     @classmethod
@@ -1247,14 +1307,15 @@ class FRAME(IdentityInfo):
     OFFSET_RR = Entry(
         "OffsetRR",
         "Row offset of the analysed region's top-left pixel within the original "
-        "image frame; 0 when the image was not cropped. Original-frame row = "
-        "Bbox_*RR + Frame_OffsetRR.",
+        "image frame; 0 when no crop is recorded, null when a crop is recorded "
+        "but its offset is not. Original-frame row = Bbox_*RR + Frame_OffsetRR.",
     )
     OFFSET_CC = Entry(
         "OffsetCC",
         "Column offset of the analysed region's top-left pixel within the "
-        "original image frame; 0 when the image was not cropped. Original-frame "
-        "column = Bbox_*CC + Frame_OffsetCC.",
+        "original image frame; 0 when no crop is recorded, null when a crop is "
+        "recorded but its offset is not. Original-frame column = "
+        "Bbox_*CC + Frame_OffsetCC.",
     )
 ```
 
@@ -1299,7 +1360,8 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 - Test: `tests/unit/core/test_crop_frame_info.py`, `tests/unit/cli/test_readme_frame_section.py`
 
 **Interfaces:**
-- Consumes: `FRAME` (Task 6); `_valid_crop_frame` (Task 2); `phenotypic._core._provenance.readonly_operations(journal)` (existing; it yields operation mappings with `operation_class`, e.g. `"phenotypic.correction._image_cropper.CropImage"`, and `operation_name`).
+- Consumes: `FRAME` (Task 6); `_valid_crop_frame` (Task 2). It also relies on the journal layout (`_provenance.py:302-312`): v1 is a flat `operations` list; v2 has `applications[*].operations`. Each entry carries `operation_class` (e.g. `"phenotypic.correction._image_cropper.CropImage"`) and `operation_name`. It deliberately does **not** call `readonly_operations`, which validates and deep-freezes the whole journal on every call.
+- `_image_data_manager.py` needs a module logger if it has none: `logger = logging.getLogger(__name__)` (add `import logging`).
 - Produces:
   - `journal_records_crop(journal: Mapping) -> bool`
   - `append_frame_offsets(info: pd.DataFrame, offsets: tuple[int, int] | None) -> pd.DataFrame`. `None` gives null `Int64` columns; otherwise `int64`.
@@ -1343,9 +1405,10 @@ def _cropped_grid() -> GridImage:
 
 
 def test_uncropped_info_carries_zero_offsets():
+    plate = Image(load_synth_yeast_plate())  # loaded OUTSIDE the error filter
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        info = Image(load_synth_yeast_plate()).objects.info(include_metadata=False)
+        info = plate.objects.info(include_metadata=False)
     assert (info[OFFSETS] == 0).all().all()
     assert all(info[c].dtype == np.int64 for c in OFFSETS)
 
@@ -1387,7 +1450,26 @@ def test_a_cropped_image_whose_frame_was_lost_gets_null_offsets_and_warns_once()
     assert not info[_bbox_cols(info)].isna().any().any()
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        cropped.objects.info(include_metadata=False)  # warned once already
+        cropped.objects.info(include_metadata=False)  # this instance warned already
+
+
+def test_unknown_offset_warning_text_is_constant_across_images():
+    """Constant text lets Python's warning registry collapse a 6,000-image
+    re-measure into one line; the image name goes to the log instead."""
+    messages = []
+    for name in ("plate_a", "plate_b"):
+        cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
+        # Set AFTER construction: Image(other) copies other's protected
+        # metadata, name included, so a constructor `name=` would be lost and
+        # both images would share one name -- making this test vacuous.
+        cropped.name = name
+        assert cropped.name == name
+        cropped._crop_frame = None
+        with pytest.warns(UserWarning, match="unknown") as record:
+            cropped.objects.info(include_metadata=False)
+        messages.append(str(record[0].message))
+    assert messages[0] == messages[1]
+    assert "plate_a" not in messages[0]
 
 
 def test_pipeline_measurements_carry_offsets_once():
@@ -1418,23 +1500,37 @@ def test_info_consuming_refiners_keep_working_on_a_cropped_grid(op):
     assert out._crop_frame == grid._crop_frame
 
 
-def test_aggregation_of_old_and_new_tables_keeps_frame_nullable(tmp_path):
-    """A non-crop run resumed across the upgrade mixes tables with and without
-    Frame_* (spec §4.2); the master keeps the column, null for old rows."""
+def test_aggregation_of_old_and_new_tables_keeps_frame_nullable(tmp_path, monkeypatch):
+    """A non-crop run resumed across the upgrade mixes embedded tables with and
+    without Frame_* (spec §4.2). The FORWARD master path is
+    aggregate_embedded_measurement_tables: each store's table is projected onto
+    its own recorded columns, then concatenated. The projection is stubbed to
+    return each store's (already projected) table, so this pins the real
+    concatenation, not the legacy external-Parquet reader."""
+    from pathlib import Path
+
     import polars as pl
 
-    from phenotypic._cli._cli_parquet_agg import aggregate_parquet_files
+    from phenotypic._cli import _cli_parquet_agg as agg
 
-    old = tmp_path / "old.parquet"
-    new = tmp_path / "new.parquet"
-    pl.DataFrame({"Object_Label": [1], "Size_Area": [10.0]}).write_parquet(old)
-    pl.DataFrame(
-        {"Object_Label": [1], "Size_Area": [11.0], "Frame_OffsetRR": [0], "Frame_OffsetCC": [0]}
-    ).write_parquet(new)
-    df = aggregate_parquet_files([old, new], {old: "ds", new: "ds"})
+    old = tmp_path / "old.ome.zarr" / "tables" / "measurements" / "table.parquet"
+    new = tmp_path / "new.ome.zarr" / "tables" / "measurements" / "table.parquet"
+    projected = {
+        old: pl.DataFrame({"Object_Label": [1], "Size_Area": [10.0]}),
+        new: pl.DataFrame(
+            {"Object_Label": [1], "Size_Area": [11.0], "Frame_OffsetRR": [0], "Frame_OffsetCC": [0]}
+        ),
+    }
+    monkeypatch.setattr(
+        agg, "project_embedded_measurement_table", lambda path, *a, **k: projected[Path(path)]
+    )
+    df, aggregated = agg.aggregate_embedded_measurement_tables({old: "ds", new: "ds"})
+    assert set(aggregated) == {old, new}
     assert {"Frame_OffsetRR", "Frame_OffsetCC"} <= set(df.columns)
     assert df["Frame_OffsetRR"].null_count() == 1
 ```
+
+(Before writing this test, read `_cli_parquet_agg.py:385-420`. If the projection is called with a different first argument than the table path, or its result is post-processed in a way that needs more columns (e.g. `filename`), adapt the stub to match. Keep it a stub of the projection only, so `aggregate_embedded_measurement_tables`' own concatenation is what's under test.)
 
 `tests/unit/cli/test_readme_frame_section.py`:
 
@@ -1445,12 +1541,18 @@ from types import SimpleNamespace
 
 from phenotypic import ImagePipeline
 from phenotypic._cli._cli_readme_generator import READMEGenerator
+from phenotypic.measure import MeasureSize
 
 
 def test_measurements_section_documents_frame_offsets():
-    gen = READMEGenerator(config=SimpleNamespace(image_type="Image"), pipeline=ImagePipeline())
+    # A measurer is required: with none, the section returns early
+    # ("No measurements configured") before any identity table is built.
+    gen = READMEGenerator(
+        config=SimpleNamespace(image_type="Image"), pipeline=ImagePipeline(meas=[MeasureSize()])
+    )
     section = gen._generate_measurements_section()
     assert "Frame_OffsetRR" in section and "Frame_OffsetCC" in section
+    assert section.index("Bbox_CenterRR") < section.index("Frame_OffsetRR")
 ```
 
 - [ ] **Step 2: Run the tests and check they fail**
@@ -1471,21 +1573,39 @@ Append to `_core/_crop_frame.py`:
 _CROP_OPERATION_NAMES = frozenset({"CropImage", "ImageCropper"})
 
 
-def journal_records_crop(journal: Mapping[str, Any]) -> bool:
+def _journal_operation_entries(journal: Any) -> list[Any]:
+    """Operation entries of a v1 (flat) or v2 (per-application) journal.
+
+    A plain walk, with no validation and no copy: this runs on every ``info()``
+    of every uncropped image (``readonly_operations`` would validate and
+    deep-freeze the whole journal each time), and it must never raise.
+    """
+    if not isinstance(journal, Mapping):
+        return []
+    flat = journal.get("operations")
+    if isinstance(flat, list):  # schema v1
+        return flat
+    entries: list[Any] = []
+    applications = journal.get("applications")
+    if isinstance(applications, list):
+        for application in applications:
+            if isinstance(application, Mapping) and isinstance(
+                application.get("operations"), list
+            ):
+                entries.extend(application["operations"])
+    return entries
+
+
+def journal_records_crop(journal: Any) -> bool:
     """Whether a provenance journal records a crop operation.
 
     Matches the last dotted component of ``operation_class`` (and
-    ``operation_name``, for journals that lack a class). A journal that does
-    not validate reads as "no crop" -- this only decides between ``0`` and
-    null offsets, and must never raise from ``info()``.
+    ``operation_name``, for entries that lack a class). Anything malformed
+    reads as "no crop" -- this only decides between ``0`` and null offsets.
     """
-    from phenotypic._core._provenance import readonly_operations
-
-    try:
-        operations = readonly_operations(journal)
-    except (KeyError, TypeError, ValueError):
-        return False
-    for operation in operations:
+    for operation in _journal_operation_entries(journal):
+        if not isinstance(operation, Mapping):
+            continue
         for field in ("operation_class", "operation_name"):
             value = operation.get(field)
             if isinstance(value, str) and value.rsplit(".", 1)[-1] in _CROP_OPERATION_NAMES:
@@ -1548,12 +1668,19 @@ and a method after `_assign_child_frame`:
         if not journal_records_crop(self._metadata.provenance_journal):
             return (0, 0)
         if not self._unknown_frame_warned:
+            # Constant text on purpose: Python's warning registry de-duplicates
+            # by message, so a re-measure over thousands of pre-change crop
+            # stores prints one line, not one per image. The image name goes
+            # to the log.
+            logger.info(
+                "Crop offset unknown for image %r; Frame_OffsetRR/CC are null.",
+                self._metadata.protected.get(IMAGE.IMAGE_NAME),
+            )
             warnings.warn(
-                f"Image {self._metadata.protected.get(IMAGE.IMAGE_NAME)!r} was "
-                f"cropped but its offset into the original image is unknown "
-                f"(it predates recorded crop frames, or its frame was "
-                f"discarded); Frame_OffsetRR/CC are null. Re-run --mode full "
-                f"to recover them.",
+                "A cropped image's offset into the original image is unknown "
+                "(it predates recorded crop frames, or its frame was "
+                "discarded); its Frame_OffsetRR/CC are null. Re-processing the "
+                "source images with --mode full records them.",
                 UserWarning,
                 stacklevel=2,
             )
@@ -1661,14 +1788,19 @@ def _attrs(crop_frame=None) -> dict:
     )
 
 
-def _store(tmp_path: Path, version) -> Path:
+def _store(tmp_path: Path, version, **block) -> Path:
     store = tmp_path / f"v{version}.ome.zarr"
     store.mkdir()
     (store / "zarr.json").write_text(json.dumps({
         "zarr_format": 3, "node_type": "group",
-        "attributes": {"phenotypic": {"store_schema_version": version}},
+        "attributes": {"phenotypic": {"store_schema_version": version, **block}},
     }))
     return store
+
+
+def _padded_v4(tmp_path: Path) -> Path:
+    """A v4 root that satisfies the read invariant (v4 <=> padded crop_frame)."""
+    return _store(tmp_path, 4, crop_frame={**_FRAME, "padded": True})
 
 
 def test_no_frame_writes_v3_and_no_key():
@@ -1694,15 +1826,15 @@ def test_is_readable(found, ok):
 
 
 def test_require_readable_store_accepts_v4_refuses_v5(tmp_path):
-    ngff_.require_readable_store(_store(tmp_path, 4))
+    ngff_.require_readable_store(_padded_v4(tmp_path))
     with pytest.raises(ValueError, match="newer PhenoTypic"):
-        ngff_.require_readable_store(_store(tmp_path, 5))
+        ngff_.require_readable_store(_store(tmp_path, 5))  # version gate fires first
 
 
 def test_an_older_build_refuses_a_padded_store(tmp_path, monkeypatch):
     monkeypatch.setattr(ngff_, "READABLE_STORE_SCHEMA_VERSIONS", frozenset({3}))
     with pytest.raises(ValueError, match="store_schema_version is 4"):
-        ngff_.require_readable_store(_store(tmp_path, 4))
+        ngff_.require_readable_store(_padded_v4(tmp_path))
 
 
 @pytest.mark.parametrize(
@@ -1876,7 +2008,7 @@ and, just before the final `return bool(aligned_spatial) and all(...)`:
             return False
 ```
 
-New functions, after `require_readable_store`. The `_core` import is deferred to call time: `phenotypic._core`'s package `__init__` imports the image stack, which imports this module.
+New functions, after `require_readable_store`. They import the codec from the sibling `phenotypic.sdk_._crop_frame` (stdlib-only), **never** from `phenotypic._core`: that package's `__init__` loads the whole image stack onto GUI chunk routes and store probes (round-2 review R2-m1). The import is inside each function only to keep `ngff_`'s module import graph unchanged.
 
 ```python
 def padded_crop_window(
@@ -1889,7 +2021,7 @@ def padded_crop_window(
     :func:`check_crop_frame_consistency` (via ``require_readable_store``)
     and refuse.
     """
-    from phenotypic._core._crop_frame import crop_frame_from_attribute
+    from phenotypic.sdk_._crop_frame import crop_frame_from_attribute
 
     try:
         parsed = crop_frame_from_attribute(block.get(PhenotypicAttr.CROP_FRAME))
@@ -1921,7 +2053,7 @@ def check_crop_frame_consistency(block: Mapping[str, Any]) -> None:
             ``store_schema_version == 4`` and ``crop_frame.padded`` disagree.
             The message names ``crop_frame``.
     """
-    from phenotypic._core._crop_frame import crop_frame_from_attribute
+    from phenotypic.sdk_._crop_frame import crop_frame_from_attribute
 
     parsed = crop_frame_from_attribute(block.get(PhenotypicAttr.CROP_FRAME))
     padded = parsed is not None and parsed[2]
@@ -2070,8 +2202,11 @@ def test_builder_intermediates_stay_roi_sized(tmp_path, plate, cropped):
     from phenotypic import ImagePipeline
 
     ImagePipeline(ops={"crop": CropImage(**CROP)}).apply_with_intermediates(plate, output_dir=tmp_path)
-    stores = sorted(tmp_path.glob("*crop*.ome.zarr"))
-    assert stores, "apply_with_intermediates wrote no crop snapshot"
+    # A corrector modifies every layer, so its snapshot is a full `base_NN`
+    # store, not a `{NN}_{key}` delta (_image_pipeline_core.py:120-121,
+    # 1076-1080). `base_00` is the pre-crop input and is legitimately canvas-sized.
+    stores = sorted(p for p in tmp_path.glob("*.ome.zarr") if p.name != "base_00.ome.zarr")
+    assert stores, "apply_with_intermediates wrote no post-crop snapshot"
     for store in stores:
         assert Image.load_layer_zarr(store, "gray").shape == cropped.shape[:2]
 
@@ -2212,7 +2347,7 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 ### Task 10: Reader: slice padded layers back and restore the frame
 
 **Files:**
-- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_load_from_store` (`~:1671-1790`), `_read_store_array` (`~:1792`), `save2pickle` (`~:2076`), `load_pickle` (`~:2147-2215`)
+- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_load_from_store` (`~:1671-1790`), `_read_store_array` (`~:1792`), `_imread_store` (`~:880-905`), `save2pickle` (`~:2076`), `load_pickle` (`~:2147-2215`)
 - Test: `tests/unit/core/test_crop_frame_zarr_read.py`
 
 **Interfaces:**
@@ -2328,6 +2463,30 @@ def test_pre_change_crop_store_measures_null_offsets(tmp_path):
     assert info[["Frame_OffsetRR", "Frame_OffsetCC"]].isna().all().all()
 
 
+def test_imread_of_a_padded_store_reports_zero_offsets(tmp_path):
+    """Process output is valid CLI input: imread returns the canvas, so the
+    offset is 0 -- not null, even though the journal records the crop."""
+    import warnings
+
+    from phenotypic._core._crop_frame import CropFrame
+
+    plate = Image(load_synth_yeast_plate())
+    read = Image.imread(CropImage(**CROP).apply(plate).save2zarr(tmp_path / "c.ome.zarr"))
+    assert read._crop_frame == CropFrame(tuple(plate.shape[:2]), (0, 0))
+    assert read._pad_on_save is False
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        assert read._frame_offsets_for_info() == (0, 0)
+
+
+def test_imread_of_an_unpadded_store_restores_the_recorded_frame(tmp_path):
+    cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
+    read = Image.imread(cropped.save2zarr(tmp_path / "u.ome.zarr", pad_on_save=False))
+    assert read._crop_frame == cropped._crop_frame
+    assert read._pad_on_save is False
+    assert read._frame_offsets_for_info() == (7, 13)
+
+
 def test_save2pickle_round_trips_the_frame(tmp_path):
     cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
     cropped.save2pickle(tmp_path / "c.pkl")
@@ -2395,6 +2554,33 @@ Pass `window=window` to the `_read_store_array` calls for `series["gray"]`, `ser
 ```
 
 (The version ⇔ `padded` invariant is already enforced: `load_zarr` and `_io_constants.py:2787` both pass through `require_readable_store`, which calls `check_crop_frame_consistency` (Task 8).)
+
+**`imread` of a store (spec §5.3, round-2 review R2-M4).** In `_imread_store` (`_image_io_handler.py:~880-905`), directly after the provenance-journal block:
+
+```python
+        # The journal just copied may record a CropImage; without a frame the
+        # Frame_* rule would then report null offsets for pixels whose offset
+        # is known. Give the image the frame that describes what was read.
+        from phenotypic.sdk_._crop_frame import CropFrame, crop_frame_from_attribute
+
+        try:
+            recorded = crop_frame_from_attribute(
+                spec.phenotypic.get(ngff_.PhenotypicAttr.CROP_FRAME)
+            )
+        except ValueError:
+            recorded = None
+        if recorded is not None:
+            frame, roi_shape, padded = recorded
+            shape2d = tuple(image.shape[:2])
+            if padded and shape2d == frame.canvas_shape:
+                image._crop_frame = CropFrame(shape2d, (0, 0))  # the pixels ARE the canvas
+            elif not padded and shape2d == roi_shape:
+                image._crop_frame = frame
+            # imread reads plain pixels; re-saving them must not re-pad.
+            image._pad_on_save = False
+```
+
+A level > 0 read has a different shape, so it gets no frame; that is honest. If `spec.phenotypic` can be `None` for a third-party store, guard with `(spec.phenotypic or {})`. Check `read_ngff_image_spec`'s return type.
 
 **Pickle files (spec §5.3).** In `save2pickle`, add to `data2save`:
 
@@ -2552,7 +2738,7 @@ Expected: no new failures against `main`. Run each failing test on its own befor
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_process_only.py:~210` (zarr-branch level count)
 - Modify: `src/phenotypic/_cli/_cli_failure_tracker.py:209` (revision 3 → 4 + history line)
-- Modify: `tests/integration/cli/test_figures_in_store.py:268` (`== 3` → `>= 3`, with a comment)
+- Modify: `tests/integration/cli/test_figures_in_store.py:268` (`== 3` → `== 4`, comment updated)
 - Test: `tests/unit/cli/test_process_only_crop_frame.py`
 
 **Interfaces:**
@@ -2994,7 +3180,33 @@ def test_display_range_ignores_the_zero_margin(tmp_path):
     assert lo_padded > 10_000
     # Different pyramids (canvas vs ROI) downsample differently, so equal-ish, not equal.
     assert abs(lo_padded - lo_plain) < 2_000 and abs(hi_padded - hi_plain) < 2_000
+
+
+def test_display_range_with_odd_offsets_on_a_deep_pyramid(tmp_path):
+    """Odd offsets scale to non-integer level coordinates; inward rounding keeps
+    straddling (part-zero) mean pixels out of the range."""
+    arr = np.full((1400, 1600, 3), 30_000, dtype=np.uint16)
+    cropped = CropImage(top=51, left=61, bottom=37, right=43).apply(Image(arr))
+    store = cropped.save2zarr(tmp_path / "p.ome.zarr")
+    from phenotypic.sdk_.ngff_ import read_phenotypic_attributes
+
+    assert read_phenotypic_attributes(store)["pyramid"]["levels"] >= 3
+    assert tiles.image_display_range(store, "rgb")[0] == 30_000
+
+
+@pytest.mark.parametrize(
+    ("offset", "roi", "canvas", "level", "expected"),
+    [
+        ((650, 650), (100, 100), (2000, 2000), (250, 250), (82, 93, 82, 93)),  # inward
+        ((50, 60), (500, 680), (600, 800), (300, 400), (25, 275, 30, 370)),  # exact
+        ((3, 3), (2, 2), (16, 16), (2, 2), (0, 1, 0, 1)),  # inward empty -> outward
+    ],
+)
+def test_roi_window_at_level(offset, roi, canvas, level, expected):
+    assert tiles._roi_window_at_level(offset, roi, canvas, level) == expected
 ```
+
+(The constant-valued plate makes the expected `lo` exact: any zero-margin pixel that leaks in lowers it. Check the third case's arithmetic by hand when implementing: start 3·2/16 = 0.375, so inward is `[1, 0)`, which is empty, and outward is `[0, 1)`.)
 
 `tests/unit/gui/results_viewer/test_colony_viv_crop_frame.py`:
 
@@ -3167,15 +3379,42 @@ with
         (canvas_h, canvas_w), (row, col), (roi_h, roi_w) = padded
         member = _store_member_path(block, store_path, layer)
         level_h, level_w = _level_shape(store_path, member, levels - 1)[-2:]
-        top = (row * level_h) // canvas_h
-        left = (col * level_w) // canvas_w
-        bottom = max(top + 1, -(-((row + roi_h) * level_h) // canvas_h))
-        right = max(left + 1, -(-((col + roi_w) * level_w) // canvas_w))
-        window = (top, bottom, left, right)
+        window = _roi_window_at_level(
+            (row, col), (roi_h, roi_w), (canvas_h, canvas_w), (level_h, level_w)
+        )
     smallest = _read_store_level(store_path, layer, levels - 1, window=window)
 ```
 
-The rounding is outward (floor/ceil), so at most one boundary row/column of the smallest level mixes in the margin. If that pulls `lo` below the test's bound on a real fixture, shrink the window inward by one instead, and record which you chose in the commit message.
+and add the helper beside `image_display_range`:
+
+```python
+def _roi_window_at_level(
+    offset: tuple[int, int],
+    roi_shape: tuple[int, int],
+    canvas_shape: tuple[int, int],
+    level_shape: tuple[int, int],
+) -> tuple[int, int, int, int]:
+    """``(top, bottom, left, right)`` of the ROI at one pyramid level, rounded INWARD.
+
+    The pyramid is a 2x block mean (``ngff_.py:140-142``), so a level pixel
+    straddling the ROI edge averages ROI pixels with the zero margin (e.g. the
+    spimager offset 650 at level 3 is 81.25 -- pixel 81 is 2/8 zero). Inward
+    rounding (ceil start, floor end) keeps only pixels wholly inside the ROI;
+    if that leaves nothing, fall back to outward rounding.
+    """
+    bounds = []
+    for start, extent, canvas, level in zip(offset, roi_shape, canvas_shape, level_shape):
+        inner_lo = -(-(start * level) // canvas)
+        inner_hi = ((start + extent) * level) // canvas
+        if inner_hi > inner_lo:
+            bounds.append((inner_lo, inner_hi))
+        else:
+            outer_lo = (start * level) // canvas
+            outer_hi = max(outer_lo + 1, -(-((start + extent) * level) // canvas))
+            bounds.append((outer_lo, outer_hi))
+    (top, bottom), (left, right) = bounds
+    return top, bottom, left, right
+```
 
 - [ ] **Step 4: Run the tests and check they pass**
 
