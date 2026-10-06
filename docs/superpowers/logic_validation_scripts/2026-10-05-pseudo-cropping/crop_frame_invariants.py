@@ -27,6 +27,12 @@ RNG = np.random.default_rng(20261005)
 CANVAS = (37, 53)
 
 
+def _check(condition: bool, message: str) -> None:
+    """Fail loudly. Not ``assert``: ``python -O`` strips asserts and would exit 0."""
+    if not condition:
+        raise AssertionError(message)
+
+
 def _window(offset, shape):
     return (
         slice(offset[0], offset[0] + shape[0]),
@@ -58,9 +64,10 @@ def check_offset_composition() -> None:
         b1 = int(RNG.integers(b0 + 1, w + 1))
         second = first[a0:a1, b0:b1]
         offset = (r0 + a0, c0 + b0)
-        assert np.array_equal(
-            second, canvas[_window(offset, second.shape)]
-        ), "offset composition failed"
+        _check(
+            np.array_equal(second, canvas[_window(offset, second.shape)]),
+            "offset composition failed",
+        )
 
 
 def check_pad_slice_identity() -> None:
@@ -76,10 +83,10 @@ def check_pad_slice_identity() -> None:
             padded = np.zeros(CANVAS, dtype=dtype)
             padded[_window(offset, roi.shape)] = roi
             back = padded[_window(offset, roi.shape)]
-            assert back.tobytes() == roi.tobytes(), "pad/slice identity failed"
+            _check(back.tobytes() == roi.tobytes(), "pad/slice identity failed")
             outside = np.ones(CANVAS, dtype=bool)
             outside[_window(offset, roi.shape)] = False
-            assert not padded[outside].any(), "non-zero pixel outside the ROI"
+            _check(not padded[outside].any(), "non-zero pixel outside the ROI")
 
 
 def check_coordinate_regeneration() -> None:
@@ -88,27 +95,28 @@ def check_coordinate_regeneration() -> None:
     roi = canvas[_window(offset, (20, 30))]
     for rr in range(roi.shape[0]):
         for cc in range(roi.shape[1]):
-            assert roi[rr, cc] == canvas[rr + offset[0], cc + offset[1]], (
-                "Bbox + Frame_Offset does not address the same canvas pixel"
+            _check(
+                roi[rr, cc] == canvas[rr + offset[0], cc + offset[1]],
+                "Bbox + Frame_Offset does not address the same canvas pixel",
             )
 
 
 def check_pad_overflow_rule() -> None:
     shape = (10, 12)
     offset = (4, 6)
-    assert _is_valid(offset, shape, CANVAS)
+    _check(_is_valid(offset, shape, CANVAS), "fixture frame must be valid")
     # Padding within the cropped margin: still inside the canvas -> kept.
     pad_top, pad_left, pad_bottom, pad_right = 4, 6, 2, 3
     new_offset = (offset[0] - pad_top, offset[1] - pad_left)
     new_shape = (shape[0] + pad_top + pad_bottom, shape[1] + pad_left + pad_right)
-    assert _is_valid(new_offset, new_shape, CANVAS), "in-canvas pad must keep frame"
+    _check(_is_valid(new_offset, new_shape, CANVAS), "in-canvas pad must keep frame")
     # Padding past the original edge: offset goes negative -> dropped.
     new_offset = (offset[0] - 5, offset[1])
     new_shape = (shape[0] + 5, shape[1])
-    assert not _is_valid(new_offset, new_shape, CANVAS), "overflow must drop frame"
+    _check(not _is_valid(new_offset, new_shape, CANVAS), "overflow must drop frame")
     # Padding past the far edge: exceeds the canvas -> dropped.
     new_shape = (CANVAS[0] - offset[0] + 1, shape[1])
-    assert not _is_valid(offset, new_shape, CANVAS), "far-edge overflow must drop"
+    _check(not _is_valid(offset, new_shape, CANVAS), "far-edge overflow must drop")
 
 
 CHECKS = (

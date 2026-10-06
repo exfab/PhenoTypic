@@ -126,6 +126,12 @@ across. It then sets `image._pad_on_save = True`.
 | `image.rotate()`, `GridAligner`, `ImageCorrector`/`GridCorrector` rotation | Keep the frame (shape is unchanged). **Documented limitation:** the frame is a translation record. Rotating *before* a crop means offsets are in the rotated canvas's coordinates, not the raw `"original"` series'. The provenance journal already records the rotation. |
 | Any other op that reshapes `_data` | Caught by the §3.1 guard at the next consumer: dropped with a warning. |
 
+**PadImage fill inside a kept frame (decided 2026-10-05).** When a kept frame follows
+`PadImage(mode="edge"|"reflect"|…)` or `constant_value != 0`, the pad pixels are
+part of the analysed image. They are written at their canvas positions in a padded
+store, so the store shows exactly what the analysis saw. Zeros still mark only
+never-analysed area. This is documented on `PadImage`, not prevented.
+
 ### 3.5 Carry-over through the apply wrapper
 
 `_carry_logical_image_state` (`_provenance.py:484`) re-attaches `_original` from
@@ -135,6 +141,13 @@ input's, copy the input's frame and `_pad_on_save` onto the result.** This cover
 same-shape op that rebuilds its result as a fresh `Image`. A result that already has
 a frame (e.g. `CropImage`'s) is left untouched. A result with a changed shape and no
 frame gets none.
+
+The capture must not mutate the caller's input. It reads `_crop_frame` and tests
+`.fits()` without clearing; the clearing guard runs only on the result's consumers.
+
+**Known limitation.** A same-shape op that legitimately produces an unrelated image
+(a registration or replacement op) would inherit a frame that no longer describes
+its pixels. No such op exists today; this is noted beside the rotation limitation.
 
 ### 3.6 Unchanged
 
@@ -160,13 +173,15 @@ class FRAME(IdentityInfo):
     OFFSET_RR = Entry(
         "OffsetRR",
         "Row offset of the analysed region's top-left pixel within the original "
-        "image frame. 0 when the image was not cropped. Original-frame row = "
+        "image frame. 0 when the image was not cropped; null when it was cropped "
+        "but the offset was not recorded. Original-frame row = "
         "Bbox_*RR + Frame_OffsetRR.",
     )
     OFFSET_CC = Entry(
         "OffsetCC",
         "Column offset of the analysed region's top-left pixel within the original "
-        "image frame. 0 when the image was not cropped. Original-frame column = "
+        "image frame. 0 when the image was not cropped; null when it was cropped "
+        "but the offset was not recorded. Original-frame column = "
         "Bbox_*CC + Frame_OffsetCC.",
     )
 ```
@@ -179,10 +194,22 @@ authoring.
 - One private helper, `_append_frame_offsets(info, image) -> DataFrame`, is called
   at the end of **both** `ObjectsAccessor.info` and `GridAccessor.info`, before
   `insert_metadata`. It reads the frame via `_valid_crop_frame()`.
-- The columns are **always emitted**, as integer `0, 0` when there is no frame. Every
-  measurement table then has the same column set whether or not its pipeline crops,
-  and cropped and uncropped images concatenate cleanly into
-  `master_measurements.parquet`.
+- The columns are **always emitted**. Their value is:
+  - the frame's offset when the image has a valid frame (`int64`);
+  - **`0, 0`** when it has no frame and its provenance journal records no
+    `CropImage`/`ImageCropper` operation, i.e. it was genuinely never cropped
+    (`int64`);
+  - **null** (pandas nullable `Int64`, `pd.NA`) when it has no frame **but its
+    journal records a crop**. This covers stores written before this change and
+    re-measured with `--mode measure`, and frames dropped by the §3.1 guard or by
+    `PadImage` overflow. The offset is genuinely unknown, so `0` would silently
+    lie. A `UserWarning` is emitted once per image, telling the user to re-run
+    `--mode full` to recover the offsets. (Decided 2026-10-05.)
+- Cropped and uncropped images concatenate cleanly into `master_measurements.parquet`.
+  A *non-crop* run resumed across the upgrade keeps its work id by design, so its
+  reused stores' tables lack `Frame_*`. Aggregation (`pl.concat(...,
+  how="diagonal_relaxed")`) fills those rows with null, so the column is present
+  and nullable in that one case.
 - **Every existing `Bbox_*`, grid and centroid value is byte-identical** to today:
   still in ROI coordinates.
 - The columns sit in the info block of the canonical order
@@ -249,6 +276,16 @@ coordinates.
   validity check at `ngff_.py:2004`, `load_layer_zarr`) accepts the set.
 - An older build refuses a padded store with its existing "this build reads 3"
   message rather than misreading it. Existing trees need no `--mode migrate`.
+- **Read invariant:** version 4 ⇔ `crop_frame.padded == true`. A v4 store without a
+  padded `crop_frame`, or a v3 store claiming `padded: true`, is refused by the
+  loader and rejected by `valid_staged_store`. So is a `crop_frame` that does not
+  parse, or whose `canvas_shape` disagrees with the stored level-0 extent. The
+  staged engine then routes the image back to Stage 1 instead of aborting.
+- **A no-op `CropImage()` still writes a padded v4 store** (decided 2026-10-05). The
+  rule is "every `CropImage` result saves padded", with no special case for an
+  identity frame.
+- The existing tests that use `STORE_SCHEMA_VERSION + 1` (= 4) as "a newer,
+  unreadable version" are moved to `max(READABLE_STORE_SCHEMA_VERSIONS) + 1`.
 
 ### 5.3 Reading
 
@@ -256,8 +293,14 @@ coordinates.
   objmap) back to the ROI, then restore `_crop_frame` and
   `_pad_on_save = padded`. If not padded, restore the frame only. If there is no
   `crop_frame`, the image has no frame.
-  **Round-trip invariant:** `Image.load_zarr(img.save2zarr(p))` equals `img`
-  (`__eq__`), and has an equal `_crop_frame` and `_pad_on_save`.
+  **Round-trip invariant** (for `pad_on_save=None`): `Image.load_zarr(img.save2zarr(p))`
+  equals `img` (`__eq__`), and has an equal `_crop_frame` and `_pad_on_save`. With an
+  explicit override, the loaded `_pad_on_save` is the `padded` value actually
+  written. The loader checks that every windowed read returns `roi_shape` (zarr
+  truncates out-of-bounds slices silently) and raises `ValueError` naming
+  `crop_frame` otherwise.
+- **`save2pickle` / `load_pickle`** persist `_crop_frame` and `_pad_on_save`. They
+  read them with `.get`, so old pickle files load without a frame.
 - **`load_layer_zarr`** (the GUI tile server's reader) and **`Image.imread(store)`**
   return the **on-disk canvas** unchanged. That is the "full-frame layers on disk"
   view.
@@ -311,29 +354,45 @@ have no `crop_frame`, which means no frame.
 
 ## 7. GUI consumers
 
-Viv/deck.gl reads store chunks directly, so the Plate view shows the full canvas and
-the objmap label lines up with it automatically. Code that maps **table
-coordinates onto stored pixels** must add the offset:
+Viv/deck.gl reads store chunks directly, so the Plate view's image and label layers
+show the full canvas and line up automatically. Plate contrast comes from the dtype
+domain (`viv_viewer.js` `dtypeDomain`), so padding does not affect it. Code that
+maps **table coordinates onto stored pixels** must add the offset:
 
-- **`_gui/_shared/tiles.py:1255-1267`**: the colony-tile crop centres on
-  `Bbox_CenterRR/CC` and dims to `Bbox_Min/Max*`. It adds `Frame_Offset*` **only
-  when the pixel source is a padded store**. The baked overlay-PNG fallback is drawn
-  on the ROI and must not be offset.
-- **`_gui/results_viewer/_curation_labels.py:483,512`**: centre points. Audit
-  whether they are placed onto store pixels; offset them if so.
+- **Results Colony grid (Viv)**: `colony_view/_grid.py:_build_cell` serialises
+  `Bbox_CenterRR/CC` as `centroidRr/centroidCc`, which `viv_viewer.js` treats as
+  store pixel coordinates (camera targets and tile prefetch). `build_source_spec`
+  (`_store_source.py`) gains `"cropOffset": [row, col]` from
+  `ngff_.padded_crop_offset(block)`, and `_build_cell` adds it to the centroid
+  before serialising. The JS is unchanged.
+- **Server-side colony crops** (`tiles.py` `_crop_store_layer_window`, behind the QC
+  gallery and the `/crops` route): the crop window is computed in **ROI**
+  coordinates against the ROI's extent, then shifted into the canvas for the read.
+  A crop from a padded store is then byte-identical to one from an unpadded store,
+  including colonies at the ROI edge, contours, and per-window `detect_mat`
+  normalisation.
+- **Display range** (`tiles.py:image_display_range`): reads only the ROI window of
+  the smallest pyramid level (offset and `roi_shape` scaled by the level/canvas
+  ratio), so the zero margin does not drag `lo` to 0 and wash out 16-bit crops.
+- **Builder node previews** (decided 2026-10-05): `apply_with_intermediates` passes
+  `pad_on_save=False`, so previews keep showing the cropped region exactly as
+  today. Padding applies to run outputs, not previews.
+
+Unchanged consumers (audited):
+
+- **`_gui/results_viewer/_curation_labels.py:483,512`**: centroids are used only as
+  identity fingerprints compared against the same table, never placed onto pixels.
 - Extent-only consumers (`colony_view/_grid.py:321`,
-  `_qc_tab/review/_callbacks.py:1551`) use `Max − Min` and don't change with an
-  offset. Confirm each one; no change expected.
+  `_qc_tab/review/_callbacks.py:1551`) use `Max − Min`, which an offset does not
+  change.
+- The baked overlay-PNG fallback is drawn on the ROI and has no store, so it is
+  never shifted.
 
-One shared helper, `ngff_.padded_crop_offset(block)`, decides "is this pixel source
-padded?" in a single place. It reads the store's own `crop_frame` attribute and
-returns its offset when `padded` is true, otherwise `(0, 0)`. The **store**, not the
-measurement table, is the source of truth for the shift. This means old masters
-without `Frame_*` columns need no special case, and the overlay fallback (which has
-no store) is never shifted. `_crop_store_layer_window` (`tiles.py`) applies it to
-the centre and the dim bbox before computing the read window. Curation labels
-(`_curation_labels.py`) use centroids only as identity fingerprints compared
-against the same table, never placed onto pixels, so they need no change.
+One shared helper, `ngff_.padded_crop_offset(block)` (with `ngff_.padded_crop_window`
+returning canvas, offset and ROI shape), decides "is this pixel source padded?" in a
+single place. It reads the store's own `crop_frame` attribute, so the **store**, not
+the measurement table, is the source of truth for the shift. Old masters without
+`Frame_*` columns therefore need no special case.
 
 ## 8. Testing
 
@@ -380,5 +439,6 @@ the `working-with-ome-zarr` skill.
 | `Frame_*` merge collisions in refine/measure ops | §4.3 mechanical audit of every `.info(` call site |
 | An older build misreads a padded store | v4 on padded stores only (§5.2) |
 | A mixed ROI/canvas store tree after upgrade | Crop-only `crop_frame_semantics` digest key (§6.3); process revision bump (§6.2) |
-| A GUI tile crop misplaced on a padded store | Single `to_canvas_coords` helper; overlay fallback explicitly not offset (§7) |
+| A GUI tile crop or Colony view misplaced on a padded store | Single `ngff_.padded_crop_offset` helper read from the store; overlay fallback explicitly not offset (§7) |
+| A deliverables README missing the new columns | `_cli_readme_generator.py` emits a `FRAME` table after `BBOX` |
 | Rotate-then-crop offsets misread as raw-original coordinates | Documented limitation (§3.4); rotation is in provenance |
