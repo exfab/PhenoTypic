@@ -60,7 +60,7 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
 
 
 @functools.lru_cache(maxsize=8)
-def _columns_for(path: str, mtime_ns: int) -> tuple[str, ...]:
+def _columns_for(path: str, mtime_ns: int, size: int) -> tuple[str, ...]:
     from phenotypic._core._reference_context import ReferenceContext
 
     return ReferenceContext(path).columns
@@ -69,14 +69,15 @@ def _columns_for(path: str, mtime_ns: int) -> tuple[str, ...]:
 def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], list[str]]]:
     """A ``columns_provider`` for the shared param form, or ``None`` without a table.
 
-    Cached on the file's mtime: the inspector re-renders on every edit.
+    Cached on the file's ``(mtime, size)``: the inspector re-renders on every edit.
     """
     if not path:
         return None
     from phenotypic._core._reference_context import ReferenceTableError
 
     try:
-        columns = _columns_for(path, Path(path).stat().st_mtime_ns)
+        stat = Path(path).stat()
+        columns = _columns_for(path, stat.st_mtime_ns, stat.st_size)
     except (OSError, ReferenceTableError):
         return None
 

@@ -142,6 +142,25 @@ def test_columns_provider_serves_only_reference_metadata(tmp_path):
     assert rm.reference_columns_provider(str(tmp_path / "nope.csv")) is None
 
 
+def test_columns_provider_follows_a_rewrite_that_keeps_the_mtime(tmp_path):
+    """``cp -p`` / coarse mtimes: the same mtime must not serve stale columns."""
+    path = _table(tmp_path)
+    provide = rm.reference_columns_provider(str(path))
+    assert "Metadata_Blank2" not in provide("reference_metadata")
+
+    before = path.stat()
+    pd.DataFrame(
+        {"ImageName": ["t01"], "BlankImage": ["t00"], "Blank2": ["t00b"]}
+    ).to_csv(path, index=False)
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    after = path.stat()
+    assert after.st_mtime_ns == before.st_mtime_ns
+    assert after.st_size != before.st_size
+
+    provide = rm.reference_columns_provider(str(path))
+    assert "Metadata_Blank2" in provide("reference_metadata")
+
+
 def test_preview_context_activates_with_the_image_directory_as_root(tmp_path):
     image = tmp_path / "plates" / "t01.tif"
     with rm.preview_reference_context(str(_table(tmp_path)), str(image)) as ctx:
