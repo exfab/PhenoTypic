@@ -15,7 +15,7 @@ import os
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 from uuid import uuid4
 
 from joblib import Parallel, delayed
@@ -45,6 +45,7 @@ from ._cli_replay_detector import build_replay_pipeline
 from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import (
     PerImageScientificError,
+    WorkIdentity,
     work_id_for_image,
     work_identity_for_image,
 )
@@ -74,6 +75,16 @@ from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 from ._cli_types import Dataset, DatasetResults, ExecutionResults
 
 logger = logging.getLogger(__name__)
+
+
+def _reference_pin(image: Path, identity: WorkIdentity) -> ReferencePin:
+    """Pin a stage's reference context to the digest *identity* was computed from."""
+    return ReferencePin(source_image_stem(image), identity.reference_digest)
+
+
+def _record_identity(identity: WorkIdentity) -> tuple[str, str]:
+    """``(work_id, relative_path)``: what the local success/failure records take."""
+    return identity.work_id, identity.relative_path
 
 
 class StagedGpuStrategy(ExecutionStrategy):
@@ -177,13 +188,19 @@ class StagedGpuStrategy(ExecutionStrategy):
             return False
 
         # ---- Stage 1: CPU preprocess -> staged store (parallel, resumable) --
-        def _stage1(ds: Dataset, img: Path) -> None:
+        def _stage1(ds: Dataset, img: Path) -> WorkIdentity:
             store = zarr_store_path(
                 output_dir, ds.name, source_image_stem(img)
             )
-            work_id, _ = work_id_for_image(cfg, ds.name, img)
+            # The image's one identity for the whole run, before any stage
+            # applies: every stage pins its reference context to this digest
+            # and publishes or records failures under this work-id, so no
+            # stage applies under one plan while the image is certified under
+            # another (review F1).
+            identity = work_identity_for_image(cfg, ds.name, img)
+            work_id = identity.work_id
             if cfg.resume and staged_store_matches_work_id(store, work_id):
-                return
+                return identity
             if cfg.resume:
                 clear_downstream_artifacts_for_stage1(
                     output_dir, ds.name, source_image_stem(img), slot
@@ -208,6 +225,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                             cfg, "pipeline_identity", None
                         ),
                         drop_originals=cfg.drop_originals,
+                        reference_pin=_reference_pin(img, identity),
                     )
             except Exception as exc:
                 _record_local_terminal_failure(
@@ -218,10 +236,17 @@ class StagedGpuStrategy(ExecutionStrategy):
                     exc,
                     traceback.format_exc(),
                     attempt_id,
+                    work_identity=_record_identity(identity),
                 )
+            return identity
 
-        Parallel(n_jobs=cfg.n_jobs)(
-            delayed(_stage1)(ds, img) for ds, img in tasks
+        identities: Dict[tuple[str, Path], WorkIdentity] = dict(
+            zip(
+                [(ds.name, img) for ds, img in tasks],
+                Parallel(n_jobs=cfg.n_jobs)(
+                    delayed(_stage1)(ds, img) for ds, img in tasks
+                ),
+            )
         )
 
         # ---- Stage 2: resident-model GPU detect -> raw + token (serial) ----
@@ -256,6 +281,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 )
                 continue
             attempt_id = uuid4().hex
+            identity = identities[(ds.name, img)]
             try:
                 with stage_event(
                     event_log, ds.name, img.name, STAGE_GPU_DETECT
@@ -268,6 +294,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         slot,
                         cfg.image_type,
                         stage2_prefix=plan.stage2_prefix,
+                        reference_pin=_reference_pin(img, identity),
                     )
             except Exception as exc:
                 _record_local_terminal_failure(
@@ -278,6 +305,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                     exc,
                     traceback.format_exc(),
                     attempt_id,
+                    work_identity=_record_identity(identity),
                 )
 
         # ---- Stage 3: CPU merge + measure (parallel, resumable) ------------
@@ -302,7 +330,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 )
                 return ds.name, False
             attempt_id = uuid4().hex
-            work_id, _ = work_id_for_image(cfg, ds.name, img)
+            identity = identities[(ds.name, img)]
             try:
                 with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     stage3_merge_measure_core(
@@ -313,7 +341,8 @@ class StagedGpuStrategy(ExecutionStrategy):
                         self.output_manager,
                         cfg.image_type,
                         image_name=img.name,
-                        work_id=work_id,
+                        work_id=identity.work_id,
+                        reference_pin=_reference_pin(img, identity),
                     )
                     _publish_local_image_success(
                         cfg,
@@ -322,6 +351,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ds.name,
                         img,
                         attempt_id,
+                        work_identity=_record_identity(identity),
                     )
                     write_stage3_completion_marker(
                         output_dir,
@@ -348,13 +378,14 @@ class StagedGpuStrategy(ExecutionStrategy):
                     exc,
                     traceback.format_exc(),
                     attempt_id,
+                    work_identity=_record_identity(identity),
                 )
                 return ds.name, False
 
         if cfg.process_only_layer == "objmap":
             # process-mode: export the objmap layer (mirrored), no measurement.
             self._export_objmap_layer(
-                plan, tasks, output_dir, event_log, results
+                plan, tasks, output_dir, event_log, results, identities
             )
         else:
             for ds_name, ok in Parallel(n_jobs=cfg.n_jobs)(
@@ -420,6 +451,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         output_dir: Path,
         event_log: Path,
         results: Dict[str, Dict[str, int]],
+        identities: Mapping[tuple[str, Path], WorkIdentity],
     ) -> None:
         """``--mode process --layer objmap``: replay Stage 2's raw result,
         run the **post-detector op chain**, and write the objmap layer
@@ -445,6 +477,12 @@ class StagedGpuStrategy(ExecutionStrategy):
         ``_publish_local_image_success`` would rewrite ``zarr.json`` and
         invalidate the descriptor the marker just recorded (ledger
         **FLOW-30**/**FLOW-6**).
+
+        ``identities`` holds each image's identity from Stage 1, keyed by
+        ``(dataset name, image path)``. The export pins its context to that
+        digest and publishes under that work-id rather than computing a fresh
+        one: Stages 1-2 applied under it, so a later re-plan is refused here
+        rather than certified (review F1).
         """
         from ._cli_process_only import (
             process_only_output_path,
@@ -461,9 +499,9 @@ class StagedGpuStrategy(ExecutionStrategy):
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap", fmt="tiff"
             )
-            # One identity, before the residual apply: it pins the context and
-            # is the identity the export is published under (review F1).
-            identity = work_identity_for_image(cfg, ds.name, img)
+            # The run's identity for the image, from before Stage 1: it pins
+            # the context and is the identity the export is published under.
+            identity = identities[(ds.name, img)]
             work_id = identity.work_id
             if cfg.resume and valid_image_success(
                 output_dir,
@@ -532,9 +570,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ), worker_reference_context(
                             output_dir,
                             ds.name,
-                            pin=ReferencePin(
-                                source_image_stem(img), identity.reference_digest
-                            ),
+                            pin=_reference_pin(img, identity),
                         ):
                             # Ops only; never `.measure()` -- `apply()` runs
                             # `_run_operations` alone, so meas/post/filters/
@@ -554,7 +590,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ds.name,
                         img,
                         attempt_id,
-                        work_identity=(identity.work_id, identity.relative_path),
+                        work_identity=_record_identity(identity),
                     )
                     # Ordering (ledger FLOW-6): publish, then token, then raw.
                     delete_stage2_token(
@@ -573,6 +609,6 @@ class StagedGpuStrategy(ExecutionStrategy):
                     exc,
                     traceback.format_exc(),
                     attempt_id,
-                    work_identity=(identity.work_id, identity.relative_path),
+                    work_identity=_record_identity(identity),
                 )
                 results[ds.name]["failed"] += 1

@@ -786,6 +786,29 @@ def _print_dry_run_mutation_preview(
             click.echo(f"  ... and {len(targets) - 10} more")
 
 
+def _refuse_live_slurm_run(output_dir: Path) -> None:
+    """Exit when a live SLURM run still owns *output_dir*.
+
+    Read-only, and called before the first write of every mode that rewrites
+    run state over an existing output (forward modes and recompile). An
+    unknown scheduler answer counts as live; a closed lifecycle fence never
+    queries the scheduler. See ``live_slurm_job_ids``.
+    """
+    if not output_dir.exists():
+        return
+    from phenotypic._cli._cli_staged_orchestration import live_slurm_job_ids
+
+    live_jobs = live_slurm_job_ids(output_dir)
+    if live_jobs:
+        click.echo(
+            "Error: Cannot continue, restart, overwrite or recompile while "
+            f"SLURM jobs are active: {', '.join(live_jobs)}. Wait for them "
+            "to finish or cancel them (scancel), then run the command again.",
+            err=True,
+        )
+        sys.exit(1)
+
+
 def _snapshot_metadata_csv(
     output_dir: Path, source: Optional[Path]
 ) -> Optional[Path]:
@@ -2315,6 +2338,7 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            _refuse_live_slurm_run(output_dir)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
             except Exception as exc:
@@ -2572,28 +2596,7 @@ def phenotypic_cli(
                 raise click.UsageError(str(exc)) from exc
             config.image_manifest_digest = manifest_snapshot.digest
 
-        if output_dir.exists():
-            from phenotypic._cli._cli_slurm_lifecycle import (
-                load_slurm_lifecycle,
-            )
-            from phenotypic._cli._cli_staged_orchestration import (
-                active_ledger_job_ids,
-            )
-
-            lifecycle = load_slurm_lifecycle(output_dir)
-            active_jobs = (
-                []
-                if lifecycle is not None
-                and lifecycle.get("active") is False
-                else active_ledger_job_ids(output_dir)
-            )
-            if active_jobs:
-                click.echo(
-                    "Error: Cannot continue, restart, or overwrite while SLURM "
-                    f"jobs are active: {', '.join(active_jobs)}",
-                    err=True,
-                )
-                sys.exit(1)
+        _refuse_live_slurm_run(output_dir)
 
         # Load compatible continuation state before creating output directories.
         if config.resume:

@@ -142,9 +142,18 @@ table as an argument; they read a run-level plan.
   in the SLURM worker), publishes and records failures under that identity,
   and hands the same digest to the context as a `ReferencePin`. The context
   refuses a manifest whose digest for the image has since changed. Never
-  recompute a work-id after the apply on these paths. Staged Stages 1–3 are
-  not pinned: the staged SLURM path refuses a concurrent invocation through
-  its job ledger.
+  recompute a work-id after the apply on these paths. **The staged engine
+  holds one identity per image for the whole run, not one per stage**:
+  Stage 3 certifies Stage 1's pixels, so a stage pinned to a freshly computed
+  identity would still apply under one plan and certify under another. The
+  local `StagedGpuStrategy` computes it in Stage 1 (`_stage1` returns it) and
+  hands it to Stage 2, Stage 3 and `_export_objmap_layer`; the staged SLURM
+  submitter computes it before submission (`staged_manifest_entry`) and
+  stores `reference_digest` beside `work_id` in each `StagedManifestEntry`,
+  which every stage worker pins (`_reference_pin`). An entry written before
+  that field existed loads with `None`, which pins "no reference plan": under
+  a reference manifest such an entry is refused, never applied unpinned. Each
+  staged core takes the pin as `reference_pin=`.
 - **`ReferencePlanStaleError` is never terminal.** It is raised for a pin
   mismatch or a table whose bytes no longer match the manifest. It is a
   `RuntimeError`, not a `ReferenceContextError`, and every scientific wrapper
@@ -491,6 +500,55 @@ persisting the returned ID.
   With `--wait`, the CLI monitors that marker and never duplicates publication.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
+
+### One live SLURM run per output
+
+A forward invocation (`full`, `process`, `measure`, with or without
+`--restart`/`--overwrite`/`--dry-run`) and `--mode recompile` refuse while an
+earlier run's SLURM jobs are still live over the same `--output`.
+`_refuse_live_slurm_run` (`phenotypicCLI.py`) is the one check. It sits above
+the first write of each path: before the continuation-state load on the
+forward path, and before `_snapshot_metadata_csv` in the recompile branch. It
+asks `live_slurm_job_ids` (`_cli_staged_orchestration.py`). `--mode migrate`
+keeps its own lease and lifecycle guard.
+
+**Ordinary chains are ledgered, not only staged ones.** Every chunk,
+dispatcher and finalizer goes through `submit_with_lifecycle`, including the
+chunks a dispatcher submits from inside SLURM (`dispatch_continuation`). That
+call writes an `intent` row, runs `sbatch --comment phenotypic:<generation>:<token>`,
+then writes a `submitted` row, all into the one lifecycle ledger
+(`slurm_jobs.jsonl`, which *is* `staged_job_ledger_path`). Grepping direct
+`append_lifecycle_entry(` callers misses this; the Phase 2 review of the
+reference-metadata change did, and concluded wrongly that ordinary arrays were
+invisible to the guard.
+
+How `live_slurm_job_ids` answers, and when it asks the scheduler:
+
+- A closed lifecycle fence (`active is False`) answers `[]` with **no**
+  scheduler query, so a cancelled or finalized run whose history SLURM has
+  purged never blocks.
+- Otherwise every ledgered job ID that `scheduler_job_is_active` does not
+  report `False` counts as live (`active_ledger_job_ids`, unchanged).
+- A token whose latest ledger row is `intent` or `blocked` may own a live job
+  whose `submitted` row was never written (the submitter died after `sbatch`).
+  Only then does it make one `squeue`-only `query_scheduler_comments` call and
+  match the exact `phenotypic:<generation>:<token>` comment. A clean ledger,
+  and every local run (no lifecycle, no ledger), never queries.
+- **It fails closed.** An unknown answer counts as live, as it does in the staged
+  controller: `scheduler_job_is_active` returning `None` for a ledgered ID, and
+  `SchedulerQueryUnavailable` for an unresolved token, which becomes a
+  descriptive `unknown (...)` entry in the refusal instead of a job ID.
+
+**A stuck `active: true` does not refuse on its own, deliberately.** A
+finalizer that is OOM-killed or cancelled outside PhenoTypic leaves the fence
+active forever. Refusing on the flag would block the plain re-run that is the
+recovery procedure. So liveness always comes from the scheduler. Once every
+ledgered job is terminal and no unresolved token matches a queued job, the run
+is allowed.
+
+The check is a read-only `squeue` from the invoking process, not a scheduler
+job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in
+`tests/unit/cli/test_cli_v2.py`.
 
 ## Legacy-tree migration (`--mode migrate`)
 

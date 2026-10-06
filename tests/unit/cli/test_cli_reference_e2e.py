@@ -15,7 +15,20 @@ from pydantic import Field
 
 import phenotypic
 from phenotypic import Image, ImagePipeline
-from phenotypic._cli import _cli_execution_strategies, _cli_reference
+from phenotypic._cli import (
+    _cli_execution_strategies,
+    _cli_reference,
+    _cli_staged_slurm,
+    _cli_staged_strategy,
+)
+from phenotypic._cli._cli_failure_tracker import work_identity_for_image
+from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+from phenotypic._cli._cli_stage2_token import detector_slot, stage2_result_replayable
+from phenotypic._cli._cli_staged_orchestration import (
+    load_staged_manifest,
+    write_staged_manifest,
+)
+from phenotypic._cli._cli_types import Dataset
 from phenotypic.abc_ import ImageOperation
 from phenotypic.abc_._ref_metadata import RefMetadata
 from phenotypic.detect import OtsuDetector
@@ -31,6 +44,7 @@ from phenotypic.sdk_._io_constants import (
 )
 from phenotypic.sdk_.typing_ import OperationField
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
+from tests.unit.cli._preflight_support import make_config
 
 #: A lid scratch present in every frame of the plate, blank included. It is as
 #: bright as a colony, so only a subtracted frame leaves the colony alone.
@@ -323,28 +337,39 @@ def _placements() -> dict[str, dict]:
     }
 
 
-@pytest.fixture(params=["branch", "stage1"])
-def staged(run_inputs, monkeypatch, request):
+def _staged_pipeline(run_inputs, monkeypatch, placement: str) -> Path:
+    """Write the staged pipeline for *placement*, its classes resolvable by name."""
     monkeypatch.setattr(phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False)
     for cls in (ReadsBlankName, MeasureSizeReadingReferences):
         monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
     monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", "tests._fakes.register_fake_gpu")
-    base, root, manifest, table, _ = run_inputs
+    base = run_inputs[0]
     pipeline = base / "staged_pipeline.json"
     # The measurer reads reference metadata too, so Stage 3's measure step
     # needs the context as much as its apply does (review F6).
     pipeline.write_text(
         ImagePipeline(
-            ops=_placements()[request.param],
+            ops=_placements()[placement],
             meas={"size": MeasureSizeReadingReferences()},
         ).to_json(),
         encoding="utf-8",
     )
-    common = [
+    return pipeline
+
+
+def _staged_args(run_inputs, pipeline: Path) -> list[str]:
+    base, _, manifest, table, _ = run_inputs
+    return [
         "--pipeline", str(pipeline), "--input", str(base / "images"),
         "--image-manifest", str(manifest), "--metadata", str(table),
     ]
-    return base, root, common
+
+
+@pytest.fixture(params=["branch", "stage1"])
+def staged(run_inputs, monkeypatch, request):
+    pipeline = _staged_pipeline(run_inputs, monkeypatch, request.param)
+    base, root = run_inputs[:2]
+    return base, root, _staged_args(run_inputs, pipeline)
 
 
 def _labels(path: Path) -> int:
@@ -377,3 +402,212 @@ def test_staged_full_run_with_subtract_blank_in_the_detector_branch(staged):
     measurements = pd.read_csv(out / "deliverables" / "measurements.csv")
     per_image = measurements.groupby("Metadata_ImageName").size().to_dict()
     assert {str(k): v for k, v in per_image.items()} == {"t01": 1, "t02": 1}
+
+
+# ---- staged GPU: one identity per image across all three stages (F1) ------
+#
+# A later invocation re-plans an image between the run's identity and a
+# stage's apply. The stage must refuse with ReferencePlanStaleError -- never
+# apply under one plan and certify under another -- and the refusal is never a
+# terminal failure, so the next run retries the image.
+
+
+#: stage -> (placement whose stage reads reference metadata, the core it calls).
+#: Stage 2 applies reference operations only through the branch prefix.
+_STAGE_CORES = {
+    "stage1": ("stage1", "stage1_preprocess_core"),
+    "stage2": ("branch", "stage2_detect_core"),
+    "stage3": ("stage1", "stage3_merge_measure_core"),
+}
+
+
+@pytest.mark.parametrize("stage", sorted(_STAGE_CORES))
+def test_a_local_staged_stage_refuses_an_image_replanned_mid_run(
+    run_inputs, monkeypatch, stage
+):
+    placement, core_name = _STAGE_CORES[stage]
+    common = _staged_args(
+        run_inputs, _staged_pipeline(run_inputs, monkeypatch, placement)
+    )
+    out = run_inputs[0] / "staged_pin"
+    real = getattr(_cli_staged_strategy, core_name)
+    stale: list[str] = []
+
+    def replan_then_run(*args, **kwargs):
+        stem = args[3]  # every staged core takes the image stem fourth
+        if stem == "t01":
+            _replan(out, "plate1", "t01")
+        try:
+            return real(*args, **kwargs)
+        except _cli_reference.ReferencePlanStaleError:
+            stale.append(stem)
+            raise
+
+    monkeypatch.setattr(_cli_staged_strategy, core_name, replan_then_run)
+    result = _cli(*common, "--output", str(out))
+    assert stale == ["t01"], result.output
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)
+
+    # The same command again re-plans from the table and completes the image.
+    monkeypatch.setattr(_cli_staged_strategy, core_name, real)
+    again = _cli(*common, "--output", str(out))
+    assert again.exit_code == 0, again.output
+    assert image_record_path(out, "plate1", "t01").exists()
+    assert _no_terminal_failures(out)
+
+
+def test_the_staged_objmap_export_refuses_an_image_replanned_after_stage_1(
+    run_inputs, monkeypatch
+):
+    """The export publishes under the identity Stages 1-2 ran under, not a fresh one."""
+    common = _staged_args(
+        run_inputs, _staged_pipeline(run_inputs, monkeypatch, "branch")
+    )
+    out = run_inputs[0] / "staged_objmap_pin"
+    strategy = _cli_staged_strategy.StagedGpuStrategy
+    real = strategy._export_objmap_layer
+
+    def replan_then_export(self, *args, **kwargs):
+        _replan(out, "plate1", "t01")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(strategy, "_export_objmap_layer", replan_then_export)
+    _cli(*common, "--output", str(out), "--mode", "process", "--layer", "objmap")
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)
+
+
+def _slurm_setup(run_inputs, pipeline: Path, out: Path):
+    """Startup + the staged submitter's manifest, as ``StagedSlurmStrategy`` builds it."""
+    base, root, _, table, _ = run_inputs
+    config = make_config(
+        pipeline_json=pipeline, input_path=base / "images", output_dir=out,
+        image_type="Image", metadata_csv=table,
+    )
+    dataset = Dataset(
+        name="plate1", images=[root / "t01.tiff", root / "t02.tiff"],
+        input_dir=root, output_dir=out / "plate1",
+    )
+    _cli_reference.publish_reference_inputs(config, [dataset], out)
+    manifest = [
+        _cli_staged_slurm.staged_manifest_entry(config, "plate1", image)
+        for image in dataset.images
+    ]
+    return config, dataset, manifest
+
+
+def test_the_staged_slurm_manifest_carries_each_images_reference_digest(run_inputs):
+    """The submitter's one identity per image holds the digest its work-id names."""
+    base = run_inputs[0]
+    out = base / "out"
+    config, dataset, manifest = _slurm_setup(run_inputs, run_inputs[4], out)
+    for image, entry in zip(dataset.images, manifest):
+        identity = work_identity_for_image(config, "plate1", image)
+        assert entry.work_id == identity.work_id
+        assert entry.reference_digest == identity.reference_digest
+        assert entry.reference_digest == _cli_reference.reference_digest_for(
+            out, "plate1", image.stem
+        )
+        assert entry.reference_digest is not None
+    # The digest survives the manifest file the workers read.
+    path = write_staged_manifest(base / "staged_manifest.json", manifest)
+    assert load_staged_manifest(path) == manifest
+
+
+@pytest.mark.parametrize("version", [2, 3])
+def test_a_staged_manifest_written_before_the_digest_field_still_loads(
+    tmp_path, version
+):
+    """An in-flight run's manifest has no ``reference_digest`` key.
+
+    It loads with ``None``, which pins "no reference plan" -- true of every
+    run planned before reference metadata existed (the field's docstring).
+    """
+    path = tmp_path / "staged_manifest.json"
+    path.write_text(
+        json.dumps({
+            "version": version,
+            "images": [{
+                "dataset": "plate1", "image_name": "t01.tiff", "stem": "t01",
+                "input_path": "/in/plate1/t01.tiff", "work_id": "w",
+                "relative_image_path": "plate1/t01.tiff", "attempt_id": "a",
+            }],
+        }),
+        encoding="utf-8",
+    )
+    (entry,) = load_staged_manifest(path)
+    assert entry.work_id == "w"
+    assert entry.reference_digest is None
+
+
+def test_an_old_shape_entry_is_refused_under_a_reference_plan(
+    run_inputs, monkeypatch
+):
+    """A missing digest never reads as "unpinned": Stage 1 refuses, non-terminally."""
+    from dataclasses import replace
+
+    from phenotypic._cli import _cli_staged_slurm_worker as worker
+
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    pipeline = _staged_pipeline(run_inputs, monkeypatch, "stage1")
+    out = run_inputs[0] / "slurm_out"
+    _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
+    old_shape = [replace(entry, reference_digest=None) for entry in manifest]
+    with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
+        worker.run_stage1_step(pipeline, out, "Image", old_shape, 0, ".tiff")
+    assert _no_terminal_failures(out)
+
+
+@pytest.mark.parametrize("replan_before", [1, 2, 3])
+def test_the_staged_slurm_workers_refuse_an_image_replanned_after_submission(
+    run_inputs, monkeypatch, replan_before
+):
+    """Each SLURM stage pins the digest its manifest entry was computed from.
+
+    t02 is never re-planned: it is the control, and completes every stage.
+    """
+    from phenotypic._cli import _cli_staged_slurm_worker as worker
+
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    # Stage 2 applies reference operations only through the branch prefix.
+    placement = "branch" if replan_before == 2 else "stage1"
+    pipeline = _staged_pipeline(run_inputs, monkeypatch, placement)
+    out = run_inputs[0] / "slurm_out"
+    _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
+    slot = detector_slot(
+        split_pipeline_at_gpu(ImagePipeline.from_json(pipeline)).gpu_path
+    )
+
+    def stage1(index: int) -> None:
+        worker.run_stage1_step(pipeline, out, "Image", manifest, index, ".tiff")
+
+    def stage3(index: int) -> None:
+        worker.run_stage3_step(pipeline, out, "Image", manifest, index, ".tiff")
+
+    if replan_before == 1:
+        _replan(out, "plate1", "t01")
+        with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
+            stage1(0)
+    else:
+        stage1(0)
+    stage1(1)
+
+    if replan_before == 2:
+        _replan(out, "plate1", "t01")
+    # One shard over both images: a refusal must not stop the control.
+    worker.run_stage2_shard(pipeline, out, "Image", manifest, 0, 1)
+    assert stage2_result_replayable(out, "plate1", "t01", slot) is (replan_before == 3)
+    assert stage2_result_replayable(out, "plate1", "t02", slot)
+
+    if replan_before == 3:
+        _replan(out, "plate1", "t01")
+        with pytest.raises(_cli_reference.ReferencePlanStaleError, match="t01"):
+            stage3(0)
+    stage3(1)
+
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)

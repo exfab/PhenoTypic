@@ -18,6 +18,7 @@ from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     load_orchestration_state,
 )
+from phenotypic._cli._cli_failure_tracker import WorkIdentity
 from phenotypic._cli._cli_stage2_token import detector_slot
 from phenotypic._cli._cli_types import Dataset
 from tests.unit.cli.conftest import write_stageable_pipeline
@@ -426,8 +427,8 @@ def test_staged_slurm_manifest_uses_canonical_direct_store_stem(
 ):
     captured = {}
     monkeypatch.setattr(
-        "phenotypic._cli._cli_staged_slurm.work_id_for_image",
-        lambda *_args: ("work-p01", "p01.ome.zarr"),
+        "phenotypic._cli._cli_staged_slurm.work_identity_for_image",
+        lambda *_args: WorkIdentity("work-p01", "p01.ome.zarr", None),
     )
     monkeypatch.setattr(
         "phenotypic._cli._cli_staged_slurm.get_slurm_array_limit",

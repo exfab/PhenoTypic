@@ -409,9 +409,8 @@ def check_grid_image(context: PreflightContext) -> list[PreflightFinding]:
     ``preflight_requirements().grid_image`` reports.
     """
     grid_ops = [
-        "/".join(path)
-        for path, operation in operations_in_scope(context)
-        if operation.preflight_requirements().grid_image
+        path for path, requirements in _requirements_in_scope(context)
+        if requirements.grid_image
     ]
     if not grid_ops:
         return []
@@ -506,10 +505,29 @@ def check_detector_present(context: PreflightContext) -> list[PreflightFinding]:
     ]
 
 
+def _requirements_of(operation: Any) -> Any:
+    """*operation*'s declared requirements; none for a node that declares none.
+
+    ``walk_operations`` yields every pipeline slot entry, and the ``filters``
+    and ``model`` slots hold ``SetAnalyzer``/``ModelFitter`` instances, which
+    are not ``BaseOperation`` subclasses and have no ``preflight_requirements``.
+    They act on the measurement table, never on an image, so the empty
+    declaration -- what ``BaseOperation`` reports for a class that sets no
+    ``_requires_*`` -- is the truth about them. The node stays in scope:
+    checks that ask other questions of it (``PF-CUSTOM-OP``) still see it.
+    """
+    declared = getattr(operation, "preflight_requirements", None)
+    if declared is None:
+        from phenotypic.abc_ import OperationRequirements
+
+        return OperationRequirements()
+    return declared()
+
+
 def _requirements_in_scope(context: PreflightContext) -> list[tuple[str, Any]]:
     """``("path/to/op", requirements)`` for every in-scope operation."""
     return [
-        ("/".join(path), operation.preflight_requirements())
+        ("/".join(path), _requirements_of(operation))
         for path, operation in operations_in_scope(context)
     ]
 
@@ -1105,9 +1123,8 @@ def check_rgb_ops_on_gray(context: PreflightContext) -> list[PreflightFinding]:
     series say whether they hold RGB.
     """
     readers = [
-        "/".join(path)
-        for path, operation in operations_in_scope(context)
-        if operation.preflight_requirements().rgb_input
+        path for path, requirements in _requirements_in_scope(context)
+        if requirements.rgb_input
     ]
     if not readers:
         return []

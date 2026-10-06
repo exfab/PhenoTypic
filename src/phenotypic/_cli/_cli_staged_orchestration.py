@@ -41,7 +41,9 @@ from ._cli_slurm_lifecycle import (
     lifecycle_lock_path,
     load_slurm_lifecycle,
     mirror_job_to_metadata,
+    query_scheduler_comments,
     read_lifecycle_ledger,
+    scheduler_comment,
     submit_with_lifecycle,
 )
 from ._cli_staged_resume import stage3_completion_exists
@@ -56,7 +58,17 @@ _LOCK_FILENAME = ".staged_orchestration.lock"
 
 @dataclass(frozen=True)
 class StagedManifestEntry:
-    """One versioned staged-work manifest entry."""
+    """One versioned staged-work manifest entry.
+
+    ``reference_digest`` is the reference digest ``work_id`` was computed from
+    (``WorkIdentity.reference_digest``); every stage pins its reference context
+    to it. An entry written before the field existed loads with ``None``,
+    which pins "no reference plan" -- true of every run planned before
+    reference metadata existed. Should such an entry meet a reference
+    manifest, the stage refuses with the non-terminal
+    ``ReferencePlanStaleError`` and the same command re-plans; it never
+    applies unpinned.
+    """
 
     dataset: str
     image_name: str
@@ -65,6 +77,7 @@ class StagedManifestEntry:
     work_id: str = ""
     relative_image_path: str = ""
     attempt_id: str = ""
+    reference_digest: str | None = None
 
     @property
     def identity(self) -> str:
@@ -691,6 +704,59 @@ def active_ledger_job_ids(output_dir: Path) -> list[str]:
     )
 
 
+def live_slurm_job_ids(output_dir: Path) -> list[str]:
+    """Return the jobs that make *output_dir* owned by a live SLURM run.
+
+    A closed lifecycle fence answers ``[]`` without asking the scheduler.
+    Otherwise every ledgered job ID that SLURM does not report inactive is
+    returned (:func:`active_ledger_job_ids`), and so is any live job behind an
+    **intent-only** token: one whose ``sbatch`` may have succeeded although
+    its ``submitted`` row was never written (the submitter died in between).
+    Such a job is found by its deterministic scheduler comment, through one
+    ``squeue``-only query that runs only when an unresolved token exists.
+
+    When that query cannot run, the unresolved tokens are returned as one
+    descriptive entry instead of a job ID, so the caller refuses: an unknown
+    scheduler answer is never read as inactive.
+    """
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is not None and lifecycle.get("active") is False:
+        return []
+    live = set(active_ledger_job_ids(output_dir))
+    latest_status: dict[tuple[str, str], str] = {}
+    for row in read_job_ledger(
+        output_dir,
+        epoch=str(lifecycle["generation"]) if lifecycle is not None else None,
+    ):
+        key = (str(row.get("generation")), str(row.get("token")))
+        latest_status[key] = str(row.get("status"))
+    unresolved = {
+        scheduler_comment(generation, token): (generation, token)
+        for (generation, token), status in latest_status.items()
+        if status in {"intent", "blocked"}
+    }
+    if not unresolved:
+        return sorted(live)
+    try:
+        found = query_scheduler_comments(
+            prefix="phenotypic:", include_accounting=False
+        )
+    except SchedulerQueryUnavailable:
+        tokens = ", ".join(
+            f"{generation}:{token}"
+            for generation, token in sorted(unresolved.values())
+        )
+        return [
+            *sorted(live),
+            f"unknown (unresolved submissions {tokens}; "
+            "the scheduler could not be queried)",
+        ]
+    for comment, job_ids in found.items():
+        if comment in unresolved:
+            live.update(job_ids)
+    return sorted(live)
+
+
 def deactivate_orchestration(
     output_dir: Path, phase: str = "cancelled"
 ) -> bool:
@@ -810,6 +876,7 @@ __all__ = [
     "epoch_deactivation_journal_path",
     "epoch_is_active",
     "initialize_orchestration",
+    "live_slurm_job_ids",
     "load_orchestration_state",
     "load_staged_manifest",
     "mark_local_staged_complete",
