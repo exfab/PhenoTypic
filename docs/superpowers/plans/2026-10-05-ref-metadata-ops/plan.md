@@ -1301,7 +1301,7 @@ git commit -m "feat(abc): RefMetadata mixin, RefColumn markers, pipeline.referen
 
 **Interfaces:**
 - Consumes: Task 1 (`ReferenceContext`, `ReferenceImageError`, `ReferenceLookupError`), Task 2 (`RefMetadata`, `RefImageColumn`).
-- Produces: `phenotypic.enhance.SubtractBlank(blank_column: RefImageColumn = "Metadata_BlankImage", polarity: Literal["brighter","darker","both"] = "brighter")`; `phenotypic.enhance._subtract_blank.StaleDetectMatError(ValueError)`.
+- Produces: `phenotypic.enhance.SubtractBlank(blank_column: RefImageColumn = "Metadata_BlankImage", polarity: Literal["brighter","darker","both"] = "brighter")`; `phenotypic.enhance._subtract_blank.StaleDetectMatError(ReferenceContextError)` (a `ValueError`; subclassing `ReferenceContextError` makes it pass through `ImageOperation.apply` unwrapped — Cluster A carve-out, `abc_/_image_operation.py`).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1497,6 +1497,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from phenotypic._core._reference_context import ReferenceContextError
 from phenotypic.abc_ import RefMetadata
 from phenotypic.abc_._enhance_markers._background_subtraction import BackgroundSubtraction
 from phenotypic.sdk_ import RefImageColumn
@@ -1505,7 +1506,7 @@ if TYPE_CHECKING:
     from phenotypic import Image
 
 
-class StaleDetectMatError(ValueError):
+class StaleDetectMatError(ReferenceContextError):
     """SubtractBlank ran on a detect_mat or image that its raw blank does not match."""
 
 

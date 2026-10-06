@@ -55,6 +55,11 @@ _LAZY_ATTRS: dict[str, str] = {
     "LazyWidgetMixin": ".mixin",
     "NormControlMixin": ".mixin",
     "NormalizedOutputMixin": ".mixin",
+    "RefMetadataUnavailableError": "phenotypic._core._reference_context",
+    "ReferenceContextError": "phenotypic._core._reference_context",
+    "ReferenceImageError": "phenotypic._core._reference_context",
+    "ReferenceLookupError": "phenotypic._core._reference_context",
+    "ReferenceTableError": "phenotypic._core._reference_context",
 }
 
 
@@ -133,7 +138,13 @@ from ._atomic_io import (  # noqa: E402
     atomic_write_with_writer,
     publication_commit,
 )
-from ._column_ref import ColumnRef, ColumnRefList, ColumnSource  # noqa: E402
+from ._column_ref import (  # noqa: E402
+    ColumnRef,
+    ColumnRefList,
+    ColumnSource,
+    RefColumn,
+    RefImageColumn,
+)
 from ._io_constants import (  # noqa: E402
     # Filenames (CLI artifacts)
     CURATION_LABELS_PARQUET,
@@ -436,6 +447,8 @@ __all__ = [
     "ColumnRef",
     "ColumnRefList",
     "ColumnSource",
+    "RefColumn",
+    "RefImageColumn",
     "FootprintMixin",
     "GridInferenceMixin",
     "HDF",
@@ -443,6 +456,11 @@ __all__ = [
     "LazyWidgetMixin",
     "NormControlMixin",
     "NormalizedOutputMixin",
+    "RefMetadataUnavailableError",
+    "ReferenceContextError",
+    "ReferenceImageError",
+    "ReferenceLookupError",
+    "ReferenceTableError",
     "CommitGuard",
     "atomic_write_bytes",
     "atomic_write_json",
