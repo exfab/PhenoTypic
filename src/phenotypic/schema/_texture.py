@@ -2,6 +2,7 @@
 
 import re
 
+from ._change_notes import SINGLE_CHANNEL_PRODUCED_NOTE, append_change_note
 from ._measurement_info import Entry
 from ._tiers import DiscriminativeFeature
 
@@ -39,6 +40,10 @@ class TEXTURE(DiscriminativeFeature):
     @classmethod
     def category(cls) -> str:
         return "Texture"
+
+    @classmethod
+    def change_note(cls) -> str:
+        return SINGLE_CHANNEL_PRODUCED_NOTE
 
     ANGULAR_SECOND_MOMENT = Entry(
             "AngularSecondMoment",
@@ -173,3 +178,6 @@ class TEXTURE(DiscriminativeFeature):
                     f"{cls.category()}_{member}-avg-scale{scale:02d}"
             )
         return labels
+
+
+TEXTURE.__doc__ = append_change_note(TEXTURE.__doc__, TEXTURE.change_note())

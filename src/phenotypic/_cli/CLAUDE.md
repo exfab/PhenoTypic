@@ -43,8 +43,9 @@ details that are load-bearing rather than incidental:
   reach for `set_provenance_status(image, "in_progress")` — that status is also
   non-terminal and raises the very error it looks like it prevents.
 - The change of meaning is fenced in the work id:
-  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `3`;
-  2 → 3 is the per-image figures, see **Per-image figures** below)
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `4`;
+  2 → 3 is the per-image figures, see **Per-image figures** below; 3 → 4 is
+  single-channel integer inputs normalised to float32 `[0, 1]` at construction)
   rides beside `process_format` in the process-only branch of
   `processing_configuration_digest_from_values`, **not** in the base payload —
   a base placement would cold-start every in-flight `full` and `measure`

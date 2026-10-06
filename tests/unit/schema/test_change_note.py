@@ -7,8 +7,14 @@ import inspect
 import pytest
 
 import phenotypic
-from phenotypic.measure import MeasureShape, MeasureSize, MeasureTexture
-from phenotypic.schema import SHAPE, SIZE, TEXTURE, Entry, MeasurementInfo
+from phenotypic.measure import (
+    MeasureBounds,
+    MeasureIntensity,
+    MeasureShape,
+    MeasureSize,
+    MeasureTexture,
+)
+from phenotypic.schema import BBOX, INTENSITY, SHAPE, SIZE, TEXTURE, Entry, MeasurementInfo
 
 MARKER = ".. versionchanged:: 0.20.0"
 
@@ -98,5 +104,50 @@ def test_enum_docstring_dedents_to_one_margin(info):
 
 
 def test_unrelated_classes_carry_no_note():
-    assert MARKER not in MeasureTexture.__doc__
-    assert TEXTURE.change_note() == ""
+    assert MARKER not in MeasureBounds.__doc__
+    assert BBOX.change_note() == ""
+
+
+# ------------------------------------------- single-channel normalisation (0.20.0)
+
+SINGLE_CHANNEL = "single-channel"
+
+
+def test_size_note_keeps_the_split_note_and_adds_integrated_intensity_units():
+    """SIZE carries two changes in one release: both notes render, split first."""
+    note = " ".join(SIZE.change_note().split())
+    assert note.count(MARKER) == 2
+    assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
+    assert "``Size_IntegratedIntensity``" in note
+    assert "normalised units" in note
+    assert SINGLE_CHANNEL not in " ".join(SHAPE.change_note().split())
+
+
+@pytest.mark.parametrize("info", [INTENSITY, TEXTURE], ids=["INTENSITY", "TEXTURE"])
+def test_intensity_and_texture_notes_say_the_columns_are_now_produced(info):
+    note = " ".join(info.change_note().split())
+    assert note.startswith(MARKER)
+    assert SINGLE_CHANNEL in note
+    assert "now produced" in note
+
+
+@pytest.mark.parametrize("info", [SIZE, INTENSITY, TEXTURE], ids=["SIZE", "INTENSITY", "TEXTURE"])
+def test_single_channel_note_warns_against_resuming(info):
+    """No work-id fence covers this change, so the note is the only guard."""
+    note = " ".join(info.change_note().split())
+    assert (
+        "A single-channel run started before this change must be re-run with "
+        "``--overwrite``, not resumed." in note
+    )
+
+
+@pytest.mark.parametrize(
+    "measurer,info",
+    [(MeasureIntensity, INTENSITY), (MeasureTexture, TEXTURE)],
+    ids=["MeasureIntensity", "MeasureTexture"],
+)
+def test_single_channel_note_renders_in_measurer_and_enum_docs(measurer, info):
+    for doc in (measurer.__doc__, info.__doc__):
+        assert MARKER in doc
+        assert SINGLE_CHANNEL in doc
+    assert measurer.__doc__.index(MARKER) < measurer.__doc__.index(".. list-table::")

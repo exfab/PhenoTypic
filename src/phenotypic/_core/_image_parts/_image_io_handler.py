@@ -49,6 +49,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
 from ._image_color_handler import ImageColorSpace
+from ._image_data_manager import normalize_integer_matrix
 
 # -----------------------------------------------------------------------------
 # HDF5 schema helpers
@@ -1630,7 +1631,9 @@ class ImageIOHandler(ImageColorSpace):
         else:
             detect_matrix_data = layers["enh_gray"][()]
             detect_mode = "gray"
-        img.detect_mat[:] = detect_matrix_data
+        # A single-channel file written before normalisation holds raw integers;
+        # the gray layer is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(detect_matrix_data)
         img._data.detect_mode = detect_mode
 
         # Object map preserves integer-label dtype.
@@ -1742,7 +1745,11 @@ class ImageIOHandler(ImageColorSpace):
         else:
             img = cls(arr=matrix_data, **kwargs)
 
-        img.detect_mat[:] = cls._read_store_array(path, series["detect_mat"])
+        # A single-channel store written before normalisation holds raw integers;
+        # the gray series is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(
+            cls._read_store_array(path, series["detect_mat"])
+        )
         img._data.detect_mode = (
             block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
         )
@@ -1847,7 +1854,9 @@ class ImageIOHandler(ImageColorSpace):
         else:
             detect_matrix_data = group["enh_gray"][()]
             detect_mode = "gray"
-        img.detect_mat[:] = detect_matrix_data
+        # A single-channel file written before normalisation holds raw integers;
+        # the gray layer is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(detect_matrix_data)
         img._data.detect_mode = detect_mode
 
         # Object map should preserve its original dtype (usually integer labels).
@@ -2192,9 +2201,10 @@ class ImageIOHandler(ImageColorSpace):
         instance.detect_mat.reset()
         instance.objmap.reset()
 
-        # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
-        instance._data.detect_mat = loaded.get(
-            "_data.detect_mat", loaded.get("_data.enh_gray")
+        # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'.
+        # A single-channel pickle written before normalisation holds raw integers.
+        instance._data.detect_mat = normalize_integer_matrix(
+            loaded.get("_data.detect_mat", loaded.get("_data.enh_gray"))
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]

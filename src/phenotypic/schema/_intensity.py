@@ -1,5 +1,6 @@
 """Per-object grayscale intensity summary statistics."""
 
+from ._change_notes import SINGLE_CHANNEL_PRODUCED_NOTE, append_change_note
 from ._measurement_info import Entry
 from ._tiers import DirectPhenotype
 
@@ -17,6 +18,10 @@ class INTENSITY(DirectPhenotype):
     @classmethod
     def category(cls):
         return "Intensity"
+
+    @classmethod
+    def change_note(cls) -> str:
+        return SINGLE_CHANNEL_PRODUCED_NOTE
 
     INTEGRATED_INTENSITY = Entry("IntegratedIntensity", "The sum of the object's pixels")
     DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
@@ -47,3 +52,6 @@ class INTENSITY(DirectPhenotype):
         "InterquartileRangeIntensity",
         "The interquartile range of the object",
     )
+
+
+INTENSITY.__doc__ = append_change_note(INTENSITY.__doc__, INTENSITY.change_note())

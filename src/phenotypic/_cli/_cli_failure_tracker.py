@@ -206,7 +206,12 @@ def file_sha256(path: Path) -> str:
 #: 2 -> 3: process-mode stores now carry the pipeline's per-image figures
 #:         (spec 2026-09-22-figures-in-ome-zarr §3). Also invalidates in-flight
 #:         ``tiff`` continuations -- deliberate; invalidating too much is safe.
-PROCESS_LAYER_SEMANTICS_REVISION = 3
+#: 3 -> 4: a single-channel integer input is normalised to float32 [0, 1] at
+#:         construction, so its ``--layer gray`` export changes dtype (uint8/16
+#:         -> float32) and its ``detect_mat``/``objmap`` exports change values.
+#:         RGB inputs are byte-identical; their continuations are invalidated
+#:         too, which is safe.
+PROCESS_LAYER_SEMANTICS_REVISION = 4
 
 #: What decoding a camera-RAW input means. Revision 1 is implicit: before spec
 #: 2026-09-24-cli-preflight §10.1, RAW suffixes were routed to skimage/Pillow,

@@ -20,7 +20,12 @@ Data accessed through accessors (not direct attributes) — ensures consistency,
 ### Primary Accessors
 
 - `image.rgb[:]` — raw RGB array (uint8/uint16)
-- `image.gray[:]` — grayscale (weighted luminance)
+- `image.gray[:]` — grayscale (weighted luminance), float32 in `[0, 1]` for every
+  input. A single-channel integer array is divided by its dtype's maximum at
+  construction (the divisor `rgb2gray` uses for RGB); a single-channel float
+  array outside `[0, 1]` is refused. `_retain_original` still gives back the
+  decoded integers, and stores/HDF/pickles written before this hold integer
+  layers that are normalised on load.
 - `image.detect_mat[:]` — enhanced grayscale for processing
 - `image.objmask[:]` — binary mask of detected objects
 - `image.objmap[:]` — labeled object map (integer labels)

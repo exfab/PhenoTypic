@@ -127,8 +127,7 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             or the image itself.
         ReferenceImageError: The blank cannot be resolved or read; its
             shape or bit depth differs from the target's; one of the pair is
-            RGB and the other single-channel; the target is a single-channel
-            integer image (not yet supported); or either projects outside
+            RGB and the other single-channel; or either projects outside
             ``[0, 1]``.
         StaleDetectMatError: ``detect_mat`` was already enhanced, or an
             ``ImageCorrector`` appears anywhere in the image's recorded
@@ -213,13 +212,6 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
                 f"quantities, so the blank and the image must both be RGB or both not"
             )
         target = image.detect_mat[:]
-        if not np.issubdtype(target.dtype, np.floating):
-            raise ReferenceImageError(
-                f"Image {image.name!r} has an integer detect_mat ({target.dtype}): "
-                f"single-channel integer inputs are not yet supported, because the "
-                f"gray detection mode returns their raw integers rather than values "
-                f"in [0, 1] (a known core issue)"
-            )
         # The target's colour configuration, not the blank's: the blank was read
         # with imread's defaults, and an L*a*b* projection under another
         # illuminant or gamma would not cancel against identical pixels.

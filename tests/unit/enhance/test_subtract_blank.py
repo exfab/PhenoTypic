@@ -194,13 +194,21 @@ def test_refuses_bit_depth_mismatch():
 
 
 @pytest.mark.parametrize("dtype,blank_value,frame_value", [(np.uint8, 100, 110), (np.uint16, 30000, 30100)])
-def test_refuses_a_single_channel_integer_pair(dtype, blank_value, frame_value):
-    """A 2-D integer scan's detect_mat is raw integers (a known core issue in the
-    gray mode), so the difference would saturate or wrap with no error."""
-    target = Image(arr=np.full((8, 8), frame_value, dtype=dtype), name="t04")
+def test_a_single_channel_integer_pair_subtracts_in_unit_range(dtype, blank_value, frame_value):
+    """A 2-D integer scan is normalised by its dtype max at construction, so the
+    pair subtracts in [0, 1] like any other: no saturation, no wrap-around."""
+    frame = np.full((8, 8), blank_value, dtype=dtype)
+    frame[1:3, 1:3] = frame_value          # brighter colony
+    frame[5:7, 5:7] = 2 * blank_value - frame_value   # darker colony, same depth
+    target = Image(arr=frame, name="t04")
     blank = Image(arr=np.full((8, 8), blank_value, dtype=dtype), name="t00")
-    with _ctx(blank=blank), pytest.raises(ReferenceImageError, match="single-channel integer"):
-        SubtractBlank().apply(target)
+    step = (frame_value - blank_value) / np.iinfo(dtype).max
+    with _ctx(blank=blank):
+        dm = SubtractBlank(polarity="both").apply(target).detect_mat[:]
+    assert dm.dtype == np.float32
+    assert dm[1, 1] == pytest.approx(step, abs=1e-6)
+    assert dm[5, 5] == pytest.approx(step, abs=1e-6)
+    assert dm[0, 7] == pytest.approx(0.0, abs=1e-6)
 
 
 @pytest.mark.parametrize("target_is_rgb", [True, False])
@@ -249,14 +257,12 @@ def test_a_blank_projecting_outside_the_unit_range_is_refused(monkeypatch, polar
 
 
 @pytest.mark.parametrize("scale", [200.0, -1.0])
-def test_a_float_single_channel_pair_outside_the_unit_range_is_refused(scale):
-    """A 2-D float array keeps its values as gray, so 0-255 floats reach
-    detect_mat unnormalised; the dtype check alone would let them through."""
-    target, blank = _pair()
-    target = _gray(target.gray[:] * scale, "t04")
-    blank = _gray(blank.gray[:] * scale, "t00")
-    with _ctx(blank=blank), pytest.raises(ReferenceImageError, match=r"outside \[0, 1\]"):
-        SubtractBlank(polarity="both").apply(target)
+def test_a_float_single_channel_frame_outside_the_unit_range_is_refused(scale):
+    """A 2-D float array carries no scale, so one outside [0, 1] is refused when
+    the Image is built -- before it can reach SubtractBlank at all."""
+    target, _ = _pair()
+    with pytest.raises(ValueError, match=r"outside \[0, 1\]"):
+        _gray(target.gray[:] * scale, "t04")
 
 
 @pytest.mark.parametrize("polarity", ["brighter", "darker", "both"])

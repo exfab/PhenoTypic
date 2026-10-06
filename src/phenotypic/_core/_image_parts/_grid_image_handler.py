@@ -264,9 +264,9 @@ class ImageGridHandler(Image):
             Image: A copy of the image at the slices indicated
         """
         if not self.rgb.isempty():
-            subimage = Image(arr=self.rgb[key])
+            subimage = Image(arr=self.rgb[key], bit_depth=self.bit_depth)
         else:
-            subimage = Image(arr=self.gray[key])
+            subimage = Image(arr=self.gray[key], bit_depth=self.bit_depth)
         subimage._adopt_color_config(self)
 
         # Propagate detect_mode before setting detect_mat data
