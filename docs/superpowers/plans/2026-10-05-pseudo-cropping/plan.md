@@ -65,7 +65,10 @@ The old item about pickling to workers was removed: CLI workers receive paths, n
 | accessor `imsave` ×3 | `pad_on_save` |
 | `src/phenotypic/_cli/_cli_process_only.py` | canvas level count |
 | `src/phenotypic/_cli/_cli_failure_tracker.py`, `_cli_process_single.py` | revision bump; crop work-id key |
-| `src/phenotypic/_gui/_shared/tiles.py` | store-driven offset in crops |
+| `src/phenotypic/_gui/_shared/tiles.py` | crops windowed in ROI coordinates against padded stores; display range from the ROI window |
+| `src/phenotypic/_gui/results_viewer/_store_source.py`, `colony_view/_grid.py` | `cropOffset` in the Viv source spec; Colony cell centroids shifted |
+| `src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py` | builder previews pass `pad_on_save=False` |
+| `src/phenotypic/_cli/_cli_readme_generator.py` | `FRAME` table in the deliverables README |
 | docs (Task 16) | as listed there |
 
 ---
@@ -1969,7 +1972,8 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 ### Task 9: Writer padding (`save2zarr`, `_save_store`, `save_intermediate_zarr`)
 
 **Files:**
-- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_build_store_attributes` (`:1016`), `save2zarr` (`:1083`), `_save_store` (`:1151`), `save_intermediate_zarr` (`:1487`)
+- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_build_store_attributes` (`:1016`), `save2zarr` (`:1083`), `_save_store` (`:1151`, which only allocates the part and calls `_write_store_part` at `:1224`), **`_write_store_part` (`:1243`, which holds the `arrays` dict, the series/objmap writes, the OME metadata, the XML and the attribute build; every padding edit goes here)**, `save_intermediate_zarr` (`:1487`)
+- Modify: `src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py:1040-1092` (`apply_with_intermediates`: builder previews stay ROI-sized, a spec §7 decision)
 - Test: `tests/unit/core/test_crop_frame_zarr_write.py`
 
 **Interfaces:**
@@ -2041,11 +2045,35 @@ def test_padded_store_attributes(tmp_path, plate, cropped):
     }
 
 
-def test_original_series_is_unchanged(tmp_path, cropped):
-    cropped._retain_original()  # simulate the CLI snapshot on the ROI-sized pixels
+def test_original_series_stays_canvas_sized(tmp_path, plate):
+    plate._retain_original()  # what the CLI does before any op runs
+    cropped = CropImage(**CROP).apply(plate)
     store = cropped.save2zarr(tmp_path / "c.ome.zarr")
     block = read_phenotypic_attributes(store)
     assert "original" in block["series"]
+    # load_layer_zarr moves the channel axis last only for layer == "rgb"; the
+    # "original" series is stored channel-first like rgb, so move it here.
+    original = np.moveaxis(Image.load_layer_zarr(store, "original"), 0, -1)
+    assert original.shape[:2] == plate.shape[:2]
+    np.testing.assert_array_equal(original, plate.rgb[:])
+
+
+def test_noop_crop_writes_padded_v4(tmp_path, plate):
+    """Decided 2026-10-05: every CropImage result saves padded, no special case."""
+    block = read_phenotypic_attributes(CropImage().apply(plate).save2zarr(tmp_path / "n.ome.zarr"))
+    assert block["store_schema_version"] == 4
+    assert block["crop_frame"]["offset"] == [0, 0]
+    assert block["crop_frame"]["padded"] is True
+
+
+def test_builder_intermediates_stay_roi_sized(tmp_path, plate, cropped):
+    from phenotypic import ImagePipeline
+
+    ImagePipeline(ops={"crop": CropImage(**CROP)}).apply_with_intermediates(plate, output_dir=tmp_path)
+    stores = sorted(tmp_path.glob("*crop*.ome.zarr"))
+    assert stores, "apply_with_intermediates wrote no crop snapshot"
+    for store in stores:
+        assert Image.load_layer_zarr(store, "gray").shape == cropped.shape[:2]
 
 
 def test_pad_on_save_false_overrides(tmp_path, cropped):
@@ -2084,7 +2112,7 @@ def test_stale_frame_saves_unpadded(tmp_path, cropped):
     assert block["store_schema_version"] == 3 and "crop_frame" not in block
 ```
 
-The `"original"` test uses `_retain_original()` on the ROI because a programmatic `CropImage.apply` path may already carry `_original` (see `_provenance.py:523`). Either way the assertion only checks presence. The original series' **shape** contract is "unchanged from today", and Task 14 pins it on the CLI path.
+The `"original"` test retains the snapshot **before** cropping, as the CLI does. The apply wrapper carries `_original` across the op (`_provenance.py:523`), so the store's `original` series is the full canvas and must equal the plate's pixels.
 
 - [ ] **Step 2: Run the tests and check they fail**
 
@@ -2122,7 +2150,7 @@ with
 
 and pass `pad_on_save=pad_on_save` to `self._save_store(...)`.
 
-3d. `_save_store`: add the keyword `pad_on_save: bool | None = None` (document it as in 3c). Directly after the `arrays` dict (and its `"original"` entry) is built, add:
+3d. Add the keyword `pad_on_save: bool | None = None` (documented as in 3c) to **both** `_save_store` and `_write_store_part`, and pass `pad_on_save=pad_on_save` in `_save_store`'s `self._write_store_part(...)` call (`:1224`). Every remaining edit in this step is inside **`_write_store_part`**. Directly after its `arrays` dict (and its `"original"` entry) is built (`~:1290-1305`), add:
 
 ```python
         # Spec 2026-10-05-pseudo-cropping §5.1: image layers are written into
@@ -2156,9 +2184,16 @@ Then make these edits in the same function:
 
 3e. `save_intermediate_zarr`: add `*, pad_on_save: bool | None = None` after `layers`, document it, and pass it to `_save_store`.
 
+3f. `apply_with_intermediates` (`_image_pipeline_core.py:1040-1092`): pass `pad_on_save=False` to each of its five snapshot writes (the two `save2zarr(...)` and three `save_intermediate_zarr(...)` calls). Add one comment at the first:
+
+```python
+                # Builder previews show the cropped region itself (spec
+                # 2026-10-05-pseudo-cropping §7); padding is for run outputs.
+```
+
 - [ ] **Step 4: Run the tests and check they pass**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_zarr_write.py tests/unit/core/test_image_zarr_roundtrip.py tests/unit/core/test_save_intermediate_zarr.py tests/unit/core/test_ngff_conformance.py tests/unit/core/test_image_provenance_original_zarr.py tests/unit/core/test_full_layers_intermediates.py -q --capture=fd -p no:cacheprovider`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_zarr_write.py tests/unit/core/test_image_zarr_roundtrip.py tests/unit/core/test_save_intermediate_zarr.py tests/unit/core/test_ngff_conformance.py tests/unit/core/test_image_provenance_original_zarr.py tests/unit/core/test_full_layers_intermediates.py tests/unit/core/test_delta_intermediates.py -q --capture=fd -p no:cacheprovider`
 Expected: all PASS. The existing round-trip tests prove an unpadded image's store is unchanged.
 
 - [ ] **Step 5: Lint and commit**
@@ -2177,7 +2212,7 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 ### Task 10: Reader: slice padded layers back and restore the frame
 
 **Files:**
-- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_load_from_store` (`~:1671-1790`), `_read_store_array` (`~:1792`)
+- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `_load_from_store` (`~:1671-1790`), `_read_store_array` (`~:1792`), `save2pickle` (`~:2076`), `load_pickle` (`~:2147-2215`)
 - Test: `tests/unit/core/test_crop_frame_zarr_read.py`
 
 **Interfaces:**
@@ -2261,6 +2296,44 @@ def test_malformed_crop_frame_is_refused(tmp_path):
     (store / "zarr.json").write_text(json.dumps(root))
     with pytest.raises(ValueError, match="crop_frame"):
         Image.load_zarr(store)
+
+
+def test_crop_frame_disagreeing_with_the_arrays_is_refused(tmp_path):
+    """zarr truncates out-of-bounds slices silently; the loader must not."""
+    import json
+
+    store = CropImage(**CROP).apply(Image(load_synth_yeast_plate())).save2zarr(tmp_path / "c.ome.zarr")
+    root = json.loads((store / "zarr.json").read_text())
+    frame = root["attributes"]["phenotypic"]["crop_frame"]
+    frame["canvas_shape"] = [frame["canvas_shape"][0] + 50, frame["canvas_shape"][1] + 50]
+    (store / "zarr.json").write_text(json.dumps(root))
+    with pytest.raises(ValueError, match="crop_frame"):
+        Image.load_zarr(store)
+
+
+def test_pre_change_crop_store_measures_null_offsets(tmp_path):
+    """A crop store written before crop frames existed: ROI-sized, v3, no crop_frame,
+    but its journal records CropImage. Re-measuring must not claim 'not cropped'."""
+    import json
+
+    cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
+    store = cropped.save2zarr(tmp_path / "old.ome.zarr", pad_on_save=False)
+    root = json.loads((store / "zarr.json").read_text())
+    del root["attributes"]["phenotypic"]["crop_frame"]  # what a pre-change writer produced
+    (store / "zarr.json").write_text(json.dumps(root))
+    loaded = Image.load_zarr(store)
+    assert loaded._crop_frame is None
+    with pytest.warns(UserWarning, match="unknown"):
+        info = loaded.objects.info(include_metadata=False)
+    assert info[["Frame_OffsetRR", "Frame_OffsetCC"]].isna().all().all()
+
+
+def test_save2pickle_round_trips_the_frame(tmp_path):
+    cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
+    cropped.save2pickle(tmp_path / "c.pkl")
+    loaded = Image.load_pickle(tmp_path / "c.pkl")
+    assert loaded._crop_frame == cropped._crop_frame
+    assert loaded._pad_on_save is True
 ```
 
 - [ ] **Step 2: Run the tests and check they fail**
@@ -2296,17 +2369,61 @@ Expected: FAIL. The loaded shape is the canvas, not the ROI.
         )
 ```
 
+and, directly after it, the extent check (spec §5.3). zarr truncates an out-of-bounds slice silently, so a canvas that disagrees with the arrays would otherwise yield a truncated image:
+
+```python
+        if window is not None:
+            level0 = ngff_.store_level0_shape(Path(path), series["gray"])
+            if level0 is None or tuple(level0[-2:]) != crop[0].canvas_shape:
+                raise ValueError(
+                    f"{path}: crop_frame canvas_shape {crop[0].canvas_shape} "
+                    f"disagrees with the stored extent {level0}"
+                )
+```
+
 Pass `window=window` to the `_read_store_array` calls for `series["gray"]`, `series["rgb"]`, `series["detect_mat"]` and `labels[ngff_.OBJMAP_LABEL]`. **Not** to `series["original"]`. Then, immediately before the final `return cast("Image", img)`:
 
 ```python
         if crop is not None:
+            if tuple(img.shape[:2]) != crop[1]:
+                raise ValueError(
+                    f"{path}: crop_frame roi_shape {crop[1]} disagrees with the "
+                    f"layers read ({tuple(img.shape[:2])})"
+                )
             img._crop_frame = crop[0]
             img._pad_on_save = crop[2]
 ```
 
+(The version ⇔ `padded` invariant is already enforced: `load_zarr` and `_io_constants.py:2787` both pass through `require_readable_store`, which calls `check_crop_frame_consistency` (Task 8).)
+
+**Pickle files (spec §5.3).** In `save2pickle`, add to `data2save`:
+
+```python
+                # Spec 2026-10-05-pseudo-cropping §5.3: plain tuples, so the
+                # file never pickles a phenotypic class reference for the frame.
+                "crop_frame": (
+                    None
+                    if self._crop_frame is None
+                    else (self._crop_frame.canvas_shape, self._crop_frame.offset)
+                ),
+                "pad_on_save": bool(self._pad_on_save),
+```
+
+In `load_pickle`, immediately before `return instance`:
+
+```python
+        # `.get`: pickle files written before crop frames existed carry neither key.
+        stored_frame = loaded.get("crop_frame")
+        if stored_frame is not None:
+            from phenotypic._core._crop_frame import CropFrame
+
+            instance._crop_frame = CropFrame(*stored_frame)
+            instance._pad_on_save = bool(loaded.get("pad_on_save", False))
+```
+
 - [ ] **Step 4: Run the tests and check they pass**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_zarr_read.py tests/unit/core/test_crop_frame_zarr_write.py tests/unit/core/test_image_zarr_roundtrip.py tests/unit/core/test_grid_image_zarr_roundtrip.py tests/unit/sdk_/test_load_zarr_guard.py -q --capture=fd -p no:cacheprovider`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/core/test_crop_frame_zarr_read.py tests/unit/core/test_crop_frame_zarr_write.py tests/unit/core/test_image_zarr_roundtrip.py tests/unit/core/test_grid_image_zarr_roundtrip.py tests/unit/core/test_image_pickle.py tests/unit/sdk_/test_load_zarr_guard.py -q --capture=fd -p no:cacheprovider`
 Expected: all PASS.
 
 - [ ] **Step 5: Lint and commit**
@@ -2402,7 +2519,7 @@ Expected: FAIL. The exports are ROI-sized, and the override raises `TypeError`.
 
 `ObjectMap.imsave`: add `*, pad_on_save: bool | None = None` after `use_label2rgb` and add the docstring line. Change `super().imsave(filepath=filepath, bit_depth=bit_depth)` to `super().imsave(filepath=filepath, bit_depth=bit_depth, pad_on_save=pad_on_save)`, and in the `else` branch replace `label2rgb(self._subject_arr, bg_label=0)` with `label2rgb(self._root_image._pad_layer_for_save(self._subject_arr, pad_on_save), bg_label=0)`.
 
-Check other overrides: run `grep -rn "def imsave" src/phenotypic/_core`. Any other override that calls `super().imsave(...)` or reads `_subject_arr` gets the same treatment. One that is a colour-space accessor (non-layer) gets the keyword and passes it through.
+Check other overrides: run `grep -rn "def imsave" src/phenotypic/_core`. Any other **image-layer** override that calls `super().imsave(...)` or reads `_subject_arr` gets the same treatment. The colour-space accessor's `imsave` (`_color_space_accessor.py:120`) is not a layer and does not call the layer `imsave`, so leave it **unchanged**; derived colour spaces are not part of the "full-frame layers on disk" contract.
 
 - [ ] **Step 4: Run the tests and check they pass**
 
@@ -2507,7 +2624,7 @@ Expected: `test_revision_bumped_for_padded_exports` FAILS (3 ≠ 4). `test_zarr_
 PROCESS_LAYER_SEMANTICS_REVISION = 4
 ```
 
-`tests/integration/cli/test_figures_in_store.py:268`: change to `assert tracker.PROCESS_LAYER_SEMANTICS_REVISION >= 3  # figures bumped it to 3; later changes bump it further`.
+`tests/integration/cli/test_figures_in_store.py:268`: change to `assert tracker.PROCESS_LAYER_SEMANTICS_REVISION == 4`, and update its comment to say the figures change took it to 3 and padded crop exports to 4. Keep it exact; don't loosen it.
 
 - [ ] **Step 4: Run the tests and check they pass**
 
@@ -2554,6 +2671,7 @@ import pytest
 import tifffile
 
 from phenotypic import ImagePipeline
+from phenotypic._cli import _cli_failure_tracker as tracker
 from phenotypic._cli._cli_failure_tracker import (
     compute_work_id,
     pipeline_uses_crop_frame,
@@ -2631,6 +2749,18 @@ def test_both_producers_agree_for_a_crop_pipeline(cropping, tmp_path):
         drop_originals=config.drop_originals, mode="full",
     )
     assert selected == worker
+    # Equality alone passes if NEITHER producer forwards the pipeline. Rebuild
+    # the same identity with every input identical but no pipeline_json: it
+    # must differ, which proves the crop revision reached the producer output.
+    rebuilt_without_key = compute_work_id(
+        dataset="plate1",
+        relative_image_path="plate1/img001.tiff",
+        input_sha256=tracker.file_sha256(image),
+        pipeline_fingerprint=tracker.file_sha256(cropping),
+        processing_config_digest=tracker.processing_configuration_digest(config),
+        mode="full",
+    )
+    assert selected != rebuilt_without_key
 ```
 
 - [ ] **Step 2: Run the tests and check they fail**
@@ -2659,43 +2789,40 @@ _CROP_FRAME_CLASS_NAMES = frozenset({"CropImage", "ImageCropper"})
 
 
 def _json_names_crop_class(node: Any) -> bool:
+    """Depth-first search for an operation whose ``class`` is a crop.
+
+    Every serialized operation is a plain ``{"class": ..., ...}`` dict: top-level
+    ops, ``OperationField`` values (``sdk_/typing_.py:285-312``) and nested
+    pipelines' ``pipeline_operation``/``config`` envelopes
+    (``_serializable_pipeline.py:463-470``) alike, so a dict/list walk sees all
+    of them.
+    """
     if isinstance(node, dict):
         if node.get("class") in _CROP_FRAME_CLASS_NAMES:
             return True
         return any(_json_names_crop_class(value) for value in node.values())
     if isinstance(node, list):
         return any(_json_names_crop_class(value) for value in node)
-    if isinstance(node, str) and node.lstrip().startswith(("{", "[")):
-        # A nested pipeline may be stored as an embedded JSON string.
-        try:
-            return _json_names_crop_class(json.loads(node))
-        except ValueError:
-            return False
     return False
 
 
-@functools.lru_cache(maxsize=64)
-def _pipeline_uses_crop_frame_cached(path: str, fingerprint: str) -> bool:
-    """Cache keyed on the file's content hash, so an edited file re-scans."""
-    del fingerprint  # part of the key only
-    return _json_names_crop_class(json.loads(Path(path).read_text(encoding="utf-8")))
-
-
 def pipeline_uses_crop_frame(pipeline_json: Path) -> bool:
-    """Whether the serialized pipeline contains a ``CropImage`` anywhere."""
-    return _pipeline_uses_crop_frame_cached(
-        str(pipeline_json), file_sha256(Path(pipeline_json))
+    """Whether the serialized pipeline contains a ``CropImage`` anywhere.
+
+    Uncached on purpose: every caller already reads the whole file for
+    ``file_sha256`` per image, so one more small JSON parse is noise.
+    """
+    return _json_names_crop_class(
+        json.loads(Path(pipeline_json).read_text(encoding="utf-8"))
     )
 ```
 
-(Add `import functools` and `import json` if they are missing; `file_sha256` is already used in this module.)
+(Add `import json` if it is missing.)
 
 `compute_work_id`: add `pipeline_json: Path | None = None` as the last keyword. Document it: "The serialized pipeline. When given and it contains `CropImage`, :data:`CROP_FRAME_SEMANTICS_REVISION` joins the payload." Before `return canonical_digest(payload)`:
 
 ```python
-    if pipeline_json is not None and _pipeline_uses_crop_frame_cached(
-        str(pipeline_json), pipeline_fingerprint
-    ):
+    if pipeline_json is not None and pipeline_uses_crop_frame(pipeline_json):
         payload["crop_frame_semantics"] = CROP_FRAME_SEMANTICS_REVISION
 ```
 
@@ -2774,6 +2901,8 @@ def test_staged_crop_publishes_a_padded_store_and_replays_on_the_roi(
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/integration/cli/test_staged_store_stages.py -q --capture=fd -p no:cacheprovider`
 Expected: the new test PASSES. Any **existing** test using `staged_run_with_provenance` that asserted ROI-sized store layers now sees canvas-sized ones. Update each such assertion to the canvas, and name each one in the commit message. Assertions about the `"original"` series stay exactly as they are.
 
+Also run `tests/integration/cli/test_provenance_fencing.py`, which uses `staged_run_with_provenance`, and `tests/unit/cli/test_cli_provenance_durability.py`, which runs a crop pipeline through the worker (`:88`). Update their store-shape assertions the same way.
+
 - [ ] **Step 3: Phase 4 affected surface (run once)**
 
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli tests/integration/cli -q --capture=fd -p no:cacheprovider`
@@ -2794,78 +2923,276 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 
 ## Phase 5: GUI
 
-### Task 15: Colony crops shift by the store's own offset
+### Task 15: GUI: Colony Viv cells, server-side crops, and display range on padded stores
 
 **Files:**
-- Modify: `src/phenotypic/_gui/_shared/tiles.py` (`_crop_store_layer_window`, `~:775`)
-- Test: `tests/unit/gui/shared/test_tiles_crop_frame.py`
+- Modify: `src/phenotypic/_gui/results_viewer/_store_source.py` (`build_source_spec` return dict: add `cropOffset`)
+- Modify: `src/phenotypic/_gui/results_viewer/colony_view/_grid.py` (`_build_cell`, `~:632-641`: extract `_viv_cell_payload`, add the offset)
+- Modify: `src/phenotypic/_gui/_shared/tiles.py` (`_crop_store_layer_window` `~:775`; `image_display_range` `~:546-607`)
+- Test: `tests/unit/gui/shared/test_tiles_crop_frame.py`, `tests/unit/gui/results_viewer/test_colony_viv_crop_frame.py`
 
 **Interfaces:**
-- Consumes: `ngff_.padded_crop_offset(block)` (Task 8).
+- Consumes: `ngff_.padded_crop_offset(block)`, `ngff_.padded_crop_window(block)` (Task 8); padded writer (Task 9).
+- Produces:
+  - `build_source_spec(...)["cropOffset"] == [row, col]`, which is `[0, 0]` for an unpadded store.
+  - `_viv_cell_payload(*, dataset, image_file, label, centroid_rr, centroid_cc, viv_spec) -> str | None`.
+- Background (spec §7): table coordinates are ROI-relative, and the store is canvas-sized. The store's own `crop_frame` is the only source of the shift, so old masters need no special case and the overlay-PNG fallback (no store) is never shifted. Plate-view contrast is dtype-based (`viv_viewer.js` `dtypeDomain`) and is unaffected.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
+
+`tests/unit/gui/shared/test_tiles_crop_frame.py`:
 
 ```python
-"""A colony crop from a padded store equals the crop from an unpadded one (spec §7)."""
+"""Server-side crops and display range on padded stores (spec §7)."""
 
 from __future__ import annotations
+
+import numpy as np
+import pytest
 
 from phenotypic import Image
 from phenotypic._gui._shared import tiles
 from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 
+CROP = dict(top=7, bottom=11, left=13, right=17)
 
-def test_padded_and_unpadded_stores_give_identical_crops(tmp_path):
-    cropped = CropImage(top=7, bottom=11, left=13, right=17).apply(Image(load_synth_yeast_plate()))
+
+@pytest.fixture
+def stores(tmp_path):
+    cropped = CropImage(**CROP).apply(Image(load_synth_yeast_plate()))
     padded = cropped.save2zarr(tmp_path / "p.ome.zarr")
     plain = cropped.save2zarr(tmp_path / "u.ome.zarr", pad_on_save=False)
+    return cropped, padded, plain
+
+
+@pytest.mark.parametrize("layer", ["rgb", "detect_mat", "objmap"])
+def test_padded_and_unpadded_stores_give_identical_crops(stores, layer):
+    """Every colony, including those touching the ROI edge: the window is
+    computed against the ROI's extent, so the zero margin is never read."""
+    cropped, padded, plain = stores
     info = cropped.objects.info(include_metadata=False)
-    for _, row in info.head(5).iterrows():
-        args = ("rgb", float(row["Bbox_CenterRR"]), float(row["Bbox_CenterCC"]), 48)
-        bbox = (row["Bbox_MinRR"], row["Bbox_MaxRR"], row["Bbox_MinCC"], row["Bbox_MaxCC"])
-        a = tiles.crop_store_rgb(padded, *args, dim_alpha=0.5, bbox=bbox, contours=int(row["Object_Label"]))
-        b = tiles.crop_store_rgb(plain, *args, dim_alpha=0.5, bbox=bbox, contours=int(row["Object_Label"]))
-        assert a == b
+    for _, row in info.iterrows():
+        args = (layer, float(row["Bbox_CenterRR"]), float(row["Bbox_CenterCC"]), 48)
+        kwargs = dict(
+            dim_alpha=0.5,
+            bbox=(row["Bbox_MinRR"], row["Bbox_MaxRR"], row["Bbox_MinCC"], row["Bbox_MaxCC"]),
+            contours=int(row["Object_Label"]) if layer == "rgb" else None,
+        )
+        assert tiles.crop_store_rgb(padded, *args, **kwargs) == tiles.crop_store_rgb(plain, *args, **kwargs)
+
+
+def test_display_range_ignores_the_zero_margin(tmp_path):
+    """16-bit plates: a padded store's zero margin must not drag lo to 0."""
+    rng = np.random.default_rng(4)
+    arr = rng.integers(17_000, 48_000, size=(600, 800, 3), dtype=np.uint16)
+    cropped = CropImage(top=50, bottom=50, left=60, right=60).apply(Image(arr))
+    lo_padded, hi_padded = tiles.image_display_range(cropped.save2zarr(tmp_path / "p.ome.zarr"), "rgb")
+    lo_plain, hi_plain = tiles.image_display_range(
+        cropped.save2zarr(tmp_path / "u.ome.zarr", pad_on_save=False), "rgb"
+    )
+    assert lo_padded > 10_000
+    # Different pyramids (canvas vs ROI) downsample differently, so equal-ish, not equal.
+    assert abs(lo_padded - lo_plain) < 2_000 and abs(hi_padded - hi_plain) < 2_000
 ```
 
-- [ ] **Step 2: Run the test and check it fails**
+`tests/unit/gui/results_viewer/test_colony_viv_crop_frame.py`:
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared/test_tiles_crop_frame.py -q --capture=fd -p no:cacheprovider`
-Expected: FAIL. The padded crop is shifted by `(7, 13)`.
+```python
+"""Colony Viv cells target store pixels, so they carry the crop offset (spec §7)."""
+
+from __future__ import annotations
+
+import json
+
+from phenotypic import Image
+from phenotypic._gui.results_viewer._store_source import build_source_spec
+from phenotypic._gui.results_viewer.colony_view._grid import _viv_cell_payload
+from phenotypic.correction import CropImage
+from phenotypic.data import load_synth_yeast_plate
+
+
+def test_source_spec_carries_the_store_crop_offset(tmp_path):
+    cropped = CropImage(top=7, left=13).apply(Image(load_synth_yeast_plate()))
+    assert build_source_spec(cropped.save2zarr(tmp_path / "p.ome.zarr"), "/zarr/p")["cropOffset"] == [7, 13]
+    assert build_source_spec(
+        cropped.save2zarr(tmp_path / "u.ome.zarr", pad_on_save=False), "/zarr/u"
+    )["cropOffset"] == [0, 0]
+
+
+def test_colony_cell_centroid_is_shifted_into_the_canvas():
+    payload = json.loads(
+        _viv_cell_payload(
+            dataset="ds", image_file="img", label=3,
+            centroid_rr=40.5, centroid_cc=60.25,
+            viv_spec={"storeUrl": "/zarr/x", "cropOffset": [7, 13]},
+        )
+    )
+    assert (payload["centroidRr"], payload["centroidCc"]) == (47.5, 73.25)
+
+
+def test_colony_cell_without_offset_is_unchanged():
+    payload = json.loads(
+        _viv_cell_payload(
+            dataset="ds", image_file="img", label=3,
+            centroid_rr=40.5, centroid_cc=60.25, viv_spec={"storeUrl": "/zarr/x"},
+        )
+    )
+    assert (payload["centroidRr"], payload["centroidCc"]) == (40.5, 60.25)
+
+
+def test_no_payload_without_spec_or_centroid():
+    assert _viv_cell_payload(dataset="d", image_file="i", label=1,
+                             centroid_rr=None, centroid_cc=1.0, viv_spec={}) is None
+    assert _viv_cell_payload(dataset="d", image_file="i", label=1,
+                             centroid_rr=1.0, centroid_cc=1.0, viv_spec=None) is None
+```
+
+- [ ] **Step 2: Run the tests and check they fail**
+
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared/test_tiles_crop_frame.py tests/unit/gui/results_viewer/test_colony_viv_crop_frame.py -q --capture=fd -p no:cacheprovider`
+Expected:
+- The crop tests FAIL: the padded crop is shifted by `(7, 13)`.
+- The display-range test FAILS with `lo_padded == 0`.
+- The Viv tests FAIL with an `ImportError` (`_viv_cell_payload`) or `KeyError` (`cropOffset`).
 
 - [ ] **Step 3: Write the implementation**
 
-In `_crop_store_layer_window`, directly after `block = _readable_block(store_path)`:
+`_store_source.py`, in `build_source_spec`'s returned dict, add:
 
 ```python
-    # Table coordinates are ROI-relative; a padded store's pixels sit at its
-    # crop_frame offset inside the original canvas (spec
-    # 2026-10-05-pseudo-cropping §7). The store is the source of truth, so the
-    # overlay fallback -- drawn on the ROI -- is never shifted.
-    d_row, d_col = ngff_.padded_crop_offset(block)
-    center_rr += d_row
-    center_cc += d_col
-    if bbox is not None:
-        bbox = (bbox[0] + d_row, bbox[1] + d_row, bbox[2] + d_col, bbox[3] + d_col)
+        # Table coordinates are ROI-relative; a padded store's pixels sit at
+        # this offset inside the canvas (spec 2026-10-05-pseudo-cropping §7).
+        "cropOffset": list(ngff_.padded_crop_offset(block)),
 ```
 
-If `ngff_` isn't already in scope in that function, import it locally the way `_readable_block` does: `from phenotypic.sdk_ import ngff_`.
+`colony_view/_grid.py`: extract the payload from `_build_cell` into a module-level helper and apply the offset:
+
+```python
+def _viv_cell_payload(
+    *,
+    dataset: str,
+    image_file: str,
+    label: int,
+    centroid_rr: float | None,
+    centroid_cc: float | None,
+    viv_spec: Mapping[str, Any] | None,
+) -> str | None:
+    """Serialise one Colony cell's Viv payload, or ``None`` if it has none.
+
+    ``viv_viewer.js`` treats ``centroidRr/Cc`` as STORE pixel coordinates; the
+    table's ``Bbox_Center*`` are ROI-relative, so a padded store's
+    ``cropOffset`` (from ``build_source_spec``) is added here.
+    """
+    if viv_spec is None or centroid_rr is None or centroid_cc is None:
+        return None
+    d_row, d_col = viv_spec.get("cropOffset", (0, 0))
+    return json.dumps(
+        {
+            "id": f"{dataset}:{image_file}:{label}",
+            "centroidRr": float(centroid_rr) + d_row,
+            "centroidCc": float(centroid_cc) + d_col,
+            "spec": dict(viv_spec),
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+```
+
+and in `_build_cell` replace the `if viv_spec is not None and centroid_rr ...: outer_props["data-colony-viv-cell"] = json.dumps(...)` block with:
+
+```python
+    payload = _viv_cell_payload(
+        dataset=dataset,
+        image_file=image_file,
+        label=label,
+        centroid_rr=centroid_rr,
+        centroid_cc=centroid_cc,
+        viv_spec=viv_spec,
+    )
+    if payload is not None:
+        outer_props["data-colony-viv-cell"] = payload
+```
+
+`tiles.py`, `_crop_store_layer_window`: compute the window in ROI coordinates against the ROI's extent, then shift the **read** into the canvas. Replace
+
+```python
+    level0 = _level_shape(store_path, member, 0)
+    src_height, src_width = level0[-2:]
+    window = _crop_window(center_rr, center_cc, size, src_width, src_height)
+    arr: np.ndarray | None = None
+    read_window: tuple[int, int, int, int] | None = None
+    if window.has_area:
+        read_window = (window.top, window.bottom, window.left, window.right)
+```
+
+with
+
+```python
+    # Spec 2026-10-05-pseudo-cropping §7: table coordinates are ROI-relative.
+    # Against a padded store, size the window by the ROI (not the canvas) and
+    # shift only the READ by the store's own offset. The crop is then
+    # byte-identical to one from an unpadded store, edges included, and the
+    # zero margin never enters a crop or its per-window normalisation.
+    padded = ngff_.padded_crop_window(block)
+    if padded is None:
+        level0 = _level_shape(store_path, member, 0)
+        src_height, src_width = level0[-2:]
+        d_row, d_col = 0, 0
+    else:
+        (src_height, src_width), (d_row, d_col) = padded[2], padded[1]
+    window = _crop_window(center_rr, center_cc, size, src_width, src_height)
+    arr: np.ndarray | None = None
+    read_window: tuple[int, int, int, int] | None = None
+    if window.has_area:
+        read_window = (
+            window.top + d_row,
+            window.bottom + d_row,
+            window.left + d_col,
+            window.right + d_col,
+        )
+```
+
+(`_read_objmap_window(store_path, read_window)` then reads the same canvas window. If `ngff_` isn't in scope in that function, import it locally: `from phenotypic.sdk_ import ngff_`.)
+
+`tiles.py`, `image_display_range`: replace `smallest = _read_store_level(store_path, layer, levels - 1)` with:
+
+```python
+    # A padded store's zero margin would drag `lo` to 0 and wash out every
+    # 16-bit crop (spec 2026-10-05-pseudo-cropping §7): read only the ROI's
+    # window of the smallest level, scaled by that level's size.
+    padded = ngff_.padded_crop_window(block)
+    window = None
+    if padded is not None:
+        (canvas_h, canvas_w), (row, col), (roi_h, roi_w) = padded
+        member = _store_member_path(block, store_path, layer)
+        level_h, level_w = _level_shape(store_path, member, levels - 1)[-2:]
+        top = (row * level_h) // canvas_h
+        left = (col * level_w) // canvas_w
+        bottom = max(top + 1, -(-((row + roi_h) * level_h) // canvas_h))
+        right = max(left + 1, -(-((col + roi_w) * level_w) // canvas_w))
+        window = (top, bottom, left, right)
+    smallest = _read_store_level(store_path, layer, levels - 1, window=window)
+```
+
+The rounding is outward (floor/ceil), so at most one boundary row/column of the smallest level mixes in the margin. If that pulls `lo` below the test's bound on a real fixture, shrink the window inward by one instead, and record which you chose in the commit message.
 
 - [ ] **Step 4: Run the tests and check they pass**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared tests/gui/_shared -q --capture=fd -p no:cacheprovider`
-Expected: all PASS.
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/shared tests/unit/gui/results_viewer tests/gui/_shared tests/gui/results_viewer -q --capture=fd -p no:cacheprovider`
+Expected: all PASS. If `test_store_source.py::test_the_spec_is_a_valid_facade_source_spec` pins the exact key set, add `cropOffset` to it. Don't loosen it.
 
-- [ ] **Step 5: Lint and commit**
+- [ ] **Step 5: Ledger check.** `cropOffset` is not chrome, so no `FEATURES.md`/`WORKFLOWS.md` row is required. Run `grep -n "build_source_spec" src/phenotypic/_gui/FEATURES.md`. If that row's prose enumerates the spec's keys, add `cropOffset` there too (gui-tutorial-capture skill).
 
-```bash
-uv run ruff check --fix src/phenotypic/_gui/_shared/tiles.py tests/unit/gui/shared/test_tiles_crop_frame.py
-git add src/phenotypic/_gui/_shared/tiles.py tests/unit/gui/shared/test_tiles_crop_frame.py
-git commit -m "feat(gui): colony crops shift by a padded store's own crop offset
+- [ ] **Step 6: Lint and commit**
+
+Lint and stage the three source files and the two new test files by explicit path. Commit message:
+
+```
+feat(gui): colony views, crops and display range honour padded crop stores
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
+Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD
 ```
 
 ---
@@ -2879,7 +3206,8 @@ Claude-Session: https://claude.ai/code/session_016S1bCicbf2LpbH5s5S65AD"
 - Modify: `docs/source/how_to/notebooks/crop_and_pad.ipynb`: add **one markdown cell** after the first crop example explaining the frame, `Frame_Offset*`, and `pad_on_save`. Don't add code cells and don't re-execute the notebook.
 - Modify: `src/phenotypic/_core/CLAUDE.md`: a "Crop frame" section covering the attributes, the composition rule, the `_valid_crop_frame()` read rule, the PadImage/rotate rules, and the apply-wrapper carry-over.
 - Modify: `src/phenotypic/schema/CLAUDE.md`: the enum-module count, 32 → 33 (verify with `ls src/phenotypic/schema/_*.py`).
-- Modify: root `CLAUDE.md`: one bullet under **Gotchas**, "**Cropped images save padded.**", covering what a padded store is, v4 on padded stores only, `pad_on_save`, `Frame_Offset*`, and that `load_layer_zarr`/`imread` return the canvas.
+- Modify: root `CLAUDE.md`: one bullet under **Gotchas**, "**Cropped images save padded.**", covering what a padded store is, v4 on padded stores only (with the v4 ⇔ `padded` read invariant), `pad_on_save`, `Frame_Offset*` (including null for re-measured pre-change crop stores), that `load_layer_zarr`/`imread` return the canvas, and that builder previews stay ROI-sized.
+- Modify: `src/phenotypic/_gui/CLAUDE.md`, "Pixel paths": table coordinates are ROI-relative, so any new code placing them onto store pixels must use `ngff_.padded_crop_offset`/`padded_crop_window`. The Colony grid and `tiles.py` are the existing examples.
 - Modify: `.claude/skills/working-with-ome-zarr/SKILL.md` **if it exists in the repo** (`ls .claude/skills`). Add the `crop_frame` attribute and the {3,4} readable set.
 
 - [ ] **Step 1: Write the doc changes.** Each statement must match the implemented code: name the real function, attribute or key. For "Bbox + offset" text, cite `FRAME.OFFSET_RR`.
@@ -2899,7 +3227,7 @@ Expected: PASS (`+SKIP` lines excepted).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/source/how_to/pages/zarr_storage.md docs/source/how_to/notebooks/crop_and_pad.ipynb src/phenotypic/_core/CLAUDE.md src/phenotypic/schema/CLAUDE.md CLAUDE.md
+git add docs/source/how_to/pages/zarr_storage.md docs/source/how_to/notebooks/crop_and_pad.ipynb src/phenotypic/_core/CLAUDE.md src/phenotypic/schema/CLAUDE.md src/phenotypic/_gui/CLAUDE.md CLAUDE.md
 git commit -m "docs: crop frames, padded stores and Frame_Offset columns
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
