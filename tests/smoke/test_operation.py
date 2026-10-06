@@ -1,8 +1,11 @@
+import contextlib
+
 import numpy as np
+import pandas as pd
 import pytest
 
 import phenotypic
-from phenotypic.abc_ import ObjectDetector
+from phenotypic.abc_ import ObjectDetector, RefMetadata
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 
@@ -46,6 +49,23 @@ def detected_grid_image():
     return image
 
 
+def _reference_context(obj, image):
+    """The ambient table a ``RefMetadata`` op reads; nothing for any other op.
+
+    Such an op holds no table and refuses to run without one, so the
+    defaults-only contract supplies a media blank: an unprocessed copy of the
+    same synthetic plate, named in a one-row table.
+    """
+    if not issubclass(obj, RefMetadata):
+        return contextlib.nullcontext()
+    table = pd.DataFrame({"ImageName": [image.name], "BlankImage": ["blank"]})
+    blank = phenotypic.GridImage(load_synth_yeast_plate())
+    # Same plate, so it would otherwise carry the target's name and be
+    # refused as the image naming itself.
+    blank.name = "blank"
+    return phenotypic.ReferenceContext(table, images={"blank": blank})
+
+
 @pytest.mark.smoke
 @pytest.mark.parametrize("qualname,obj", image_ops)
 @timeit
@@ -59,10 +79,11 @@ def test_operation(qualname, obj, detected_grid_image):
         "Operation did not instantiate with defaults"
     )
 
-    image1 = instance.apply(image)
-    assert image1.isempty() is False, "Operation failed"
+    with _reference_context(obj, image):
+        image1 = instance.apply(image)
+        assert image1.isempty() is False, "Operation failed"
 
-    image2 = instance.apply(image)
+        image2 = instance.apply(image)
 
     # bm3d denoiser likely has unintended randomness from precision conversion
     # (ColorDenoise + DenoiseBlockMatch + EnhanceBlockMatch + BM3D all wrap
@@ -89,7 +110,8 @@ def test_inplace_contract(qualname, obj, detected_grid_image):
     """
     # inplace=False: must return a different object than the input.
     snapshot = detected_grid_image.copy()
-    out = obj().apply(snapshot, inplace=False)
+    with _reference_context(obj, snapshot):
+        out = obj().apply(snapshot, inplace=False)
     assert out is not snapshot, (
         f"{qualname} returned the same object with inplace=False"
     )
@@ -98,7 +120,8 @@ def test_inplace_contract(qualname, obj, detected_grid_image):
     # PadImage / CropImage legitimately change image dimensions and have
     # to allocate a new image even with inplace=True; they're excluded here.
     target = detected_grid_image.copy()
-    ret = obj().apply(target, inplace=True)
+    with _reference_context(obj, target):
+        ret = obj().apply(target, inplace=True)
     if ("PadImage" not in qualname) and ("CropImage" not in qualname):
         assert ret is target, (
             f"{qualname} did not return the input with inplace=True"
@@ -116,7 +139,8 @@ def test_detector_objmap_objmask_consistency(
     Replaces per-detector test_objmask_objmap_consistency copies.
     """
     image = detected_grid_image.copy()
-    obj().apply(image, inplace=True)
+    with _reference_context(obj, image):
+        obj().apply(image, inplace=True)
     np.testing.assert_array_equal(
         image.objmap[:] > 0,
         image.objmask[:],
