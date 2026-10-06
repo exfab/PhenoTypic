@@ -1814,6 +1814,16 @@ def test_plan_without_hashing_still_resolves(tree):
     assert plan.digests == {"plate1": {}}
 
 
+def test_a_blank_written_with_its_own_extension_is_a_self_reference(tree, tmp_path):
+    table, dataset = tree
+    named = tmp_path / "named.csv"
+    pd.DataFrame({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["t01.tif"]}).to_csv(named, index=False)
+    single = Dataset(name="plate1", images=[dataset.input_dir / "t01.tif"],
+                     input_dir=dataset.input_dir, output_dir=dataset.output_dir)
+    plan = ref.plan_references(ReferenceContext(named), _pipe(), [single], hash_images=False)
+    assert plan.self_referenced == ("plate1/t01",)
+
+
 def test_digest_changes_only_for_the_image_whose_blank_changed(tree, tmp_path):
     table, dataset = tree
     root = dataset.input_dir
@@ -2061,6 +2071,11 @@ def plan_references(
                     target = scoped.resolve_image(name)
                 except ReferenceImageError:
                     failure = unresolved
+                    break
+                # Same rule as SubtractBlank: "t04.tif" for image "t04" resolves
+                # to the frame's own file and is a self-reference too.
+                if source_image_stem(Path(target)) == stem:
+                    failure = self_referenced
                     break
                 key = str(Path(target).resolve())
                 resolved[name] = key
