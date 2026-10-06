@@ -5,6 +5,7 @@ from typing import Any, Literal, Mapping
 import numpy as np
 
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+from ._image_parts._image_color_handler import UNSET, _Unset
 from ._image_parts._image_io_handler import ImageIOHandler
 
 
@@ -31,7 +32,8 @@ class Image(ImageIOHandler):
     Notes:
         - 2-D input arrays are treated as grayscale; rgb form remains empty.
         - 3-D input arrays are treated as RGB; grayscale is computed automatically.
-        - Color space properties (gamma, illuminant, _observer) are inherited.
+        - Color space properties (gamma, illuminant, _observer) are inherited
+          from a source Image (copy, crop, grid section) unless passed explicitly.
         - Object detection and measurements require an ObjectDetector first.
         - HSV color space support added in v0.5.0.
 
@@ -56,8 +58,8 @@ class Image(ImageIOHandler):
             arr: np.ndarray | Image | None = None,
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = None,
-            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
-            illuminant: Literal["D65", "D50"] | None = "D65",
+            gamma: GAMMA_ENCODINGS | str | None | _Unset = UNSET,
+            illuminant: Literal["D65", "D50"] | None | _Unset = UNSET,
     ):
         """Initialize an Image instance with optional image data and color properties.
 
@@ -82,11 +84,12 @@ class Image(ImageIOHandler):
             gamma (GAMMA_ENCODINGS): The gamma encoding used for color correction.
                 GAMMA_ENCODINGS.SRGB: applies sRGB gamma correction (standard display gamma)
                 GAMMA_ENCODINGS.LINEAR: assumes linear RGB data
-                Defaults to GAMMA_ENCODINGS.SRGB.
+                When omitted, inherited from ``arr`` if it is an Image, else
+                GAMMA_ENCODINGS.SRGB.
             illuminant (str | None): The reference illuminant for color calculations.
                 'D65': standard daylight illuminant (recommended)
                 'D50': standard illumination for imaging
-                Defaults to 'D65'.
+                When omitted, inherited from ``arr`` if it is an Image, else 'D65'.
 
         Raises:
             ValueError: If gamma is not a GAMMA_ENCODINGS member.

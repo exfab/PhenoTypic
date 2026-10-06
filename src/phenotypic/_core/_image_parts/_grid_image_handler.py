@@ -88,7 +88,9 @@ class ImageGridHandler(Image):
         super().__init__(arr=arr, name=name, **kwargs)
 
         if hasattr(arr, "grid_finder"):
-            grid_finder = arr.grid_finder
+            # A copy of the source's finder, not the finder itself: a shared one
+            # would let ``copy.nrows = 4`` reshape the original's grid.
+            grid_finder = arr.grid_finder.model_copy(deep=True)
         elif grid_finder is None:
             # Inside the branch, not at the top of __init__: a caller that supplies a
             # finder should not pay for importing phenotypic.grid at all.
@@ -265,10 +267,10 @@ class ImageGridHandler(Image):
             subimage = Image(arr=self.rgb[key])
         else:
             subimage = Image(arr=self.gray[key])
+        subimage._adopt_color_config(self)
 
         # Propagate detect_mode before setting detect_mat data
-        if self._data.detect_mode != "gray":
-            subimage._data.detect_mode = self._data.detect_mode
+        subimage._data.detect_mode = self._data.detect_mode
         subimage.detect_mat[:] = self.detect_mat[key]
         subimage.objmap[:] = self.objmap[key]
         return subimage

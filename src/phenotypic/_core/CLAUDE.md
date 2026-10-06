@@ -52,6 +52,12 @@ Via `image.color`: `Lab[:]` (CIELAB), `hsv[:]`, `XYZ[:]`, `XYZ_D65[:]`, `xy[:]` 
 - Lazy-evaluated and cached
 - sRGB gamma correction applied automatically
 - D65 illuminant default; CIE 1931 2° Standard Observer
+- A derived image — `copy()`, `Image(other)`, `GridImage(image)`, a crop, a grid
+  section, `objects[i]` — inherits the source's `gamma`/`illuminant`/`_observer`;
+  an argument passed explicitly to the constructor wins. The constructor defaults
+  are the `UNSET` sentinel (`_image_color_handler.py`), not `"D65"`/`SRGB`, because
+  `gamma=None` already means linear and an explicit `"D65"` must still override a
+  D50 source.
 
 ---
 

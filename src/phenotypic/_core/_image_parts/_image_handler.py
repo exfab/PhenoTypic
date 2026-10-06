@@ -106,7 +106,11 @@ class ImageHandler(ImageDataManager):
             subimage = self.__class__(arr=self.rgb[key])
         else:
             subimage = self.__class__(arr=self.gray[key])
+        subimage._adopt_color_config(self)
 
+        # The mode before the data, so the crop's detect_mat and its declared
+        # mode agree (a later reset() recomputes from this mode).
+        subimage._data.detect_mode = self._data.detect_mode
         subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value

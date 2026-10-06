@@ -364,7 +364,7 @@ class TestImagePadderGridImageHandling:
         assert padded.ncols == 24
 
     def test_pad_grid_image_preserves_grid_finder(self):
-        """Test that grid_finder is preserved during padding."""
+        """The padded image keeps the grid_finder's settings in its own instance."""
         arr = np.ones((800, 800, 3), dtype=np.uint8)
         grid_img = GridImage(arr=arr, nrows=8, ncols=8)
 
@@ -373,8 +373,12 @@ class TestImagePadderGridImageHandling:
         padder = PadImage(left=50, right=50, top=50, bottom=50)
         padded = padder.apply(grid_img)
 
-        # grid_finder should be preserved
-        assert padded.grid_finder is original_grid_finder
+        assert type(padded.grid_finder) is type(original_grid_finder)
+        assert padded.grid_finder.model_dump() == original_grid_finder.model_dump()
+        # Not shared: reshaping the padded grid must not reshape the original's.
+        assert padded.grid_finder is not original_grid_finder
+        padded.nrows = 4
+        assert grid_img.nrows == 8
 
 
 class TestImagePadderEdgeCases:
