@@ -571,6 +571,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
+- **Reference-metadata ops need a context:** an operation mixing in
+  `RefMetadata` (e.g. `SubtractBlank`) holds no table path; it reads the
+  active `phenotypic.ReferenceContext`. The CLI's `--metadata` is that
+  context (startup writes `.phenotypic/reference_manifest.json`; workers read
+  it), and a per-image reference digest enters the work-id only for such
+  pipelines. Process mode snapshots the table to
+  `.phenotypic/reference_metadata.csv`, preserved across `--restart`.
+  `--mode measure` refuses a pipeline whose measurers read reference
+  metadata. See `docs/source/how_to/pages/reference_metadata.md`.
 - **Metadata startup snapshot:** full runs and recompile copy a configured
   `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
   work or SLURM submission. Treat that file as input provenance: **never rewrite

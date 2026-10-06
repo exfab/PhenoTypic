@@ -312,8 +312,12 @@ provenance (`measure/CLAUDE.md`).
 - **GUI: the message, in either mode, and no Run.**
   `_gui/run_console/_callbacks.py:_staged_gpu_capability(path)` returns
   `(uses_gpu, refusal | None)` and catches `UnstageableGpuDetectorError`
-  *before* its generic `(OSError, ValueError, TypeError)` clause — the refusal
-  **is** a `ValueError`, so clause order is the whole fix. The
+  *before* its generic
+  `(OSError, ValueError, TypeError, AttributeError, ImportError)` clause — the
+  refusal **is** a `ValueError`, so clause order is the whole fix. The generic
+  clause also takes `AttributeError` and `ImportError` so that an unknown
+  operation class (`UnknownOperationClassError`, an `AttributeError`) reaches
+  the CLI's own message instead of surfacing here. The
   `rc-staged-gpu-refusal` alert sits outside the staged-GPU section, so it
   shows in Local mode too; `update_run_disabled`, the sole owner of Run's
   `disabled`, takes the alert's `is_open`; and `click_action` refuses Validate

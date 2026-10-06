@@ -133,6 +133,7 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             ``ImageCorrector`` appears anywhere in the image's recorded
             history, or a class recorded there cannot be imported.
 
+    Note:
         All of these are :class:`~phenotypic.sdk_.ReferenceContextError`
         subclasses and reach a bare ``op.apply`` caller unwrapped. Inside an
         ``ImagePipeline`` each enclosing pipeline (and a composite holding a

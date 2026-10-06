@@ -33,6 +33,14 @@ ImagePipeline
 
    core/image_pipeline_methods
 
+ReferenceContext
+----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   core/reference_context
+
 Reference Pages
 ---------------
 
