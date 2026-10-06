@@ -54,6 +54,20 @@ callers). A CLI-submitted ordinary SLURM array (`AutonomousSLURMStrategy`, no `-
 therefore not refused when the user re-runs the command while it is live. Neither is a
 local continuation over such a tree.
 
+> **Correction (2026-10-06, orchestrator, after re-reading the code).** The
+> paragraph above is wrong about the ordinary path. `AutonomousSLURMStrategy`
+> initialises the lifecycle (`_cli_execution_strategies.py:1027`) and every
+> chunk, dispatcher and finalizer — including chunks the dispatcher submits
+> from inside SLURM — goes through `submit_with_lifecycle`
+> (`sdk_/slurm/_dispatcher.py:295,307,337`; `_cli_slurm_lifecycle.py:847-873`),
+> which writes the same ledger `active_ledger_job_ids` reads
+> (`staged_job_ledger_path` is `lifecycle_ledger_path`). The review grepped
+> direct `append_lifecycle_entry(` callers and missed that internal one. A live
+> ordinary array **is** refused. Two narrower gaps were real and are closed in
+> this change: a token whose `sbatch` succeeded but whose `submitted` row was
+> never written, and `--mode recompile`, which rewrote state before any
+> liveness check.
+
 **Failure scenario (process mode, SLURM).**
 1. A user submits `--mode process --layer detect_mat` with blank map v1 and leaves it
    running.

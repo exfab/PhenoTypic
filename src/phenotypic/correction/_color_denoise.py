@@ -204,8 +204,8 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
             )
 
         # Read via the private data attribute: the public ``rgb[:]`` getter
-        # marks the underlying array non-writeable, which would poison the
-        # write-back below.
+        # returns a read-only view, and the write-back below needs the
+        # stored array itself.
         raw = np.asarray(image._data.rgb)
         dtype = raw.dtype
         vmax = np.iinfo(dtype).max

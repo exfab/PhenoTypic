@@ -294,6 +294,11 @@ def run_cli_once() -> None:
         str(PLATES_DIR),
         "-o",
         str(OUTPUT_DIR),
+        # The tutorial pipeline's TukeyOutlierRemover groups by
+        # Metadata_StrainID, which only the metadata join supplies; without
+        # it the analysis chain raises and the viewer shows no analysis.
+        "--metadata",
+        str(METADATA_CSV),
         "--njobs",
         "1",
     ]
