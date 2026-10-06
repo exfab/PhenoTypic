@@ -122,6 +122,13 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-META-UNMATCHED` | Some images have no metadata row | warning | Add rows, or match `ImageName` to the file names |
 | `PF-META-ORPHANS` | Some metadata rows match no image | warning | Expected for wells that grew nothing |
 | `PF-META-UNVERIFIED` | The CSV joins on columns only measurements carry | warning | None needed; the join is checked at finalization |
+| `PF-REF-NO-TABLE` | The pipeline has an operation that reads reference metadata (e.g. `SubtractBlank`), no `--metadata` was given, and the run has no snapshot to fall back to | error | Pass `--metadata` with the reference columns |
+| `PF-REF-TABLE` | The reference table cannot be read or has no `ImageName` column | error | Fix the table |
+| `PF-REF-COLUMN` | The table lacks a column an operation reads | error | Add the column, or change the operation's column parameter |
+| `PF-REF-UNMATCHED` | Some images have no row in the reference table | warning (error if all) | Add rows, or leave the images out with `--image-manifest` |
+| `PF-REF-AMBIGUOUS` | Some images' rows are empty or disagree for a reference column | warning (error if all) | Give each image one value |
+| `PF-REF-SELF` | Some images name themselves as their reference | warning (error if all) | Leave blank frames out with `--image-manifest` |
+| `PF-REF-UNRESOLVED` | A named reference image matches no single file in the image's directory | warning (error if all) | Name an existing file, by stem or full name |
 | `PF-OUTPUT-UNWRITABLE` | `--output` (or its nearest existing parent) is not writable | error | Choose another `--output`, or fix permissions |
 | `PF-OUTPUT-SPACE` | A `full` run's output disk has less free space than the inputs' size (a heuristic) | warning | Free space, or choose another `--output` |
 | `PF-NODE-LOCAL` | On a SLURM run, a path workers read or write is on node-local storage | warning | Move it to shared storage |

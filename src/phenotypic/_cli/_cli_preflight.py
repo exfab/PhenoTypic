@@ -74,6 +74,13 @@ FindingCode = Literal[
     "PF-META-UNMATCHED",
     "PF-META-ORPHANS",
     "PF-META-UNVERIFIED",
+    "PF-REF-NO-TABLE",
+    "PF-REF-TABLE",
+    "PF-REF-COLUMN",
+    "PF-REF-UNMATCHED",
+    "PF-REF-AMBIGUOUS",
+    "PF-REF-SELF",
+    "PF-REF-UNRESOLVED",
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
     "PF-NODE-LOCAL",
@@ -176,6 +183,34 @@ HINTS: dict[str, str] = {
         "These columns can only be matched against measurements, so the "
         "preflight cannot check them; the production join uses any of them "
         "that the measurements emit."
+    ),
+    "PF-REF-NO-TABLE": (
+        "Pass --metadata with a table that names each image's reference "
+        "(e.g. a Metadata_BlankImage column), or remove the reference operation."
+    ),
+    "PF-REF-TABLE": (
+        "Fix the reference table: it must be a readable CSV with a "
+        "Metadata_ImageName (or ImageName) column."
+    ),
+    "PF-REF-COLUMN": (
+        "Add the column the operation names to the table, or change the "
+        "operation's column parameter to one the table has."
+    ),
+    "PF-REF-UNMATCHED": (
+        "Add a row for each listed image, keyed by its file name without the "
+        "extension, or leave the image out with --image-manifest."
+    ),
+    "PF-REF-AMBIGUOUS": (
+        "Give each listed image exactly one non-empty value; its rows are empty "
+        "or disagree."
+    ),
+    "PF-REF-SELF": (
+        "A blank frame cannot be its own reference; leave blank frames out of "
+        "the input with --image-manifest."
+    ),
+    "PF-REF-UNRESOLVED": (
+        "Each named reference must match exactly one file (by stem or full "
+        "name) in the image's own input directory."
     ),
     "PF-SBATCH-REJECTED": (
         "Fix the --slurm/--gpu-slurm option sbatch names above (a partition, "
@@ -1256,6 +1291,85 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
     return findings
 
 
+def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-REF-*``: can the run's table serve its reference-metadata operations?
+
+    Only the reference operations this mode executes are checked
+    (:func:`operations_in_scope`), for the gate and the columns alike. Reads
+    the table and lists directories only -- reference images are resolved to
+    file names, never opened or hashed (startup hashes them). Per-image
+    findings are warnings, all escalated to errors when the images failing
+    for any reason cover every input image.
+    """
+    if context.mode not in ("full", "process"):
+        return []
+    from phenotypic.abc_._ref_metadata import RefMetadata
+
+    in_scope = [
+        (path, operation)
+        for path, operation in operations_in_scope(context)
+        if isinstance(operation, RefMetadata) and operation._ref_columns()
+    ]
+    if not in_scope:
+        return []
+    from phenotypic._core._reference_context import (
+        ReferenceContext,
+        ReferenceTableError,
+    )
+
+    from ._cli_reference import plan_references, resolve_reference_table_path
+
+    needs = {"/".join(path): op._ref_columns() for path, op in in_scope}
+    described = "; ".join(f"{path} reads {list(cols)}" for path, cols in needs.items())
+    table_path = resolve_reference_table_path(context.config, context.config.output_dir)
+    if table_path is None:
+        return [PreflightFinding(
+            "PF-REF-NO-TABLE", "error",
+            f"The pipeline reads reference metadata ({described}) but no "
+            "--metadata was given and the run has no snapshot to fall back to.",
+            subjects=tuple(needs),
+        )]
+    try:
+        table = ReferenceContext(table_path)
+    except ReferenceTableError as exc:
+        return [PreflightFinding("PF-REF-TABLE", "error", str(exc), subjects=(str(table_path),))]
+    missing = tuple(
+        f"{path}: {column}"
+        for path, cols in needs.items()
+        for column in cols
+        if not table.has_column(column)
+    )
+    if missing:
+        return [PreflightFinding(
+            "PF-REF-COLUMN", "error",
+            f"{table_path} lacks columns the pipeline reads: {', '.join(missing)}",
+            subjects=missing,
+        )]
+    plan = plan_references(
+        table,
+        context.pipeline,
+        context.datasets,
+        hash_images=False,
+        operations=[op for _, op in in_scope],
+    )
+    failing = {*plan.unmatched, *plan.ambiguous, *plan.self_referenced, *plan.unresolved}
+    severity = _severity_for(len(failing), plan.total_images)
+    findings: list[PreflightFinding] = []
+    for code, labels, what in (
+        ("PF-REF-UNMATCHED", plan.unmatched, "have no row in the reference table"),
+        ("PF-REF-AMBIGUOUS", plan.ambiguous, "have empty or disagreeing reference values"),
+        ("PF-REF-SELF", plan.self_referenced, "name themselves as their own reference"),
+        ("PF-REF-UNRESOLVED", plan.unresolved, "name a reference image that matches no single file"),
+    ):
+        if labels:
+            findings.append(PreflightFinding(
+                code, severity,
+                f"{len(labels)} of {plan.total_images} input images {what}.",
+                subjects=labels,
+            ))
+    return findings
+
+
 def _metadata_set_is_complete(context: PreflightContext) -> bool:
     """Whether every metadata column the run can carry is known (spec §9, R6).
 
@@ -1444,6 +1558,7 @@ CHECKS: tuple[Check, ...] = (
     check_rgb_ops_on_gray,
     check_bit_depth,
     check_metadata_join,
+    check_reference_metadata,
     check_output_writable,
     check_output_space,
     check_node_local_paths,
