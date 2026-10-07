@@ -485,7 +485,14 @@ def _placements() -> dict[str, dict]:
 
 def _staged_pipeline(run_inputs, monkeypatch, placement: str) -> Path:
     """Write the staged pipeline for *placement*, its classes resolvable by name."""
-    monkeypatch.setattr(phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False)
+    # Register FakeGpuDetector the permanent way first, as conftest's
+    # write_stageable_pipeline does. PHENOTYPIC_PRELOAD_MODULES below makes the
+    # CLI import this module, and that import is cached: had the attribute been
+    # created by monkeypatch alone, its undo would delete it while the module
+    # stayed imported, and every later test relying on the registration would
+    # fail with UnknownOperationClassError.
+    import tests._fakes.register_fake_gpu  # noqa: F401  (import side effect)
+
     for cls in (ReadsBlankName, MeasureSizeReadingReferences):
         monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
     monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", "tests._fakes.register_fake_gpu")
