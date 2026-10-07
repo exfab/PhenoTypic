@@ -651,9 +651,12 @@
 <span class="sd">      multiple workers competing for the same GPU.</span>
 <span class="sd">    - **SLURM execution:** Automatically requests GPU resources</span>
 <span class="sd">      (``--gpus-per-node=1``) if the user hasn&#39;t specified GPU args.</span>
-<span class="sd">      Raises an error if the target partition has no GPUs.</span>
-<span class="sd">    - **No GPU available:** Raises RuntimeError at pipeline validation</span>
-<span class="sd">      time with a clear message.</span>
+<span class="sd">      Raises an error if the target partition has no GPUs, unless the</span>
+<span class="sd">      user explicitly set ``slurm_gpus_per_node=0``.</span>
+<span class="sd">    - **No GPU available:** With the default ``device=&quot;auto&quot;``, the</span>
+<span class="sd">      detector falls back to CPU at model load and warns (inference is</span>
+<span class="sd">      much slower). Only an explicitly requested accelerator that is</span>
+<span class="sd">      unavailable (e.g. ``device=&quot;cuda&quot;``) raises ``RuntimeError``.</span>
 
 <span class="sd">    **When to subclass GpuDetector vs ObjectDetector**</span>
 

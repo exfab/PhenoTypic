@@ -1292,9 +1292,12 @@ trained on), <code class="docutils literal notranslate"><span class="pre">suppor
 multiple workers competing for the same GPU.</p></li>
 <li><p><strong>SLURM execution:</strong> Automatically requests GPU resources
 (<code class="docutils literal notranslate"><span class="pre">--gpus-per-node=1</span></code>) if the user hasn’t specified GPU args.
-Raises an error if the target partition has no GPUs.</p></li>
-<li><p><strong>No GPU available:</strong> Raises RuntimeError at pipeline validation
-time with a clear message.</p></li>
+Raises an error if the target partition has no GPUs, unless the
+user explicitly set <code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=0</span></code>.</p></li>
+<li><p><strong>No GPU available:</strong> With the default <code class="docutils literal notranslate"><span class="pre">device=&quot;auto&quot;</span></code>, the
+detector falls back to CPU at model load and warns (inference is
+much slower). Only an explicitly requested accelerator that is
+unavailable (e.g. <code class="docutils literal notranslate"><span class="pre">device=&quot;cuda&quot;</span></code>) raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
 </ul>
 <p><strong>When to subclass GpuDetector vs ObjectDetector</strong></p>
 <p>Subclass GpuDetector if your detector relies on GPU-accelerated inference:</p>

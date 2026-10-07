@@ -749,14 +749,25 @@
 <span class="sd">    profile already names it. The run preflight tests the same profile, so the</span>
 <span class="sd">    two share this definition (Phase E review E2).</span>
 
+<span class="sd">    An explicit ``slurm_gpus_per_node=0`` is the user opting out of a GPU (the</span>
+<span class="sd">    detectors&#39; ``device=&quot;auto&quot;`` then falls back to CPU), so the key is</span>
+<span class="sd">    **removed**: ``format_sbatch_directives`` would otherwise emit</span>
+<span class="sd">    ``--gpus-per-node=0``, which SLURM rejects. This mirrors the staged</span>
+<span class="sd">    engine&#39;s ``resolve_stage_slurm_args``.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        slurm_args: The ``--slurm`` profile.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        A new dict carrying the GPU request.</span>
+<span class="sd">        A new dict carrying the GPU request, or without one when the profile</span>
+<span class="sd">        asked for zero GPUs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">requested</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
-    <span class="n">requested</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;slurm_gpus_per_node&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">gpus</span> <span class="o">=</span> <span class="n">requested</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slurm_gpus_per_node&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">gpus</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">requested</span><span class="p">[</span><span class="s2">&quot;slurm_gpus_per_node&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">gpus</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">requested</span><span class="p">[</span><span class="s2">&quot;slurm_gpus_per_node&quot;</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">requested</span></div>
 
 

@@ -1319,7 +1319,10 @@ order:</p>
 <li><p><strong>XPU</strong> – Intel GPUs</p></li>
 <li><p><strong>HPU</strong> – Habana Gaudi accelerators</p></li>
 </ol>
-<p>If none is found, a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> is raised.</p>
+<p>If none is found, the detector falls back to CPU and emits a warning (both a
+Python <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> and a log line, so it is visible in SLURM and worker
+logs). CPU inference works but is much slower than on a GPU, so a full plate
+can take a long time.</p>
 </section>
 <section id="explicit-device">
 <h3>Explicit device<a class="headerlink" href="#explicit-device" title="Link to this heading">#</a></h3>
@@ -1327,11 +1330,12 @@ order:</p>
 <span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>   <span class="c1"># NVIDIA GPU</span>
 <span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;mps&quot;</span><span class="p">)</span>    <span class="c1"># Apple Silicon</span>
 <span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;xpu&quot;</span><span class="p">)</span>    <span class="c1"># Intel GPU</span>
-<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>    <span class="c1"># CPU (very slow, but always available)</span>
+<span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>    <span class="c1"># CPU (much slower, but always available)</span>
 </pre></div>
 </div>
 <p>When an explicit accelerator is requested but unavailable, a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>
-is raised with a descriptive message.</p>
+is raised with a descriptive message. An explicit device is never silently
+replaced: use <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> if the pipeline should run wherever it lands.</p>
 </section>
 <section id="resolve-device-utility">
 <h3><code class="docutils literal notranslate"><span class="pre">resolve_device()</span></code> utility<a class="headerlink" href="#resolve-device-utility" title="Link to this heading">#</a></h3>
@@ -1339,8 +1343,8 @@ is raised with a descriptive message.</p>
 workflows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn._helper._checkpoint_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_device</span>
 
-<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>           <span class="c1"># raises if no accelerator</span>
-<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">allow_cpu</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># falls back to CPU with warning</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>                   <span class="c1"># falls back to CPU with warning</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">resolve_device</span><span class="p">(</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span> <span class="n">allow_cpu</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># raises if no accelerator</span>
 </pre></div>
 </div>
 </section>
@@ -1385,17 +1389,20 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<spa
 <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
 tutorial section for the conda-forge / <code class="docutils literal notranslate"><span class="pre">pixi</span></code> recipe.</p>
 </section>
-<section id="runtimeerror-no-accelerator-available">
-<h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code><a class="headerlink" href="#runtimeerror-no-accelerator-available" title="Link to this heading">#</a></h3>
-<p>No GPU was detected. Options:</p>
+<section id="no-gpu-accelerator-detected-device-auto-is-falling-back-to-cpu">
+<h3><code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">GPU/accelerator</span> <span class="pre">detected;</span> <span class="pre">device='auto'</span> <span class="pre">is</span> <span class="pre">falling</span> <span class="pre">back</span> <span class="pre">to</span> <span class="pre">CPU</span></code><a class="headerlink" href="#no-gpu-accelerator-detected-device-auto-is-falling-back-to-cpu" title="Link to this heading">#</a></h3>
+<p>No GPU was detected, so the detector is running on CPU. The run continues,
+only more slowly. If you expected a GPU:</p>
 <ul class="simple">
 <li><p>Ensure your GPU drivers and CUDA toolkit are installed correctly.</p></li>
 <li><p>On macOS with Apple Silicon, ensure PyTorch &gt;= 2.0 with MPS support.</p></li>
-<li><p>Pass <code class="docutils literal notranslate"><span class="pre">device=&quot;cpu&quot;</span></code> to force CPU inference (very slow):</p></li>
+<li><p>On SLURM, ensure the job was submitted to a GPU partition and did not set
+<code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=0</span></code>.</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Sam2</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>To run on CPU deliberately, on a CPU-only SLURM partition, pass
+<code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">slurm_gpus_per_node=0</span></code> (or <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span> <span class="pre">slurm_gpus_per_node=0</span></code> for
+the staged GPU stage); PhenoTypic then requests no GPU and skips the
+partition’s GPU check.</p>
 </section>
 <section id="runtimeerror-device-cuda-requested-but-cuda-is-not-available">
 <h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">device='cuda'</span> <span class="pre">requested</span> <span class="pre">but</span> <span class="pre">CUDA</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">available</span></code><a class="headerlink" href="#runtimeerror-device-cuda-requested-but-cuda-is-not-available" title="Link to this heading">#</a></h3>
@@ -1526,7 +1533,7 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-sam2-requires-the-sam2-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">Sam2</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">sam2</span> <span class="pre">package</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#importerror-microsamdetector-requires-the-micro-sam-package"><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">MicroSamDetector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">micro_sam</span> <span class="pre">package</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-no-accelerator-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#no-gpu-accelerator-detected-device-auto-is-falling-back-to-cpu"><code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">GPU/accelerator</span> <span class="pre">detected;</span> <span class="pre">device='auto'</span> <span class="pre">is</span> <span class="pre">falling</span> <span class="pre">back</span> <span class="pre">to</span> <span class="pre">CPU</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtimeerror-device-cuda-requested-but-cuda-is-not-available"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">device='cuda'</span> <span class="pre">requested</span> <span class="pre">but</span> <span class="pre">CUDA</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">available</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#out-of-memory-oom-errors">Out of memory (OOM) errors</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#checkpoint-not-found-on-slurm-compute-nodes">Checkpoint not found on SLURM compute nodes</a></li>

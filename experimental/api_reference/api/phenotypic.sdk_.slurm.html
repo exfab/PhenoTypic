@@ -1933,12 +1933,18 @@ only this array index.</p></li>
 <p><code class="docutils literal notranslate"><span class="pre">AutonomousSLURMStrategy</span></code> adds <code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=1</span></code> unless the
 profile already names it. The run preflight tests the same profile, so the
 two share this definition (Phase E review E2).</p>
+<p>An explicit <code class="docutils literal notranslate"><span class="pre">slurm_gpus_per_node=0</span></code> is the user opting out of a GPU (the
+detectors’ <code class="docutils literal notranslate"><span class="pre">device=&quot;auto&quot;</span></code> then falls back to CPU), so the key is
+<strong>removed</strong>: <code class="docutils literal notranslate"><span class="pre">format_sbatch_directives</span></code> would otherwise emit
+<code class="docutils literal notranslate"><span class="pre">--gpus-per-node=0</span></code>, which SLURM rejects. This mirrors the staged
+engine’s <code class="docutils literal notranslate"><span class="pre">resolve_stage_slurm_args</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>slurm_args</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em>) – The <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A new dict carrying the GPU request.</p>
+<dd class="field-even"><p>A new dict carrying the GPU request, or without one when the profile
+asked for zero GPUs.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>]</p>
