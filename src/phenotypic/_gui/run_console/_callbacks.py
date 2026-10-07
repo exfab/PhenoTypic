@@ -100,7 +100,11 @@ from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic._gui.shell._source_context import (
     resolve_source_image_root,
 )
-from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+from phenotypic.sdk_ import (
+    PIPELINE_CONFIG_SUFFIXES,
+    matches_any_suffix,
+    metadata_csv_deliverable_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -284,17 +288,42 @@ def _pipeline_reference_columns(
     return ImagePipeline.from_json(Path(path)).reference_columns()
 
 
+def _sandboxed_output_dir(sandbox: SandboxRoot, value: object) -> Path | None:
+    """The form's output directory resolved inside the sandbox, or ``None``.
+
+    The form store is client-writable, so a path outside the sandbox is
+    treated as no output rather than probed.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return sandbox.resolve(value.strip())
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
 def reference_metadata_requirement(
-    pipeline_path: object, metadata_csv: object
+    pipeline_path: object, metadata_csv: object, output_dir: Path | None = None
 ) -> str | None:
     """Why Run must wait for a metadata table, or ``None`` when it need not.
 
-    An unreadable pipeline is not reported here: the CLI's pipeline
-    validation owns that message.
+    An output that already holds a full run's ``deliverables/metadata.csv``
+    meets the requirement: the console launches ``--mode full``, which falls
+    back to that snapshot when no ``--metadata`` is given. Its existence is
+    checked on every call, never cached. An unreadable pipeline is not
+    reported here: the CLI's pipeline validation owns that message.
+
+    Args:
+        pipeline_path: The selected pipeline file.
+        metadata_csv: The metadata table the run will pass, if any.
+        output_dir: The run's output directory, already resolved inside the
+            sandbox, or ``None`` when there is none to check.
     """
     if not isinstance(pipeline_path, str) or not pipeline_path:
         return None
     if isinstance(metadata_csv, str) and metadata_csv:
+        return None
+    if output_dir is not None and metadata_csv_deliverable_path(output_dir).is_file():
         return None
     try:
         stat = Path(pipeline_path).stat()
@@ -1845,13 +1874,17 @@ def register_callbacks(
     def show_reference_metadata_requirement(
         pipeline_path: object, form_state: object
     ) -> tuple[str, bool]:
-        """Explain, and gate Run, when a reference pipeline has no metadata table."""
-        metadata = (
-            form_state.get("metadata_csv")
-            if isinstance(form_state, dict)
-            else None
+        """Explain, and gate Run, when a reference pipeline has no metadata table.
+
+        An output holding a previous full run's metadata snapshot needs no
+        table, and the alert stays closed.
+        """
+        form = form_state if isinstance(form_state, dict) else {}
+        message = reference_metadata_requirement(
+            pipeline_path,
+            form.get("metadata_csv"),
+            _sandboxed_output_dir(sandbox, form.get("output_dir")),
         )
-        message = reference_metadata_requirement(pipeline_path, metadata)
         return message or "", message is not None
 
     # ----------------------------------------------------------------------
@@ -2007,7 +2040,7 @@ def register_callbacks(
             if refusal is not None:
                 raise ValueError(f"This pipeline cannot be run: {refusal}")
             missing = reference_metadata_requirement(
-                state.pipeline_path, state.metadata_csv
+                state.pipeline_path, state.metadata_csv, output_dir
             )
             if missing is not None:
                 raise ValueError(missing)

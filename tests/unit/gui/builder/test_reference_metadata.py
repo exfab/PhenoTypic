@@ -844,3 +844,134 @@ def test_node_preview_subtracts_the_blank_of_the_images_own_dataset(tmp_path, mo
     detect_mat = _node_detect_mat(pc, manifest, "s", state.selected_block_id)
     assert float(detect_mat.max()) == pytest.approx(_COLONY_OVER_BLANK, abs=1e-6)
     assert float(detect_mat.min()) == pytest.approx(0.0, abs=1e-6)
+
+
+# ---------------------------------------------- preview: the blank's identity
+
+
+def _rewrite_blank(blank, value: int) -> None:
+    """Overwrite the blank's pixels and move its mtime, as a re-export would."""
+    before = blank.stat()
+    tifffile.imwrite(blank, np.full((64, 64), value, dtype=np.uint8))
+    os.utime(blank, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+
+
+def test_overwriting_the_blank_invalidates_the_cached_preview(tmp_path, monkeypatch):
+    from phenotypic._gui.builder import _preview_cache as pc
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
+    image = _plate_and_blank(tmp_path)
+    state = _state_with_selected_block("SubtractBlank")
+    state.reference_metadata_path = str(_table(tmp_path))
+    first = pc.compute_scope("s", state, [], str(image), None, None)
+    assert pc.compute_scope("s", state, [], str(image), None, None)["fingerprint"] == (
+        first["fingerprint"]
+    )
+
+    _rewrite_blank(image.parent / "t00.tif", 100)
+    second = pc.compute_scope("s", state, [], str(image), None, None)
+
+    assert second["fingerprint"] != first["fingerprint"]
+    assert second["error"] is None, second["error"]
+    # Recomputed against the new blank: 220 - 100 on the colony, not 220 - 120.
+    detect_mat = _node_detect_mat(pc, second, "s", state.selected_block_id)
+    assert float(detect_mat.max()) == pytest.approx(120 / 255, abs=1e-6)
+
+
+def test_a_missing_blank_changes_the_fingerprint_without_failing_it(tmp_path, monkeypatch):
+    from phenotypic._gui.builder import _preview_cache as pc
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
+    image = _plate_and_blank(tmp_path)
+    state = _state_with_selected_block("SubtractBlank")
+    state.reference_metadata_path = str(_table(tmp_path))
+    present = pc.compute_scope("s", state, [], str(image), None, None)
+
+    (image.parent / "t00.tif").unlink()
+    missing = pc.compute_scope("s", state, [], str(image), None, None)
+
+    assert missing["fingerprint"] != present["fingerprint"]
+    assert missing["error"] is not None and "t00" in missing["error"]
+
+
+def test_the_blank_does_not_enter_the_fingerprint_of_a_pipeline_that_reads_none(
+    tmp_path, monkeypatch
+):
+    """Only reference-reading pipelines key on the blank."""
+    from phenotypic._gui.builder import _preview_cache as pc
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
+    image = _plate_and_blank(tmp_path)
+    state = _state_with_selected_block("BlurGauss")
+    state.reference_metadata_path = str(_table(tmp_path))
+    first = pc.compute_scope("s", state, [], str(image), None, None)
+
+    _rewrite_blank(image.parent / "t00.tif", 100)
+
+    assert pc.compute_scope("s", state, [], str(image), None, None)["fingerprint"] == (
+        first["fingerprint"]
+    )
+
+
+# ------------------------------------------------- preview: one parse per table
+
+
+@pytest.fixture
+def table_reads(monkeypatch):
+    """Count how often a reference table is parsed (``ReferenceContext``'s one read)."""
+    from phenotypic._core import _reference_context as reference_context
+
+    reads: list[str] = []
+    real = reference_context._read_table
+
+    def counting(source):
+        reads.append(str(source))
+        return real(source)
+
+    monkeypatch.setattr(reference_context, "_read_table", counting)
+    return reads
+
+
+def test_two_previews_of_an_unchanged_table_parse_it_once(tmp_path, table_reads):
+    table = str(_table(tmp_path))
+    image = str(tmp_path / "plates" / "t01.tif")
+    for _ in range(2):
+        with rm.preview_reference_context(table, image) as ctx:
+            assert ctx.lookup("t01", ["BlankImage"]) == {"BlankImage": "t00"}
+    assert len(table_reads) == 1
+
+
+def test_previews_from_different_directories_share_one_parse(tmp_path, table_reads):
+    """Each preview narrows its own root and dataset from the shared parse."""
+    table = str(_two_dataset_table(tmp_path))
+    with rm.preview_reference_context(table, str(tmp_path / "plateA" / "t01.tif")) as a:
+        assert a.image_root == tmp_path / "plateA"
+        assert a.lookup("t01", ["BlankImage"]) == {"BlankImage": "t00"}
+    with rm.preview_reference_context(table, str(tmp_path / "plateB" / "t01.tif")) as b:
+        assert b.image_root == tmp_path / "plateB"
+        assert b.lookup("t01", ["BlankImage"]) == {"BlankImage": "t00b"}
+    assert len(table_reads) == 1
+
+
+@pytest.mark.parametrize("change", ["size", "mtime"])
+def test_a_changed_table_is_parsed_again(tmp_path, table_reads, change):
+    """Unchanged, the parse is reused (1, 1); changed, it is redone (2)."""
+    path = _table(tmp_path)
+    image = str(tmp_path / "plates" / "t01.tif")
+    with rm.preview_reference_context(str(path), image):
+        pass
+    assert len(table_reads) == 1
+    with rm.preview_reference_context(str(path), image):
+        pass
+    assert len(table_reads) == 1
+    before = path.stat()
+    if change == "size":
+        pd.DataFrame({"ImageName": ["t01"], "BlankImage": ["t00x"]}).to_csv(path, index=False)
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+    else:
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+
+    with rm.preview_reference_context(str(path), image) as ctx:
+        expected = "t00x" if change == "size" else "t00"
+        assert ctx.lookup("t01", ["BlankImage"]) == {"BlankImage": expected}
+    assert len(table_reads) == 2

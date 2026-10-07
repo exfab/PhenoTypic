@@ -156,3 +156,78 @@ def test_requirement_follows_a_rewrite_that_keeps_the_mtime(tmp_path):
     assert after.st_size != before.st_size
 
     assert reference_metadata_requirement(str(path), None) is None
+
+
+def _output_with_snapshot(tmp_path, *, snapshot: bool) -> Path:
+    """A run output; with ``snapshot``, one a previous full run left a table in."""
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    output = tmp_path / "output"
+    output.mkdir()
+    if snapshot:
+        table = metadata_csv_deliverable_path(output)
+        table.parent.mkdir(parents=True)
+        table.write_text("ImageName,BlankImage\nt01,t00\n", encoding="utf-8")
+    return output
+
+
+def test_an_output_with_a_metadata_snapshot_meets_the_requirement(tmp_path):
+    """A full-mode continuation without ``--metadata`` reads the snapshot."""
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    output = _output_with_snapshot(tmp_path, snapshot=True)
+    assert reference_metadata_requirement(pipeline, None, output) is None
+
+
+def test_an_output_without_a_snapshot_is_still_blocked(tmp_path):
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    output = _output_with_snapshot(tmp_path, snapshot=False)
+    message = reference_metadata_requirement(pipeline, None, output)
+    assert message is not None and "Metadata_BlankImage" in message
+
+
+def test_the_snapshot_is_checked_at_call_time_not_cached(tmp_path):
+    """The pipeline parse is cached; whether the output has a snapshot is not."""
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    output = _output_with_snapshot(tmp_path, snapshot=True)
+    assert reference_metadata_requirement(pipeline, None, output) is None
+    metadata_csv_deliverable_path(output).unlink()
+    assert reference_metadata_requirement(pipeline, None, output) is not None
+
+
+def test_the_alert_stays_closed_for_an_output_with_a_snapshot(tmp_path):
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    show = _callback_by_name(app, "show_reference_metadata_requirement")
+    run_disabled = _callback_by_name(app, "update_run_disabled")
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    output = _output_with_snapshot(tmp_path, snapshot=True)
+
+    message, is_open = show(pipeline, {"metadata_csv": None, "output_dir": str(output)})
+
+    assert (message, is_open) == ("", False)
+    assert run_disabled(0, None, "slurm", False, is_open) is False
+
+
+def test_the_alert_opens_for_an_output_without_a_snapshot(tmp_path):
+    """Control for the test above, through the same callback."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    show = _callback_by_name(app, "show_reference_metadata_requirement")
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    output = _output_with_snapshot(tmp_path, snapshot=False)
+
+    message, is_open = show(pipeline, {"metadata_csv": None, "output_dir": str(output)})
+
+    assert is_open is True and "Metadata_BlankImage" in message
+
+
+def test_a_snapshot_outside_the_sandbox_does_not_count(tmp_path, tmp_path_factory):
+    """The output path in the form store is client-writable; resolve it in the sandbox."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    show = _callback_by_name(app, "show_reference_metadata_requirement")
+    pipeline = _write(tmp_path, {"sb": SubtractBlank()})
+    elsewhere = _output_with_snapshot(tmp_path_factory.mktemp("elsewhere"), snapshot=True)
+
+    _, is_open = show(pipeline, {"metadata_csv": None, "output_dir": str(elsewhere)})
+
+    assert is_open is True

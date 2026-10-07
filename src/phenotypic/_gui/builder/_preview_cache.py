@@ -317,7 +317,8 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
     upstream edit invalidates this scope and its descendants.
 
     The session's reference table (``state.reference_metadata_path``) is
-    active around the apply and part of the root fingerprint.
+    active around the apply and part of the root fingerprint, as are the
+    reference images it resolves for this image.
     """
     from phenotypic.abc_ import GridOperation
     from phenotypic._gui.builder._conversion_dag import to_pipeline_dag
@@ -326,6 +327,7 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
         preview_reference_context,
         reference_error_message,
         reference_identity,
+        reference_images_identity,
     )
 
     reference = getattr(state, "reference_metadata_path", None)
@@ -352,6 +354,16 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
         # Root only: nested scopes inherit it through parent_fp. Appended only
         # when set, so every existing fingerprint (and cache) is unchanged.
         fingerprint_inputs.append(reference_identity(reference))
+        # And the reference images this image resolves to (a blank re-exported
+        # in place), for a pipeline that reads any: stat only, no pixels.
+        image_columns = [
+            column
+            for columns in pipeline.reference_columns(images_only=True).values()
+            for column in columns
+        ]
+        images = reference_images_identity(reference, image_path, image_columns)
+        if images:
+            fingerprint_inputs.append(images)
     fingerprint = hashlib.sha1(
         "\x00".join(fingerprint_inputs).encode(),
         usedforsecurity=False,

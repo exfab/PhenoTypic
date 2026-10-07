@@ -16,7 +16,10 @@ import hashlib
 import re
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Iterator, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, Iterator, Optional
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from phenotypic._core._reference_context import ReferenceContext
 
 REFERENCE_SOURCE = "reference_metadata"
 
@@ -117,10 +120,69 @@ def describe_reference_table(path: Optional[str]) -> tuple[str, str]:
 
 
 @functools.lru_cache(maxsize=8)
-def _columns_for(path: str, mtime_ns: int, size: int) -> tuple[str, ...]:
+def _base_context(path: str, mtime_ns: int, size: int) -> "ReferenceContext":
+    """The parsed table, one per file version, shared by every preview and render.
+
+    Never entered and never given a root: each use takes its own
+    :meth:`~ReferenceContext.narrow` clone, which shares the immutable table
+    and its lazily filled lookup indexes and root listings. Concurrent request
+    threads at worst build one of those twice; activation is per-thread.
+    """
     from phenotypic._core._reference_context import ReferenceContext
 
-    return ReferenceContext(path).columns
+    return ReferenceContext(path)
+
+
+def _columns_for(path: str, mtime_ns: int, size: int) -> tuple[str, ...]:
+    return _base_context(path, mtime_ns, size).columns
+
+
+def _table_context(path: object) -> "Optional[ReferenceContext]":
+    """The cached parse of the confined table at *path*, or ``None`` without one.
+
+    Raises:
+        ReferenceTableError: The confined table is missing or unreadable.
+    """
+    confined = _confined(path)
+    if confined is None:
+        return None
+    from phenotypic._core._reference_context import ReferenceTableError
+
+    try:
+        stat = confined.stat()
+    except OSError as exc:
+        raise ReferenceTableError(f"Reference metadata table not found: {confined}") from exc
+    return _base_context(str(confined), stat.st_mtime_ns, stat.st_size)
+
+
+def _preview_context(path: object, image_path: Optional[str]) -> "Optional[ReferenceContext]":
+    """The table narrowed for one preview image: its directory, and its dataset.
+
+    Reference images resolve beside the preview image. When the table has a
+    ``Metadata_Dataset`` column naming the image's directory, lookups narrow
+    to that dataset, as the CLI narrows each dataset by its input directory's
+    name.
+
+    Raises:
+        ReferenceTableError: The confined table is missing or unreadable.
+    """
+    base = _table_context(path)
+    if base is None:
+        return None
+    from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
+    from phenotypic.schema import EXPERIMENT
+
+    # The synthetic plate has no directory; its sentinel's parent is the cwd.
+    root = Path(image_path).parent if image_path and image_path != SYNTHETIC_SENTINEL else None
+    dataset_column = str(EXPERIMENT.DATASET)
+    dataset = (
+        root.name
+        if root is not None
+        and dataset_column in base.columns
+        and root.name in base.table.get_column(dataset_column).to_list()
+        else None
+    )
+    return base.narrow(image_root=root, dataset=dataset)
 
 
 def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], list[str]]]:
@@ -174,34 +236,76 @@ def reference_identity(path: Optional[str]) -> str:
 def preview_reference_context(
     path: Optional[str], image_path: Optional[str]
 ) -> Iterator[object]:
-    """Activate the picked table around a preview.
+    """Activate the picked table around a preview, narrowed by :func:`_preview_context`.
 
-    Reference images resolve beside the preview image. When the table has a
-    ``Metadata_Dataset`` column naming the image's directory, lookups narrow
-    to that dataset, as the CLI narrows each dataset by its input directory's
-    name. With no table, or one outside the image root, this activates
-    nothing, so a reference operation fails exactly as a bare ``apply`` would.
+    The table is parsed once per file version and shared. With no table, or
+    one outside the image root, this activates nothing, so a reference
+    operation fails exactly as a bare ``apply`` would.
     """
-    confined = _confined(path)
-    if confined is None:
+    context = _preview_context(path, image_path)
+    if context is None:
         yield None
         return
-    from phenotypic._core._reference_context import ReferenceContext
-    from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
-    from phenotypic.schema import EXPERIMENT
-
-    # The synthetic plate has no directory; its sentinel's parent is the cwd.
-    root = Path(image_path).parent if image_path and image_path != SYNTHETIC_SENTINEL else None
-    context = ReferenceContext(confined, image_root=root)
-    dataset_column = str(EXPERIMENT.DATASET)
-    if (
-        root is not None
-        and dataset_column in context.columns
-        and root.name in context.table.get_column(dataset_column).to_list()
-    ):
-        context = context.narrow(dataset=root.name)
     with context:
         yield context
+
+
+def reference_images_identity(
+    path: Optional[str], image_path: Optional[str], columns: Iterable[str]
+) -> str:
+    """Identity of the reference images the previewed image resolves to.
+
+    Each image column's file, as ``path:mtime_ns:size`` (plus its root
+    ``zarr.json`` for a store), so overwriting a blank invalidates the
+    preview. Reads no pixels. A column that does not resolve contributes a
+    distinct ``unresolved`` token rather than failing the fingerprint.
+
+    Args:
+        path: The session's table.
+        image_path: The previewed image.
+        columns: The image columns the pipeline reads; empty for a pipeline
+            that reads none, which yields ``""``.
+
+    Returns:
+        ``""`` with no columns, no table, or no image to resolve against.
+    """
+    wanted = sorted(set(columns))
+    if not wanted or not image_path:
+        return ""
+    from phenotypic._core._reference_context import ReferenceContextError
+    from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
+    from phenotypic.sdk_ import source_image_stem
+
+    if image_path == SYNTHETIC_SENTINEL:
+        return ""
+    try:
+        context = _preview_context(path, image_path)
+    except ReferenceContextError:
+        return ""
+    if context is None:
+        return ""
+    name = source_image_stem(Path(image_path))
+    parts = []
+    for column in wanted:
+        try:
+            target = context.resolve_image(context.lookup(name, [column])[column])
+            parts.append(f"{column}={_file_identity(target)}")
+        except (ReferenceContextError, OSError) as exc:
+            parts.append(f"{column}=unresolved:{type(exc).__name__}")
+    return "|".join(parts)
+
+
+def _file_identity(target: object) -> str:
+    """``path:mtime_ns:size`` of a reference file; a store adds its root ``zarr.json``."""
+    if not isinstance(target, Path):
+        return "in-memory"
+    stat = target.stat()
+    identity = f"{target}:{stat.st_mtime_ns}:{stat.st_size}"
+    manifest = target / "zarr.json"
+    if target.is_dir() and manifest.is_file():
+        manifest_stat = manifest.stat()
+        identity += f":{manifest_stat.st_mtime_ns}:{manifest_stat.st_size}"
+    return identity
 
 
 def reference_error_message(exc: BaseException) -> Optional[str]:
