@@ -897,14 +897,26 @@ def test_a_missing_blank_changes_the_fingerprint_without_failing_it(tmp_path, mo
 def test_the_blank_does_not_enter_the_fingerprint_of_a_pipeline_that_reads_none(
     tmp_path, monkeypatch
 ):
-    """Only reference-reading pipelines key on the blank."""
+    """Only reference-reading pipelines key on the blank.
+
+    For one that reads none, the root fingerprint is built from exactly the
+    inputs it had before the blank was keyed: the table-less inputs plus the
+    table's identity, and nothing more.
+    """
     from phenotypic._gui.builder import _preview_cache as pc
 
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
     image = _plate_and_blank(tmp_path)
     state = _state_with_selected_block("BlurGauss")
-    state.reference_metadata_path = str(_table(tmp_path))
+    without_table = pc.compute_scope("s", state, [], str(image), None, None)
+    table = str(_table(tmp_path))
+    state.reference_metadata_path = table
     first = pc.compute_scope("s", state, [], str(image), None, None)
+
+    assert first["fingerprint_inputs"] == [
+        *without_table["fingerprint_inputs"],
+        rm.reference_identity(table),
+    ]
 
     _rewrite_blank(image.parent / "t00.tif", 100)
 
