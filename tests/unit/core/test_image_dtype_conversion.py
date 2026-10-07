@@ -314,7 +314,11 @@ class TestImageInitializationDtypes:
 
         assert img.bit_depth == 8
         assert img.rgb.isempty()  # No RGB for grayscale input
-        assert np.array_equal(img.gray[:], uint8_gray_array)
+        # gray is float32 [0, 1]: the integers divided by the dtype max
+        assert img.gray[:].dtype == np.float32
+        np.testing.assert_allclose(
+            img.gray[:], uint8_gray_array.astype(np.float32) / 255, atol=1e-7
+        )
 
     @timeit
     def test_image_from_uint16_grayscale(self, uint16_gray_array):
@@ -323,7 +327,10 @@ class TestImageInitializationDtypes:
 
         assert img.bit_depth == 16
         assert img.rgb.isempty()
-        assert np.array_equal(img.gray[:], uint16_gray_array)
+        assert img.gray[:].dtype == np.float32
+        np.testing.assert_allclose(
+            img.gray[:], uint16_gray_array.astype(np.float32) / 65535, atol=1e-7
+        )
 
     @timeit
     def test_image_from_float32_grayscale_no_conversion(self, float32_gray_array):

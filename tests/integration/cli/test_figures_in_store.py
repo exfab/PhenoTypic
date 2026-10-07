@@ -264,7 +264,8 @@ def test_process_mode_carries_figures_only_in_a_store(tmp_path, fmt):
     assert not (out / "deliverables").exists()
 
 
-def test_process_revision_is_3():
+def test_process_revision_is_4():
+    """3 = process stores carry figures; 4 = single-channel gray is normalised."""
     from phenotypic._cli import _cli_failure_tracker as tracker
 
-    assert tracker.PROCESS_LAYER_SEMANTICS_REVISION == 3
+    assert tracker.PROCESS_LAYER_SEMANTICS_REVISION == 4

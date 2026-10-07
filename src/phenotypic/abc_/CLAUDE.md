@@ -92,6 +92,19 @@ live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
   their buffers rather than retain a whole-image backing array. CLI output is
   published under `deliverables/plots/<binding-id>/`. Reference implementation:
   [`measure/_measure_symzones.py`](../measure/_measure_symzones.py).
+- **Reference metadata is an explicit capability.** Mix `RefMetadata`
+  (`abc_/_ref_metadata.py`) into an `ImageOperation` (any other base raises
+  `TypeError` at class definition) and declare its columns as ordinary fields
+  typed `RefColumn` (a value) or `RefImageColumn` (a value naming another
+  image), both from `phenotypic.sdk_`. Inside `_operate`, call
+  `self._ref_values(image)` and `self._ref_image(name)`; they read the active
+  `phenotypic.ReferenceContext` or raise `RefMetadataUnavailableError`. The op
+  never holds a table path, and what it resolved is recorded under
+  `_references` in its provenance record. `ImagePipeline.reference_columns()`
+  lists every such op tree-wide, which is what the CLI preflight, the GUI and
+  the tune refusal use. Reference implementation:
+  [`enhance/_subtract_blank.py`](../enhance/_subtract_blank.py). Guide:
+  [`how_to/pages/reference_metadata.md`](../../../docs/source/how_to/pages/reference_metadata.md).
 - **Declaring a figure:** decorate each figure-building method with
   `@figure(title=..., backend="plotly" | "mpl", primary=True)`; `backend` is
   required, with no default, because it picks the theming path -- a

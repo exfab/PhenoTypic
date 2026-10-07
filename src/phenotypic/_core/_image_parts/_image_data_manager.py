@@ -17,12 +17,35 @@ from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 
+def normalize_integer_matrix(arr: Any) -> Any:
+    """Return an integer array as float32 divided by its dtype's maximum.
+
+    The divisor ``rgb2gray`` applies to integer RGB, so a single-channel scan's
+    gray lands on the same ``[0, 1]`` scale as an RGB scan's. Anything that is
+    not an integer ndarray (a float array, ``None``) is returned unchanged.
+
+    Args:
+        arr: Candidate array.
+
+    Returns:
+        The normalised float32 array, or ``arr`` itself.
+    """
+    if not (isinstance(arr, np.ndarray) and np.issubdtype(arr.dtype, np.integer)):
+        return arr
+    out = arr.astype(np.float32)
+    out /= np.float32(np.iinfo(arr.dtype).max)
+    return out
+
+
 @dataclass
 class ImageData:
     """Container for _core image data representations.
 
     The floating-point luminance layers (``gray`` and ``detect_mat``) are
-    normalized intensities in ``[0, 1]``; ``float32`` carries far more precision
+    normalized intensities in ``[0, 1]`` for every array input -- a
+    single-channel integer array is divided by its 8- or 16-bit full scale
+    when the image is built (``_handle_array_input``); a stored float layer is
+    restored as written (``_restore_array``); ``float32`` carries far more precision
     than the underlying 8/16-bit sensor quantization while halving the in-memory
     and on-disk footprint of these (typically largest) layers. ``__setattr__``
     enforces this single-precision contract at every assignment site so callers
@@ -171,6 +194,13 @@ class ImageDataManager:
                 provenance_journal=new_provenance_journal(name),
         )
         self._original: np.ndarray | None = None
+        # dtype of the integer matrix a gray-only image was normalised from, so
+        # _retain_original can give back the decoded integers; None otherwise.
+        self._gray_source_dtype: np.dtype | None = None
+        # An explicit bit_depth constrains every later array; an inferred one
+        # only describes the array it came from, so a new integer array
+        # re-infers it (_handle_array_input).
+        self._bit_depth_explicit: bool = bit_depth is not None
 
     @property
     def bit_depth(self) -> Literal[8, 16]:
@@ -194,6 +224,7 @@ class ImageDataManager:
         self._data.clear()
         self._metadata.clear()
         self._original = None
+        self._gray_source_dtype = None
         return
 
     def _allocate_data(self, shape: Sequence[int]):
@@ -271,6 +302,11 @@ class ImageDataManager:
 
         Raises:
             ValueError: If the input is not a NumPy array or an Image instance.
+
+        Note:
+            Setting from another Image also adopts that image's colour
+            configuration (``gamma``, ``illuminant``, ``_observer``), since it
+            describes how the adopted pixels are encoded.
         """
         match im:
             case x if isinstance(x, np.ndarray):
@@ -283,15 +319,121 @@ class ImageDataManager:
                         f"Input must be a NumPy array, Image instance. Got {type(im)}"
                 )
 
-    def _handle_array_input(self, arr: np.ndarray):
-        """Handle array input and set bit depth if needed."""
+    def _restore_array(self, arr: np.ndarray) -> None:
+        """Set the image from stored or derived state rather than user input.
+
+        A loaded store, a pickle or a crop is not user input, so a float gray
+        layer is taken as written: it is not refused for lying outside
+        ``[0, 1]`` (a pre-0.20.0 store of a float scan in counts, say), which
+        would leave it unloadable and unmigratable. A legacy integer layer is
+        still normalised.
+        """
+        self._handle_array_input(arr, validate=False)
+
+    def _handle_array_input(self, arr: np.ndarray, *, validate: bool = True):
+        """Handle array input and set bit depth if needed.
+
+        An unsupported shape is refused first. An integer array of any channel
+        count whose dtype is not ``uint8`` or ``uint16`` is narrowed to the
+        narrowest of 8 or 16 bits its values fit (the explicit ``bit_depth``,
+        when given), so ``bit_depth``, ``rgb`` and the derived ``gray`` agree.
+        A ``bit_depth`` that was inferred rather than given is re-inferred from
+        each new integer array; a float array carries no width, so it keeps it. A single-channel (``H x W`` or
+        ``H x W x 1``) integer array is then normalised to float32 ``[0, 1]`` by
+        its dtype's maximum. A ``bool`` array becomes float32 0/1. A
+        single-channel float array carries no scale, so with ``validate`` one
+        outside ``[0, 1]`` or holding a non-finite value is refused, as a float
+        RGB array is.
+        """
+        # Refuse an unsupported shape as a shape, before narrowing reads (or
+        # copies) the values.
+        self._guess_image_format(arr)
+        single_channel = arr.ndim == 2 or (arr.ndim == 3 and arr.shape[2] == 1)
+        if np.issubdtype(arr.dtype, np.integer):
+            if not self._bit_depth_explicit:
+                self._metadata.protected[IMAGE.BIT_DEPTH] = None
+            arr = self._as_unsigned_array(arr)
+
         if self.bit_depth is None:
             bit_depth = self._infer_bit_depth(arr)
             self._metadata.protected[IMAGE.BIT_DEPTH] = bit_depth
 
-        if np.issubdtype(arr.dtype, np.floating) and arr.ndim == 3:
+        self._gray_source_dtype = None
+        if single_channel:
+            if arr.dtype == np.bool_:
+                arr = arr.astype(np.float32)
+            elif np.issubdtype(arr.dtype, np.integer):
+                self._gray_source_dtype = arr.dtype
+                arr = normalize_integer_matrix(arr)
+            elif validate:
+                self._require_unit_range(arr)
+        elif np.issubdtype(arr.dtype, np.floating) and arr.ndim == 3:
             arr = self._convert_float_array_to_int(arr, bit_depth=self.bit_depth)
         self._set_from_array(arr)
+
+    def _as_unsigned_array(self, arr: np.ndarray) -> np.ndarray:
+        """Return an integer image array as ``uint8`` or ``uint16``.
+
+        ``uint8``/``uint16`` pass through. Any other integer dtype (an ``int64``
+        from a Python literal, an ``int32`` TIFF) carries no bit depth, so its
+        values choose one: the explicit ``bit_depth`` when given, else the
+        narrowest of 8 and 16 bits they fit. Dividing by the dtype's own
+        maximum instead (as ``rgb2gray`` and a single-channel normalisation
+        would) scales an ``int64`` plate to ~1e-17.
+
+        The caller has already refused any shape but ``H x W`` and
+        ``H x W x {1, 3, 4}``.
+
+        Raises:
+            ValueError: If a value is negative or does not fit 16 bits (or the
+                explicit ``bit_depth``).
+        """
+        if arr.dtype in (np.uint8, np.uint16):
+            return arr
+        widths = (8, 16) if self.bit_depth is None else (self.bit_depth,)
+        if arr.size == 0:
+            return arr.astype(np.uint8 if widths[0] == 8 else np.uint16)
+        channels = arr.shape[2] if arr.ndim == 3 else 1
+        kind = {1: "Single-channel", 3: "RGB", 4: "RGBA"}[channels]
+        lo, hi = int(arr.min()), int(arr.max())
+        if lo < 0:
+            raise ValueError(
+                    f"{kind} {arr.dtype} image has negative values (min {lo}). "
+                    f"An integer image must hold unsigned intensities "
+                    f"in [0, 255] (8-bit) or [0, 65535] (16-bit)."
+            )
+        for bits in widths:
+            if hi <= 2**bits - 1:
+                return arr.astype(np.uint8 if bits == 8 else np.uint16)
+        fits = (
+            f"the declared {widths[0]}-bit range [0, {2**widths[0] - 1}]"
+            if self.bit_depth is not None
+            else "8-bit [0, 255] or 16-bit [0, 65535]"
+        )
+        raise ValueError(
+                f"{kind} {arr.dtype} image has values in [{lo}, {hi}], which "
+                f"do not fit {fits}. Rescale it to 16 bits, or pass a float array "
+                f"in [0, 1]."
+        )
+
+    @staticmethod
+    def _require_unit_range(arr: np.ndarray) -> None:
+        """Refuse a single-channel float array outside ``[0, 1]`` or non-finite."""
+        if arr.size == 0:
+            return
+        if not np.isfinite(arr).all():
+            raise ValueError(
+                    "Single-channel float array contains non-finite values (NaN or "
+                    "inf); gray and detect_mat must be finite intensities in [0, 1]."
+            )
+        lo, hi = float(arr.min()), float(arr.max())
+        if lo < 0 or hi > 1:
+            raise ValueError(
+                    f"Single-channel float array contains values outside [0, 1] "
+                    f"range. Min: {lo}, Max: {hi}. A float array carries no scale: "
+                    f"divide it by its full-scale value (e.g. 255 or 65535), or "
+                    f"pass the integer array, which is normalised by its bit depth."
+            )
 
     @staticmethod
     def _infer_bit_depth(arr: np.ndarray) -> int:
@@ -304,7 +446,7 @@ class ImageDataManager:
             int: Inferred bit depth (8 or 16).
         """
         match arr.dtype:
-            case np.uint8:
+            case np.uint8 | np.bool_:
                 return 8
             case np.uint16:
                 return 16
@@ -365,13 +507,26 @@ class ImageDataManager:
             if input_cls._original is None
             else np.array(input_cls._original, copy=True)
         )
+        self._gray_source_dtype = input_cls._gray_source_dtype
+        self._bit_depth_explicit = input_cls._bit_depth_explicit
         return
 
     def _retain_original(self) -> None:
-        """Snapshot decoded primary pixels before CLI processing begins."""
+        """Snapshot decoded primary pixels before CLI processing begins.
+
+        A gray-only image normalised from integers gives back those integers:
+        ``rint(gray * dtype max)`` is exact, because float32's 24-bit mantissa
+        keeps the round-trip error below 65535 * 2**-24 < 0.5.
+        """
         image = cast("Image", self)
-        source = image.gray[:] if image.rgb.isempty() else image.rgb[:]
-        self._original = np.array(source, copy=True)
+        if not image.rgb.isempty():
+            self._original = np.array(image.rgb[:], copy=True)
+        elif self._gray_source_dtype is not None:
+            dtype = self._gray_source_dtype
+            scaled = image.gray[:] * np.float32(np.iinfo(dtype).max)
+            self._original = np.rint(scaled, out=scaled).astype(dtype)
+        else:
+            self._original = np.array(image.gray[:], copy=True)
 
     def _set_from_array(self, arr: np.ndarray) -> None:
         """Initialize all components from an array.

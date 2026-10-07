@@ -944,6 +944,27 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
+    def reference_columns(self, *, images_only: bool = False) -> dict[str, tuple[str, ...]]:
+        """Metadata columns each reference-metadata operation reads, tree-wide.
+
+        Args:
+            images_only: Return only columns whose values name images.
+
+        Returns:
+            ``{tree_path: columns}``, the path spelled as ``find_operations``
+            spells it and joined with ``/``. Empty when the pipeline needs no
+            reference metadata.
+        """
+        from phenotypic.abc_._ref_metadata import RefMetadata
+        from phenotypic.sdk_._operation_tree import find_operations
+
+        found: dict[str, tuple[str, ...]] = {}
+        for path, op in find_operations(self, lambda o: isinstance(o, RefMetadata)):
+            columns = op._ref_image_columns() if images_only else op._ref_columns()
+            if columns:
+                found["/".join(path)] = columns
+        return found
+
     def apply(
             self, image: Image, inplace: bool = False, reset: Optional[bool] = None
     ) -> Union[GridImage, Image]:

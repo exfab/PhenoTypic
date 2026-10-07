@@ -29,7 +29,10 @@ import phenotypic
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic._cli._cli_failure_tracker import work_id_for_image
+from phenotypic._cli._cli_failure_tracker import (
+    work_id_for_image,
+    work_identity_for_image,
+)
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
@@ -356,12 +359,18 @@ def test_the_store_is_byte_unchanged_by_the_export(tmp_path):
 
     cfg = _config(out, pipe_path)
     results = {"ds": {"total": 1, "completed": 0, "failed": 0}}
+    # The run's identity, keyed as execute()'s Stage 1 returns it: the export
+    # pins its reference context to this digest and publishes under it.
+    identities = {
+        ("ds", image_path): work_identity_for_image(cfg, "ds", image_path)
+    }
     StagedGpuStrategy(cfg, om)._export_objmap_layer(
         plan,
         [(datasets[0], image_path)],
         out,
         event_log_path(out),
         results,
+        identities,
     )
 
     assert results["ds"] == {"total": 1, "completed": 1, "failed": 0}

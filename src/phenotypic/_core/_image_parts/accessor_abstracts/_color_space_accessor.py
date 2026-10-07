@@ -100,10 +100,11 @@ class ColorSpaceAccessor(ImageAccessorBase):
         return arr
 
     def __getitem__(self, key) -> np.ndarray:
-        """Access color space data by index, returning a non-writeable view."""
-        view = self._subject_arr[key]
-        view.flags.writeable = False
-        return view
+        """Access color space data by index, returning a non-writeable view.
+
+        A single-element key returns the scalar.
+        """
+        return self._read_only(self._subject_arr[key])
 
     def __setitem__(self, key, value):
         """Prevent direct modification of color space data.

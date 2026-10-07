@@ -59,7 +59,9 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     read_failures,
     work_id_for_image,
+    work_identity_for_image,
 )
+from ._cli_reference import ReferencePin
 from ._cli_completion import image_data_artifact, publish_image_success
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
@@ -545,10 +547,12 @@ class LocalParallelStrategy(ExecutionStrategy):
             if self.config.detect_mode != "gray":
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
-            # Process
-            work_identity = work_id_for_image(
+            # Process. One identity per image, before the apply: its reference
+            # digest pins the context, and its work-id is what is published.
+            identity = work_identity_for_image(
                 self.config, dataset.name, image_path
             )
+            work_identity = (identity.work_id, identity.relative_path)
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -562,6 +566,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                 pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
                 work_id=work_identity[0],
+                reference_pin=ReferencePin(
+                    source_image_stem(image_path), identity.reference_digest
+                ),
             )
 
             _publish_local_image_success(
@@ -662,6 +669,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         attempt_id = uuid4().hex
         append_event(event_log, dataset.name, image_path.name, "started")
+        work_identity: tuple[str, str] | None = None
         try:
             read_kwargs: Dict[str, Any] = {}
             if self.config.bit_depth:
@@ -669,6 +677,13 @@ class LocalParallelStrategy(ExecutionStrategy):
             if self.config.detect_mode != "gray":
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
+            # Before the apply, never after it (review F1): a later invocation
+            # may re-plan the image meanwhile, and the output must be published
+            # under the identity of the plan that produced it.
+            identity = work_identity_for_image(
+                self.config, dataset.name, image_path
+            )
+            work_identity = (identity.work_id, identity.relative_path)
             process_single_apply_only_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -681,6 +696,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_ncols=self.config.ncols,
                 process_format=self.config.process_format,
                 run_initiation=self.config.run_initiation,
+                dataset_name=dataset.name,
+                reference_pin=ReferencePin(
+                    source_image_stem(image_path), identity.reference_digest
+                ),
             )
             _publish_local_image_success(
                 self.config,
@@ -689,6 +708,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 dataset.name,
                 image_path,
                 attempt_id,
+                work_identity=work_identity,
             )
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
@@ -707,6 +727,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=work_identity,
             )
             logger.error(
                 "Apply-only failed for %s/%s:\n%s",

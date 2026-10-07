@@ -8,6 +8,7 @@ from phenotypic.abc_ import GridFinder
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 from ._image import Image
 from ._image_parts._grid_image_handler import ImageGridHandler
+from ._image_parts._image_color_handler import UNSET, _Unset
 
 
 class GridImage(ImageGridHandler):
@@ -39,8 +40,8 @@ class GridImage(ImageGridHandler):
             nrows: int = 8,
             ncols: int = 12,
             bit_depth: Literal[8, 16] | None = None,
-            illuminant: str | None = "D65",
-            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
+            illuminant: str | None | _Unset = UNSET,
+            gamma: GAMMA_ENCODINGS | str | None | _Unset = UNSET,
     ):
         """Initialize a GridImage with grid-based processing capabilities.
 
@@ -67,11 +68,12 @@ class GridImage(ImageGridHandler):
                 If None, automatically inferred from arr dtype. Defaults to None.
             illuminant (str | None): Reference illuminant for color calculations.
                 'D65' (standard daylight) or 'D50' (imaging illuminant).
-                Defaults to 'D65'.
+                When omitted, inherited from ``arr`` if it is an Image, else 'D65'.
             gamma (GAMMA_ENCODINGS): Gamma encoding for color correction.
                 GAMMA_ENCODINGS.SRGB for gamma-corrected images,
                 GAMMA_ENCODINGS.LINEAR for linear RGB.
-                Defaults to GAMMA_ENCODINGS.SRGB.
+                When omitted, inherited from ``arr`` if it is an Image, else
+                GAMMA_ENCODINGS.SRGB.
 
         Raises:
             ValueError: If illuminant is not 'D65' or 'D50'.

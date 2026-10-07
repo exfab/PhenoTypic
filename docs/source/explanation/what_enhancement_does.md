@@ -44,6 +44,9 @@ Remove large-scale brightness gradients.
   and reflectance
 - **SubtractGaussian** — subtracts a heavily blurred background estimate
 - **SubtractRollingBall** — morphological background estimation
+- **SubtractBlank** — subtracts a media-blank frame named in the experiment
+  metadata (needs a `ReferenceContext` or the CLI's `--metadata`; see
+  {doc}`/how_to/pages/reference_metadata`)
 
 ### Structural Enhancement
 

@@ -41,12 +41,18 @@ from ._cli_slurm_lifecycle import (
     lifecycle_lock_path,
     load_slurm_lifecycle,
     mirror_job_to_metadata,
+    query_scheduler_comments,
     read_lifecycle_ledger,
+    scheduler_comment,
     submit_with_lifecycle,
 )
 from ._cli_staged_resume import stage3_completion_exists
 
-_MANIFEST_VERSION = 3
+# 4 added ``StagedManifestEntry.reference_digest``. The bump is what makes a
+# version-3 reader stop at its own version check instead of failing on an
+# unexpected keyword; 2 and 3 still load, with the digest ``None``.
+_MANIFEST_VERSION = 4
+_READABLE_MANIFEST_VERSIONS = (2, 3, _MANIFEST_VERSION)
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
@@ -56,7 +62,17 @@ _LOCK_FILENAME = ".staged_orchestration.lock"
 
 @dataclass(frozen=True)
 class StagedManifestEntry:
-    """One versioned staged-work manifest entry."""
+    """One versioned staged-work manifest entry.
+
+    ``reference_digest`` is the reference digest ``work_id`` was computed from
+    (``WorkIdentity.reference_digest``); every stage pins its reference context
+    to it. An entry written before the field existed loads with ``None``,
+    which pins "no reference plan" -- true of every run planned before
+    reference metadata existed. Should such an entry meet a reference
+    manifest, the stage refuses with the non-terminal
+    ``ReferencePlanStaleError`` and the same command re-plans; it never
+    applies unpinned.
+    """
 
     dataset: str
     image_name: str
@@ -65,6 +81,7 @@ class StagedManifestEntry:
     work_id: str = ""
     relative_image_path: str = ""
     attempt_id: str = ""
+    reference_digest: str | None = None
 
     @property
     def identity(self) -> str:
@@ -242,10 +259,13 @@ def write_staged_manifest(
 def load_staged_manifest(path: Path) -> list[StagedManifestEntry]:
     """Load and validate a versioned staged manifest."""
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or raw.get("version") not in (2, _MANIFEST_VERSION):
+    if (
+        not isinstance(raw, dict)
+        or raw.get("version") not in _READABLE_MANIFEST_VERSIONS
+    ):
         raise ValueError(
-            f"Unsupported staged manifest version in {path}; "
-            f"expected 2 or {_MANIFEST_VERSION}"
+            f"Unsupported staged manifest version in {path}; expected one of "
+            f"{', '.join(map(str, _READABLE_MANIFEST_VERSIONS))}"
         )
     images = raw.get("images")
     if not isinstance(images, list):
@@ -671,10 +691,10 @@ def scheduler_job_is_active(job_id: str) -> bool | None:
     return any(line.strip() for line in result.stdout.splitlines())
 
 
-def active_ledger_job_ids(output_dir: Path) -> list[str]:
-    """Return all ledgered job IDs still visible in SLURM's active queue."""
+def _unterminated_ledger_job_ids(rows: Iterable[Mapping[str, Any]]) -> set[str]:
+    """Return each token's latest submitted job ID without a terminal row."""
     latest: dict[tuple[str, str], str] = {}
-    for row in read_job_ledger(output_dir):
+    for row in rows:
         key = (str(row.get("epoch")), str(row.get("token")))
         if row.get("status") in {"submitted", "recovered"} and row.get(
             "job_id"
@@ -682,12 +702,95 @@ def active_ledger_job_ids(output_dir: Path) -> list[str]:
             latest[key] = str(row.get("job_id"))
         elif row.get("status") == "terminal":
             latest.pop(key, None)
+    return set(latest.values())
+
+
+def active_ledger_job_ids(output_dir: Path) -> list[str]:
+    """Return all ledgered job IDs still visible in SLURM's active queue."""
     return sorted(
-        {
-            job_id
-            for job_id in latest.values()
-            if scheduler_job_is_active(job_id) is not False
-        }
+        job_id
+        for job_id in _unterminated_ledger_job_ids(read_job_ledger(output_dir))
+        if scheduler_job_is_active(job_id) is not False
+    )
+
+
+@dataclass(frozen=True)
+class LiveSlurmJobs:
+    """What may still own an output, split by how sure the scheduler is.
+
+    ``live`` holds job IDs the scheduler reports active. ``unverified`` holds
+    ledgered job IDs it could not answer for (``scheduler_job_is_active``
+    returned ``None``): they may be running or long finished. ``unresolved``
+    holds the scheduler comments (``phenotypic:<generation>:<token>``) of
+    submissions that were never recorded and could not be looked up. The
+    object is falsy only when all three are empty.
+    """
+
+    live: tuple[str, ...] = ()
+    unverified: tuple[str, ...] = ()
+    unresolved: tuple[str, ...] = ()
+
+    def __bool__(self) -> bool:
+        return bool(self.live or self.unverified or self.unresolved)
+
+
+def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
+    """Return the jobs that may make *output_dir* owned by a live SLURM run.
+
+    A closed lifecycle fence answers empty without asking the scheduler.
+    Otherwise only the fence's own generation is consulted: a new generation
+    is published only when the previous one is inactive
+    (``initialize_slurm_lifecycle`` refuses to replace an active one) or this
+    guard has already passed for it. A ledger with no readable fence -- a
+    legacy staged tree -- is walked across every generation instead.
+
+    Each unterminated ledgered job ID is ``live`` or ``unverified`` by
+    :func:`scheduler_job_is_active`. A token whose latest row is ``intent`` or
+    ``blocked`` may own a job whose ``submitted`` row was never written (the
+    submitter died after ``sbatch``); only then is one ``squeue``-only
+    comment query made. A match is ``live``; a query that cannot run leaves
+    the token ``unresolved``. Unknown answers are never read as inactive.
+    """
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is not None and lifecycle.get("active") is False:
+        return LiveSlurmJobs()
+    rows = read_job_ledger(
+        output_dir,
+        epoch=str(lifecycle["generation"]) if lifecycle is not None else None,
+    )
+    live: set[str] = set()
+    unverified: set[str] = set()
+    for job_id in _unterminated_ledger_job_ids(rows):
+        state = scheduler_job_is_active(job_id)
+        if state is None:
+            unverified.add(job_id)
+        elif state:
+            live.add(job_id)
+    latest_status: dict[tuple[str, str], str] = {}
+    for row in rows:
+        key = (str(row.get("generation")), str(row.get("token")))
+        latest_status[key] = str(row.get("status"))
+    unresolved = {
+        scheduler_comment(generation, token)
+        for (generation, token), status in latest_status.items()
+        if status in {"intent", "blocked"}
+    }
+    if unresolved:
+        try:
+            found = query_scheduler_comments(
+                prefix="phenotypic:", include_accounting=False
+            )
+        except SchedulerQueryUnavailable:
+            pass
+        else:
+            for comment, job_ids in found.items():
+                if comment in unresolved:
+                    live.update(job_ids)
+            unresolved = set()
+    return LiveSlurmJobs(
+        live=tuple(sorted(live)),
+        unverified=tuple(sorted(unverified)),
+        unresolved=tuple(sorted(unresolved)),
     )
 
 
@@ -798,6 +901,7 @@ def current_slurm_job_id() -> str:
 
 
 __all__ = [
+    "LiveSlurmJobs",
     "StagedManifestEntry",
     "active_ledger_job_ids",
     "append_job_ledger",
@@ -810,6 +914,7 @@ __all__ = [
     "epoch_deactivation_journal_path",
     "epoch_is_active",
     "initialize_orchestration",
+    "live_slurm_job_ids",
     "load_orchestration_state",
     "load_staged_manifest",
     "mark_local_staged_complete",

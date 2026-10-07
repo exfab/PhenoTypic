@@ -46,7 +46,7 @@ class Grayscale(SingleChannelAccessor):
     def _accessor_property_name(self) -> str:
         return "gray"
 
-    def __getitem__(self, key) -> np.ndarray:
+    def __getitem__(self, key) -> np.ndarray | np.floating:
         """Retrieve a read-only view or slice of the grayscale image data.
 
         Allows array-style indexing and slicing to access subsets of the grayscale data.
@@ -55,12 +55,15 @@ class Grayscale(SingleChannelAccessor):
 
         Args:
             key: Index or slice specification. Can be an integer for single-row access,
-                tuple of slices for multi-dimensional slicing (e.g., [10:20, 5:15]),
-                or boolean arrays for advanced indexing.
+                a pair of integers for a single pixel (e.g., [100, 100]), tuple of
+                slices for multi-dimensional slicing (e.g., [10:20, 5:15]), or boolean
+                arrays for advanced indexing.
 
         Returns:
-            np.ndarray: A read-only view of the requested grayscale data. Values are
-                normalized floating-point numbers in the range [0.0, 1.0].
+            np.ndarray | np.floating: A read-only view of the requested grayscale
+                data, or the pixel's scalar value when the key selects a single
+                pixel. Values are normalized floating-point numbers in the range
+                [0.0, 1.0].
 
         Raises:
             EmptyImageError: If the underlying image data is empty (shape[0] == 0).
@@ -74,15 +77,15 @@ class Grayscale(SingleChannelAccessor):
             >>> region = img.gray[10:20, 5:15]
             >>> # Access single row
             >>> row = img.gray[10]
+            >>> # Access a single pixel's value
+            >>> pixel = img.gray[10, 5]
             >>> # Advanced indexing not recommended but supported
             >>> mask = img.gray > 0.5
         """
         if self.isempty():
             raise EmptyImageError
         else:
-            view = self._root_image._data.gray[key]
-            view.flags.writeable = False
-            return view
+            return self._read_only(self._root_image._data.gray[key])
 
     def __setitem__(self, key, value) -> None:
         """Modify grayscale image data at specified indices with validation.

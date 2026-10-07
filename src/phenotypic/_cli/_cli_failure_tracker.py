@@ -16,7 +16,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List, NamedTuple, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
@@ -206,7 +206,12 @@ def file_sha256(path: Path) -> str:
 #: 2 -> 3: process-mode stores now carry the pipeline's per-image figures
 #:         (spec 2026-09-22-figures-in-ome-zarr §3). Also invalidates in-flight
 #:         ``tiff`` continuations -- deliberate; invalidating too much is safe.
-PROCESS_LAYER_SEMANTICS_REVISION = 3
+#: 3 -> 4: a single-channel integer input is normalised to float32 [0, 1] at
+#:         construction, so its ``--layer gray`` export changes dtype (uint8/16
+#:         -> float32) and its ``detect_mat``/``objmap`` exports change values.
+#:         RGB inputs are byte-identical; their continuations are invalidated
+#:         too, which is safe.
+PROCESS_LAYER_SEMANTICS_REVISION = 4
 
 #: What decoding a camera-RAW input means. Revision 1 is implicit: before spec
 #: 2026-09-24-cli-preflight §10.1, RAW suffixes were routed to skimage/Pillow,
@@ -309,12 +314,16 @@ def compute_work_id(
     pipeline_fingerprint: str,
     processing_config_digest: str,
     mode: str,
+    reference_digest: str | None = None,
 ) -> str:
     """Return the stable identity of one exact per-image computation.
 
     A camera-RAW input (by the suffix of ``relative_image_path``) also carries
     :data:`RAW_DECODE_REVISION`, so a run resumed across the RAW decoding fix
     re-derives those images instead of reusing outputs decoded the old way.
+    ``reference_digest`` is the image's entry in the run's reference manifest
+    (:func:`image_reference_digest`), ``None`` when the run reads no
+    reference metadata.
     """
     payload: dict[str, Any] = {
         "schema_version": WORK_ID_SCHEMA_VERSION,
@@ -327,7 +336,34 @@ def compute_work_id(
     }
     if Path(relative_image_path).suffix.lower() in _RAW_SUFFIXES:
         payload["raw_decode_revision"] = RAW_DECODE_REVISION
+    if reference_digest is not None:
+        # Present only for pipelines that read reference metadata, so every
+        # existing work-id is unchanged. Per image, not per table: editing one
+        # plate's blank re-runs that plate's frames and nothing else.
+        payload["reference_digest"] = reference_digest
     return canonical_digest(payload)
+
+
+def image_reference_digest(
+    output_dir: Path | None, dataset: str, image_path: Path, mode: str
+) -> str | None:
+    """The image's reference digest for its work-id, read from the run's manifest.
+
+    The one reader both work-id producers share -- selection
+    (:func:`work_id_for_image`) and the SLURM worker
+    (``_cli_process_single._worker_work_identity``) -- so the two cannot
+    disagree. Measure mode applies no operation and its runs never touch the
+    manifest, so its work-ids never carry the digest.
+    """
+    if mode == "measure":
+        return None
+    from phenotypic.sdk_._io_constants import source_image_stem
+
+    from ._cli_reference import reference_digest_for
+
+    return reference_digest_for(
+        output_dir, dataset, source_image_stem(Path(image_path))
+    )
 
 
 #: Lower-cased camera-RAW suffixes, from the one list the reader uses.
@@ -365,6 +401,19 @@ def _normalized_input_relative_path(
     return Path(source.name) if relative == Path(".") else relative
 
 
+class WorkIdentity(NamedTuple):
+    """An image's work-id, its input-relative path, and the reference digest in it.
+
+    ``reference_digest`` is what a worker pins its reference context to
+    (``_cli_reference.ReferencePin``), so the plan it applies is the plan its
+    work-id names.
+    """
+
+    work_id: str
+    relative_path: str
+    reference_digest: str | None
+
+
 def work_id_for_image(
     config: "ExecutionConfig", dataset: str, image_path: Path
 ) -> tuple[str, str]:
@@ -374,6 +423,20 @@ def work_id_for_image(
     does not take the ``is_file`` branch. It falls through to ``relative_to``,
     which yields ``Path(".")`` when the two paths are the same -- see the
     degenerate-path recovery below.
+    """
+    identity = work_identity_for_image(config, dataset, image_path)
+    return identity.work_id, identity.relative_path
+
+
+def work_identity_for_image(
+    config: "ExecutionConfig", dataset: str, image_path: Path
+) -> WorkIdentity:
+    """:func:`work_id_for_image`, keeping the reference digest it was computed from.
+
+    A worker that applies the pipeline computes this once, before the apply,
+    and uses it for the context pin and for its success or failure record:
+    the manifest is rewritten by every forward startup, so recomputing after
+    the apply could name a plan the apply never used (review F1).
     """
     relative_path = _normalized_input_relative_path(
         config.input_path, image_path
@@ -386,7 +449,10 @@ def work_id_for_image(
         else "full"
     )
     pipeline_fingerprint = file_sha256(config.pipeline_json)
-    return (
+    reference_digest = image_reference_digest(
+        getattr(config, "output_dir", None), dataset, image_path, mode
+    )
+    return WorkIdentity(
         compute_work_id(
             dataset=dataset,
             relative_image_path=relative_path.as_posix(),
@@ -394,8 +460,10 @@ def work_id_for_image(
             pipeline_fingerprint=pipeline_fingerprint,
             processing_config_digest=processing_configuration_digest(config),
             mode=mode,
+            reference_digest=reference_digest,
         ),
         relative_path.as_posix(),
+        reference_digest,
     )
 
 

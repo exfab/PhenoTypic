@@ -12,6 +12,24 @@ from .accessors._color_accessor import ColorAccessor
 from ._image_visualization_handler import ImageVisualizationHandler
 
 
+class _Unset:
+    """Type of :data:`UNSET`, the "argument not passed" marker."""
+
+    def __repr__(self) -> str:
+        return "<unset>"
+
+
+#: Default for the colour arguments (``gamma``, ``illuminant``) of the image
+#: constructors. ``None`` cannot mark "not passed": ``gamma=None`` already means
+#: linear. An unset argument resolves to sRGB / D65 for array input and to the
+#: source image's value when constructing from another image.
+UNSET = _Unset()
+
+_DEFAULT_GAMMA = GAMMA_ENCODINGS.SRGB
+_DEFAULT_ILLUMINANT: Literal["D65", "D50"] = "D65"
+_DEFAULT_OBSERVER = "CIE 1931 2 Degree Standard Observer"
+
+
 class ImageColorSpace(ImageVisualizationHandler):
     """Manages color space representation and transformations for image data.
 
@@ -49,8 +67,8 @@ class ImageColorSpace(ImageVisualizationHandler):
             name: str | None = None,
             bit_depth: Literal[8, 16] | None = 8,
             *,
-            gamma: GAMMA_ENCODINGS | str | None = GAMMA_ENCODINGS.SRGB,
-            illuminant: Literal["D65", "D50"] = "D65",
+            gamma: GAMMA_ENCODINGS | str | None | _Unset = UNSET,
+            illuminant: Literal["D65", "D50"] | _Unset = UNSET,
     ):
         """Initialize ImageColorSpace with color properties and representations.
 
@@ -67,16 +85,24 @@ class ImageColorSpace(ImageVisualizationHandler):
             gamma (GAMMA_ENCODINGS): The gamma encoding applied to the image.
                 GAMMA_ENCODINGS.SRGB applies gamma correction for display,
                 GAMMA_ENCODINGS.LINEAR assumes linear RGB.
-                Defaults to GAMMA_ENCODINGS.SRGB.
+                When omitted, inherited from ``arr`` if it is an Image, else
+                GAMMA_ENCODINGS.SRGB.
             illuminant (Literal["D65", "D50"]): The reference illuminant for color calculations.
                 'D65' represents standard daylight, 'D50' represents standard illumination
-                for imaging. Defaults to 'D65'.
+                for imaging. When omitted, inherited from ``arr`` if it is an Image,
+                else 'D65'.
 
         Raises:
             ValueError: If gamma is not a GAMMA_ENCODINGS member or a recognized
                 string ('sRGB') / None.
             ValueError: If illuminant is not 'D65' or 'D50'.
         """
+        explicit_gamma = not isinstance(gamma, _Unset)
+        explicit_illuminant = not isinstance(illuminant, _Unset)
+        if isinstance(gamma, _Unset):
+            gamma = _DEFAULT_GAMMA
+        if isinstance(illuminant, _Unset):
+            illuminant = _DEFAULT_ILLUMINANT
         if not isinstance(gamma, GAMMA_ENCODINGS):
             _GAMMA_COERCE = {"sRGB": GAMMA_ENCODINGS.SRGB, None: GAMMA_ENCODINGS.LINEAR}
             if gamma not in _GAMMA_COERCE:
@@ -90,11 +116,49 @@ class ImageColorSpace(ImageVisualizationHandler):
         self.gamma = gamma
         self.illuminant: Literal["D50", "D65"] = illuminant
 
-        self._observer: str = "CIE 1931 2 Degree Standard Observer"
+        self._observer: str = _DEFAULT_OBSERVER
+        # Constructing from another image adopts its colour configuration
+        # (_set_from_class_instance); an argument passed explicitly still wins.
         super().__init__(arr=arr, name=name, bit_depth=bit_depth)
+        if explicit_gamma:
+            self.gamma = gamma
+        if explicit_illuminant:
+            self.illuminant = illuminant
 
         # Initialize color accessor
         self._accessors.color = ColorAccessor(self)
+
+    def _adopt_color_config(self, source) -> None:
+        """Take ``source``'s gamma, illuminant and observer.
+
+        They describe how the pixels are encoded, so every image derived from
+        ``source`` (a copy, a crop, a grid section) must carry them.
+        """
+        self.gamma = source.gamma
+        self.illuminant = source.illuminant
+        self._observer = source._observer
+
+    def _restore_crop_of(self, source, key) -> None:
+        """Fill this empty image with ``source[key]`` and ``source``'s configuration.
+
+        The pixels are copied, and restored as derived state rather than
+        re-validated as user input, so a crop never refuses what its source
+        already holds (a gray layer padded outside ``[0, 1]``, say).
+        """
+        gray_only = source.rgb.isempty()
+        layer = source.gray if gray_only else source.rgb
+        self._restore_array(np.array(layer[key], copy=True))
+        # The crop was built with source.bit_depth; it is explicit only if the
+        # source's was.
+        self._bit_depth_explicit = source._bit_depth_explicit
+        if gray_only:
+            self._gray_source_dtype = source._gray_source_dtype
+        self._adopt_color_config(source)
+
+    def _set_from_class_instance(self, input_cls) -> None:
+        """Copy data from another Image instance, including its colour configuration."""
+        super()._set_from_class_instance(input_cls)
+        self._adopt_color_config(input_cls)
 
     @property
     def color(self) -> ColorAccessor:

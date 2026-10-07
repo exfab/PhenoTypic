@@ -45,5 +45,6 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    pages/gui_hub
    pages/serialize_pipelines
    pages/migrate_ome_zarr
+   pages/reference_metadata
    pages/zarr_storage
    pages/generate_reports

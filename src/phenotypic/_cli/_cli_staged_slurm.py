@@ -32,7 +32,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
-from ._cli_failure_tracker import work_id_for_image
+from ._cli_failure_tracker import work_identity_for_image
 from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
@@ -561,6 +561,39 @@ def _write_staged_job_metadata(
     return metadata_path
 
 
+def staged_manifest_entry(
+    config: ExecutionConfig, dataset_name: str, image: Path
+) -> StagedManifestEntry:
+    """The image's one identity for the whole staged SLURM run.
+
+    Computed once, at submission and before any stage applies anything. Every
+    stage publishes and records failures under ``work_id`` and pins its
+    reference context to ``reference_digest``, the digest that work-id was
+    computed from, so a manifest re-planned by a later invocation is refused
+    rather than applied under one plan and certified under another (review
+    F1).
+
+    Args:
+        config: The run's execution configuration.
+        dataset_name: The image's dataset.
+        image: The input image.
+
+    Returns:
+        The manifest entry the stage workers read.
+    """
+    identity = work_identity_for_image(config, dataset_name, image)
+    return StagedManifestEntry(
+        dataset=dataset_name,
+        image_name=image.name,
+        stem=source_image_stem(image),
+        input_path=str(Path(image).absolute()),
+        work_id=identity.work_id,
+        relative_image_path=identity.relative_path,
+        attempt_id=uuid4().hex,
+        reference_digest=identity.reference_digest,
+    )
+
+
 class StagedSlurmStrategy(ExecutionStrategy):
     """Submit the 3 staged stages as a SLURM ``afterany`` dependency chain."""
 
@@ -572,19 +605,8 @@ class StagedSlurmStrategy(ExecutionStrategy):
         manifest: list[StagedManifestEntry] = []
         for dataset in datasets:
             for image in dataset.images:
-                work_id, relative_path = work_id_for_image(
-                    cfg, dataset.name, image
-                )
                 manifest.append(
-                    StagedManifestEntry(
-                        dataset=dataset.name,
-                        image_name=image.name,
-                        stem=source_image_stem(image),
-                        input_path=str(Path(image).absolute()),
-                        work_id=work_id,
-                        relative_image_path=relative_path,
-                        attempt_id=uuid4().hex,
-                    )
+                    staged_manifest_entry(cfg, dataset.name, image)
                 )
 
         # Chunk to the TIGHTER of MaxArraySize and the conservative

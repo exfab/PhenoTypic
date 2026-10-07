@@ -102,11 +102,12 @@ class ImageHandler(ImageDataManager):
         Raises:
             KeyError: If the provided key does not match the expected slicing format or dimensions.
         """
-        if not self.rgb.isempty():
-            subimage = self.__class__(arr=self.rgb[key])
-        else:
-            subimage = self.__class__(arr=self.gray[key])
+        subimage = self.__class__(bit_depth=self.bit_depth)
+        subimage._restore_crop_of(self, key)
 
+        # The mode before the data, so the crop's detect_mat and its declared
+        # mode agree (a later reset() recomputes from this mode).
+        subimage._data.detect_mode = self._data.detect_mode
         subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value

@@ -224,7 +224,10 @@ def test_imread_reads_a_store_with_no_phenotypic_block(tmp_path: Path) -> None:
 
     assert "phenotypic" not in ngff_.read_root_attributes(store)
     loaded = Image.imread(store)
-    assert np.array_equal(loaded.gray[:], pixels)
+    # Plain pixels, normalised like any single-channel integer input.
+    np.testing.assert_allclose(
+        loaded.gray[:], pixels.astype(np.float32) / 65535, atol=1e-7
+    )
     assert loaded.name == "foreign"
 
 

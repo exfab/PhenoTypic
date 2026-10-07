@@ -139,13 +139,17 @@ isolation before attributing it — most of them pass.
   rather than reusing outputs of the other kind. So does a change in what an
   exported layer *means*: the work-id digest carries a
   `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`), bumped to `2`
-  when `--layer objmap` began applying the post-detector op chain and to `3`
-  when process stores began carrying figures, so a tree
+  when `--layer objmap` began applying the post-detector op chain, to `3`
+  when process stores began carrying figures, and to `4` when single-channel
+  integer inputs began to be normalised to float32 `[0, 1]` at construction
+  (their `gray` export changed dtype), so a tree
   processed under the old semantics is re-derived rather than reused. The
   revision is one integer shared by every layer, so a bump invalidates
   in-flight `--layer gray` continuations too — deliberate; invalidating too much
   is safe. It is scoped to `--mode process` and does not touch `full`/`measure`
-  continuation. Run the same command again after an interruption or when new
+  continuation. The `4` change has no full/measure fence: a single-channel run
+  started before it must be re-run with `--overwrite`, which the
+  `.. versionchanged::` notes on `SIZE`, `INTENSITY` and `TEXTURE` say. Run the same command again after an interruption or when new
   compatible inputs appear; there is no `--resume` flag.
 - `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
   migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
@@ -599,6 +603,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
   [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
+- **Reference-metadata ops need a context:** an operation mixing in
+  `RefMetadata` (e.g. `SubtractBlank`) holds no table path; it reads the
+  active `phenotypic.ReferenceContext`. The CLI's `--metadata` is that
+  context (startup writes `.phenotypic/reference_manifest.json`; workers read
+  it), and a per-image reference digest enters the work-id only for such
+  pipelines. Process mode snapshots the table to
+  `.phenotypic/reference_metadata.csv`, preserved across `--restart`.
+  `--mode measure` refuses a pipeline whose measurers read reference
+  metadata. See `docs/source/how_to/pages/reference_metadata.md`.
 - **Metadata startup snapshot:** full runs and recompile copy a configured
   `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
   work or SLURM submission. Treat that file as input provenance: **never rewrite

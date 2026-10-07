@@ -392,7 +392,8 @@ def test_class_section_renders_the_change_note_above_the_table(monkeypatch: Monk
     marker = ".. versionchanged:: 0.20.0"
     assert marker in section
     assert section.index(marker) < section.index(".. list-table::")
-    assert marker not in extension._class_section(schema.TEXTURE)
+    # TEXTURE carries the single-channel note too; BBOX carries none.
+    assert marker not in extension._class_section(schema.BBOX)
 
 
 def test_generated_tables_escape_rst_markup(reference: dict[str, str]) -> None:

@@ -438,3 +438,63 @@ def test_retry_base_mutation_also_refuses_v1_without_partial_change() -> None:
     with pytest.raises(ValueError, match="migrat"):
         set_retry_base_length(image, 4)
     assert image._metadata.provenance_journal == legacy
+
+
+def _unfinished_checkpoint(
+    tmp_path: Path, status: str
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """The journal a CLI worker's per-image checkpoint holds after *status*,
+    and the pipeline identity it was made with (as ``process_single`` passes
+    one identity to both the initialise and the resume)."""
+    from phenotypic._core._provenance import pipeline_source_identity
+
+    pipeline_path = tmp_path / "pipeline.json"
+    pipeline_path.write_text("{}", encoding="utf-8")
+    identity = pipeline_source_identity(pipeline_path)
+    worked = _image()
+    initialize_cli_provenance(
+        worked, pipeline_path, kind="full", input_filename="plate.tiff",
+        pipeline_identity=identity,
+    )
+    set_provenance_status(worked, status)
+    return deepcopy(worked._metadata.provenance_journal), identity
+
+
+def _resume(
+    checkpoint: tuple[dict[str, Any], dict[str, str]], *, checkpoint_work_id: str
+) -> bool:
+    from phenotypic._core._provenance import resume_provenance_application
+
+    journal, identity = checkpoint
+    return resume_provenance_application(
+        _image(),
+        journal,
+        kind="full",
+        input_filename="plate.tiff",
+        pipeline_identity=identity,
+        expected_work_id="work-now",
+        checkpoint_work_id=checkpoint_work_id,
+    )
+
+
+def test_a_failed_checkpoint_of_another_work_identity_is_obsolete(tmp_path: Path) -> None:
+    """Its attempt is over and the plan it described is gone (its work-id moved,
+    e.g. a re-planned blank): the caller starts fresh rather than being stuck
+    behind it forever (code review #1, gate 29535357)."""
+    checkpoint = _unfinished_checkpoint(tmp_path, "failed")
+    assert _resume(checkpoint, checkpoint_work_id="work-before") is False
+
+
+def test_an_in_progress_checkpoint_of_another_work_identity_still_refuses(
+    tmp_path: Path,
+) -> None:
+    """It may belong to a live owner, so it is never overwritten."""
+    checkpoint = _unfinished_checkpoint(tmp_path, "in_progress")
+    with pytest.raises(ValueError, match="work identity does not match"):
+        _resume(checkpoint, checkpoint_work_id="work-before")
+
+
+def test_a_failed_checkpoint_of_the_same_work_identity_resumes(tmp_path: Path) -> None:
+    """Control: the obsolete rule is about a different identity only."""
+    checkpoint = _unfinished_checkpoint(tmp_path, "failed")
+    assert _resume(checkpoint, checkpoint_work_id="work-now") is True

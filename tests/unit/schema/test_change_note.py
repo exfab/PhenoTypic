@@ -6,8 +6,14 @@ import inspect
 
 import pytest
 
-from phenotypic.measure import MeasureShape, MeasureSize, MeasureTexture
-from phenotypic.schema import SHAPE, SIZE, TEXTURE, Entry, MeasurementInfo
+from phenotypic.measure import (
+    MeasureBounds,
+    MeasureIntensity,
+    MeasureShape,
+    MeasureSize,
+    MeasureTexture,
+)
+from phenotypic.schema import BBOX, INTENSITY, SHAPE, SIZE, TEXTURE, Entry, MeasurementInfo
 
 MARKER = ".. versionchanged:: 0.20.0"
 
@@ -93,5 +99,77 @@ def test_enum_docstring_dedents_to_one_margin(info):
 
 
 def test_unrelated_classes_carry_no_note():
-    assert MARKER not in MeasureTexture.__doc__
-    assert TEXTURE.change_note() == ""
+    assert MARKER not in MeasureBounds.__doc__
+    assert BBOX.change_note() == ""
+
+
+# ------------------------------------------- single-channel normalisation (0.21.0)
+
+SINGLE_CHANNEL = "single-channel"
+SINGLE_CHANNEL_MARKER = ".. versionchanged:: 0.21.0"
+
+
+def test_size_note_keeps_the_split_note_and_adds_integrated_intensity_units():
+    """SIZE carries two changes from two releases: both notes render, split first."""
+    note = " ".join(SIZE.change_note().split())
+    assert note.count(MARKER) == 1
+    assert note.count(SINGLE_CHANNEL_MARKER) == 1
+    assert note.index(MARKER) < note.index(SINGLE_CHANNEL_MARKER)
+    assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
+    assert "``Size_IntegratedIntensity``" in note
+    assert "normalised units" in note
+
+
+@pytest.mark.parametrize("info", [INTENSITY, TEXTURE], ids=["INTENSITY", "TEXTURE"])
+def test_intensity_and_texture_notes_say_the_columns_are_now_produced(info):
+    note = " ".join(info.change_note().split())
+    assert note.startswith(SINGLE_CHANNEL_MARKER)
+    assert SINGLE_CHANNEL in note
+    assert "now produced" in note
+
+
+_SINGLE_CHANNEL_INFOS = pytest.mark.parametrize(
+    "info", [SIZE, SHAPE, INTENSITY, TEXTURE], ids=["SIZE", "SHAPE", "INTENSITY", "TEXTURE"]
+)
+
+
+@_SINGLE_CHANNEL_INFOS
+def test_single_channel_note_says_detection_derived_columns_change(info):
+    """Detectors now find colonies on single-channel scans, so every column
+    measured on a detected object can change, not only the intensity ones."""
+    note = " ".join(info.change_note().split())
+    assert SINGLE_CHANNEL in note
+    assert "segmentation" in note
+    for prefix in ("``Shape_*``", "``Bbox_*``"):
+        assert prefix in note, prefix
+
+
+def test_shape_note_keeps_the_split_note_first():
+    note = " ".join(SHAPE.change_note().split())
+    assert note.count(MARKER) == 1
+    assert note.count(SINGLE_CHANNEL_MARKER) == 1
+    assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
+
+
+@_SINGLE_CHANNEL_INFOS
+def test_single_channel_note_warns_against_resuming(info):
+    """No work-id fence covers this change, so the note is the only guard."""
+    note = " ".join(info.change_note().split())
+    assert (
+        "A single-channel run started before this change must be re-run with "
+        "``--overwrite``, not resumed." in note
+    )
+
+
+@pytest.mark.parametrize(
+    "measurer,info",
+    [(MeasureIntensity, INTENSITY), (MeasureTexture, TEXTURE)],
+    ids=["MeasureIntensity", "MeasureTexture"],
+)
+def test_single_channel_note_renders_in_measurer_and_enum_docs(measurer, info):
+    for doc in (measurer.__doc__, info.__doc__):
+        assert SINGLE_CHANNEL_MARKER in doc
+        assert SINGLE_CHANNEL in doc
+    assert measurer.__doc__.index(SINGLE_CHANNEL_MARKER) < measurer.__doc__.index(
+        ".. list-table::"
+    )

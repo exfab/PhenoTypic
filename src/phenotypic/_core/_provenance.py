@@ -857,7 +857,9 @@ def resume_provenance_application(
 
     Returns:
         ``True`` when an unfinished application was restored, or ``False`` when
-        the checkpoint is terminal or contains no application.
+        the checkpoint is terminal, contains no application, or is a
+        ``failed`` attempt of another work identity (obsolete; the caller
+        starts fresh and overwrites it).
 
     Raises:
         ValueError: If an unfinished checkpoint does not match the input image
@@ -871,6 +873,17 @@ def resume_provenance_application(
         return False
     checkpoint_application = applications[-1]
     if checkpoint_application["status"] not in {"failed", "in_progress"}:
+        return False
+    if (
+        checkpoint_application["status"] == "failed"
+        and isinstance(expected_work_id, str)
+        and expected_work_id
+        and checkpoint_work_id != expected_work_id
+    ):
+        # Obsolete: its attempt is over, and the work identity it described no
+        # longer exists (a re-planned blank moved the work-id, say). Starting
+        # fresh is the only way the image is ever redone. An "in_progress"
+        # checkpoint below still refuses: it may belong to a live owner.
         return False
     if (
         not isinstance(expected_work_id, str)

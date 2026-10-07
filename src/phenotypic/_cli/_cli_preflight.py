@@ -74,6 +74,13 @@ FindingCode = Literal[
     "PF-META-UNMATCHED",
     "PF-META-ORPHANS",
     "PF-META-UNVERIFIED",
+    "PF-REF-NO-TABLE",
+    "PF-REF-TABLE",
+    "PF-REF-COLUMN",
+    "PF-REF-UNMATCHED",
+    "PF-REF-AMBIGUOUS",
+    "PF-REF-SELF",
+    "PF-REF-UNRESOLVED",
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
     "PF-NODE-LOCAL",
@@ -176,6 +183,34 @@ HINTS: dict[str, str] = {
         "These columns can only be matched against measurements, so the "
         "preflight cannot check them; the production join uses any of them "
         "that the measurements emit."
+    ),
+    "PF-REF-NO-TABLE": (
+        "Pass --metadata with a table that names each image's reference "
+        "(e.g. a Metadata_BlankImage column), or remove the reference operation."
+    ),
+    "PF-REF-TABLE": (
+        "Fix the reference table: it must be a readable CSV with an "
+        "ImageName (or Metadata_ImageName) column."
+    ),
+    "PF-REF-COLUMN": (
+        "Add the column the operation names to the table, or change the "
+        "operation's column parameter to one the table has."
+    ),
+    "PF-REF-UNMATCHED": (
+        "Add a row for each listed image, keyed by its file name without the "
+        "extension, or leave the image out with --image-manifest."
+    ),
+    "PF-REF-AMBIGUOUS": (
+        "Give each listed image exactly one non-empty value; its rows are empty "
+        "or disagree."
+    ),
+    "PF-REF-SELF": (
+        "A blank frame cannot be its own reference; leave blank frames out of "
+        "the input with --image-manifest."
+    ),
+    "PF-REF-UNRESOLVED": (
+        "Each named reference must match exactly one file (by stem or full "
+        "name) in the image's own input directory."
     ),
     "PF-SBATCH-REJECTED": (
         "Fix the --slurm/--gpu-slurm option sbatch names above (a partition, "
@@ -374,9 +409,8 @@ def check_grid_image(context: PreflightContext) -> list[PreflightFinding]:
     ``preflight_requirements().grid_image`` reports.
     """
     grid_ops = [
-        "/".join(path)
-        for path, operation in operations_in_scope(context)
-        if operation.preflight_requirements().grid_image
+        path for path, requirements in _requirements_in_scope(context)
+        if requirements.grid_image
     ]
     if not grid_ops:
         return []
@@ -471,10 +505,29 @@ def check_detector_present(context: PreflightContext) -> list[PreflightFinding]:
     ]
 
 
+def _requirements_of(operation: Any) -> Any:
+    """*operation*'s declared requirements; none for a node that declares none.
+
+    ``walk_operations`` yields every pipeline slot entry, and the ``filters``
+    and ``model`` slots hold ``SetAnalyzer``/``ModelFitter`` instances, which
+    are not ``BaseOperation`` subclasses and have no ``preflight_requirements``.
+    They act on the measurement table, never on an image, so the empty
+    declaration -- what ``BaseOperation`` reports for a class that sets no
+    ``_requires_*`` -- is the truth about them. The node stays in scope:
+    checks that ask other questions of it (``PF-CUSTOM-OP``) still see it.
+    """
+    declared = getattr(operation, "preflight_requirements", None)
+    if declared is None:
+        from phenotypic.abc_ import OperationRequirements
+
+        return OperationRequirements()
+    return declared()
+
+
 def _requirements_in_scope(context: PreflightContext) -> list[tuple[str, Any]]:
     """``("path/to/op", requirements)`` for every in-scope operation."""
     return [
-        ("/".join(path), operation.preflight_requirements())
+        ("/".join(path), _requirements_of(operation))
         for path, operation in operations_in_scope(context)
     ]
 
@@ -1070,9 +1123,8 @@ def check_rgb_ops_on_gray(context: PreflightContext) -> list[PreflightFinding]:
     series say whether they hold RGB.
     """
     readers = [
-        "/".join(path)
-        for path, operation in operations_in_scope(context)
-        if operation.preflight_requirements().rgb_input
+        path for path, requirements in _requirements_in_scope(context)
+        if requirements.rgb_input
     ]
     if not readers:
         return []
@@ -1253,6 +1305,83 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
             f"the CSV joins on measurement-level column(s) {', '.join(unverified)}, "
             "which cannot be checked before measuring",
         ))
+    return findings
+
+
+def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-REF-*``: can the run's table serve its reference-metadata operations?
+
+    Only the reference operations this mode executes are checked
+    (:func:`operations_in_scope`), for the gate and the columns alike. Reads
+    the table and lists directories only -- reference images are resolved to
+    file names, never opened or hashed (startup hashes them). Per-image
+    findings are warnings, all escalated to errors when the images failing
+    for any reason cover every input image.
+    """
+    if context.mode not in ("full", "process"):
+        return []
+    from ._cli_reference import (
+        plan_references,
+        reference_operations_with_paths,
+        resolve_reference_table_path,
+    )
+
+    in_scope = reference_operations_with_paths(context.pipeline, context.mode)
+    if not in_scope:
+        return []
+    from phenotypic._core._reference_context import (
+        ReferenceContext,
+        ReferenceTableError,
+    )
+
+    needs = {"/".join(path): op._ref_columns() for path, op in in_scope}
+    described = "; ".join(f"{path} reads {list(cols)}" for path, cols in needs.items())
+    table_path = resolve_reference_table_path(context.config, context.config.output_dir)
+    if table_path is None:
+        return [PreflightFinding(
+            "PF-REF-NO-TABLE", "error",
+            f"The pipeline reads reference metadata ({described}) but no "
+            "--metadata was given and the run has no snapshot to fall back to.",
+            subjects=tuple(needs),
+        )]
+    try:
+        table = ReferenceContext(table_path)
+    except ReferenceTableError as exc:
+        return [PreflightFinding("PF-REF-TABLE", "error", str(exc), subjects=(str(table_path),))]
+    missing = tuple(
+        f"{path}: {column}"
+        for path, cols in needs.items()
+        for column in cols
+        if not table.has_column(column)
+    )
+    if missing:
+        return [PreflightFinding(
+            "PF-REF-COLUMN", "error",
+            f"{table_path} lacks columns the pipeline reads: {', '.join(missing)}",
+            subjects=missing,
+        )]
+    plan = plan_references(
+        table,
+        context.pipeline,
+        context.datasets,
+        hash_images=False,
+        operations=[op for _, op in in_scope],
+    )
+    failing = {*plan.unmatched, *plan.ambiguous, *plan.self_referenced, *plan.unresolved}
+    severity = _severity_for(len(failing), plan.total_images)
+    findings: list[PreflightFinding] = []
+    for code, labels, what in (
+        ("PF-REF-UNMATCHED", plan.unmatched, "have no row in the reference table"),
+        ("PF-REF-AMBIGUOUS", plan.ambiguous, "have empty or disagreeing reference values"),
+        ("PF-REF-SELF", plan.self_referenced, "name themselves as their own reference"),
+        ("PF-REF-UNRESOLVED", plan.unresolved, "name a reference image that matches no single file"),
+    ):
+        if labels:
+            findings.append(PreflightFinding(
+                code, severity,
+                f"{len(labels)} of {plan.total_images} input images {what}.",
+                subjects=labels,
+            ))
     return findings
 
 
@@ -1444,6 +1573,7 @@ CHECKS: tuple[Check, ...] = (
     check_rgb_ops_on_gray,
     check_bit_depth,
     check_metadata_join,
+    check_reference_metadata,
     check_output_writable,
     check_output_space,
     check_node_local_paths,
@@ -1482,18 +1612,36 @@ def operations_in_scope(
     Returns:
         In-scope ``(path, operation)`` pairs in depth-first order.
     """
+    return operations_run_in_mode(context.pipeline, context.mode)
+
+
+def operations_run_in_mode(
+    pipeline: "ImagePipeline", mode: RunMode
+) -> list[tuple[tuple[str, ...], Any]]:
+    """:func:`operations_in_scope` for callers that hold no ``PreflightContext``.
+
+    Startup (``publish_reference_inputs``) and the CLI's early reference-table
+    check scope by mode exactly as the preflight does, from the same walk.
+
+    Args:
+        pipeline: The loaded pipeline.
+        mode: Which part of the pipeline the run executes.
+
+    Returns:
+        In-scope ``(path, operation)`` pairs in depth-first order.
+    """
     from phenotypic.sdk_._operation_tree import (
         get_at_path,
         pipeline_slot_of,
         walk_operations,
     )
 
-    root_slots = MODE_SLOTS[context.mode]
+    root_slots = MODE_SLOTS[mode]
     in_scope: list[tuple[tuple[str, ...], Any]] = []
-    for path, operation in walk_operations(context.pipeline):
+    for path, operation in walk_operations(pipeline):
         if all(
             _segment_runs(
-                get_at_path(context.pipeline, path[:depth]),
+                get_at_path(pipeline, path[:depth]),
                 segment,
                 allowed=root_slots if depth == 0 else frozenset({"ops"}),
                 pipeline_slot_of=pipeline_slot_of,

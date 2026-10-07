@@ -243,6 +243,9 @@ class _DagBuilderState:
             time, 3000ms auto-dismiss).  Each entry is a free-form dict
             shaped by the callback that enqueued it; the Dash callback
             that binds to the toast component pops the head.
+        reference_metadata_path: Session-level reference metadata table
+            the preview runs against and the inspector's RefColumn
+            dropdowns list; never written into the pipeline.
     """
 
     root: _DagBuilderScope = field(default_factory=_DagBuilderScope)
@@ -256,6 +259,7 @@ class _DagBuilderState:
     pending_delete_block_id: Optional[str] = None
     pending_aux_replacement: Optional[Dict[str, Any]] = None
     toast_queue: List[Dict[str, Any]] = field(default_factory=list)
+    reference_metadata_path: Optional[str] = None
 
 
 def _seed_input_image(scope: _DagBuilderScope) -> None:
@@ -1562,6 +1566,9 @@ def state_to_json(state: Any) -> Dict[str, Any]:
                 None,
             ),
             "toast_queue": list(state.toast_queue),
+            "reference_metadata_path": getattr(
+                state, "reference_metadata_path", None
+            ),
         }
     if hasattr(state, "selected_node_id"):
         return {
@@ -1652,6 +1659,9 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
 
     root_data = data.get("root") or {}
     root = _dag_scope_from_dict(root_data)
+    # Store data is client-writable: anything but a non-empty string would
+    # fail later at ``Path(...)`` on every inspector render.
+    reference = data.get("reference_metadata_path")
     state = _DagBuilderState(
         root=root,
         breadcrumb=list(data.get("breadcrumb") or []),
@@ -1662,6 +1672,7 @@ def _state_from_json_dag(data: Dict[str, Any]) -> _DagBuilderState:
         pending_delete_block_id=data.get("pending_delete_block_id"),
         pending_aux_replacement=data.get("pending_aux_replacement"),
         toast_queue=list(data.get("toast_queue") or []),
+        reference_metadata_path=reference if isinstance(reference, str) and reference else None,
     )
     _heal_dag_scope_tree(state.root)
     return state

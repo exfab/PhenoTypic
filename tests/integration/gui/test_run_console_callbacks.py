@@ -906,7 +906,7 @@ def _run_disabled_after_selecting(
         app, "show_staged_gpu_controls"
     )(str(pipeline), mode)
     run_disabled = _callback_by_name(app, "update_run_disabled")(
-        0, None, mode, is_open
+        0, None, mode, is_open, False
     )
     return section, message, is_open, run_disabled
 
@@ -1026,6 +1026,118 @@ def test_run_action_refuses_the_pipeline_before_allocating_or_submitting(
 
     assert _REFUSED_CONTAINER in response[1]
     assert registry.list() == []
+
+
+def test_run_action_refuses_a_reference_pipeline_without_a_metadata_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A click racing the alert still reaches ``click_action``; it must refuse."""
+    from phenotypic import ImagePipeline
+    from phenotypic.enhance import SubtractBlank
+
+    pipeline = tmp_path / "reference.json"
+    pipeline.write_text(
+        ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8"
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    monkeypatch.setattr(
+        callbacks_module._SLURM_EXECUTOR,
+        "submit",
+        lambda *args, **kwargs: pytest.fail("submitter was invoked"),
+    )
+    controls = _slurm_action_controls(sandbox, tmp_path, pipeline)
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert "Metadata_BlankImage" in response[1]
+    assert registry.list() == []
+
+
+def test_run_action_lets_a_reference_pipeline_with_a_metadata_table_through(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Control for the test above: with a table included, the seam passes.
+
+    Without it, a regression that leaves ``state.metadata_csv`` unset at the
+    seam would make every reference pipeline unrunnable with the suite green.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic.enhance import SubtractBlank
+    from phenotypic.schema import IMAGE
+
+    pipeline = tmp_path / "reference.json"
+    pipeline.write_text(
+        ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8"
+    )
+    metadata = tmp_path / "blank_map.csv"
+    metadata.write_text(
+        f"{IMAGE.IMAGE_NAME},BlankImage\nt01,t00\n", encoding="utf-8"
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = create_app(sandbox, registry=RunRegistry())
+    submitted: list[Any] = []
+
+    def _spy(*args: Any, **kwargs: Any) -> Any:
+        submitted.append(args[1])
+        raise RuntimeError("submit spy reached")
+
+    monkeypatch.setattr(callbacks_module._SLURM_EXECUTOR, "submit", _spy)
+    controls = _slurm_action_controls(sandbox, tmp_path, pipeline)
+    (tmp_path / "images" / "t01.tif").write_bytes(b"one-image")
+    controls = _guard_action_controls(
+        sandbox,
+        (*controls[:19], metadata_payload_from_path(sandbox, metadata)),
+        metadata_choice="include",
+        acknowledgement=["acknowledge"],
+    )
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert "submit spy reached" in response[1]
+    assert "Metadata_BlankImage" not in response[1]
+    assert len(submitted) == 1
+    assert Path(submitted[0].metadata_csv).resolve() == metadata.resolve()
+
+
+def test_run_action_lets_a_reference_pipeline_continue_on_its_metadata_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A full-mode continuation reads ``deliverables/metadata.csv``; so must the seam.
+
+    The control is ``test_run_action_refuses_a_reference_pipeline_without_a_metadata_table``:
+    the same pipeline and form, with an output that has no snapshot.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.enhance import SubtractBlank
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
+
+    pipeline = tmp_path / "reference.json"
+    pipeline.write_text(
+        ImagePipeline(ops={"sb": SubtractBlank()}).to_json(), encoding="utf-8"
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    app = create_app(sandbox, registry=RunRegistry())
+    submitted: list[Any] = []
+
+    def _spy(*args: Any, **kwargs: Any) -> Any:
+        submitted.append(args[1])
+        raise RuntimeError("submit spy reached")
+
+    monkeypatch.setattr(callbacks_module._SLURM_EXECUTOR, "submit", _spy)
+    controls = _slurm_action_controls(sandbox, tmp_path, pipeline)
+    snapshot = metadata_csv_deliverable_path(tmp_path / "output")
+    snapshot.parent.mkdir(parents=True)
+    snapshot.write_text("ImageName,BlankImage\nt01,t00\n", encoding="utf-8")
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert "submit spy reached" in response[1]
+    assert "Metadata_BlankImage" not in response[1]
+    # No table is passed: the CLI falls back to the snapshot itself.
+    assert len(submitted) == 1 and submitted[0].metadata_csv is None
 
 
 def test_run_action_lets_a_valid_gpu_pipeline_through_to_submission(

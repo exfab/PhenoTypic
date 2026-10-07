@@ -675,6 +675,107 @@ def _refuse_run_inputs_the_run_would_delete(
                 )
 
 
+def _reference_operation_paths_for(
+    pipeline_json: Optional[Path], cli_mode: str
+) -> list[str]:
+    """Tree paths of the reference-metadata operations a run in *cli_mode* executes.
+
+    Empty for ``recompile``/``migrate`` and when the pipeline cannot be
+    loaded: the pipeline validation reports a load failure in its own words.
+    """
+    if pipeline_json is None or cli_mode not in ("full", "process", "measure"):
+        return []
+    from phenotypic._cli._cli_preflight import RunMode
+    from phenotypic._cli._cli_reference import reference_operation_paths
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_json)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return []
+    # The guard above admits only full/process/measure, which is RunMode.
+    return reference_operation_paths(pipeline, cast(RunMode, cli_mode))
+
+
+def _refuse_measuring_reference_pipeline(paths: Sequence[str]) -> None:
+    """Refuse ``--mode measure`` for a pipeline whose measurers read reference metadata.
+
+    Measure mode plans no references and never touches the run's manifest
+    (it may run beside live forward workers), and its work-ids carry no
+    reference digest, so there is no plan such an operation could read. A
+    refusal up front, un-skippable, is cheaper and truer than every image
+    failing one at a time (user decision, 2026-10-06).
+
+    Raises:
+        click.UsageError: Always, naming every such operation.
+    """
+    raise click.UsageError(
+        "--mode measure cannot re-measure a pipeline that reads reference "
+        f"metadata ({', '.join(paths)}); re-measuring reference pipelines is "
+        "not supported. Run --mode full instead."
+    )
+
+
+def _refuse_unusable_reference_table(
+    *,
+    metadata_csv: Optional[Path],
+    overwrite: bool,
+    output_dir: Path,
+    process_mode: bool,
+) -> None:
+    """Refuse a reference-metadata run whose table cannot serve it.
+
+    Called in the read-only half, above ``--restart``, ``--overwrite``,
+    ``mint_run_identity`` and ``--dry-run``, and outside ``--skip-validation``
+    like the ``--metadata`` parse it extends: a bad table must not cost the
+    user a changed output first. Without ``--metadata`` it checks the snapshot
+    the run would fall back to, exactly as ``resolve_reference_table_path``
+    picks it (full: ``deliverables/metadata.csv``; process:
+    ``.phenotypic/reference_metadata.csv``).
+
+    Raises:
+        click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
+            the run would fall back to is deleted); no table at all
+            (``PF-REF-NO-TABLE``); a ``--metadata`` that is not the CSV the
+            run snapshots (``metadata_csv_payload``, the snapshot's own
+            check); or a table that is not a valid reference table.
+    """
+    from phenotypic._cli._cli_preflight import HINTS
+    from phenotypic._core._reference_context import (
+        ReferenceContext,
+        ReferenceTableError,
+    )
+    from phenotypic._cli._cli_reference import (
+        metadata_csv_payload,
+        reference_table_snapshot_path,
+    )
+
+    if metadata_csv is not None:
+        table, label = Path(metadata_csv), "--metadata"
+        try:
+            metadata_csv_payload(table)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
+    elif overwrite:
+        raise click.UsageError(
+            "--overwrite deletes the run's reference metadata snapshot; "
+            "pass --metadata with the table this pipeline reads."
+        )
+    else:
+        table = reference_table_snapshot_path(output_dir, process_mode=process_mode)
+        label = f"reference metadata snapshot {table}"
+        if not table.is_file():
+            raise click.UsageError(
+                "[PF-REF-NO-TABLE] The pipeline reads reference metadata but no "
+                "--metadata was given and the run has no snapshot to fall back to.\n"
+                f"    → {HINTS['PF-REF-NO-TABLE']}"
+            )
+    try:
+        ReferenceContext(table)
+    except ReferenceTableError as exc:
+        raise click.UsageError(f"{label}: {exc}") from exc
+
+
 def _print_dry_run_mutation_preview(
     output_dir: Path, *, restart: bool, will_overwrite: bool
 ) -> None:
@@ -715,6 +816,62 @@ def _print_dry_run_mutation_preview(
             click.echo(f"  - {target.relative_to(output_dir)}")
         if len(targets) > 10:
             click.echo(f"  ... and {len(targets) - 10} more")
+
+
+def _refuse_live_slurm_run(output_dir: Path) -> None:
+    """Exit when a live SLURM run may still own *output_dir*.
+
+    Read-only, and called before the first write of every mode that rewrites
+    run state over an existing output (forward modes and recompile). An
+    unknown scheduler answer refuses too, but is reported as unknown -- never
+    as an active job -- with where and how it can be checked. A closed
+    lifecycle fence never queries the scheduler. See ``live_slurm_job_ids``.
+    """
+    if not output_dir.exists():
+        return
+    from phenotypic._cli._cli_staged_orchestration import live_slurm_job_ids
+
+    jobs = live_slurm_job_ids(output_dir)
+    if not jobs:
+        return
+    lines = [
+        "Error: Cannot continue, restart, overwrite or recompile "
+        f"{output_dir}: an earlier SLURM run may still own it."
+    ]
+    if jobs.live:
+        lines.append(
+            f"SLURM jobs are active: {', '.join(jobs.live)}. Wait for them to "
+            f"finish or cancel them (scancel {' '.join(jobs.live)}), then run "
+            "the command again."
+        )
+    if jobs.unverified:
+        lines.append(
+            "Ledgered SLURM jobs are unverified: "
+            f"{', '.join(jobs.unverified)}. The scheduler could not report "
+            "their state from this host, so they may be running or long "
+            "finished."
+        )
+    if jobs.unresolved:
+        submissions = ", ".join(
+            comment.removeprefix("phenotypic:") for comment in jobs.unresolved
+        )
+        lines.append(
+            "The scheduler could not be queried from this host, so PhenoTypic "
+            "cannot tell whether these unrecorded submissions are running: "
+            f"{submissions}."
+        )
+    if jobs.unverified or jobs.unresolved:
+        lines.append(
+            "Run the same command on a cluster node where `squeue` works. "
+            "To check by hand:"
+        )
+        lines.extend(f"  sacct -j {job_id}" for job_id in jobs.unverified)
+        lines.extend(
+            f"  squeue --noheader --format='%i|%k' | grep '{comment}'"
+            for comment in jobs.unresolved
+        )
+    click.echo("\n".join(lines), err=True)
+    sys.exit(1)
 
 
 def _snapshot_metadata_csv(
@@ -785,6 +942,12 @@ def _prepare_incremental_startup(
         config.metadata_csv = _snapshot_metadata_csv(
             output_dir, config.metadata_csv
         )
+
+    # Before the first work-id below: work-ids read the per-image reference
+    # digests this publishes (and a stale manifest must be gone first).
+    from phenotypic._cli._cli_reference import publish_reference_inputs
+
+    publish_reference_inputs(config, datasets, output_dir)
 
     migrated_failures = 0
     if not config.measure_only:
@@ -1688,7 +1851,12 @@ def _print_process_only_dry_run_plan(
     # Only 8 and 16 mean anything downstream (``_image_data_manager.py``);
     # any other integer used to be accepted and fail per image (spec F15).
     callback=lambda _ctx, _param, value: None if value is None else int(value),
-    help="Bit depth of input images (8 or 16)",
+    help=(
+        "Bit depth of input images (8 or 16). Pass it for integer inputs "
+        "that are not uint8/uint16 (e.g. int32 TIFFs): otherwise each image "
+        "takes the narrowest width its own values fit, so a dark frame and a "
+        "bright one can land on different scales."
+    ),
 )
 @click.option(
     "--detect-mode",
@@ -2092,8 +2260,9 @@ def phenotypic_cli(
                 raise click.UsageError(
                     "--mode process requires --pipeline and --input."
                 )
+            # --metadata is reported below, once the pipeline is loaded: it
+            # is ignored only when the pipeline reads no reference metadata.
             for val, name in (
-                (metadata_csv, "--metadata"),
                 (no_qc, "--no-qc"),
                 (no_dataset_column, "--no-dataset-column"),
             ):
@@ -2241,6 +2410,7 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            _refuse_live_slurm_run(output_dir)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
             except Exception as exc:
@@ -2347,7 +2517,22 @@ def phenotypic_cli(
         # (--restart with --overwrite, --mode measure with --overwrite), only
         # in the modes that reach those deletes, and regardless of
         # --skip-validation (spec §1, F3/F27; phase-A review A2). Process mode
-        # ignores --metadata, so it is not a run input there (A6).
+        # ignores --metadata, so it is not a run input there (A6) -- unless
+        # the pipeline reads reference metadata from it.
+        reference_paths = _reference_operation_paths_for(pipeline_json, cli_mode)
+        if measure_only and reference_paths:
+            _refuse_measuring_reference_pipeline(reference_paths)
+        reads_reference_metadata = bool(reference_paths)
+        if (
+            process_only_layer is not None
+            and metadata_csv is not None
+            and not reads_reference_metadata
+        ):
+            click.echo(
+                "Warning: --metadata is ignored in --mode process "
+                "(no measurement/aggregation output).",
+                err=True,
+            )
         if cli_mode in ("full", "process"):
             _refuse_run_inputs_the_run_would_delete(
                 output_dir=Path(output_dir),
@@ -2358,7 +2543,9 @@ def phenotypic_cli(
                     ("--pipeline", pipeline_json),
                     (
                         "--metadata",
-                        metadata_csv if cli_mode == "full" else None,
+                        metadata_csv
+                        if cli_mode == "full" or reads_reference_metadata
+                        else None,
                     ),
                     ("--image-manifest", image_manifest),
                 ),
@@ -2390,6 +2577,16 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
+
+        # The reference table, likewise outside --skip-validation and above
+        # every mutation (the --dry-run exit, the --overwrite rmtree).
+        if reads_reference_metadata:
+            _refuse_unusable_reference_table(
+                metadata_csv=metadata_csv,
+                overwrite=overwrite,
+                output_dir=Path(output_dir),
+                process_mode=process_only_layer is not None,
+            )
 
         continuing = (
             not measure_only
@@ -2471,28 +2668,7 @@ def phenotypic_cli(
                 raise click.UsageError(str(exc)) from exc
             config.image_manifest_digest = manifest_snapshot.digest
 
-        if output_dir.exists():
-            from phenotypic._cli._cli_slurm_lifecycle import (
-                load_slurm_lifecycle,
-            )
-            from phenotypic._cli._cli_staged_orchestration import (
-                active_ledger_job_ids,
-            )
-
-            lifecycle = load_slurm_lifecycle(output_dir)
-            active_jobs = (
-                []
-                if lifecycle is not None
-                and lifecycle.get("active") is False
-                else active_ledger_job_ids(output_dir)
-            )
-            if active_jobs:
-                click.echo(
-                    "Error: Cannot continue, restart, or overwrite while SLURM "
-                    f"jobs are active: {', '.join(active_jobs)}",
-                    err=True,
-                )
-                sys.exit(1)
+        _refuse_live_slurm_run(output_dir)
 
         # Load compatible continuation state before creating output directories.
         if config.resume:

@@ -1,6 +1,10 @@
 """The labels and descriptions of the size measurements."""
 
-from .._base._change_notes import SIZE_SHAPE_SPLIT_NOTE, append_change_note
+from .._base._change_notes import (
+    SINGLE_CHANNEL_SIZE_NOTE,
+    SIZE_SHAPE_SPLIT_NOTE,
+    append_change_note,
+)
 from .._base._categories import CATEGORIES
 from .._base._measurement_info import Entry
 from .._base._tiers import DirectPhenotype
@@ -24,7 +28,7 @@ class SIZE(DirectPhenotype):
 
     @classmethod
     def change_note(cls) -> str:
-        return SIZE_SHAPE_SPLIT_NOTE
+        return f"{SIZE_SHAPE_SPLIT_NOTE}\n{SINGLE_CHANNEL_SIZE_NOTE}"
 
     AREA = Entry(
         "Area",
