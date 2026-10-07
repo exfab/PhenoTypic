@@ -89,7 +89,7 @@ A single-channel run started before this change must be re-run with
    finished, which were segmented and measured on raw integer counts."""
 
 SINGLE_CHANNEL_SIZE_NOTE = f"""\
-.. versionchanged:: 0.20.0
+.. versionchanged:: 0.21.0
    {_SINGLE_CHANNEL_NORMALISATION} ``Size_IntegratedIntensity`` of such an
    image is therefore in normalised units: the earlier value divided by 255 or
    65535. {_SINGLE_CHANNEL_SEGMENTATION}
@@ -97,13 +97,13 @@ SINGLE_CHANNEL_SIZE_NOTE = f"""\
 """
 
 SINGLE_CHANNEL_SEGMENTATION_NOTE = f"""\
-.. versionchanged:: 0.20.0
+.. versionchanged:: 0.21.0
    {_SINGLE_CHANNEL_NORMALISATION} {_SINGLE_CHANNEL_SEGMENTATION}
    {_SINGLE_CHANNEL_RESUME}
 """
 
 SINGLE_CHANNEL_PRODUCED_NOTE = f"""\
-.. versionchanged:: 0.20.0
+.. versionchanged:: 0.21.0
    {_SINGLE_CHANNEL_NORMALISATION} These columns are now produced for such
    an image; earlier versions raised on it instead. Their values equal those
    of the same scan supplied as a float array in ``[0, 1]``.

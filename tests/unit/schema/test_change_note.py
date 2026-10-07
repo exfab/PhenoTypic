@@ -103,15 +103,18 @@ def test_unrelated_classes_carry_no_note():
     assert BBOX.change_note() == ""
 
 
-# ------------------------------------------- single-channel normalisation (0.20.0)
+# ------------------------------------------- single-channel normalisation (0.21.0)
 
 SINGLE_CHANNEL = "single-channel"
+SINGLE_CHANNEL_MARKER = ".. versionchanged:: 0.21.0"
 
 
 def test_size_note_keeps_the_split_note_and_adds_integrated_intensity_units():
-    """SIZE carries two changes in one release: both notes render, split first."""
+    """SIZE carries two changes from two releases: both notes render, split first."""
     note = " ".join(SIZE.change_note().split())
-    assert note.count(MARKER) == 2
+    assert note.count(MARKER) == 1
+    assert note.count(SINGLE_CHANNEL_MARKER) == 1
+    assert note.index(MARKER) < note.index(SINGLE_CHANNEL_MARKER)
     assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
     assert "``Size_IntegratedIntensity``" in note
     assert "normalised units" in note
@@ -120,7 +123,7 @@ def test_size_note_keeps_the_split_note_and_adds_integrated_intensity_units():
 @pytest.mark.parametrize("info", [INTENSITY, TEXTURE], ids=["INTENSITY", "TEXTURE"])
 def test_intensity_and_texture_notes_say_the_columns_are_now_produced(info):
     note = " ".join(info.change_note().split())
-    assert note.startswith(MARKER)
+    assert note.startswith(SINGLE_CHANNEL_MARKER)
     assert SINGLE_CHANNEL in note
     assert "now produced" in note
 
@@ -143,7 +146,8 @@ def test_single_channel_note_says_detection_derived_columns_change(info):
 
 def test_shape_note_keeps_the_split_note_first():
     note = " ".join(SHAPE.change_note().split())
-    assert note.count(MARKER) == 2
+    assert note.count(MARKER) == 1
+    assert note.count(SINGLE_CHANNEL_MARKER) == 1
     assert note.index("Shape_Area") < note.index(SINGLE_CHANNEL)
 
 
@@ -164,6 +168,8 @@ def test_single_channel_note_warns_against_resuming(info):
 )
 def test_single_channel_note_renders_in_measurer_and_enum_docs(measurer, info):
     for doc in (measurer.__doc__, info.__doc__):
-        assert MARKER in doc
+        assert SINGLE_CHANNEL_MARKER in doc
         assert SINGLE_CHANNEL in doc
-    assert measurer.__doc__.index(MARKER) < measurer.__doc__.index(".. list-table::")
+    assert measurer.__doc__.index(SINGLE_CHANNEL_MARKER) < measurer.__doc__.index(
+        ".. list-table::"
+    )
