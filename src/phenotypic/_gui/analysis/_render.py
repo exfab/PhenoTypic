@@ -80,8 +80,8 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         # so the backend is settled before this line.
         import matplotlib.pyplot as plt
 
-        # Apply the matplotlib rcParams mirror (DESIGN.md "07") for the duration
-        # of figure construction + raster so filter previews carry the brand
+        # Apply the static-figure theme (DESIGN.md "Figures") for the duration
+        # of figure construction + raster so filter previews carry the figure
         # palette, fonts, and spine rules.
         with phenotypic_mpl_context():
             mpl_fig = node.show(**plot_kwargs)

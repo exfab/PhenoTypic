@@ -56,6 +56,7 @@ from phenotypic.sdk_ import (
     manifest_json_path,
     matches_any_suffix,
     master_measurements_parquet_path,
+    measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -437,6 +438,11 @@ class TestPathHelpers:
             output / "deliverables" / "measurements_by_feature"
         )
 
+    def test_measurements_by_category_dir(self, output: Path) -> None:
+        assert measurements_by_category_dir(output) == (
+            output / "deliverables" / "measurements_by_category"
+        )
+
     def test_task_status_path(self, output: Path) -> None:
         assert task_status_path(output, 3) == (
             output / ".phenotypic" / "progress" / "recompile" / "status" / "task_3.json"
@@ -523,6 +529,7 @@ class TestDeliverablesLayout:
             "measurements_csv_path": measurements_csv_path,
             "measurements_parquet_path": measurements_parquet_path,
             "measurements_by_feature_dir": measurements_by_feature_dir,
+            "measurements_by_category_dir": measurements_by_category_dir,
             "dashboard_html_path": dashboard_html_path,
             "pipeline_json_path": pipeline_json_path,
             "readme_md_path": readme_md_path,
@@ -1912,17 +1919,59 @@ def test_the_revision_identity_measures_through_a_hold_not_by_path(
 
 
 def test_both_token_branches_agree_for_one_store(tmp_path: Path) -> None:
-    """If they ever disagree, every Browse tile request 409s forever.
+    """The path and held branches of one function measure the same token.
 
-    The route validates with the path branch and serves under the held branch
-    (``_tile_routes.py``), comparing the two tokens. The digest folds
+    Browse measures through a hold everywhere, but the path branch still
+    answers wherever no identity backend exists and whenever the hold fails
+    with an ordinary ``OSError`` (``published_token_through_a_hold``), so a
+    token from either branch can meet one from the other. The digest folds
     ``st_mtime_ns``/``st_ctime_ns``/``st_ino``, so agreement is a property of
-    both branches taking a real ``os.stat_result`` of the same file -- not
-    something either branch can be checked for alone.
+    both branches taking ``os.fstat`` of the open file -- not something either
+    branch can be checked for alone. On Windows this failed while the path
+    branch used ``os.lstat``, which reports a different ``st_ctime`` than
+    ``os.fstat`` (python/cpython#157671).
     """
     from phenotypic.sdk_ import _identity_io, store_publication_token
 
     store = _published_store(tmp_path)
+    by_path = store_publication_token(store)
+    with _identity_io.open_identity_directory(store) as held:
+        by_hold = store_publication_token(store, root_directory=held)
+    assert by_path == by_hold is not None
+
+
+def test_the_path_branch_measures_the_open_file_not_the_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A by-path stat that disagrees with the open file cannot move the token.
+
+    Windows' ``os.lstat`` reports another ``st_ctime`` than ``os.fstat`` for
+    the same file, and can report an older ``st_mtime_ns``. The agreement
+    test above can only see that on Windows; this one simulates it anywhere
+    by making ``Path.lstat`` of the store root disagree with the file.
+    """
+    import types
+
+    from phenotypic.sdk_ import _identity_io, store_publication_token
+    from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
+
+    store = _published_store(tmp_path)
+    root = store / STORE_ROOT_JSON
+    real_lstat = Path.lstat
+
+    def _skewed_lstat(self: Path) -> object:
+        result = real_lstat(self)
+        if self != root:
+            return result
+        return types.SimpleNamespace(
+            st_mode=result.st_mode,
+            st_size=result.st_size,
+            st_mtime_ns=result.st_mtime_ns - 1_000,
+            st_ctime_ns=result.st_ctime_ns - 7_000,
+            st_ino=result.st_ino,
+        )
+
+    monkeypatch.setattr(Path, "lstat", _skewed_lstat)
     by_path = store_publication_token(store)
     with _identity_io.open_identity_directory(store) as held:
         by_hold = store_publication_token(store, root_directory=held)

@@ -12,8 +12,8 @@ Three decisions are pinned here rather than left to each call site.
 
 **One sequential ramp, and it is the brand's.**
 :data:`~phenotypic.sdk_.viz.figures.SEQUENTIAL_COLORSCALE` -- near-transparent
-navy through sky to full navy (DESIGN.md "06 -- Heatmap Colorscale" / "12 --
-Continuous Colorbar") -- is the single continuous ramp already used by the
+navy through sky to full navy (DESIGN.md "Data Visualization / Heatmap Colorscale" / "Chart
+Support Elements / Continuous Colorbar") -- is the single continuous ramp already used by the
 heatmap tab, so a value reads the same way on a card as it does on a plate
 map. A diverging ramp suits deviation from a control and is a later addition;
 nothing here assumes sequential beyond this constant.

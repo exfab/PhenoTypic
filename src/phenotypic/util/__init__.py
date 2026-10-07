@@ -3,7 +3,13 @@ A module for useful utility operations and functions that don't fit into a speci
 """
 
 from ._geometric_median import geometric_median
-from ._measurement_outputs import generate_output_key, split_measurements
+from ._measurement_outputs import (
+    MeasurementProducer,
+    generate_output_key,
+    measurement_producers,
+    split_measurements,
+    split_measurements_by_category,
+)
 from ._robust_color_stats import (
     DEFAULT_MEDOID_CANDIDATES,
     MedoidCandidates,
@@ -30,7 +36,10 @@ from .image_metrics import (
 __all__ = [
     "geometric_median",
     "generate_output_key",
+    "MeasurementProducer",
+    "measurement_producers",
     "split_measurements",
+    "split_measurements_by_category",
     "robust_color_center",
     "medoid_ciede2000",
     "candidate_medoid",

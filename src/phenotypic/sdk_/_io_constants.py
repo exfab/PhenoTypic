@@ -27,7 +27,7 @@ Module layout
       ``master_measurements_parquet_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
       ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
-      ``measurements_by_feature_dir``,
+      ``measurements_by_feature_dir``, ``measurements_by_category_dir``,
       etc.
     - **`progress_dir_: Path`** — the already-resolved progress dir
       (i.e. ``output_dir / "progress"``). Used for helpers that produce
@@ -73,6 +73,7 @@ import errno
 import hashlib
 import json
 import logging
+import os
 import re
 import stat as stat_module
 from dataclasses import dataclass
@@ -798,6 +799,10 @@ DIR_MEASUREMENTS: Final[str] = "measurements"
 #: Per-feature spreadsheet split written by
 #: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.
 DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
+
+#: Per-category spreadsheet split written by
+#: :func:`phenotypic._cli._cli_output_manager.split_master_by_category`.
+DIR_MEASUREMENTS_BY_CATEGORY: Final[str] = "measurements_by_category"
 
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
@@ -2115,11 +2120,19 @@ def store_publication_token(
     root = Path(store) / STORE_ROOT_JSON
     try:
         if root_directory is None:
-            before = root.lstat()
-            if not stat_module.S_ISREG(before.st_mode):
+            if not stat_module.S_ISREG(root.lstat().st_mode):
                 return None
-            raw = root.read_bytes()
-            after = root.lstat()
+            # Measure the open file, exactly as both held backends do
+            # (``read_regular_with_stat``), not the path. On Windows
+            # ``os.lstat`` reports the creation time as ``st_ctime`` while
+            # ``os.fstat`` reports the metadata-change time
+            # (python/cpython#157671), and a directory-entry query can lag an
+            # open-handle query on ``st_mtime_ns``; either one made this
+            # branch's token differ from the held branch's for the same file.
+            with root.open("rb") as stream:
+                before = os.fstat(stream.fileno())
+                raw = stream.read()
+                after = os.fstat(stream.fileno())
         else:
             from phenotypic.sdk_._identity_io import IdentityRefused
 
@@ -2263,6 +2276,11 @@ def dataset_overlays_dir(output_dir: Path, dataset: str) -> Path:
 def measurements_by_feature_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements_by_feature/``."""
     return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_FEATURE
+
+
+def measurements_by_category_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/measurements_by_category/``."""
+    return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_CATEGORY
 
 
 def logs_dir(output_dir: Path) -> Path:

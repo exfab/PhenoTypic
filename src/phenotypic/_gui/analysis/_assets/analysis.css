@@ -71,8 +71,17 @@
     text-align: left;
 }
 
+.analysis-post-preview-table td {
+    font-family: var(--font-mono);
+}
+
+/* Headers name data columns, so they keep their own case. */
 .analysis-post-preview-table th {
     background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    color: var(--color-muted);
 }
 
 .analysis-post-col {

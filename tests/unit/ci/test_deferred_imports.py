@@ -98,8 +98,9 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "correction/_color_correction/_calibration_overlay.py": {
         "FigureCanvasAgg": ("render_calibration_overlay", "render_delta_e_bars"),
         "Figure": ("render_calibration_overlay", "render_delta_e_bars"),
-        "Rectangle": ("render_calibration_overlay",),
+        "Rectangle": ("render_calibration_overlay", "render_delta_e_bars"),
         "Patch": ("render_delta_e_bars",),
+        "ScaledTranslation": ("render_delta_e_bars",),
         "font_manager": ("_theme_font_family",),
         "rc_context": ("render_calibration_overlay", "render_delta_e_bars"),
         "phenotypic_mpl_context": (
@@ -107,6 +108,11 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     "correction/_color_correction/_color_corrector.py": {"colour": ("_operate",)},
+    "sdk_/viz/figures/_mpl_theme.py": {
+        "mpl": ("phenotypic_mpl_context",),
+        "cycler": ("phenotypic_rc",),
+        "Figure": (),
+    },
     "correction/_color_denoise.py": {
         "bm3d": ("_build_profile", "_denoise_gat", "_denoise_plain"),
         "decode_srgb": ("_operate",),

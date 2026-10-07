@@ -300,6 +300,18 @@
 .browse-csv-metadata-table td {
     white-space: nowrap;
 }
+/* Metadata values are data: mono (DESIGN.md Typography). Headers are the
+   user's column names, so they stay in their own case. */
+.browse-csv-metadata-table td {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-data);
+}
+.browse-csv-metadata-table th {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    color: var(--color-muted);
+}
 
 @media (max-width: 62rem) {
     .browse-preparation-bar {

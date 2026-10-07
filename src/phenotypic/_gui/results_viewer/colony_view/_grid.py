@@ -86,32 +86,32 @@ from phenotypic._gui.results_viewer._metadata import (
 # Constants
 # ---------------------------------------------------------------------------
 
-#: Categories that stay SELECTABLE as a grid axis. These name what a colony
+#: Metric families that stay SELECTABLE as a grid axis. These name what a colony
 #: *is* — where it sits, which sample it came from, how it was curated — not
 #: what was measured about it, so they are the carve-out from the derivation
 #: below rather than entries in it.
-_AXIS_ELIGIBLE_CATEGORIES: frozenset[str] = frozenset(
+_AXIS_ELIGIBLE_FAMILIES: frozenset[str] = frozenset(
     {"Metadata", "Grid", "Object", "Curation", "Status"}
 )
 
 
 def _derive_measurement_prefixes() -> tuple[str, ...]:
-    """Return the ``<Category>_`` prefixes excluded from axis pickers.
+    """Return the ``<Family>_`` prefixes excluded from axis pickers.
 
     Walks every leaf of the :class:`~phenotypic.schema.MeasurementInfo`
     hierarchy — the member-carrying enums, skipping the member-less tier
-    bases they hang off — and keeps each leaf's category except the
-    grouping families in :data:`_AXIS_ELIGIBLE_CATEGORIES`.
+    bases they hang off — and keeps each leaf's metric family except the
+    grouping families in :data:`_AXIS_ELIGIBLE_FAMILIES`.
 
     Derived rather than hand-maintained because the literal this replaced
     was wrong in both directions: it listed ``TextureGray_``, which no
     schema declares (so ``Texture_`` columns were never excluded), and it
-    omitted every other real category, ``Size_`` and ``ColorLab_`` among
-    them.
+    omitted every other real metric family, ``Size_`` and ``ColorLab_``
+    among them.
 
     Returns:
-        Sorted ``"<Category>_"`` prefixes. A leaf that never implements
-        ``category()`` is skipped rather than allowed to raise: this runs
+        Sorted ``"<Family>_"`` prefixes. A leaf that never implements
+        ``metric_family()`` is skipped rather than allowed to raise: this runs
         at module scope, so one raising leaf would fail the import of the
         whole colony view.
     """
@@ -122,14 +122,14 @@ def _derive_measurement_prefixes() -> tuple[str, ...]:
         for sub in subclasses:
             yield from leaves(sub)
 
-    categories: set[str] = set()
+    families: set[str] = set()
     for leaf in leaves(MeasurementInfo):
         try:
-            categories.add(leaf.category())  # type: ignore[attr-defined]
+            families.add(leaf.metric_family())  # type: ignore[attr-defined]
         except NotImplementedError:
             continue
     return tuple(
-        sorted(f"{name}_" for name in categories - _AXIS_ELIGIBLE_CATEGORIES)
+        sorted(f"{name}_" for name in families - _AXIS_ELIGIBLE_FAMILIES)
     )
 
 
@@ -250,8 +250,8 @@ def selectable_axis_columns(
     - cardinality (unique non-null values) is in ``[2, max_cardinality]``
       (or ``>= 2`` when ``max_cardinality`` is ``None``);
     - name does not start with one of :data:`_MEASUREMENT_PREFIXES` — every
-      ``MeasurementInfo`` category except the grouping families named in
-      :data:`_AXIS_ELIGIBLE_CATEGORIES`;
+      ``MeasurementInfo`` metric family except the grouping families named in
+      :data:`_AXIS_ELIGIBLE_FAMILIES`;
     - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 
@@ -797,8 +797,8 @@ def build_stack_popover_rows(
         )
     return rows
 
-#: Width of the legend's gradient track, in pixels. DESIGN.md "12 --
-#: Continuous Colorbar" fixes the track's height and radius but not its
+#: Width of the legend's gradient track, in pixels. DESIGN.md "Chart
+#: Support Elements / Continuous Colorbar" fixes the track's height and radius but not its
 #: length; 180px reads as a ramp without crowding the toolbar it sits under.
 _LEGEND_TRACK_WIDTH = 180
 
@@ -821,7 +821,7 @@ def build_measurement_legend(scale: MeasurementScale) -> Component:
         scale: The scale the visible cards were tinted from.
 
     Returns:
-        A DESIGN.md "12 -- Continuous Colorbar" legend: column name, the
+        A DESIGN.md "Chart Support Elements / Continuous Colorbar" legend: column name, the
         gradient track, and mono end labels.
     """
     gradient = ", ".join(

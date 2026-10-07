@@ -125,15 +125,9 @@ class TestResolveDevice:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_auto_without_allow_cpu_returns_or_raises(self):
-        """auto + allow_cpu=False either finds an accelerator or raises."""
-        from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
-
-        try:
-            result = resolve_device("auto", allow_cpu=False)
-            assert isinstance(result, str)
-        except RuntimeError as exc:
-            assert "No accelerator" in str(exc)
+    # The no-accelerator branches (CPU fallback, allow_cpu=False refusal,
+    # unavailable explicit accelerators) are pinned hardware-independently in
+    # test_resolve_device_fallback.py with a fake torch.
 
 
 # ---------------------------------------------------------------------------
@@ -227,8 +221,14 @@ class TestMicroSamModelsFolder:
         assert MicroSamCheckpointManager.cache_dir() == tmp_path / "models"
 
     def test_an_empty_variable_counts_as_unset(self, monkeypatch):
+        # Compared with the unset value, not a folder name: the platformdirs
+        # default is ``.../micro_sam`` on Linux and macOS but
+        # ``...\micro_sam\micro_sam\Cache`` on Windows.
+        monkeypatch.delenv("MICROSAM_CACHEDIR", raising=False)
+        unset = MicroSamCheckpointManager.cache_dir()
         monkeypatch.setenv("MICROSAM_CACHEDIR", "")
-        assert MicroSamCheckpointManager.cache_dir().parent.name == "micro_sam"
+        assert MicroSamCheckpointManager.cache_dir() == unset
+        assert "micro_sam" in unset.parts
 
     def test_the_preflight_sees_a_cached_model(self, tmp_path, monkeypatch):
         from phenotypic.detect.nn import MicroSamDetector

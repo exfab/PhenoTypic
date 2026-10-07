@@ -1,12 +1,324 @@
-# Frontend Design Style Guide
+---
+version: alpha
+name: PhenoTypic
+description: >-
+  Light, evidence-first design system for PhenoTypic's GUI, dashboards and
+  figures: navy UI chrome, a colorblind-safe Okabe-Ito data palette, Nunito Sans
+  for general text and JetBrains Mono for every data value.
+colors:
+  primary: "#003660"
+  navy: "#003660"
+  blue: "#1b75bc"
+  blue-text: "#1b73b9"
+  gold: "#febc11"
+  gold-text: "#926a00"
+  white: "#ffffff"
+  canvas: "#FBFEF8"
+  surface: "#ffffff"
+  border: "#dde3ed"
+  rule: "#e8ecf2"
+  muted: "#6d7684"
+  body: "#2e3a4e"
+  heading: "#003660"
+  image-stage: "#0e1620"
+  code-bg: "#edf2f7"
+  oi-navy: "#003660"
+  oi-orange: "#E69F00"
+  oi-sky: "#56B4E9"
+  oi-green: "#009E73"
+  oi-blue: "#0072B2"
+  oi-purple: "#CC79A7"
+  oi-vermilion: "#D55E00"
+  oi-yellow: "#F0E442"
+  oi-grey: "#BBBBBB"
+  oi-orange-text: "#966800"
+  oi-sky-text: "#0B6E9E"
+  oi-green-text: "#006B4F"
+  oi-purple-text: "#8B3D6E"
+  oi-vermilion-text: "#b85100"
+  alert-info-text: "#0B5E87"
+  alert-success-text: "#005C43"
+  alert-warning-text: "#7A5500"
+  alert-error-text: "#8A3C00"
+typography:
+  display:
+    fontFamily: Nunito Sans
+    fontSize: 2.5rem
+    fontWeight: 600
+    lineHeight: 1.1
+    letterSpacing: -0.02em
+  title:
+    fontFamily: Nunito Sans
+    fontSize: 1.875rem
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: -0.01em
+  header:
+    fontFamily: Nunito Sans
+    fontSize: 1.5rem
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: -0.01em
+  h2:
+    fontFamily: Nunito Sans
+    fontSize: 1.25rem
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0em
+  h3:
+    fontFamily: Nunito Sans
+    fontSize: 1.125rem
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0em
+  body-lg:
+    fontFamily: Nunito Sans
+    fontSize: 1.125rem
+    fontWeight: 400
+    lineHeight: 1.6
+    letterSpacing: 0em
+  body:
+    fontFamily: Nunito Sans
+    fontSize: 1rem
+    fontWeight: 400
+    lineHeight: 1.6
+    letterSpacing: 0em
+  body-sm:
+    fontFamily: Nunito Sans
+    fontSize: 0.8125rem
+    fontWeight: 400
+    lineHeight: 1.6
+    letterSpacing: 0em
+  ui-title:
+    fontFamily: Nunito Sans
+    fontSize: 0.8125rem
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0em
+  button:
+    fontFamily: Nunito Sans
+    fontSize: 0.8125rem
+    fontWeight: 500
+    lineHeight: 1
+    letterSpacing: 0.01em
+  label:
+    fontFamily: JetBrains Mono
+    fontSize: 0.6875rem
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0.08em
+  overline:
+    fontFamily: JetBrains Mono
+    fontSize: 0.6875rem
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0.12em
+  caption:
+    fontFamily: JetBrains Mono
+    fontSize: 0.6875rem
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0em
+  data-value:
+    fontFamily: JetBrains Mono
+    fontSize: 0.9375rem
+    fontWeight: 500
+    lineHeight: 1.45
+    letterSpacing: 0em
+  data-value-muted:
+    fontFamily: JetBrains Mono
+    fontSize: 0.9375rem
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0em
+  data-micro:
+    fontFamily: JetBrains Mono
+    fontSize: 0.625rem
+    fontWeight: 400
+    lineHeight: 1.2
+    letterSpacing: 0.02em
+rounded:
+  sm: 3px
+  base: 6px
+  md: 10px
+  lg: 16px
+  full: 9999px
+spacing:
+  sp-1: 0.25rem
+  sp-2: 0.5rem
+  sp-3: 0.75rem
+  sp-4: 1rem
+  sp-5: 1.25rem
+  sp-6: 1.5rem
+  sp-8: 2rem
+  sp-10: 2.5rem
+  sp-12: 3rem
+  sp-16: 4rem
+components:
+  page:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.body}"
+    typography: "{typography.body}"
+  card:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.body}"
+    rounded: "{rounded.md}"
+    padding: "{spacing.sp-4}"
+  heading:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.heading}"
+    typography: "{typography.header}"
+  caption:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.muted}"
+    typography: "{typography.caption}"
+  link:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.blue}"
+  text-gold:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.gold-text}"
+  code-inline:
+    backgroundColor: "{colors.code-bg}"
+    textColor: "{colors.navy}"
+    rounded: "{rounded.sm}"
+  tooltip:
+    backgroundColor: "{colors.navy}"
+    textColor: "{colors.white}"
+    typography: "{typography.caption}"
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.white}"
+    typography: "{typography.button}"
+    rounded: "{rounded.base}"
+  button-blue:
+    backgroundColor: "{colors.blue}"
+    textColor: "{colors.white}"
+    typography: "{typography.button}"
+    rounded: "{rounded.base}"
+  button-gold:
+    backgroundColor: "{colors.gold}"
+    textColor: "{colors.navy}"
+    typography: "{typography.button}"
+    rounded: "{rounded.base}"
+  button-outline:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.navy}"
+    typography: "{typography.button}"
+    rounded: "{rounded.base}"
+  button-outline-active:
+    backgroundColor: "color-mix(in srgb, #1b75bc 8%, #ffffff)"
+    textColor: "{colors.blue-text}"
+  button-ghost:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.muted}"
+    typography: "{typography.button}"
+  button-danger:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.oi-vermilion-text}"
+    typography: "{typography.button}"
+    rounded: "{rounded.base}"
+  button-danger-hover:
+    backgroundColor: "{colors.oi-vermilion-text}"
+    textColor: "{colors.white}"
+  badge-navy:
+    backgroundColor: "color-mix(in srgb, #003660 8%, #ffffff)"
+    textColor: "{colors.navy}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-blue:
+    backgroundColor: "color-mix(in srgb, #1b75bc 8%, #ffffff)"
+    textColor: "{colors.blue-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-gold:
+    backgroundColor: "color-mix(in srgb, #febc11 10%, #ffffff)"
+    textColor: "{colors.gold-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-orange:
+    backgroundColor: "color-mix(in srgb, #E69F00 10%, #ffffff)"
+    textColor: "{colors.oi-orange-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-sky:
+    backgroundColor: "color-mix(in srgb, #56B4E9 10%, #ffffff)"
+    textColor: "{colors.oi-sky-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-green:
+    backgroundColor: "color-mix(in srgb, #009E73 8%, #ffffff)"
+    textColor: "{colors.oi-green-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-vermilion:
+    backgroundColor: "color-mix(in srgb, #D55E00 8%, #ffffff)"
+    textColor: "{colors.oi-vermilion-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  badge-purple:
+    backgroundColor: "color-mix(in srgb, #CC79A7 10%, #ffffff)"
+    textColor: "{colors.oi-purple-text}"
+    typography: "{typography.label}"
+    rounded: "{rounded.full}"
+  alert-info:
+    backgroundColor: "color-mix(in srgb, #56B4E9 8%, #ffffff)"
+    textColor: "{colors.alert-info-text}"
+    rounded: "{rounded.base}"
+  alert-success:
+    backgroundColor: "color-mix(in srgb, #009E73 7%, #ffffff)"
+    textColor: "{colors.alert-success-text}"
+    rounded: "{rounded.base}"
+  alert-warning:
+    backgroundColor: "color-mix(in srgb, #E69F00 10%, #ffffff)"
+    textColor: "{colors.alert-warning-text}"
+    rounded: "{rounded.base}"
+  alert-error:
+    backgroundColor: "color-mix(in srgb, #D55E00 8%, #ffffff)"
+    textColor: "{colors.alert-error-text}"
+    rounded: "{rounded.base}"
+  image-stage:
+    backgroundColor: "{colors.image-stage}"
+    textColor: "{colors.white}"
+  divider:
+    backgroundColor: "{colors.rule}"
+    height: 1px
+  hairline:
+    backgroundColor: "{colors.border}"
+    height: 1px
+  chart-series-1:
+    backgroundColor: "{colors.oi-navy}"
+  chart-series-2:
+    backgroundColor: "{colors.oi-orange}"
+  chart-series-3:
+    backgroundColor: "{colors.oi-sky}"
+  chart-series-4:
+    backgroundColor: "{colors.oi-green}"
+  chart-series-5:
+    backgroundColor: "{colors.oi-blue}"
+  chart-series-6:
+    backgroundColor: "{colors.oi-purple}"
+  chart-series-error:
+    backgroundColor: "{colors.oi-vermilion}"
+  chart-reference:
+    backgroundColor: "{colors.oi-grey}"
+  chart-fill-yellow:
+    backgroundColor: "{colors.oi-yellow}"
+---
 
-> Scientific Analysis Dashboard Design System v1.2 -- Light theme -- Data-intensive
+# PhenoTypic Design System
+
+> Scientific Analysis Dashboard Design System v2.0 -- Light theme -- Data-intensive
 > research & bioanalysis applications (PhenoTypic).
 >
-> **Single source of truth** for all dashboard UI and data-visualization work. Audience:
-> human designers, frontend developers, and agentic coding assistants. Fonts: Comfortaa
-> (display + body), JetBrains Mono (mono), IBM Plex Serif (italic species names only).
-> Canvas: #FBFEF8.
+> Written in the Google DESIGN.md format: the YAML front matter above holds the
+> machine-readable tokens, and the prose below explains how to apply them. Audience:
+> human designers, frontend developers, and agentic coding assistants. Fonts: Nunito Sans
+> (display, body and italic species names), JetBrains Mono (every data and table value).
+> Canvas: #FBFEF8. Check the file with `npx @google/design.md@0.4.0 lint DESIGN.md`.
+>
+> The front matter mirrors `src/phenotypic/_gui/_design.py`, which is what the GUI
+> actually uses; when the two disagree, the code wins and this file is out of date.
 
 ---
 
@@ -41,14 +353,13 @@ chart;
 the gold accent never becomes a data series. This three-way closure is the single most
 important characteristic of the system.
 
-Type carries the second voice. Comfortaa -- a rounded geometric sans -- carries both
-content headings / large stat values (display) and body copy / UI chrome titles (body) at
-weights 400-700, giving the chrome one warm, approachable voice. Latin species names
-(e.g. *Rhodotorula toruloides*) are the one exception: because Comfortaa ships no true
-italic, they are set in IBM Plex Serif's italic cut so the binomial reads as a real
-italic, not a synthesized slant. JetBrains
-Mono
-carries every number, axis label, badge, caption, and code token. Mono-for-all-data is a
+Type carries the second voice. Nunito Sans -- a humanist sans with softly rounded
+terminals -- carries all general text and formatting: content headings and large stat
+values (display, weight 600) and body copy and UI chrome titles (body, 16px), giving the
+chrome one warm, readable voice. Latin species names (e.g. *Rhodotorula toruloides*) are
+set in Nunito Sans's own true italic, so the binomial reads as a real italic within the
+surrounding text. JetBrains Mono carries every data value and table value, and every
+number, axis label, badge, caption, and code token. Mono-for-all-data is a
 signature: it preserves optical column alignment and gives the surface a data-forward
 read.
 
@@ -79,10 +390,10 @@ construction.
 - **Mono for all data.** Every number, axis label, badge, caption, and code token
   renders
   in JetBrains Mono, for optical column alignment and a data-forward voice.
-- **Comfortaa across chrome.** A single rounded geometric sans (Comfortaa) carries both
-  content headings / stat values (weight 400) and body / component titles (500 / 600).
-  Italic species names are the lone serif exception (IBM Plex Serif italic), since
-  Comfortaa has no true italic face.
+- **Nunito Sans for text, mono for data.** Nunito Sans carries all general text and
+  formatting: content headings and stat values (weight 600), body copy (16px) and
+  component titles (500 / 600), plus italic species names in its true italic. Every data
+  value and table value is set in JetBrains Mono.
 - **Colorblind-safe by construction.** Fixed Okabe-Ito six-series order, no red-green
   colormaps, vermilion reserved for error / alert, six categorical series maximum before
   an
@@ -95,33 +406,31 @@ construction.
   cards throughout; the only intentionally dark surface is the image stage, where the
   pixels themselves are the content.
 
----
-
-## Absolute Constraints
+### Absolute Constraints
 
 These rules are **never** overridden by component context, user request, or convenience.
-Agents must treat violations as hard errors.
+Agents must treat violations as hard errors. They govern GUI chrome and on-screen charts;
+static figures follow the Figures section, where every rule is a default.
 
 - **NEVER** use data colors (Okabe-Ito) for buttons, navigation, headings, text links,
   input borders, or any UI chrome.
 - **NEVER** use `#F0E442` (yellow) as text color, stroke, or thin line on white or light
   backgrounds.
-- **NEVER** render numeric data, axis labels, badge text, captions, or code outside
-  `font-family: 'JetBrains Mono'`.
+- **NEVER** render numeric data, table values, axis labels, badge text, captions, or code
+  in the GUI outside `font-family: 'JetBrains Mono'`.
 - **NEVER** apply `--shadow-lg` to inline cards or panel components.
 - **NEVER** combine `--oi-blue` (`#0072B2`) and `--color-blue` (`#1b75bc`) in the same
   chart.
-- **NEVER** reorder Okabe-Ito series. Series order is fixed:
-  navy, orange, sky, green, blue, purple (vermilion reserved for error/alert).
+- **NEVER** reorder Okabe-Ito series in on-screen charts. Series order is fixed:
+  navy, orange, sky, green, blue, purple (vermilion reserved for error/alert). Static
+  figures default to the published order instead (see Figures).
 - **NEVER** use more than 6 categorical series in a single chart without introducing an
   "other" category.
 - **NEVER** use raw Okabe-Ito hex values as text on white without applying the darkened
-  contrast variants listed in the Badges section.
+  contrast variants listed in the Badges section (`--oi-*-text`, `--color-blue-text`,
+  `--color-gold-text`).
 - **NEVER** use red-green colormaps.
 - **NEVER** use em dashes. Use double hyphens (`--`) or restructure the sentence.
-
-Add these to the existing "Absolute Constraints" block. They extend, never contradict,
-the current rules.
 
 - **NEVER** render a single fluorescence / intensity channel in a hue. Single channels
   display in grayscale. Color is reserved for multi-channel composites.
@@ -134,16 +443,15 @@ the current rules.
 - **NEVER** draw chart annotation lines (thresholds, means) in a categorical series
   color. Use `--oi-grey` (`#BBBBBB`) or `--color-muted` so annotations never read as a
   data series.
-- **NEVER** apply a continuous sequential colorbar built from a categorical series. Use
-  the single-variable navy-to-blue ramp already defined in section 06.
+- **NEVER** apply a continuous sequential colorbar built from a categorical series. On
+  screen, use the single-variable navy-to-blue ramp defined in Data Visualization; static
+  figures default to `cividis` (see Figures).
 - **NEVER** let an image overlay (mask, ROI, box) obscure the underlying pixels at full
   opacity by default. Masks default to outline-only or <= 45% fill.
 
 ---
 
----
-
-## 00 -- Logo and Branding
+## Logo and Branding
 
 ### Asset Inventory
 
@@ -151,7 +459,7 @@ Three brand assets exist. They are not interchangeable; each has a defined role.
 
 | Asset                    | Contents                                                      | viewBox     | Aspect | Role                                                   |
 |--------------------------|---------------------------------------------------------------|-------------|--------|--------------------------------------------------------|
-| `light_logo_exfab.svg`   | PhenoTypic wordmark + colony mark + ExFAB/NSF lockup          | 300 x 112.5 | ~8:3   | Wide banner for light surfaces (sidebar header, splash); NOT the navy topbar -- see section 13 |
+| `light_logo_exfab.svg`   | PhenoTypic wordmark + colony mark + ExFAB/NSF lockup          | 300 x 112.5 | ~8:3   | Wide banner for light surfaces (sidebar header, splash); NOT the navy topbar -- see Dashboard Shell & Layout |
 | `dashboard_logo.svg`     | ExFAB wordmark + "AN NSF BIOFOUNDRY" + NSF seal + colony mark | 300 x 187.5 | ~8:5   | Splash / login / about / exported-figure footer        |
 | `LogoArtOnly.png` (icon) | Circular colony "petri dish" mark only                        | 500 x 500   | 1:1    | Favicon, collapsed sidebar, app icon, compact contexts |
 
@@ -165,15 +473,15 @@ Three brand assets exist. They are not interchangeable; each has a defined role.
 
 | Context                         | Asset                          | Notes                                                           |
 |---------------------------------|--------------------------------|-----------------------------------------------------------------|
-| Topbar (navy bar)               | none (wordmark title)          | The topbar is navy (section 13); no light lockup goes on a dark surface. The white view-title carries identity. Add a logo only after a dark-background variant exists. |
+| Topbar (navy bar)               | none (wordmark title)          | The topbar is navy (Dashboard Shell & Layout); no light lockup goes on a dark surface. The white view-title carries identity. Add a logo only after a dark-background variant exists. |
 | Sidebar header (expanded)       | `light_logo_exfab.svg` or mark | Mark alone if sidebar is <= 240px                               |
 | Sidebar (collapsed rail)        | icon mark                      | Centered, 28-32px                                               |
 | Login / splash / hero           | `dashboard_logo.svg`           | The fuller lockup with the NSF seal suits first-screen branding |
 | About / footer / attribution    | `dashboard_logo.svg`           | Where the NSF Biofoundry credit belongs                         |
-| Exported figure footer          | `dashboard_logo.svg`           | Small, alongside the provenance strip (section 15)              |
+| Exported figure footer          | `dashboard_logo.svg`           | Small, alongside the provenance strip (Export & Provenance Strip)              |
 | Browser favicon / PWA icon      | icon mark                      | 16, 32, 180 (apple-touch), 512 (PWA)                            |
 
-> The topbar is a navy (dark) bar (section 13), so the light-background
+> The topbar is a navy (dark) bar (Dashboard Shell & Layout), so the light-background
 > `light_logo_exfab.svg` banner is NOT placed there -- dropping a light lockup on a
 > dark surface is forbidden below ("Backgrounds"). The topbar carries the product
 > name through the white view-title wordmark instead. If a logo is wanted on the
@@ -183,7 +491,7 @@ Three brand assets exist. They are not interchangeable; each has a defined role.
 
 ### Topbar Implementation
 
-Ties to section 13 (App Shell). The navy topbar carries the white view-title wordmark
+Ties to Dashboard Shell & Layout (App Shell). The navy topbar carries the white view-title wordmark
 (no logo asset). The CSS below applies only if a dark-background logo variant is later
 added; it is left for reference.
 
@@ -222,7 +530,7 @@ shrinking a lockup.
 - Place lockups on `--color-white` or `--color-bg` only. Both assets carry a subtle
   light container and are tuned for light surfaces.
 - **Do not** drop a light-background lockup onto a dark panel (for example, the dark
-  image stage in section 09). If a logo is needed on a dark surface, commission a proper
+  image stage in Image Display & Viewers). If a logo is needed on a dark surface, commission a proper
   dark-background variant; do not invert or recolor these files, which would break the
   NSF seal and the colony mark colors.
 
@@ -244,7 +552,7 @@ palette.
 
 - Use the wide banner on light surfaces (sidebar header, splash), the full lockup for
   splash and footers, the icon mark for favicon and collapsed states. The navy topbar
-  carries the wordmark title, not a logo asset (section 13).
+  carries the wordmark title, not a logo asset (Dashboard Shell & Layout).
 - Keep lockups on light surfaces with the clear space above.
 - Use SVG in the UI; PNG only for favicons.
 
@@ -257,7 +565,7 @@ palette.
 
 ---
 
-## 01 -- Color Palette
+## Colors
 
 ### Primary Colors -- UI Only
 
@@ -309,7 +617,7 @@ plot series, progress bars, status badges, and semantic states.
 |-------------------|-----------|--------------------------------------------|
 | `--color-border`  | `#dde3ed` | Card borders, input outlines, dividers     |
 | `--color-rule`    | `#e8ecf2` | Chart gridlines, table row rules, dividers |
-| `--color-muted`   | `#8892a4` | Secondary text, labels, captions, axes     |
+| `--color-muted`   | `#6d7684` | Secondary text, labels, captions, axes     |
 | `--color-body`    | `#2e3a4e` | Primary body text                          |
 | `--color-heading` | `#003660` | All heading text (alias of navy)           |
 
@@ -340,11 +648,11 @@ Use these rules to determine which palette an element draws from:
 - **Badges on white surfaces:**
   Use the darkened text variants from the Badges section.
 - **`#febc11` as text on white:**
-  Substitute `#a87a00` (darkened for WCAG AA compliance).
+  Substitute `#926a00` (`--color-gold-text`, darkened for WCAG AA compliance).
 
 ---
 
-## 02 -- Typography
+## Typography
 
 Five layers, narrowest to broadest:
 
@@ -357,8 +665,7 @@ Five layers, narrowest to broadest:
 
 Call-site discipline (carried over from the original spec, unchanged):
 
-- New code references a **text style** (CSS class `.text-*`, or the matching
-  `TEXT_STYLE_*` Python constant).
+- New code references a **text style** (CSS class `.text-*`).
 - When only a size is needed, use a **semantic alias** (`--font-size-*` /
   `FONT_SIZE_*`), never a raw `--text-*` primitive.
 - Raw `--text-*` primitives are kept for back-compat and must not appear in new call
@@ -368,21 +675,26 @@ Call-site discipline (carried over from the original spec, unchanged):
 
 ---
 
-### 02.1 -- Font Families
+### Font Families
 
 Four role tokens. Nothing else may declare a `font-family`.
 
+**The role rule:** Nunito Sans carries all general text and formatting -- headings,
+prose, labels on buttons and tabs, component titles. JetBrains Mono carries every data
+value and table value -- numbers, identifiers, table cells, axis labels, badges and
+captions. A table cell is data even when its content is a word, so plain `html.Table`
+cells take the mono family too.
+
 ```css
---font-display: 'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
---font-body:    'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
---font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, "Liberation Mono", monospace;
---font-species: 'IBM Plex Serif', Georgia, "Times New Roman", Times, serif;
+--font-display: 'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-body:    'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+--font-species: 'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 ```
 
 ```html
-
 <link
-        href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet"
 />
 ```
@@ -390,51 +702,50 @@ Four role tokens. Nothing else may declare a `font-family`.
 `_gui/_design.py` constants (the Python call-site source of truth):
 
 ```python
-FONT_FAMILY_DISPLAY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-FONT_FAMILY_BODY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, 'Liberation Mono', monospace"
-FONT_FAMILY_SPECIES = "'IBM Plex Serif', Georgia, 'Times New Roman', Times, serif"
+FONT_FAMILY_DISPLAY = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_BODY = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace"
+FONT_FAMILY_SPECIES = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 ```
 
 Role intent:
 
-| Token            | Role    | Carries                                                                      |
-|------------------|---------|------------------------------------------------------------------------------|
-| `--font-display` | Display | Content headings, large stat values                                          |
-| `--font-body`    | Body    | Prose, button / tab labels, component titles                                 |
-| `--font-mono`    | Mono    | All numeric data, axis labels, badge / overline / label text, captions, code |
-| `--font-species` | Species | **Italic** binomial species names only (the one non-Comfortaa text surface)  |
+| Token            | Role    | Carries                                                                            |
+|------------------|---------|------------------------------------------------------------------------------------|
+| `--font-display` | Display | Content headings, large stat values                                                |
+| `--font-body`    | Body    | Prose, button / tab labels, component titles                                       |
+| `--font-mono`    | Mono    | Every data and table value, axis labels, badge / overline / label text, captions, code |
+| `--font-species` | Species | **Italic** binomial species names, in Nunito Sans's true italic                    |
 
-> **The chrome runs on one family.** Comfortaa carries both the display and body roles,
-> so headings, stat values, prose, and UI titles all share a single rounded geometric
-> sans. The role tokens still exist independently, so a future split back into two
-> families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-> `_gui/_design.py` and every call site inherits it with no edits.
+> **The chrome runs on one family.** Nunito Sans carries the display, body and species
+> roles, so headings, stat values, prose, UI titles and binomials share a single
+> humanist sans. The role tokens still exist independently, so a future split into two
+> families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` /
+> `_SPECIES_PRIMARY` in `_gui/_design.py` and every call site inherits it with no edits.
 
-> **Italics need a serif.** Comfortaa ships no true italic face, so `font-style: italic`
-> on a Comfortaa run would render a browser-synthesized oblique. Italic species names
-> (`.is-species`) therefore switch to `--font-species` (IBM Plex Serif italic) for a real
-> italic cut. Do not apply `--font-species` to anything but italic binomials.
+> **Species names use the family's own italic.** Nunito Sans ships a true italic, so
+> `.is-species` sets `font-style: italic` on `--font-species` and the binomial renders
+> in a designed italic cut rather than a synthesized oblique. Apply `--font-species` to
+> italic binomials only.
 
 > **Charts keep IBM Plex.** The `@import` also loads **IBM Plex Sans** and **IBM Plex
-> Serif** (regular + italic) even though no chrome `--font-*` token references IBM Plex
-> Sans. The chart subsystem (`viz/figures/_theme.py`, §06) is deliberately *not* migrated
-> to Comfortaa -- plot titles / legend names stay IBM Plex Sans and donut center values
-> stay IBM Plex Serif -- and those plots render inside GUI pages, so the families must
-> stay loaded. Chrome chooses Comfortaa; charts keep IBM Plex; the two intentionally
-> differ.
+> Serif** even though no chrome `--font-*` token references them. The chart subsystem
+> (`viz/figures/_theme.py`, Data Visualization) keeps IBM Plex Sans for plot titles / legend names and
+> IBM Plex Serif for donut center values, and those plots render inside GUI pages, so
+> the families must stay loaded. Chrome uses Nunito Sans; charts keep IBM Plex; the two
+> intentionally differ.
 
-> **Weights.** Comfortaa ships 400 / 500 / 600 / 700; JetBrains Mono ships 400 / 500 / 600;
-> IBM Plex Sans 400 / 500 / 600 / 700 and IBM Plex Serif 400 / 500 / 600 (+ italics) are
-> loaded for the chart subsystem. Display styles default to 400 to keep headings light;
-> you may raise Header / Title to 500 / 600 / 700 for heavier hierarchy. Only those
-> families and weights are loaded; do not reference a weight outside the imported set.
+> **Weights.** Nunito Sans loads 400 / 500 / 600 / 700 upright and 400 / 600 italic; JetBrains
+> Mono loads 400 / 500 / 600; IBM Plex Sans 400 / 500 / 600 / 700 and IBM Plex Serif
+> 400 / 500 / 600 (+ italics) are loaded for the chart subsystem. Display styles default
+> to 600 so headings hold their hierarchy over 16px body text. Only those families and
+> weights are loaded; do not reference a weight outside the imported set.
 
 ---
 
-### 02.2 -- Size Primitives & Semantic Aliases
+### Size Primitives & Semantic Aliases
 
-The scale is rem-based, rooted on 15px body text. **New call sites use the semantic
+The scale is rem-based, rooted on 16px body text, with mono data values held at 15px. **New call sites use the semantic
 alias** (right column). The raw `--text-*` primitive is back-compat only.
 
 | Role            | Primitive     | Size             | Semantic alias         | Python const         |
@@ -443,86 +754,25 @@ alias** (right column). The raw `--text-*` primitive is back-compat only.
 | Title           | `--text-2xl`  | 1.875rem / 30px  | `--font-size-title`    | `FONT_SIZE_TITLE`    |
 | Header (h2)     | `--text-xl`   | 1.5rem / 24px    | `--font-size-header-1` | `FONT_SIZE_HEADER_1` |
 | H2 (h3)         | `--text-lg`   | 1.25rem / 20px   | `--font-size-header-2` | `FONT_SIZE_HEADER_2` |
-| H3 / Body Large | `--text-md`   | 1.0625rem / 17px | `--font-size-body-lg`  | `FONT_SIZE_BODY_LG`  |
-| Body            | `--text-base` | 0.9375rem / 15px | `--font-size-body`     | `FONT_SIZE_BODY`     |
+| H3 / Body Large | `--text-md`   | 1.125rem / 18px  | `--font-size-body-lg`  | `FONT_SIZE_BODY_LG`  |
+| Body            | `--text-base` | 1rem / 16px      | `--font-size-body`     | `FONT_SIZE_BODY`     |
+| Data (mono)     | `--text-data` | 0.9375rem / 15px | `--font-size-data`     | `FONT_SIZE_DATA`     |
 | Body Small      | `--text-sm`   | 0.8125rem / 13px | `--font-size-body-sm`  | `FONT_SIZE_BODY_SM`  |
 | Label / Caption | `--text-xs`   | 0.6875rem / 11px | `--font-size-caption`  | `FONT_SIZE_CAPTION`  |
 | Data Micro      | `--text-2xs`  | 0.625rem / 10px  | `--font-size-micro`    | `FONT_SIZE_MICRO`    |
 | (reserve)       | `--text-4xl`  | 3.25rem / 52px   | --                     | --                   |
 
 ```css
---font-size-display:
-var
-
-(
---text-3xl
-
-)
-;
---font-size-title:
-var
-
-(
---text-2xl
-
-)
-;
---font-size-header-1:
-var
-
-(
---text-xl
-
-)
-;
---font-size-header-2:
-var
-
-(
---text-lg
-
-)
-;
---font-size-body-lg:
-var
-
-(
---text-md
-
-)
-;
---font-size-body:
-var
-
-(
---text-base
-
-)
-;
---font-size-body-sm:
-var
-
-(
---text-sm
-
-)
-; /* renamed from --font-size-label; see 02.7 */
---font-size-caption:
-var
-
-(
---text-xs
-
-)
-;
---font-size-micro:
-var
-
-(
---text-2xs
-
-)
-; /* new: chart axis / sparkline floor */
+--font-size-display:  var(--text-3xl);
+--font-size-title:    var(--text-2xl);
+--font-size-header-1: var(--text-xl);
+--font-size-header-2: var(--text-lg);
+--font-size-body-lg:  var(--text-md);
+--font-size-body:     var(--text-base);
+--font-size-data:     var(--text-data);   /* mono data and table values */
+--font-size-body-sm:  var(--text-sm);   /* renamed from --font-size-label; see Typography: Reconciliations & Flags */
+--font-size-caption:  var(--text-xs);
+--font-size-micro:    var(--text-2xs);  /* new: chart axis / sparkline floor */
 ```
 
 > SVG-rendered chart internals (axis ticks, scale-bar labels) may go to 8px directly,
@@ -530,66 +780,14 @@ var
 
 ---
 
-### 02.3 -- Line-height & Tracking Tokens
+### Line-height & Tracking Tokens
 
 ```css
---leading-display:
+--leading-display: 1.1;   --leading-tight: 1.2;   --leading-snug: 1.3;
+--leading-normal:  1.45;  --leading-relaxed: 1.6;
 
-1.1
-;
---leading-tight:
-
-1.2
-;
---leading-snug:
-
-1.3
-;
---leading-normal:
-
-1.45
-;
---leading-relaxed:
-
-1.6
-;
-
---tracking-tight:
-
--
-0.02
-em
-
-;
---tracking-snug:
-
--
-0.01
-em
-
-;
---tracking-normal:
-
-0
-;
---tracking-button:
-
-0.01
-em
-
-;
---tracking-wide:
-
-0.08
-em
-
-;
---tracking-wider:
-
-0.12
-em
-
-;
+--tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
+--tracking-button: 0.01em; --tracking-wide: 0.08em;  --tracking-wider: 0.12em;
 ```
 
 | Line-height         | Used by                      | Tracking            | Used by               |
@@ -603,7 +801,7 @@ em
 
 ---
 
-### 02.4 -- Text Styles  (the named categories)
+### Text Styles  (the named categories)
 
 Every piece of text uses exactly one of these. Components reference the **Style** name.
 "Default color" is overridable in context; family, size, weight, line-height, and
@@ -611,11 +809,11 @@ tracking are fixed.
 
 | Style                  | Family  | Size (alias)           | Weight | Line-height         | Tracking                               | Transform | Default color     | Used for                                                |
 |------------------------|---------|------------------------|--------|---------------------|----------------------------------------|-----------|-------------------|---------------------------------------------------------|
-| **Display**            | display | `--font-size-display`  | 400    | `--leading-display` | `--tracking-tight`                     | none      | `--color-heading` | Stat-card values, hero numbers                          |
-| **Title**              | display | `--font-size-title`    | 400    | `--leading-snug`    | `--tracking-snug`                      | none      | `--color-heading` | Page / view title (h1)                                  |
-| **Header**             | display | `--font-size-header-1` | 400    | `--leading-tight`   | `--tracking-snug`                      | none      | `--color-heading` | Major section heading (h2), modal title                 |
-| **H2**                 | display | `--font-size-header-2` | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Subsection heading (h3)                                 |
-| **H3**                 | display | `--font-size-body-lg`  | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Minor heading (h4)                                      |
+| **Display**            | display | `--font-size-display`  | 600    | `--leading-display` | `--tracking-tight`                     | none      | `--color-heading` | Stat-card values, hero numbers                          |
+| **Title**              | display | `--font-size-title`    | 600    | `--leading-snug`    | `--tracking-snug`                      | none      | `--color-heading` | Page / view title (h1)                                  |
+| **Header**             | display | `--font-size-header-1` | 600    | `--leading-tight`   | `--tracking-snug`                      | none      | `--color-heading` | Major section heading (h2), modal title                 |
+| **H2**                 | display | `--font-size-header-2` | 600    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Subsection heading (h3)                                 |
+| **H3**                 | display | `--font-size-body-lg`  | 600    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Minor heading (h4)                                      |
 | **Body Large**         | body    | `--font-size-body-lg`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Lead paragraph, intro copy                              |
 | **Body**               | body    | `--font-size-body`     | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Default paragraph copy                                  |
 | **Body Small**         | body    | `--font-size-body-sm`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Dense / secondary prose                                 |
@@ -623,8 +821,8 @@ tracking are fixed.
 | **Button**             | body    | `--font-size-body-sm`  | 500    | 1                   | `--tracking-button`                    | none      | per variant       | Button labels, nav tab labels                           |
 | **Label / Overline**   | mono    | `--font-size-caption`  | 500    | `--leading-tight`   | `--tracking-wide` / `--tracking-wider` | uppercase | `--color-muted`   | Form labels, table headers, overlines, badge text       |
 | **Caption**            | mono    | `--font-size-caption`  | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Hints, figure captions, chart subtitle, scale-bar label |
-| **Data Value**         | mono    | `--font-size-body`     | 500    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-heading` | Numeric table cells, stat deltas, tooltip values        |
-| **Data Value (muted)** | mono    | `--font-size-body`     | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Table secondary cells                                   |
+| **Data Value**         | mono    | `--font-size-data`     | 500    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-heading` | Table cells, stat deltas, tooltip values                |
+| **Data Value (muted)** | mono    | `--font-size-data`     | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Table secondary cells                                   |
 | **Data Micro**         | mono    | `--font-size-micro`    | 400    | `--leading-tight`   | 0.02em                                 | none      | `--color-muted`   | Chart axis ticks, sparkline labels, dense data          |
 
 Notes:
@@ -633,19 +831,18 @@ Notes:
   (0.08em) for inline labels and table headers, `--tracking-wider` (0.12em) for
   standalone
   section overlines.
-- **Data Value** size follows its container; `--font-size-body` is the default. The
-  fixed
-  parts are mono family, weight 500, heading color. The **muted** variant (weight 400,
+- **Data Value** size follows its container; `--font-size-data` (15px) is the default,
+  one step below the 16px body so the body size never reflows tables. The fixed parts
+  are mono family, weight 500, heading color. The **muted** variant (weight 400,
   `--color-muted`) is for secondary table cells.
-- **Species names** add the `.is-species` class (italic), which also switches the run to
-  `--font-species` (IBM Plex Serif italic) -- Comfortaa has no true italic, so the
-  family swap is what makes the binomial a real italic rather than a synthesized oblique.
-  Apply it to Title / Header / H2 / H3 species runs as needed; only IBM Plex Serif italic
-  400 / 500 are loaded.
+- **Species names** add the `.is-species` class, which sets the run in Nunito Sans's true
+  italic via `--font-species`. Apply it to Title / Header / H2 / H3 species runs as
+  needed; the 400 and 600 italics are loaded, so a binomial in body text and one in a
+  heading both render in a designed cut.
 
 ---
 
-### 02.5 -- Text Styles in CSS
+### Text Styles in CSS
 
 A component applies one class; it never re-declares these properties. Classes reference
 the semantic aliases, not raw primitives.
@@ -799,12 +996,12 @@ the semantic aliases, not raw primitives.
 > per style returning the family / size / weight / leading / tracking / color), so
 > Python
 > call sites apply a style by name exactly as CSS does by class. Add `--text-2xs`, the
-> line-height tokens, and the tracking tokens to the section 07 `:root` block; the other
+> line-height tokens, and the tracking tokens to the Code Integration `:root` block; the other
 > primitives and aliases already exist there.
 
 ---
 
-### 02.6 -- Element Defaults & Typography Rules
+### Element Defaults & Typography Rules
 
 #### HTML element defaults
 
@@ -820,17 +1017,21 @@ the semantic aliases, not raw primitives.
 | `label`, `th` | Label                        |
 | `button`, tab | Button                       |
 | `code`, `kbd` | mono inline (see rule below) |
-| numeric `td`  | Data Value                   |
+| `td`          | Data Value                   |
 
 #### Typography rules (carried over from the original, mapped to styles)
 
-- **Headings** use the display family at weight 400. Italic cut for Latin species names
+- **Headings** use the display family at weight 600. Italic cut for Latin species names
   (e.g. *Rhodotorula toruloides*) via `.is-species`.
 - **Labels and overlines:** Label / Overline style (mono, uppercase, muted).
 - **Stat card values:** Display style.
 - **Data values** always render in the mono family to preserve optical column alignment
   (Data Value style).
-- **Table numeric cells:** Data Value style (mono, weight 500, `--color-heading`).
+- **Table cells:** Data Value style (mono, weight 500, `--color-heading`) for every
+  value, numeric or not. A table cell is data.
+- **Table headers:** Label style. When a header is a data column name (a metadata
+  field, a measurement header), keep the mono family and caption size but drop the
+  uppercase transform, so the name reads exactly as it is spelled in the data.
 - **Table secondary cells:** Data Value (muted) style (mono, `--color-muted`).
 - **Inline code:** mono family, `background: #edf2f7`, `color: #003660`,
   `padding: 1px 5px`,
@@ -839,7 +1040,7 @@ the semantic aliases, not raw primitives.
 
 ---
 
-### 02.7 -- Reconciliations & Flags
+### Reconciliations & Flags
 
 Confirm before treating this as final.
 
@@ -854,19 +1055,18 @@ Confirm before treating this as final.
    alias `--font-size-label: var(--font-size-body-sm)` during migration.
 
 2. **Heading vs. component-title weight.** Content headings (Title, Header, H2, H3) and
-   component titles (**UI Title**) now share one family -- Comfortaa -- distinguished by
-   weight (headings 400, UI Title 600) rather than the old serif-to-sans shift. Both map
-   to Comfortaa via `--font-display` / `--font-body`, which carry the same stack.
+   component titles (**UI Title**) share one family -- Nunito Sans -- and, since headings
+   moved to 600, one weight too, so they are told apart by size alone. If that stops
+   reading as two levels, UI Title may drop to 500 without touching headings.
 
-3. **Body family.** Body is Comfortaa (same family as display). The chrome runs on a
-   single rounded geometric sans; only italic species names (`--font-species`, IBM Plex
-   Serif) and mono data (`--font-mono`, JetBrains Mono) step outside it. To split display
-   and body back into two families, change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-   `_gui/_design.py` and update the import.
+3. **Body family.** Body is Nunito Sans (same family as display and species). The chrome
+   runs on a single humanist sans; only mono data (`--font-mono`, JetBrains Mono) steps
+   outside it. To split display and body into two families, change `_DISPLAY_PRIMARY` /
+   `_BODY_PRIMARY` in `_gui/_design.py` and update the import.
 
 ---
 
-## 03 -- Spacing & Layout
+## Layout
 
 8-point base grid. All spacing tokens are multiples of `0.25rem` (4px).
 
@@ -892,7 +1092,7 @@ Confirm before treating this as final.
 #### Container
 
 Two container modes. Both live inside the App Shell content area (to the right of the
-240px sidebar, section 13).
+240px sidebar, Dashboard Shell & Layout).
 
 | Mode           | Width                               | Gutters                                         | Use                                                                    |
 |----------------|-------------------------------------|-------------------------------------------------|------------------------------------------------------------------------|
@@ -914,9 +1114,9 @@ Two container modes. Both live inside the App Shell content area (to the right o
 ```
 
 - Contained bands sit on the `--color-bg` (`#FBFEF8`) canvas; cards within are
-  `--color-white` with a `--color-border` hairline and the resting shadow (section 04).
+  `--color-white` with a `--color-border` hairline and the resting shadow (Elevation & Depth).
 - Full-bleed is an opt-in for data-dense surfaces only, not a default. Body prose still
-  respects the Body / Body Large max line lengths from section 02.
+  respects the Body / Body Large max line lengths from Typography.
 
 #### Panel Grid (12-column)
 
@@ -988,7 +1188,7 @@ controls) on the same row, and a hero KPI can span `col-6` among `col-3` sibling
 Collapse behavior for each pattern at each breakpoint is defined in the Responsive
 Strategy section (next).
 
-#### Section Rhythm (carried from section 03)
+#### Section Rhythm (carried from Layout)
 
 - Major view sections are separated by `--sp-16` (64px) top margin and a `1px solid
   --color-rule` divider.
@@ -1010,30 +1210,10 @@ Strategy section (next).
 
 ```css
 /* breakpoint reference values */
---bp-mobile-lg:
-
-480
-px
-
-;
---bp-tablet:
-
-768
-px
-
-;
---bp-desktop:
-
-992
-px
-
-;
---bp-wide:
-
-1600
-px
-
-;
+--bp-mobile-lg: 480px;
+--bp-tablet:    768px;
+--bp-desktop:   992px;
+--bp-wide:      1600px;
 ```
 
 CSS variables cannot be used inside media query conditions; the tokens above are the
@@ -1045,11 +1225,11 @@ documented values to write into `@media (min-width: 992px)` and equivalents.
 |--------------------------------------------------------|-----------------------------------------------------------------------------------------------|----------------|
 | Primary / secondary buttons, nav links, tabs           | 44 x 44px                                                                                     | WCAG 2.5.5 AAA |
 | Dense icon controls (image toolbar, table row actions) | 24 x 24px absolute floor, with >= `--sp-2` (8px) spacing between adjacent targets             | WCAG 2.5.8 AA  |
-| Plate wells / thumbnails on touch                      | tap to select; if the rendered cell is below 24px, require zoom (section 10) before selection | --             |
+| Plate wells / thumbnails on touch                      | tap to select; if the rendered cell is below 24px, require zoom (Well-Plate Grid) before selection | --             |
 
 - Default buttons reach 44px via vertical padding (`--sp-3` 12px) plus the Button line
   box; do not shrink primary actions below this on touch surfaces.
-- The image toolbar (section 09) uses icon buttons; on touch, increase their hit area to
+- The image toolbar (Image Display & Viewers) uses icon buttons; on touch, increase their hit area to
   44px even when the icon glyph stays small.
 
 #### Collapsing Strategy
@@ -1068,14 +1248,14 @@ Each grid pattern from Grid & Container collapses as follows.
 App shell and navigation:
 
 - **Sidebar:** expanded (240px) at Desktop, icon rail at Tablet, off-canvas drawer at
-  Mobile (section 13).
+  Mobile (Dashboard Shell & Layout).
 - **Topbar:** navy bar with the full link row + white view-title wordmark at Desktop;
-  links collapse to a hamburger below `--bp-tablet` (sections 00 / 13). No logo asset
+  links collapse to a hamburger below `--bp-tablet` (Logo and Branding / Dashboard Shell & Layout). No logo asset
   sits on the navy bar.
 - **Wide data table:** never reflow columns; scroll horizontally inside its container at
   Tablet and Mobile, with the first column frozen.
 - **Well-plate:** never shrink wells past legibility; below the format minimum width
-  (section 10) switch to horizontal scroll plus zoom rather than scaling wells down.
+  (Well-Plate Grid) switch to horizontal scroll plus zoom rather than scaling wells down.
 
 #### Image Behavior
 
@@ -1083,35 +1263,101 @@ Imagery in this system is data, not decoration. The marketing convention of full
 photographic heroes does not apply.
 
 - **Image panels** preserve native pixel aspect ratio and letterbox against the stage
-  background (section 09). The stage scales down to a ~360px minimum, below which the
+  background (Image Display & Viewers). The stage scales down to a ~360px minimum, below which the
   panel
   takes full width (`col-12`).
 - **Thumbnail / montage grids** are already fluid via
   `repeat(auto-fill, minmax(96px, 1fr))`
-  (section 09); columns reduce naturally with width.
+  (Image Display & Viewers); columns reduce naturally with width.
 - **Charts** reflow to container width and reduce axis-tick density (fewer ticks) rather
-  than letting labels overlap; the Data Micro style is the floor (section 02 / 11).
+  than letting labels overlap; the Data Micro style is the floor (Typography / Extended Chart Types).
 - **Plate maps** scroll and zoom below their minimum width rather than shrinking wells
-  (section 10).
+  (Well-Plate Grid).
 - **Scale bars, colorbars, and legends** persist at every breakpoint and in exports;
   they
-  are never dropped to save space (section 09 / 12 / 15).
+  are never dropped to save space (Image Display & Viewers / Chart Support Elements / Export & Provenance Strip).
 - No decorative or portrait photography anywhere in the surface.
 
 ---
 
-## 04 -- Shapes & Elevation
+## Dashboard Shell & Layout
 
-### Border Radius
+### App Shell
 
-| Token         | Value | Usage                                        |
-|---------------|-------|----------------------------------------------|
-| `--radius-sm` | 3px   | Inline code, badges, small chips             |
-| `--radius`    | 6px   | Buttons, inputs, small cards                 |
-| `--radius-md` | 10px  | Stat cards, chart cards, main cards          |
-| `--radius-lg` | 16px  | Hero panels, modal surfaces, feature banners |
+```
++-- topbar (h 56px, --color-navy, 1px bottom rule) --------------------+
+|  view title (display 20)                    [global filters] [user]   |
++----------------+------------------------------------------------------+
+| sidebar 240px  |  content (--color-bg, padding --sp-8)                |
+| --color-white  |   +-- panel grid -------------------------------+    |
+| 1px right rule |   | stat cards row                              |    |
+| nav items      |   | chart cards / image panels (grid)           |    |
+|                |   +---------------------------------------------+    |
++----------------+------------------------------------------------------+
+```
 
-### Elevation & Depth
+- **Topbar:** the topbar is a deliberate dark surface -- `--color-navy` background
+  with white ink and a gold (`--color-gold`) underline on the active tab. This is an
+  intentional brand choice (the one chrome exception to the otherwise-light theme,
+  alongside the image stage (Image Display & Viewers)); it is NOT the white topbar an earlier draft
+  specified. White-on-navy carries the wordmark identity directly, so the topbar does
+  not place a logo asset (a light-background lockup on the navy bar would violate the
+  Logo and Branding "no light lockup on a dark surface" rule; a dark-background logo variant
+  would be required first).
+- **Sidebar nav item:** Nunito Sans 13, `--color-muted` default; active gets
+  `--color-navy` text + 3px left accent bar in `--color-navy` + `rgba(0,54,96,0.05)`
+  background. Reuses the active-tab logic. The sidebar itself is `--color-white`.
+
+### Panel Grid
+
+```css
+.panel-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--sp-6);
+}
+
+/* common spans */
+.col-3 {
+    grid-column: span 3;
+}
+
+/* stat card        */
+.col-6 {
+    grid-column: span 6;
+}
+
+/* half-width chart  */
+.col-8 {
+    grid-column: span 8;
+}
+
+/* primary chart     */
+.col-12 {
+    grid-column: span 12;
+}
+
+/* full-width / plate */
+```
+
+- Stat cards: 4-up (`col-3`) on wide, 2-up on tablet, stacked on mobile.
+- Image panels prefer `col-6` or larger; never below ~360px stage width.
+
+### Filter / Toolbar Bar
+
+- Sits directly under the topbar or atop a panel: `--color-white`, 1px bottom rule,
+  `padding: var(--sp-3) var(--sp-6)`.
+- Controls: form inputs (existing spec) + ghost buttons. Active filters render as
+  removable badges (existing spec) with a 5px dot.
+
+### Breadcrumb
+
+- JetBrains Mono 11, `--color-muted`; separators `/` in `--color-border`; current crumb
+  `--color-heading`.
+
+---
+
+## Elevation & Depth
 
 All shadows are navy-tinted, `rgba(0, 54, 96, ...)`, never gray or black, so depth reads
 as part of the brand rather than a default browser drop-shadow. Elevation is quiet by
@@ -1129,172 +1375,24 @@ each shadow token a level and a use.
 
 - **Hover transition:** interactive cards animate from Level 2 to Level 3 on hover via
   `transition: border-color, box-shadow` (the same motion used by thumbnails and chart
-  cards in sections 09 and 11). Resting state returns to Level 2.
+  cards in Image Display & Viewers and Extended Chart Types). Resting state returns to Level 2.
 - **Do not stack:** a surface already at a level does not gain a second shadow when
   nested
   inside another elevated surface. Pick one level per surface.
 
-#### Elevation Tokens (recipes)
+### Elevation Tokens (recipes)
 
 ```css
---shadow-sm:
-
-0
-1
-px
-
-3
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.07
-)
-,
-0
-1
-px
-
-2
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.04
-)
-; /* Level 2 -- resting  */
---shadow:
-
-0
-4
-px
-
-12
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.08
-)
-,
-0
-1
-px
-
-3
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.05
-)
-; /* Level 3 -- raised   */
---shadow-md:
-
-0
-8
-px
-
-24
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.10
-)
-,
-0
-2
-px
-
-6
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.06
-)
-; /* Level 4 -- floating */
---shadow-lg:
-
-0
-16
-px
-
-40
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.12
-)
-,
-0
-4
-px
-
-12
-px
-rgba
-
-(
-0
-,
-54
-,
-96
-,
-0.07
-)
-; /* Level 5 -- overlay  */
+--shadow-sm: 0 1px 3px rgba(0,54,96,0.07), 0 1px 2px rgba(0,54,96,0.04);   /* Level 2 -- resting  */
+--shadow:    0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05);  /* Level 3 -- raised   */
+--shadow-md: 0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06);  /* Level 4 -- floating */
+--shadow-lg: 0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07);/* Level 5 -- overlay  */
 ```
 
 Each token is a two-stop shadow: a soft, wide far-shadow plus a tight near-shadow, which
 gives a natural falloff. This layered pairing is the system's only atmospheric effect.
 
-#### Decorative Depth
+### Decorative Depth
 
 - **Navy tint, never neutral.** Depth carries the brand hue. A gray or black shadow is a
   defect in this system, not a stylistic alternative.
@@ -1304,7 +1402,7 @@ gives a natural falloff. This layered pairing is the system's only atmospheric e
   does most of the work of separating a card from the page; the shadow is a secondary
   cue.
   This is why nearly every card keeps its hairline even at higher levels.
-- **One intentional dark surface.** The image stage (section 09) is deliberately dark
+- **One intentional dark surface.** The image stage (Image Display & Viewers) is deliberately dark
   because the pixels are the data. That is a content canvas, not an elevation level, and
   no
   UI chrome ever uses a dark fill to imply depth.
@@ -1312,15 +1410,9 @@ gives a natural falloff. This layered pairing is the system's only atmospheric e
   that genuinely float above the page or sit over a scrim. Do not push a resting card to
   Level 4 to make it stand out; use the `col` span or a navy accent bar instead.
 
-#### Reconciliation Flags
+### Reconciliation Flag
 
-1. **Radius splits out.** This section now covers depth only. The Border Radius table
-   from
-   the old section 04 should become its own short "Shapes" section (content unchanged:
-   the
-   3 / 6 / 10 / 16px ladder), matching the reference's separation of Shapes from
-   Elevation.
-2. **Modal level.** Your original token table placed modals at `--shadow-md` and labeled
+1. **Modal level.** Your original token table placed modals at `--shadow-md` and labeled
    `--shadow-lg` as "hero, full-page overlays." I kept modals at Level 4 (`--shadow-md`)
    per that original intent, moved "hero" off the heaviest level since hero bands are
    normally flat (Level 0), and reframed Level 5 as full-page overlays and the lightbox.
@@ -1329,7 +1421,20 @@ gives a natural falloff. This layered pairing is the system's only atmospheric e
 
 ---
 
-## 05 -- Components
+## Shapes
+
+### Border Radius
+
+| Token         | Value | Usage                                        |
+|---------------|-------|----------------------------------------------|
+| `--radius-sm` | 3px   | Inline code, badges, small chips             |
+| `--radius`    | 6px   | Buttons, inputs, small cards                 |
+| `--radius-md` | 10px  | Stat cards, chart cards, main cards          |
+| `--radius-lg` | 16px  | Hero panels, modal surfaces, feature banners |
+
+---
+
+## Components
 
 ### Stat Cards
 
@@ -1348,7 +1453,7 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 | Sky Blue `--oi-sky`        | `#56B4E9` | Throughput / job counts                    |
 | Vermilion `--oi-vermilion` | `#D55E00` | Error / failure counts                     |
 
-**Delta text colors:** positive `#009E73`, negative `#D55E00`, neutral `#8892a4`.
+**Delta text colors:** positive `#009E73`, negative `#D55E00`, neutral `#6d7684`.
 
 **Anatomy:**
 
@@ -1356,7 +1461,7 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 +-- 3px accent bar (color by category) -------------------------+
 |  LABEL -- JetBrains Mono -- 11px -- uppercase -- --color-muted       |
 |                                                               |
-|  Value -- Comfortaa -- 2.5rem                               |
+|  Value -- Nunito Sans -- 2.5rem                             |
 |  Delta -- JetBrains Mono -- 11px -- #009E73 (up) / #D55E00 (down)   |
 +---------------------------------------------------------------+
 ```
@@ -1414,7 +1519,7 @@ Use Okabe-Ito series order for multi-fill progress. Track background is always
 
 Reserve `#D55E00` for error-state fills only.
 
-**Label layout:** progress name (Comfortaa 500) left, value (JetBrains Mono) right,
+**Label layout:** progress name (Nunito Sans 500) left, value (JetBrains Mono) right,
 `justify-content: space-between`. Stack items with `gap: 16px`.
 
 **CSS:**
@@ -1452,7 +1557,7 @@ reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
 | Gold    | `--color-gold` | `--color-navy`  | `--color-gold`   | Emphasized CTA       |
 | Outline | Transparent    | `--color-navy`  | `--color-border` | Secondary actions    |
 | Ghost   | Transparent    | `--color-muted` | none             | Tertiary / utility   |
-| Danger  | Transparent    | `#D55E00`       | `#D55E00`        | Destructive actions  |
+| Danger  | Transparent    | `#b85100`       | `#D55E00`        | Destructive actions  |
 
 **Sizes:**
 
@@ -1463,7 +1568,7 @@ reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
 | lg      | 15px      | `0.7rem 1.5rem`                   |
 | icon    | --        | `width/height 2.25rem, padding 0` |
 
-**Shared styles:** Comfortaa, `font-weight: 500`, `letter-spacing: 0.01em`,
+**Shared styles:** Nunito Sans, `font-weight: 500`, `letter-spacing: 0.01em`,
 `border-radius: var(--radius)`, `border-width: 1.5px`,
 `transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1)`.
 
@@ -1473,7 +1578,7 @@ reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
   `box-shadow: 0 4px 12px rgba(0,54,96,0.28)`
 - Outline: `border-color: #1b75bc`, `color: #1b75bc`,
   `background: rgba(27,117,188,0.04)`
-- Danger: `background: #D55E00`, `color: #fff`
+- Danger: `background: #b85100`, `color: #fff`
 
 ---
 
@@ -1493,15 +1598,16 @@ Monospaced, uppercase micro-labels for status, classification, and categorical t
 | Variant   | Background               | Text (darkened for AA) | Border                   |
 |-----------|--------------------------|------------------------|--------------------------|
 | Navy      | `rgba(0,54,96,0.08)`     | `#003660`              | `rgba(0,54,96,0.15)`     |
-| Blue      | `rgba(27,117,188,0.08)`  | `#1b75bc`              | `rgba(27,117,188,0.20)`  |
-| Orange    | `rgba(230,159,0,0.10)`   | `#9A6B00`              | `rgba(230,159,0,0.25)`   |
+| Blue      | `rgba(27,117,188,0.08)`  | `#1b73b9`              | `rgba(27,117,188,0.20)`  |
+| Orange    | `rgba(230,159,0,0.10)`   | `#966800`              | `rgba(230,159,0,0.25)`   |
 | Sky Blue  | `rgba(86,180,233,0.10)`  | `#0B6E9E`              | `rgba(86,180,233,0.25)`  |
 | Green     | `rgba(0,158,115,0.08)`   | `#006B4F`              | `rgba(0,158,115,0.20)`   |
-| Vermilion | `rgba(213,94,0,0.08)`    | `#D55E00`              | `rgba(213,94,0,0.20)`    |
+| Vermilion | `rgba(213,94,0,0.08)`    | `#b85100`              | `rgba(213,94,0,0.20)`    |
 | Purple    | `rgba(204,121,167,0.10)` | `#8B3D6E`              | `rgba(204,121,167,0.25)` |
 
 > All badge text colors are darkened from raw Okabe-Ito values to meet WCAG AA (4.5:1)
-> on white surfaces. **Do not** use raw Okabe-Ito hex as badge text.
+> on the badge's own tint, which is slightly darker than white. The linter checks every
+> pairing through the `badge-*` components in the front matter. **Do not** use raw Okabe-Ito hex as badge text.
 
 Include a 5px colored dot for active/live states (Running, Processing). Omit dot for
 static labels.
@@ -1517,7 +1623,7 @@ card surfaces.
 `border-radius: var(--radius)`, `border-left: 4px solid`.
 
 **Icon:** `1rem`, `flex-shrink: 0`, `margin-top: 1px`.
-**Title:** Comfortaa, `font-weight: 600`, `font-size: 13px`.
+**Title:** Nunito Sans, `font-weight: 600`, `font-size: 13px`.
 **Body:** `opacity: 0.85`, `line-height: 1.5`.
 
 | Type    | Border    | Background              | Text      |
@@ -1550,7 +1656,7 @@ quality metrics, status badge.
 ### Form Inputs
 
 **Base styles:** `background: #ffffff`, `border: 1.5px solid --color-border`,
-`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, Comfortaa 13px,
+`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, Nunito Sans 13px,
 `color: --color-body`, `transition: border-color 180ms, box-shadow 180ms`.
 
 | State   | Border                       | Focus Ring                        |
@@ -1572,109 +1678,96 @@ placed above input.
 
 ```css
 /* Track */
-border-bottom:
-
-2
-px solid
-var
-
-(
---color-rule
-
-)
-; /* full width */
+border-bottom: 2px solid var(--color-rule); /* full width */
 
 /* Tab */
-font-family:
-var
-
-(
---font-body
-
-)
-;
-font-size:
-
-13
-px
-
-;
-font-weight:
-
-500
-;
-padding:
-
-12
-px
-
-20
-px
-
-;
-border-bottom:
-
-2
-px solid transparent
-
-;
-margin-bottom:
-
--
-2
-px
-
-;
+font-family: var(--font-body);
+font-size: 13px;
+font-weight: 500;
+padding: 12px 20px;
+border-bottom: 2px solid transparent;
+margin-bottom: -2px;
 
 /* States */
-/* active  */
-color:
-var
-
-(
---color-navy
-
-)
-;
-border-color:
-var
-
-(
---color-navy
-
-)
-;
-/* inactive */
-color:
-var
-
-(
---color-muted
-
-)
-;
-/* hover (inactive) */
-color:
-var
-
-(
---color-body
-
-)
-;
-border-color:
-var
-
-(
---color-border
-
-)
-;
+/* active  */ color: var(--color-navy); border-color: var(--color-navy);
+/* inactive */ color: var(--color-muted);
+/* hover (inactive) */ color: var(--color-body); border-color: var(--color-border);
 ```
 
 ---
 
-## 06 -- Data Visualization
+## Feedback & Loading States
+
+### Skeleton Loaders
+
+```css
+.skeleton {
+    background: linear-gradient(
+            90deg,
+            var(--color-rule) 25%,
+            #eef2f7 37%,
+            var(--color-rule) 63%
+    );
+    background-size: 400% 100%;
+    border-radius: var(--radius-sm);
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: 0 0;
+    }
+}
+```
+
+- Match the skeleton block to the eventual content shape (stat value bar, chart area,
+  image stage). Never spin a generic loader where the layout is known.
+
+### Empty States
+
+- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), Nunito Sans 13
+  title, JetBrains Mono 11 sub-line, optional primary button to act.
+- Voice: state what is missing and the next step, not just "no data".
+
+### Toasts / Notifications
+
+- Bottom-right stack, `--color-white`, `--radius-md`, `--shadow-md`, 4px left accent in
+  the semantic color (success / info / warning / error from Colors).
+- Auto-dismiss 4-6s; errors persist until dismissed.
+- Title Nunito Sans 13 600; body Nunito Sans 13; any code/IDs JetBrains Mono.
+
+### Modal / Dialog
+
+The system references modals in shadows and radius but does not spec them; this fills
+it.
+
+```css
+.modal {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); /* one of the few valid --shadow-lg uses */
+    max-width: 560px;
+    padding: var(--sp-8);
+}
+
+.modal-overlay {
+    background: rgba(0, 54, 96, 0.45);
+    backdrop-filter: blur(2px);
+}
+```
+
+- Title: display family, `--font-size-header-1`, `--color-heading`.
+- Footer actions right-aligned; primary (navy) rightmost, ghost cancel left of it.
+
+---
+
+## Data Visualization
+
+This section covers charts rendered on screen: GUI charts, dashboards and Plotly
+figures. Static matplotlib figures for print follow the Figures section.
 
 ### Categorical Series Order
 
@@ -1712,10 +1805,10 @@ series 1, keeping the primary series harmonious with the UI chrome.
 ```
 ring stroke-width:  20px on r=40 SVG circle (circumference ~251px)
 center value:       IBM Plex Serif, font-size 11, font-weight 600, fill #003660
-center unit:        JetBrains Mono, font-size 6.5, fill #8892a4
+center unit:        JetBrains Mono, font-size 6.5, fill #6d7684
 legend dot:         10px circle
 legend name:        IBM Plex Sans, 11px, color #2e3a4e
-legend pct:         JetBrains Mono, 11px, color #8892a4
+legend pct:         JetBrains Mono, 11px, color #6d7684
 ```
 
 ### Heatmap Colorscale (Single-Variable)
@@ -1734,245 +1827,286 @@ maximally distinct from the vermilion fail state under all CB types.
 
 ---
 
-## 07 -- Code Integration
+## Extended Chart Types
 
-### matplotlib / seaborn rcParams
+All chart types inherit the Data Visualization series order, gridline, axis, and spine rules.
+Listed below are the type-specific additions. Axis labels and all numeric annotations
+remain `JetBrains Mono` per the typography constraints.
 
-Apply this block when generating matplotlib figures:
+### Bar Charts (grouped / stacked)
 
-```python
-import matplotlib as mpl
+| Property      | Value                                                        |
+|---------------|--------------------------------------------------------------|
+| Bar fill      | series order; single-series defaults to `--color-navy`       |
+| Bar corner    | `--radius-sm` on the free end only (top for vertical)        |
+| Group gap     | 0.2 of band width; bar gap within group 0.08                 |
+| Stacked order | series order bottom-up; "other" category last in `--oi-grey` |
+| Value labels  | JetBrains Mono 11, `--color-heading`, only when < ~12 bars   |
+| Baseline      | 1.5px `--color-border` at zero                               |
 
-OKABE_ITO = [
-    "#003660",  # navy     -- series 1, UI-harmonized
-    "#E69F00",  # orange   -- series 2
-    "#56B4E9",  # sky blue -- series 3
-    "#009E73",  # green    -- series 4
-    "#0072B2",  # blue     -- series 5
-    "#CC79A7",  # purple   -- series 6
-    "#D55E00",  # vermilion -- error/alert series
-]
+Reserve `--oi-vermilion` for a failed / alert bar only, never as series 7 by default.
 
-mpl.rcParams.update({
-    "axes.prop_cycle"  : mpl.cycler(color=OKABE_ITO),
-    "axes.facecolor"   : "#ffffff",
-    "figure.facecolor" : "#FBFEF8",
-    "axes.edgecolor"   : "#dde3ed",
-    "axes.grid"        : True,
-    "grid.color"       : "#e8ecf2",
-    "grid.linewidth"   : 0.8,
-    "axes.spines.top"  : False,
-    "axes.spines.right": False,
-    "font.family"      : "sans-serif",
-    "font.sans-serif"  : ["IBM Plex Sans", "Helvetica Neue", "Arial"],
-    "axes.labelcolor"  : "#2e3a4e",
-    "xtick.color"      : "#8892a4",
-    "ytick.color"      : "#8892a4",
-    "axes.titlecolor"  : "#003660",
-    "axes.titleweight" : "600",
-    "axes.titlesize"   : 11,
-    "axes.labelsize"   : 9,
-    "xtick.labelsize"  : 8,
-    "ytick.labelsize"  : 8,
-})
+### Box Plot / Violin   (distributions -- common in this field)
+
+| Element         | Style                                                  |
+|-----------------|--------------------------------------------------------|
+| Box fill        | series color at 18% opacity                            |
+| Box outline     | series color 1.5px                                     |
+| Median line     | series color 2px                                       |
+| Whiskers        | series color 1px, cap 1px                              |
+| Outlier points  | series color, 2.5px radius, 60% opacity                |
+| Violin shape    | series color outline 1.5px, fill 12%; overlay box thin |
+| Jittered points | optional, 2px, 40% opacity, slight x-jitter            |
+
+Show n per group as a mono caption beneath each category label. Distribution plots
+without n are not publication-honest.
+
+### Scatter + Regression
+
+| Element         | Style                                                |
+|-----------------|------------------------------------------------------|
+| Points          | series color, 3.5px radius (matches Data Visualization dots) |
+| Point opacity   | 70%; drop to 40% above ~500 points to show density   |
+| Regression line | `--color-navy` 2px, or series color if grouped       |
+| Confidence band | same color at 12% opacity fill                       |
+| Identity / y=x  | `--oi-grey` 1px dashed                               |
+| R-squared / fit | mono chip, upper-left, `--color-muted`               |
+
+### Growth Curve / Time-Series   (OD600, kinetics)
+
+| Element         | Style                                                    |
+|-----------------|----------------------------------------------------------|
+| Line            | series order, 2px, round join/cap                        |
+| Error band      | mean +/- SD or SEM, series color 12% fill; state which   |
+| Replicate lines | optional thin 1px, 30% opacity, same color as mean       |
+| Markers         | optional 3.5px at measured timepoints only               |
+| Log axis        | label as "log10" in mono; gridlines at decades           |
+| Phase markers   | `--oi-grey` dashed verticals + mono label (lag/log/stat) |
+
+### Histogram / KDE
+
+- Bars: single fill `--color-navy` at 85%, no per-bar coloring.
+- KDE overlay: `--color-navy` 2px line on 8% fill.
+- Bin count or bandwidth stated in a mono caption; binning choices change the story, so
+  surface them.
+
+### Small Multiples / Facet Grid
+
+- Shared axes across facets; label only the outer edge.
+- Facet title: JetBrains Mono 11 uppercase `--color-muted`, top-left of each cell.
+- 1px `--color-rule` between cells, never heavy borders.
+- One series color across all facets when the facet *is* the grouping variable.
+
+### Sparkline   (inline, in tables / stat cards)
+
+- 1.5px line, `--color-blue`, no axes, no gridlines.
+- Optional end-dot 3px in `--color-navy`; min/max dots in `--oi-grey`.
+- Height 18-24px; lives in a table cell or beneath a stat-card value.
+
+### Volcano / MA Plot   [optional -- omics, include only if relevant]
+
+- Non-significant points `--oi-grey` 60%; up `--oi-green`; down `--oi-purple`
+  (avoids the red-green default volcano).
+- Threshold lines `--oi-grey` 1px dashed (fold-change and p-value cutoffs).
+- This pairing keeps significance direction CB-distinguishable.
+
+---
+
+## Chart Support Elements
+
+### Continuous Colorbar  (for plate maps, heatmaps, intensity overlays)
+
+```
+orientation: horizontal (default) or vertical
+gradient:    rgba(0,54,96,0.08) -> #56B4E9 -> #003660   (Data Visualization ramp)
+track:       height 10px (h) / width 10px (v), radius 9999px
+ticks:       3-5, JetBrains Mono 10, --color-muted
+end labels:  low / high or numeric, JetBrains Mono 11
+null swatch: separate 14px square, #D55E00 @70%, label "fail/null"
 ```
 
-### napari Label Layer Colors
+Never build a sequential colorbar from categorical series colors.
 
-For categorical label overlays (e.g. colony segmentation masks):
+### Categorical Legend
 
-```python
-# RGBA tuples normalized 0-1, for napari label layer color dict
-OKABE_ITO_NAPARI = {
-    1: (0 / 255, 54 / 255, 96 / 255, 1.0),  # navy
-    2: (230 / 255, 159 / 255, 0 / 255, 1.0),  # orange
-    3: (86 / 255, 180 / 255, 233 / 255, 1.0),  # sky blue
-    4: (0 / 255, 158 / 255, 115 / 255, 1.0),  # bluish green
-    5: (0 / 255, 114 / 255, 178 / 255, 1.0),  # blue
-    6: (204 / 255, 121 / 255, 167 / 255, 1.0),  # reddish purple
-    7: (213 / 255, 94 / 255, 0 / 255, 1.0),  # vermilion (error)
-}
-```
+- Marker: 10px circle (line/area charts) or 10px rounded square (bar/box).
+- Name: `IBM Plex Sans 11 --color-body`. Optional value/pct:
+  `JetBrains Mono 11 --color-muted`.
+- Order matches series order exactly. Wrap, never scroll, for <= 6 entries; introduce
+  "other" beyond that (existing constraint).
+- Interactive legends: clicking dims a series to 20% opacity rather than removing it, so
+  axis scale stays stable.
 
-### CSS Custom Properties
-
-Include this `:root` block in all generated CSS files:
+### Tooltip
 
 ```css
-:root {
-    /* Primary palette -- UI only */
-    --color-navy: #003660;
-    --color-blue: #1b75bc;
-    --color-gold: #febc11;
-    --color-white: #ffffff;
-    --color-bg: #FBFEF8;
-    --color-surface: #ffffff;
-    --color-border: #dde3ed;
-    --color-rule: #e8ecf2;
-    --color-muted: #8892a4;
-    --color-body: #2e3a4e;
-    --color-heading: #003660;
-
-    /* Data palette -- Okabe-Ito -- visualization only */
-    --oi-orange: #E69F00;
-    --oi-sky: #56B4E9;
-    --oi-green: #009E73;
-    --oi-vermilion: #D55E00;
-    --oi-blue: #0072B2;
-    --oi-purple: #CC79A7;
-    --oi-yellow: #F0E442; /* large fills only */
-    --oi-grey: #BBBBBB; /* reference / control */
-
-    /* Semantic aliases */
-    --color-success: var(--oi-green);
-    --color-info: var(--oi-sky);
-    --color-warning: var(--oi-orange);
-    --color-danger: var(--oi-vermilion);
-
-    /* Typography */
-    --font-display: 'Comfortaa', system-ui, sans-serif;
-    --font-body: 'Comfortaa', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-    --font-species: 'IBM Plex Serif', Georgia, serif; /* italic binomials only */
-
-    /* Type scale */
-    --text-xs: 0.6875rem; /*  11px */
-    --text-sm: 0.8125rem; /*  13px */
-    --text-base: 0.9375rem; /*  15px */
-    --text-md: 1.0625rem; /*  17px */
-    --text-lg: 1.25rem; /*  20px */
-    --text-xl: 1.5rem; /*  24px */
-    --text-2xl: 1.875rem; /*  30px */
-    --text-3xl: 2.5rem; /*  40px */
-    --text-4xl: 3.25rem; /*  52px */
-    --text-2xs: 0.625rem; /*  10px */
-
-    /* Semantic size aliases -- use these, not raw --text-* */
-    --font-size-display: var(--text-3xl);
-    --font-size-title: var(--text-2xl);
-    --font-size-header-1: var(--text-xl);
-    --font-size-header-2: var(--text-lg);
-    --font-size-body-lg: var(--text-md);
-    --font-size-body: var(--text-base);
-    --font-size-body-sm: var(--text-sm);
-    --font-size-caption: var(--text-xs);
-    --font-size-micro: var(--text-2xs);
-
-    /* Line-height */
-    --leading-display: 1.1;
-    --leading-tight: 1.2;
-    --leading-snug: 1.3;
-    --leading-normal: 1.45;
-    --leading-relaxed: 1.6;
-
-    /* Letter-spacing */
-    --tracking-tight: -0.02em;
-    --tracking-snug: -0.01em;
-    --tracking-normal: 0;
-    --tracking-button: 0.01em;
-    --tracking-wide: 0.08em;
-    --tracking-wider: 0.12em;
-
-    /* Spacing (8pt grid) */
-    --sp-1: 0.25rem;
-    --sp-2: 0.5rem;
-    --sp-3: 0.75rem;
-    --sp-4: 1rem;
-    --sp-5: 1.25rem;
-    --sp-6: 1.5rem;
-    --sp-8: 2rem;
-    --sp-10: 2.5rem;
-    --sp-12: 3rem;
-    --sp-16: 4rem;
-
-    /* Border radius */
-    --radius-sm: 3px;
-    --radius: 6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-
-    /* Shadows (navy-tinted) */
-    --shadow-sm: 0 1px 3px rgba(0, 54, 96, 0.07), 0 1px 2px rgba(0, 54, 96, 0.04);
-    --shadow: 0 4px 12px rgba(0, 54, 96, 0.08), 0 1px 3px rgba(0, 54, 96, 0.05);
-    --shadow-md: 0 8px 24px rgba(0, 54, 96, 0.10), 0 2px 6px rgba(0, 54, 96, 0.06);
-    --shadow-lg: 0 16px 40px rgba(0, 54, 96, 0.12), 0 4px 12px rgba(0, 54, 96, 0.07);
-
-    /* Motion */
-    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-    --transition: 180ms var(--ease-out);
+.tooltip {
+    background: var(--color-navy);
+    color: #ffffff;
+    border-radius: var(--radius-sm);
+    padding: var(--sp-2) var(--sp-3);
+    box-shadow: var(--shadow-md);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    pointer-events: none;
 }
 ```
 
----
+- Label row in IBM Plex Sans; all numeric values in JetBrains Mono.
+- Series swatch (8px) precedes each value in multi-series tooltips.
+- Position above the cursor; flip below near the top edge.
 
-## 08 -- Usage Rules & Anti-Patterns
+### Threshold & Reference Annotations
 
-### Do
+- Reference line: `--oi-grey` 1px dashed, mono label at the right margin.
+- Highlighted band (e.g. acceptable range): `--oi-grey` at 8% fill.
+- Target / spec line: `--color-gold` 1.5px is permitted here as a deliberate brand
+  emphasis, but never for a data series.
 
-- **Keep the three color worlds separate.** UI chrome (navy / blue / gold plus
-  neutrals),
-  data (Okabe-Ito), and branding (the logo) never borrow from one another.
-- **Reserve navy `#003660` for primary actions, headings, and the wordmark.** Use blue
-  `#1b75bc` for interactive and secondary roles, and gold `#febc11` only as a rare
-  emphasis
-  accent (darken to `#a87a00` for text on white).
-- **Use Okabe-Ito for chart series, progress fills, and semantic states** (success /
-  info /
-  warning / error), in the fixed order navy, orange, sky, green, blue, purple.
-- **Render every number, axis label, badge, caption, and code token in the mono family**
-  (JetBrains Mono), to keep optical column alignment and a data-forward voice.
-- **Use Comfortaa for content headings, large stat values, body, and component titles**
-  -- one rounded geometric sans across all chrome. Italic species names are the lone
-  exception (IBM Plex Serif italic, via `.is-species` / `--font-species`).
-- **Pair color with a second signal on every status.** A dot, an icon, or a text word,
-  so
-  meaning survives for colorblind readers.
-- **Keep shadows navy-tinted and quiet, and let the hairline border do the primary
-  separating** on the near-white `#FBFEF8` canvas.
-- **Hold buttons and inputs at `--radius` 6px and cards at `--radius-md` 10px.** Keep
-  the
-  geometry restrained and engineered.
-- **Put a scale bar on every calibrated image, and a persistent colorbar or legend on
-  every
-  data figure.** They stay in exports too.
-- **Show single fluorescence channels in grayscale and composites in green / magenta**,
-  not
-  green / red.
-- **Reference text styles and tokens by name.** The document is the single source of
-  truth;
-  never hardcode a font, size, or hex at a call site.
+### Chart States
 
-### Don't
-
-- **Don't use data colors (Okabe-Ito) for buttons, nav, headings, links, input borders,
-  or
-  any UI chrome.**
-- **Don't reorder the Okabe-Ito series,** and don't exceed six categorical series
-  without
-  introducing an "other" category.
-- **Don't use red-green colormaps,** and don't rely on a green-success / red-error pair
-  without a dot or label to carry the meaning.
-- **Don't use `#F0E442` (yellow) as text, stroke, or a thin line on white.** Reserve it
-  for
-  large filled chart elements only.
-- **Don't combine `--oi-blue` (`#0072B2`) and `--color-blue` (`#1b75bc`) in the same
-  chart.**
-  They read as the same color at small sizes.
-- **Don't render data, labels, captions, or code in anything but the mono family.**
-- **Don't use gray or black shadows,** and don't apply `--shadow-lg` to inline cards or
-  panels (reserve it for overlays).
-- **Don't use raw Okabe-Ito hex as text on white** without the darkened contrast variant
-  from the Badges section.
-- **Don't use chromatic data colors as button fills, and don't use gold as a data
-  series.**
-- **Don't render pill-shaped CTAs,** and don't stretch the logo or sample its colony
-  colors
-  for UI or data.
-- **Don't use em dashes.** Use double hyphens or restructure the sentence.
+| State   | Treatment                                                       |
+|---------|-----------------------------------------------------------------|
+| Loading | axis frame drawn, plot area shimmer skeleton (Feedback & Loading States)       |
+| Empty   | centered mono "No data for this selection", muted icon          |
+| Error   | `--oi-vermilion` icon + mono message + retry, axis frame hidden |
+| Partial | render available series + mono caption "n of m series loaded"   |
 
 ---
 
-## 09 -- Image Display & Viewers
+## Figures
+
+This section covers static figures drawn with matplotlib: pipeline figures declared
+`@figure(backend="mpl")`, analysis plots, and anything prepared for a manuscript,
+thesis, report or poster. Interactive Plotly charts in the GUI follow Data
+Visualization instead.
+
+### How to apply these defaults
+
+Everything in this section is a default, not a constraint. When the contributor has
+not said otherwise, apply it. When the contributor asks for something different, such
+as an aggregate-only plot, a journal's own palette, a slide-sized figure or a
+gridded background, do what they asked; they do not need to justify it, and you
+should not argue for the default. When you depart from a default on your own
+judgment because the plot's purpose calls for it, for example plotting a
+distribution summary for 50,000 colonies where individual points would be noise, say
+so in one line in the figure's docstring or in your reply, so the contributor can
+reverse it.
+
+The Absolute Constraints govern GUI chrome and on-screen charts. They do not apply to
+static figures, and apart from avoiding overlaps (see No overlaps), nothing in this
+section is absolute.
+
+### Page and size
+
+The figure's size is the author's call. A single plot, a dense multi-panel grid and a
+figure taller than a page are all fine, and nothing here fixes a size. The text sizes
+below are meant at the printed size, so they stay true only when the figure is placed
+at 100% rather than rescaled; build it at the size it will appear. Lay it out with
+`layout="constrained"` (or `tight_layout()`) rather than `bbox_inches="tight"` at save
+time, because the latter changes the saved dimensions and with them every point size.
+
+For A4 layouts, `figure_size_mm()` offers two optional widths. Use them when they fit;
+any other width or height is equally valid.
+
+| Preset | Width | Use |
+|---|---|---|
+| `full` | 159.2 mm | Full text width of an A4 page with 1 in margins |
+| `half` | 77.1 mm | Two figures side by side with a 5 mm gutter |
+
+### No overlaps
+
+Whatever its size and however many panels it has, a figure should have no text that
+overlaps other text, runs off the figure edge, or covers data. This is the one thing
+every figure should get right, and the text size is not the first thing to give up.
+When a figure gets crowded, let the layout adapt: move a legend outside its panel when
+it would cover data, angle or thin crowded tick labels, share axes across small
+multiples so only the outer panels carry labels, or make the figure larger. Shrink the
+text only when none of those works.
+
+### Typography
+
+Set all figure text in **DejaVu Sans**, matplotlib's bundled default, so a figure
+renders identically on macOS, Windows and Linux. Use `mathtext.fontset = "dejavusans"`
+so math matches the text, and DejaVu Sans Oblique for italics.
+
+| Text | Size at print | Weight |
+|---|---|---|
+| Tick labels, legend entries | 10 pt | regular |
+| Body text: axis, colorbar and legend titles, annotations, all other text | 12 pt | regular |
+| Panel labels | 14 pt | bold |
+
+Lines follow the same scale: axes and ticks 0.8 pt, data lines 1.75 pt, markers
+4 pt, tick length 4 pt.
+
+### Color
+
+Use the Okabe-Ito palette in its published order, starting from black: `#000000`,
+`#E69F00`, `#56B4E9`, `#009E73`, `#0072B2`, `#D55E00`, `#CC79A7`. Skip yellow
+(`#F0E442`) for lines, points and text on white, where it is nearly invisible; it is
+usable as a large fill. Brand navy does not appear in figures. Beyond seven
+categorical series, group the remainder into an "other" category drawn in grey.
+
+For continuous data use a perceptually uniform map: `cividis` by default, `viridis`
+as the alternative. For data that diverge around a reference value, use a diverging
+map centred on that value, such as `RdBu_r`. Avoid `jet`, rainbow maps and red-green
+pairs.
+
+### Layout and chrome
+
+Use a white figure and axes background, no gridlines, and only the bottom and left
+spines. Leave panel titles out; the caption carries the message. Draw legends
+without a frame.
+
+Label panels **(a)**, **(b)**, **(c)** in bold at the panel-letter size, as a
+left-aligned axes title (`ax.set_title("(a)", loc="left", fontweight="bold")`). The
+layout engine then reserves room for the letter, so it never collides with tick labels
+or the axis title the way a letter placed at a fixed offset does once the text grows.
+
+### Showing data
+
+When the number of observations is small enough to read, plot the individual points
+over the summary, and state n and what error bars or bands show (s.d., s.e.m. or a
+confidence interval) in the caption. When the figure's purpose is the aggregate
+itself, plot the aggregate.
+
+Label axes as "Quantity (unit)", for example "Colony area (mm²)", and keep
+matplotlib's true minus sign.
+
+Italicize genus and species names and gene names, following the organism's
+nomenclature. For *Saccharomyces cerevisiae*, a mutant allele is lowercase italic
+(*ura3Δ*), the wild-type gene uppercase italic (*URA3*), the protein roman (Ura3),
+and strain identifiers roman.
+
+### Image panels
+
+Burn a scale bar with a length label into every image panel of calibrated data; if
+the image is uncalibrated, label the bar in pixels. Show single channels in
+grayscale. Embed raster images at 300 dpi or more at their printed size, and at
+600 dpi when they are combined with line art in the same file.
+
+### Export
+
+| Output | Setting | Why |
+|---|---|---|
+| PDF (primary) | `pdf.fonttype = 42` | Text is embedded as TrueType, so it stays selectable and editable |
+| SVG | `svg.fonttype = "none"` | Text stays editable; it renders in a fallback face where DejaVu Sans is not installed, so treat the PDF as the reference |
+| PNG (preview) | `dpi=300` | For quick viewing only |
+
+Make exports reproducible: pass `metadata={"CreationDate": None}` for PDF and
+`metadata={"Date": None}` for SVG, and fix `svg.hashsalt`. matplotlib also honours
+`SOURCE_DATE_EPOCH`.
+
+matplotlib reads these settings when the file is saved, not when the figure is
+built, so a figure saved outside the theme is exported with matplotlib's own
+defaults. Save through `export_figure()` from `phenotypic.sdk_.viz.figures`, which
+applies the theme and the metadata for you, or call `savefig` inside
+`phenotypic_mpl_context()`.
+
+---
+
+## Image Display & Viewers
 
 The dashboard surfaces acquired image data: plate scans, colony fields, brightfield and
 fluorescence microscopy, and segmentation results. Images are **data**, so the same
@@ -1983,7 +2117,7 @@ composites, and overlays that never destroy the underlying signal.
 
 ```
 +-- chart-card surface (radius-md, shadow-sm, 1px --color-border) -----+
-|  TITLE -- Comfortaa 13 600 --color-heading          [toolbar: icons right] |
+|  TITLE -- Nunito Sans 13 600 --color-heading        [toolbar: icons right] |
 |  subtitle -- JetBrains Mono 11 --color-muted                                |
 |  +-- image stage (background #0e1620 for fluor, #FBFEF8 for bright)+ |
 |  |                                                                  | |
@@ -2013,7 +2147,7 @@ Icon buttons, `icon` size from the Buttons section, `ghost` variant. Group order
 | Navigation | zoom in, zoom out, fit-to-view, reset 1:1 |
 | Display    | channel toggle, LUT/colormap, brightness  |
 | Overlay    | mask on/off, ROI on/off, labels on/off    |
-| Capture    | fullscreen, download (see section 15)     |
+| Capture    | fullscreen, download (see Export & Provenance Strip)     |
 
 - Zoom level reads in a mono chip at lower-left: `JetBrains Mono 11 --color-muted`, e.g.
   `220%`.
@@ -2074,11 +2208,11 @@ Channel chips below the stage carry a mono label and a swatch of the assigned LU
 > "How to make scientific figures accessible to readers with color-blindness" (2025);
 > the Node, "Color-blind people are your audience too" (2021); Bankhead, *Analyzing
 > Fluorescence Microscopy Images with ImageJ*. Aligns with Okabe & Ito (2008), already
-> cited in section 01. Verify current ASCB URL before publishing the doc.
+> cited in Colors. Verify current ASCB URL before publishing the doc.
 
 ### Overlay Layers -- Masks, ROIs, Detections
 
-Overlays reuse the `OKABE_ITO_NAPARI` label mapping already defined in section 07, so a
+Overlays reuse the `OKABE_ITO_NAPARI` label mapping already defined in Code Integration, so a
 mask color in the dashboard matches the same label in napari.
 
 | Overlay type        | Default render                                          |
@@ -2090,7 +2224,7 @@ mask color in the dashboard matches the same label in napari.
 | Reference / control | `--oi-grey` outline, to read as non-data                |
 
 - Opacity is user-adjustable but defaults conservative so pixels stay legible.
-- A legend for label classes uses the section 12 categorical legend.
+- A legend for label classes uses the Chart Support Elements categorical legend.
 
 > **Exception -- high-cardinality instance maps (decided, intentional).** The
 > `OKABE_ITO_NAPARI` mapping above is for **low-cardinality categorical** overlays
@@ -2164,17 +2298,17 @@ For plate fields, well montages, and image sets.
 
 | State    | Treatment                                                            |
 |----------|----------------------------------------------------------------------|
-| Loading  | skeleton block at stage aspect, shimmer (section 14)                 |
+| Loading  | skeleton block at stage aspect, shimmer (Feedback & Loading States)                 |
 | Failed   | centered `--oi-vermilion` icon + mono "Image failed to load" + retry |
 | Empty    | centered `--color-muted` icon + mono "No image for this selection"   |
 | Decoding | progress bar (thick variant) at stage bottom, navy fill              |
 
 ---
 
-## 10 -- Well-Plate Grid
+## Well-Plate Grid
 
 The canonical microbiology layout: 96-well (8x12) and 384-well (16x24). Well fill uses
-the **single-variable** colorscale from section 06, not categorical series, because a
+the **single-variable** colorscale from Data Visualization, not categorical series, because a
 plate map encodes one continuous variable (density, OD, growth).
 
 ### Plate -- Anatomy
@@ -2186,7 +2320,7 @@ plate map encodes one continuous variable (density, OD, growth).
    ...                                fill: navy-to-blue ramp by value
    H  ( )  ( )  ( )  ... ( )          stroke: 1px --color-border
 
-   [ colorbar ]  low ........ high    continuous legend (section 12)
+   [ colorbar ]  low ........ high    continuous legend (Chart Support Elements)
 ```
 
 ### Well States & Value Mapping
@@ -2196,16 +2330,16 @@ plate map encodes one continuous variable (density, OD, growth).
 | Value (low->high) | `rgba(0,54,96,0.08)` -> `#56B4E9` -> `#003660` | 1px `--color-border`        |
 | Failed / null     | `#D55E00` at 70% opacity                       | 1px `#D55E00`               |
 | Empty / no sample | `--color-bg`                                   | 1px dashed `--color-border` |
-| Control           | `--oi-grey` fill                               | 1px `#8892a4`               |
+| Control           | `--oi-grey` fill                               | 1px `#6d7684`               |
 | Selected          | current fill                                   | 2px `--color-navy`          |
 | Hover             | current fill + `--shadow-sm`                   | 1.5px `--color-blue`        |
 
-This is identical to the section 06 heatmap rule, so a plate map and a heatmap of the
+This is identical to the Data Visualization heatmap rule, so a plate map and a heatmap of the
 same data read the same. Do not introduce a second ramp.
 
 ### Well Interaction
 
-- **Hover tooltip:** well ID, raw value, derived metric (all mono). See section 12.
+- **Hover tooltip:** well ID, raw value, derived metric (all mono). See Chart Support Elements.
 - **Drag-select:** rectangular marquee, `--color-blue` 1.5px dashed, 8% fill (matches
   ROI). Selected wells get the 2px navy stroke.
 - **Row / column headers** are clickable to select an entire row or column.
@@ -2223,306 +2357,13 @@ rather than shrinking wells past legibility.
 
 ---
 
-## 11 -- Extended Chart Types
-
-All chart types inherit the section 06 series order, gridline, axis, and spine rules.
-Listed below are the type-specific additions. Axis labels and all numeric annotations
-remain `JetBrains Mono` per the typography constraints.
-
-### Bar Charts (grouped / stacked)
-
-| Property      | Value                                                        |
-|---------------|--------------------------------------------------------------|
-| Bar fill      | series order; single-series defaults to `--color-navy`       |
-| Bar corner    | `--radius-sm` on the free end only (top for vertical)        |
-| Group gap     | 0.2 of band width; bar gap within group 0.08                 |
-| Stacked order | series order bottom-up; "other" category last in `--oi-grey` |
-| Value labels  | JetBrains Mono 11, `--color-heading`, only when < ~12 bars   |
-| Baseline      | 1.5px `--color-border` at zero                               |
-
-Reserve `--oi-vermilion` for a failed / alert bar only, never as series 7 by default.
-
-### Box Plot / Violin   (distributions -- common in this field)
-
-| Element         | Style                                                  |
-|-----------------|--------------------------------------------------------|
-| Box fill        | series color at 18% opacity                            |
-| Box outline     | series color 1.5px                                     |
-| Median line     | series color 2px                                       |
-| Whiskers        | series color 1px, cap 1px                              |
-| Outlier points  | series color, 2.5px radius, 60% opacity                |
-| Violin shape    | series color outline 1.5px, fill 12%; overlay box thin |
-| Jittered points | optional, 2px, 40% opacity, slight x-jitter            |
-
-Show n per group as a mono caption beneath each category label. Distribution plots
-without n are not publication-honest.
-
-### Scatter + Regression
-
-| Element         | Style                                                |
-|-----------------|------------------------------------------------------|
-| Points          | series color, 3.5px radius (matches section 06 dots) |
-| Point opacity   | 70%; drop to 40% above ~500 points to show density   |
-| Regression line | `--color-navy` 2px, or series color if grouped       |
-| Confidence band | same color at 12% opacity fill                       |
-| Identity / y=x  | `--oi-grey` 1px dashed                               |
-| R-squared / fit | mono chip, upper-left, `--color-muted`               |
-
-### Growth Curve / Time-Series   (OD600, kinetics)
-
-| Element         | Style                                                    |
-|-----------------|----------------------------------------------------------|
-| Line            | series order, 2px, round join/cap                        |
-| Error band      | mean +/- SD or SEM, series color 12% fill; state which   |
-| Replicate lines | optional thin 1px, 30% opacity, same color as mean       |
-| Markers         | optional 3.5px at measured timepoints only               |
-| Log axis        | label as "log10" in mono; gridlines at decades           |
-| Phase markers   | `--oi-grey` dashed verticals + mono label (lag/log/stat) |
-
-### Histogram / KDE
-
-- Bars: single fill `--color-navy` at 85%, no per-bar coloring.
-- KDE overlay: `--color-navy` 2px line on 8% fill.
-- Bin count or bandwidth stated in a mono caption; binning choices change the story, so
-  surface them.
-
-### Small Multiples / Facet Grid
-
-- Shared axes across facets; label only the outer edge.
-- Facet title: JetBrains Mono 11 uppercase `--color-muted`, top-left of each cell.
-- 1px `--color-rule` between cells, never heavy borders.
-- One series color across all facets when the facet *is* the grouping variable.
-
-### Sparkline   (inline, in tables / stat cards)
-
-- 1.5px line, `--color-blue`, no axes, no gridlines.
-- Optional end-dot 3px in `--color-navy`; min/max dots in `--oi-grey`.
-- Height 18-24px; lives in a table cell or beneath a stat-card value.
-
-### Volcano / MA Plot   [optional -- omics, include only if relevant]
-
-- Non-significant points `--oi-grey` 60%; up `--oi-green`; down `--oi-purple`
-  (avoids the red-green default volcano).
-- Threshold lines `--oi-grey` 1px dashed (fold-change and p-value cutoffs).
-- This pairing keeps significance direction CB-distinguishable.
-
----
-
-## 12 -- Chart Support Elements
-
-### Continuous Colorbar  (for plate maps, heatmaps, intensity overlays)
-
-```
-orientation: horizontal (default) or vertical
-gradient:    rgba(0,54,96,0.08) -> #56B4E9 -> #003660   (section 06 ramp)
-track:       height 10px (h) / width 10px (v), radius 9999px
-ticks:       3-5, JetBrains Mono 10, --color-muted
-end labels:  low / high or numeric, JetBrains Mono 11
-null swatch: separate 14px square, #D55E00 @70%, label "fail/null"
-```
-
-Never build a sequential colorbar from categorical series colors.
-
-### Categorical Legend
-
-- Marker: 10px circle (line/area charts) or 10px rounded square (bar/box).
-- Name: `IBM Plex Sans 11 --color-body`. Optional value/pct:
-  `JetBrains Mono 11 --color-muted`.
-- Order matches series order exactly. Wrap, never scroll, for <= 6 entries; introduce
-  "other" beyond that (existing constraint).
-- Interactive legends: clicking dims a series to 20% opacity rather than removing it, so
-  axis scale stays stable.
-
-### Tooltip
-
-```css
-.tooltip {
-    background: var(--color-navy);
-    color: #ffffff;
-    border-radius: var(--radius-sm);
-    padding: var(--sp-2) var(--sp-3);
-    box-shadow: var(--shadow-md);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.5;
-    pointer-events: none;
-}
-```
-
-- Label row in IBM Plex Sans; all numeric values in JetBrains Mono.
-- Series swatch (8px) precedes each value in multi-series tooltips.
-- Position above the cursor; flip below near the top edge.
-
-### Threshold & Reference Annotations
-
-- Reference line: `--oi-grey` 1px dashed, mono label at the right margin.
-- Highlighted band (e.g. acceptable range): `--oi-grey` at 8% fill.
-- Target / spec line: `--color-gold` 1.5px is permitted here as a deliberate brand
-  emphasis, but never for a data series.
-
-### Chart States
-
-| State   | Treatment                                                       |
-|---------|-----------------------------------------------------------------|
-| Loading | axis frame drawn, plot area shimmer skeleton (section 14)       |
-| Empty   | centered mono "No data for this selection", muted icon          |
-| Error   | `--oi-vermilion` icon + mono message + retry, axis frame hidden |
-| Partial | render available series + mono caption "n of m series loaded"   |
-
----
-
-## 13 -- Dashboard Shell & Layout
-
-### App Shell
-
-```
-+-- topbar (h 56px, --color-navy, 1px bottom rule) --------------------+
-|  view title (display 20)                    [global filters] [user]   |
-+----------------+------------------------------------------------------+
-| sidebar 240px  |  content (--color-bg, padding --sp-8)                |
-| --color-white  |   +-- panel grid -------------------------------+    |
-| 1px right rule |   | stat cards row                              |    |
-| nav items      |   | chart cards / image panels (grid)           |    |
-|                |   +---------------------------------------------+    |
-+----------------+------------------------------------------------------+
-```
-
-- **Topbar:** the topbar is a deliberate dark surface -- `--color-navy` background
-  with white ink and a gold (`--color-gold`) underline on the active tab. This is an
-  intentional brand choice (the one chrome exception to the otherwise-light theme,
-  alongside the section 09 image stage); it is NOT the white topbar an earlier draft
-  specified. White-on-navy carries the wordmark identity directly, so the topbar does
-  not place a logo asset (a light-background lockup on the navy bar would violate the
-  section 00 "no light lockup on a dark surface" rule; a dark-background logo variant
-  would be required first).
-- **Sidebar nav item:** Comfortaa 13, `--color-muted` default; active gets
-  `--color-navy` text + 3px left accent bar in `--color-navy` + `rgba(0,54,96,0.05)`
-  background. Reuses the active-tab logic. The sidebar itself is `--color-white`.
-
-### Panel Grid
-
-```css
-.panel-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: var(--sp-6);
-}
-
-/* common spans */
-.col-3 {
-    grid-column: span 3;
-}
-
-/* stat card        */
-.col-6 {
-    grid-column: span 6;
-}
-
-/* half-width chart  */
-.col-8 {
-    grid-column: span 8;
-}
-
-/* primary chart     */
-.col-12 {
-    grid-column: span 12;
-}
-
-/* full-width / plate */
-```
-
-- Stat cards: 4-up (`col-3`) on wide, 2-up on tablet, stacked on mobile.
-- Image panels prefer `col-6` or larger; never below ~360px stage width.
-
-### Filter / Toolbar Bar
-
-- Sits directly under the topbar or atop a panel: `--color-white`, 1px bottom rule,
-  `padding: var(--sp-3) var(--sp-6)`.
-- Controls: form inputs (existing spec) + ghost buttons. Active filters render as
-  removable badges (existing spec) with a 5px dot.
-
-### Breadcrumb
-
-- JetBrains Mono 11, `--color-muted`; separators `/` in `--color-border`; current crumb
-  `--color-heading`.
-
----
-
-## 14 -- Feedback & Loading States
-
-### Skeleton Loaders
-
-```css
-.skeleton {
-    background: linear-gradient(
-            90deg,
-            var(--color-rule) 25%,
-            #eef2f7 37%,
-            var(--color-rule) 63%
-    );
-    background-size: 400% 100%;
-    border-radius: var(--radius-sm);
-    animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: 100% 0;
-    }
-    100% {
-        background-position: 0 0;
-    }
-}
-```
-
-- Match the skeleton block to the eventual content shape (stat value bar, chart area,
-  image stage). Never spin a generic loader where the layout is known.
-
-### Empty States
-
-- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), Comfortaa 13
-  title, JetBrains Mono 11 sub-line, optional primary button to act.
-- Voice: state what is missing and the next step, not just "no data".
-
-### Toasts / Notifications
-
-- Bottom-right stack, `--color-white`, `--radius-md`, `--shadow-md`, 4px left accent in
-  the semantic color (success / info / warning / error from section 01).
-- Auto-dismiss 4-6s; errors persist until dismissed.
-- Title Comfortaa 13 600; body Comfortaa 13; any code/IDs JetBrains Mono.
-
-### Modal / Dialog
-
-The system references modals in shadows and radius but does not spec them; this fills
-it.
-
-```css
-.modal {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg); /* one of the few valid --shadow-lg uses */
-    max-width: 560px;
-    padding: var(--sp-8);
-}
-
-.modal-overlay {
-    background: rgba(0, 54, 96, 0.45);
-    backdrop-filter: blur(2px);
-}
-```
-
-- Title: display family, `--font-size-header-1`, `--color-heading`.
-- Footer actions right-aligned; primary (navy) rightmost, ghost cancel left of it.
-
----
-
-## 15 -- Export & Provenance Strip
+## Export & Provenance Strip
 
 A small but high-value addition for a research dashboard, and a direct tie-in to the
 reproducibility discipline in the seminar: every exported figure or image should carry
 its provenance.
 
-- **Download control:** ghost icon button (section 09 toolbar) offering PNG (raster) and
+- **Download control:** ghost icon button (the Image Toolbar in Image Display & Viewers) offering PNG (raster) and
   SVG / PDF (vector) for plots; PNG / TIFF for images. State format in a mono dropdown.
 - **Provenance strip** (optional footer on exported panels): JetBrains Mono 10,
   `--color-muted`,
@@ -2530,3 +2371,212 @@ its provenance.
   once it leaves the dashboard.
 - **Scale-bar persistence:** scale bars and colorbars must be burned into image exports,
   not just shown in the live UI.
+
+---
+
+## Code Integration
+
+### matplotlib
+
+Static figures take their defaults from the Figures section. In code, build them inside
+`phenotypic_mpl_context()`, size them with `figure_size_mm()`, and save them with
+`export_figure()`, all from `phenotypic.sdk_.viz.figures`.
+
+### napari Label Layer Colors
+
+For categorical label overlays (e.g. colony segmentation masks):
+
+```python
+# RGBA tuples normalized 0-1, for napari label layer color dict
+OKABE_ITO_NAPARI = {
+    1: (0 / 255, 54 / 255, 96 / 255, 1.0),  # navy
+    2: (230 / 255, 159 / 255, 0 / 255, 1.0),  # orange
+    3: (86 / 255, 180 / 255, 233 / 255, 1.0),  # sky blue
+    4: (0 / 255, 158 / 255, 115 / 255, 1.0),  # bluish green
+    5: (0 / 255, 114 / 255, 178 / 255, 1.0),  # blue
+    6: (204 / 255, 121 / 255, 167 / 255, 1.0),  # reddish purple
+    7: (213 / 255, 94 / 255, 0 / 255, 1.0),  # vermilion (error)
+}
+```
+
+### CSS Custom Properties
+
+Include this `:root` block in all generated CSS files:
+
+```css
+:root {
+    /* Primary palette -- UI only */
+    --color-navy: #003660;
+    --color-blue: #1b75bc;
+    --color-gold: #febc11;
+    --color-white: #ffffff;
+    --color-bg: #FBFEF8;
+    --color-surface: #ffffff;
+    --color-border: #dde3ed;
+    --color-rule: #e8ecf2;
+    --color-muted: #6d7684;
+    --color-body: #2e3a4e;
+    --color-heading: #003660;
+
+    /* Data palette -- Okabe-Ito -- visualization only */
+    --oi-orange: #E69F00;
+    --oi-sky: #56B4E9;
+    --oi-green: #009E73;
+    --oi-vermilion: #D55E00;
+    --oi-blue: #0072B2;
+    --oi-purple: #CC79A7;
+    --oi-yellow: #F0E442; /* large fills only */
+    --oi-grey: #BBBBBB; /* reference / control */
+
+    /* Semantic aliases */
+    --color-success: var(--oi-green);
+    --color-info: var(--oi-sky);
+    --color-warning: var(--oi-orange);
+    --color-danger: var(--oi-vermilion);
+
+    /* Typography */
+    --font-display: 'Nunito Sans', system-ui, sans-serif;
+    --font-body: 'Nunito Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace; /* every data and table value */
+    --font-species: 'Nunito Sans', system-ui, sans-serif; /* italic binomials only */
+
+    /* Type scale */
+    --text-xs: 0.6875rem; /*  11px */
+    --text-sm: 0.8125rem; /*  13px */
+    --text-data: 0.9375rem; /*  15px, mono data */
+    --text-base: 1rem; /*  16px */
+    --text-md: 1.125rem; /*  18px */
+    --text-lg: 1.25rem; /*  20px */
+    --text-xl: 1.5rem; /*  24px */
+    --text-2xl: 1.875rem; /*  30px */
+    --text-3xl: 2.5rem; /*  40px */
+    --text-4xl: 3.25rem; /*  52px */
+    --text-2xs: 0.625rem; /*  10px */
+
+    /* Semantic size aliases -- use these, not raw --text-* */
+    --font-size-display: var(--text-3xl);
+    --font-size-title: var(--text-2xl);
+    --font-size-header-1: var(--text-xl);
+    --font-size-header-2: var(--text-lg);
+    --font-size-body-lg: var(--text-md);
+    --font-size-body: var(--text-base);
+    --font-size-data: var(--text-data);
+    --font-size-body-sm: var(--text-sm);
+    --font-size-caption: var(--text-xs);
+    --font-size-micro: var(--text-2xs);
+
+    /* Line-height */
+    --leading-display: 1.1;
+    --leading-tight: 1.2;
+    --leading-snug: 1.3;
+    --leading-normal: 1.45;
+    --leading-relaxed: 1.6;
+
+    /* Letter-spacing */
+    --tracking-tight: -0.02em;
+    --tracking-snug: -0.01em;
+    --tracking-normal: 0;
+    --tracking-button: 0.01em;
+    --tracking-wide: 0.08em;
+    --tracking-wider: 0.12em;
+
+    /* Spacing (8pt grid) */
+    --sp-1: 0.25rem;
+    --sp-2: 0.5rem;
+    --sp-3: 0.75rem;
+    --sp-4: 1rem;
+    --sp-5: 1.25rem;
+    --sp-6: 1.5rem;
+    --sp-8: 2rem;
+    --sp-10: 2.5rem;
+    --sp-12: 3rem;
+    --sp-16: 4rem;
+
+    /* Border radius */
+    --radius-sm: 3px;
+    --radius: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    /* Shadows (navy-tinted) */
+    --shadow-sm: 0 1px 3px rgba(0, 54, 96, 0.07), 0 1px 2px rgba(0, 54, 96, 0.04);
+    --shadow: 0 4px 12px rgba(0, 54, 96, 0.08), 0 1px 3px rgba(0, 54, 96, 0.05);
+    --shadow-md: 0 8px 24px rgba(0, 54, 96, 0.10), 0 2px 6px rgba(0, 54, 96, 0.06);
+    --shadow-lg: 0 16px 40px rgba(0, 54, 96, 0.12), 0 4px 12px rgba(0, 54, 96, 0.07);
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --transition: 180ms var(--ease-out);
+}
+```
+
+---
+
+## Do's and Don'ts
+
+### Do
+
+- **Keep the three color worlds separate.** UI chrome (navy / blue / gold plus
+  neutrals),
+  data (Okabe-Ito), and branding (the logo) never borrow from one another.
+- **Reserve navy `#003660` for primary actions, headings, and the wordmark.** Use blue
+  `#1b75bc` for interactive and secondary roles, and gold `#febc11` only as a rare
+  emphasis
+  accent (darken to `#a87a00` for text on white).
+- **Use Okabe-Ito for chart series, progress fills, and semantic states** (success /
+  info /
+  warning / error), in the fixed order navy, orange, sky, green, blue, purple (on
+  screen; static figures follow Figures).
+- **Render every number, table value, axis label, badge, caption, and code token in the
+  mono family** (JetBrains Mono) in the GUI, to keep optical column alignment and a
+  data-forward voice.
+- **Use Nunito Sans for all general text and formatting** -- content headings, large
+  stat values, body, component titles, and italic species names (via `.is-species` /
+  `--font-species`) -- and JetBrains Mono for every data value and table value.
+- **Pair color with a second signal on every status.** A dot, an icon, or a text word,
+  so
+  meaning survives for colorblind readers.
+- **Keep shadows navy-tinted and quiet, and let the hairline border do the primary
+  separating** on the near-white `#FBFEF8` canvas.
+- **Hold buttons and inputs at `--radius` 6px and cards at `--radius-md` 10px.** Keep
+  the
+  geometry restrained and engineered.
+- **Put a scale bar on every calibrated image, and a persistent colorbar or legend on
+  every
+  data figure.** They stay in exports too.
+- **Show single fluorescence channels in grayscale and composites in green / magenta**,
+  not
+  green / red.
+- **Reference text styles and tokens by name.** The document is the single source of
+  truth;
+  never hardcode a font, size, or hex at a call site.
+
+### Don't
+
+- **Don't use data colors (Okabe-Ito) for buttons, nav, headings, links, input borders,
+  or
+  any UI chrome.**
+- **Don't reorder the Okabe-Ito series** in on-screen charts, and don't exceed six
+  categorical series
+  without
+  introducing an "other" category.
+- **Don't use red-green colormaps,** and don't rely on a green-success / red-error pair
+  without a dot or label to carry the meaning.
+- **Don't use `#F0E442` (yellow) as text, stroke, or a thin line on white.** Reserve it
+  for
+  large filled chart elements only.
+- **Don't combine `--oi-blue` (`#0072B2`) and `--color-blue` (`#1b75bc`) in the same
+  chart.**
+  They read as the same color at small sizes.
+- **Don't render data, labels, captions, or code in the GUI in anything but the mono
+  family.**
+- **Don't use gray or black shadows,** and don't apply `--shadow-lg` to inline cards or
+  panels (reserve it for overlays).
+- **Don't use raw Okabe-Ito hex as text on white** without the darkened contrast variant
+  from the Badges section.
+- **Don't use chromatic data colors as button fills, and don't use gold as a data
+  series.**
+- **Don't render pill-shaped CTAs,** and don't stretch the logo or sample its colony
+  colors
+  for UI or data.
+- **Don't use em dashes.** Use double hyphens or restructure the sentence.

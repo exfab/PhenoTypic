@@ -154,7 +154,7 @@ _LEGACY_ALLOWED = {
         "STUDY_METADATA",
         "ACQUISITION_METADATA",
     },
-    "src/phenotypic/schema/_experimental_tags/__init__.py": {
+    "src/phenotypic/schema/_metadata/_experimental_tags/__init__.py": {
         "GENETIC_METADATA",
         "SAMPLE_METADATA",
         "PLATE_METADATA",
@@ -164,7 +164,7 @@ _LEGACY_ALLOWED = {
         "STUDY_METADATA",
         "ACQUISITION_METADATA",
     },
-    "src/phenotypic/schema/_tiers.py": {"MetadataGenetic_Strain"},
+    "src/phenotypic/schema/_base/_tiers.py": {"MetadataGenetic_Strain"},
     # Live migration guidance labels historical strings as compatibility data.
     "src/phenotypic/schema/CLAUDE.md": {"MetadataGenetic_Strain"},
     "docs/source/explanation/metadata_namespace.md": {

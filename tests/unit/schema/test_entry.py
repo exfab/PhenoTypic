@@ -51,7 +51,7 @@ def test_member_declared_with_raw_tuple_is_rejected():
     with pytest.raises(TypeError):
         class BAD(MeasurementInfo):  # noqa: N801
             @classmethod
-            def category(cls):
+            def metric_family(cls):
                 return "Bad"
 
             X = ("X", "raw tuple no longer allowed")
@@ -64,7 +64,7 @@ def test_member_declared_with_bare_string_is_rejected():
     with pytest.raises(TypeError):
         class BAD2(MeasurementInfo):  # noqa: N801
             @classmethod
-            def category(cls):
+            def metric_family(cls):
                 return "Bad2"
 
             X = "X"

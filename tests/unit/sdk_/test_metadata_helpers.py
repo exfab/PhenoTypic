@@ -194,14 +194,14 @@ def test_registry_fails_fast_on_duplicate_labels_and_flat_headers():
 
     class FIRST_OWNER(MetadataInfo):
         @classmethod
-        def category(cls):
+        def metric_family(cls):
             return "MetadataFirst"
 
         DUPLICATE = Entry("Duplicate")
 
     class SECOND_OWNER(MetadataInfo):
         @classmethod
-        def category(cls):
+        def metric_family(cls):
             return "MetadataSecond"
 
         DUPLICATE = Entry("Duplicate")
@@ -215,7 +215,7 @@ def test_registry_rejects_duplicate_declarations_hidden_as_enum_aliases():
 
     class ALIASED_OWNER(MetadataInfo):
         @classmethod
-        def category(cls):
+        def metric_family(cls):
             return "MetadataAliased"
 
         FIRST = Entry("Duplicate")

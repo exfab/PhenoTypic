@@ -112,7 +112,7 @@ def test_dynamic_readme_schema_preserves_default_named_member():
 
     class CUSTOM_DEFAULT(MeasurementInfo):
         @classmethod
-        def category(cls) -> str:
+        def metric_family(cls) -> str:
             return "CustomDefault"
 
         default = Entry("Default", "A valid lowercase schema member.")

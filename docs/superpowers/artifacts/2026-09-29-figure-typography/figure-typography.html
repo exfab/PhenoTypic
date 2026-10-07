@@ -1,0 +1,370 @@
+<meta charset="utf-8">
+<title>PhenoTypic Figure Typography</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,600;0,6..12,700;1,6..12,400&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: candidate list on the left, a sticky preview (A4 proof or a single view) on the right; stacks at phone width. */
+:root {
+  --canvas: #FBFEF8;
+  --surface: #FFFFFF;
+  --ink: #1D2A3A;
+  --muted: #5E6B7E;
+  --rule: #DDE3ED;
+  --navy: #003660;
+  --accent: #1B75BC;
+  --chip-bg: #EEF3FA;
+  --ok: #0B6B4F;
+  --no: #9A3D00;
+  --paper: #FFFFFF;
+  --paper-ink: #111111;
+  --paper-shadow: rgba(0, 54, 96, 0.18);
+  --font-ui: 'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-doc: 'Source Serif 4', Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0E1621; --surface: #152131; --ink: #E4EAF2; --muted: #9AA8BC;
+    --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA;
+    --chip-bg: #1C2C41; --ok: #5FD1A8; --no: #F0A060; --paper-shadow: rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0E1621; --surface: #152131; --ink: #E4EAF2; --muted: #9AA8BC;
+  --rule: #26374C; --navy: #9CC3EA; --accent: #6FB2EA;
+  --chip-bg: #1C2C41; --ok: #5FD1A8; --no: #F0A060; --paper-shadow: rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--canvas); color: var(--ink);
+  font-family: var(--font-ui); font-size: 15px; line-height: 1.55;
+  padding-inline: 16px; padding-block: 28px 64px;
+}
+.wrap { max-width: 1480px; margin-inline: auto; display: grid; gap: 24px; }
+header h1 {
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem); font-weight: 700; color: var(--navy);
+  margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance;
+}
+header p { margin: 0 0 8px; max-width: 78ch; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chips span {
+  font-family: var(--font-mono); font-size: 12px; background: var(--chip-bg);
+  color: var(--ink); padding: 4px 10px; border-radius: 6px;
+}
+.chips span b { color: var(--muted); font-weight: 600; margin-right: 4px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+@media (min-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 470px) minmax(0, 1fr); align-items: start; }
+  .preview { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+}
+fieldset {
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--surface);
+  margin: 0; padding: 18px 18px 16px; min-width: 0;
+}
+legend {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); padding-inline: 6px;
+}
+.q { font-weight: 700; font-size: 1.05rem; margin: 0 0 4px; }
+.qnote { margin: 0 0 12px; color: var(--muted); font-size: 0.92rem; }
+.opts { display: grid; gap: 8px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.opt label {
+  display: grid; gap: 3px; padding: 10px 12px 10px 38px; border-radius: 8px;
+  border: 1px solid var(--rule); cursor: pointer; background: var(--surface);
+}
+.opt label::before {
+  content: ""; position: absolute; left: 13px; top: 14px; width: 14px; height: 14px;
+  border-radius: 50%; border: 1.5px solid var(--muted); background: var(--surface);
+}
+.opt input:checked + label { border-color: var(--accent); background: var(--chip-bg); }
+.opt input:checked + label::before { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surface); }
+.opt input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.opt .name { font-weight: 600; }
+.opt .name .tag {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--navy);
+  border: 1px solid var(--navy); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px;
+}
+.opt .why { color: var(--muted); font-size: 0.9rem; }
+.opt .flags { font-family: var(--font-mono); font-size: 11.5px; }
+.flags .good { color: var(--ok); }
+.flags .bad { color: var(--no); }
+
+.preview { min-width: 0; display: grid; gap: 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.seg button {
+  font: 600 13px var(--font-ui); background: var(--surface); color: var(--ink);
+  border: 0; padding: 6px 12px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--navy); color: var(--surface); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.stage { overflow: hidden; border-radius: 6px; }
+.stage.scroll { overflow-x: auto; }
+.page {
+  width: 210mm; min-height: 297mm; background: var(--paper); color: var(--paper-ink);
+  padding: 22mm 25.4mm; box-shadow: 0 4px 24px var(--paper-shadow);
+  transform-origin: top left; font-family: var(--font-doc);
+}
+.page h3 { font-size: 12pt; font-weight: 600; margin: 0 0 3mm; }
+.page p { font-size: 11pt; line-height: 1.4; margin: 0 0 3mm; text-align: justify; hyphens: auto; }
+.page figure { margin: 5mm 0 4mm; }
+.page figure img { display: block; max-width: none; height: auto; }
+.page figcaption { font-size: 9pt; line-height: 1.35; margin-top: 2.5mm; }
+.slide {
+  aspect-ratio: 16 / 9; background: var(--paper); box-shadow: 0 4px 24px var(--paper-shadow);
+  display: grid; place-items: center; padding: 3%; border-radius: 4px; max-width: 100%;
+}
+.slide img { width: 100%; height: 100%; object-fit: contain; }
+.meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+section.block { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; min-width: 0; }
+section.block > h2 { margin: 0 0 4px; font-size: 1.2rem; color: var(--navy); }
+section.block > p.lead { margin: 0 0 14px; color: var(--muted); max-width: 86ch; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13px; min-width: 100%; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--rule); padding: 6px 8px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+td { font-family: var(--font-mono); }
+td.bad { color: var(--no); font-weight: 600; }
+tr.sel td { background: var(--chip-bg); }
+.fine { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; max-width: 90ch; }
+.out pre {
+  margin: 0 0 10px; background: var(--chip-bg); border-radius: 8px; padding: 14px; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; color: var(--ink);
+}
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.primary {
+  font: 700 14px var(--font-ui); background: var(--navy); color: var(--surface);
+  border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+}
+.primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .opt label, .seg button { transition: background-color 120ms, border-color 120ms; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>PhenoTypic Figure Typography</h1>
+    <p><b>Round 2: the size ladder.</b> Round 1 is settled, so every candidate below uses the same typeface, colors, chrome and panel letters and differs only in text size and the line weights that go with it. Each candidate is drawn three ways, and the layout adapts the way a careful author would: legends move outside a panel when they would cover data, and crowded category labels are angled. The table reports what that costs.</p>
+    <p>All figures are drawn by matplotlib 3.10.7 from synthetic, fixed-seed data. Sizes are in points at the printed size.</p>
+    <div class="chips" aria-label="Decided in round 1">
+      <span><b>font</b>DejaVu Sans</span>
+      <span><b>colors</b>Okabe-Ito, published order</span>
+      <span><b>chrome</b>minimal</span>
+      <span><b>panels</b>(a) (b) (c)</span>
+      <span><b>size</b>any; no overlaps</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <form autocomplete="off">
+      <fieldset>
+        <legend>Size ladder</legend>
+        <p class="q">Which text sizes? (tick labels / axis labels / panel letters)</p>
+        <p class="qnote">The A4 page around the figure sets its body text at 11 pt and its caption at 9 pt, for comparison.</p>
+        <div class="opts" id="ladders"></div>
+      </fieldset>
+    </form>
+
+    <div class="preview">
+      <div class="bar">
+        <div class="seg" role="group" aria-label="Which figure">
+          <button type="button" data-view="grid" aria-pressed="true">2×2, full width</button>
+          <button type="button" data-view="half" aria-pressed="false">Single, half width</button>
+          <button type="button" data-view="facets" aria-pressed="false">3×3 facets</button>
+        </div>
+        <div class="seg" role="group" aria-label="How it is viewed">
+          <button type="button" data-zoom="fit" aria-pressed="true">A4 page</button>
+          <button type="button" data-zoom="true" aria-pressed="false">A4, actual size</button>
+          <button type="button" data-zoom="slide" aria-pressed="false">On a slide</button>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="page" id="page">
+          <h3>Colony growth of auxotrophic deletion strains</h3>
+          <p>Deletion of <i>URA3</i>, <i>HIS3</i> or <i>LEU2</i> slowed colony expansion on rich medium relative to the parental strain, with the largest delay in <i>leu2</i>Δ (Fig. 1). The edge effect typical of pinned arrays appears in the plate map, with larger colonies in the outer two rows and columns.</p>
+          <figure>
+            <img id="pageimg" alt="Sample figure for the selected size ladder">
+            <figcaption id="caption"></figcaption>
+          </figure>
+          <p>Body text on this page is 11 pt and the caption 9 pt. Figure text at the chosen ladder should read comfortably next to both without taking space the data needs.</p>
+        </div>
+        <div class="slide" id="slide" hidden><img id="slideimg" alt="The selected figure filling a 16:9 slide"></div>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>What each ladder costs</h2>
+    <p class="lead">Data area is the share of the figure inside the data panels, so higher leaves more room for data. Collisions count text that overlaps other text, text cut off at the figure edge, and data points hidden under a legend or label, after the layout has adapted. The last two columns give the tick-label size in screen pixels in two viewing situations.</p>
+    <div class="tablewrap">
+      <table id="costs">
+        <thead><tr>
+          <th>Ladder</th><th>2×2 data</th><th>Half data</th><th>3×3 data</th>
+          <th>Collisions</th><th>Ticks, laptop PDF</th><th>Ticks, slide</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="fine">Laptop PDF assumes the A4 page is fitted to a 1280 px-wide viewer window, so 1 pt ≈ 2.15 px. Slide assumes the full-width figure (159.2 mm) is stretched across a 1920 px-wide 16:9 slide, so 1 pt ≈ 4.25 px; a half-width figure placed alone on a slide doubles that. Body text on screen is usually 14 to 16 px for comparison. These are my assumptions for scale, not measurements of a particular device.</p>
+  </section>
+
+  <section class="block out">
+    <h2>Your choice</h2>
+    <p class="lead">Copy this and paste it into the session.</p>
+    <pre id="summary"></pre>
+    <div class="row">
+      <button type="button" class="primary" id="copy">Copy choice</button>
+      <span class="status" id="copystatus" role="status"></span>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // Measured by render_samples.py --ladders-only (samples/ladder/manifest.json).
+  const LADDERS = [
+    { id: "l7", sizes: [7, 8, 10], note: "Round 1's choice. Dense and journal-like; small on a laptop.",
+      m: { grid: [0.327, 0, 0, 0], half: [0.665, 0, 0, 0], facets: [0.746, 0, 0, 0] } },
+    { id: "l8", sizes: [8, 9, 12], note: "A step up; ticks at a small caption size.",
+      m: { grid: [0.300, 0, 0, 0], half: [0.641, 0, 0, 0], facets: [0.745, 0, 0, 0] } },
+    { id: "l9", sizes: [9, 10, 12], note: "Ticks at caption size. Lightest option that reads easily on a laptop.",
+      m: { grid: [0.276, 0, 0, 0], half: [0.648, 0, 0, 0], facets: [0.733, 0, 0, 0] } },
+    { id: "l10", sizes: [10, 11, 14], tag: "Recommended",
+      note: "Axis labels match the 11 pt A4 body text and panel letters reach 14 pt. Clean in all three figures once the layout adapts; crowded category labels get angled.",
+      m: { grid: [0.251, 0, 0, 0], half: [0.634, 0, 0, 0], facets: [0.718, 0, 0, 0] } },
+    { id: "l10b", sizes: [10, 12, 14], note: "Axis labels a point above body text. Still clean; gives up a little more room.",
+      m: { grid: [0.242, 0, 0, 0], half: [0.618, 0, 0, 0], facets: [0.710, 0, 0, 0] } },
+    { id: "l14", sizes: [14, 16, 18], note: "Everything at least 14 pt. Slide scale: text collides and is cut off in the 2×2, and the legend covers data at half width.",
+      m: { grid: [0.181, 3, 3, 0], half: [0.561, 0, 1, 17], facets: [0.657, 0, 0, 0] } }
+  ];
+  const VIEWS = {
+    grid: { width: 159.2, file: "grid",
+      caption: "<b>Figure 1 | Growth of <i>S. cerevisiae</i> deletion strains on YPD at 30 °C (synthetic data).</b> <b>(a)</b> Colony area over time; lines show the mean and shading ±1 s.d. of <i>n</i> = 6 colonies. <b>(b)</b> Colony area at 48 h; points are colonies, bars the mean, <i>n</i> = 6 per strain. <b>(c)</b> Colony area across a 384-pin plate. <b>(d)</b> Grayscale crop of the imaged plate; scale bar in pixels because the synthetic plate is uncalibrated." },
+    half: { width: 77.1, file: "half",
+      caption: "<b>Figure 1 | Colony growth (synthetic data).</b> Mean ± 1 s.d. of <i>n</i> = 6 colonies per strain, placed at half the A4 text width." },
+    facets: { width: 159.2, file: "facets",
+      caption: "<b>Figure 1 | Growth of nine deletion strains (synthetic data).</b> Grey lines are four replicate colonies; black is their mean. Axes are shared, so only the outer panels carry labels." }
+  };
+  const PX_PER_PT = 96 / 72;
+  const LAPTOP = PX_PER_PT * 1280 / (210 * 96 / 25.4);
+  const SLIDE = PX_PER_PT * 1920 / (159.2 * 96 / 25.4);
+  const KEY = "phenotypic-figure-typography-round2";
+
+  let state = { ladder: "l10", view: "grid", zoom: "fit" };
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (raw) state = Object.assign(state, JSON.parse(raw));
+  } catch (e) { /* storage unavailable */ }
+  function save() { try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => { if (k === "text") node.textContent = v; else if (k === "html") node.innerHTML = v; else node.setAttribute(k, v); });
+    (children || []).forEach(c => node.appendChild(c));
+    return node;
+  }
+  const sizesText = s => s[0] + " / " + s[1] + " / " + s[2] + " pt";
+  const collisions = m => ["grid", "half", "facets"].reduce((n, v) => n + m[v][1] + m[v][2] + m[v][3], 0);
+
+  const host = document.getElementById("ladders");
+  LADDERS.forEach(l => {
+    const id = "ladder-" + l.id;
+    const input = el("input", { type: "radio", name: "ladder", id: id, value: l.id });
+    if (state.ladder === l.id) input.checked = true;
+    input.addEventListener("change", () => { state.ladder = l.id; update(); });
+    const name = el("span", { class: "name", text: sizesText(l.sizes) });
+    if (l.tag) name.appendChild(el("span", { class: "tag", text: l.tag }));
+    const c = collisions(l.m);
+    const flags = el("span", { class: "flags" }, [
+      el("span", { class: c ? "bad" : "good", text: c ? c + " collisions" : "no collisions" }),
+      el("span", { text: " · 2×2 data area " + Math.round(l.m.grid[0] * 100) + "%" })
+    ]);
+    host.appendChild(el("div", { class: "opt" }, [input, el("label", { for: id }, [name, el("span", { class: "why", text: l.note }), flags])]));
+  });
+
+  const body = document.querySelector("#costs tbody");
+  LADDERS.forEach(l => {
+    const c = collisions(l.m);
+    const row = el("tr", { "data-ladder": l.id }, [
+      el("td", { text: sizesText(l.sizes) }),
+      el("td", { text: Math.round(l.m.grid[0] * 100) + "%" }),
+      el("td", { text: Math.round(l.m.half[0] * 100) + "%" }),
+      el("td", { text: Math.round(l.m.facets[0] * 100) + "%" }),
+      el("td", { class: c ? "bad" : "", text: c ? String(c) : "0" }),
+      el("td", { text: (l.sizes[0] * LAPTOP).toFixed(0) + " px" }),
+      el("td", { text: (l.sizes[0] * SLIDE).toFixed(0) + " px" })
+    ]);
+    body.appendChild(row);
+  });
+
+  function applyZoom() {
+    const stage = document.getElementById("stage");
+    const page = document.getElementById("page");
+    const slide = document.getElementById("slide");
+    page.hidden = state.zoom === "slide";
+    slide.hidden = state.zoom !== "slide";
+    stage.classList.toggle("scroll", state.zoom === "true");
+    if (state.zoom === "fit") {
+      const scale = Math.min(1, stage.clientWidth / page.offsetWidth);
+      page.style.transform = "scale(" + scale + ")";
+      stage.style.height = (page.offsetHeight * scale) + "px";
+    } else {
+      page.style.transform = "none";
+      stage.style.height = "auto";
+    }
+  }
+
+  function update() {
+    const l = LADDERS.find(x => x.id === state.ladder);
+    const v = VIEWS[state.view];
+    const src = "samples/ladder/" + l.id + "__" + v.file + ".svg";
+    const img = document.getElementById("pageimg");
+    img.src = src;
+    img.style.width = v.width + "mm";
+    document.getElementById("slideimg").src = src;
+    document.getElementById("caption").innerHTML = v.caption;
+    const m = l.m[state.view];
+    document.getElementById("meta").textContent =
+      sizesText(l.sizes) + " · data area " + Math.round(m[0] * 100) + "% · overlaps " + m[1] +
+      " · cut off " + m[2] + " · data points hidden " + m[3];
+    document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === state.view)));
+    document.querySelectorAll("[data-zoom]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.zoom === state.zoom)));
+    document.querySelectorAll("#costs tbody tr").forEach(tr => tr.classList.toggle("sel", tr.dataset.ladder === state.ladder));
+    document.getElementById("summary").textContent =
+      "figures:\n  ladder: " + l.id + "  # ticks " + l.sizes[0] + " pt, axis labels " + l.sizes[1] +
+      " pt, panel letters " + l.sizes[2] + " pt";
+    save();
+    applyZoom();
+  }
+
+  document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { state.view = b.dataset.view; update(); }));
+  document.querySelectorAll("[data-zoom]").forEach(b => b.addEventListener("click", () => { state.zoom = b.dataset.zoom; update(); }));
+  document.getElementById("pageimg").addEventListener("load", applyZoom);
+  window.addEventListener("resize", applyZoom);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(applyZoom);
+  update();
+
+  document.getElementById("copy").addEventListener("click", () => {
+    const text = document.getElementById("summary").textContent;
+    const status = document.getElementById("copystatus");
+    const fallback = () => {
+      const range = document.createRange();
+      range.selectNodeContents(document.getElementById("summary"));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      status.textContent = "Selected. Press Ctrl+C or ⌘C to copy.";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => { status.textContent = "Copied."; }, fallback);
+    } else { fallback(); }
+  });
+})();
+</script>

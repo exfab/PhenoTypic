@@ -34,7 +34,7 @@ def _distinct(series: pd.Series) -> Any:
 
 
 def _label_of(header: str) -> str:
-    # strip the "<Category>_" prefix -> bare label
+    # strip the "<Family>_" prefix -> bare label
     return header.split("_", 1)[1] if "_" in header else header
 
 
@@ -85,7 +85,7 @@ def build_rembi_manifest(
         "files": files,
     }
 
-    # --- analyzed_data: feature catalog grouped by category prefix
+    # --- analyzed_data: feature catalog grouped by metric-family prefix
     features: dict[str, list[str]] = {}
     for col in measurements.columns:
         col = str(col)

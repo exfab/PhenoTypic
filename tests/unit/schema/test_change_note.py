@@ -6,7 +6,6 @@ import inspect
 
 import pytest
 
-import phenotypic
 from phenotypic.measure import (
     MeasureBounds,
     MeasureIntensity,
@@ -19,14 +18,10 @@ from phenotypic.schema import BBOX, INTENSITY, SHAPE, SIZE, TEXTURE, Entry, Meas
 MARKER = ".. versionchanged:: 0.20.0"
 
 
-def test_version_is_0_20_0():
-    assert phenotypic.__version__ == "0.20.0"
-
-
 def test_default_change_note_is_empty_and_leaves_docs_untouched():
     class _Plain(MeasurementInfo):
         @classmethod
-        def category(cls):
+        def metric_family(cls):
             return "Plain"
 
         A = Entry("A", "alpha")

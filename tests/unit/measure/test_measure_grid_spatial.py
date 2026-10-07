@@ -507,7 +507,7 @@ class TestNearestSchema:
         assert len(headers) == 11
 
     def test_category_is_neighbor_dist_for_every_header(self):
-        assert NEIGHBOR_DIST.category() == "NeighborDist"
+        assert NEIGHBOR_DIST.metric_family() == "NeighborDist"
         assert all(h.startswith("NeighborDist_")
                    for h in NEIGHBOR_DIST.get_headers())
 

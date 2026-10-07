@@ -684,7 +684,10 @@ order:
 3. **XPU** -- Intel GPUs
 4. **HPU** -- Habana Gaudi accelerators
 
-If none is found, a `RuntimeError` is raised.
+If none is found, the detector falls back to CPU and emits a warning (both a
+Python `UserWarning` and a log line, so it is visible in SLURM and worker
+logs). CPU inference works but is much slower than on a GPU, so a full plate
+can take a long time.
 
 ### Explicit device
 
@@ -693,11 +696,12 @@ If none is found, a `RuntimeError` is raised.
 Sam2(device="cuda")   # NVIDIA GPU
 Sam2(device="mps")    # Apple Silicon
 Sam2(device="xpu")    # Intel GPU
-Sam2(device="cpu")    # CPU (very slow, but always available)
+Sam2(device="cpu")    # CPU (much slower, but always available)
 ```
 
 When an explicit accelerator is requested but unavailable, a `RuntimeError`
-is raised with a descriptive message.
+is raised with a descriptive message. An explicit device is never silently
+replaced: use `"auto"` if the pipeline should run wherever it lands.
 
 ### `resolve_device()` utility
 
@@ -707,8 +711,8 @@ workflows:
 ```python
 from phenotypic.detect.nn._helper._checkpoint_manager import resolve_device
 
-device = resolve_device("auto")           # raises if no accelerator
-device = resolve_device("auto", allow_cpu=True)  # falls back to CPU with warning
+device = resolve_device("auto")                   # falls back to CPU with warning
+device = resolve_device("auto", allow_cpu=False)  # raises if no accelerator
 ```
 
 ## Listing and Clearing Models
@@ -753,17 +757,20 @@ uv add "phenotypic[torch]"
 {ref}`Deep Learning Detectors`
 tutorial section for the conda-forge / `pixi` recipe.
 
-### `RuntimeError: No accelerator available`
+### `No GPU/accelerator detected; device='auto' is falling back to CPU`
 
-No GPU was detected. Options:
+No GPU was detected, so the detector is running on CPU. The run continues,
+only more slowly. If you expected a GPU:
 
 - Ensure your GPU drivers and CUDA toolkit are installed correctly.
 - On macOS with Apple Silicon, ensure PyTorch >= 2.0 with MPS support.
-- Pass `device="cpu"` to force CPU inference (very slow):
+- On SLURM, ensure the job was submitted to a GPU partition and did not set
+  `slurm_gpus_per_node=0`.
 
-```python
-Sam2(device="cpu")
-```
+To run on CPU deliberately, on a CPU-only SLURM partition, pass
+`--slurm slurm_gpus_per_node=0` (or `--gpu-slurm slurm_gpus_per_node=0` for
+the staged GPU stage); PhenoTypic then requests no GPU and skips the
+partition's GPU check.
 
 ### `RuntimeError: device='cuda' requested but CUDA is not available`
 

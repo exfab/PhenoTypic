@@ -1,10 +1,10 @@
 from phenotypic.schema import Entry, REMBI_MODULE
-from phenotypic.schema._tiers import IdentityInfo
+from phenotypic.schema import IdentityInfo
 
 
 class _ModEnum(IdentityInfo):
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "TestMod"
 
     @classmethod
@@ -18,7 +18,7 @@ class _ModEnum(IdentityInfo):
 
 class _NoModEnum(IdentityInfo):
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "TestNoMod"
 
     LONELY = Entry("Lonely", "no module declared -> fallback")

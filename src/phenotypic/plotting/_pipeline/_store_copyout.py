@@ -16,7 +16,7 @@ from typing import Any, Callable, Mapping
 from phenotypic.abc_.plotting._store_formats import STORE_FORMATS
 from phenotypic.sdk_ import CommitGuard
 from phenotypic.sdk_._file_locking import exclusive_path_lock
-from phenotypic.sdk_._image_figures import read_figure_run
+from phenotypic.sdk_._image_figures import read_figure_run, split_figure_file_path
 from phenotypic.sdk_.ngff_ import FIGURES_GROUP
 
 from ._adapter import FigureAdapter
@@ -28,7 +28,6 @@ from ._writer import (
     _guarded_commit,
     _require_plot_publication,
     safe_path_component,
-    unique_page_stems,
 )
 
 logger = logging.getLogger(__name__)
@@ -163,36 +162,26 @@ def _publish_binding(
     publication_guard: Callable[[], bool] | None,
     commit_guard: CommitGuard | None,
 ) -> None:
-    """Publish one binding flat (a lone ``default`` page) or as a manifest dir.
+    """Publish one binding as a manifest directory mirroring the store.
 
-    The layout is decided over every page the binding produced, failed ones
-    included, as the retired writer decided it over the whole ``PlotOutput``:
-    a failure must not flip a multi-page binding to the flat layout.
+    Spec 2026-09-30 §3. Every page lands at its store-relative
+    ``<plot folder>/<file>`` inside the image's directory; a flat version 1
+    page lands in that directory itself.
+    A page is identified by ``(key, plot)``: one key may appear in two plots.
 
     *record* is already bound to this binding's id.
     """
     pages = binding.get("pages", [])
-    published_keys = [p["key"] for p in pages]
-    failed_only: dict[str, str] = {}
+    published_ids = {(p["key"], p.get("plot")) for p in pages}
+    failed_only: dict[tuple[str, str | None], str] = {}
     for failure in page_failures:
-        if failure["page"] not in published_keys:
-            failed_only.setdefault(failure["page"], str(failure.get("error")))
-    flat = published_keys + list(failed_only) == ["default"]
-    if flat and not pages:
-        return  # a page that published nothing keeps its previous files
-    base = plots_base / safe_path_component(binding_id) / safe_path_component(dataset)
-    if flat:
-        _require_plot_publication(publication_guard)
-        base.mkdir(parents=True, exist_ok=True)
-        _publish_pages(store, plots_base, base, pages, [output_stem], page_failures,
-                       record=record, publication_guard=publication_guard,
-                       commit_guard=commit_guard)
-        return
-    directory = base / output_stem
-    stems = unique_page_stems(
-        [(p["key"], p["label"] or p["key"]) for p in pages]
-        + [(key, key) for key in failed_only]
-    )[: len(pages)]
+        page_id = (failure["page"], failure.get("plot"))
+        if page_id not in published_ids:
+            failed_only.setdefault(page_id, str(failure.get("error")))
+    directory = (
+        plots_base / safe_path_component(binding_id)
+        / safe_path_component(dataset) / output_stem
+    )
     _require_plot_publication(publication_guard)
     directory.mkdir(parents=True, exist_ok=True)
     # Same lock `publish_plot_output` takes for a manifest directory, so two
@@ -200,14 +189,14 @@ def _publish_binding(
     with exclusive_path_lock(directory / ".publication.lock"):
         _require_plot_publication(publication_guard)
         published, failed = _publish_pages(
-            store, plots_base, directory, pages, stems, page_failures,
+            store, plots_base, directory, pages, page_failures,
             record=record,
             publication_guard=publication_guard, commit_guard=commit_guard,
         )
         # The store records no label for a page that stored nothing.
         failed += [
-            {"key": key, "label": None, "error": error}
-            for key, error in failed_only.items()
+            {"key": key, "plot": plot, "label": None, "error": error}
+            for (key, plot), error in failed_only.items()
         ]
         # A capability, not an outcome; see the note in `_writer`.
         renderers: dict[str, str] = {}
@@ -218,7 +207,7 @@ def _publish_binding(
         _commit_manifest(
             directory,
             {
-                "schema_version": 2, "plot_id": binding_id,
+                "schema_version": 3, "plot_id": binding_id,
                 "class": plot_class,
                 "renderers": renderers, "pages": published, "failed": failed,
             },
@@ -231,33 +220,48 @@ def _publish_pages(
     plots_base: Path,
     directory: Path,
     pages: list[dict[str, Any]],
-    stems: list[str],
     page_failures: list[dict[str, Any]],
     *,
     record: Callable[..., None],
     publication_guard: Callable[[], bool] | None,
     commit_guard: CommitGuard | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Copy every page's stored files; return manifest pages and failures."""
+    """Copy every page's stored files; return manifest pages and failures.
+
+    Names come from the stored paths, never from ``page["plot"]``: the store
+    already chose them (decision P1), and ``plot`` is the unsanitized name.
+    Manifest ``files`` values are relative to *directory*.
+    """
     published: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
     figures_root = (store / FIGURES_GROUP).resolve()
-    for page, stem in zip(pages, stems):
+    for page in pages:
         files: dict[str, str] = {}
         errors: list[BaseException] = []
+        created: Path | None = None
         for entry in page["files"]:
             try:
                 data = _read_stored_file(store, figures_root, entry)
-                name = f"{stem}{STORE_FORMATS[entry['format']].extension}"
+                _run, _binding, plot_directory, name = split_figure_file_path(entry["path"])
+                stem = name[: -len(STORE_FORMATS[entry["format"]].extension)]
+                page_directory = (
+                    directory if plot_directory is None else directory / plot_directory
+                )
+                if not page_directory.exists():
+                    # The writer's contract: the guard is asked immediately
+                    # before any directory is created (plan review I5).
+                    _require_plot_publication(publication_guard)
+                    page_directory.mkdir()
+                    created = page_directory
 
                 def _copy(dest: Path) -> None:
                     dest.write_bytes(data)
 
                 _atomic_write(
-                    directory / name, _copy,
+                    page_directory / name, _copy,
                     publication_guard=publication_guard, commit_guard=commit_guard,
                 )
-                files[entry["format"]] = name
+                files[entry["format"]] = _relative(plot_directory, name)
             except PlotPublicationBlocked:
                 _discard_page(directory, files)
                 raise
@@ -270,10 +274,11 @@ def _publish_pages(
             # Its own step: the stored JSON was verified and copied, so a
             # failure here is the deliverable rendering, not the store.
             try:
-                files["html"] = _write_html_from_json(
-                    data, directory, stem, plots_base,
+                html = _write_html_from_json(
+                    data, page_directory, stem, plots_base,
                     publication_guard=publication_guard, commit_guard=commit_guard,
                 )
+                files["html"] = _relative(plot_directory, html)
             except PlotPublicationBlocked:
                 _discard_page(directory, files)
                 raise
@@ -281,26 +286,41 @@ def _publish_pages(
                 errors.append(exc)
                 record(exc, page=page["key"], fmt="html")
         if not files:
-            failed.append({"key": page["key"], "label": page["label"],
+            if created is not None and not any(created.iterdir()):
+                # As in the writer: no empty plot folder for a page that
+                # copied nothing. Only one this page created, so a folder a
+                # sibling published into stays.
+                created.rmdir()
+            failed.append({"key": page["key"], "plot": page.get("plot"),
+                           "label": page["label"],
                            "error": "no stored file could be copied out"})
             continue
         # Same rule as the writer: only a page this pass published has its
-        # leftover renderings removed.
-        _remove_leftovers(directory, stem, set(files.values()),
+        # leftover renderings removed, inside its own folder. A copied file
+        # set `page_directory` and `stem`; one page's formats share both.
+        _remove_leftovers(page_directory, stem, {Path(v).name for v in files.values()},
                           publication_guard=publication_guard, commit_guard=commit_guard)
         entry_out: dict[str, Any] = {
-            "key": page["key"], "label": page["label"], "files": files,
+            "key": page["key"], "plot": page.get("plot"), "label": page["label"],
+            "files": files,
             "backend": "matplotlib" if page["backend"] == "mpl" else "plotly",
             "metadata": page.get("metadata", {}),
         }
         # Today's meaning: this page published, and these failed too -- the
         # store's own failures, then this pass's, spelled as `.failures.jsonl`.
-        partial = [f["error"] for f in page_failures if f.get("page") == page["key"]]
+        page_id = (page["key"], page.get("plot"))
+        partial = [f["error"] for f in page_failures
+                   if (f.get("page"), f.get("plot")) == page_id]
         partial += [_format_error(exc) for exc in errors]
         if partial:
             entry_out["partial"] = partial
         published.append(entry_out)
     return published, failed
+
+
+def _relative(plot_directory: str | None, name: str) -> str:
+    """A manifest ``files`` value: *name* inside its plot folder, if any."""
+    return name if plot_directory is None else f"{plot_directory}/{name}"
 
 
 def _read_stored_file(

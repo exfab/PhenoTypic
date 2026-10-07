@@ -99,7 +99,7 @@ def test_info_block_prefix_is_collision_free():
         if not (isinstance(obj, type) and issubclass(obj, MeasurementInfo)
                 and obj is not MeasurementInfo and list(obj)):
             continue
-        if obj.category() in {"Grid", "Bbox"}:
+        if obj.metric_family() in {"Grid", "Bbox"}:
             continue
         for member in obj:
             assert not member.value.startswith("Grid_"), member.value

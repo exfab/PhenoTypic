@@ -50,7 +50,7 @@ class RemoveByFeature(ObjectRefiner):
             run, e.g. ``"MeasureSize"``. Resolved from the public ``phenotypic``
             namespace. ``None`` (the default) makes the operation a no-op.
         value: Name of the measured value to filter on. Accepts either the
-            category-prefixed column emitted by the measurer (``"Size_Area"``) or
+            family-prefixed column emitted by the measurer (``"Size_Area"``) or
             the bare label (``"Area"``); the bare form is resolved against this
             measurer's columns only, so there is no cross-feature ambiguity.
             ``None`` (the default) makes the operation a no-op.

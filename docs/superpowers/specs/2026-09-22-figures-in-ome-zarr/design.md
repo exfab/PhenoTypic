@@ -142,6 +142,11 @@ on the same machine (Chrome present):
 
 ### Layout
 
+> **Superseded in part, 2026-09-30** (`docs/superpowers/specs/2026-09-30-plot-subfolders/design.md`):
+> runs written by the release that ships `feat/plot-subfolders` add one level,
+> `<binding>/<plot>/<file>`, and the descriptor is `schema_version` 2. Version 1
+> runs keep the layout below and remain readable.
+
 ```
 <stem>.ome.zarr/
 ├── zarr.json                        attributes.phenotypic.figures (root still written last)
@@ -232,6 +237,11 @@ name.
   reader tests for its presence.
 
 ### §1a — Run folders: `{date}-{pipeline hash}`, never wiped
+
+> **Superseded in part, 2026-09-30** (`docs/superpowers/specs/2026-09-30-plot-subfolders/design.md`):
+> runs written by the release that ships `feat/plot-subfolders` add one level,
+> `<binding>/<plot>/<file>`, and the descriptor is `schema_version` 2. Version 1
+> runs keep the layout below and remain readable.
 
 *Added 2026-09-22, user decision. **This supersedes the single-generation
 layout and descriptor above**, which now describe one run folder. It also

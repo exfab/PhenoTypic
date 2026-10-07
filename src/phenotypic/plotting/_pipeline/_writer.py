@@ -248,10 +248,9 @@ def _remove_stale_sibling(
 
     A rerun on a node without Chrome writes HTML only; a plot that switched
     to matplotlib writes PNG only. Either way the other rendering from the
-    earlier run would survive beside the new one and read as this run's --
-    on the flat path because nothing records which generation a file belongs
-    to, and in a manifest directory because the manifest stops naming it
-    while it stays on disk.
+    earlier run would survive beside the new one, in the page's plot folder
+    under the manifest directory, and read as this run's: the manifest stops
+    naming it while it stays on disk.
 
     Only *stem*'s own sibling is touched. Files a manifest no longer names
     for other reasons -- a page whose key vanished between runs -- are not
@@ -306,6 +305,41 @@ def unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]:
     return stems
 
 
+#: Plot-folder names that would collide with a file beside them: a binding's
+#: Zarr group document, and the deliverables manifest (spec D6).
+_RESERVED_PLOT_NAMES: tuple[str, ...] = ("zarr.json", "manifest.json")
+
+
+def plot_page_paths(pages: Sequence[tuple[str, str, str]]) -> list[tuple[str, str]]:
+    """Return ``(plot_directory, file_stem)`` per page (spec 2026-09-30 §2).
+
+    Plot folders are unique within the binding and file stems unique within
+    their folder, both by :func:`unique_page_stems`, so a collision gets the
+    same stable digest suffix it always has.
+
+    Args:
+        pages: ``(plot_name, page_key, preferred_name)`` per page, in page
+            order. The store passes the key as the preferred name; the direct
+            publisher passes the label.
+    """
+    # Page indices per plot, plots in first-appearance order.
+    members: dict[str, list[int]] = {}
+    for i, (plot, _key, _preferred) in enumerate(pages):
+        members.setdefault(plot, []).append(i)
+    # Reserved first (spec D6), so a plot named like the group document or the
+    # manifest gets the digest suffix instead of colliding with that file. Their
+    # key is "", which no plot name is (`PlotPage` refuses an empty key or plot):
+    # a plot named exactly "zarr.json" must not read as the reserved entry itself.
+    reserved = [("", name) for name in _RESERVED_PLOT_NAMES]
+    folders = unique_page_stems(reserved + [(plot, plot) for plot in members])
+    paths: list[tuple[str, str]] = [("", "")] * len(pages)
+    for folder, indices in zip(folders[len(reserved):], members.values()):
+        stems = unique_page_stems([(pages[i][1], pages[i][2]) for i in indices])
+        for i, stem in zip(indices, stems):
+            paths[i] = (folder, stem)
+    return paths
+
+
 def publish_plot_output(
     value: Any | PlotOutput,
     directory: Path,
@@ -323,7 +357,8 @@ def publish_plot_output(
 
     Args:
         value: Raw supported figure or normalized multi-page output.
-        directory: Destination directory for page PNGs and the manifest.
+        directory: Destination directory for the manifest. Each page's
+            files go into its plot folder below it, ``<plot>/<file>``.
         plot_id: Stable binding ID used in diagnostics.
         plot_class: Producer class name. Defaults to ``plot_id`` for direct
             writer calls.
@@ -378,18 +413,38 @@ def _publish_plot_output_locked(
     # does so while emitting a correct-looking relative src.
     base = plots_base if plots_base is not None else directory
 
-    stems = unique_page_stems(
-        [(page.key, page.label or page.key) for page in output.pages]
+    # Each page renders into its plot folder; file stems keep the label
+    # preference (decision P1 of the plot-subfolders plan).
+    paths = plot_page_paths(
+        [(page.plot_name, page.key, page.label or page.key) for page in output.pages]
     )
-    for page, stem in zip(output.pages, stems):
+    for page, (plot_directory, stem) in zip(output.pages, paths):
+        page_directory = directory / plot_directory
+        created = not page_directory.exists()
+        files: dict[str, str] = {}
+        errors: list[BaseException] = []
+        backend: str | None = None
         try:
-            files, errors, backend = _render_page(
-                page.figure, directory, stem,
-                plots_base=base,
-                plot_id=plot_id,
-                publication_guard=publication_guard,
-                commit_guard=commit_guard,
-            )
+            if created:
+                # The guard is asked immediately before any directory is
+                # created; a refusal here closes the figure like any other.
+                _require_plot_publication(publication_guard)
+                try:
+                    page_directory.mkdir()
+                except OSError as mkdir_error:
+                    # Like a render error, this fails the page, not the
+                    # whole publication -- as in copy-out, where the mkdir
+                    # is per file. Nothing was created, so nothing to remove.
+                    errors.append(mkdir_error)
+                    created = False
+            if not errors:
+                files, errors, backend = _render_page(
+                    page.figure, page_directory, stem,
+                    plots_base=base,
+                    plot_id=plot_id,
+                    publication_guard=publication_guard,
+                    commit_guard=commit_guard,
+                )
         except PlotPublicationBlocked:
             FigureAdapter.close(page.figure)
             raise
@@ -399,7 +454,7 @@ def _publish_plot_output_locked(
             # Only for pages the manifest will list: a failed page's files
             # are not described by this generation either way.
             _remove_stale_sibling(
-                directory, stem, backend, files,
+                page_directory, stem, backend, files,
                 publication_guard=publication_guard,
                 commit_guard=commit_guard,
             )
@@ -417,8 +472,12 @@ def _publish_plot_output_locked(
             )
 
         if not files:
+            if created and not any(page_directory.iterdir()):
+                # No empty plot folder for a page that rendered nothing.
+                page_directory.rmdir()
             failed.append({
                 "key": page.key,
+                "plot": page.plot_name,
                 "label": page.label,
                 "error": (
                     _format_error(errors[0])
@@ -430,8 +489,10 @@ def _publish_plot_output_locked(
 
         entry: dict[str, Any] = {
             "key": page.key,
+            "plot": page.plot_name,
             "label": page.label,
-            "files": files,
+            # Relative to *directory*, plot folder included.
+            "files": {fmt: f"{plot_directory}/{name}" for fmt, name in files.items()},
             "backend": "matplotlib" if backend == "mpl" else "plotly",
             "metadata": dict(page.metadata),
         }
@@ -468,7 +529,7 @@ def _publish_plot_output_locked(
         renderers["png"] = "available"
 
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "plot_id": plot_id,
         "class": plot_class or plot_id,
         "renderers": renderers,
@@ -514,6 +575,7 @@ def _require_plot_publication(
 
 __all__ = [
     "PlotPublicationBlocked",
+    "plot_page_paths",
     "publish_plot_output",
     "safe_path_component",
 ]
