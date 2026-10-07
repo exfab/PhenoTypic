@@ -105,7 +105,9 @@ What happens:
 - A per-image reference digest (the resolved values plus each blank file's
   SHA-256) joins the work-id **only for pipelines that read reference metadata**.
   Rerun the same command after editing one plate's blank and only that plate's
-  frames are redone.
+  frames are redone. A blank re-exported **while** the run is in progress is
+  refused when a worker loads it (its bytes no longer match the plan); those
+  frames are left pending, not failed, and the same command re-plans them.
 - In full mode the table is also the measurement join, so
   `Metadata_BlankImage` appears in `measurements.csv` and every colony names its
   plate's blank.
@@ -128,6 +130,9 @@ is not supported.
 - `--overwrite` without `--metadata`: the snapshot the run would fall back to
   is the thing `--overwrite` deletes.
 - No `--metadata` and no snapshot to fall back to (`PF-REF-NO-TABLE`).
+- A `--metadata` that is not a readable `.csv`. The CLI snapshots and joins it
+  as a CSV, so a `.parquet` table (which a notebook `ReferenceContext` accepts)
+  must be exported to CSV first.
 - A table that `ReferenceContext` cannot read.
 
 **Preflight findings** (`PF-REF-*`). The run preflight reads the table and the
@@ -161,7 +166,9 @@ A warning that covers every input image is escalated to an error.
   is fine).
 - **Run console.** When the loaded pipeline reads reference metadata, a warning
   names the columns and **Run is disabled** until a metadata CSV is included.
-  Validate and Run are also refused at launch. The check looks at the whole
+  Validate and Run are also refused at launch. An output that already holds a
+  previous full run's `deliverables/metadata.csv` needs no CSV: the run falls
+  back to that snapshot, as the CLI does. The check looks at the whole
   pipeline and does not model `--mode`, so the CLI's own refusals above still
   apply.
 

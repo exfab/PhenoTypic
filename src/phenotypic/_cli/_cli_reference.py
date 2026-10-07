@@ -15,7 +15,7 @@ import functools
 import json
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Iterator, Sequence
 
@@ -25,7 +25,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._cli_preflight import RunMode
     from ._cli_types import Dataset, ExecutionConfig
 
-MANIFEST_SCHEMA_VERSION = 1
+#: 2 adds ``reference_files`` (each planned file's SHA-256). A version-1
+#: manifest still loads; with no planned file digests, every reference file
+#: its workers load is refused as stale, and the same command re-plans.
+MANIFEST_SCHEMA_VERSION = 2
 #: The digest of an image the manifest does not know (it arrived after
 #: startup). An image whose planning *failed* gets ``"unplanned:<reason>"``
 #: instead (:func:`_unplanned_digest`). Neither is hex, so neither ever equals
@@ -89,6 +92,9 @@ class ReferencePlan:
         digests: ``{dataset: {stem: digest}}``; empty without hashing.
         unplanned: ``{dataset: {stem: "unplanned:<reason>[:<values digest>]"}}``
             for every image in the four failure lists.
+        file_digests: ``{absolute path: sha256}`` of every reference file the
+            digests were computed from; empty without hashing. Workers refuse
+            a file whose bytes no longer match.
     """
 
     total_images: int
@@ -99,6 +105,7 @@ class ReferencePlan:
     images_by_dataset: dict[str, dict[str, str]]
     digests: dict[str, dict[str, str]]
     unplanned: dict[str, dict[str, str]]
+    file_digests: dict[str, str] = field(default_factory=dict)
 
 
 def _union(groups: Iterable[tuple[str, ...]]) -> tuple[str, ...]:
@@ -231,6 +238,7 @@ def plan_references(
         images_by_dataset=images_by_dataset,
         digests=digests,
         unplanned=unplanned,
+        file_digests=sha_cache,
     )
 
 
@@ -363,6 +371,45 @@ def input_read_kwargs(config: "ExecutionConfig") -> dict[str, Any]:
     return {"bit_depth": config.bit_depth} if config.bit_depth else {}
 
 
+def metadata_csv_payload(source: Path) -> bytes:
+    """The bytes of a ``--metadata`` table, validated as the CSV the run snapshots.
+
+    One rule for the CLI's read-only refusal and the process-mode snapshot, so
+    a table the refusal accepts cannot fail at snapshot time, after
+    ``--overwrite`` has deleted the output (code review #3). ``--metadata`` is
+    a CSV in every mode -- the measurement join reads one, and the snapshot is
+    ``reference_metadata.csv`` -- although a notebook ``ReferenceContext``
+    also reads ``.parquet``.
+
+    Args:
+        source: The ``--metadata`` path.
+
+    Returns:
+        The file's bytes.
+
+    Raises:
+        ValueError: The name does not end in ``.csv``, or pandas cannot parse
+            the bytes (it refuses an unterminated quote that Polars reads as a
+            header, as ``phenotypicCLI._snapshot_metadata_csv`` notes).
+    """
+    import io
+
+    import pandas as pd
+
+    path = Path(source)
+    if path.suffix.lower() != ".csv":
+        raise ValueError(
+            f"--metadata must be a .csv file, got {path.name!r}; export the "
+            f"table to CSV (the run snapshots it byte for byte as a CSV)"
+        )
+    payload = path.read_bytes()
+    try:
+        pd.read_csv(io.BytesIO(payload))
+    except ValueError as exc:  # ParserError, EmptyDataError, UnicodeDecodeError
+        raise ValueError(f"--metadata {path.name!r} is not a readable CSV: {exc}") from exc
+    return payload
+
+
 def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path | None:
     """Byte-copy *source* to the process-mode snapshot; reuse it when *source* is None.
 
@@ -374,24 +421,17 @@ def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path |
         The snapshot, or ``None`` when there is no source and no snapshot.
 
     Raises:
-        ValueError: *source* does not parse as CSV (pandas' ``ParserError``
-            or ``EmptyDataError``); an existing snapshot is left untouched.
+        ValueError: *source* is not a CSV this snapshot accepts
+            (:func:`metadata_csv_payload`); an existing snapshot is left
+            untouched.
     """
-    import io
-
-    import pandas as pd
-
     from phenotypic.sdk_._atomic_io import atomic_write_bytes
     from phenotypic.sdk_._io_constants import reference_metadata_snapshot_path
 
     destination = reference_metadata_snapshot_path(output_dir)
     if source is None:
         return destination if destination.is_file() else None
-    payload = Path(source).read_bytes()
-    # Never replace a valid snapshot with unparseable bytes; pandas refuses an
-    # unterminated quote that Polars reads as a header (as in
-    # phenotypicCLI._snapshot_metadata_csv).
-    pd.read_csv(io.BytesIO(payload))
+    payload = metadata_csv_payload(source)
     if destination.is_file() and destination.read_bytes() == payload:
         return destination
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -432,6 +472,9 @@ def write_reference_manifest(
             "table": str(Path(table_path).resolve()),
             "table_sha256": table_sha256,
             "read_kwargs": read_kwargs,
+            # The bytes each image's digest names: a worker refuses a file
+            # re-exported since (code review #1).
+            "reference_files": dict(sorted(plan.file_digests.items())),
             "datasets": datasets,
         },
     )
@@ -520,10 +563,17 @@ def worker_reference_context(
             that describes a different plan (review F1). ``None`` checks
             nothing.
 
+    The context carries the manifest's ``reference_files``, so a reference
+    file loaded inside the block must still have its planned bytes. Its
+    ``ReferenceImageChangedError`` surfaces inside the apply, wrapped by every
+    enclosing operation and pipeline; it leaves this block as a bare
+    ``ReferencePlanStaleError``. Every other exception leaves it unchanged.
+
     Raises:
         ValueError: The run has a manifest and *dataset_name* is ``None``.
         ReferencePlanStaleError: The table's bytes no longer match the
-            manifest, or the manifest's digest for the pinned image changed.
+            manifest, the manifest's digest for the pinned image changed, or a
+            reference file loaded inside the block changed since planning.
     """
     manifest = read_reference_manifest(output_dir)
     if pin is not None:
@@ -549,8 +599,36 @@ def worker_reference_context(
         json.dumps(manifest["read_kwargs"], sort_keys=True),
     )
     images = manifest["datasets"].get(dataset_name, {}).get("images", {})
-    with base.narrow(dataset=dataset_name, images=images) as context:
-        yield context
+    with base.narrow(
+        dataset=dataset_name,
+        images=images,
+        # Absent from a version-1 manifest: nothing planned, so every file
+        # load is refused and the same command re-plans.
+        planned_digests=manifest.get("reference_files", {}),
+    ) as context:
+        try:
+            yield context
+        except Exception as exc:
+            changed = _reference_image_changed_cause(exc)
+            if changed is None:
+                raise
+            raise ReferencePlanStaleError(
+                f"{changed}; run the same command again to re-plan"
+            ) from exc
+
+
+def _reference_image_changed_cause(exc: BaseException) -> BaseException | None:
+    """The ``ReferenceImageChangedError`` behind *exc*'s wrappers, if any."""
+    from phenotypic._core._reference_context import ReferenceImageChangedError
+
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        if isinstance(current, ReferenceImageChangedError):
+            return current
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return None
 
 
 def reference_digest_for(

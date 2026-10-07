@@ -460,6 +460,57 @@ def test_store_cache_key_follows_its_root_zarr_json(tmp_path, monkeypatch):
     assert ctx.reference_image_digest("t00") == hashlib.sha256(zarr_json.read_bytes()).hexdigest()
 
 
+# ----------------------------------------------------------- planned digests
+def _planned(tmp_path: Path) -> tuple[ReferenceContext, ReferenceContext, Path]:
+    root = tmp_path / "imgs"
+    root.mkdir()
+    blank = root / "t00.tif"
+    tifffile.imwrite(blank, np.full((8, 8), 40, dtype=np.uint8))
+    base = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    planned = base.narrow(
+        planned_digests={str(blank.resolve()): rc.reference_file_digest(blank)}
+    )
+    return base, planned, blank
+
+
+def test_a_planned_file_with_its_planned_bytes_loads(tmp_path):
+    _, planned, _ = _planned(tmp_path)
+    assert planned.load_image("t00").gray.shape == (8, 8)
+    # A narrowed clone of a planned context keeps the plan.
+    assert planned.narrow(dataset="d").planned_digests == planned.planned_digests
+
+
+def test_a_file_rewritten_since_planning_is_refused_and_never_served_from_cache(tmp_path):
+    """The digest is cached with the pixels of one load, under a key the
+    rewrite changes, so the check always judges the pixels it returns."""
+    base, planned, blank = _planned(tmp_path)
+    planned.load_image("t00")  # cached with the planned digest
+    # A different shape changes the size, so the key moves even inside one
+    # mtime tick.
+    tifffile.imwrite(blank, np.full((9, 9), 40, dtype=np.uint8))
+    with pytest.raises(rc.ReferenceImageChangedError, match="t00"):
+        planned.load_image("t00")
+    # Not a ReferenceContextError: the image is not at fault (the CLI makes it
+    # its non-terminal ReferencePlanStaleError).
+    assert not issubclass(rc.ReferenceImageChangedError, rc.ReferenceContextError)
+    # A context without a plan reads the new bytes, not the cached old ones.
+    assert base.load_image("t00").gray.shape == (9, 9)
+
+
+def test_a_file_absent_from_the_plan_is_refused(tmp_path):
+    base, _, _ = _planned(tmp_path)
+    with pytest.raises(rc.ReferenceImageChangedError):
+        base.narrow(planned_digests={}).load_image("t00")
+
+
+def test_in_memory_images_are_never_checked(tmp_path):
+    image = Image(arr=np.zeros((4, 4), dtype=np.float32), name="mem")
+    ctx = ReferenceContext(
+        _table(tmp_path, {"Metadata_ImageName": ["t04"]}), images={"mem": image}
+    ).narrow(planned_digests={})
+    assert ctx.load_image("mem") is image
+
+
 # --------------------------------------------------------------- activation
 def test_one_instance_entered_from_two_threads_restores_cleanly(tmp_path):
     """Each thread's exit must reset its own activation. The order is forced:

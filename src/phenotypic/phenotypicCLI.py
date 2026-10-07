@@ -712,18 +712,26 @@ def _refuse_unusable_reference_table(
     Raises:
         click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
             the run would fall back to is deleted); no table at all
-            (``PF-REF-NO-TABLE``); or a table that is not a valid reference
-            table.
+            (``PF-REF-NO-TABLE``); a ``--metadata`` that is not the CSV the
+            run snapshots (``metadata_csv_payload``, the snapshot's own
+            check); or a table that is not a valid reference table.
     """
     from phenotypic._cli._cli_preflight import HINTS
     from phenotypic._core._reference_context import (
         ReferenceContext,
         ReferenceTableError,
     )
-    from phenotypic._cli._cli_reference import reference_table_snapshot_path
+    from phenotypic._cli._cli_reference import (
+        metadata_csv_payload,
+        reference_table_snapshot_path,
+    )
 
     if metadata_csv is not None:
         table, label = Path(metadata_csv), "--metadata"
+        try:
+            metadata_csv_payload(table)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
     elif overwrite:
         raise click.UsageError(
             "--overwrite deletes the run's reference metadata snapshot; "

@@ -112,8 +112,12 @@ table as an argument; they read a run-level plan.
   `--overwrite`, `mint_run_identity` and `--dry-run`:
   - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
     (the snapshot it would fall back to is deleted); no `--metadata` and no
-    snapshot (`[PF-REF-NO-TABLE]`); or a table, given or snapshotted, that
-    `ReferenceContext` cannot read.
+    snapshot (`[PF-REF-NO-TABLE]`); a `--metadata` that fails
+    `metadata_csv_payload` (not a `.csv`, or bytes pandas cannot parse --
+    the very check `snapshot_reference_metadata` runs after `--overwrite`,
+    so the two cannot disagree); or a table, given or snapshotted, that
+    `ReferenceContext` cannot read. `--metadata` is a CSV in every CLI mode,
+    although a notebook `ReferenceContext` also reads `.parquet`.
   - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
     whose measurers read reference metadata. Measure mode plans nothing, never
     touches the manifest and carries no reference digest in its work-ids, so
@@ -122,7 +126,15 @@ table as an argument; they read a run-level plan.
 - **Startup publishes the plan before any work-id.** `publish_reference_inputs`
   runs in `_prepare_incremental_startup` and writes
   `.phenotypic/reference_manifest.json` (table path and sha, reader kwargs,
-  each dataset's resolved reference images, each image's digest). An image
+  each dataset's resolved reference images, each image's digest, and —
+  schema 2 — `reference_files`, each planned file's sha). The worker context
+  is narrowed with `planned_digests=reference_files`, so
+  `ReferenceContext._load` refuses a blank whose bytes changed since planning
+  (`ReferenceImageChangedError`, raised inside the apply and wrapped there);
+  `worker_reference_context` converts exactly that cause, and nothing else,
+  into a bare `ReferencePlanStaleError` at its exit. A schema-1 manifest has
+  no `reference_files`, so every file load is refused and the same command
+  re-plans. Only the root `zarr.json` of an OME-Zarr blank is hashed. An image
   whose planning failed gets `"unplanned:<reason>[:<values digest>]"`, so a
   changed cause re-derives it rather than matching a terminal failure recorded
   for the old one. Measure mode returns without touching the manifest. A
@@ -158,7 +170,8 @@ table as an argument; they read a run-level plan.
   as `terminal`, not `retryable`: another GPU round would refuse the same pin.
   That list records nothing, so the next invocation re-plans the image.
 - **`ReferencePlanStaleError` is never terminal.** It is raised for a pin
-  mismatch or a table whose bytes no longer match the manifest. It is a
+  mismatch, a table whose bytes no longer match the manifest, or a reference
+  file whose bytes no longer match `reference_files`. It is a
   `RuntimeError`, not a `ReferenceContextError`, and every scientific wrapper
   re-raises it unwrapped (beside `MemoryError`), so no terminal record is
   written and the next run re-attempts the image without `--retry-failures`.

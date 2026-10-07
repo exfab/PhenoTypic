@@ -24,6 +24,7 @@ from phenotypic._cli import (
 from phenotypic._cli._cli_failure_tracker import work_identity_for_image
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_stage2_token import detector_slot, stage2_result_replayable
+from phenotypic._cli._cli_staged_resume import staged_store_matches_work_id
 from phenotypic._cli._cli_staged_orchestration import (
     initialize_orchestration,
     load_staged_manifest,
@@ -36,7 +37,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import SubtractBlank
 from phenotypic.measure import MeasureSize
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.sdk_ import RefColumn, resolve_event_log_path
+from phenotypic.sdk_ import RefColumn, resolve_event_log_path, zarr_store_path
 from phenotypic.sdk_._io_constants import (
     image_record_path,
     reference_manifest_path,
@@ -209,6 +210,150 @@ def test_a_table_changed_after_planning_is_retried_without_retry_failures(
     assert second.exit_code == 0, second.output
     assert "recorded failure" not in second.output
     assert len(_outputs(out, "t0*.tiff")) == 2
+
+
+# ---- a blank re-exported after planning (code review #1) --------------------
+
+
+def _reexport_blank(root: Path) -> None:
+    """Someone re-exports the plate's blank: same name, different pixels."""
+    tifffile.imwrite(root / "blank.tiff", _rgb(35))
+
+
+def _full(base, manifest, table, pipeline, *extra):
+    args = [
+        "--pipeline", str(pipeline), "--input", str(base / "images"),
+        "--output", str(base / "out"), "--image-manifest", str(manifest),
+        "--metadata", str(table), "--no-qc",
+    ]
+    return _cli(*args, *extra)
+
+
+@pytest.mark.parametrize("mode", ["process", "full"])
+def test_a_blank_replaced_after_planning_is_never_certified(
+    run_inputs, monkeypatch, mode
+):
+    """The work-id names the blank's planned bytes, so the worker must use those.
+
+    A blank re-exported between startup and the worker's load would otherwise be
+    subtracted and certified under the old work-id, and continuation would then
+    treat that output as current. The refusal is not the image's fault, so it
+    is never terminal; the same command re-plans and completes it.
+    """
+    base, root, manifest, table, pipeline = run_inputs
+    out = base / "out"
+    run = _process if mode == "process" else _full
+    publish = _cli_reference.publish_reference_inputs
+
+    def publish_then_reexport(config, datasets, output_dir):
+        publish(config, datasets, output_dir)
+        _reexport_blank(root)
+
+    monkeypatch.setattr(
+        _cli_reference, "publish_reference_inputs", publish_then_reexport
+    )
+    first = run(base, manifest, table, pipeline)
+    assert first.exit_code != 0, first.output
+    for stem in ("t01", "t02"):
+        assert not image_record_path(out, "plate1", stem).exists(), stem
+    assert _no_terminal_failures(out)
+
+    monkeypatch.setattr(_cli_reference, "publish_reference_inputs", publish)
+    second = run(base, manifest, table, pipeline)
+    assert second.exit_code == 0, second.output
+    assert "recorded failure" not in second.output
+    for stem in ("t01", "t02"):
+        assert image_record_path(out, "plate1", stem).exists(), stem
+    # The re-plan moved the work-id; the refused run's failed checkpoint is
+    # obsolete, not a reason to fail the image (gate 29535357).
+    assert _no_terminal_failures(out)
+
+
+def test_the_staged_stage_1_refuses_a_blank_replaced_after_submission(
+    run_inputs, monkeypatch
+):
+    from phenotypic._cli import _cli_staged_slurm_worker as worker
+
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    pipeline = _staged_pipeline(run_inputs, monkeypatch, "stage1")
+    out = run_inputs[0] / "slurm_out"
+    _, _, manifest = _slurm_setup(run_inputs, pipeline, out)
+    epoch = _active_epoch(out)
+    _reexport_blank(run_inputs[1])
+    with pytest.raises(_cli_reference.ReferencePlanStaleError, match="blank"):
+        worker.run_stage1_step(
+            pipeline, out, "Image", manifest, 0, ".tiff", epoch=epoch
+        )
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert _no_terminal_failures(out)
+
+    # The next submission re-plans: a new digest, so a new work-id, over the
+    # refused attempt's failed checkpoint. Stage 1 starts fresh under it.
+    _, _, replanned = _slurm_setup(run_inputs, pipeline, out)
+    assert replanned[0].work_id != manifest[0].work_id
+    worker.run_stage1_step(
+        pipeline, out, "Image", replanned, 0, ".tiff", epoch=epoch
+    )
+    assert staged_store_matches_work_id(
+        zarr_store_path(out, "plate1", "t01"), replanned[0].work_id
+    )
+    assert _no_terminal_failures(out)
+
+
+# ---- --metadata must be the CSV the run snapshots (code review #3) ----------
+
+
+def _tree_bytes(root: Path) -> dict[str, bytes | None]:
+    """Every path under *root*, with file bytes (``None`` for a directory)."""
+    return {
+        p.relative_to(root).as_posix(): (p.read_bytes() if p.is_file() else None)
+        for p in sorted(root.rglob("*"))
+    }
+
+
+@pytest.mark.parametrize(
+    ("mode", "reads_references"),
+    [("process", True), ("full", True), ("full", False)],
+)
+def test_a_parquet_metadata_is_refused_before_overwrite_deletes_anything(
+    run_inputs, mode, reads_references
+):
+    base, _, manifest, table, pipeline = run_inputs
+    out = base / "out"
+    if not reads_references:
+        pipeline = base / "plain_pipeline.json"
+        pipeline.write_text(
+            ImagePipeline(
+                ops={"det": OtsuDetector()}, meas={"size": MeasureSize()}
+            ).to_json(),
+            encoding="utf-8",
+        )
+    run = _process if mode == "process" else _full
+    assert run(base, manifest, table, pipeline).exit_code == 0
+    parquet = base / "blank_map.parquet"
+    pd.read_csv(table).to_parquet(parquet)
+    before = _tree_bytes(out)
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline", str(pipeline), "--input", str(base / "images"),
+            "--output", str(out), "--image-manifest", str(manifest),
+            "--metadata", str(parquet), "--overwrite", "--njobs", "1",
+            *(
+                ["--mode", "process", "--layer", "detect_mat"]
+                if mode == "process"
+                else ["--no-qc"]
+            ),
+        ],
+    )
+
+    assert result.exit_code != 0, result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit), (
+        result.exception
+    )
+    assert "csv" in result.output.lower(), result.output
+    assert _tree_bytes(out) == before
 
 
 def _replan(out: Path, dataset: str, stem: str) -> None:

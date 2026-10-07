@@ -32,6 +32,7 @@ __all__ = [
     "RefMetadataUnavailableError",
     "ReferenceContext",
     "ReferenceContextError",
+    "ReferenceImageChangedError",
     "ReferenceImageError",
     "ReferenceLookupError",
     "ReferenceTableError",
@@ -79,6 +80,16 @@ class ReferenceLookupError(ReferenceContextError):
 
 class ReferenceImageError(ReferenceContextError):
     """A reference image cannot be resolved, read, or matched to its target."""
+
+
+class ReferenceImageChangedError(RuntimeError):
+    """A reference file's bytes differ from the digest its context was planned with.
+
+    Raised only by a context narrowed with ``planned_digests`` (the CLI's run
+    plan). Deliberately not a :class:`ReferenceContextError`: the file changed
+    under the run, so the image is not at fault, and the CLI turns this into
+    its non-terminal ``ReferencePlanStaleError``.
+    """
 
 
 _ACTIVE: ContextVar["ReferenceContext | None"] = ContextVar(
@@ -306,6 +317,9 @@ class ReferenceContext:
         self.images: dict[str, Any] = dict(images) if images is not None else {}
         self.dataset = dataset
         self.read_kwargs: dict[str, Any] = dict(read_kwargs or {})
+        #: ``{resolved path: sha256}`` a reference file must still match when
+        #: loaded; ``None`` checks nothing. Set only through :meth:`narrow`.
+        self.planned_digests: dict[str, str] | None = None
 
     # ------------------------------------------------------------- activation
     def __enter__(self) -> "ReferenceContext":
@@ -491,10 +505,33 @@ class ReferenceContext:
         return index
 
     def _load(self, name: str) -> "tuple[Image, str | None]":
-        """Return the reference image and its digest, from one resolution."""
+        """Return the reference image and its digest, from one resolution.
+
+        Raises:
+            ReferenceImageChangedError: The context has ``planned_digests``
+                and the file's digest is not the one planned for its path.
+        """
         target = self.resolve_image(name)
         if not isinstance(target, Path):
             return target, None
+        cached = self._read_cached(target)
+        if self.planned_digests is not None:
+            path = str(target.resolve())
+            if self.planned_digests.get(path) != cached[1]:
+                raise ReferenceImageChangedError(
+                    f"Reference image {name!r} ({path}) changed since the run "
+                    f"planned its references"
+                )
+        return cached
+
+    def _read_cached(self, target: Path) -> "tuple[Image, str]":
+        """Read *target* through the process cache, with its digest.
+
+        The digest is cached with the pixels of the same load, under a key that
+        changes when the file does (its stat, and a store's root ``zarr.json``
+        stat). A file rewritten on disk is therefore read and hashed again, and
+        the digest :meth:`_load` checks always describes the pixels returned.
+        """
         stat = target.stat()
         # A store's directory entry does not change when its content is
         # rewritten; its root zarr.json (which the digest hashes) does.
@@ -538,10 +575,21 @@ class ReferenceContext:
         dataset: str | None = None,
         image_root: str | Path | None = None,
         images: Mapping[str, Any] | None = None,
+        planned_digests: Mapping[str, str] | None = None,
     ) -> "ReferenceContext":
         """Return a context sharing this table, its indexes and its root listings.
 
         Each argument left ``None`` keeps this context's value.
+
+        Args:
+            dataset: Narrow lookups to this dataset.
+            image_root: Resolve reference-image names against this directory.
+            images: Name-to-image (or path) entries checked before
+                ``image_root``.
+            planned_digests: ``{resolved path: sha256}`` every reference file
+                loaded through the clone must still match (the CLI's run plan);
+                a file absent from it never matches. A load that does not
+                raises :class:`ReferenceImageChangedError`.
         """
         clone = object.__new__(ReferenceContext)
         clone._shared = self._shared
@@ -549,6 +597,11 @@ class ReferenceContext:
         clone.image_root = Path(image_root) if image_root is not None else self.image_root
         clone.images = dict(images) if images is not None else dict(self.images)
         clone.read_kwargs = dict(self.read_kwargs)
+        clone.planned_digests = (
+            dict(planned_digests)
+            if planned_digests is not None
+            else None if self.planned_digests is None else dict(self.planned_digests)
+        )
         return clone
 
     def __repr__(self) -> str:

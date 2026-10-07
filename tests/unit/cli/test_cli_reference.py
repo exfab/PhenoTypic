@@ -194,6 +194,80 @@ def test_worker_refuses_a_table_changed_after_planning(tree, tmp_path):
     assert not isinstance(caught.value, ReferenceContextError)
 
 
+# ---- each planned blank's bytes (code review #1) ---------------------------
+
+
+def _planned_run(tree, tmp_path) -> tuple[Path, Dataset]:
+    table, dataset = tree
+    out = tmp_path / "out"
+    ctx = ReferenceContext(table)
+    plan = ref.plan_references(ctx, _pipe(), [dataset], hash_images=True)
+    ref.write_reference_manifest(
+        out, plan=plan, table_path=table, table_sha256=ctx.table_sha256, read_kwargs={}
+    )
+    return out, dataset
+
+
+def _load_as_an_apply_would(active: ReferenceContext, name: str) -> None:
+    """Every enclosing operation and pipeline wraps a failure in RuntimeError."""
+    try:
+        active.load_image(name)
+    except Exception as exc:
+        raise RuntimeError("[SubtractBlank] (step 1/1, key='sb')") from exc
+
+
+def test_the_manifest_records_each_planned_files_digest(tree, tmp_path):
+    from phenotypic._core._reference_context import reference_file_digest
+
+    out, dataset = _planned_run(tree, tmp_path)
+    blank = (dataset.input_dir / "blank.tif").resolve()
+    manifest = ref.read_reference_manifest(out)
+    assert manifest["schema_version"] == ref.MANIFEST_SCHEMA_VERSION
+    assert manifest["reference_files"] == {str(blank): reference_file_digest(blank)}
+
+
+def test_a_blank_rewritten_after_planning_leaves_the_worker_as_stale(tree, tmp_path):
+    out, dataset = _planned_run(tree, tmp_path)
+    _write(dataset.input_dir / "blank.tif", 33)
+    with pytest.raises(ref.ReferencePlanStaleError, match="blank") as caught:
+        with ref.worker_reference_context(out, "plate1") as active:
+            _load_as_an_apply_would(active, "blank")
+    assert not isinstance(caught.value, ReferenceContextError)
+
+
+def test_a_version_1_manifest_refuses_every_reference_file_load(tree, tmp_path):
+    """No planned file digests: refused (non-terminal) rather than unchecked."""
+    import json
+
+    out, _ = _planned_run(tree, tmp_path)
+    path = reference_manifest_path(out)
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    del manifest["reference_files"]
+    manifest["schema_version"] = 1
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ref.ReferencePlanStaleError, match="blank"):
+        with ref.worker_reference_context(out, "plate1") as active:
+            _load_as_an_apply_would(active, "blank")
+
+
+@pytest.mark.parametrize("kind", ["plain", "wrapped reference error"])
+def test_every_other_failure_leaves_the_worker_context_unchanged(tree, tmp_path, kind):
+    """Only a changed reference file is converted; terminal classification of
+    everything else is untouched (same object, same type)."""
+    from phenotypic._core._reference_context import ReferenceImageError
+
+    out, _ = _planned_run(tree, tmp_path)
+    if kind == "plain":
+        error: Exception = ValueError("a scientific failure")
+    else:
+        error = RuntimeError("[SubtractBlank] failed")
+        error.__cause__ = ReferenceImageError("Reference image 'gone' matches 0 files")
+    with pytest.raises(type(error)) as caught:
+        with ref.worker_reference_context(out, "plate1"):
+            raise error
+    assert caught.value is error
+
+
 def test_an_unplanned_digest_follows_the_failure_reason(tree, tmp_path):
     """Review F4: fixing one cause and hitting another re-derives the image."""
     table, dataset = tree
