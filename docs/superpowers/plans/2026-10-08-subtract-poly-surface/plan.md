@@ -42,6 +42,7 @@ overrides the writing-plans norm of code in every step, for the provenance reaso
 - Every numeric field on an `enhance/` op is covered by a `TuneSpec` or `Field` bound, and every `TuneSpec` window lies inside its `Field` bounds (tune gates).
 - Lazy imports: import `scipy.stats` inside the function that uses it (root `CLAUDE.md` *Gotchas*; guard `tests/unit/ci/test_startup_imports.py`).
 - `detect_mat` is **float32**; kernel math is float64; the op casts back (spec §4.9, §5).
+- **Citations in shipped code (`src/`, `tests/`) are literature only, and only literature that exists** (user, 2026-10-08): Nečas & Klapetek (2012), doi:10.2478/s11534-011-0096-2 (Gwyddion); Rousseeuw & Croux (1993), doi:10.1080/01621459.1993.10476408 (MAD scale). Never cite Gwyddion or astropy source files or line numbers in code, docstrings, comments or test docstrings — the clean-room record of those lives only in the spec's `references.md` / `drift-register.md`. Referencing spec sections (`§4.3`) and drift rows (`D7`) is fine.
 - Defaults, verbatim from spec §3: `method="plane"`, `order=3` (2–11), `independent=True`, `line_order=1` (0–5), `line_axis="row"`, `fit="lstsq"`, `clip_sigma=3.0` (>0), `max_iter=10` (≥1), `norm="clip"`; `MAX_FIT_POINTS = 262_144`.
 - Commits end with the two attribution lines:
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and
@@ -573,7 +574,7 @@ class TestRobustLeastSquares:
         assert rmse(plain, background) > 10 * rmse(robust, background)
 
     def test_clipped_points_never_return(self):
-        """astropy_fitting.py:1027 carries the mask forward; the kept set only shrinks."""
+        """The mask is carried forward between rounds, so the kept set only shrinks (spec §4.3)."""
         z, _ = surface_plate(cover=0.40, seed=2030)
         _, _, u, v = grid(*z.shape)
         a = legendre_design(u.ravel(), v.ravel(), 3, term_powers(3, independent=True))
@@ -648,8 +649,9 @@ Expected: ImportError for `RobustFit` / `robust_least_squares` / `fit_surface_co
 - [ ] **Step 3: Implement `RobustFit`, `robust_least_squares`, `fit_surface_coefficients`**
 
 Exactly the Interfaces block above and spec §4.3, §4.8. `scipy.stats` is imported **inside**
-`robust_least_squares`. Cite `astropy_fitting.py:1006, 1017, 1027, 1085, 1105-1108` and drift
-D3, D12–D15 in the docstring.
+`robust_least_squares`. The docstring describes the loop and may reference drift rows D3,
+D12–D15; it cites no source file (Global Constraints: literature only). The MAD's normal
+consistency scale may be cited as Rousseeuw & Croux (1993), doi:10.1080/01621459.1993.10476408.
 
 - [ ] **Step 4: Run to verify they pass**
 
@@ -1147,8 +1149,9 @@ LineAxis: TypeAlias = Literal["row", "column"]
 search window marked `# TODO: review bound (unverified vs literature)` (spec §3). `_operate`
 (spec §4.9): `flatten_surface(image.detect_mat[:].astype(np.float64), **fields)` → cast to the
 original dtype → `self._apply_norm(...)` → assign `image.detect_mat[:]`; return `image`. The
-docstring follows spec §5's checklist in full (methods, the §4.6 level table, Gwyddion defaults +
-citation, the lstsq-bias warning with its measured 2.3–9.5 σ, the robust limits including the
+docstring follows spec §5's checklist in full (methods, the §4.6 level table, that defaults
+follow Gwyddion with the literature citation Nečas & Klapetek (2012), doi:10.2478/s11534-011-0096-2
+— no source-file citations — the lstsq-bias warning with its measured 2.3–9.5 σ, the robust limits including the
 **per-line** arrayed-plate limit, `line` ≠ Align Rows' Median, `Consider Also`), Google style per
 `abc_/CLAUDE.md`, with this runnable example:
 ```python
