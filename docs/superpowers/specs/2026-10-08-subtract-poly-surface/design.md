@@ -230,9 +230,17 @@ write `image.detect_mat[:]`. `rgb` and `gray` are untouched.
 
 ## 5. Implementation guidance
 
-- **File:** `src/phenotypic/enhance/_subtract_poly_surface.py`. Bases
-  `(NormalizedOutputMixin, BackgroundSubtraction)`, the order `ContrastLog` uses
-  (`enhance/_contrast_log.py:16`), so `norm` is appended last.
+- **Files** (the `_monogenic_kernels.py` / `_focus_edge_monogenic_phase.py` split):
+  - `src/phenotypic/enhance/_poly_surface_kernels.py` — private, pure float64 numpy functions
+    implementing §4 on a bare array, with no `Image` and no `norm`. This is where the numeric
+    contract lives, and what the golden fixture and the tight-tolerance tests exercise.
+  - `src/phenotypic/enhance/_subtract_poly_surface.py` — the operation: fields, validation,
+    `_operate` = read `detect_mat` as float64 → kernel → cast → `_apply_norm`. Bases
+    `(NormalizedOutputMixin, BackgroundSubtraction)`, the order `ContrastLog` uses
+    (`enhance/_contrast_log.py:16`), so `norm` is appended last.
+- **`detect_mat` is float32** (measured 2026-10-08: `Image(arr=<float64>)` yields a float32
+  `detect_mat`). Operation-level assertions therefore carry float32-derived tolerances
+  (`≤ 1e-6` on `[0, 1]` data, ~8·eps32); float64-tight assertions target the kernel.
 - **Helpers, not one long `_operate`:** coordinate/term-set construction, the lstsq solve with its
   rank check, the robust loop, surface evaluation, and per-method assembly are separate private
   functions with explicit names (project rule: no generic `run()`/`process()`).
@@ -296,7 +304,8 @@ over three seeds, the maximum error was 1.05 σ for `(3, 1)`, 0.12 σ for `(3, 5
 ### 7.2 Behavioural tests — `tests/unit/enhance/test_subtract_poly_surface.py`
 
 1. **Exact recovery:** for every method under `lstsq`, a noise-free synthetic background of the
-   method's own form is removed to `≤ 1e-10`, and the output level matches §4.6.
+   method's own form is removed to `≤ 1e-10` by the float64 **kernel**, and to `≤ 1e-6` through
+   the operation (float32 `detect_mat`, §5), and the output level matches §4.6.
 2. **Level convention:** per method, the output mean equals §4.6's formula (plane: including the
    `+½(bx+by)` shift; line: every line's mean equals the input mean).
 3. **`independent`:** a `u³v³` term is removed by `independent=True, order=3` and left (measurably)
@@ -327,9 +336,10 @@ over three seeds, the maximum error was 1.05 σ for `(3, 1)`, 0.12 σ for `(3, 5
   (Gwyddion version, tarball sha256, harness sha256, build flags). Numeric outputs of a program are
   not covered by its copyright; the harness source stays outside the repository with the other
   references.
-- **Implementer side:** a test loads the fixture and requires
-  `SubtractPolySurface(method=…, fit="lstsq", norm=None)` to reproduce every output to a tolerance
-  derived from D1 (B1's bound for the order in question), not a guessed `rtol`.
+- **Implementer side:** a test loads the fixture and requires the float64 **kernel**
+  (`_poly_surface_kernels.flatten_surface`, `fit="lstsq"`) to reproduce every output to a
+  tolerance derived from D1 (B1's bound for the order in question), not a guessed `rtol`. The
+  operation is not compared against the fixture: its float32 `detect_mat` would swamp D1.
 - **Fallback** if the build is infeasible on the cluster: the oracle agent writes the fixture by
   executing the §4 contract in an independent numpy re-derivation. That fixture pins the contract,
   not Gwyddion; the plan must say so wherever it is used.
