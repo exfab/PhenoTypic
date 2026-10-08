@@ -372,20 +372,86 @@ def test_uppercase_image_suffixes_are_candidates(tmp_path):
     assert ctx.resolve_image("t00") == root / "t00.TIF"
 
 
+# ------------------------------------------- a blank value that is a file path
 @pytest.mark.parametrize("kind", ["parent", "absolute", "subdirectory"])
-def test_names_outside_the_root_are_refused(tmp_path, kind):
+def test_a_value_with_a_path_is_a_file_path_relative_to_the_working_directory(
+    tmp_path, monkeypatch, kind
+):
+    """Never relative to image_root: imgs/sub/x.tif is a decoy."""
     root = tmp_path / "imgs"
-    (root / "sub").mkdir(parents=True)
+    run = tmp_path / "run"
+    for directory in (root / "sub", run / "sub"):
+        directory.mkdir(parents=True)
+        (directory / "x.tif").write_bytes(b"x")
     (tmp_path / "x.tif").write_bytes(b"x")
-    (root / "sub" / "x.tif").write_bytes(b"x")
-    name = {
-        "parent": "../x.tif",
-        "absolute": str(tmp_path / "x.tif"),
-        "subdirectory": "sub/x.tif",
+    monkeypatch.chdir(run)
+    name, expected = {
+        "parent": ("../x.tif", tmp_path / "x.tif"),
+        "absolute": (str(tmp_path / "x.tif"), tmp_path / "x.tif"),
+        "subdirectory": ("sub/x.tif", run / "sub" / "x.tif"),
     }[kind]
     ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
-    with pytest.raises(ReferenceImageError, match="image_root"):
-        ctx.resolve_image(name)
+    assert ctx.resolve_image(name) == expected.resolve()
+
+
+def test_a_bare_name_still_searches_only_the_image_root(tmp_path, monkeypatch):
+    root = tmp_path / "imgs"
+    elsewhere = tmp_path / "elsewhere"
+    for directory in (root, elsewhere):
+        directory.mkdir()
+        (directory / "t00.tif").write_bytes(b"x")
+    monkeypatch.chdir(elsewhere)
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}), image_root=root)
+    assert ctx.resolve_image("t00") == root / "t00.tif"
+    assert ctx.resolve_image("t00.tif") == root / "t00.tif"
+
+
+def test_a_file_path_needs_no_image_root_and_loads_that_file(tmp_path):
+    blank = tmp_path / "blanks" / "b0.tif"
+    blank.parent.mkdir()
+    tifffile.imwrite(blank, np.full((8, 8), 40, dtype=np.uint8))
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}))
+    assert ctx.resolve_image(str(blank)) == blank.resolve()
+    assert ctx.load_image(str(blank)).gray.shape == (8, 8)
+
+
+def test_a_file_path_to_a_store_directory_is_accepted(tmp_path):
+    store = tmp_path / "blanks" / "b0.ome.zarr"
+    store.mkdir(parents=True)
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}))
+    assert ctx.resolve_image(str(store)) == store.resolve()
+
+
+@pytest.mark.parametrize("kind", ["missing", "unsupported suffix", "directory"])
+def test_a_file_path_that_is_not_an_image_is_unresolved(tmp_path, kind):
+    blanks = tmp_path / "blanks"
+    blanks.mkdir()
+    path = {
+        "missing": blanks / "b0.tif",
+        "unsupported suffix": blanks / "b0.json",
+        "directory": blanks,
+    }[kind]
+    if kind == "unsupported suffix":
+        path.write_bytes(b"{}")
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]}))
+    with pytest.raises(ReferenceImageError):
+        ctx.resolve_image(str(path))
+
+
+def test_a_file_path_guard_refuses_a_path_without_reading_it(tmp_path, monkeypatch):
+    """The GUI confines file-path blanks to its image root through this hook."""
+    blank = tmp_path / "b0.tif"
+    blank.write_bytes(b"x")
+    monkeypatch.setattr(rc, "_read_image", lambda *a: pytest.fail("a refused path was read"))
+    ctx = ReferenceContext(_table(tmp_path, {"Metadata_ImageName": ["t04"]})).narrow(
+        file_path_guard=lambda path: None
+    )
+    with pytest.raises(ReferenceImageError):
+        ctx.resolve_image(str(blank))
+    with pytest.raises(ReferenceImageError):
+        ctx.load_image(str(blank))
+    # The guard never applies to a bare name, and survives a further narrow.
+    assert ctx.narrow(dataset="d").file_path_guard is ctx.file_path_guard
 
 
 # ------------------------------------------------------------- image cache

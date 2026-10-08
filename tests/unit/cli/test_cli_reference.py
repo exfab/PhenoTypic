@@ -53,15 +53,37 @@ def _pipe():
 
 
 def test_plan_classifies_every_image(tree):
+    """t03 names itself: the reference plate is planned like every plate."""
     table, dataset = tree
     plan = ref.plan_references(ReferenceContext(table), _pipe(), [dataset], hash_images=True)
     assert plan.total_images == 4
     assert plan.unmatched == ("plate1/orphan",)
     assert plan.ambiguous == ("plate1/t02",)
-    assert plan.self_referenced == ("plate1/t03",)
     assert plan.unresolved == ()
     assert plan.images_by_dataset["plate1"]["blank"].endswith("plate1/blank.tif")
-    assert set(plan.digests["plate1"]) == {"t01"}
+    assert set(plan.digests["plate1"]) == {"t01", "t03"}
+
+
+def test_the_reference_plate_is_planned_as_its_own_blank(tree):
+    """Its blank is its own file: resolved, hashed and digested like any blank."""
+    table, dataset = tree
+    plan = ref.plan_references(ReferenceContext(table), _pipe(), [dataset], hash_images=True)
+    own = str((dataset.input_dir / "t03.tif").resolve())
+    assert plan.images_by_dataset["plate1"]["t03"] == own
+    assert own in plan.file_digests
+    assert "t03" not in plan.unplanned["plate1"]
+    assert not hasattr(plan, "self_referenced")
+
+
+def test_an_empty_blank_cell_is_still_unplanned(tree, tmp_path):
+    _, dataset = tree
+    empty = tmp_path / "empty.csv"
+    pd.DataFrame({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": [None]}).to_csv(empty, index=False)
+    single = Dataset(name="plate1", images=[dataset.input_dir / "t01.tif"],
+                     input_dir=dataset.input_dir, output_dir=dataset.output_dir)
+    plan = ref.plan_references(ReferenceContext(empty), _pipe(), [single], hash_images=True)
+    assert plan.ambiguous == ("plate1/t01",)
+    assert plan.unplanned["plate1"]["t01"] == "unplanned:ambiguous"
 
 
 def test_plan_without_hashing_still_resolves(tree):
@@ -84,14 +106,15 @@ def test_plan_without_hashing_never_reads_a_reference_image(tree, monkeypatch):
     assert "blank" in plan.images_by_dataset["plate1"]
 
 
-def test_a_blank_written_with_its_own_extension_is_a_self_reference(tree, tmp_path):
+def test_a_blank_written_with_its_own_extension_is_planned_like_any_blank(tree, tmp_path):
     table, dataset = tree
     named = tmp_path / "named.csv"
     pd.DataFrame({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["t01.tif"]}).to_csv(named, index=False)
     single = Dataset(name="plate1", images=[dataset.input_dir / "t01.tif"],
                      input_dir=dataset.input_dir, output_dir=dataset.output_dir)
-    plan = ref.plan_references(ReferenceContext(named), _pipe(), [single], hash_images=False)
-    assert plan.self_referenced == ("plate1/t01",)
+    plan = ref.plan_references(ReferenceContext(named), _pipe(), [single], hash_images=True)
+    assert set(plan.digests["plate1"]) == {"t01"}
+    assert set(plan.file_digests) == {str((dataset.input_dir / "t01.tif").resolve())}
 
 
 def test_a_blank_matching_no_single_file_is_unresolved(tree, tmp_path):
@@ -117,6 +140,84 @@ def test_digest_changes_only_for_the_image_whose_blank_changed(tree, tmp_path):
     b = ref.plan_references(ReferenceContext(edited), _pipe(), [dataset], hash_images=True).digests["plate1"]
     assert a["t01"] != b["t01"]
     assert a["t02"] == b["t02"]
+
+
+# ---- a blank value that is a file path --------------------------------------
+
+
+def _one_image(dataset: Dataset, stem: str = "t01") -> Dataset:
+    return Dataset(name="plate1", images=[dataset.input_dir / f"{stem}.tif"],
+                   input_dir=dataset.input_dir, output_dir=dataset.output_dir)
+
+
+def _layout(tmp_path: Path, value: str, name: str = "paths.csv") -> Path:
+    path = tmp_path / name
+    pd.DataFrame({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": [value]}).to_csv(
+        path, index=False
+    )
+    return path
+
+
+def test_a_relative_file_path_is_planned_once_to_an_absolute_path(tree, tmp_path, monkeypatch):
+    """Startup resolves it in the submitting process; a worker, whose cwd is
+    not the submitter's, uses only the planned absolute path."""
+    _, dataset = tree
+    run = tmp_path / "run"
+    blank = _write(run / "blanks" / "b0.tif", 33)
+    layout = _layout(tmp_path, "blanks/b0.tif")
+    monkeypatch.chdir(run)
+    ctx = ReferenceContext(layout)
+    plan = ref.plan_references(ctx, _pipe(), [_one_image(dataset)], hash_images=True)
+    expected = str(blank.resolve())
+    assert plan.images_by_dataset["plate1"]["blanks/b0.tif"] == expected
+    assert set(plan.file_digests) == {expected}
+    out = tmp_path / "out"
+    ref.write_reference_manifest(
+        out, plan=plan, table_path=layout, table_sha256=ctx.table_sha256, read_kwargs={}
+    )
+
+    elsewhere = tmp_path / "elsewhere"
+    _write(elsewhere / "blanks" / "b0.tif", 99)  # a different file at the same relative path
+    monkeypatch.chdir(elsewhere)
+    with ref.worker_reference_context(out, "plate1") as active:
+        assert active.resolve_image("blanks/b0.tif") == blank.resolve()
+        assert active.load_image("blanks/b0.tif").gray.shape == (8, 8)
+
+
+@pytest.mark.parametrize("kind", ["missing", "unsupported suffix"])
+def test_a_file_path_that_is_not_an_image_is_unresolved(tree, tmp_path, kind):
+    _, dataset = tree
+    target = tmp_path / ("missing.tif" if kind == "missing" else "notes.json")
+    if kind != "missing":
+        target.write_text("{}", encoding="utf-8")
+    plan = ref.plan_references(
+        ReferenceContext(_layout(tmp_path, str(target))), _pipe(), [_one_image(dataset)],
+        hash_images=True,
+    )
+    assert plan.unresolved == ("plate1/t01",)
+
+
+def test_a_file_path_to_the_images_own_file_is_planned_like_any_blank(tree, tmp_path):
+    _, dataset = tree
+    own = dataset.input_dir / "t01.tif"
+    plan = ref.plan_references(
+        ReferenceContext(_layout(tmp_path, str(own))), _pipe(), [_one_image(dataset)],
+        hash_images=True,
+    )
+    assert set(plan.digests["plate1"]) == {"t01"}
+    assert set(plan.file_digests) == {str(own.resolve())}
+
+
+def test_a_same_stem_blank_in_another_folder_is_planned(tree, tmp_path):
+    """``blanks/t01.tif`` for ``in/plate1/t01.tif``: an ordinary blank."""
+    _, dataset = tree
+    blank = _write(tmp_path / "blanks" / "t01.tif", 33)
+    plan = ref.plan_references(
+        ReferenceContext(_layout(tmp_path, str(blank))), _pipe(), [_one_image(dataset)],
+        hash_images=True,
+    )
+    assert set(plan.digests["plate1"]) == {"t01"}
+    assert set(plan.file_digests) == {str(blank.resolve())}
 
 
 def test_digest_changes_when_the_blank_file_is_rewritten(tree):
@@ -220,10 +321,11 @@ def test_the_manifest_records_each_planned_files_digest(tree, tmp_path):
     from phenotypic._core._reference_context import reference_file_digest
 
     out, dataset = _planned_run(tree, tmp_path)
-    blank = (dataset.input_dir / "blank.tif").resolve()
+    # t01's blank, and t03's: the reference plate is its own blank.
+    files = [(dataset.input_dir / f"{s}.tif").resolve() for s in ("blank", "t03")]
     manifest = ref.read_reference_manifest(out)
     assert manifest["schema_version"] == ref.MANIFEST_SCHEMA_VERSION
-    assert manifest["reference_files"] == {str(blank): reference_file_digest(blank)}
+    assert manifest["reference_files"] == {str(f): reference_file_digest(f) for f in files}
 
 
 def test_a_blank_rewritten_after_planning_leaves_the_worker_as_stale(tree, tmp_path):
@@ -284,12 +386,12 @@ def test_an_unplanned_digest_follows_the_failure_reason(tree, tmp_path):
     unmatched = unplanned({"Metadata_ImageName": ["t99"], "Metadata_BlankImage": ["blank"]})
     missing = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["nope"]})
     other_missing = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["gone"]})
-    itself = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": ["t01"]})
+    empty = unplanned({"Metadata_ImageName": ["t01"], "Metadata_BlankImage": [None]})
     assert unmatched == "unplanned:unmatched"
     assert missing.startswith("unplanned:unresolved:")
-    assert len({unmatched, missing, other_missing, itself}) == 4
+    assert len({unmatched, missing, other_missing, empty}) == 4
     # Never equal to a real (hex) digest.
-    assert all(value.startswith("unplanned") for value in (missing, itself))
+    assert all(value.startswith("unplanned") for value in (missing, empty))
 
 
 def test_snapshot_copies_bytes_and_reuses_existing(tmp_path, tree):

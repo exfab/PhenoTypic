@@ -467,47 +467,33 @@ def test_refuses_a_corrector_from_an_earlier_application():
     assert isinstance(info.value.__cause__, StaleDetectMatError)
 
 
-def test_refuses_self_reference():
+# ---- the reference plate: treated like every other plate (user decision) ----
+
+
+def test_the_reference_plate_naming_itself_subtracts_to_zero():
+    """No special case: the plate is its own blank, so nothing remains."""
     target, _ = _pair()
-    with _ctx(blank_name="t04", blank=target), pytest.raises(ReferenceLookupError) as info:
-        SubtractBlank().apply(target)
-    assert info.value.reason == "self"
+    with _ctx(blank_name="t04", blank=target):
+        out = SubtractBlank().apply(target)
+    np.testing.assert_array_equal(out.detect_mat[:], np.zeros_like(out.detect_mat[:]))
 
 
-def test_refuses_self_reference_written_with_its_extension(tmp_path):
-    """'t04.tif' for image 't04' resolves to the frame's own file; subtracting
-    it would zero the frame silently, so it must be refused like 't04'."""
+@pytest.mark.parametrize("value", ["t04.tif", "path"])
+def test_the_reference_plate_named_by_its_file_subtracts_to_zero(tmp_path, value):
+    """'t04.tif', or a path to its own file, is the plate's own file: an
+    ordinary blank, so the plate subtracts to an empty image."""
     import tifffile
 
-    tifffile.imwrite(tmp_path / "t04.tif", np.full((8, 8), 100, dtype=np.uint8))
-    target = Image.imread(tmp_path / "t04.tif")
-    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["t04.tif"]})
-    with ReferenceContext(layout, image_root=tmp_path), pytest.raises(ReferenceLookupError) as info:
-        SubtractBlank().apply(target)
-    assert info.value.reason == "self"
-
-
-def test_refuses_an_in_memory_blank_that_is_the_target_under_another_name():
-    """An images= entry holding (a copy of) the target is the target, whatever
-    key the table uses for it; a copy defeats an identity check."""
-    target, _ = _pair()
-    with _ctx(blank=target.copy()), pytest.raises(ReferenceLookupError) as info:
-        SubtractBlank().apply(target)
-    assert info.value.reason == "self"
-
-
-def test_refuses_self_reference_differing_only_in_case(tmp_path, monkeypatch):
-    """On a case-insensitive filesystem 'T04.tif' is the file of image 't04'.
-    normcase is patched to model one (it lowercases only on Windows)."""
-    import tifffile
-
-    tifffile.imwrite(tmp_path / "T04.tif", np.full((8, 8), 0.4, dtype=np.float32))
-    target = _gray(np.full((8, 8), 0.4), "t04")
-    monkeypatch.setattr(os.path, "normcase", str.lower)
-    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": ["T04.tif"]})
-    with ReferenceContext(layout, image_root=tmp_path), pytest.raises(ReferenceLookupError) as info:
-        SubtractBlank().apply(target)
-    assert info.value.reason == "self"
+    own = tmp_path / "t04.tif"
+    frame = np.full((8, 8), 100, dtype=np.uint8)
+    frame[2:4, 2:4] = 220
+    tifffile.imwrite(own, frame)
+    target = Image.imread(own)
+    name = str(own) if value == "path" else value
+    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": [name]})
+    with ReferenceContext(layout, image_root=tmp_path):
+        out = SubtractBlank().apply(target)
+    np.testing.assert_array_equal(out.detect_mat[:], np.zeros_like(out.detect_mat[:]))
 
 
 def test_refuses_shape_mismatch():
@@ -535,3 +521,77 @@ def test_round_trips_through_json():
     again = ImagePipeline.from_json(pipe.to_json())
     op = again.get_ops()["sb"]
     assert (op.blank_column, op.polarity) == ("Metadata_Frame0", "darker")
+
+
+# ---- a blank value that is a file path -------------------------------------
+
+
+def _null_ctx(target_name="t04"):
+    """The image's row exists, but its blank cell is empty."""
+    layout = pd.DataFrame({"Metadata_ImageName": [target_name], "Metadata_BlankImage": [None]})
+    return ReferenceContext(layout)
+
+
+def test_a_same_stem_blank_in_another_folder_is_an_ordinary_blank(tmp_path):
+    """``blanks/plate1.tif`` for ``images/plate1.tif``: a folder of blanks named
+    like the plates. Same stem, different file, subtracted as usual."""
+    import tifffile
+
+    own = tmp_path / "images" / "plate1.tif"
+    blank = tmp_path / "blanks" / "plate1.tif"
+    for path in (own, blank):
+        path.parent.mkdir(parents=True)
+    tifffile.imwrite(blank, np.full((8, 8), 40, dtype=np.uint8))
+    frame = np.full((8, 8), 40, dtype=np.uint8)
+    frame[2:4, 2:4] = 200
+    tifffile.imwrite(own, frame)
+    layout = pd.DataFrame({"Metadata_ImageName": ["plate1"], "Metadata_BlankImage": [str(blank)]})
+    with ReferenceContext(layout):
+        out = SubtractBlank().apply(Image.imread(own))
+    assert out.detect_mat[:][3, 3] > 0.5
+    assert out.detect_mat[:][6, 6] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_a_file_path_blank_is_subtracted(tmp_path):
+    import tifffile
+
+    blank = tmp_path / "blanks" / "b0.tif"
+    blank.parent.mkdir()
+    tifffile.imwrite(blank, np.full((8, 8), 40, dtype=np.uint8))
+    frame = np.full((8, 8), 40, dtype=np.uint8)
+    frame[2:4, 2:4] = 200
+    target = Image(arr=frame, name="t04")
+    layout = pd.DataFrame({"Metadata_ImageName": ["t04"], "Metadata_BlankImage": [str(blank)]})
+    with ReferenceContext(layout):
+        out = SubtractBlank().apply(target)
+    assert out.detect_mat[:][3, 3] > 0.5
+    assert out.detect_mat[:][6, 6] == pytest.approx(0.0, abs=1e-6)
+
+
+# ---- what still refuses ------------------------------------------------------
+
+
+def test_refuses_an_empty_blank_cell():
+    target, _ = _pair()
+    with _null_ctx(), pytest.raises(ReferenceLookupError) as info:
+        SubtractBlank().apply(target)
+    assert (info.value.reason, info.value.column) == ("null", "Metadata_BlankImage")
+
+
+@pytest.mark.parametrize("case", ["unmatched", "ambiguous"])
+def test_refuses_a_missing_or_disagreeing_row(case):
+    target, blank = _pair()
+    names, blanks = {
+        "unmatched": (["t09"], ["t00"]),
+        "ambiguous": (["t04", "t04"], ["t00", "t01"]),
+    }[case]
+    layout = pd.DataFrame({"Metadata_ImageName": names, "Metadata_BlankImage": blanks})
+    with ReferenceContext(layout, images={"t00": blank}), pytest.raises(ReferenceLookupError) as info:
+        SubtractBlank().apply(target)
+    assert info.value.reason == case
+
+
+def test_refuses_a_blank_that_does_not_resolve():
+    target, _ = _pair()
+    with _ctx(blank=None), pytest.raises(ReferenceImageError):
+        SubtractBlank().apply(target)

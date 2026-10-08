@@ -127,8 +127,7 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-REF-COLUMN` | The table lacks a column an operation reads | error | Add the column, or change the operation's column parameter |
 | `PF-REF-UNMATCHED` | Some images have no row in the reference table | warning (error if all) | Add rows, or leave the images out with `--image-manifest` |
 | `PF-REF-AMBIGUOUS` | Some images' rows are empty or disagree for a reference column | warning (error if all) | Give each image one value |
-| `PF-REF-SELF` | Some images name themselves as their reference | warning (error if all) | Leave blank frames out with `--image-manifest` |
-| `PF-REF-UNRESOLVED` | A named reference image matches no single file in the image's directory | warning (error if all) | Name an existing file, by stem or full name |
+| `PF-REF-UNRESOLVED` | A named reference image matches no single file in the image's directory, or a reference file path is not an existing image | warning (error if all) | Name an existing file, by stem or full name, or give a path to one |
 | `PF-OUTPUT-UNWRITABLE` | `--output` (or its nearest existing parent) is not writable | error | Choose another `--output`, or fix permissions |
 | `PF-OUTPUT-SPACE` | A `full` run's output disk has less free space than the inputs' size (a heuristic) | warning | Free space, or choose another `--output` |
 | `PF-NODE-LOCAL` | On a SLURM run, a path workers read or write is on node-local storage | warning | Move it to shared storage |

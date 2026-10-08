@@ -85,22 +85,24 @@ class ReferencePlan:
         total_images: Input images planned, across every dataset.
         unmatched: ``"<dataset>/<stem>"`` labels with no table row.
         ambiguous: Labels whose rows are empty or disagree for a column.
-        self_referenced: Labels that name themselves as a reference image.
         unresolved: Labels naming a reference image that matches no single
-            file in the dataset's input directory.
+            file in the dataset's input directory, or a file path that is not
+            an existing image.
         images_by_dataset: ``{dataset: {name as written: absolute path}}``.
         digests: ``{dataset: {stem: digest}}``; empty without hashing.
         unplanned: ``{dataset: {stem: "unplanned:<reason>[:<values digest>]"}}``
-            for every image in the four failure lists.
+            for every image in the three failure lists.
         file_digests: ``{absolute path: sha256}`` of every reference file the
             digests were computed from; empty without hashing. Workers refuse
             a file whose bytes no longer match.
+
+    An image naming itself as its reference (the reference plate) is planned
+    like any other: its own file is its blank, and it subtracts to nothing.
     """
 
     total_images: int
     unmatched: tuple[str, ...]
     ambiguous: tuple[str, ...]
-    self_referenced: tuple[str, ...]
     unresolved: tuple[str, ...]
     images_by_dataset: dict[str, dict[str, str]]
     digests: dict[str, dict[str, str]]
@@ -163,7 +165,6 @@ def plan_references(
         image_columns = set(_union(op._ref_image_columns() for op in operations))
     unmatched: list[str] = []
     ambiguous: list[str] = []
-    self_referenced: list[str] = []
     unresolved: list[str] = []
     images_by_dataset: dict[str, dict[str, str]] = {}
     digests: dict[str, dict[str, str]] = {}
@@ -188,28 +189,22 @@ def plan_references(
                 dataset_unplanned[stem] = _unplanned_digest(reason)
                 continue
             image_shas: dict[str, str] = {}
-            failure: list[str] | None = None
+            failed = False
             for column in value_columns:
                 if column not in image_columns:
                     continue
+                # A name or path that is the image's own file is no special
+                # case: the reference plate is planned with itself as its blank.
                 name = values[column]
-                if name == stem:
-                    failure = self_referenced
-                    break
                 try:
                     target = scoped.resolve_image(name)
                 except ReferenceImageError:
-                    failure = unresolved
+                    failed = True
                     break
                 if not isinstance(target, Path):
                     # An in-memory ``images`` entry (never the CLI's): no file
                     # to record or hash.
                     continue
-                # Same rule as SubtractBlank: "t04.tif" for image "t04" resolves
-                # to the frame's own file and is a self-reference too.
-                if source_image_stem(target) == stem:
-                    failure = self_referenced
-                    break
                 key = str(target.resolve())
                 resolved[name] = key
                 if hash_images:
@@ -220,10 +215,9 @@ def plan_references(
                             Path(key)
                         )
                     image_shas[name] = sha_cache[key]
-            if failure is not None:
-                failure.append(label)
-                reason = "self" if failure is self_referenced else "unresolved"
-                dataset_unplanned[stem] = _unplanned_digest(reason, values)
+            if failed:
+                unresolved.append(label)
+                dataset_unplanned[stem] = _unplanned_digest("unresolved", values)
                 continue
             if hash_images:
                 dataset_digests[stem] = canonical_digest(
@@ -233,7 +227,6 @@ def plan_references(
         total_images=total,
         unmatched=tuple(unmatched),
         ambiguous=tuple(ambiguous),
-        self_referenced=tuple(self_referenced),
         unresolved=tuple(unresolved),
         images_by_dataset=images_by_dataset,
         digests=digests,
