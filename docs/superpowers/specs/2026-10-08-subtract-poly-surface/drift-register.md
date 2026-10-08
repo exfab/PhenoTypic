@@ -1,0 +1,48 @@
+# Drift register — SubtractPolySurface
+
+Every place `SubtractPolySurface` departs from its references — Gwyddion 2.71 (the port target)
+and astropy 7.1.0 (the design reference for the robust fit) — with the reason, the evidence, and
+the status. Citations resolve against the out-of-repo reference tree described in
+[`references.md`](./references.md) §1. **A deviation is admissible only if it is recorded here
+and tested.** One row per deviation, however numerically small.
+
+Categories (as in [`2026-07-08-alt-phase-detection/drift-register.md`](../2026-07-08-alt-phase-detection/drift-register.md)):
+
+- **FORCED** — no admissible alternative exists. Prove it.
+- **CONTRACT** — required by a PhenoTypic invariant (e.g. `detect_mat ∈ [0,1]`).
+- **CAPABILITY** — new behaviour we chose to add. Must be opt-in, or reachable and tested beside
+  the faithful configuration.
+- **SCOPE** — reference behaviour deliberately not ported. Must be stated in the docstring.
+- **CHOICE** — not a deviation: a reference behaviour we *replicate* even though it looks odd, or
+  a fork between references, recorded so nobody "fixes" it.
+
+Evidence IDs (`B1`, `L2`, `R5`, …) are checks in
+`docs/superpowers/logic_validation_scripts/2026-10-08-subtract-poly-surface/`.
+
+---
+
+## Against Gwyddion 2.71
+
+| # | Deviation | Reference | Category | Evidence / status |
+|---|---|---|---|---|
+| D1 | Surfaces and lines are fitted in a **Legendre** basis with `numpy.linalg.lstsq` (SVD), instead of monomials accumulated into normal equations and solved by Cholesky. Line fits use the normalized coordinate `u ∈ [-1,1]` instead of the centred pixel coordinate `j − (W−1)/2`. | `libprocess/level.c:1574-1661` (surface); `libprocess/correct.c:1814, 1836-1862` (rows) | FORCED | Same span ⇒ same least-squares fit in exact arithmetic. Measured: surfaces agree to ≤ 4.4e-12 at order 11 (B1); line residuals agree to ≤ 9.2e-12 at degree 5 (L3). Forced because Gwyddion's own `MAX_DEGREE = 11` (`polylevel.c:33`) puts the monomial Gram matrix at cond ≈ 2.3e15 for the 144-term tensor set — at the edge of float64 — against 4.7e2 for Legendre (B2). |
+| D2 | A rank-deficient fit **raises** `ValueError`. Gwyddion silently clears the coefficients to zero, subtracting nothing. | `libprocess/level.c:1656-1657` | CAPABILITY | A plausible-looking unchanged image is the worst possible answer to a failed fit. Reachable only through degenerate geometry, which `design.md` §4.7 rejects up front; the rank check is the backstop. Pinned by a behavioural test. |
+| D3 | In robust mode, a clip round that would leave a surface or line with fewer inliers than fit terms is **rejected**, and that surface or line keeps its previous fit. Gwyddion's analogue — a masked row with `≤ degree` usable points — gets **zeroed** coefficients and is then shifted by `+avg`. | `libprocess/correct.c:1855-1867` | CAPABILITY | Gwyddion reaches this only through a mask (not ported, D9). We reach it only through clipping. Copying the `+avg` shift would move a whole row by the image mean — a defect, not a convention. Pinned by a behavioural test with a line that is ≥ 90% colony. |
+| D4 | Whole-image surfaces are fitted on a strided subsample when `H·W > MAX_FIT_POINTS` (262 144), then evaluated on the full grid. Gwyddion always uses every pixel. | `libprocess/level.c:1612-1650` (accumulates over every pixel) | CAPABILITY | Below the cap the stride is 1, so every oracle fixture and every small image is fitted exactly as Gwyddion fits it. Above it, measured RMS distance from the full fit 7.4e-5 against a bound of 2.9e-4 (σ = 0.01, stride 3, 175 104 points; R4). Bounds memory: the design matrix never exceeds `MAX_FIT_POINTS × n_terms`. |
+| D5 | The output is range-guarded by `norm` (`"clip"` by default). Gwyddion's data fields are unbounded doubles. | — | CONTRACT | `detect_mat ∈ [0,1]`. With `method ∈ {offset, polynomial}` the background lands at 0, so the default `"clip"` zeroes the negative half of the background noise; the docstring says so and points to `norm="rescale"` or `norm=None`. |
+| D6 | Output is computed in float64 and cast back to `detect_mat`'s dtype. | Gwyddion stores doubles | CONTRACT | `detect_mat`'s dtype is preserved. |
+| D7 | **Plane pivot replicated.** Plane Level subtracts the tilt about `(W/2, H/2)`, not about the true centre `((W−1)/2, (H−1)/2)`, so `mean(out) = mean(z) + ½(bx + by)`. We do the same. | `modules/process/level.c:174-175`; `libprocess/level.c:484-488` | CHOICE | Not a deviation: replicated so the oracle fixture matches at rounding level. The shift is half a pixel's worth of slope (e.g. +4.4e-4 for slopes of 2e-3/px; L2). **Do not "fix" it to the true centre** — the control in L2 shows that would change the output mean by exactly this amount, and the golden fixture is the guard. Decided 2026-10-08 (user). |
+| D8 | **Level convention is per method, as in each Gwyddion tool**: offset → 0 (Zero Mean Value), plane → mean kept up to D7's shift (Plane Level), polynomial → 0 (Polynomial Background), line → each line leveled to the input's global mean (Align Rows). | `modules/process/level.c:174-175, 185-190`; `polylevel.c:239-241`; `correct.c:1815, 1867` | CHOICE | Gwyddion's tools disagree with one another, and we follow each one rather than unify them. Switching `method` therefore also changes the output level; the docstring carries the table. L2, L4, L6. Decided 2026-10-08 (user). |
+| D9 | **Masks are not ported.** Every Gwyddion tool here can include or exclude a mask; `SubtractPolySurface` has no mask input. | `modules/process/level.c:108`; `polylevel.c:150`; `linematch.c:170` | SCOPE | PhenoTypic enhancers run before detection, so there is no foreground mask to give them. `fit="robust"` (D11) is the substitute. Gwyddion's default for Polynomial Background and Align Rows is *ignore*, and for Plane Level *exclude* with no mask present, so every Gwyddion **default** is reproduced exactly. |
+| D10 | **Not ported:** distinct horizontal/vertical degrees (`same_degree = FALSE`), Align Rows' non-polynomial methods (Median — Gwyddion's default for Align Rows — Modus, Median difference, Matching, Facet tilt, trimmed means), Level Rotate, Fix Zero / Zero Maximum, and background extraction (`do_extract`). | `polylevel.c:141-149`; `linematch.c:168-169, 381-394`; `modules/process/level.c:67-94` | SCOPE | `method="line"` is Align Rows' **Polynomial** method, as the request defines it ("a low-order polynomial fit per scan line"). Its Gwyddion default degree (1) is our default. That Align Rows as a whole defaults to Median is stated in the docstring so nobody mistakes `line` for it. |
+
+## Against astropy 7.1.0 (robust fit)
+
+| # | Deviation | Reference | Category | Evidence / status |
+|---|---|---|---|---|
+| D11 | `fit="robust"` exists at all. Gwyddion has no robust estimator. | — | CAPABILITY | Opt-in; `fit="lstsq"` is the default and is the faithful configuration. Plain least squares is biased by colonies — surfaces 2.3–9.5 σ at 10–40% plate cover — while the robust loop holds ≤ 0.055 σ for surfaces and ≤ 0.19 σ for lines inside D16's limit (R1, R2). The docstring steers plate users to it. |
+| D12 | `max_iter = 10` by default. astropy `FittingWithOutlierRemoval` defaults to `niter = 3`. | `astropy_fitting.py:899` | CAPABILITY | At 40% colony cover, 3 rounds leave errors of 0.15 / 0.66 / 1.05 σ over three seeds; convergence needs up to 7 rounds (R5, and the brainstorming sweep recorded in `design.md` §7.1). The loop stops once the mask stops growing (`astropy_fitting.py:1105-1108`), so easy plates still use 4–5 rounds. Decided 2026-10-08 (user). |
+| D13 | The clip scale is `mad_std` (`scipy.stats.median_abs_deviation(scale="normal")`). astropy's default `stdfunc` is `"std"`. | `astropy_sigma_clipping.py:182, 107` | CAPABILITY | astropy offers `"mad_std"` as an option. A standard deviation over colony-contaminated residuals is inflated by the very outliers being removed; MAD is not. |
+| D14 | One clip pass per round. astropy's default outlier function, `sigma_clip`, iterates internally (`maxiters = 5`) inside every outer round. | `astropy_sigma_clipping.py:180` | CAPABILITY | Measured at 40% cover: 3 rounds × 5 inner passes reach ≤ 0.12 σ; 10 rounds × 1 pass reach ≤ 0.055 σ, with one knob instead of two (`design.md` §7.1). |
+| D15 | Clipping is symmetric (`|r − median| > clip_sigma · mad_std`), as in astropy's default `sigma_lower = sigma_upper = sigma`. | `astropy_sigma_clipping.py:175-182` | CHOICE | Colonies are one-sided (bright) outliers, but one-sided clipping measured no better in brainstorming (identical RMSE at 10–40% cover), and symmetric clipping also removes dark debris and survives an un-inverted dark-colony plate. |
+| D16 | **Known limit, not fixed:** the robust fit breaks down when foreground approaches half of the points being fitted, because the median then locks onto the colonies. For a surface, "the points" are the whole image; **for `method="line"`, they are each line on its own.** | — | SCOPE | Surface: at 50% plate cover two of three seeds fail at ~11 σ for every iteration budget (R6). Line: lines whose own colony fraction is < 20% recover to ≤ 0.19 σ (R2); lines ≥ 50% fail at up to 20.7 σ (R7); 20–40% is unreliable (brainstorming per-line sweep: occasional 5.9–9.5 σ failures). **On an arrayed plate a scan line through a row of colony centres is mostly colony, so robust line leveling cannot level those lines.** That is the median's 50% breakdown point, not a tuning problem. Both limits are stated in the docstring. |
