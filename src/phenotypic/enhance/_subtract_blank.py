@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import importlib
-import os
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -108,8 +106,9 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
           image alone.
 
     Args:
-        blank_column: Metadata column holding each image's blank, as a file
-            stem or file name in the same input directory. Default
+        blank_column: Metadata column holding each image's blank: a file stem
+            or file name, searched for in the image's input directory, or a
+            file path (relative to the working directory). Default
             ``"Metadata_BlankImage"``.
         polarity: Which change from the blank counts as colony.
             ``"brighter"`` keeps pixels brighter than the blank (white
@@ -119,12 +118,14 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
 
     Returns:
         Image: Input image with ``detect_mat`` replaced by the clipped
-        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.
+        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged. The
+        reference plate itself, naming its own frame as its blank, is no
+        special case: it subtracts to an all-zero ``detect_mat``.
 
     Raises:
         RefMetadataUnavailableError: No ReferenceContext is active.
-        ReferenceLookupError: The image's blank is missing, empty, ambiguous,
-            or the image itself.
+        ReferenceLookupError: The image has no row, its blank cell is empty,
+            or its rows disagree.
         ReferenceImageError: The blank cannot be resolved or read; its
             shape or bit depth differs from the target's; one of the pair is
             RGB and the other single-channel; or either projects outside
@@ -163,35 +164,9 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
 
     def _operate(self, image: "Image") -> "Image":
         from phenotypic._core._image_parts.detection_modes import get_detection_mode
-        from phenotypic._core._reference_context import (
-            ReferenceImageError,
-            ReferenceLookupError,
-        )
-
-        from phenotypic.sdk_._io_constants import source_image_stem
+        from phenotypic._core._reference_context import ReferenceImageError
 
         name = self._ref_values(image)[self.blank_column]
-        # Compare by the resolved file too: a blank written with its extension
-        # ("t04.tif" for image "t04") resolves to the image's own file, and
-        # subtracting a frame from itself would zero it with no error.
-        # An in-memory entry is compared by its own name, since a copy of the
-        # target defeats identity. normcase: on a case-insensitive filesystem
-        # "T04.tif" is the file of image "t04".
-        target_file = self._require_context().resolve_image(name)
-        own = os.path.normcase(image.name)
-        if (
-            os.path.normcase(name) == own
-            or (isinstance(target_file, Path)
-                and os.path.normcase(source_image_stem(target_file)) == own)
-            or (not isinstance(target_file, Path) and target_file.name == image.name)
-        ):
-            raise ReferenceLookupError(
-                f"Image {image.name!r} names itself as its blank in {self.blank_column}; "
-                f"leave blank frames out of the input",
-                reason="self",
-                image_name=image.name,
-                column=self.blank_column,
-            )
         mode = get_detection_mode(image.detect_mode)
         self._require_raw_target(image, mode)
         blank = self._ref_image(name)

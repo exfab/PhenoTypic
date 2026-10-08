@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -335,6 +336,45 @@ def test_preview_context_activates_with_the_image_directory_as_root(tmp_path):
     assert ReferenceContext.current() is None
     with rm.preview_reference_context(None, str(image)) as ctx:
         assert ctx is None and ReferenceContext.current() is None
+
+
+def test_a_file_path_blank_resolves_in_the_preview_only_under_the_image_root(
+    tmp_path, outside, monkeypatch
+):
+    """Python and the CLI accept any readable path; the builder confines it like
+    the table, and never reads a refused one."""
+    from phenotypic._core import _reference_context
+    from phenotypic._core._reference_context import ReferenceImageError
+
+    inside = tmp_path / "blanks" / "b0.tif"
+    inside.parent.mkdir()
+    tifffile.imwrite(inside, np.full((8, 8), 40, dtype=np.uint8))
+    escaped = outside / "b0.tif"
+    tifffile.imwrite(escaped, np.full((8, 8), 40, dtype=np.uint8))
+    table = tmp_path / "path_blanks.csv"
+    pd.DataFrame({
+        "ImageName": ["t01", "t02"], "BlankImage": [str(inside), str(escaped)],
+    }).to_csv(table, index=False)
+    image = tmp_path / "plates" / "t01.tif"
+
+    real_read = _reference_context._read_image
+
+    def read(path, read_kwargs):
+        assert Path(path).resolve() != escaped.resolve(), "a refused blank was read"
+        return real_read(path, read_kwargs)
+
+    monkeypatch.setattr(_reference_context, "_read_image", read)
+    with rm.preview_reference_context(str(table), str(image)) as ctx:
+        assert ctx.resolve_image(str(inside)) == inside.resolve()
+        assert ctx.load_image(str(inside)).gray.shape == (8, 8)
+        with pytest.raises(ReferenceImageError):
+            ctx.resolve_image(str(escaped))
+        with pytest.raises(ReferenceImageError):
+            ctx.load_image(str(escaped))
+    identity = rm.reference_images_identity(
+        str(table), str(tmp_path / "plates" / "t02.tif"), ["Metadata_BlankImage"]
+    )
+    assert "unresolved" in identity and str(escaped) not in identity
 
 
 @pytest.mark.parametrize("image_path", [None, ""])

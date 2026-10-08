@@ -26,13 +26,13 @@ One row per image, or one row per colony. Two columns matter:
 | Column | Holds |
 |---|---|
 | `ImageName` (or `Metadata_ImageName`) | The image's file name without its extension. |
-| `BlankImage` (or `Metadata_BlankImage`) | The blank frame's file name, with or without its extension. |
+| `BlankImage` (or `Metadata_BlankImage`) | The blank frame: a file name (with or without its extension), or a file path. |
 
 ```text
 ImageName,BlankImage
 plate1_t00,plate1_t00
 plate1_t04,plate1_t00
-plate1_t08,plate1_t00
+plate1_t08,blanks/plate1_media.tif
 ```
 
 - Headers are canonicalized in memory, so `BlankImage` and
@@ -41,8 +41,23 @@ plate1_t08,plate1_t00
 - A per-colony table repeats each image's name once per colony. The values for
   one image must **agree**; a column that is empty or disagrees across an
   image's rows is an error, not a guess.
-- Blanks are found by name in the **same input directory** as the image. A blank
-  need not be one of your inputs, but it must live in that directory.
+- A blank given as a **file name** (no `/`) is found in the **same input
+  directory** as the image. It need not be one of your inputs, but it must live
+  in that directory.
+- A blank given as a **file path** (it contains `/`, or is absolute) is read from
+  that path. A relative path is relative to **where you run** the command or
+  script (the working directory), never to the image's folder. The CLI resolves
+  it once at startup, so SLURM workers read the same file wherever they start.
+  It must be an image file of a supported type, or an OME-Zarr store.
+- **The reference plate itself may be in the input.** Its row names itself
+  (`plate1_t00,plate1_t00` above), or gives its own file. It is treated like
+  every other plate: it subtracts its own blank, which is itself, so its
+  `detect_mat` becomes an empty (all-zero) image. In a full run it then has no
+  colonies to measure and fails like any empty plate; leave it out with
+  `--image-manifest` for a clean full run. A blank in another folder that
+  shares the plate's name (`blanks/plate1_t04.tif` for
+  `images/plate1_t04.tif`) is simply a different file, and is subtracted as
+  usual.
 - A table with a `Metadata_Dataset` column also matches on the dataset when the
   run knows one.
 
@@ -87,9 +102,10 @@ the first image.
 
 ## CLI
 
-Pass the table with `--metadata`. Blank frames are themselves images, so leave
-them out of the run with `--image-manifest`, or each one fails its preflight with
-`PF-REF-SELF`.
+Pass the table with `--metadata`. Blank frames may stay in the input, where
+each subtracts to an empty image: a process run exports it, and a full run
+records it as a plate with no colonies (`NoObjectsError`), like any empty
+plate. For a clean full run, leave them out with `--image-manifest`.
 
 ```bash
 uv run python -m phenotypic \
@@ -145,10 +161,11 @@ directory listings, and never opens an image:
 | `PF-REF-COLUMN` | error | The table lacks a column an operation names; the message lists operation path and column. |
 | `PF-REF-UNMATCHED` | warning | Input images with no row in the table. |
 | `PF-REF-AMBIGUOUS` | warning | Input images whose rows are empty or disagree for a needed column. |
-| `PF-REF-SELF` | warning | Input images that name themselves as their blank. Leave them out with `--image-manifest`. |
-| `PF-REF-UNRESOLVED` | warning | A named blank matches no file, or more than one, in its image's input directory. |
+| `PF-REF-UNRESOLVED` | warning | A named blank matches no file, or more than one, in its image's input directory; or a blank file path is not an existing image. |
 
-A warning that covers every input image is escalated to an error.
+A warning that covers every input image is escalated to an error. An image
+that names itself as its blank is not a finding: it subtracts to an empty
+image.
 
 ## GUI
 
@@ -163,7 +180,9 @@ A warning that covers every input image is escalated to an error.
   that directory, a relative path is resolved against it, and a symlink is
   followed and judged by where it lands. Any other path is refused without
   reading the file, so put the table under the image root (beside the images
-  is fine).
+  is fine). A blank given as a file path is confined the same way: in the
+  preview, a blank path outside the image root is unresolved and never read,
+  although Python and the CLI accept it.
 - **Run console.** When the loaded pipeline reads reference metadata, a warning
   names the columns and **Run is disabled** until a metadata CSV is included.
   Validate and Run are also refused at launch. An output that already holds a
@@ -214,6 +233,10 @@ The blank is taken in the target's detection mode (grey in grey mode, `LabL` in
   `ReferenceContextError` (`ReferenceLookupError`, `ReferenceImageError`,
   `ReferenceTableError`, `RefMetadataUnavailableError` or
   `StaleDetectMatError`, all importable from `phenotypic.sdk_`).
+- **An empty blank cell** is a `ReferenceLookupError` (`reason` `"null"`), as
+  are a missing row (`"unmatched"`) and disagreeing rows (`"ambiguous"`). The
+  reference plate naming itself is not an error: it subtracts to an empty
+  image.
 - **Third-party OME-Zarr blanks** are identified by their root `zarr.json` only,
   so a change inside a chunk alone does not change the digest.
 - **Digit-only blank names in the join.** The CLI joins `--metadata` onto
