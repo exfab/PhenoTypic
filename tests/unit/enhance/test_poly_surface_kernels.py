@@ -11,13 +11,14 @@ from phenotypic.enhance._poly_surface_kernels import (
     evaluate_surface,
     fit_surface_coefficients,
     legendre_design,
+    level_lines,
     normalized_axis,
     robust_least_squares,
     solve_least_squares,
     term_powers,
 )
 
-from ._poly_surface_synth import NOISE, grid, rmse, surface_plate
+from ._poly_surface_synth import NOISE, grid, line_plate, rmse, surface_plate
 
 
 class TestNormalizedAxis:
@@ -190,3 +191,65 @@ class TestFitSurfaceCoefficients:
 
     def test_default_cap_is_the_spec_constant(self):
         assert MAX_FIT_POINTS == 262_144
+
+
+class TestLevelLines:
+    def test_removes_per_row_offsets_and_slopes_exactly(self):
+        rng = np.random.default_rng(5)
+        _, _, u, _ = grid(40, 60)
+        z = 0.4 + rng.normal(0, 0.05, (40, 1)) + rng.normal(0, 0.03, (40, 1)) * u
+        out = level_lines(z, line_order=1, fit="lstsq", clip_sigma=3.0, max_iter=10)
+        np.testing.assert_allclose(out, np.full_like(z, z.mean()), atol=1e-12)
+
+    @pytest.mark.parametrize("line_order", [0, 1, 3])
+    def test_every_row_is_leveled_to_the_input_mean(self, line_order):
+        """Spec §4.5 / L4: avg is the input's global mean, taken BEFORE leveling."""
+        z, _, _ = line_plate(height=50, width=80, cover=0.2, seed=2034)
+        out = level_lines(z, line_order=line_order, fit="lstsq", clip_sigma=3.0, max_iter=10)
+        np.testing.assert_allclose(out.mean(axis=1), np.full(50, z.mean()), atol=1e-12)
+
+    def test_degree_zero_equals_the_row_shift_form(self):
+        """L5: z - (rowmean - mean(rowmeans)) on an unmasked field."""
+        z, _, _ = line_plate(height=30, width=45, cover=0.1, seed=2035)
+        rowmeans = z.mean(axis=1, keepdims=True)
+        out = level_lines(z, line_order=0, fit="lstsq", clip_sigma=3.0, max_iter=10)
+        np.testing.assert_allclose(out, z - (rowmeans - rowmeans.mean()), atol=1e-12)
+
+    def test_robust_recovers_rows_that_are_mostly_background(self):
+        """R2 per line: rows < 20% own colony fraction within 0.5 sigma; lstsq worse than 1 sigma."""
+        z, background, colonies = line_plate(cover=0.25, seed=2026)
+        avg = z.mean()
+        robust_fit = z - level_lines(z, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10) + avg
+        plain_fit = z - level_lines(z, line_order=1, fit="lstsq", clip_sigma=3.0, max_iter=10) + avg
+        sparse = colonies.mean(axis=1) < 0.2
+        def err(f):
+            return np.sqrt(np.mean((f[sparse] - background[sparse]) ** 2, axis=1))
+
+        assert sparse.sum() > 50
+        assert err(robust_fit).max() < 0.5 * NOISE
+        assert err(plain_fit).max() > 1.0 * NOISE
+
+    def test_rows_are_independent_across_block_boundaries(self):
+        """Robust per-row state must not leak between rows or blocks (515 rows > 2 blocks of 256)."""
+        z, _, _ = line_plate(height=515, width=64, cover=0.2, seed=2036)
+        whole = level_lines(z, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10) - z.mean()
+        for r in (0, 255, 256, 511, 514):
+            row = z[r:r + 1]
+            alone = level_lines(row, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10) - row.mean()
+            np.testing.assert_allclose(whole[r], alone[0], atol=1e-12)
+
+    def test_short_heavy_tailed_rows_never_fail(self):
+        """Drift D3 per line: a round leaving < line_order+1 inliers is rejected for that row."""
+        rng = np.random.default_rng(6)
+        z = rng.standard_cauchy((200, 6))
+        out = level_lines(z, line_order=3, fit="robust", clip_sigma=1.0, max_iter=10)
+        assert np.isfinite(out).all()
+
+    def test_a_row_that_is_mostly_colony_is_not_shifted_by_the_mean(self):
+        """Drift D3: a degenerate row keeps its last fit rather than gaining the global mean."""
+        rng = np.random.default_rng(7)
+        z = 0.3 + rng.normal(0, NOISE, (20, 100))
+        z[7, 5:95] += 0.4                                    # row 7 is 90% colony
+        out = level_lines(z, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10)
+        assert np.isfinite(out[7]).all()
+        assert not np.allclose(out[7], z[7] + z.mean())

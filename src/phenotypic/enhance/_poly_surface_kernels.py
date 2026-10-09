@@ -249,3 +249,107 @@ def fit_surface_coefficients(
             a, sample.ravel(), clip_sigma=clip_sigma, max_iter=max_iter
         ).coef
     return solve_least_squares(a, sample.ravel())
+
+
+#: Rows per batch in the vectorised per-line robust fit (spec 4.8).
+_LINE_BLOCK: Final[int] = 256
+
+#: Divisor making the median absolute deviation consistent with a normal sigma.
+_MAD_NORMAL: Final[float] = 1.482602218505602
+
+
+def _robust_line_block(
+    block: np.ndarray,
+    a: np.ndarray,
+    outer: np.ndarray,
+    *,
+    clip_sigma: float,
+    max_iter: int,
+) -> np.ndarray:
+    """Return fitted values for a block of rows, each fitted by spec 4.3 on its own.
+
+    Every row keeps its own inlier mask, stopping state and fit; a row that stops
+    keeps its last accepted fit while the others continue. Refits solve the
+    stacked weighted normal equations, which stay well conditioned for Legendre
+    columns on ``[-1, 1]`` at the supported line orders.
+
+    Args:
+        block: Rows to fit, shape ``(rows, width)``.
+        a: Line design matrix, shape ``(width, n_terms)``.
+        outer: Row-wise outer products of ``a``, shape ``(width, n_terms ** 2)``.
+        clip_sigma: Clipping threshold in units of the MAD-derived scale.
+        max_iter: Maximum number of refits after the initial fit.
+
+    Returns:
+        float64 array of fitted values, shape ``(rows, width)``.
+    """
+    n_terms = a.shape[1]
+    coef = solve_least_squares(a, block.T).T
+    kept = np.ones(block.shape, dtype=bool)
+    active = np.arange(block.shape[0])
+    for _ in range(max_iter):
+        if active.size == 0:
+            break
+        z = block[active]
+        mask = kept[active]
+        residual = z - coef[active] @ a.T
+        masked = np.where(mask, residual, np.nan)
+        center = np.nanmedian(masked, axis=1, keepdims=True)
+        scale = _MAD_NORMAL * np.nanmedian(np.abs(masked - center), axis=1)
+        new = mask & (np.abs(residual - center) <= clip_sigma * scale[:, None])
+        count = new.sum(axis=1)
+        refit = (scale > 0) & (count >= n_terms) & (count != mask.sum(axis=1))
+        active = active[refit]
+        if active.size == 0:
+            break
+        new = new[refit]
+        kept[active] = new
+        weight = new.astype(np.float64)
+        gram = (weight @ outer).reshape(-1, n_terms, n_terms)
+        rhs = (weight * block[active]) @ a
+        coef[active] = np.linalg.solve(gram, rhs[:, :, None])[:, :, 0]
+    return coef @ a.T
+
+
+def level_lines(
+    z: np.ndarray,
+    *,
+    line_order: int,
+    fit: str,
+    clip_sigma: float,
+    max_iter: int,
+) -> np.ndarray:
+    """Level every row of ``z`` by its own polynomial, restoring the global mean.
+
+    Spec 4.5. The global mean is taken before leveling; each row is fitted with a
+    Legendre polynomial of order ``line_order`` over the normalized column axis,
+    and the output is ``z - fit + mean``. ``fit="lstsq"`` solves all rows in one
+    call; ``fit="robust"`` applies the spec 4.3 sigma-clipped loop independently
+    to each row, in blocks of rows (lines are never subsampled, spec 4.8). To
+    level columns, pass the transpose.
+
+    Args:
+        z: 2-D image, shape ``(height, width)``.
+        line_order: Polynomial order along each row.
+        fit: ``"lstsq"`` or ``"robust"``.
+        clip_sigma: Clipping threshold for ``fit="robust"``.
+        max_iter: Maximum refits per row for ``fit="robust"``.
+
+    Returns:
+        New float64 array of shape ``(height, width)``.
+    """
+    z = np.asarray(z, dtype=np.float64)
+    avg = z.mean()
+    a = _legendre.legvander(normalized_axis(z.shape[1]), line_order)
+    if fit == "robust":
+        n_terms = a.shape[1]
+        outer = (a[:, :, None] * a[:, None, :]).reshape(a.shape[0], n_terms * n_terms)
+        fitted = np.empty_like(z)
+        for start in range(0, z.shape[0], _LINE_BLOCK):
+            stop = start + _LINE_BLOCK
+            fitted[start:stop] = _robust_line_block(
+                z[start:stop], a, outer, clip_sigma=clip_sigma, max_iter=max_iter
+            )
+    else:
+        fitted = (a @ solve_least_squares(a, z.T)).T
+    return z - fitted + avg
