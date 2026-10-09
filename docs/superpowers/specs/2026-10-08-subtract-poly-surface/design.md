@@ -120,9 +120,11 @@ column index `0..W−1`.
   basis polynomials differ, and they span the same space.
 - Solve with `numpy.linalg.lstsq`. If the returned rank is below the number of terms, **raise
   `ValueError`** (drift D2).
-- Evaluate a fitted surface on the full grid with `numpy.polynomial.legendre.leggrid2d(v_axis,
-  u_axis, C)`, where `C[q, p]` holds the coefficient of `L_p(u)·L_q(v)` (zero for terms outside the
-  set). Never build an `H·W × n_terms` matrix for evaluation (B3).
+- Evaluate a fitted surface on the full grid separably, `legvander(v_axis, d) @ C @
+  legvander(u_axis, d).T`, where `C[q, p]` holds the coefficient of `L_p(u)·L_q(v)` (zero for terms
+  outside the set). This is `numpy.polynomial.legendre.leggrid2d(v_axis, u_axis, C)` with a single
+  `H × W` allocation (`leggrid2d`'s Clenshaw recursion allocates several; final review M1); the two
+  agree to rounding (~4e-16 measured). Never build an `H·W × n_terms` matrix for evaluation (B3).
 
 ### 4.3 Robust fit (`fit="robust"`; drift D11–D15)
 
@@ -253,9 +255,16 @@ write `image.detect_mat[:]`. `rgb` and `gray` are untouched.
   - that `fit="lstsq"` (the Gwyddion default) is biased upward by colonies — measured 2.3–9.5 σ of
     background noise at 10–40% plate cover — and that `fit="robust"` is the recommended setting for
     plates;
-  - the robust limits (drift D16): reliable to about 40% foreground for surfaces, and **per line**
-    for `method="line"` — a scan line through a row of colony centres on an arrayed plate is mostly
-    colony and cannot be leveled;
+  - the robust limits (drift D16), exactly as measured by §7.1's R2, R6–R9:
+    - surfaces recover **dispersed** colonies up to about 40% cover (≤ 0.055 σ);
+    - a **contiguous** region along an image edge — plate rim, out-of-plate scan border, meniscus —
+      covering about 10% or more of a dimension defeats the robust surface fit (3.7–18 σ at 10%,
+      2.2–11 σ at 20%; ≤ 0.26 σ at 5%; R8, ruling R16): crop to the plate first;
+    - **per line** for `method="line"`: lines < 20% colony (dispersed) recover, 20–50% are
+      unreliable, ≥ 50% fail; and a contiguous defect at the **end** of a line covering about 15%
+      of it or more fails even below 20% (8–112 σ, growing with amplitude; R9, ruling R15). A scan
+      line through a row of colony centres on an arrayed plate is mostly colony and cannot be
+      leveled;
   - that `method="line"` is Align Rows' *Polynomial* method, not its default *Median*;
   - `Consider Also:` `SubtractGaussian`, `SubtractRollingBall`, `FlattenIllumination`.
   - A runnable doctest on `load_synth_yeast_plate()`.
@@ -283,7 +292,7 @@ numpy/scipy, e.g. `uv run python <script>`.
 |---|---|---|
 | `basis_equivalence.py` | B1 Legendre ≡ monomial LS surface, both term sets, orders 2–11; B2 monomial Gram cond 2.27e15 vs Legendre 4.7e2 at order 11 (tensor); B3 `leggrid2d` ≡ dense evaluation | 0 failures; worst B1 gap 4.4e-12 |
 | `level_conventions.py` | L1 slope conversion; L2 plane mean shift `+½(bx+by)` (and a true-centre control); L3 pixel-monomial ≡ Legendre line residuals; L4 every line → input mean; L5 degree-0 shift form; L6 offset/polynomial → 0 | 0 failures |
-| `robust_and_subsample.py` | R1 lstsq bias; R2 robust recovery at defaults (surfaces ≤ 40% cover; lines < 20% own fraction); R3 `max_iter=10` converged; R4 subsample bound; R5 `niter=3` not converged at 40%; R6/R7 the 50% breakdown, surface and per line | 0 failures |
+| `robust_and_subsample.py` | R1 lstsq bias; R2 robust recovery at defaults (surfaces ≤ 40% cover; lines < 20% own fraction); R3 `max_iter=10` converged; R4 subsample bound; R5 `niter=3` not converged at 40%; R6/R7 the 50% breakdown, surface and per line; R8 a contiguous edge band (5% recovers, 10% and 20% fail) defeats the robust surface; R9 an end-of-line defect (15% and 20% fail, the same 20% centred recovers) defeats the robust line fit | 0 failures |
 
 Measured, `robust_and_subsample.py` (300×450, σ = 0.01, soft-edged colony domes, tensor order 3;
 RMSE in units of σ):
@@ -296,6 +305,23 @@ RMSE in units of σ):
 | 0.50 | 1 / 2 / 3 | 11.4 / 11.4 / 11.2 | 11.4 / 11.4 / 9.75 | **11.4 / 11.4** / 0.039 | — | — |
 
 "Sparse line" = a line whose own colony fraction is < 20%. Lines ≥ 50% colony fail at up to 20.7 σ.
+
+**The ~40% surface limit holds only for dispersed foreground** (rulings R15, R16). A contiguous
+region at the image edge has leverage on the initial least-squares fit, which inflates the MAD so
+that the region is never clipped:
+
+- **R8, surface** (left-edge band of the stated share of the width, amplitudes ±0.3 and +1.0, with
+  and without 10% colony cover, three seeds = 18 cases; RMSE outside the band): 5% recovers
+  (≤ 0.151 σ); 10% fails at 4.29–17.55 σ; 20% fails at 2.21–10.60 σ. The controller's earlier probe
+  (R16) measured 3.7–18 σ at 10%, 2.5–11 σ at 20% and ≤ 0.26 σ at 5%; the docstring quotes the
+  union of the two.
+- **R9, per line** (degree 1, the same amplitudes, three seeds = 9 cases; worst line): a defect at
+  the end of every line fails at 15% (8.18–27.00 σ) and 20% (10.37–34.31 σ); the same 20% defect
+  centred in the line recovers (≤ 0.200 σ). Review I3 (R15) measured up to 112 σ at larger
+  amplitudes; the error grows with amplitude.
+
+Crop to the plate before leveling. A leverage-robust starting fit (e.g. a least-trimmed-squares or
+LMedS start) would lift this limit; it is a spec change reserved for the user.
 
 The `max_iter` decision (Q7) came from a sweep of `(outer rounds, inner clip passes)`; at 40% cover
 over three seeds, the maximum error was 1.05 σ for `(3, 1)`, 0.12 σ for `(3, 5)`, 0.055 σ for
@@ -331,11 +357,16 @@ over three seeds, the maximum error was 1.05 σ for `(3, 1)`, 0.12 σ for `(3, 5
   `gwy_data_field_fit_plane` + the Plane Level constant + `gwy_data_field_plane_level`;
   `gwy_data_field_fit_poly` + `gwy_data_field_subtract_poly` for both term sets at orders 2, 3, 5;
   `gwy_data_field_row_level_poly` at degrees 0, 1, 3, both directions (via transpose);
-  Zero Mean Value. It writes **numbers only** — inputs, every output array, the fitted coefficients
-  — to `tests/fixtures/enhance/subtract_poly_surface_gwyddion.npz` with a provenance JSON beside it
+  Zero Mean Value. It writes **numbers only** — inputs and every output array — to
+  `tests/fixtures/enhance/subtract_poly_surface_gwyddion.npz` with a provenance JSON beside it
   (Gwyddion version, tarball sha256, harness sha256, build flags). Numeric outputs of a program are
   not covered by its copyright; the harness source stays outside the repository with the other
   references.
+- **Ruling R9 — fitted coefficients are deliberately not in the fixture.** An earlier revision of
+  this section asked for them. Gwyddion's coefficients are in the monomial basis and are not
+  comparable to the kernel's Legendre coefficients (drift D1: same space, different basis), so the
+  output arrays are the comparable artifact. The coefficients remain in the oracle's run log
+  (`oracle/logs/run.txt`, outside the repository).
 - **Implementer side:** a test loads the fixture and requires the float64 **kernel**
   (`_poly_surface_kernels.flatten_surface`, `fit="lstsq"`) to reproduce every output to a
   tolerance derived from D1 (B1's bound for the order in question), not a guessed `rtol`. The
@@ -353,6 +384,11 @@ over three seeds, the maximum error was 1.05 σ for `(3, 1)`, 0.12 σ for `(3, 5
   independent/total term sets; normalize with `W` instead of `W−1`; skip the column transpose;
   one-sided clipping; let clipped points return; stop at `max_iter` without the convergence check;
   pivot at the true centre; subtract the plane's constant; omit the rank check.
+- **Operation-layer forwarding mutants** (final review I1): `_operate` passing each of `order`,
+  `independent`, `line_order`, `line_axis`, `clip_sigma`, `max_iter` as its default literal instead
+  of the field. Dropping `_operate`'s `.astype(original.dtype)` is **not** a mutant: the
+  `detect_mat` setter casts, so it is output-equivalent; the cast is kept to document intent
+  (ruling R19).
 
 ## 8. Clean-room protocol
 

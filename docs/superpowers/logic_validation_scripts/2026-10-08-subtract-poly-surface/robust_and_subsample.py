@@ -28,6 +28,18 @@ R7  The same breakdown, per line: some line whose own colony fraction is at
     least 50% fails (error above one sigma). On an arrayed plate a scan line
     through a row of colony centres is such a line, so robust line leveling
     cannot level it. Documented limit, stated in the docstring.
+R8  The ~40% surface limit holds only for DISPERSED foreground. A contiguous
+    band along one image edge (plate rim, out-of-plate scan border, meniscus)
+    defeats the robust surface fit once it covers ~10% of the width: a band of
+    5% of the width recovers (< 0.5 sigma) while 10% and 20% fail (> 1 sigma),
+    for amplitudes +-0.3 and +1.0, with and without colonies, on every seed.
+    The error is scored outside the band, where the plate is. Ruling R16.
+R9  The per-line analogue: a contiguous defect at the END of every line
+    defeats the robust line fit below the 20% dispersed limit -- 15% and 20%
+    of the line fail (> 1 sigma) -- while the same 20% defect centred in the
+    line recovers (< 0.5 sigma). The end of a line has leverage on the
+    initial lstsq tilt, which inflates the MAD so nothing is clipped. Ruling
+    R15.
 
 Colonies are soft-edged domes, so their rims leave low-amplitude halo pixels
 inside the clip band -- the realistic case, and harder than flat discs.
@@ -144,6 +156,55 @@ def rmse(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.sqrt(np.mean((a - b) ** 2)))
 
 
+EDGE_AMPLITUDES = (0.3, -0.3, 1.0)
+
+
+def edge_band_error(frac: float, amplitude: float, cover: float, seed: int) -> float:
+    """Robust tensor-order-3 surface error (noise sigmas) outside a left-edge band."""
+    height, width, order = 300, 450, 3
+    z, truth, u, v, _, _ = plate(height, width, cover, seed=seed, row_artifacts=False)
+    band = np.zeros(z.shape, dtype=bool)
+    band[:, : int(round(frac * width))] = True
+    a = tensor_design(u.ravel(), v.ravel(), order)
+    fitted = (a @ robust_lstsq(a, (z + amplitude * band).ravel(), CLIP_SIGMA, MAX_ITER)).reshape(z.shape)
+    return rmse(fitted[~band], truth[~band]) / NOISE
+
+
+def line_defect_error(frac: float, amplitude: float, where: str, seed: int) -> float:
+    """Worst per-line robust degree-1 error (noise sigmas) with a contiguous defect in every line."""
+    height, width = 300, 450
+    zl, truth_l, _, _, _, _ = plate(height, width, 0.0, seed=seed, row_artifacts=True)
+    k = int(round(frac * width))
+    start = width - k if where == "end" else (width - k) // 2
+    defect = np.zeros(zl.shape, dtype=bool)
+    defect[:, start:start + k] = True
+    fit = robust_lines(zl + amplitude * defect, 1, CLIP_SIGMA, MAX_ITER)
+    return float(np.max(np.sqrt(np.mean((fit - truth_l) ** 2, axis=1)))) / NOISE
+
+
+def check_edge_contiguous_limits() -> None:
+    seeds = (1, 2, 3)
+    surface = {frac: [edge_band_error(frac, amp, cover, seed * 1000 + 50)
+                      for amp in EDGE_AMPLITUDES for cover in (0.0, 0.10) for seed in seeds]
+               for frac in (0.05, 0.10, 0.20)}
+    check("R8 edge band of 5% of the width: robust surface recovers (max over cases)",
+          max(surface[0.05]) < 0.5, f"max {max(surface[0.05]):.3f} sigma over {len(surface[0.05])} cases")
+    for frac in (0.10, 0.20):
+        check(f"R8 edge band of {frac:.0%} of the width defeats the robust surface (min over cases)",
+              min(surface[frac]) > 1.0,
+              f"{min(surface[frac]):.2f}-{max(surface[frac]):.2f} sigma over {len(surface[frac])} cases")
+    lines = {(frac, where): [line_defect_error(frac, amp, where, seed * 1000 + 77)
+                             for amp in EDGE_AMPLITUDES for seed in seeds]
+             for frac, where in ((0.15, "end"), (0.20, "end"), (0.20, "centre"))}
+    for frac in (0.15, 0.20):
+        errs = lines[(frac, "end")]
+        check(f"R9 end-of-line defect of {frac:.0%} of the line defeats the robust line fit (min over cases)",
+              min(errs) > 1.0, f"{min(errs):.2f}-{max(errs):.2f} sigma, worst line, {len(errs)} cases")
+    errs = lines[(0.20, "centre")]
+    check("R9 the same 20% defect centred in the line recovers (max over cases)",
+          max(errs) < 0.5, f"max {max(errs):.3f} sigma, worst line, {len(errs)} cases")
+
+
 def main() -> int:
     height, width, order = 300, 450, 3
     seeds = (1, 2, 3)
@@ -206,6 +267,8 @@ def main() -> int:
     dense = [x for c in (0.25, 0.40, 0.50) for x in worst[(c, "l_dense")] if not math.isnan(x)]
     check("R7 per-line breakdown: some line whose own colony fraction >= 0.5 fails (documented limit)",
           bool(dense) and max(dense) > 1.0, f"worst such line {max(dense):.3f} sigma over {len(dense)} plates")
+
+    check_edge_contiguous_limits()
 
     # ---- R4 ------------------------------------------------------------------
     rng = np.random.default_rng(3)

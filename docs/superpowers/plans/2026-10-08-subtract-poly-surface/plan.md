@@ -63,8 +63,10 @@ has a test added to its owning task.
 3. **Dark colonies on bright agar** (a plate the user forgot to invert) under `fit="robust"`:
    symmetric clipping (drift D15) must still recover the background. → Task 5,
    `TestReviewFocus::test_dark_colonies_are_clipped_too`.
-4. **A detected `GridImage`** (`load_synth_yeast_plate()`): only `detect_mat` may change —
-   `rgb`, `gray` and `objmap` stay byte-identical. → Task 6,
+4. **A detected `GridImage`** (`load_synth_yeast_plate()`): `rgb` and `gray` stay
+   byte-identical; `objmap` is **cleared**, because the `detect_mat` setter resets it on every
+   write by design, as for `SubtractGaussian` (ruling R12 — an earlier revision said `objmap` stays
+   byte-identical, which was wrong). → Task 6,
    `TestOperationContract::test_grid_image_only_detect_mat_changes`.
 5. **Geometry at the validity boundary**: plane on 2×2 and polynomial order 3 on 4×4 must work;
    3×4 at order 3, and `line_axis="column"` with `H < line_order + 1`, must raise a `ValueError`
@@ -1089,7 +1091,7 @@ class TestOperationContract:
         assert rmse(z - plain, background) > 10 * rmse(z - robust, background)
 
     def test_grid_image_only_detect_mat_changes(self):
-        """Review Focus 4: rgb, gray and objmap of a detected GridImage are untouched."""
+        """Review Focus 4: rgb and gray of a detected GridImage are untouched; objmap is cleared."""
         image = load_synth_yeast_plate()
         rgb, gray, objmap = image.rgb[:].copy(), image.gray[:].copy(), image.objmap[:].copy()
         before = image.detect_mat[:].copy()
@@ -1098,7 +1100,9 @@ class TestOperationContract:
         assert 0.0 <= out.detect_mat[:].min() and out.detect_mat[:].max() <= 1.0
         np.testing.assert_array_equal(out.rgb[:], rgb)
         np.testing.assert_array_equal(out.gray[:], gray)
-        np.testing.assert_array_equal(out.objmap[:], objmap)
+        # The detect_mat setter clears objmap (stale once detect_mat changes; ruling R12).
+        assert objmap.max() > 0
+        assert out.objmap[:].max() == 0
 
     def test_apply_time_errors_keep_their_cause(self):
         """Spec §4.7: ImageOperation wraps twice; the root cause is our ValueError."""
