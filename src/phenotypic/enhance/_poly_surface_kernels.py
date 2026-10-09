@@ -84,9 +84,11 @@ def legendre_design(
     """
     vander_u = _legendre.legvander(u, degree)
     vander_v = _legendre.legvander(v, degree)
-    p_index = np.fromiter((p for p, _ in terms), dtype=np.intp, count=len(terms))
-    q_index = np.fromiter((q for _, q in terms), dtype=np.intp, count=len(terms))
-    return vander_u[:, p_index] * vander_v[:, q_index]
+    # Column by column, so the design matrix is the only array of its size.
+    design = np.empty((vander_u.shape[0], len(terms)), dtype=np.float64)
+    for k, (p, q) in enumerate(terms):
+        np.multiply(vander_u[:, p], vander_v[:, q], out=design[:, k])
+    return design
 
 
 def solve_least_squares(a: np.ndarray, z: np.ndarray) -> np.ndarray:
@@ -120,6 +122,9 @@ def evaluate_surface(
 ) -> np.ndarray:
     """Evaluate the fitted surface on the full ``height`` by ``width`` grid.
 
+    The tensor-product form is evaluated separably, ``L(v) @ C @ L(u).T``, so the
+    only full-size allocation is the returned array.
+
     Args:
         coef: Coefficients aligned with ``terms``.
         terms: ``(p, q)`` pairs, as returned by :func:`term_powers`.
@@ -133,9 +138,9 @@ def evaluate_surface(
     coef_matrix = np.zeros((degree + 1, degree + 1), dtype=np.float64)
     for value, (p, q) in zip(coef, terms):
         coef_matrix[q, p] = value
-    return _legendre.leggrid2d(
-        normalized_axis(height), normalized_axis(width), coef_matrix
-    )
+    vander_v = _legendre.legvander(normalized_axis(height), degree)
+    vander_u = _legendre.legvander(normalized_axis(width), degree)
+    return (vander_v @ coef_matrix) @ vander_u.T
 
 
 class RobustFit(NamedTuple):
@@ -341,18 +346,26 @@ def level_lines(
     z = np.asarray(z, dtype=np.float64)
     avg = z.mean()
     a = _legendre.legvander(normalized_axis(z.shape[1]), line_order)
+    n_terms = a.shape[1]
     if fit == "robust":
-        n_terms = a.shape[1]
         outer = (a[:, :, None] * a[:, None, :]).reshape(a.shape[0], n_terms * n_terms)
-        fitted = np.empty_like(z)
-        for start in range(0, z.shape[0], _LINE_BLOCK):
-            stop = start + _LINE_BLOCK
+    else:
+        coef = solve_least_squares(a, z.T)
+    # One full-size array: fitted values are written block by block, then the
+    # leveled result overwrites them in place. empty_like keeps ``z``'s memory
+    # layout, so a transposed (column-mode) input transposes back contiguous.
+    fitted = np.empty_like(z)
+    for start in range(0, z.shape[0], _LINE_BLOCK):
+        stop = start + _LINE_BLOCK
+        if fit == "robust":
             fitted[start:stop] = _robust_line_block(
                 z[start:stop], a, outer, clip_sigma=clip_sigma, max_iter=max_iter
             )
-    else:
-        fitted = (a @ solve_least_squares(a, z.T)).T
-    return z - fitted + avg
+        else:
+            fitted[start:stop] = coef[:, start:stop].T @ a.T
+    np.subtract(z, fitted, out=fitted)
+    fitted += avg
+    return fitted
 
 
 _METHODS: Final[frozenset[str]] = frozenset({"offset", "plane", "polynomial", "line"})
@@ -485,11 +498,14 @@ def flatten_surface(
         slope_y = 2.0 * coef[1] / (height - 1)
         rows = np.arange(height, dtype=np.float64)[:, None] - height / 2
         cols = np.arange(width, dtype=np.float64)[None, :] - width / 2
-        return z - slope_x * cols - slope_y * rows
+        out = z - slope_x * cols
+        out -= slope_y * rows
+        return out
     if method == "polynomial":
         coef = surface_coefficients(order, independent)
         terms = term_powers(order, independent)
-        return z - evaluate_surface(coef, terms, order, height, width)
+        surface = evaluate_surface(coef, terms, order, height, width)
+        return np.subtract(z, surface, out=surface)
     if line_axis == "column":
-        return level(z.T).T.copy()
+        return np.ascontiguousarray(level(z.T).T)
     return level(z)

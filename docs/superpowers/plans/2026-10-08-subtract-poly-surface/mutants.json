@@ -8,20 +8,20 @@
  {
   "name": "plane_subtracts_constant",
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
-  "old": "return z - slope_x * cols - slope_y * rows",
-  "new": "return z - slope_x * cols - slope_y * rows - coef[0]"
+  "old": "        out -= slope_y * rows\n",
+  "new": "        out -= slope_y * rows + coef[0]\n"
  },
  {
   "name": "line_no_avg",
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
-  "old": "return z - fitted + avg",
-  "new": "return z - fitted"
+  "old": "    fitted += avg\n",
+  "new": ""
  },
  {
   "name": "line_avg_after",
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
-  "old": "return z - fitted + avg",
-  "new": "return z - fitted + (z - fitted).mean()"
+  "old": "    fitted += avg\n",
+  "new": "    fitted += fitted.mean()\n"
  },
  {
   "name": "swap_term_sets",
@@ -38,7 +38,7 @@
  {
   "name": "skip_column_transpose",
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
-  "old": "return level(z.T).T.copy()",
+  "old": "return np.ascontiguousarray(level(z.T).T)",
   "new": "return level(z)"
  },
  {
