@@ -75,8 +75,7 @@
   "name": "no_convergence_stop_lines",
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
   "old": "refit = (scale > 0) & (count >= n_terms) & (count != mask.sum(axis=1))",
-  "new": "refit = (scale > 0) & (count >= n_terms)",
-  "equivalent": "A row whose inlier mask is unchanged is refit on the same mask, so the repeat solves the identical system; over 4800 random heavy-tailed cases (orders 0-3, clip 1-3, max_iter 1-50) max |original - mutant| = 7.0e-12 (floating-point noise)."
+  "new": "refit = (scale > 0) & (count >= n_terms)"
  },
  {
   "name": "no_rank_check",
@@ -101,5 +100,11 @@
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
   "old": "        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n        kept[active] = new\n",
   "new": "        if not refit.any():\n            break\n        new = np.where(refit[:, None], new, True)\n        kept[active] = new\n"
+ },
+ {
+  "name": "revert_rejected_row_to_initial_fit",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n",
+  "new": "        rejected = active[(scale > 0) & (count < n_terms)]\n        if rejected.size:\n            coef[rejected] = solve_least_squares(a, block[rejected].T).T\n        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n"
  }
 ]

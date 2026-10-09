@@ -274,6 +274,50 @@ class TestLevelLines:
             expected = a @ robust_least_squares(a, z[r], clip_sigma=1.5, max_iter=10).coef
             np.testing.assert_allclose(fitted[r], expected, atol=1e-8)
 
+    def test_rejected_rows_match_the_single_system_fit(self):
+        """Drift D3 per line: a row whose next round is rejected keeps its last accepted fit.
+
+        Heavy-tailed short rows reject many rounds (about 190 of 200 rows here), so this is
+        the input on which "keep the previous fit" is observable.
+        """
+        from numpy.polynomial import legendre
+
+        from phenotypic.enhance._poly_surface_kernels import normalized_axis
+
+        rng = np.random.default_rng(6)
+        z = rng.standard_cauchy((200, 6))
+        out = level_lines(z, line_order=3, fit="robust", clip_sigma=1.0, max_iter=10)
+        fitted = z - out + z.mean()
+        a = legendre.legvander(normalized_axis(6), 3)
+        for r in range(200):
+            expected = a @ robust_least_squares(a, z[r], clip_sigma=1.0, max_iter=10).coef
+            np.testing.assert_allclose(fitted[r], expected, rtol=1e-9, atol=1e-9)
+
+    def test_a_block_that_clips_nothing_performs_no_refit(self, monkeypatch):
+        """Spec §4.3 convergence stop: rows whose inlier set did not change are not refit.
+
+        Spies on the refit solve (``np.linalg.solve``, the stacked normal equations). A
+        wide clip on bounded noise clips nothing in round 1, so no refit may happen; a
+        plate with outliers must refit, which shows the spy sees the seam.
+        """
+        calls = []
+        real_solve = np.linalg.solve
+
+        def counting_solve(*args, **kwargs):
+            calls.append(1)
+            return real_solve(*args, **kwargs)
+
+        monkeypatch.setattr(np.linalg, "solve", counting_solve)
+        rng = np.random.default_rng(13)
+        quiet = rng.uniform(-0.01, 0.01, (20, 50))
+        level_lines(quiet, line_order=1, fit="robust", clip_sigma=10.0, max_iter=10)
+        assert calls == []
+
+        noisy = quiet.copy()
+        noisy[:, 20:25] += 1.0
+        level_lines(noisy, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10)
+        assert calls
+
     def test_a_row_that_is_mostly_colony_is_not_shifted_by_the_mean(self):
         """Drift D3: a degenerate row keeps its last fit rather than gaining the global mean."""
         rng = np.random.default_rng(7)
