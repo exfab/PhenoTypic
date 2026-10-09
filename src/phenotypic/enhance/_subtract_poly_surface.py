@@ -26,7 +26,7 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
     surface, so a large colony cannot be absorbed into it -- provided the fit is
     not itself pulled toward the colonies (see the warning below and ``fit``).
 
-    Methods:
+    Leveling methods:
         - ``"offset"``: subtract a constant (the mean).
         - ``"plane"``: fit and subtract a tilted plane (Gwyddion's Plane Level).
           Only the tilt is removed; the fitted constant is kept.
@@ -42,9 +42,9 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
         Switching ``method`` also changes where the background lands.
 
         - ``"offset"``: 0 (Gwyddion's Zero Mean Value).
-        - ``"plane"``: the image mean, shifted by half the fitted slopes
-          (``bx + by) / 2``) because the tilt is pivoted at ``(W/2, H/2)``
-          (Gwyddion's Plane Level).
+        - ``"plane"``: the image mean plus ``(bx + by) / 2``, where ``bx``,
+          ``by`` are the fitted per-pixel slopes, because the tilt is pivoted
+          at ``(W/2, H/2)`` (Gwyddion's Plane Level).
         - ``"polynomial"``: 0 (Gwyddion's Polynomial Background).
         - ``"line"``: the image mean, on every line (Gwyddion's Align Rows).
 
@@ -72,12 +72,13 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
         0.055 sigma or less for surfaces and is the recommended setting for
         plates. It is reliable up to roughly 40% foreground. For
         ``method="line"`` the limit applies **per line**: lines under about 20%
-        colony recover, lines of 50% or more fail. On an arrayed plate, a scan
+        colony recover, lines of 50% or more fail, and lines between 20% and
+        50% are unreliable (occasional failures of 5.9--9.5 sigma). On an arrayed plate, a scan
         line through a row of colony centres is mostly colony and cannot be
         leveled by either fit.
 
     Args:
-        method: Which leveling to apply; see Methods above. Default: ``"plane"``.
+        method: Which leveling to apply; see Leveling methods above. Default: ``"plane"``.
         order: Polynomial degree per axis (or total degree when
             ``independent=False``). Read only by ``method="polynomial"``; the
             image must be at least ``order + 1`` pixels on each side.
