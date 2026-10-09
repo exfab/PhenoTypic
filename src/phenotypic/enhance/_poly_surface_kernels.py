@@ -453,30 +453,43 @@ def flatten_surface(
         fit=fit,
     )
     height, width = z.shape
-    fit_args = dict(
-        fit=fit, clip_sigma=clip_sigma, max_iter=max_iter, max_fit_points=max_fit_points
-    )
+
+    def surface_coefficients(degree: int, tensor: bool) -> np.ndarray:
+        return fit_surface_coefficients(
+            z,
+            degree=degree,
+            independent=tensor,
+            fit=fit,
+            clip_sigma=clip_sigma,
+            max_iter=max_iter,
+            max_fit_points=max_fit_points,
+        )
+
+    def level(image: np.ndarray) -> np.ndarray:
+        return level_lines(
+            image,
+            line_order=line_order,
+            fit=fit,
+            clip_sigma=clip_sigma,
+            max_iter=max_iter,
+        )
+
     if method == "offset":
         if fit == "lstsq":
             return z - z.mean()
-        coef = fit_surface_coefficients(z, degree=0, independent=True, **fit_args)
+        coef = surface_coefficients(0, True)
         return z - coef[0]
     if method == "plane":
-        coef = fit_surface_coefficients(z, degree=1, independent=False, **fit_args)
+        coef = surface_coefficients(1, False)
         slope_x = 2.0 * coef[2] / (width - 1)
         slope_y = 2.0 * coef[1] / (height - 1)
         rows = np.arange(height, dtype=np.float64)[:, None] - height / 2
         cols = np.arange(width, dtype=np.float64)[None, :] - width / 2
         return z - slope_x * cols - slope_y * rows
     if method == "polynomial":
-        coef = fit_surface_coefficients(
-            z, degree=order, independent=independent, **fit_args
-        )
+        coef = surface_coefficients(order, independent)
         terms = term_powers(order, independent)
         return z - evaluate_surface(coef, terms, order, height, width)
-    line_args = dict(
-        line_order=line_order, fit=fit, clip_sigma=clip_sigma, max_iter=max_iter
-    )
     if line_axis == "column":
-        return level_lines(z.T, **line_args).T.copy()
-    return level_lines(z, **line_args)
+        return level(z.T).T.copy()
+    return level(z)
