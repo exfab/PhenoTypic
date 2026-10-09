@@ -103,8 +103,9 @@ parallel with 2–6.
 
 - [ ] **Step 1: Sync the worktree environment** (slow on GPFS; run in the background if needed)
 
-Run: `uv sync --group dev --group test-qt --extra gui --extra napari`
-Expected: exits 0; `.venv/` exists in the worktree.
+Run: `uv sync --group dev --group test-qt --extra gui --extra napari --extra tune --extra topology`
+Expected: exits 0; `.venv/` exists in the worktree. (Without `tune`/`topology` the Task 9 gate
+reports 24 false failures — see the final-gate report.)
 
 - [ ] **Step 2: Record a baseline for the files this change touches**
 

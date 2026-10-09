@@ -30,6 +30,15 @@ cd "$WORKTREE"
 echo "Commit under test: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
 echo
 
+# Without the `tune` and `topology` extras the suite reports 24 false failures
+# (optuna-backed tests/unit/tune/, astropy-backed FilFinderDetector smoke tests)
+# that also fail on main and so read as "pre-existing". Refuse to run instead.
+if ! uv run python -c "import optuna, astropy" 2>/dev/null; then
+    echo "Gate env is missing optional extras. In $WORKTREE run:" >&2
+    echo "  uv sync --group dev --group test-qt --group docs --extra gui --extra napari --extra tune --extra topology" >&2
+    exit 2
+fi
+
 PYTEST_GROUP_ID=${SLURM_ARRAY_TASK_ID}
 mapfile -t ALL_TEST_FILES < <(
     {

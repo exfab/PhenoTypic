@@ -123,7 +123,14 @@ Two details that bite:
 ## Environment facts
 
 - `uv` only. Never bare `python` or `pip`. Full env:
-  `uv sync --group dev --group test-qt --group docs --extra gui --extra napari`
+  `uv sync --group dev --group test-qt --group docs --extra gui --extra napari --extra tune --extra topology`
+- **A gate env without `--extra tune --extra topology` reports 24 false
+  failures** — 21 under `tests/unit/tune/` (`optuna` missing:
+  `test_distributed_finalize_task2`, `test_engine`'s optuna hooks,
+  `test_distributed_lifecycle_task2`, `test_journal_backend_task1`) and 3
+  `tests/smoke/test_operation.py[FilFinderDetector]` (`astropy` missing). They
+  fail identically on `main`, so they read as "pre-existing" when they are an
+  environment gap. Measured 2026-10-08 (`docs/superpowers/reports/2026-10-08-subtract-poly-surface/final-gate.md`).
 - **There is no `test` dependency group** — only `dev`, `test-qt`, `docs`.
 - `testpaths` covers `tests/unit`, `tests/smoke`, `tests/integration`,
   `tests/gui`. Naming one path narrows the run; a phase gate that runs only
@@ -138,6 +145,6 @@ Two details that bite:
   path all change what a count means, and a count without its command is not
   reproducible.
 - **A gate that is already red at the baseline is not a gate.** `uv run mypy
-  src/phenotypic` reports 417 errors in 124 files and `ruff check src/phenotypic`
-  reports 25, both pre-existing. Compare against those counts; do not state them
+  src/phenotypic` reports 438 errors (main @ `8159b8819`, 2026-10-08) and
+  `ruff check src/phenotypic` reports 25, both pre-existing. Compare against those counts; do not state them
   as "passes".

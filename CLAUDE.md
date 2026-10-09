@@ -41,8 +41,9 @@
 - `uv run <cmd>` — run commands
 - `uv add <package>` (or `--group dev`) — add dependencies
 - `uv sync` — sync env (after checkout or in new worktrees)
-- `uv sync --group dev --group test-qt --group docs --extra gui --extra napari` — full
-  dev env
+- `uv sync --group dev --group test-qt --group docs --extra gui --extra napari --extra tune --extra topology` — full
+  dev env (without `tune`/`topology`, a suite run shows 24 false failures: optuna-backed
+  `tests/unit/tune/` and the astropy-backed `FilFinderDetector` smoke tests)
   (`test-qt` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
