@@ -20,23 +20,29 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
 
     Fits a smooth background to the whole image (or to each scan line) by least
     squares and subtracts it, removing agar thickness gradients, scanner shading
-    and tilted plates. Defaults reproduce Gwyddion 2.71's leveling tools (Nečas &
-    Klapetek, 2012, doi:10.2478/s11534-011-0096-2). Unlike a blur-based estimate
-    such as :class:`SubtractGaussian`, the background is a low-order analytic
-    surface, so a large colony cannot be absorbed into it -- provided the fit is
-    not itself pulled toward the colonies (see the warning below and ``fit``).
+    and tilted plates. Defaults reproduce Gwyddion 2.71's leveling tools [1].
+    Unlike a blur-based estimate such as :class:`SubtractGaussian`, the
+    background is a low-order analytic surface, so a large colony cannot be
+    absorbed into it -- provided the fit is not itself pulled toward the
+    colonies (see the warning below and ``fit``).
 
     Leveling methods:
-        - ``"offset"``: subtract a constant (the mean).
-        - ``"plane"``: fit and subtract a tilted plane (Gwyddion's Plane Level).
-          Only the tilt is removed; the fitted constant is kept.
+        - ``"offset"``: subtract a constant -- the mean under
+          ``fit="lstsq"``, the sigma-clipped background level under
+          ``fit="robust"``.
+        - ``"plane"``: fit a tilted plane and subtract its tilt (Gwyddion's
+          Plane Level). The fitted constant is not subtracted, so the
+          background stays near the image mean (see Output level).
         - ``"polynomial"``: fit and subtract a 2-D polynomial surface of degree
-          ``order`` (Gwyddion's Polynomial Background). With ``independent=True``
-          the terms are ``u^p v^q`` with ``p, q <= order``; with ``False`` they
-          are those with ``p + q <= order``.
+          ``order`` (Gwyddion's Polynomial Background). With
+          ``independent=True`` the terms are ``u^p v^q`` with
+          ``p, q <= order``; with ``False`` they are those with
+          ``p + q <= order``.
         - ``"line"``: fit a degree-``line_order`` polynomial to every scan line
           separately (Gwyddion's Align Rows, *Polynomial* method -- not its
           default *Median* method) and level each line to the image's mean.
+
+        Fields a method does not read are ignored, not rejected.
 
     Output level:
         Switching ``method`` also changes where the background lands.
@@ -48,14 +54,15 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
         - ``"polynomial"``: 0 (Gwyddion's Polynomial Background).
         - ``"line"``: the image mean, on every line (Gwyddion's Align Rows).
 
-        With the default ``norm="clip"``, methods that land at 0 lose the negative
-        half of the background noise. Use ``norm="rescale"`` or ``norm=None`` when
-        that matters.
+        With the default ``norm="clip"``, methods that land at 0 lose the
+        negative half of the background noise. Use ``norm="rescale"`` or
+        ``norm=None`` when that matters.
 
     Best For:
         - Plates with a smooth tilt or bowl-shaped shading across the scan bed.
-        - Banded scanner artefacts (``method="line"``) on images without large
-          colonies crossing the scan lines.
+        - Banded scanner artefacts (``method="line"``) on an image cropped to
+          the agar, where no scan line is a fifth or more colony and none ends
+          in the plate rim or the scan border.
         - Cheap, deterministic flattening ahead of thresholding, with few
           parameters.
 
@@ -66,19 +73,31 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
           correction.
 
     Warning:
-        ``fit="lstsq"`` (the Gwyddion default) is biased upward by colonies:
-        measured at 2.3--9.5 sigma of the background noise at 10--40% plate
-        cover. ``fit="robust"`` (sigma-clipped least squares) holds the error to
-        0.055 sigma or less for surfaces and is the recommended setting for
-        plates. It is reliable up to roughly 40% foreground. For
-        ``method="line"`` the limit applies **per line**: lines under about 20%
-        colony recover, lines of 50% or more fail, and lines between 20% and
-        50% are unreliable (occasional failures of 5.9--9.5 sigma). On an arrayed plate, a scan
-        line through a row of colony centres is mostly colony and cannot be
-        leveled by either fit.
+        ``fit="lstsq"`` (the Gwyddion default) is biased by colonies: measured
+        at 2.3--9.5 sigma of the background noise at 10--40% plate cover.
+        ``fit="robust"`` (least squares sigma-clipped on a median absolute
+        deviation scale [2]) is the recommended setting for plates, within
+        these measured limits:
+
+        - Surfaces (``offset``, ``plane``, ``polynomial``) recover the
+          background to 0.055 sigma or less with colonies dispersed over up
+          to about 40% of the plate.
+        - A contiguous region along an image edge -- plate rim, out-of-plate
+          scan border, meniscus -- that covers about 10% or more of a
+          dimension defeats the robust surface fit: 3.7--18 sigma at 10%,
+          2.2--11 sigma at 20% (0.26 sigma or less at 5%). Crop to the plate
+          first.
+        - For ``method="line"`` the limit applies **per line**: lines under
+          about 20% colony (dispersed) recover, lines between 20% and 50% are
+          unreliable, and lines of 50% or more fail. A contiguous defect at
+          the end of a line covering about 15% of it or more fails even below
+          20% (8--112 sigma, growing with its amplitude). On an arrayed
+          plate, a scan line through a row of colony centres is mostly colony
+          and cannot be leveled by either fit.
 
     Args:
-        method: Which leveling to apply; see Leveling methods above. Default: ``"plane"``.
+        method: Leveling to apply: ``"offset"``, ``"plane"``,
+            ``"polynomial"`` or ``"line"``. Default: ``"plane"``.
         order: Polynomial degree per axis (or total degree when
             ``independent=False``). Read only by ``method="polynomial"``; the
             image must be at least ``order + 1`` pixels on each side.
@@ -103,8 +122,6 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
             [0, 1]; ``"rescale"`` remaps the observed range onto [0, 1]; ``None``
             passes values through untouched.
 
-    Fields a method does not read are ignored, not rejected.
-
     Returns:
         Image: Input image with ``detect_mat`` leveled. ``rgb`` and ``gray``
         are unchanged.
@@ -116,14 +133,33 @@ class SubtractPolySurface(NormalizedOutputMixin, BackgroundSubtraction):
             cause of the raised exception chain.
 
     Examples:
-        Remove a smooth agar gradient while ignoring the colonies:
+        Remove a smooth agar gradient while ignoring the colonies. With
+        ``norm=None`` the leveled agar sits at 0; plain least squares is
+        pulled up by the colonies and leaves the agar below 0:
 
+        >>> import numpy as np
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.enhance import SubtractPolySurface
         >>> plate = load_synth_yeast_plate()
-        >>> flat = SubtractPolySurface(method="polynomial", fit="robust").apply(plate)
-        >>> bool(0.0 <= flat.detect_mat[:].min() and flat.detect_mat[:].max() <= 1.0)
+        >>> agar = plate.objmap[:] == 0  # background of the detected plate
+        >>> robust = SubtractPolySurface(
+        ...     method="polynomial", fit="robust", norm=None)
+        >>> leveled = robust.apply(plate).detect_mat[:]
+        >>> bool(abs(np.median(leveled[agar])) < 0.005)
         True
+        >>> plain = SubtractPolySurface(method="polynomial", norm=None)
+        >>> biased = plain.apply(load_synth_yeast_plate()).detect_mat[:]
+        >>> bool(np.median(biased[agar]) < -0.05)
+        True
+
+    References:
+        [1] D. Nečas and P. Klapetek, "Gwyddion: an open-source software for
+        SPM data analysis," *Cent. Eur. J. Phys.*, vol. 10, no. 1,
+        pp. 181--188, 2012, doi: 10.2478/s11534-011-0096-2.
+
+        [2] P. J. Rousseeuw and C. Croux, "Alternatives to the median absolute
+        deviation," *J. Amer. Statist. Assoc.*, vol. 88, no. 424,
+        pp. 1273--1283, 1993, doi: 10.1080/01621459.1993.10476408.
 
     See Also:
         :doc:`/explanation/what_enhancement_does` for background on
