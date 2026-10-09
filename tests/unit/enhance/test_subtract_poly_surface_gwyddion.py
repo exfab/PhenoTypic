@@ -16,8 +16,9 @@ import pytest
 from phenotypic.enhance._poly_surface_kernels import flatten_surface, term_powers
 
 FIXTURE = Path(__file__).parents[2] / "fixtures" / "enhance" / "subtract_poly_surface_gwyddion"
-MANIFEST = json.loads(FIXTURE.with_suffix(".json").read_text())
-ARRAYS = np.load(FIXTURE.with_suffix(".npz"))
+MANIFEST = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
+with np.load(FIXTURE.with_suffix(".npz")) as _npz:
+    ARRAYS = dict(_npz)
 EPS = np.finfo(np.float64).eps
 
 
@@ -38,6 +39,7 @@ def _monomial_gram_condition(case: dict, height: int, width: int) -> float:
 
 def _tolerance(case: dict, z: np.ndarray) -> float:
     scale = max(1.0, float(np.max(np.abs(z))))
+    # offset/plane take the 1e-12 floor: their error model is closed-form (condition 1).
     return max(1e-12, 10 * EPS * scale * _monomial_gram_condition(case, *z.shape))
 
 

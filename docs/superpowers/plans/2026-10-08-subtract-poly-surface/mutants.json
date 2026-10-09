@@ -106,5 +106,41 @@
   "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
   "old": "        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n",
   "new": "        rejected = active[(scale > 0) & (count < n_terms)]\n        if rejected.size:\n            coef[rejected] = solve_least_squares(a, block[rejected].T).T\n        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n"
+ },
+ {
+  "name": "op_hardcodes_order",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            order=self.order,\n",
+  "new": "            order=3,\n"
+ },
+ {
+  "name": "op_hardcodes_independent",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            independent=self.independent,\n",
+  "new": "            independent=True,\n"
+ },
+ {
+  "name": "op_hardcodes_line_order",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            line_order=self.line_order,\n",
+  "new": "            line_order=1,\n"
+ },
+ {
+  "name": "op_hardcodes_line_axis",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            line_axis=self.line_axis,\n",
+  "new": "            line_axis=\"row\",\n"
+ },
+ {
+  "name": "op_hardcodes_clip_sigma",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            clip_sigma=self.clip_sigma,\n",
+  "new": "            clip_sigma=3.0,\n"
+ },
+ {
+  "name": "op_hardcodes_max_iter",
+  "path": "src/phenotypic/enhance/_subtract_poly_surface.py",
+  "old": "            max_iter=self.max_iter,\n",
+  "new": "            max_iter=10,\n"
  }
 ]

@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from phenotypic import Image, ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import SubtractPolySurface
+from phenotypic.enhance._poly_surface_kernels import flatten_surface
 from phenotypic.sdk_.typing_ import LineAxis, SurfaceFit, SurfaceMethod
 
 from ._poly_surface_synth import NOISE, grid, rmse, surface_plate
@@ -115,6 +116,43 @@ class TestOperationContract:
         while root.__cause__ is not None:
             root = root.__cause__
         assert isinstance(root, ValueError)
+
+
+#: Every kernel argument off its default, so a hardcoded default cannot match.
+OFF_DEFAULT = dict(order=5, independent=False, line_order=3, line_axis="column",
+                   fit="robust", clip_sigma=2.25, max_iter=2)
+
+
+class TestFieldForwarding:
+    """Every field reaches the kernel (final review I1).
+
+    The spy pins the call itself; the equality test pins the cast and norm around it.
+    """
+
+    def test_every_field_reaches_the_kernel(self, monkeypatch):
+        calls = []
+
+        def spy(z, **kwargs):
+            calls.append(kwargs)
+            return np.asarray(z, dtype=np.float64)
+
+        monkeypatch.setattr("phenotypic.enhance._subtract_poly_surface.flatten_surface", spy)
+        expected = dict(method="line", order=7, independent=False, line_order=4,
+                        line_axis="column", fit="robust", clip_sigma=2.25, max_iter=4)
+        z, _ = surface_plate(height=40, width=60, cover=0.1, seed=2053)
+        SubtractPolySurface(**expected).apply(_image(z))
+        assert calls == [expected]
+
+    @pytest.mark.parametrize("method", get_args(SurfaceMethod))
+    def test_operation_equals_the_kernel(self, method):
+        """Spec §7.2 #1 through the operation: float64 kernel, then float32, then norm."""
+        z, _ = surface_plate(height=60, width=90, cover=0.2, seed=2054)
+        image = _image(z)
+        detect = image.detect_mat[:].copy()
+        op = SubtractPolySurface(method=method, norm=None, **OFF_DEFAULT)
+        expected = op._apply_norm(flatten_surface(
+            detect.astype(np.float64), method=method, **OFF_DEFAULT).astype(np.float32))
+        np.testing.assert_allclose(op.apply(image).detect_mat[:], expected, rtol=0, atol=FLOAT32_TOL)
 
 
 class TestSerialization:
