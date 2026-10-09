@@ -1,0 +1,104 @@
+[
+ {
+  "name": "pivot_true_centre",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "        rows = np.arange(height, dtype=np.float64)[:, None] - height / 2\n        cols = np.arange(width, dtype=np.float64)[None, :] - width / 2\n",
+  "new": "        rows = np.arange(height, dtype=np.float64)[:, None] - (height - 1) / 2\n        cols = np.arange(width, dtype=np.float64)[None, :] - (width - 1) / 2\n"
+ },
+ {
+  "name": "plane_subtracts_constant",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "return z - slope_x * cols - slope_y * rows",
+  "new": "return z - slope_x * cols - slope_y * rows - coef[0]"
+ },
+ {
+  "name": "line_no_avg",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "return z - fitted + avg",
+  "new": "return z - fitted"
+ },
+ {
+  "name": "line_avg_after",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "return z - fitted + avg",
+  "new": "return z - fitted + (z - fitted).mean()"
+ },
+ {
+  "name": "swap_term_sets",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "if independent or p + q <= degree",
+  "new": "if (not independent) or p + q <= degree"
+ },
+ {
+  "name": "normalize_by_n",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "2.0 * np.arange(n, dtype=np.float64) / (n - 1) - 1.0",
+  "new": "2.0 * np.arange(n, dtype=np.float64) / n - 1.0"
+ },
+ {
+  "name": "skip_column_transpose",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "return level(z.T).T.copy()",
+  "new": "return level(z)"
+ },
+ {
+  "name": "one_sided_clip",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "new = kept & (np.abs(residual - center) <= clip_sigma * scale)",
+  "new": "new = kept & ((residual - center) <= clip_sigma * scale)"
+ },
+ {
+  "name": "one_sided_clip_lines",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "new = mask & (np.abs(residual - center) <= clip_sigma * scale[:, None])",
+  "new": "new = mask & ((residual - center) <= clip_sigma * scale[:, None])"
+ },
+ {
+  "name": "clipped_points_return",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "new = kept & (np.abs(residual - center) <= clip_sigma * scale)",
+  "new": "new = (np.abs(residual - center) <= clip_sigma * scale)"
+ },
+ {
+  "name": "clipped_points_return_lines",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "new = mask & (np.abs(residual - center) <= clip_sigma * scale[:, None])",
+  "new": "new = (np.abs(residual - center) <= clip_sigma * scale[:, None])"
+ },
+ {
+  "name": "no_convergence_stop",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "if count < n_terms or count == int(kept.sum()):",
+  "new": "if count < n_terms:"
+ },
+ {
+  "name": "no_convergence_stop_lines",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "refit = (scale > 0) & (count >= n_terms) & (count != mask.sum(axis=1))",
+  "new": "refit = (scale > 0) & (count >= n_terms)"
+ },
+ {
+  "name": "no_rank_check",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "if rank < a.shape[1]:",
+  "new": "if False:"
+ },
+ {
+  "name": "no_min_inliers_guard",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "if count < n_terms or count == int(kept.sum()):",
+  "new": "if count == int(kept.sum()):"
+ },
+ {
+  "name": "no_min_inliers_guard_lines",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "refit = (scale > 0) & (count >= n_terms) & (count != mask.sum(axis=1))",
+  "new": "refit = (scale > 0) & (count != mask.sum(axis=1))"
+ },
+ {
+  "name": "readmit_rejected_rows",
+  "path": "src/phenotypic/enhance/_poly_surface_kernels.py",
+  "old": "        active = active[refit]\n        if active.size == 0:\n            break\n        new = new[refit]\n        kept[active] = new\n",
+  "new": "        if not refit.any():\n            break\n        new = np.where(refit[:, None], new, True)\n        kept[active] = new\n"
+ }
+]
