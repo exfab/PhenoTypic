@@ -31,6 +31,17 @@ FootprintShape = Literal["disk", "square", "diamond"]
 #: the selected reference.
 BoundaryMode: TypeAlias = Literal["reflect", "constant", "nearest", "mirror", "wrap"]
 
+#: ``SubtractPolySurface.method``: offset (order 0), plane (order 1), polynomial
+#: surface, or per-scan-line polynomial.
+SurfaceMethod: TypeAlias = Literal["offset", "plane", "polynomial", "line"]
+
+#: ``SubtractPolySurface.fit``: plain least squares (Gwyddion) or sigma-clipped
+#: least squares.
+SurfaceFit: TypeAlias = Literal["lstsq", "robust"]
+
+#: ``SubtractPolySurface.line_axis``: which scan lines ``method="line"`` levels.
+LineAxis: TypeAlias = Literal["row", "column"]
+
 #: Raster product selected by ``FilFinderDetector``. FilFinder exposes more
 #: graph and measurement products, but ``ObjectDetector`` returns exactly one
 #: of these three source-visible boolean rasters as consecutive labels.

@@ -44,6 +44,9 @@ Remove large-scale brightness gradients.
   and reflectance
 - **SubtractGaussian** — subtracts a heavily blurred background estimate
 - **SubtractRollingBall** — morphological background estimation
+- **SubtractPolySurface** — fits and subtracts a constant, plane, polynomial
+  surface, or per-scan-line polynomial (Gwyddion's leveling tools), with an
+  optional robust fit that ignores colonies
 
 ### Structural Enhancement
 

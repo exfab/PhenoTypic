@@ -36,6 +36,7 @@ from ._non_local_means import NonLocalMeansDenoiser
 from ._subtract_opening import SubtractOpening
 from ._rank_median_enhancer import RankMedianEnhancer
 from ._subtract_rolling_ball import SubtractRollingBall
+from ._subtract_poly_surface import SubtractPolySurface
 from ._focus_edge_sato import FocusEdgeSato
 from ._focus_edge_sobel import FocusEdgeSobel
 from ._sharpen_edge_gauss import SharpenEdgeGauss
@@ -77,6 +78,7 @@ __all__ = [
     "FocusEdgeColorPhase",
     "RankMedianEnhancer",
     "SubtractRollingBall",
+    "SubtractPolySurface",
     "FocusEdgeSato",
     "FocusEdgeSobel",
     "SharpenEdgeGauss",
