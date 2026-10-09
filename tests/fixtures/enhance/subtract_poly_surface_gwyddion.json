@@ -1,0 +1,280 @@
+{
+ "kind": "gwyddion-oracle",
+ "gwyddion_version": "2.71",
+ "tarball_sha256": "2df721befccbe4d5ee2ba564b32e69341f8ce1de637e2045838a09a2d46b5dba",
+ "harness_sha256": "bd2f96192ac67274cc2afdc3750793a1ee78a2e2a08472f69d243f281946c6a6",
+ "build": "gcc 8.5.0 20210514 (Red Hat 8.5.0-28), x86_64; glib 2.56.4; fftw3 3.3.5; libgwyddion/*.c + libprocess/*.c (74 sources) compiled directly into static archives (configure requires gtk+-2.0, absent) with hand-written config.h/gwyconfig.h; CFLAGS -O2 -fPIC -std=gnu90 -D_GNU_SOURCE -DHAVE_CONFIG_H -DGLIB_DISABLE_DEPRECATION_WARNINGS; no OpenMP (serial); Slurm job 29651210 on r41",
+ "generated_utc": "2026-10-09T01:47:03+00:00",
+ "cases": [
+  {
+   "name": "offset__A",
+   "input": "A",
+   "method": "offset",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "plane__A",
+   "input": "A",
+   "method": "plane",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "offset__B",
+   "input": "B",
+   "method": "offset",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "plane__B",
+   "input": "B",
+   "method": "plane",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "offset__C",
+   "input": "C",
+   "method": "offset",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "plane__C",
+   "input": "C",
+   "method": "plane",
+   "order": null,
+   "independent": null,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly2_ind__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 2,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly2_tot__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 2,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly3_ind__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 3,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly3_tot__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 3,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly5_ind__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 5,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly5_tot__A",
+   "input": "A",
+   "method": "polynomial",
+   "order": 5,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "line0_row__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 0,
+   "line_axis": "row"
+  },
+  {
+   "name": "line0_column__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 0,
+   "line_axis": "column"
+  },
+  {
+   "name": "line1_row__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 1,
+   "line_axis": "row"
+  },
+  {
+   "name": "line1_column__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 1,
+   "line_axis": "column"
+  },
+  {
+   "name": "line3_row__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 3,
+   "line_axis": "row"
+  },
+  {
+   "name": "line3_column__A",
+   "input": "A",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 3,
+   "line_axis": "column"
+  },
+  {
+   "name": "poly2_ind__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 2,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly2_tot__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 2,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly3_ind__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 3,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly3_tot__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 3,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly5_ind__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 5,
+   "independent": true,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "poly5_tot__C",
+   "input": "C",
+   "method": "polynomial",
+   "order": 5,
+   "independent": false,
+   "line_order": null,
+   "line_axis": null
+  },
+  {
+   "name": "line0_row__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 0,
+   "line_axis": "row"
+  },
+  {
+   "name": "line0_column__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 0,
+   "line_axis": "column"
+  },
+  {
+   "name": "line1_row__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 1,
+   "line_axis": "row"
+  },
+  {
+   "name": "line1_column__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 1,
+   "line_axis": "column"
+  },
+  {
+   "name": "line3_row__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 3,
+   "line_axis": "row"
+  },
+  {
+   "name": "line3_column__C",
+   "input": "C",
+   "method": "line",
+   "order": null,
+   "independent": null,
+   "line_order": 3,
+   "line_axis": "column"
+  }
+ ]
+}
