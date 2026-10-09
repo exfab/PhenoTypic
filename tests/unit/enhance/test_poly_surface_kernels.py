@@ -10,6 +10,7 @@ from phenotypic.enhance._poly_surface_kernels import (
     RobustFit,
     evaluate_surface,
     fit_surface_coefficients,
+    flatten_surface,
     legendre_design,
     level_lines,
     normalized_axis,
@@ -253,3 +254,143 @@ class TestLevelLines:
         out = level_lines(z, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10)
         assert np.isfinite(out[7]).all()
         assert not np.allclose(out[7], z[7] + z.mean())
+
+
+DEFAULTS = dict(order=3, independent=True, line_order=1, line_axis="row",
+                fit="lstsq", clip_sigma=3.0, max_iter=10)
+
+
+def flatten(z, **overrides):
+    return flatten_surface(z, **{**DEFAULTS, **overrides})
+
+
+class TestOffset:
+    def test_lstsq_subtracts_the_mean(self):
+        z, _ = surface_plate(height=40, width=50, cover=0.1, seed=2040)
+        out = flatten(z, method="offset")
+        np.testing.assert_allclose(out, z - z.mean(), atol=1e-15)
+
+    def test_robust_finds_the_agar_level_under_colonies(self):
+        rng = np.random.default_rng(2028)
+        from ._poly_surface_synth import colony_domes
+        z = 0.4 + colony_domes(300, 450, 0.25, rng) + rng.normal(0, NOISE, (300, 450))
+        level = z - flatten(z, method="offset", fit="robust")
+        assert abs(float(level.flat[0]) - 0.4) < 0.5 * NOISE
+        assert abs(z.mean() - 0.4) > 1.0 * NOISE
+
+
+class TestPlane:
+    def test_removes_tilt_about_gwyddions_pivot(self):
+        """Drift D7 / L2: out = a + bx*W/2 + by*H/2 everywhere; NOT the true-centre value."""
+        height, width, a, bx, by = 21, 34, 0.35, 0.002, 0.001
+        i, j, _, _ = grid(height, width)
+        z = a + bx * j + by * i
+        out = flatten(z, method="plane")
+        np.testing.assert_allclose(out, np.full_like(z, a + bx * width / 2 + by * height / 2), atol=1e-12)
+        assert abs(out.mean() - (z.mean() + 0.5 * (bx + by))) < 1e-12
+
+    def test_robust_plane_flattens_the_background_under_colonies(self):
+        rng = np.random.default_rng(2041)
+        from ._poly_surface_synth import colony_domes
+        i, j, _, _ = grid(300, 450)
+        background = 0.3 + 0.0004 * j - 0.0003 * i
+        colonies = colony_domes(300, 450, 0.25, rng)
+        z = background + colonies + rng.normal(0, NOISE, (300, 450))
+        out = flatten(z, method="plane", fit="robust")
+        flattened_background = (out - colonies)[colonies == 0]
+        assert np.std(flattened_background) < 1.5 * NOISE
+
+
+class TestPolynomial:
+    def test_removes_its_own_form_exactly_and_lands_at_zero(self):
+        _, _, u, v = grid(30, 41)
+        z = 0.3 + 0.05 * u - 0.02 * v + 0.04 * u**2 * v + 0.01 * u**3 * v**3
+        out = flatten(z, method="polynomial", order=3, independent=True)
+        np.testing.assert_allclose(out, 0.0, atol=1e-10)
+
+    def test_independent_keeps_the_u3v3_term_and_total_degree_does_not(self):
+        _, _, u, v = grid(30, 41)
+        z = 0.3 + 0.05 * u**3 * v**3
+        assert np.max(np.abs(flatten(z, method="polynomial", order=3, independent=True))) < 1e-10
+        assert rmse(flatten(z, method="polynomial", order=3, independent=False), 0.0) > 1e-3
+
+    def test_robust_polynomial_recovers_the_background(self):
+        z, background = surface_plate(cover=0.25, seed=2025)
+        out = flatten(z, method="polynomial", order=3, independent=True, fit="robust")
+        assert rmse(z - out, background) < 0.5 * NOISE
+
+
+class TestLineDispatch:
+    def test_column_axis_is_row_axis_on_the_transpose(self):
+        z, _, _ = line_plate(height=40, width=55, cover=0.1, seed=2042)
+        col = flatten(z, method="line", line_axis="column", line_order=2)
+        row_of_t = flatten(z.T.copy(), method="line", line_axis="row", line_order=2)
+        np.testing.assert_allclose(col, row_of_t.T, atol=1e-12)
+
+    def test_line_levels_to_the_input_mean(self):
+        z, _, _ = line_plate(height=40, width=55, cover=0.1, seed=2043)
+        out = flatten(z, method="line", line_order=1)
+        np.testing.assert_allclose(out.mean(axis=1), np.full(40, z.mean()), atol=1e-12)
+
+
+class TestContract:
+    @pytest.mark.parametrize("method", ["offset", "plane", "polynomial", "line"])
+    def test_returns_new_float64_and_never_mutates_input(self, method):
+        z, _ = surface_plate(height=30, width=40, cover=0.1, seed=2044)
+        before = z.copy()
+        out = flatten(z, method=method)
+        assert out.dtype == np.float64 and out is not z
+        np.testing.assert_array_equal(z, before)
+
+
+class TestValidation:
+    @pytest.mark.parametrize("shape", [(1, 10), (10, 1)])
+    def test_single_row_or_column_is_rejected(self, shape):
+        with pytest.raises(ValueError, match="at least 2"):
+            flatten(np.zeros(shape), method="plane")
+
+    def test_polynomial_needs_order_plus_one_samples_per_axis(self):
+        flatten(np.random.default_rng(8).random((4, 4)), method="polynomial", order=3)
+        with pytest.raises(ValueError, match="order"):
+            flatten(np.random.default_rng(8).random((3, 4)), method="polynomial", order=3)
+
+    def test_plane_works_on_two_by_two(self):
+        assert np.isfinite(flatten(np.array([[0.1, 0.2], [0.3, 0.5]]), method="plane")).all()
+
+    def test_column_lines_need_line_order_plus_one_rows(self):
+        with pytest.raises(ValueError, match="line_order"):
+            flatten(np.random.default_rng(9).random((2, 50)), method="line",
+                    line_axis="column", line_order=2)
+
+    @pytest.mark.parametrize("bad", [dict(method="huber"), dict(fit="ransac"), dict(line_axis="diag")])
+    def test_unknown_strings_are_rejected(self, bad):
+        with pytest.raises(ValueError):
+            flatten(np.ones((5, 5)), **{"method": "plane", **bad})
+
+
+class TestReviewFocus:
+    @pytest.mark.parametrize("fit", ["lstsq", "robust"])
+    @pytest.mark.parametrize("method, level", [("offset", 0.0), ("plane", 0.42),
+                                               ("polynomial", 0.0), ("line", 0.42)])
+    def test_constant_image_lands_at_its_documented_level(self, method, level, fit):
+        """Review Focus 1: flat detect_mat; robust must stop on zero MAD (spec §4.6 levels)."""
+        out = flatten(np.full((25, 35), 0.42), method=method, fit=fit)
+        np.testing.assert_allclose(out, level, atol=1e-12)
+
+    @pytest.mark.parametrize("method", ["offset", "plane", "polynomial", "line"])
+    def test_majority_saturated_image_is_finite(self, method):
+        """Review Focus 2: >= 50% pixels exactly 1.0 -- MAD over the kept set can be 0."""
+        rng = np.random.default_rng(10)
+        z = 0.3 + rng.normal(0, NOISE, (60, 80))
+        z[:, :48] = 1.0
+        assert np.isfinite(flatten(z, method=method, fit="robust")).all()
+
+    def test_dark_colonies_are_clipped_too(self):
+        """Review Focus 3 / drift D15: an un-inverted plate (dark colonies on bright agar)."""
+        rng = np.random.default_rng(2027)
+        from ._poly_surface_synth import colony_domes
+        _, _, u, v = grid(300, 450)
+        background = 0.70 + 0.05 * u - 0.04 * v + 0.03 * u * v
+        z = background - colony_domes(300, 450, 0.25, rng) + rng.normal(0, NOISE, (300, 450))
+        out = flatten(z, method="polynomial", order=2, independent=True, fit="robust")
+        assert rmse(z - out, background) < 0.5 * NOISE

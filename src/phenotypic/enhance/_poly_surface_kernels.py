@@ -353,3 +353,130 @@ def level_lines(
     else:
         fitted = (a @ solve_least_squares(a, z.T)).T
     return z - fitted + avg
+
+
+_METHODS: Final[frozenset[str]] = frozenset({"offset", "plane", "polynomial", "line"})
+_FITS: Final[frozenset[str]] = frozenset({"lstsq", "robust"})
+_LINE_AXES: Final[frozenset[str]] = frozenset({"row", "column"})
+
+
+def _validate_flatten_request(
+    z: np.ndarray,
+    *,
+    method: str,
+    order: int,
+    line_order: int,
+    line_axis: str,
+    fit: str,
+) -> None:
+    """Reject unknown option strings and geometries too small for the request (spec 4.7).
+
+    Raises:
+        ValueError: On an unknown ``method``, ``fit`` or ``line_axis``; on an image
+            with fewer than 2 rows or columns; on a polynomial ``order`` needing more
+            samples than an axis has; or on a ``line_order`` needing more samples
+            than a line has.
+    """
+    for name, value, allowed in (
+        ("method", method, _METHODS),
+        ("fit", fit, _FITS),
+        ("line_axis", line_axis, _LINE_AXES),
+    ):
+        if value not in allowed:
+            raise ValueError(
+                f"unknown {name} {value!r}; expected one of {sorted(allowed)}"
+            )
+    height, width = z.shape
+    if height < 2 or width < 2:
+        raise ValueError(
+            f"image must have at least 2 rows and 2 columns, got {z.shape}"
+        )
+    if method == "polynomial" and min(height, width) < order + 1:
+        raise ValueError(
+            f"polynomial order {order} needs at least {order + 1} samples per axis, "
+            f"got {height} x {width}"
+        )
+    if method == "line":
+        length = width if line_axis == "row" else height
+        if length < line_order + 1:
+            raise ValueError(
+                f"line_order {line_order} needs at least {line_order + 1} samples "
+                f"per line, got {length} along the {line_axis} axis"
+            )
+
+
+def flatten_surface(
+    z: np.ndarray,
+    *,
+    method: str,
+    order: int,
+    independent: bool,
+    line_order: int,
+    line_axis: str,
+    fit: str,
+    clip_sigma: float,
+    max_iter: int,
+    max_fit_points: int = MAX_FIT_POINTS,
+) -> np.ndarray:
+    """Flatten ``z`` by one of the four background-removal methods (spec 4.4-4.7).
+
+    Output levels follow spec 4.6: ``offset`` and ``polynomial`` land the background
+    at zero, ``line`` restores the input mean, and ``plane`` removes the fitted tilt
+    about the pivot ``(W / 2, H / 2)`` (drift D7), discarding the fitted constant.
+
+    Args:
+        z: 2-D image, shape ``(height, width)``; never modified.
+        method: ``"offset"``, ``"plane"``, ``"polynomial"`` or ``"line"``.
+        order: Polynomial degree for ``method="polynomial"``.
+        independent: Tensor-product (True) or total-degree (False) term set.
+        line_order: Per-line polynomial order for ``method="line"``.
+        line_axis: ``"row"`` or ``"column"``: which lines are leveled.
+        fit: ``"lstsq"`` or ``"robust"``.
+        clip_sigma: Clipping threshold for ``fit="robust"``.
+        max_iter: Maximum refits for ``fit="robust"``.
+        max_fit_points: Pixel count above which a surface fit is subsampled.
+
+    Returns:
+        New float64 array of shape ``(height, width)``.
+
+    Raises:
+        ValueError: On unknown option strings or a geometry too small for the
+            request (see :func:`_validate_flatten_request`).
+    """
+    z = np.asarray(z, dtype=np.float64)
+    _validate_flatten_request(
+        z,
+        method=method,
+        order=order,
+        line_order=line_order,
+        line_axis=line_axis,
+        fit=fit,
+    )
+    height, width = z.shape
+    fit_args = dict(
+        fit=fit, clip_sigma=clip_sigma, max_iter=max_iter, max_fit_points=max_fit_points
+    )
+    if method == "offset":
+        if fit == "lstsq":
+            return z - z.mean()
+        coef = fit_surface_coefficients(z, degree=0, independent=True, **fit_args)
+        return z - coef[0]
+    if method == "plane":
+        coef = fit_surface_coefficients(z, degree=1, independent=False, **fit_args)
+        slope_x = 2.0 * coef[2] / (width - 1)
+        slope_y = 2.0 * coef[1] / (height - 1)
+        rows = np.arange(height, dtype=np.float64)[:, None] - height / 2
+        cols = np.arange(width, dtype=np.float64)[None, :] - width / 2
+        return z - slope_x * cols - slope_y * rows
+    if method == "polynomial":
+        coef = fit_surface_coefficients(
+            z, degree=order, independent=independent, **fit_args
+        )
+        terms = term_powers(order, independent)
+        return z - evaluate_surface(coef, terms, order, height, width)
+    line_args = dict(
+        line_order=line_order, fit=fit, clip_sigma=clip_sigma, max_iter=max_iter
+    )
+    if line_axis == "column":
+        return level_lines(z.T, **line_args).T.copy()
+    return level_lines(z, **line_args)
