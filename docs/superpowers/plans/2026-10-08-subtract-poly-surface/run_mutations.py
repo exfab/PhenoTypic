@@ -99,6 +99,8 @@ def run_all_mutants(mutants_json: Path, results_json: Path | None) -> int:
     for m in mutants:
         results[m["name"]] = run_mutant(m["path"], m["old"], m["new"])
         r = results[m["name"]]
+        if "equivalent" in m:
+            r["equivalent"] = m["equivalent"]
         print(f"{m['name']}: {r['status']} ({r['n_failed']} failed, {r['seconds']}s)", flush=True)
         if not r["restored_sha_ok"]:
             print("RESTORE MISMATCH: aborting")
@@ -107,7 +109,8 @@ def run_all_mutants(mutants_json: Path, results_json: Path | None) -> int:
         results_json.write_text(json.dumps(results, indent=1))
     print(json.dumps(results, indent=1))
     ok = len(results) == len(mutants) and all(
-        r["status"] == "KILLED" and r["restored_sha_ok"] for r in results.values())
+        (r["status"] == "KILLED" or "equivalent" in r) and r["restored_sha_ok"]
+        for r in results.values())
     return 0 if ok else 1
 
 

@@ -246,6 +246,34 @@ class TestLevelLines:
         out = level_lines(z, line_order=3, fit="robust", clip_sigma=1.0, max_iter=10)
         assert np.isfinite(out).all()
 
+    @pytest.mark.parametrize("sign", [1.0, -1.0])
+    def test_robust_clips_outliers_on_both_sides_of_the_median(self, sign):
+        """Spec §4.3 clips |r - median|: a dark row defect is rejected as a bright colony is."""
+        rng = np.random.default_rng(11)
+        z = 0.5 + rng.normal(0, NOISE, (8, 100))
+        z[:, 45:55] += sign * 1.0                            # 10% of every row is an outlier
+        out = level_lines(z, line_order=1, fit="robust", clip_sigma=3.0, max_iter=10)
+        fitted = z - out + z.mean()
+        clean = np.ones(100, dtype=bool)
+        clean[45:55] = False
+        assert np.abs(fitted[:, clean] - 0.5).max() < 5 * NOISE
+
+    def test_each_robust_row_matches_the_single_system_robust_fit(self):
+        """Per-row state equals robust_least_squares on that row alone: the kept set only
+        shrinks and a clipped point never returns (spec §4.3), with heavy-tailed rows that
+        take several rounds."""
+        from phenotypic.enhance._poly_surface_kernels import normalized_axis
+        from numpy.polynomial import legendre
+
+        rng = np.random.default_rng(12)
+        z = rng.standard_t(2, (60, 70))
+        out = level_lines(z, line_order=2, fit="robust", clip_sigma=1.5, max_iter=10)
+        fitted = z - out + z.mean()
+        a = legendre.legvander(normalized_axis(70), 2)
+        for r in range(60):
+            expected = a @ robust_least_squares(a, z[r], clip_sigma=1.5, max_iter=10).coef
+            np.testing.assert_allclose(fitted[r], expected, atol=1e-8)
+
     def test_a_row_that_is_mostly_colony_is_not_shifted_by_the_mean(self):
         """Drift D3: a degenerate row keeps its last fit rather than gaining the global mean."""
         rng = np.random.default_rng(7)
