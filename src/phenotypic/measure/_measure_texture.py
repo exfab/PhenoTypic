@@ -40,7 +40,8 @@ class MeasureTexture(MeasureFeatures):
 
     Args:
         scale: Pixel offset(s) for the co-occurrence matrix. A single
-            integer or list of integers. Small values (1--2) capture fine
+            integer or list of distinct integers; each value writes its
+            own set of columns. Small values (1--2) capture fine
             texture; large values (5--10) capture coarse patterns.
             Default: ``5``.
         quant_lvl: Number of gray-level bins for quantization. Accepted
@@ -113,6 +114,54 @@ class MeasureTexture(MeasureFeatures):
             return [scale]
         return scale
 
+    @field_validator("scale")
+    @classmethod
+    def _require_distinct_scales(cls, scale: List[int]) -> List[int]:
+        """Reject an empty ``scale`` list or one that repeats a value.
+
+        Each scale's columns are merged onto the first scale's frame, so a
+        repeated scale would collide and come back with pandas ``_x``/``_y``
+        suffixes that no ``TEXTURE`` header recognizes.
+        """
+        if not scale:
+            raise ValueError("scale must contain at least one pixel offset")
+        if len(set(scale)) != len(scale):
+            raise ValueError(f"scale values must be distinct, got {scale}")
+        return scale
+
+    @classmethod
+    def output_header(cls, member, on: str | None = None) -> str:
+        """Return the header pattern written for a texture feature.
+
+        Each feature is written once per direction and once averaged, at each
+        scale, so the documented form carries two placeholders; see
+        :meth:`output_header_placeholders`.
+        """
+        if isinstance(member, TEXTURE):
+            return TEXTURE.header(member, "<direction>", "<x>")
+        return super().output_header(member, on)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define the ``<x>`` scale and ``<direction>`` placeholders."""
+        example = TEXTURE.header(TEXTURE.CONTRAST, "deg045", 5)
+        return {
+            "<x>": (
+                "the ``scale`` parameter: the distance, in pixels, between the two "
+                "pixels compared when building the gray-level co-occurrence matrix, "
+                "zero-padded to two digits. The default ``scale=5`` writes "
+                "``scale05``. To convert it to a physical distance, divide by your "
+                "image's pixels per millimetre: at 40 px/mm, ``scale05`` compares "
+                "pixels 0.125 mm apart."
+            ),
+            "<direction>": (
+                "the direction of that offset: ``deg000``, ``deg045``, ``deg090`` or "
+                "``deg135`` (degrees), or ``avg``, the mean of the four. Each feature "
+                "therefore writes five columns per scale, e.g. "
+                f"``{example}``."
+            ),
+        }
+
     def _operate(self, image: Image) -> pd.DataFrame:
         """Performs texture measurements on the image objects.
 
@@ -138,9 +187,8 @@ class MeasureTexture(MeasureFeatures):
         )
 
         meas = compute_haralick(scale=self.scale[0])
-        if len(self.scale) > 1:
-            for scale in self.scale[1:]:
-                meas.merge(compute_haralick(scale=scale), on=OBJECT.LABEL, how="outer")
+        for scale in self.scale[1:]:
+            meas = meas.merge(compute_haralick(scale=scale), on=OBJECT.LABEL, how="outer")
         return meas
 
     @staticmethod

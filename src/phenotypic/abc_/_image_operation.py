@@ -16,6 +16,20 @@ from abc import ABC, abstractmethod
 import traceback
 
 
+def _is_reference_error(exc: BaseException) -> bool:
+    """Whether *exc* is a typed reference-metadata failure that apply re-raises as is.
+
+    ``ReferenceContextError`` and its subclasses are user-actionable (a missing
+    table row, an unreadable blank) and must be catchable by type around
+    ``op.apply``. Every other exception keeps the generic wrapping below. The
+    CLI classifies the ``ImagePipeline``'s own ``RuntimeError`` wrapper, not its
+    cause, so letting these through changes nothing it sees.
+    """
+    from phenotypic._core._reference_context import ReferenceContextError
+
+    return isinstance(exc, ReferenceContextError)
+
+
 class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     """Core abstract base class for all single-image transformation operations in PhenoTypic.
 
@@ -446,6 +460,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
+            if _is_reference_error(e):
+                raise
             raise RuntimeError(
                     f"{self.__class__.__name__} failed on image {image.name}:\n"
                     f"{traceback.format_exc()}"
@@ -493,4 +509,6 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except Exception as e:
+            if _is_reference_error(e):
+                raise
             raise Exception(f"{cls_name} failed on image {image.name}: {e}") from e

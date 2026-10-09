@@ -1181,9 +1181,21 @@ class TestAutomaticContinuation:
         (input_dir / "image.tif").write_bytes(b"image")
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+        from phenotypic._cli._cli_staged_orchestration import append_job_ledger
+
+        for token, job_id in (("stage1", "123"), ("controller", "456")):
+            append_job_ledger(
+                output_dir,
+                epoch="epoch-1",
+                token=token,
+                role=token,
+                round_index=0,
+                status="submitted",
+                job_id=job_id,
+            )
         monkeypatch.setattr(
-            "phenotypic._cli._cli_staged_orchestration.active_ledger_job_ids",
-            lambda output: ["123", "456"],
+            "phenotypic._cli._cli_staged_orchestration.scheduler_job_is_active",
+            lambda job_id: True,
         )
 
         result = runner.invoke(
@@ -1308,8 +1320,516 @@ class TestAutomaticContinuation:
             ],
         )
 
+        # An unanswered scheduler still refuses, but the job is reported as
+        # unverified rather than as known to be running (fix-phase M2).
         assert result.exit_code != 0
-        assert "jobs are active: 789" in result.output
+        assert "jobs are unverified: 789" in result.output
+        assert "jobs are active" not in result.output
+        assert "where `squeue` works" in result.output
+
+
+_GUARD_MODULE = "phenotypic._cli._cli_staged_orchestration"
+
+
+def _output_tree_bytes(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def _ledger_row(output_dir, generation, token, status, job_id=None):
+    from phenotypic._cli._cli_slurm_lifecycle import append_lifecycle_entry
+
+    append_lifecycle_entry(
+        output_dir,
+        generation=generation,
+        token=token,
+        role="chunk" if token.startswith("chunk") else token,
+        status=status,
+        job_id=job_id,
+    )
+
+
+def _ordinary_lifecycle(output_dir, generation):
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="ordinary"
+    )
+
+
+class TestLiveSlurmRunGuard:
+    """One live SLURM run per output: what the forward guard can see.
+
+    An ordinary (``AutonomousSLURMStrategy``) chain records every chunk,
+    dispatcher and finalizer it submits in the lifecycle ledger, through
+    ``submit_with_lifecycle``. The guard must also see a job whose ``sbatch``
+    succeeded but whose ``submitted`` row was never written (an intent-only
+    token), and ``--mode recompile`` must not bypass it.
+    """
+
+    @pytest.fixture
+    def garbage_input(self, tmp_path):
+        input_dir = tmp_path / "images"
+        input_dir.mkdir()
+        (input_dir / "image.tif").write_bytes(b"image")
+        return input_dir
+
+    @pytest.fixture(params=["intent", "blocked"])
+    def intent_only_output(self, tmp_path, request):
+        """An active ordinary generation whose chunk-1 was never recorded.
+
+        Its latest row is ``intent`` (the submitter died after ``sbatch``) or
+        ``blocked`` (``sbatch`` failed ambiguously); either may own a job.
+        """
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _ordinary_lifecycle(output_dir, "gen-live")
+        _ledger_row(output_dir, "gen-live", "chunk-0", "intent")
+        _ledger_row(output_dir, "gen-live", "chunk-0", "submitted", "501")
+        _ledger_row(output_dir, "gen-live", "chunk-1", "intent")
+        if request.param == "blocked":
+            _ledger_row(output_dir, "gen-live", "chunk-1", "blocked")
+        return output_dir
+
+    def _forward(self, runner, pipeline, input_dir, output_dir, *extra):
+        return runner.invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(pipeline),
+                "--input",
+                str(input_dir),
+                "--output",
+                str(output_dir),
+                "--skip-validation",
+                *extra,
+            ],
+        )
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            pytest.param((), id="continue"),
+            pytest.param(("--restart",), id="restart"),
+            pytest.param(("--overwrite",), id="overwrite"),
+        ],
+    )
+    def test_live_intent_only_job_is_refused_before_output_changes(
+        self,
+        runner,
+        temp_pipeline,
+        garbage_input,
+        intent_only_output,
+        monkeypatch,
+        extra,
+    ):
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active", lambda job_id: False
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: {
+                "phenotypic:gen-live:chunk-1": {"555"},
+                "phenotypic:some-other-generation:chunk-1": {"999"},
+            },
+        )
+        before = _output_tree_bytes(intent_only_output)
+
+        result = self._forward(
+            runner, temp_pipeline, garbage_input, intent_only_output, *extra
+        )
+
+        assert result.exit_code != 0, result.output
+        assert "jobs are active: 555" in result.output
+        assert "999" not in result.output
+        assert _output_tree_bytes(intent_only_output) == before
+
+    def test_intent_only_job_with_scheduler_unavailable_is_refused(
+        self,
+        runner,
+        temp_pipeline,
+        garbage_input,
+        intent_only_output,
+        monkeypatch,
+    ):
+        from phenotypic._cli._cli_slurm_lifecycle import (
+            SchedulerQueryUnavailable,
+        )
+
+        def unavailable(**kwargs):
+            raise SchedulerQueryUnavailable("squeue is down")
+
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active", lambda job_id: False
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments", unavailable
+        )
+        before = _output_tree_bytes(intent_only_output)
+
+        result = self._forward(
+            runner, temp_pipeline, garbage_input, intent_only_output
+        )
+
+        # Refused, but never claimed to be running, and the user is told
+        # where the question can be answered and how to look by hand (M2).
+        assert result.exit_code != 0, result.output
+        assert "jobs are active" not in result.output
+        assert "could not be queried from this host" in result.output
+        assert "gen-live:chunk-1" in result.output
+        assert "where `squeue` works" in result.output
+        assert "grep 'phenotypic:gen-live:chunk-1'" in result.output
+        assert _output_tree_bytes(intent_only_output) == before
+
+    def test_live_and_unverified_jobs_are_reported_apart(
+        self, runner, tmp_path, temp_pipeline, garbage_input, monkeypatch
+    ):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _ordinary_lifecycle(output_dir, "gen-live")
+        _ledger_row(output_dir, "gen-live", "chunk-0", "submitted", "801")
+        _ledger_row(output_dir, "gen-live", "dispatcher-1", "submitted", "802")
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: True if job_id == "801" else None,
+        )
+
+        result = self._forward(
+            runner, temp_pipeline, garbage_input, output_dir
+        )
+
+        assert result.exit_code != 0, result.output
+        lines = result.output.splitlines()
+        active = next(line for line in lines if "jobs are active: " in line)
+        unverified = next(
+            line for line in lines if "jobs are unverified: " in line
+        )
+        assert "801" in active and "802" not in active, active
+        assert "802" in unverified and "801" not in unverified, unverified
+
+    def test_an_older_generation_is_not_consulted(
+        self,
+        runner,
+        tmp_path,
+        temp_pipeline,
+        temp_input_dir,
+        monkeypatch,
+    ):
+        """Only the current lifecycle generation can own the output (T4, L5).
+
+        A new generation is published only once the previous one is inactive
+        or this guard passed for it, so ``gen-old``'s rows -- a submitted job
+        and an unresolved intent -- are never sent to the scheduler.
+        """
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _ledger_row(output_dir, "gen-old", "chunk-0", "submitted", "650")
+        _ledger_row(output_dir, "gen-old", "chunk-1", "intent")
+        _ordinary_lifecycle(output_dir, "gen-live")
+        _ledger_row(output_dir, "gen-live", "chunk-0", "submitted", "701")
+
+        def job_state(job_id):
+            if job_id != "701":
+                pytest.fail(f"guard queried job {job_id} of an old generation")
+            return False
+
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active", job_state
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: pytest.fail("old generation's intent queried"),
+        )
+
+        result = self._forward(
+            runner,
+            temp_pipeline,
+            temp_input_dir,
+            output_dir,
+            "--overwrite",
+            "--dry-run",
+        )
+
+        assert result.exit_code == 0, result.output
+
+    def test_ledger_without_lifecycle_and_no_scheduler_is_refused(
+        self, runner, tmp_path, temp_pipeline, garbage_input, monkeypatch
+    ):
+        """A legacy staged tree: a ledger, no lifecycle file (T8)."""
+        from phenotypic._cli._cli_slurm_lifecycle import (
+            SchedulerQueryUnavailable,
+            lifecycle_state_path,
+        )
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _ledger_row(output_dir, "gen-legacy", "chunk-0", "intent")
+        _ledger_row(output_dir, "gen-legacy", "chunk-0", "submitted", "601")
+        _ledger_row(output_dir, "gen-legacy", "chunk-1", "intent")
+        assert not lifecycle_state_path(output_dir).exists()
+
+        def unavailable(**kwargs):
+            raise SchedulerQueryUnavailable("squeue is down")
+
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active", lambda job_id: None
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments", unavailable
+        )
+
+        result = self._forward(
+            runner, temp_pipeline, garbage_input, output_dir
+        )
+
+        assert result.exit_code == 1, result.output
+        assert result.exception is None or isinstance(
+            result.exception, SystemExit
+        ), result.exception
+        assert "jobs are unverified: 601" in result.output
+        assert "gen-legacy:chunk-1" in result.output
+        assert "could not be queried from this host" in result.output
+
+    def test_recompile_is_refused_while_a_job_is_live(
+        self, runner, tmp_path, monkeypatch
+    ):
+        from phenotypic import phenotypicCLI
+
+        output_dir = tmp_path / "output"
+        snapshot = deliverables_dir(output_dir) / "metadata.csv"
+        snapshot.parent.mkdir(parents=True)
+        snapshot.write_text("ImageName,Strain\nimg001,WT\n", encoding="utf-8")
+        _ordinary_lifecycle(output_dir, "gen-live")
+        _ledger_row(output_dir, "gen-live", "chunk-0", "submitted", "777")
+        new_metadata = tmp_path / "new_metadata.csv"
+        new_metadata.write_text(
+            "ImageName,Strain\nimg001,MUT\n", encoding="utf-8"
+        )
+        reached: list[bool] = []
+        monkeypatch.setattr(
+            phenotypicCLI,
+            "_handle_recompile",
+            lambda *a, **k: reached.append(True),
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: job_id == "777",
+        )
+        before = _output_tree_bytes(output_dir)
+
+        result = runner.invoke(
+            phenotypic_cli,
+            [
+                "--mode",
+                "recompile",
+                "--output",
+                str(output_dir),
+                "--metadata",
+                str(new_metadata),
+            ],
+        )
+
+        assert result.exit_code != 0, result.output
+        assert "jobs are active: 777" in result.output
+        assert reached == []
+        assert _output_tree_bytes(output_dir) == before
+
+    def test_dispatcher_submitted_chunk_of_ordinary_chain_is_refused(
+        self, runner, tmp_path, temp_pipeline, garbage_input, monkeypatch
+    ):
+        """Premise pin: the real drip-feed path ledgers dispatcher chunks."""
+        import subprocess
+
+        from phenotypic._cli import _cli_slurm_lifecycle
+        from phenotypic.sdk_.slurm._dispatcher import submit_drip_feed_start
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        scripts = tmp_path / "scripts"
+        scripts.mkdir()
+        chunk0, chunk1, dispatcher1, finalizer = (
+            scripts / name
+            for name in ("chunk0.sh", "chunk1.sh", "dispatch1.sh", "final.sh")
+        )
+        job_ids = iter(("1001", "1002", "1003", "1004"))
+        submitted: list[list[str]] = []
+
+        def fake_sbatch(command, **kwargs):
+            assert command[0] == "sbatch", command
+            submitted.append(list(command))
+            return subprocess.CompletedProcess(
+                command, 0, stdout=f"{next(job_ids)}\n", stderr=""
+            )
+
+        _ordinary_lifecycle(output_dir, "gen-chain")
+        with monkeypatch.context() as patch:
+            patch.setattr(_cli_slurm_lifecycle.subprocess, "run", fake_sbatch)
+            assert submit_drip_feed_start(
+                chunk_scripts=[chunk0, chunk1],
+                dispatcher_scripts=[dispatcher1],
+                output_dir=output_dir,
+                generation="gen-chain",
+            )[0] == ["1001", "1002"]
+            # What the dispatcher job runs inside SLURM when chunk 0 ends.
+            assert _cli_slurm_lifecycle.dispatch_continuation(
+                output_dir,
+                generation="gen-chain",
+                chunk_index=1,
+                chunk_script=chunk1,
+                finalizer_script=finalizer,
+            ) == ("1003", "1004")
+        assert [command[4] for command in submitted] == [
+            "phenotypic:gen-chain:chunk-0",
+            "phenotypic:gen-chain:dispatcher-1",
+            "phenotypic:gen-chain:chunk-1",
+            "phenotypic:gen-chain:finalizer",
+        ]
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: job_id == "1003",
+        )
+        before = _output_tree_bytes(output_dir)
+
+        result = self._forward(
+            runner, temp_pipeline, garbage_input, output_dir
+        )
+
+        assert result.exit_code != 0, result.output
+        assert "jobs are active: 1003" in result.output
+        assert _output_tree_bytes(output_dir) == before
+
+    def test_terminal_ordinary_chain_is_not_refused(
+        self,
+        runner,
+        temp_pipeline,
+        temp_input_dir,
+        intent_only_output,
+        monkeypatch,
+    ):
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active", lambda job_id: False
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: {
+                "phenotypic:some-other-generation:chunk-1": {"999"}
+            },
+        )
+
+        result = self._forward(
+            runner,
+            temp_pipeline,
+            temp_input_dir,
+            intent_only_output,
+            "--overwrite",
+            "--dry-run",
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "DRY-RUN MODE" in result.output
+
+    @pytest.mark.parametrize("live", [True, False], ids=["live", "terminal"])
+    def test_gui_recovered_rows_are_counted_once(
+        self,
+        runner,
+        tmp_path,
+        temp_pipeline,
+        temp_input_dir,
+        monkeypatch,
+        live,
+    ):
+        """A GUI-reconciled run: ``recovered`` rows beside ``submitted`` ones.
+
+        The ``recovered`` row for chunk-1 resolves its intent, so nothing
+        needs the comment probe.
+        """
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        _ordinary_lifecycle(output_dir, "gen-gui")
+        _ledger_row(output_dir, "gen-gui", "chunk-0", "intent")
+        _ledger_row(output_dir, "gen-gui", "chunk-0", "submitted", "801")
+        _ledger_row(output_dir, "gen-gui", "chunk-0", "recovered", "801")
+        _ledger_row(output_dir, "gen-gui", "chunk-1", "intent")
+        _ledger_row(output_dir, "gen-gui", "chunk-1", "recovered", "802")
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: live and job_id == "801",
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: pytest.fail("resolved ledger queried squeue"),
+        )
+
+        result = self._forward(
+            runner, temp_pipeline, temp_input_dir, output_dir,
+            "--overwrite", "--dry-run",
+        )
+
+        if live:
+            assert result.exit_code != 0, result.output
+            refusal = next(
+                line
+                for line in result.output.splitlines()
+                if "jobs are active: " in line
+            )
+            listed = refusal.split("jobs are active: ", 1)[1].split(".", 1)[0]
+            assert listed == "801", refusal
+        else:
+            assert result.exit_code == 0, result.output
+
+    def test_local_output_without_slurm_records_never_queries(
+        self, runner, tmp_path, temp_pipeline, temp_input_dir, monkeypatch
+    ):
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: pytest.fail("local run queried squeue"),
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: pytest.fail("local run queried squeue"),
+        )
+
+        result = self._forward(
+            runner, temp_pipeline, temp_input_dir, output_dir, "--dry-run"
+        )
+
+        assert result.exit_code == 0, result.output
+
+    def test_closed_lifecycle_with_intent_only_rows_never_queries(
+        self,
+        runner,
+        temp_pipeline,
+        temp_input_dir,
+        intent_only_output,
+        monkeypatch,
+    ):
+        from phenotypic._cli._cli_slurm_lifecycle import deactivate_generation
+
+        assert deactivate_generation(intent_only_output, "gen-live")
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.scheduler_job_is_active",
+            lambda job_id: pytest.fail("closed lifecycle queried squeue"),
+        )
+        monkeypatch.setattr(
+            f"{_GUARD_MODULE}.query_scheduler_comments",
+            lambda **kwargs: pytest.fail("closed lifecycle queried squeue"),
+        )
+
+        result = self._forward(
+            runner,
+            temp_pipeline,
+            temp_input_dir,
+            intent_only_output,
+            "--overwrite",
+            "--dry-run",
+        )
+
+        assert result.exit_code == 0, result.output
 
 
 class TestDryRunMode:

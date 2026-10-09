@@ -107,6 +107,12 @@ from phenotypic._gui.builder._modal_browser import (
     render_load_picker_body,
 )
 from phenotypic._gui.builder._param_form import parse_widget_value
+from phenotypic._gui.builder._reference_metadata import (
+    describe_reference_table,
+    preview_reference_context,
+    reference_error_message,
+    reference_identity,
+)
 from phenotypic._gui.builder._session import (
     PreviewGenerationReservation,
     PreviewGenerationWriter,
@@ -3436,9 +3442,13 @@ def _toast(
 
 
 def _format_exception(exc: BaseException) -> str:
-    """Pretty short single-line summary of an exception for toast display."""
+    """Pretty short single-line summary of an exception for toast display.
 
-    return f"{type(exc).__name__}: {exc}"
+    A reference-metadata failure is reported by its innermost error: the
+    pipeline's ``RuntimeError`` wrappers only repeat it with a step prefix.
+    """
+
+    return reference_error_message(exc) or f"{type(exc).__name__}: {exc}"
 
 
 #: Auto-dismiss duration (ms) for toasts surfaced from the FIFO queue,
@@ -3605,11 +3615,19 @@ def _browse_seed_from_source(
 
 
 def _pipeline_revision(state_data: Dict[str, Any]) -> str:
-    """Return a stable digest of pipeline semantics, excluding UI selection."""
+    """Return a stable digest of pipeline semantics, excluding UI selection.
+
+    The session's reference table is part of what a preview computed, so it
+    enters the digest -- only when set, leaving every other digest unchanged.
+    """
 
     root = state_data.get("root")
+    payload: Any = root
+    reference = state_data.get("reference_metadata_path")
+    if reference:
+        payload = {"root": root, "reference": reference_identity(reference)}
     canonical = json.dumps(
-        root,
+        payload,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=True,
@@ -3989,6 +4007,9 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
                 selected_edge_id=None,
                 pending_delete_block_id=None,
                 toast_queue=[],
+                reference_metadata_path=getattr(
+                    state, "reference_metadata_path", None
+                ),
             )
         else:
             from phenotypic._gui.builder._state import _LegacyBuilderState
@@ -4021,6 +4042,8 @@ def _render_views(state: BuilderState) -> Tuple[Any, Any, Any]:
 
 def _state_replacement_payload(
     pipeline: Any,
+    *,
+    reference_metadata_path: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Any, Any, Any]:
     """Build the re-render tuple for a freshly-loaded pipeline.
 
@@ -4029,12 +4052,19 @@ def _state_replacement_payload(
     :class:`ImagePipeline`. Both then need the same four output values;
     this helper centralises the conversion + view rendering.
 
+    Args:
+        pipeline: The loaded pipeline.
+        reference_metadata_path: The session's picked reference table,
+            carried over: it belongs to the session, not to the pipeline,
+            and the picker input still shows it.
+
     Returns:
         Tuple ``(state_dict, breadcrumb, linear_map_children,
         inspector)`` — see :func:`_render_views`.
     """
 
     new_state = from_pipeline_dag(pipeline)
+    new_state.reference_metadata_path = reference_metadata_path
     breadcrumb, canvas_elements, inspector = _render_views(new_state)
     return (
         state_to_json(new_state),
@@ -4042,6 +4072,37 @@ def _state_replacement_payload(
         canvas_elements,
         inspector,
     )
+
+
+def _session_reference_path(state_data: object) -> Optional[str]:
+    """The picked reference table carried by a builder-state payload."""
+
+    if not isinstance(state_data, dict):
+        return None
+    path = state_data.get("reference_metadata_path")
+    return path if isinstance(path, str) and path else None
+
+
+def _reference_metadata_pick(
+    path: object,
+    state_data: object,
+) -> Tuple[Dict[str, Any], Any, str]:
+    """Validate a picked table and put it on the session state.
+
+    Args:
+        path: The picker input's value.
+        state_data: The current builder-state payload.
+
+    Returns:
+        ``(state_data, inspector_children, status_message)``. A missing or
+        invalid table clears the session's table; the status says why.
+    """
+
+    value, message = describe_reference_table(path if isinstance(path, str) else None)
+    state = state_from_json(state_data) if isinstance(state_data, dict) else BuilderState()
+    state.reference_metadata_path = value or None
+    _, _, inspector = _render_views(state)
+    return state_to_json(state), inspector, message
 
 
 # ---------------------------------------------------------------------------
@@ -4156,6 +4217,11 @@ def register_callbacks(app: dash.Dash) -> None:
         Input({"type": "param-num", "prefix": ALL, "name": ALL}, "n_blur"),
         Input({"type": "param-str", "prefix": ALL, "name": ALL}, "n_blur"),
         Input({"type": "param-enum", "prefix": ALL, "name": ALL}, "value"),
+        # RefColumn dropdown, rendered when a reference table is picked.
+        Input(
+            {"type": "param-column-scalar", "prefix": ALL, "name": ALL},
+            "value",
+        ),
         Input({"type": "param-list", "prefix": ALL, "name": ALL}, "n_blur"),
         Input({"type": "param-tuple", "prefix": ALL, "name": ALL}, "n_blur"),
         Input(
@@ -4191,6 +4257,7 @@ def register_callbacks(app: dash.Dash) -> None:
         _num_blurs: List[Any],
         _str_blurs: List[Any],
         enum_vals: List[Any],
+        _column_vals: List[Any],
         _list_blurs: List[Any],
         _tuple_blurs: List[Any],
         toggle_vals: List[Any],
@@ -4379,6 +4446,7 @@ def register_callbacks(app: dash.Dash) -> None:
                     "param-num",
                     "param-str",
                     "param-enum",
+                    "param-column-scalar",
                     "param-list",
                     "param-tuple",
                 }:
@@ -4639,17 +4707,23 @@ def register_callbacks(app: dash.Dash) -> None:
             },
             "n_clicks",
         ),
+        State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
     def start_new_builder_state(
         n_clicks: List[Optional[int]],
+        state_data: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Any, ...]:
-        """Reset an unsupported development DAG to a fresh linear state."""
+        """Reset an unsupported development DAG to a fresh linear state.
+
+        The session's reference table carries over: the picker still shows it.
+        """
 
         noop = (no_update,) * 4
         if not any(click or 0 for click in n_clicks or []):
             return noop
         new_state = BuilderState()
+        new_state.reference_metadata_path = _session_reference_path(state_data)
         new_state_dict = state_to_json(new_state)
         breadcrumb, canvas_elements, inspector = _render_views(new_state)
         return (
@@ -4658,6 +4732,26 @@ def register_callbacks(app: dash.Dash) -> None:
             canvas_elements,
             inspector,
         )
+
+    @app.callback(
+        Output(ids.STORE_BUILDER_STATE, "data", allow_duplicate=True),
+        Output(ids.INSPECTOR_CONTENT, "children", allow_duplicate=True),
+        Output(ids.REFERENCE_METADATA_STATUS, "children"),
+        Input(ids.INPUT_REFERENCE_METADATA, "value"),
+        # Enter re-validates an unchanged path, so an edited or deleted table
+        # is re-read without retyping it.
+        Input(ids.INPUT_REFERENCE_METADATA, "n_submit"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        prevent_initial_call=True,
+    )
+    def set_reference_metadata(
+        path: object,
+        _n_submit: Optional[int],
+        state_data: object,
+    ) -> Tuple[Any, Any, str]:
+        """Validate the picked table, put it on the session state, re-render the inspector."""
+
+        return _reference_metadata_pick(path, state_data)
 
     # ----------------------------------------------------------------------
     # 2a-bis. Toolbar issue badge update (spec §4.6)
@@ -6087,7 +6181,11 @@ def register_callbacks(app: dash.Dash) -> None:
                 str(image_path) if image_path else None,
             )
 
-            result = pipeline.apply_with_intermediates(image)
+            with preview_reference_context(
+                getattr(state, "reference_metadata_path", None),
+                image_path if isinstance(image_path, str) else None,
+            ):
+                result = pipeline.apply_with_intermediates(image)
             generation = _bake_preview_cache(
                 preview_state,
                 pipeline,
@@ -6859,9 +6957,13 @@ def register_callbacks(app: dash.Dash) -> None:
             {"type": ids.DIR_ENTRY_TYPE_JSON, "kind": ALL, "path": ALL},
             "n_clicks",
         ),
+        State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
-    def click_json_entry(_entry_clicks: List[int]) -> Tuple[Any, ...]:
+    def click_json_entry(
+        _entry_clicks: List[int],
+        state_data: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Any, ...]:
         """Handle a click on a JSON-browser tree entry.
 
         Directory and parent clicks update :data:`ids.STORE_BROWSE_DIR_JSON`
@@ -6872,6 +6974,8 @@ def register_callbacks(app: dash.Dash) -> None:
         Args:
             _entry_clicks: Pattern-matched click counts from dir-entry items
                 with type :data:`ids.DIR_ENTRY_TYPE_JSON`.
+            state_data: The current builder state, whose session-level
+                reference table carries over to the loaded pipeline.
 
         Returns:
             Ten-tuple ``(browse_dir, state_data, breadcrumb,
@@ -6898,7 +7002,10 @@ def register_callbacks(app: dash.Dash) -> None:
                     breadcrumb,
                     canvas_elements,
                     inspector,
-                ) = _state_replacement_payload(pipeline)
+                ) = _state_replacement_payload(
+                    pipeline,
+                    reference_metadata_path=_session_reference_path(state_data),
+                )
                 return (
                     no_update,
                     state_dict,
@@ -6930,9 +7037,13 @@ def register_callbacks(app: dash.Dash) -> None:
             {"type": "prefab-card", "class_name": ALL},
             "n_clicks",
         ),
+        State(ids.STORE_BUILDER_STATE, "data"),
         prevent_initial_call=True,
     )
-    def click_prefab_card(_clicks: List[int]) -> Tuple[Any, ...]:
+    def click_prefab_card(
+        _clicks: List[int],
+        state_data: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Any, ...]:
         """Instantiate a prefab pipeline and replace the current builder state.
 
         Triggered by a click on any :func:`~_ids.prefab_card_id` list item.
@@ -6943,6 +7054,8 @@ def register_callbacks(app: dash.Dash) -> None:
 
         Args:
             _clicks: Pattern-matched click counts from prefab-card items.
+            state_data: The current builder state, whose session-level
+                reference table carries over to the prefab.
 
         Returns:
             Nine-tuple ``(state_data, breadcrumb, canvas_elements,
@@ -6967,7 +7080,10 @@ def register_callbacks(app: dash.Dash) -> None:
                 breadcrumb,
                 canvas_elements,
                 inspector,
-            ) = _state_replacement_payload(pipeline)
+            ) = _state_replacement_payload(
+                pipeline,
+                reference_metadata_path=_session_reference_path(state_data),
+            )
             return (
                 state_dict,
                 breadcrumb,
@@ -8014,7 +8130,7 @@ def _handle_param_edit(
     raw: Any
     if t_type == "param-bool":
         raw = ctx.triggered[0]["value"]
-    elif t_type == "param-enum":
+    elif t_type in ("param-enum", "param-column-scalar"):
         raw = ctx.triggered[0]["value"]
     elif t_type == "param-num":
         raw = _lookup_in_state(num_ids, num_values, prefix=prefix, name=name)
@@ -8058,6 +8174,10 @@ def _handle_param_edit(
     try:
         coerced = parse_widget_value(raw, p)
     except Exception:  # noqa: BLE001
+        return state_data
+    if t_type == "param-column-scalar" and coerced is None:
+        # A dropdown mounted with no selection (a value absent from the
+        # table) reports None; that is not an edit, and the field is a str.
         return state_data
 
     return _dispatch_state_update(

@@ -52,7 +52,7 @@ def build_release_button(
         label,
         id=button_id,
         # Outline secondary (navy on the brand remap), not "warning":
-        # Okabe-Ito orange is a data color and never a button fill (DESIGN.md "05").
+        # Okabe-Ito orange is a data color and never a button fill (DESIGN.md "Components").
         color="secondary",
         outline=True,
         size="sm",

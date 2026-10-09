@@ -60,7 +60,7 @@ REMOVED_LABEL = "removed by curation"
 #: separates them, which is why the colour is not also shared.
 _REMOVED_SYMBOL = "x"
 
-#: Colours for the hue channel, in DESIGN.md "06" series order.
+#: Colours for the hue channel, in DESIGN.md "Data Visualization" series order.
 #:
 #: Sliced to the six *categorical* series deliberately: ``OKABE_ITO``
 #: index 6 is vermilion, which ``_design.py`` and DESIGN.md reserve for

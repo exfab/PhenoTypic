@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field, model_validator
 
-from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK
+from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK, MeasurementInfo
 
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
@@ -365,19 +365,69 @@ class QualityCheck(SetAnalyzer, ABC):
         return members
 
     @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        The shared ``QUALITY_CHECK`` columns carry the check's :attr:`name`
+        (``QC_ICC_Metric``), so the enum value (``QC_Metric``) never appears
+        in a table. A check's own enum members are written as declared.
+
+        Only the abstract ``QualityCheck`` itself renders the ``<name>``
+        placeholder used in the Measurements reference. A concrete check with
+        no ``name`` raises instead, so it can never write ``QC_<name>_Metric``.
+
+        Args:
+            member: A ``QUALITY_CHECK`` member or one of the check's own.
+            on: Unused; accepted for the shared ``output_header`` signature.
+
+        Returns:
+            The emitted header.
+
+        Raises:
+            AttributeError: If a concrete check does not define ``name``.
+        """
+        if isinstance(member, QUALITY_CHECK):
+            return QUALITY_CHECK.header(member, cls._check_name())
+        return super().output_header(member, on)
+
+    @classmethod
+    def _check_name(cls) -> str | None:
+        """The check's ``name``; ``None`` only on the abstract base."""
+        name = getattr(cls, "name", None)
+        if name is None and cls is not QualityCheck:
+            raise AttributeError(
+                f"{cls.__name__} defines no `name`; every QualityCheck needs one, "
+                "because it names the check's QC_<name>_Metric/Flag/Status columns"
+            )
+        return name
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<name>``, which only the abstract base's headers contain."""
+        if cls._check_name() is not None:
+            return {}
+        from phenotypic.analysis.qc import ICC, ExpectedVsDetectedCount
+
+        examples = " and ".join(
+            f"``{check.__name__}`` writes ``{check.metric_col()}``"
+            for check in (ICC, ExpectedVsDetectedCount)
+        )
+        return {"<name>": f"the check's ``name``: {examples}."}
+
+    @classmethod
     def metric_col(cls) -> str:
         """Return the metric column name for this check."""
-        return f"QC_{cls.name}_Metric"
+        return cls.output_header(QUALITY_CHECK.METRIC)
 
     @classmethod
     def flag_col(cls) -> str:
         """Return the flag column name for this check."""
-        return f"QC_{cls.name}_Flag"
+        return cls.output_header(QUALITY_CHECK.FLAG)
 
     @classmethod
     def status_col(cls) -> str:
         """Return the status column name for this check."""
-        return f"QC_{cls.name}_Status"
+        return cls.output_header(QUALITY_CHECK.STATUS)
 
     def results(self) -> pd.DataFrame:
         """Return the augmented frame stored by the most recent analyze()."""

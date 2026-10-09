@@ -59,7 +59,9 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     read_failures,
     work_id_for_image,
+    work_identity_for_image,
 )
+from ._cli_reference import ReferencePin
 from ._cli_completion import image_data_artifact, publish_image_success
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
@@ -247,6 +249,87 @@ def _truncate_error_message(
     return "\n".join(kept_lines)
 
 
+def _report_gpu_pipeline_device(console: Any) -> str:
+    """Resolve the device a GPU pipeline's ``device="auto"`` will use, and say so.
+
+    With no accelerator, ``resolve_device`` falls back to CPU rather than
+    raising, so the run proceeds; this line tells the user up front that the
+    GPU operations will be slow, instead of printing ``GPU detected: cpu``.
+
+    Args:
+        console: A ``rich`` console to print the one-line report on.
+
+    Returns:
+        The resolved device string (``"cpu"`` when no accelerator exists).
+
+    Raises:
+        RuntimeError: PyTorch is not installed.
+    """
+    try:
+        from phenotypic.detect.nn._helper._checkpoint_manager import (
+            resolve_device,
+        )
+
+        device = resolve_device("auto")
+    except ImportError:
+        raise RuntimeError(
+            "Pipeline contains GPU-accelerated operations but PyTorch "
+            "is not installed. Install with: pip install phenotypic[torch]"
+        )
+    if device == "cpu":
+        console.print(
+            "[yellow]No GPU/accelerator detected — GPU operations "
+            "will run on CPU (much slower)[/yellow]"
+        )
+    else:
+        console.print(f"[green]✓ GPU detected: {device}[/green]")
+    return device
+
+
+def gpu_pipeline_slurm_args(slurm_args: Dict[str, Any]) -> Dict[str, Any]:
+    """The ``--slurm`` profile a non-staged GPU pipeline is submitted with.
+
+    Adds the default GPU request (``with_default_gpu_request``) and refuses a
+    partition ``sinfo`` positively lists as GPU-less. An explicit
+    ``slurm_gpus_per_node=0`` requests no GPU (the detectors then fall back to
+    CPU), so a CPU partition is what the user asked for and is not refused --
+    the same skip as the run preflight's ``check_gpu_partition``.
+
+    Args:
+        slurm_args: The user's ``--slurm`` profile.
+
+    Returns:
+        A new profile carrying the GPU request, or none for an explicit ``0``.
+
+    Raises:
+        RuntimeError: A GPU is requested and the partition has no GPUs.
+    """
+    from phenotypic.sdk_.slurm import (
+        effective_sbatch_option,
+        with_default_gpu_request,
+    )
+
+    requested = with_default_gpu_request(slurm_args)
+    if effective_sbatch_option(requested, "gpus-per-node") in (None, "0"):
+        return requested
+    # The partition sbatch will use, in either spelling (review E3).
+    partition = effective_sbatch_option(requested, "partition")
+    if partition:
+        # The shared check refuses only when sinfo positively lists the
+        # partition's GRES and none is a GPU; an unknown partition, a hidden
+        # one, or an absent or failing sinfo proceeds, and sbatch reports the
+        # real fault (spec F18, review E5/E6).
+        from phenotypic.sdk_.slurm._config import partition_gres_error
+
+        gres_error = partition_gres_error(partition)
+        if gres_error is not None:
+            raise RuntimeError(
+                f"Pipeline contains GPU operations but {gres_error}. "
+                "Use --slurm slurm_partition=<gpu-partition>."
+            )
+    return requested
+
+
 class ExecutionStrategy(ABC):
     """Base class for execution strategies."""
 
@@ -344,19 +427,10 @@ class LocalParallelStrategy(ExecutionStrategy):
         )
 
         if has_gpu_ops:
-            try:
-                from phenotypic.detect.nn._helper._checkpoint_manager import (
-                    resolve_device,
-                )
+            _report_gpu_pipeline_device(console)
 
-                device = resolve_device("auto")
-                console.print(f"[green]✓ GPU detected: {device}[/green]")
-            except ImportError:
-                raise RuntimeError(
-                    "Pipeline contains GPU-accelerated operations but PyTorch "
-                    "is not installed. Install with: pip install phenotypic[torch]"
-                )
-
+            # Sequential on CPU too: each loky worker would hold its own copy
+            # of the model, and torch already threads a CPU forward pass.
             effective_n_jobs = 1
             console.print(
                 "[yellow]Pipeline contains GPU operations — "
@@ -473,10 +547,12 @@ class LocalParallelStrategy(ExecutionStrategy):
             if self.config.detect_mode != "gray":
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
-            # Process
-            work_identity = work_id_for_image(
+            # Process. One identity per image, before the apply: its reference
+            # digest pins the context, and its work-id is what is published.
+            identity = work_identity_for_image(
                 self.config, dataset.name, image_path
             )
+            work_identity = (identity.work_id, identity.relative_path)
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -490,6 +566,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                 pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
                 work_id=work_identity[0],
+                reference_pin=ReferencePin(
+                    source_image_stem(image_path), identity.reference_digest
+                ),
             )
 
             _publish_local_image_success(
@@ -590,6 +669,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         attempt_id = uuid4().hex
         append_event(event_log, dataset.name, image_path.name, "started")
+        work_identity: tuple[str, str] | None = None
         try:
             read_kwargs: Dict[str, Any] = {}
             if self.config.bit_depth:
@@ -597,6 +677,13 @@ class LocalParallelStrategy(ExecutionStrategy):
             if self.config.detect_mode != "gray":
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
+            # Before the apply, never after it (review F1): a later invocation
+            # may re-plan the image meanwhile, and the output must be published
+            # under the identity of the plan that produced it.
+            identity = work_identity_for_image(
+                self.config, dataset.name, image_path
+            )
+            work_identity = (identity.work_id, identity.relative_path)
             process_single_apply_only_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -609,6 +696,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_ncols=self.config.ncols,
                 process_format=self.config.process_format,
                 run_initiation=self.config.run_initiation,
+                dataset_name=dataset.name,
+                reference_pin=ReferencePin(
+                    source_image_stem(image_path), identity.reference_digest
+                ),
             )
             _publish_local_image_success(
                 self.config,
@@ -617,6 +708,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 dataset.name,
                 image_path,
                 attempt_id,
+                work_identity=work_identity,
             )
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
@@ -635,6 +727,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=work_identity,
             )
             logger.error(
                 "Apply-only failed for %s/%s:\n%s",
@@ -906,35 +999,14 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         if not measure_only and pipeline_requires_gpu(
             self.config.pipeline_json
         ):
-            from phenotypic.sdk_.slurm import (
-                effective_sbatch_option,
-                with_default_gpu_request,
-            )
-
             if "slurm_gpus_per_node" not in self.config.slurm_args:
                 console.print(
                     "[yellow]Pipeline contains GPU operations — "
                     "auto-requesting --gpus-per-node=1[/yellow]"
                 )
-            slurm_args = with_default_gpu_request(self.config.slurm_args)
-
-            # The partition sbatch will use, in either spelling (review E3).
-            partition = effective_sbatch_option(slurm_args, "partition")
-            if partition:
-                # The shared check refuses only when sinfo positively lists
-                # the partition's GRES and none is a GPU; an unknown partition,
-                # a hidden one, or an absent or failing sinfo proceeds, and
-                # sbatch reports the real fault (spec F18, review E5/E6).
-                from phenotypic.sdk_.slurm._config import partition_gres_error
-
-                gres_error = partition_gres_error(partition)
-                if gres_error is not None:
-                    raise RuntimeError(
-                        f"Pipeline contains GPU operations but {gres_error}. "
-                        "Use --slurm slurm_partition=<gpu-partition>."
-                    )
-
-            self.config.slurm_args = slurm_args
+            self.config.slurm_args = gpu_pipeline_slurm_args(
+                self.config.slurm_args
+            )
 
         # Create the scheduler fence before rendering immutable workers so the
         # scripts carry the exact lifecycle generation they must own when

@@ -57,11 +57,15 @@ def _register_fake_gpu_detector(monkeypatch):
     monkeypatch.setattr(phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False)
 
 
-def _seed_entry(store: Path, run: FigureRun) -> dict:
-    """Write the run folder an earlier Stage 3 of this run would have left."""
+def _seed_entry(store: Path, run: FigureRun, plot: str | None) -> dict:
+    """Write the run folder an earlier Stage 3 of this run would have left.
+
+    ``plot=None`` is a flat page; a name puts the page in that plot folder.
+    """
     page = StoredFigurePage(
         "default", None, "mpl", {},
         (StoredFigureFile("png", "image/png", "default.png", SEEDED),),
+        plot=plot, directory=plot,
     )
     seed = StoredFigures(
         run,
@@ -72,7 +76,13 @@ def _seed_entry(store: Path, run: FigureRun) -> dict:
     return read_image_figures_descriptor(store)["runs"][run.run_id]["bindings"]["PostApplyState"]
 
 
-def test_stage3_keeps_a_post_gpu_apply_state_figure_from_its_run_folder(tmp_path):
+@pytest.mark.parametrize("plot, kept_path", [
+    (None, "PostApplyState/default.png"),
+    ("tiles", "PostApplyState/tiles/default.png"),
+], ids=["flat", "foldered"])
+def test_stage3_keeps_a_post_gpu_apply_state_figure_from_its_run_folder(
+    tmp_path, plot, kept_path
+):
     image_path = tmp_path / "img.tiff"
     load_synth_yeast_plate().rgb.imsave(filepath=image_path)
     out = tmp_path / "out"
@@ -103,7 +113,7 @@ def test_stage3_keeps_a_post_gpu_apply_state_figure_from_its_run_folder(tmp_path
         date=DAY,
         pipeline_sha256=hashlib.sha256(pipeline_path.read_bytes()).hexdigest(),
     )
-    seeded = _seed_entry(store, run)
+    seeded = _seed_entry(store, run, plot)
 
     plan.gpu_detector._ensure_model_loaded()
     stage2_detect_core(plan.gpu_detector, out, "ds", "img", detector_slot(plan.gpu_path))
@@ -112,5 +122,8 @@ def test_stage3_keeps_a_post_gpu_apply_state_figure_from_its_run_folder(tmp_path
     final = read_image_figures_descriptor(store)["runs"][run.run_id]
     assert final["unavailable"] == [] and final["failed"] == []
     assert final["bindings"]["PostApplyState"] == seeded
-    [stored] = final["bindings"]["PostApplyState"]["pages"][0]["files"]
+    [page] = final["bindings"]["PostApplyState"]["pages"]
+    assert page["plot"] == plot
+    [stored] = page["files"]
+    assert stored["path"] == f"figures/{run.run_id}/{kept_path}"
     assert (store / stored["path"]).read_bytes() == SEEDED

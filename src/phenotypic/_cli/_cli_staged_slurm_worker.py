@@ -27,6 +27,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu
+from ._cli_reference import ReferencePin
 from ._cli_preload import preload_custom_operation_modules
 from ._cli_stage2_token import (
     delete_stage2_raw,
@@ -102,6 +103,16 @@ def _record_terminal_scientific_failure(
         slurm_job_id=os.environ.get("SLURM_JOB_ID", ""),
         commit_guard=commit_guard,
     )
+
+
+def _reference_pin(item: StagedManifestEntry) -> ReferencePin:
+    """Pin a stage to the digest the entry's work-id was computed from.
+
+    The submitter computed both once, before any stage ran
+    (``staged_manifest_entry``), so all three stages apply the plan the
+    image's records are published under.
+    """
+    return ReferencePin(item.stem, item.reference_digest)
 
 
 def _active_check(output_dir: Path, epoch: str | None):
@@ -215,6 +226,7 @@ def run_stage1_step(
                 pipeline_path=pipeline_path,
                 pipeline_identity=pipeline_identity,
                 drop_originals=drop_originals,
+                reference_pin=_reference_pin(item),
             )
     except Exception as exc:
         _record_terminal_scientific_failure(
@@ -335,6 +347,7 @@ def run_stage2_shard(
                     active_check=check,
                     commit_guard=commit_guard,
                     stage2_prefix=plan.stage2_prefix,
+                    reference_pin=_reference_pin(item),
                 )
         except Exception as exc:
             inactive = slurm_generation_inactive_cause(exc)
@@ -491,6 +504,7 @@ def run_stage3_step(
                 commit_guard=commit_guard,
                 image_name=item.image_name,
                 work_id=item.work_id,
+                reference_pin=_reference_pin(item),
             )
             if item.work_id:
                 data_key, data_path = image_data_artifact(

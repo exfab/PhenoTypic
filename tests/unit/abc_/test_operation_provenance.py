@@ -15,6 +15,7 @@ from phenotypic._core._provenance import (
     provenance_success_sink,
 )
 from phenotypic.enhance import BlurGauss
+from phenotypic.sdk_.exceptions_ import OperationIntegrityError
 from phenotypic.settings import validation
 
 
@@ -248,7 +249,12 @@ def test_failed_operate_appends_nothing() -> None:
 def test_integrity_failure_appends_nothing() -> None:
     image = _plate()
 
-    with validation(True), pytest.raises(RuntimeError):
+    # The integrity check itself must fire. This used to expect RuntimeError,
+    # which only arrived because a whole-layer rgb read left the stored array
+    # read-only, so the op's own write failed first and the check never ran.
+    with validation(True), pytest.raises(
+        OperationIntegrityError, match="image.rgb was modified"
+    ):
         _IntegrityBreakingEnhancer().apply(image, inplace=True)
 
     assert image.provenance == ()

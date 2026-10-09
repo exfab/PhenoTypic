@@ -172,14 +172,25 @@ def with_default_gpu_request(slurm_args: dict[str, Any]) -> dict[str, Any]:
     profile already names it. The run preflight tests the same profile, so the
     two share this definition (Phase E review E2).
 
+    An explicit ``slurm_gpus_per_node=0`` is the user opting out of a GPU (the
+    detectors' ``device="auto"`` then falls back to CPU), so the key is
+    **removed**: ``format_sbatch_directives`` would otherwise emit
+    ``--gpus-per-node=0``, which SLURM rejects. This mirrors the staged
+    engine's ``resolve_stage_slurm_args``.
+
     Args:
         slurm_args: The ``--slurm`` profile.
 
     Returns:
-        A new dict carrying the GPU request.
+        A new dict carrying the GPU request, or without one when the profile
+        asked for zero GPUs.
     """
     requested = dict(slurm_args)
-    requested.setdefault("slurm_gpus_per_node", 1)
+    gpus = requested.get("slurm_gpus_per_node")
+    if gpus is None:
+        requested["slurm_gpus_per_node"] = 1
+    elif str(gpus).strip() == "0":
+        del requested["slurm_gpus_per_node"]
     return requested
 
 

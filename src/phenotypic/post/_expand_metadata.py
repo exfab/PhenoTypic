@@ -23,12 +23,12 @@ class ExpandMetadata(PostMeasurement):
     raised.
 
     Args:
-        column: Name of the metadata column to split. The schema category
+        column: Name of the metadata column to split. The schema metric-family
             prefix is added automatically if missing (e.g. ``ImageName`` ->
             ``Metadata_ImageName``; unknown labels get a generic
             ``Metadata_`` prefix).
         labels: Names for the resulting columns, one per split part. The
-            schema category prefix is added automatically if missing (e.g.
+            schema metric-family prefix is added automatically if missing (e.g.
             ``Strain`` -> ``Metadata_Strain``).
         delimiter: String or regex pattern to split on. Defaults to ``"_"``.
         regex: If True, treat delimiter as a regex pattern. Defaults to
@@ -86,13 +86,13 @@ class ExpandMetadata(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
+        """Apply the schema metric-family prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
         return ensure_metadata_prefix(column) if column else ""
 
     @field_validator("labels", mode="before")
     @classmethod
     def _prefix_labels(cls, labels: List[str] | None) -> List[str]:
-        """Apply the schema category prefix (generic ``Metadata_`` fallback) to each label.
+        """Apply the schema metric-family prefix (generic ``Metadata_`` fallback) to each label.
 
         Accepts ``None``/``[]`` (the "unset" state) unchanged so the empty
         default validates cleanly (``model_validate`` / assignment

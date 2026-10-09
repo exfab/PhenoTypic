@@ -1,19 +1,20 @@
 """Single-source-of-truth design tokens for the GUI.
 
-Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
+Mirrors ``DESIGN.md`` v2.0. :func:`inject_design_tokens` splices four
 ``<style>`` blocks into every Dash app's ``index_string``:
 
-* :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Comfortaa for
-  display + body, JetBrains Mono for mono, IBM Plex Serif kept only for
-  italic species names) and declares the ``--font-display`` / ``--font-body``
-  / ``--font-mono`` / ``--font-species`` custom properties.
+* :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Nunito Sans for
+  display, body and italic species names; JetBrains Mono for all data and
+  table values) plus the IBM Plex families the chart subsystem still uses,
+  and declares the ``--font-display`` / ``--font-body`` / ``--font-mono`` /
+  ``--font-species`` custom properties.
 * :data:`DESIGN_TOKENS_CSS` -- the brand + Okabe-Ito palettes, type scale,
   semantic ``--font-size-*`` aliases, line-height / tracking, spacing,
   radius, shadow, and ease/transition tokens.
 * :data:`BOOTSTRAP_OVERRIDE_CSS` -- remaps ``dbc.themes.BOOTSTRAP`` onto the
   brand palette so ``color="primary"`` etc. render navy, not Bootstrap blue.
 * :data:`BASE_STYLES_CSS` -- conservative element defaults plus the named
-  ``.text-*`` style classes (DESIGN.md "02.5 / 02.6").
+  ``.text-*`` style classes (DESIGN.md "Typography / Text Styles in CSS").
 
 To swap a role font: change ``_DISPLAY_PRIMARY`` / ``_BODY_PRIMARY`` /
 ``_MONO_PRIMARY`` / ``_SPECIES_PRIMARY`` and update ``_GOOGLE_FONTS_URL``.
@@ -37,7 +38,9 @@ __all__ = [
     # ---- Brand / UI palette (UI ONLY -- never charts) ----
     "COLOR_NAVY",
     "COLOR_BLUE",
+    "COLOR_BLUE_TEXT",
     "COLOR_GOLD",
+    "COLOR_GOLD_TEXT",
     "COLOR_WHITE",
     "COLOR_BG",
     "COLOR_SURFACE",
@@ -77,6 +80,7 @@ __all__ = [
     "TEXT_2XS",
     "TEXT_XS",
     "TEXT_SM",
+    "TEXT_DATA",
     "TEXT_BASE",
     "TEXT_MD",
     "TEXT_LG",
@@ -91,6 +95,7 @@ __all__ = [
     "FONT_SIZE_HEADER_2",
     "FONT_SIZE_BODY_LG",
     "FONT_SIZE_BODY",
+    "FONT_SIZE_DATA",
     "FONT_SIZE_BODY_SM",
     "FONT_SIZE_CAPTION",
     "FONT_SIZE_MICRO",
@@ -136,6 +141,8 @@ __all__ = [
     "ERROR_CATEGORY_COLORS",
     "category_color",
     # ---- CSS bundles ----
+    "GOOGLE_FONTS_URL",
+    "type_tokens_css",
     "FONT_TOKENS_CSS",
     "DESIGN_TOKENS_CSS",
     "BOOTSTRAP_OVERRIDE_CSS",
@@ -145,42 +152,40 @@ __all__ = [
 ]
 
 # ---------------------------------------------------------------------------
-# Role fonts (Google Fonts) -- DESIGN.md "02.1 Font Families"
+# Role fonts (Google Fonts) -- DESIGN.md "Typography / Font Families"
 # ---------------------------------------------------------------------------
 #
 # Four role families (NOT one family across all roles):
 #
-#   display -- Comfortaa     : content headings, large stat values.
-#   body    -- Comfortaa     : prose, UI/component titles, button + tab labels.
+#   display -- Nunito Sans   : content headings, large stat values.
+#   body    -- Nunito Sans   : prose, UI/component titles, button + tab labels.
 #   mono    -- JetBrains Mono : ALL numeric data, axis labels, badge / label /
 #              caption text, and code tokens.
-#   species -- IBM Plex Serif : ITALIC binomial species names ONLY. Comfortaa
-#              ships no true italic face, so italic *Genus species* is set in a
-#              real serif italic instead of a browser-synthesized oblique.
+#   species -- Nunito Sans   : ITALIC binomial species names, set in the
+#              family's own true italic.
 #
-# Comfortaa carries both the display and body voice (one rounded geometric
-# sans across chrome); JetBrains Mono carries the data voice; IBM Plex Serif
-# is retained solely for italic species names. To swap a role, change its
-# ``_*_PRIMARY`` below and update ``_GOOGLE_FONTS_URL`` to load the new family
-# -- every call site inherits via the ``--font-*`` custom properties /
+# Nunito Sans carries all general text and formatting; JetBrains Mono carries
+# every data value and table value. The species role stays a separate token
+# so a future change of species face is one edit here. To swap a role, change
+# its ``_*_PRIMARY`` below and update ``_GOOGLE_FONTS_URL`` to load the new
+# family -- every call site inherits via the ``--font-*`` custom properties /
 # ``FONT_FAMILY_*`` constants.
 
-_DISPLAY_PRIMARY = "Comfortaa"
-_BODY_PRIMARY = "Comfortaa"
+_DISPLAY_PRIMARY = "Nunito Sans"
+_BODY_PRIMARY = "Nunito Sans"
 _MONO_PRIMARY = "JetBrains Mono"
-_SPECIES_PRIMARY = "IBM Plex Serif"
+_SPECIES_PRIMARY = "Nunito Sans"
 
-# The @import loads more than the four chrome roles: the chart subsystem
-# (``phenotypic.sdk_.viz.figures._theme``) is intentionally NOT migrated to
-# Comfortaa -- it keeps IBM Plex Sans for plot titles / legend names and IBM
-# Plex Serif for donut center values (DESIGN.md "06 -- Charts"). Those plots
-# render inside GUI Dash pages, so the IBM Plex families must stay loaded here
-# even though no ``--font-*`` chrome token references IBM Plex Sans. Comfortaa
-# carries display + body; JetBrains Mono carries data; IBM Plex Serif (italic)
-# also backs ``--font-species`` for binomial names.
+# The @import loads more than the chrome roles: the chart subsystem
+# (``phenotypic.sdk_.viz.figures._theme``) keeps IBM Plex Sans for plot titles
+# / legend names and IBM Plex Serif for donut center values (DESIGN.md
+# "Data Visualization"). Those plots render inside GUI Dash pages, so the IBM
+# Plex families stay loaded here even though no ``--font-*`` chrome token
+# references them. Nunito Sans loads 400-700 upright plus the 400 and 600
+# italics ``--font-species`` needs in body text and in weight-600 headings.
 _GOOGLE_FONTS_URL = (
     "https://fonts.googleapis.com/css2?"
-    "family=Comfortaa:wght@400;500;600;700"
+    "family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600"
     "&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500"
     "&family=IBM+Plex+Sans:wght@400;500;600;700"
     "&family=JetBrains+Mono:wght@400;500;600"
@@ -189,9 +194,9 @@ _GOOGLE_FONTS_URL = (
 
 # Cross-platform fallbacks: kick in if the Google Font is blocked or slow to
 # load. The stacks cover macOS / iOS, Windows, Linux, and Android in turn
-# before bottoming out on the generic CSS family. Display + body share the
-# sans stack (Comfortaa is a rounded sans); species falls back to a serif so
-# italic binomials stay serif even offline.
+# before bottoming out on the generic CSS family. Display, body and species
+# share the sans stack, so offline italic binomials fall back to the system
+# sans italic.
 _FALLBACK_SANS = (
     '-apple-system, BlinkMacSystemFont, "Segoe UI", '
     '"Helvetica Neue", Arial, sans-serif'
@@ -202,7 +207,7 @@ _FALLBACK_MONO = (
     'ui-monospace, "SFMono-Regular", Menlo, Consolas, '
     '"Liberation Mono", "Courier New", monospace'
 )
-_FALLBACK_SPECIES = 'Georgia, "Times New Roman", Times, serif'
+_FALLBACK_SPECIES = _FALLBACK_SANS
 
 # Python-side font-family strings -- mirror the CSS custom properties
 # below. Use these from Python inline ``style={...}`` dicts and from
@@ -213,6 +218,10 @@ FONT_FAMILY_DISPLAY: str = f"'{_DISPLAY_PRIMARY}', {_FALLBACK_DISPLAY}"
 FONT_FAMILY_BODY: str = f"'{_BODY_PRIMARY}', {_FALLBACK_BODY}"
 FONT_FAMILY_MONO: str = f"'{_MONO_PRIMARY}', {_FALLBACK_MONO}"
 FONT_FAMILY_SPECIES: str = f"'{_SPECIES_PRIMARY}', {_FALLBACK_SPECIES}"
+
+#: Public alias of the role-font stylesheet URL, for standalone HTML outputs
+#: (the CLI dashboard and processing report) that load the same faces.
+GOOGLE_FONTS_URL: str = _GOOGLE_FONTS_URL
 
 FONT_TOKENS_CSS = f"""\
 @import url("{_GOOGLE_FONTS_URL}");
@@ -229,24 +238,29 @@ FONT_TOKENS_CSS = f"""\
 # Brand / UI palette (PRIMARY -- UI only, never charts)
 # ---------------------------------------------------------------------------
 #
-# Values mirror DESIGN.md "01 -- Color Palette / Primary Colors". Used
+# Values mirror DESIGN.md "Colors / Primary Colors -- UI Only". Used
 # by ``--color-*`` CSS custom properties and importable by Python
 # inline-style callers.
 
 COLOR_NAVY: str = "#003660"
 COLOR_BLUE: str = "#1b75bc"
+#: Blue as text on its own 8% tint (active buttons, blue badges): the brand blue
+#: reaches 4.38:1 there, just under WCAG AA, so text takes this 4.5:1 variant.
+COLOR_BLUE_TEXT: str = "#1b73b9"
 COLOR_GOLD: str = "#febc11"
+#: Gold as text (on white, the canvas, or its own tint): 4.5:1 for WCAG AA.
+COLOR_GOLD_TEXT: str = "#926a00"
 COLOR_WHITE: str = "#ffffff"
-COLOR_BG: str = "#FBFEF8"  # near-white warm canvas (DESIGN.md "01 -- Color Palette")
+COLOR_BG: str = "#FBFEF8"  # near-white warm canvas (DESIGN.md "Colors")
 COLOR_SURFACE: str = "#ffffff"
 COLOR_BORDER: str = "#dde3ed"
 COLOR_RULE: str = "#e8ecf2"
-COLOR_MUTED: str = "#8892a4"
+COLOR_MUTED: str = "#6d7684"  # 4.5:1 on white and on the #FBFEF8 canvas (WCAG AA)
 COLOR_BODY: str = "#2e3a4e"
 COLOR_HEADING: str = COLOR_NAVY  # Same as navy; kept named for semantic call-sites.
 
 #: The one permitted dark surface in this light-theme system: the image stage
-#: where the pixels are the data (DESIGN.md "09 -- Image Display"). Use for the
+#: where the pixels are the data (DESIGN.md "Image Display & Viewers"). Use for the
 #: fluorescence/OSD canvas background; never for UI chrome.
 COLOR_IMAGE_STAGE_DARK: str = "#0e1620"
 
@@ -272,10 +286,10 @@ OI_GREY: str = "#BBBBBB"
 
 #: Series 1 of the fixed Okabe-Ito order is navy -- the same hex as the UI
 #: ``COLOR_NAVY`` but exported under a data-palette name so chart call sites
-#: read as data, not chrome. See DESIGN.md "06 -- Categorical Series Order".
+#: read as data, not chrome. See DESIGN.md "Data Visualization / Categorical Series Order".
 OI_NAVY: str = COLOR_NAVY
 
-#: Fixed categorical series order (DESIGN.md "06"). Index 0..5 are the six
+#: Fixed categorical series order (DESIGN.md "Data Visualization"). Index 0..5 are the six
 #: categorical series; index 6 (vermilion) is error/alert only; grey is for
 #: reference / control / null lines.
 OKABE_ITO: tuple[str, ...] = (
@@ -289,7 +303,7 @@ OKABE_ITO: tuple[str, ...] = (
 )
 
 #: napari label-layer color map (1-indexed) mirroring ``OKABE_ITO`` so a mask
-#: color in the dashboard matches the same label in napari (DESIGN.md "07").
+#: color in the dashboard matches the same label in napari (DESIGN.md "Code Integration").
 #: RGBA tuples normalized 0-1.
 OKABE_ITO_NAPARI: dict[int, tuple[float, float, float, float]] = {
     1: (0 / 255, 54 / 255, 96 / 255, 1.0),  # navy
@@ -352,13 +366,13 @@ COLOR_WARNING: str = OI_ORANGE
 COLOR_DANGER: str = OI_VERMILION
 
 # Darkened Okabe-Ito TEXT variants for WCAG AA (4.5:1) on white surfaces
-# (DESIGN.md "05 -- Badges"). NEVER use a raw OI_* hex as badge / alert / status
+# (DESIGN.md "Components / Badges"). NEVER use a raw OI_* hex as badge / alert / status
 # text on white; use these instead.
-OI_ORANGE_TEXT: str = "#9A6B00"
+OI_ORANGE_TEXT: str = "#966800"
 OI_SKY_TEXT: str = "#0B6E9E"
 OI_GREEN_TEXT: str = "#006B4F"
 OI_PURPLE_TEXT: str = "#8B3D6E"
-OI_VERMILION_TEXT: str = "#D55E00"  # vermilion meets AA as-is; alerts use #8A3C00
+OI_VERMILION_TEXT: str = "#b85100"  # AA on white and on the 8% vermilion badge tint; alerts use #8A3C00
 
 # ---------------------------------------------------------------------------
 # Visual tokens (non-palette)
@@ -393,14 +407,15 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 # ---------------------------------------------------------------------------
-# Type scale (rem-based; tuned for ~15 px body)
+# Type scale (rem-based; 16 px body, 15 px mono data values)
 # ---------------------------------------------------------------------------
 
 TEXT_2XS: str = "0.625rem"  # ~10 px -- data micro floor (chart axis, sparkline)
 TEXT_XS: str = "0.6875rem"  # ~11 px -- captions, footnotes
 TEXT_SM: str = "0.8125rem"  # ~13 px -- secondary UI labels
-TEXT_BASE: str = "0.9375rem"  # ~15 px -- body text
-TEXT_MD: str = "1.0625rem"  # ~17 px -- emphasized body
+TEXT_DATA: str = "0.9375rem"  # ~15 px -- mono data and table values
+TEXT_BASE: str = "1rem"  # 16 px -- body text
+TEXT_MD: str = "1.125rem"  # ~18 px -- emphasized body
 TEXT_LG: str = "1.25rem"  # ~20 px -- subhead
 TEXT_XL: str = "1.5rem"  # ~24 px -- builder canvas titles
 TEXT_2XL: str = "1.875rem"  # ~30 px -- page / dashboard top titles
@@ -421,12 +436,15 @@ TEXT_4XL: str = "3.25rem"  # ~52 px -- reserve (hero display)
 #   FONT_SIZE_HEADER_1  -- section heads
 #   FONT_SIZE_HEADER_2  -- sub-section heads
 #   FONT_SIZE_BODY_LG   -- emphasized / lead body
-#   FONT_SIZE_BODY      -- default body copy
+#   FONT_SIZE_BODY      -- default body copy (16 px)
+#   FONT_SIZE_DATA      -- mono data and table values (15 px); kept below
+#                          body so the Nunito Sans body size never reflows
+#                          tables
 #   FONT_SIZE_BODY_SM   -- UI titles, button labels, dense body (13 px)
 #   FONT_SIZE_CAPTION   -- form labels, overlines, badge text (11 px)
 #   FONT_SIZE_MICRO     -- chart axis ticks, sparkline floor (10 px)
 #
-# NOTE (DESIGN.md "02.7"): the 13 px rung was renamed from ``FONT_SIZE_LABEL``
+# NOTE (DESIGN.md "Typography / Reconciliations & Flags"): the 13 px rung was renamed from ``FONT_SIZE_LABEL``
 # to ``FONT_SIZE_BODY_SM`` and the Label / Overline role moved down to
 # ``FONT_SIZE_CAPTION`` (11 px). ``FONT_SIZE_LABEL`` is kept as a DEPRECATED
 # alias of ``FONT_SIZE_BODY_SM``; new call sites use the new names.
@@ -435,8 +453,9 @@ FONT_SIZE_DISPLAY: str = TEXT_3XL  # 2.5rem
 FONT_SIZE_TITLE: str = TEXT_2XL  # 1.875rem
 FONT_SIZE_HEADER_1: str = TEXT_XL  # 1.5rem
 FONT_SIZE_HEADER_2: str = TEXT_LG  # 1.25rem
-FONT_SIZE_BODY_LG: str = TEXT_MD  # 1.0625rem
-FONT_SIZE_BODY: str = TEXT_BASE  # 0.9375rem
+FONT_SIZE_BODY_LG: str = TEXT_MD  # 1.125rem
+FONT_SIZE_BODY: str = TEXT_BASE  # 1rem
+FONT_SIZE_DATA: str = TEXT_DATA  # 0.9375rem
 FONT_SIZE_BODY_SM: str = TEXT_SM  # 0.8125rem
 FONT_SIZE_CAPTION: str = TEXT_XS  # 0.6875rem
 FONT_SIZE_MICRO: str = TEXT_2XS  # 0.625rem
@@ -471,7 +490,7 @@ SHADOW: str = "0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05)"
 SHADOW_MD: str = "0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06)"
 SHADOW_LG: str = "0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07)"
 
-# Line-height & tracking tokens (DESIGN.md "02.3"). Python mirrors of the
+# Line-height & tracking tokens (DESIGN.md "Typography / Line-height & Tracking Tokens"). Python mirrors of the
 # injected ``--leading-*`` / ``--tracking-*`` custom properties.
 LEADING_DISPLAY: str = "1.1"
 LEADING_TIGHT: str = "1.2"
@@ -501,7 +520,9 @@ DESIGN_TOKENS_CSS = f"""\
   /* ---- Brand / UI ---- */
   --color-navy:    {COLOR_NAVY};
   --color-blue:    {COLOR_BLUE};
+  --color-blue-text: {COLOR_BLUE_TEXT};
   --color-gold:    {COLOR_GOLD};
+  --color-gold-text: {COLOR_GOLD_TEXT};
   --color-white:   {COLOR_WHITE};
   --color-bg:      {COLOR_BG};
   --color-surface: {COLOR_SURFACE};
@@ -542,6 +563,7 @@ DESIGN_TOKENS_CSS = f"""\
   --text-2xs:  {TEXT_2XS};
   --text-xs:   {TEXT_XS};
   --text-sm:   {TEXT_SM};
+  --text-data: {TEXT_DATA};
   --text-base: {TEXT_BASE};
   --text-md:   {TEXT_MD};
   --text-lg:   {TEXT_LG};
@@ -557,6 +579,7 @@ DESIGN_TOKENS_CSS = f"""\
   --font-size-header-2: var(--text-lg);
   --font-size-body-lg:  var(--text-md);
   --font-size-body:     var(--text-base);
+  --font-size-data:     var(--text-data);
   --font-size-body-sm:  var(--text-sm);
   --font-size-caption:  var(--text-xs);
   --font-size-micro:    var(--text-2xs);
@@ -613,7 +636,7 @@ DESIGN_TOKENS_CSS = f"""\
 # etc. would otherwise render Bootstrap blue/grey/red. This single injected
 # layer points Bootstrap's CSS variables and button variants at the brand
 # palette so no per-call-site ``color=`` change is needed. Okabe-Ito is never a
-# button fill here; only the danger variant uses vermilion (DESIGN.md "05").
+# button fill here; only the danger variant uses vermilion (DESIGN.md "Components").
 
 _NAVY_HOVER = "#00284a"  # navy darkened ~8% for filled-button hover
 
@@ -627,7 +650,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
   --bs-border-color:     var(--color-border);
 
   --bs-primary:   var(--color-navy);    --bs-primary-rgb:   0,54,96;
-  --bs-secondary: var(--color-muted);   --bs-secondary-rgb: 136,146,164;
+  --bs-secondary: var(--color-muted);   --bs-secondary-rgb: 109,118,132;
   --bs-success:   var(--oi-green);      --bs-success-rgb:   0,158,115;
   --bs-info:      var(--oi-sky);        --bs-info-rgb:      86,180,233;
   --bs-warning:   var(--oi-orange);     --bs-warning-rgb:   230,159,0;
@@ -655,13 +678,13 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
   --bs-btn-border-color: var(--color-border);
   --bs-btn-hover-bg: rgba(27,117,188,0.04); --bs-btn-hover-color: var(--color-blue);
   --bs-btn-hover-border-color: var(--color-blue);
-  --bs-btn-active-bg: rgba(27,117,188,0.08); --bs-btn-active-color: var(--color-blue);
+  --bs-btn-active-bg: rgba(27,117,188,0.08); --bs-btn-active-color: var(--color-blue-text);
 }}
 .btn-danger, .btn-outline-danger {{
-  --bs-btn-bg: transparent; --bs-btn-color: var(--oi-vermilion);
+  --bs-btn-bg: transparent; --bs-btn-color: var(--oi-vermilion-text);
   --bs-btn-border-color: var(--oi-vermilion);
-  --bs-btn-hover-bg: var(--oi-vermilion); --bs-btn-hover-color: #fff;
-  --bs-btn-hover-border-color: var(--oi-vermilion);
+  --bs-btn-hover-bg: var(--oi-vermilion-text); --bs-btn-hover-color: #fff;
+  --bs-btn-hover-border-color: var(--oi-vermilion-text);
 }}
 .btn-link {{ --bs-btn-color: var(--color-blue); --bs-btn-hover-color: var(--color-navy); text-decoration: none; }}
 .text-muted {{ color: var(--color-muted) !important; }}
@@ -669,10 +692,10 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
 """
 
 # ---------------------------------------------------------------------------
-# Base element defaults + named text-style classes (DESIGN.md "02.5 / 02.6")
+# Base element defaults + named text-style classes (DESIGN.md "Typography")
 # ---------------------------------------------------------------------------
 #
-# Element defaults are conservative -- they establish the serif/mono *identity*
+# Element defaults are conservative -- they establish the sans/mono *identity*
 # (family, weight, heading color) for raw tags without forcing sizes, so they
 # don't fight component-set sizes. The ``.text-*`` classes are the full named
 # recipes; apply one class to a node to get the exact spec style.
@@ -680,7 +703,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
 BASE_STYLES_CSS = """\
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 600;
   color: var(--color-heading);
 }
 code, kbd, samp, pre {
@@ -693,11 +716,11 @@ code:not(pre code), kbd {
   border-radius: var(--radius-sm);
 }
 
-.text-display    { font-family: var(--font-display); font-size: var(--font-size-display);   font-weight: 400; line-height: var(--leading-display); letter-spacing: var(--tracking-tight); color: var(--color-heading); }
-.text-title      { font-family: var(--font-display); font-size: var(--font-size-title);     font-weight: 400; line-height: var(--leading-snug);    letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-header     { font-family: var(--font-display); font-size: var(--font-size-header-1);  font-weight: 400; line-height: var(--leading-tight);   letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
-.text-h2         { font-family: var(--font-display); font-size: var(--font-size-header-2);  font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
-.text-h3         { font-family: var(--font-display); font-size: var(--font-size-body-lg);   font-weight: 400; line-height: var(--leading-snug);    color: var(--color-heading); }
+.text-display    { font-family: var(--font-display); font-size: var(--font-size-display);   font-weight: 600; line-height: var(--leading-display); letter-spacing: var(--tracking-tight); color: var(--color-heading); }
+.text-title      { font-family: var(--font-display); font-size: var(--font-size-title);     font-weight: 600; line-height: var(--leading-snug);    letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
+.text-header     { font-family: var(--font-display); font-size: var(--font-size-header-1);  font-weight: 600; line-height: var(--leading-tight);   letter-spacing: var(--tracking-snug);  color: var(--color-heading); }
+.text-h2         { font-family: var(--font-display); font-size: var(--font-size-header-2);  font-weight: 600; line-height: var(--leading-snug);    color: var(--color-heading); }
+.text-h3         { font-family: var(--font-display); font-size: var(--font-size-body-lg);   font-weight: 600; line-height: var(--leading-snug);    color: var(--color-heading); }
 
 .text-body-lg    { font-family: var(--font-body); font-size: var(--font-size-body-lg); font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
 .text-body       { font-family: var(--font-body); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-relaxed); color: var(--color-body); }
@@ -709,8 +732,8 @@ code:not(pre code), kbd {
 .text-label      { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wide);  text-transform: uppercase; color: var(--color-muted); }
 .text-overline   { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--color-muted); }
 .text-caption    { font-family: var(--font-mono); font-size: var(--font-size-caption); font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
-.text-data       { font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 500; line-height: var(--leading-normal); color: var(--color-heading); }
-.text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
+.text-data       { font-family: var(--font-mono); font-size: var(--font-size-data);    font-weight: 500; line-height: var(--leading-normal); color: var(--color-heading); }
+.text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-data);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
 .text-data-micro { font-family: var(--font-mono); font-size: var(--font-size-micro);   font-weight: 400; line-height: var(--leading-tight); letter-spacing: 0.02em; color: var(--color-muted); }
 
 .is-species      { font-family: var(--font-species); font-style: italic; }
@@ -721,6 +744,49 @@ code:not(pre code), kbd {
 # ---------------------------------------------------------------------------
 
 _MARKER = "<!-- phenotypic-design-tokens -->"
+
+
+def type_tokens_css(indent: str = "  ") -> str:
+    """Return the font-family and type-scale custom properties as CSS lines.
+
+    Standalone HTML outputs that cannot receive :func:`inject_design_tokens`
+    (the CLI dashboard and processing report) splice these declarations into
+    their own ``:root`` block, so their typography follows the GUI's: Nunito
+    Sans for general text and JetBrains Mono for every data and table value.
+    Pair it with a ``<link>`` to :data:`GOOGLE_FONTS_URL`.
+
+    Args:
+        indent: Prefix for every emitted line, to match the host stylesheet.
+
+    Returns:
+        Newline-joined ``--font-*``, ``--text-*`` and ``--font-size-*``
+        declarations, without a surrounding selector.
+
+    Examples:
+        >>> from phenotypic._gui._design import type_tokens_css
+        >>> "--font-size-data: 0.9375rem;" in type_tokens_css()
+        True
+    """
+    declarations = [
+        f"--font-display: {FONT_FAMILY_DISPLAY};",
+        f"--font-body:    {FONT_FAMILY_BODY};",
+        f"--font-mono:    {FONT_FAMILY_MONO};",
+        f"--font-species: {FONT_FAMILY_SPECIES};",
+        f"--text-2xs:  {TEXT_2XS};",
+        f"--text-xs:   {TEXT_XS};",
+        f"--text-sm:   {TEXT_SM};",
+        f"--text-data: {TEXT_DATA};",
+        f"--text-base: {TEXT_BASE};",
+        f"--text-md:   {TEXT_MD};",
+        f"--text-lg:   {TEXT_LG};",
+        f"--text-xl:   {TEXT_XL};",
+        f"--text-2xl:  {TEXT_2XL};",
+        f"--text-3xl:  {TEXT_3XL};",
+        f"--text-4xl:  {TEXT_4XL};",
+        f"--font-size-body: {FONT_SIZE_BODY};",
+        f"--font-size-data: {FONT_SIZE_DATA};",
+    ]
+    return "\n".join(indent + line for line in declarations)
 
 
 def inject_design_tokens(app) -> None:  # type: ignore[no-untyped-def]

@@ -46,6 +46,11 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
+from ._cli_reference import (
+    ReferencePin,
+    ReferencePlanStaleError,
+    worker_reference_context,
+)
 from ._cli_replay_detector import build_replay_pipeline
 from ._cli_stage2_token import (
     delete_stage2_raw,
@@ -288,8 +293,13 @@ def stage1_preprocess_core(
     pipeline_path: Path | None = None,
     pipeline_identity: Mapping[str, str] | None = None,
     drop_originals: bool = False,
+    reference_pin: ReferencePin | None = None,
 ) -> None:
-    """Read raw image, apply the pre-detector ops, publish the staged store."""
+    """Read raw image, apply the pre-detector ops, publish the staged store.
+
+    ``reference_pin`` carries the reference digest *work_id* was computed
+    from; the apply refuses a manifest that has re-planned the image since.
+    """
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image: Image | None = None
     checkpoint_ready = False
@@ -365,6 +375,8 @@ def stage1_preprocess_core(
                 active_check,
                 commit_guard=commit_guard,
             )
+        ), worker_reference_context(
+            output_dir, dataset_name, pin=reference_pin
         ):
             plan.pre_pipeline.apply(image, inplace=True)
         operation_count = len(current_application_operations(image))
@@ -409,7 +421,8 @@ def stage1_preprocess_core(
             )
     except SlurmGenerationInactiveError:
         raise
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
+        # A stale reference plan is not this image's fault: never terminal.
         if image is not None and checkpoint_ready:
             _mark_failed_checkpoint(
                 store, image, active_check, commit_guard=commit_guard
@@ -436,6 +449,7 @@ def stage2_detect_core(
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
     stage2_prefix: list[Any] | None = None,
+    reference_pin: ReferencePin | None = None,
 ) -> None:
     """Load the input layer (store read-only), infer, retain the raw + token.
 
@@ -450,20 +464,28 @@ def stage2_detect_core(
     that sit ahead of the detector *inside its own branch*. Stage 1 never ran
     them -- it stopped at the detector's top-level ancestor -- so the store
     holds pre-branch pixels and the detector must see the branch-prefixed ones.
+    A ``SubtractBlank`` in that prefix reads the run's reference metadata, so
+    the prefix runs inside :func:`worker_reference_context`, pinned to
+    ``reference_pin`` (the digest of the run's identity for the image), and
+    inside the ``try``: a prefix failure is this image's scientific failure,
+    not an unclassified exception.
     """
     image_cls = _image_class(image_type)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image = image_cls.load_zarr(store)  # read-only use; never re-promoted here
-    if stage2_prefix:
-        image = _apply_stage2_prefix(image, stage2_prefix)
-    array = getattr(image, detector.input_layer)[:]
     try:
+        if stage2_prefix:
+            with worker_reference_context(
+                output_dir, dataset_name, pin=reference_pin
+            ):
+                image = _apply_stage2_prefix(image, stage2_prefix)
+        array = getattr(image, detector.input_layer)[:]
         compute_started = perf_counter()
         sample = detector._preprocess(array)
         batch = detector._collate([sample])
         result = detector._infer_batch(batch)[0]
         detector_duration = perf_counter() - compute_started
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
         raise
     except Exception as exc:
         raise PerImageScientificError(STAGE_GPU_DETECT, exc) from exc
@@ -535,8 +557,14 @@ def stage3_merge_measure_core(
     commit_guard: CommitGuard | None = None,
     image_name: str | None = None,
     work_id: str | None = None,
+    reference_pin: ReferencePin | None = None,
 ) -> None:
-    """Replay the raw result, measure, re-promote the store, consume both."""
+    """Replay the raw result, measure, re-promote the store, consume both.
+
+    ``reference_pin`` carries the reference digest *work_id* was computed
+    from; both the replay apply and the measure refuse a manifest that has
+    re-planned the image since.
+    """
     image_cls = _image_class(image_type)
     slot = detector_slot(plan.gpu_path)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
@@ -588,9 +616,17 @@ def stage3_merge_measure_core(
                 active_check,
                 commit_guard=commit_guard,
             )
+        ), worker_reference_context(
+            output_dir, dataset_name, pin=reference_pin
         ):
             replay_pipeline.apply(image, inplace=True)
-        measurements = replay_pipeline.measure(image, apply_post=False)
+        # A measurer's private detector may read reference metadata too (it
+        # runs in full mode, so startup planned it), as in the single-pass
+        # ``apply_and_measure``.
+        with worker_reference_context(
+            output_dir, dataset_name, pin=reference_pin
+        ):
+            measurements = replay_pipeline.measure(image, apply_post=False)
 
         if output_manager.save_overlays:
             _check_active(active_check)
@@ -688,7 +724,7 @@ def stage3_merge_measure_core(
             )
     except SlurmGenerationInactiveError:
         raise
-    except MemoryError:
+    except (MemoryError, ReferencePlanStaleError):
         _mark_failed_checkpoint(
             store, image, active_check, commit_guard=commit_guard
         )

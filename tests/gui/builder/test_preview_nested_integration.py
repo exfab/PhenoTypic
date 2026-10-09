@@ -1,5 +1,13 @@
 """Nested previews: faithful threaded input + scope coexistence + route serves."""
+import flask
+import numpy as np
+import pandas as pd
+import pytest
+import tifffile
+
+from phenotypic._gui._config import CFG_IMAGE_ROOT
 from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic.sdk_ import load_image_from_store
 from phenotypic._gui.builder._app import create_app
 from phenotypic._gui.builder._preview_zarr_routes import preview_zarr_url
 from phenotypic._gui.results_viewer._zarr_routes import store_generation_token
@@ -81,3 +89,49 @@ def test_parent_edit_invalidates_inner(tmp_path, monkeypatch):
             b.params["sigma"] = 1
     fp2 = pc.compute_scope(sid, state, scope_path, None, None, None)["fingerprint"]
     assert fp1 != fp2
+
+
+def test_nested_subtract_blank_previews_against_the_picked_table(tmp_path, monkeypatch):
+    """A nested scope reloads its input from a store; the name and root must survive.
+
+    The lookup keys on the image's name, so the store round-trip must keep
+    ``t01``; blanks must resolve beside the source image, not the scope store.
+    """
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    plates = tmp_path / "plates"
+    plates.mkdir()
+    target = np.full((64, 64), 120, dtype=np.uint8)
+    target[24:40, 24:40] = 220
+    tifffile.imwrite(plates / "t01.tif", target)
+    tifffile.imwrite(plates / "t00.tif", np.full((64, 64), 120, dtype=np.uint8))
+    table = tmp_path / "blank_map.csv"
+    pd.DataFrame({"ImageName": ["t01"], "BlankImage": ["t00"]}).to_csv(table, index=False)
+
+    inner = _DagBuilderScope()
+    subtract = BlockNode(block_id=_new_block_id(), class_name="SubtractBlank", params={})
+    inner.blocks.append(subtract)
+    inner.edges.append(_img_edge(inner.blocks[0].block_id, subtract.block_id))
+    container = BlockNode(block_id=_new_block_id(), class_name="ImagePipeline",
+                          params={}, nested=inner)
+    scope = _DagBuilderScope()
+    scope.blocks.append(container)
+    scope.edges.append(_img_edge(scope.blocks[0].block_id, container.block_id))
+    state = _DagBuilderState(root=scope)
+    state.reference_metadata_path = str(table)
+    sid = "nestedsess0003"
+    image = str(plates / "t01.tif")
+
+    # The table is confined to the builder's image root, read from the app.
+    app = flask.Flask("nested-preview-test")
+    app.config[CFG_IMAGE_ROOT] = tmp_path
+    with app.app_context():
+        assert pc.compute_scope(sid, state, [], image, None, None)["error"] is None
+        manifest = pc.compute_scope(sid, state, [container.block_id], image, None, None)
+    assert manifest["error"] is None, manifest["error"]
+
+    store = pc.scope_dir(sid, [container.block_id]) / manifest["nodes"][subtract.block_id]["store"]
+    result = load_image_from_store(store)
+    assert result.name == "t01"
+    detect_mat = result.detect_mat[:]
+    assert float(detect_mat.max()) == pytest.approx(100 / 255, abs=1e-6)
+    assert float(detect_mat.min()) == pytest.approx(0.0, abs=1e-6)

@@ -24,6 +24,7 @@ from ._focus_edge_frangi import FocusEdgeFrangi
 from ._blur_gauss import BlurGauss
 from ._focus_edge_hessian import FocusEdgeHessian
 from ._subtract_gaussian import SubtractGaussian
+from ._subtract_blank import SubtractBlank
 from ._image_inverter import ImageInverter
 from ._focus_edge_laplace import FocusEdgeLaplace
 from ._median_filter import MedianFilter
@@ -62,6 +63,7 @@ __all__ = [
     "FocusEdgeFrangi",
     "BlurGauss",
     "SubtractGaussian",
+    "SubtractBlank",
     "GrayOpening",
     "FocusEdgeHessian",
     "FlattenIllumination",

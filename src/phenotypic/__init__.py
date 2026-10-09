@@ -14,7 +14,7 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.20.0"
+__version__ = "0.20.2"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
@@ -32,6 +32,7 @@ _LAZY_CLASSES: dict[str, str] = {
     "Image": "._core._image",
     "GridImage": "._core._grid_image",
     "ImagePipeline": "._core._image_pipeline",
+    "ReferenceContext": "._core._reference_context",
 }
 
 #: Public subpackages. They resolve on first access, so ``import phenotypic`` -- and
@@ -92,11 +93,13 @@ if _TYPE_CHECKING:
     from ._core._grid_image import GridImage
     from ._core._image import Image
     from ._core._image_pipeline import ImagePipeline
+    from ._core._reference_context import ReferenceContext
 
 __all__ = [
     "Image",  # Class imported from _core
     "GridImage",  # Class imported from _core
     "ImagePipeline",
+    "ReferenceContext",
     "abc_",
     "analysis",
     "data",

@@ -125,3 +125,25 @@ def test_the_error_path_manifest_carries_the_version(tmp_path, monkeypatch) -> N
     manifest = pc.compute_scope("s", _linear_root_state([bad]), [], None, None, None)
     assert manifest["error"] is not None
     assert manifest["version"] == pc.MANIFEST_VERSION
+
+
+def test_reference_table_changes_the_root_fingerprint(tmp_path, monkeypatch) -> None:
+    import flask
+
+    from phenotypic._gui._config import CFG_IMAGE_ROOT
+
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    table = tmp_path / "blank_map.csv"
+    table.write_text("ImageName,BlankImage\nt01,t00\n", encoding="utf-8")
+    state = _linear_root_state([])
+    # The table is confined to the builder's image root, read from the app.
+    app = flask.Flask("fingerprint-test")
+    app.config[CFG_IMAGE_ROOT] = tmp_path
+    with app.app_context():
+        plain = pc.compute_scope("s", state, [], None, None, None)
+        state.reference_metadata_path = str(table)
+        with_ref = pc.compute_scope("s", state, [], None, None, None)
+        assert plain["fingerprint"] != with_ref["fingerprint"]
+        # Unset again: the fingerprint is exactly the pre-feature one.
+        state.reference_metadata_path = None
+        assert pc.compute_scope("s", state, [], None, None, None)["fingerprint"] == plain["fingerprint"]

@@ -33,7 +33,7 @@ def group_columns(
     ``scale`` because its column names carry the offset, so a bare call
     raises ``TypeError``. Rather than special-casing each schema, such a
     class falls back to matching the frame's columns against its
-    ``category()`` -- which generalizes to schemas that do not exist yet.
+    ``metric_family()`` -- which generalizes to schemas that do not exist yet.
 
     Args:
         columns: Column names to group.
@@ -68,7 +68,7 @@ def group_columns(
             try:
                 headers = list(info.get_headers())
             except TypeError:
-                prefix = f"{info.category()}_"
+                prefix = f"{info.metric_family()}_"
                 headers = [c for c in columns if c.startswith(prefix)]
             for header in headers:
                 owner.setdefault(header, name)

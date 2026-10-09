@@ -10,7 +10,7 @@ rewiring.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 import numpy as np
@@ -24,6 +24,8 @@ from phenotypic._gui._param_forms import (
 )
 from phenotypic._gui._param_forms import param_form as _shared_param_form  # noqa: F401  - re-export
 from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._reference_metadata import REFERENCE_SOURCE
+from phenotypic.sdk_ import ensure_metadata_prefix
 
 
 def _initial_picker_data(current_value: Any) -> list[list[float]]:
@@ -98,11 +100,39 @@ def _picker_widget(
     )
 
 
+def _prefixed_reference_columns(
+    op_info: OperationInfo,
+    current_values: dict[str, Any],
+    columns: list[str],
+) -> dict[str, Any]:
+    """Show a bare ``BlankImage`` as the ``Metadata_BlankImage`` it resolves to.
+
+    ``ReferenceContext`` accepts either spelling, but the dropdown matches
+    its normalized columns literally, so the bare one would render as stale
+    although the run succeeds.
+    """
+    resolved = dict(current_values)
+    for name, p in op_info.parameters.items():
+        value = resolved.get(name)
+        if (
+            p.column_ref is None
+            or p.column_ref.source != REFERENCE_SOURCE
+            or not isinstance(value, str)
+            or value in columns
+        ):
+            continue
+        prefixed = ensure_metadata_prefix(value)
+        if prefixed in columns:
+            resolved[name] = prefixed
+    return resolved
+
+
 def param_form(
     op_info: OperationInfo,
     current_values: dict[str, Any],
     *,
     form_id_prefix: str,
+    columns_provider: Callable[[str], list[str]] | None = None,
 ) -> dbc.Form:
     """Builder-flavoured ``param_form`` that injects the point picker.
 
@@ -124,12 +154,32 @@ def param_form(
             typically the consumer node's ``node_id`` (or the focused
             aux node's ``node_id`` when the inspector is focused on a
             wired aux).
+        columns_provider: Column choices for ``RefColumn`` parameters, from
+            the session's reference metadata table
+            (:func:`._reference_metadata.reference_columns_provider`).
+            ``None`` without a table: those parameters stay free text.
     """
+    if columns_provider is not None:
+        # A column dropdown shows only ``current_values`` (unlike the text
+        # input, which falls back to the default), so an untouched param
+        # would read "Pick a column…" while its default is what runs.
+        current_values = {
+            **{
+                name: p.default
+                for name, p in op_info.parameters.items()
+                if p.column_ref is not None and p.has_default
+            },
+            **current_values,
+        }
+        current_values = _prefixed_reference_columns(
+            op_info, current_values, columns_provider(REFERENCE_SOURCE)
+        )
     return _shared_param_form(
         op_info,
         current_values,
         form_id_prefix=form_id_prefix,
         picker_factory=_picker_widget,
+        columns_provider=columns_provider,
     )
 
 

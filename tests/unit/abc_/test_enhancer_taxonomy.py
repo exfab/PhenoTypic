@@ -58,6 +58,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
         "SubtractPolySurface",
         "SubtractOpening",
         "FlattenIllumination",
+        "SubtractBlank",
     ),
     MorphologicalFiltering: (
         "GrayOpening",

@@ -1,0 +1,86 @@
+/*
+ * Resizable sidebars. Behaviour lives in sidebar-resize.js; this file only lays
+ * out the separators and applies a stored width.
+ *
+ * The media queries repeat pydata-sphinx-theme 0.16's own breakpoints
+ * ($breakpoint-sidebar-primary: lg = 960px, $breakpoint-sidebar-secondary:
+ * xl = 1200px, in variables/_layout.scss and _bootstrap.scss). Below them the
+ * theme turns each sidebar into a drawer, so no handle is shown and no stored
+ * width applies. Update both numbers if the theme's breakpoints change.
+ */
+
+.ptx-resize-handle {
+  display: none;
+  position: sticky;
+  top: var(--pst-header-height);
+  align-self: flex-start;
+  flex: 0 0 0.5rem;
+  height: calc(100vh - var(--pst-header-height));
+  /* Straddle the sidebar border without taking layout width. */
+  margin: 0 -0.25rem;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ptx-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.ptx-resize-handle:hover::after,
+.ptx-resize-handle:focus-visible::after,
+html.ptx-resizing .ptx-resize-handle::after {
+  background-color: var(--pst-color-primary);
+}
+
+.ptx-resize-handle:focus-visible {
+  outline: none;
+}
+
+html.ptx-resizing,
+html.ptx-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+@media (min-width: 960px) {
+  .ptx-resize-handle--primary {
+    display: block;
+  }
+
+  /* A page without a left sidebar keeps no handle. */
+  .bd-sidebar-primary.hide-on-wide + .ptx-resize-handle--primary {
+    display: none;
+  }
+
+  html[data-ptx-primary-width] .bd-sidebar-primary {
+    flex: 0 0 auto;
+    width: var(--ptx-sidebar-primary-width);
+    max-width: none;
+  }
+}
+
+@media (min-width: 1200px) {
+  .ptx-resize-handle--secondary {
+    display: block;
+    /* The theme orders the right sidebar last (order: 2); sit just before it. */
+    order: 2;
+  }
+
+  html[data-ptx-secondary-width] .bd-sidebar-secondary {
+    width: var(--ptx-sidebar-secondary-width);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ptx-resize-handle::after {
+    transition: none;
+  }
+}

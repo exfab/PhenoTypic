@@ -27,7 +27,7 @@ Module layout
       ``master_measurements_parquet_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
       ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
-      ``measurements_by_feature_dir``,
+      ``measurements_by_feature_dir``, ``measurements_by_category_dir``,
       etc.
     - **`progress_dir_: Path`** — the already-resolved progress dir
       (i.e. ``output_dir / "progress"``). Used for helpers that produce
@@ -73,6 +73,7 @@ import errno
 import hashlib
 import json
 import logging
+import os
 import re
 import stat as stat_module
 from dataclasses import dataclass
@@ -718,6 +719,19 @@ VERIFICATION_CACHE_JSON: Final[str] = "verification_cache.json"
 #: :data:`_PRESERVED_ON_RESTART`.
 RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 
+#: ``<output>/.phenotypic/reference_metadata.csv`` -- byte-exact snapshot of the
+#: ``--metadata`` table for a ``--mode process`` run whose pipeline reads
+#: reference metadata (full mode reads ``deliverables/metadata.csv`` instead).
+#: Preserved across ``--restart``, as ``deliverables/metadata.csv`` is; the
+#: reason is at :data:`_PRESERVED_ON_RESTART`.
+REFERENCE_METADATA_CSV: Final[str] = "reference_metadata.csv"
+
+#: ``<output>/.phenotypic/reference_manifest.json`` -- the run's resolved
+#: reference plan (table, reader settings, reference-image paths, per-image
+#: digests), rewritten at every forward startup. Workers build their
+#: ReferenceContext from it. Re-derived, so ``--restart`` clears it.
+REFERENCE_MANIFEST_JSON: Final[str] = "reference_manifest.json"
+
 #: Schema version of the persisted verification cache.
 #:
 #: **Bump this when the deep-verification RULES change, not only when the JSON
@@ -785,6 +799,10 @@ DIR_MEASUREMENTS: Final[str] = "measurements"
 #: Per-feature spreadsheet split written by
 #: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.
 DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
+
+#: Per-category spreadsheet split written by
+#: :func:`phenotypic._cli._cli_output_manager.split_master_by_category`.
+DIR_MEASUREMENTS_BY_CATEGORY: Final[str] = "measurements_by_category"
 
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
@@ -1077,6 +1095,24 @@ def restart_epoch_path(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / RESTART_EPOCH_JSON
 
 
+def reference_metadata_snapshot_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/reference_metadata.csv``.
+
+    Pure path expression. The writer is
+    :func:`phenotypic._cli._cli_reference.snapshot_reference_metadata`.
+    """
+    return phenotypic_cache_dir(output_dir) / REFERENCE_METADATA_CSV
+
+
+def reference_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/reference_manifest.json``.
+
+    Pure path expression. The writer and readers live in
+    :mod:`phenotypic._cli._cli_reference`.
+    """
+    return phenotypic_cache_dir(output_dir) / REFERENCE_MANIFEST_JSON
+
+
 def verification_cache_path(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/verification_cache.json``.
 
@@ -1310,8 +1346,21 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
 #: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set
 #: those phases must find and extend does not belong in a function body where
 #: it can carry no documentation.
+#:
+#: ``reference_metadata.csv`` qualifies as a **run input**, not a verdict: it
+#: is the process-mode twin of ``deliverables/metadata.csv`` (which lives
+#: outside ``.phenotypic/`` and so already survives a restart), and the table a
+#: continuation without ``--metadata`` falls back to. Losing it would make a
+#: ``--restart`` without ``--metadata`` unrunnable, and nothing about it is a
+#: judgement made before the fence. ``reference_manifest.json`` does **not**
+#: qualify: it is derived from that table at every startup.
 _PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
-    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2}
+    {
+        TERMINAL_FAILURES_JSONL,
+        RESTART_EPOCH_JSON,
+        DIR_LEGACY_V2,
+        REFERENCE_METADATA_CSV,
+    }
 )
 
 
@@ -2071,11 +2120,19 @@ def store_publication_token(
     root = Path(store) / STORE_ROOT_JSON
     try:
         if root_directory is None:
-            before = root.lstat()
-            if not stat_module.S_ISREG(before.st_mode):
+            if not stat_module.S_ISREG(root.lstat().st_mode):
                 return None
-            raw = root.read_bytes()
-            after = root.lstat()
+            # Measure the open file, exactly as both held backends do
+            # (``read_regular_with_stat``), not the path. On Windows
+            # ``os.lstat`` reports the creation time as ``st_ctime`` while
+            # ``os.fstat`` reports the metadata-change time
+            # (python/cpython#157671), and a directory-entry query can lag an
+            # open-handle query on ``st_mtime_ns``; either one made this
+            # branch's token differ from the held branch's for the same file.
+            with root.open("rb") as stream:
+                before = os.fstat(stream.fileno())
+                raw = stream.read()
+                after = os.fstat(stream.fileno())
         else:
             from phenotypic.sdk_._identity_io import IdentityRefused
 
@@ -2219,6 +2276,11 @@ def dataset_overlays_dir(output_dir: Path, dataset: str) -> Path:
 def measurements_by_feature_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements_by_feature/``."""
     return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_FEATURE
+
+
+def measurements_by_category_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/measurements_by_category/``."""
+    return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_CATEGORY
 
 
 def logs_dir(output_dir: Path) -> Path:

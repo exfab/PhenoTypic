@@ -9,7 +9,6 @@ import gc
 import logging
 from typing import Annotated, Literal
 
-import numpy as np
 from pydantic import Field, model_validator
 from typing_extensions import Self
 
@@ -155,16 +154,8 @@ class InoculumDetector(ObjectDetector):
         gmm_morph_open = max(1, round(self.min_diameter / 30))
         gmm_min_area = max(5, round(self.min_diameter * 0.8))
 
-        # --- Step 1: working copy with float32 detect_mat ---
+        # --- Step 1: working copy (detect_mat is float32 [0, 1] for every input) ---
         work = image.copy()
-        # Direct _data access: the accessor (detect_mat[:] =) writes into the
-        # existing backing array, which would truncate float32 values if the
-        # backing is uint8. We must replace the entire array object.
-        dm = work._data.detect_mat
-        if dm.dtype.kind != "f":
-            work._data.detect_mat = dm.astype(np.float32) / np.iinfo(dm.dtype).max
-        elif dm.dtype != np.float32:
-            work._data.detect_mat = dm.astype(np.float32)
         self._log_memory_usage("working copy created")
 
         # --- Step 2: Gaussian background subtraction ---

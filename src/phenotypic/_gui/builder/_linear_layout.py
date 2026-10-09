@@ -27,6 +27,7 @@ from phenotypic._gui.builder._linear_model import (
     target_to_dict,
 )
 from phenotypic._gui.builder._param_form import param_form
+from phenotypic._gui.builder._reference_metadata import reference_columns_provider
 from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
@@ -1088,6 +1089,9 @@ def build_linear_side_loader(
                             scalar_info,
                             current_values=block.params,
                             form_id_prefix=block.block_id,
+                            columns_provider=reference_columns_provider(
+                                getattr(state, "reference_metadata_path", None)
+                            ),
                         ),
                         id=ids.INSPECTOR_PARAM_FORM,
                         className="linear-side-param-form",

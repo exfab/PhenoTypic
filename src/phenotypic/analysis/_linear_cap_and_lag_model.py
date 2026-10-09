@@ -86,7 +86,7 @@ class LinearCapAndLagModel(_LinearSoftplusBase):
         ``on="Size_Area"`` yields ``LinearCapAndLagModel_Area_v``), plus
         qualified fit-quality columns ``ModelMetrics_<metric>_<label>``. The
         ``<metric>`` segment is ``self.on`` with a recognized
-        measurement-category prefix stripped.
+        metric-family prefix stripped.
 
     .. note::
         **``f_scale`` is unit-sensitive only on the unweighted fit

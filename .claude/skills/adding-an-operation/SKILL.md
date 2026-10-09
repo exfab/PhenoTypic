@@ -34,7 +34,7 @@ Public parameters with a closed set of values:
 
 **When the closed set needs user-visible documentation, prefer `MeasurementInfo`
 / `ConstantLabels`.** Each member is a `(label, description)` pair whose
-description is accessible to callers; override the `category()` classmethod (and
+description is accessible to callers; override the `metric_family()` classmethod (and
 optionally `__new__` for bare-label values) per the existing convention.
 
 - The `MeasurementInfo` base and the per-feature **measurement-column** enums
@@ -73,7 +73,7 @@ For a fixed set of output columns, declare every member directly as
 ```python
 class MY_MEASUREMENTS(DescriptiveTrait):
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "MyMeasurements"
 
     VALUE = Entry(

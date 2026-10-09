@@ -55,6 +55,12 @@ _LAZY_ATTRS: dict[str, str] = {
     "LazyWidgetMixin": ".mixin",
     "NormControlMixin": ".mixin",
     "NormalizedOutputMixin": ".mixin",
+    "RefMetadataUnavailableError": "phenotypic._core._reference_context",
+    "ReferenceContextError": "phenotypic._core._reference_context",
+    "ReferenceImageError": "phenotypic._core._reference_context",
+    "ReferenceLookupError": "phenotypic._core._reference_context",
+    "ReferenceTableError": "phenotypic._core._reference_context",
+    "StaleDetectMatError": "phenotypic.enhance._subtract_blank",
 }
 
 
@@ -133,7 +139,13 @@ from ._atomic_io import (  # noqa: E402
     atomic_write_with_writer,
     publication_commit,
 )
-from ._column_ref import ColumnRef, ColumnRefList, ColumnSource  # noqa: E402
+from ._column_ref import (  # noqa: E402
+    ColumnRef,
+    ColumnRefList,
+    ColumnSource,
+    RefColumn,
+    RefImageColumn,
+)
 from ._io_constants import (  # noqa: E402
     # Filenames (CLI artifacts)
     CURATION_LABELS_PARQUET,
@@ -166,6 +178,7 @@ from ._io_constants import (  # noqa: E402
     DIR_LEGACY_V2,
     DIR_LOGS,
     DIR_MEASUREMENTS,
+    DIR_MEASUREMENTS_BY_CATEGORY,
     DIR_MEASUREMENTS_BY_FEATURE,
     DIR_OVERLAYS,
     DIR_PLOTS,
@@ -292,6 +305,7 @@ from ._io_constants import (  # noqa: E402
     logs_dir,
     manifest_json_path,
     master_measurements_parquet_path,
+    measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -436,6 +450,8 @@ __all__ = [
     "ColumnRef",
     "ColumnRefList",
     "ColumnSource",
+    "RefColumn",
+    "RefImageColumn",
     "FootprintMixin",
     "GridInferenceMixin",
     "HDF",
@@ -443,6 +459,12 @@ __all__ = [
     "LazyWidgetMixin",
     "NormControlMixin",
     "NormalizedOutputMixin",
+    "RefMetadataUnavailableError",
+    "ReferenceContextError",
+    "ReferenceImageError",
+    "ReferenceLookupError",
+    "ReferenceTableError",
+    "StaleDetectMatError",
     "CommitGuard",
     "atomic_write_bytes",
     "atomic_write_json",
@@ -612,6 +634,7 @@ __all__ = [
     "DIR_LEGACY_V2",
     "DIR_LOGS",
     "DIR_MEASUREMENTS",
+    "DIR_MEASUREMENTS_BY_CATEGORY",
     "DIR_MEASUREMENTS_BY_FEATURE",
     "DIR_OVERLAYS",
     "DIR_PLOTS",
@@ -702,6 +725,7 @@ __all__ = [
     "master_carries_user_metadata",
     "user_metadata_headers",
     "master_measurements_parquet_path",
+    "measurements_by_category_dir",
     "measurements_by_feature_dir",
     "measurements_csv_path",
     "measurements_parquet_path",

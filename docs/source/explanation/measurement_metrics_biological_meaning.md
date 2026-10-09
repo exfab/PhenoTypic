@@ -6,7 +6,7 @@ and when to use it.
 
 > For *how to apply* each metric — which to report directly vs. use as a
 > classifier feature — see
-> [Measurement Classification: Phenotypes vs. Features](measurement_classification_system.md).
+> {doc}`Tier System </measurements_ref/tier_system>`.
 
 ## Size Metrics (MeasureSize)
 

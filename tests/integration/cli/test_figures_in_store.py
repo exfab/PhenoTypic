@@ -133,11 +133,13 @@ def test_full_mode_stores_figures_and_copies_them_out(tmp_path):
     assert run["failed"] == [] and run["unavailable"] == []
     [page] = run["bindings"]["sym"]["pages"]
     assert [f["format"] for f in page["files"]] == ["plotly-json"]
-    assert page["files"][0]["path"] == f"figures/{run_id}/sym/default.plotly.json"
-    deliverable = list((out / "deliverables/plots/sym/ds").glob("plate-*.plotly.json"))
-    assert len(deliverable) == 1
+    assert page["files"][0]["path"] == f"figures/{run_id}/sym/default/default.plotly.json"
+    [image_directory] = (out / "deliverables/plots/sym/ds").glob("plate-*")
+    deliverable = list(image_directory.rglob("*.plotly.json"))
+    # Mirrors the store: the plot folder, and a file named by the page key.
+    assert deliverable == [image_directory / "default" / "default.plotly.json"]
     assert deliverable[0].read_bytes() == (store / page["files"][0]["path"]).read_bytes()
-    assert len(list((out / "deliverables/plots/sym/ds").glob("plate-*.html"))) == 1
+    assert list(image_directory.rglob("*.html")) == [image_directory / "default" / "default.html"]
 
 
 def test_a_measure_run_with_another_pipeline_adds_a_run_and_keeps_the_first(tmp_path):
@@ -262,7 +264,8 @@ def test_process_mode_carries_figures_only_in_a_store(tmp_path, fmt):
     assert not (out / "deliverables").exists()
 
 
-def test_process_revision_is_3():
+def test_process_revision_is_4():
+    """3 = process stores carry figures; 4 = single-channel gray is normalised."""
     from phenotypic._cli import _cli_failure_tracker as tracker
 
-    assert tracker.PROCESS_LAYER_SEMANTICS_REVISION == 3
+    assert tracker.PROCESS_LAYER_SEMANTICS_REVISION == 4

@@ -43,8 +43,9 @@ details that are load-bearing rather than incidental:
   reach for `set_provenance_status(image, "in_progress")` — that status is also
   non-terminal and raises the very error it looks like it prevents.
 - The change of meaning is fenced in the work id:
-  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `3`;
-  2 → 3 is the per-image figures, see **Per-image figures** below)
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `4`;
+  2 → 3 is the per-image figures, see **Per-image figures** below; 3 → 4 is
+  single-channel integer inputs normalised to float32 `[0, 1]` at construction)
   rides beside `process_format` in the process-only branch of
   `processing_configuration_digest_from_values`, **not** in the base payload —
   a base placement would cold-start every in-flight `full` and `measure`
@@ -60,7 +61,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 The read-only half parses and validates options, scans the inputs, runs the
 refusals that cannot be skipped (the GPU placement refusal, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
-`--metadata`, `--bit-depth` and `--gpu-slurm` parses), loads the pipeline,
+`--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
+reference-metadata refusals in **Reference metadata** below), loads the pipeline,
 runs the **run preflight**, and ends at the `--dry-run` exit. Only then does
 the mutating half run: the `--restart` clear, the `--overwrite` rmtree,
 `mint_run_identity`, and everything after. **A new step that writes, deletes
@@ -89,6 +91,90 @@ Walking everything would refuse a `process` run over a measurer it never runs.
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## Reference metadata (`_cli_reference.py`)
+
+Spec `docs/superpowers/specs/2026-10-05-ref-metadata-ops/design.md` §5.2. An
+operation mixing in `RefMetadata` (`SubtractBlank`) reads per-image values from
+the `--metadata` table through a `ReferenceContext`. Workers never receive the
+table as an argument; they read a run-level plan.
+
+- **Only the operations the mode runs count.** `reference_operations_in_scope`
+  is the preflight's mode walk (`operations_run_in_mode`, the function behind
+  `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
+  in `full` mode and not in `process` mode.
+- **Process mode uses `--metadata` only when those operations exist.** It is
+  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.csv`
+  (preserved across `--restart`), a continuation may omit it, and a table
+  inside `--output` is refused like any run input. Otherwise the old
+  "`--metadata` is ignored in --mode process" warning still prints.
+- **Two un-skippable refusals in the read-only half**, above `--restart`,
+  `--overwrite`, `mint_run_identity` and `--dry-run`:
+  - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
+    (the snapshot it would fall back to is deleted); no `--metadata` and no
+    snapshot (`[PF-REF-NO-TABLE]`); a `--metadata` that fails
+    `metadata_csv_payload` (not a `.csv`, or bytes pandas cannot parse --
+    the very check `snapshot_reference_metadata` runs after `--overwrite`,
+    so the two cannot disagree); or a table, given or snapshotted, that
+    `ReferenceContext` cannot read. `--metadata` is a CSV in every CLI mode,
+    although a notebook `ReferenceContext` also reads `.parquet`.
+  - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
+    whose measurers read reference metadata. Measure mode plans nothing, never
+    touches the manifest and carries no reference digest in its work-ids, so
+    re-measuring such a pipeline is not supported (user decision, 2026-10-06);
+    the message points at `--mode full`.
+- **Startup publishes the plan before any work-id.** `publish_reference_inputs`
+  runs in `_prepare_incremental_startup` and writes
+  `.phenotypic/reference_manifest.json` (table path and sha, reader kwargs,
+  each dataset's resolved reference images, each image's digest, and —
+  schema 2 — `reference_files`, each planned file's sha). The worker context
+  is narrowed with `planned_digests=reference_files`, so
+  `ReferenceContext._load` refuses a blank whose bytes changed since planning
+  (`ReferenceImageChangedError`, raised inside the apply and wrapped there);
+  `worker_reference_context` converts exactly that cause, and nothing else,
+  into a bare `ReferencePlanStaleError` at its exit. A schema-1 manifest has
+  no `reference_files`, so every file load is refused and the same command
+  re-plans. Only the root `zarr.json` of an OME-Zarr blank is hashed. An image
+  whose planning failed gets `"unplanned:<reason>[:<values digest>]"`, so a
+  changed cause re-derives it rather than matching a terminal failure recorded
+  for the old one. Measure mode returns without touching the manifest. A
+  pipeline that reads no reference metadata removes a stale one.
+- **Every apply site enters `worker_reference_context`.** Seven call sites:
+  `process_single_image_core` (`apply_and_measure`),
+  `process_single_apply_only_core`, Stage 1's `pre_pipeline.apply`, Stage 2's
+  `_apply_stage2_prefix` (inside its `try`), Stage 3's replay `apply` **and**
+  its `measure` (a measurer's private op reads the table too), and
+  `StagedGpuStrategy._export_objmap_layer`. A new site added bare fails every
+  image with `RefMetadataUnavailableError`. Guards:
+  `test_every_worker_core_enters_the_reference_context` (a source tripwire)
+  and the behavioural runs in `tests/unit/cli/test_cli_reference_e2e.py`.
+- **One identity per image, before the apply.** The manifest is the first
+  work-id input that a later invocation rewrites in place, so a worker reads
+  the image's digest **once** (`work_identity_for_image`, or `image_reference_digest`
+  in the SLURM worker), publishes and records failures under that identity,
+  and hands the same digest to the context as a `ReferencePin`. The context
+  refuses a manifest whose digest for the image has since changed. Never
+  recompute a work-id after the apply on these paths. **The staged engine
+  holds one identity per image for the whole run, not one per stage**:
+  Stage 3 certifies Stage 1's pixels, so a stage pinned to a freshly computed
+  identity would still apply under one plan and certify under another. The
+  local `StagedGpuStrategy` computes it in Stage 1 (`_stage1` returns it) and
+  hands it to Stage 2, Stage 3 and `_export_objmap_layer`; the staged SLURM
+  submitter computes it before submission (`staged_manifest_entry`) and
+  stores `reference_digest` beside `work_id` in each `StagedManifestEntry`,
+  which every stage worker pins (`_reference_pin`). An entry written before
+  that field existed loads with `None`, which pins "no reference plan": under
+  a reference manifest such an entry is refused, never applied unpinned. Each
+  staged core takes the pin as `reference_pin=`. The staged controller's
+  `_classify_stage2` lists an entry whose pin no longer matches the manifest
+  as `terminal`, not `retryable`: another GPU round would refuse the same pin.
+  That list records nothing, so the next invocation re-plans the image.
+- **`ReferencePlanStaleError` is never terminal.** It is raised for a pin
+  mismatch, a table whose bytes no longer match the manifest, or a reference
+  file whose bytes no longer match `reference_files`. It is a
+  `RuntimeError`, not a `ReferenceContextError`, and every scientific wrapper
+  re-raises it unwrapped (beside `MemoryError`), so no terminal record is
+  written and the next run re-attempts the image without `--retry-failures`.
 
 ## Staged GPU engine
 
@@ -251,8 +337,12 @@ provenance (`measure/CLAUDE.md`).
 - **GUI: the message, in either mode, and no Run.**
   `_gui/run_console/_callbacks.py:_staged_gpu_capability(path)` returns
   `(uses_gpu, refusal | None)` and catches `UnstageableGpuDetectorError`
-  *before* its generic `(OSError, ValueError, TypeError)` clause — the refusal
-  **is** a `ValueError`, so clause order is the whole fix. The
+  *before* its generic
+  `(OSError, ValueError, TypeError, AttributeError, ImportError)` clause — the
+  refusal **is** a `ValueError`, so clause order is the whole fix. The generic
+  clause also takes `AttributeError` and `ImportError` so that an unknown
+  operation class (`UnknownOperationClassError`, an `AttributeError`) reaches
+  the CLI's own message instead of surfacing here. The
   `rc-staged-gpu-refusal` alert sits outside the staged-GPU section, so it
   shows in Local mode too; `update_run_disabled`, the sole owner of Run's
   `disabled`, takes the alert's `is_open`; and `click_action` refuses Validate
@@ -426,6 +516,76 @@ persisting the returned ID.
   With `--wait`, the CLI monitors that marker and never duplicates publication.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
+
+### One live SLURM run per output
+
+A forward invocation (`full`, `process`, `measure`, with or without
+`--restart`/`--overwrite`/`--dry-run`) and `--mode recompile` refuse while an
+earlier run's SLURM jobs are still live over the same `--output`.
+`_refuse_live_slurm_run` (`phenotypicCLI.py`) is the one check. It sits above
+the first write of each path: before the continuation-state load on the
+forward path, and before `_snapshot_metadata_csv` in the recompile branch. It
+asks `live_slurm_job_ids` (`_cli_staged_orchestration.py`). `--mode migrate`
+keeps its own lease and lifecycle guard.
+
+**Ordinary chains are ledgered, not only staged ones.** Every chunk,
+dispatcher and finalizer goes through `submit_with_lifecycle`, including the
+chunks a dispatcher submits from inside SLURM (`dispatch_continuation`). That
+call writes an `intent` row, runs `sbatch --comment phenotypic:<generation>:<token>`,
+then writes a `submitted` row, all into the one lifecycle ledger
+(`slurm_jobs.jsonl`, which *is* `staged_job_ledger_path`). Grepping direct
+`append_lifecycle_entry(` callers misses this; the Phase 2 review of the
+reference-metadata change did, and concluded wrongly that ordinary arrays were
+invisible to the guard.
+
+How `live_slurm_job_ids` answers, and when it asks the scheduler. It returns
+a `LiveSlurmJobs(live, unverified, unresolved)`, falsy only when all three are
+empty:
+
+- A closed lifecycle fence (`active is False`) answers empty with **no**
+  scheduler query, so a cancelled or finalized run whose history SLURM has
+  purged never blocks.
+- **Only the fence's own generation is consulted.** A new generation is
+  published only when the previous one is inactive (`initialize_slurm_lifecycle`
+  refuses to replace an active one) or after this guard passed for it, so an
+  older generation is either fenced or already judged not live. That keeps the
+  per-job `squeue`/`sacct` calls bounded by one run, not the output's whole
+  history. A ledger with no readable fence (a legacy staged tree) is walked
+  across every generation instead.
+- Each unterminated ledgered job ID is classified by `scheduler_job_is_active`:
+  truthy is `live`, `None` is `unverified`, and `False` is dropped. The walk is
+  shared with `active_ledger_job_ids`, whose own return is unchanged because
+  cancellation reads it.
+- A token whose latest ledger row is `intent` or `blocked` may own a live job
+  whose `submitted` row was never written (the submitter died after `sbatch`).
+  Only then does it make one `squeue`-only `query_scheduler_comments` call and
+  match the exact `phenotypic:<generation>:<token>` comment. A match is `live`.
+  If the query raises `SchedulerQueryUnavailable`, the comment stays in
+  `unresolved`. A clean ledger, and every local run (no lifecycle, no ledger),
+  never queries.
+
+**It fails closed, but never calls an unknown job active.** Any non-empty
+group refuses. `_refuse_live_slurm_run` prints one sentence per group:
+`SLURM jobs are active: <ids>` with `scancel <ids>` for `live`;
+`Ledgered SLURM jobs are unverified: <ids>` (may be running or long finished)
+for `unverified`; and "the scheduler could not be queried from this host"
+naming each `<generation>:<token>` for `unresolved`. When either unknown group
+is non-empty it adds the one remedy that works: run the same command on a
+cluster node where `squeue` works. It then lists `sacct -j <id>` and
+`squeue --noheader --format='%i|%k' | grep 'phenotypic:<gen>:<token>'` for
+checking by hand. There is no override flag. A host that cannot reach the
+scheduler cannot clear a stuck fence.
+
+**A stuck `active: true` does not refuse on its own, deliberately.** A
+finalizer that is OOM-killed or cancelled outside PhenoTypic leaves the fence
+active forever. Refusing on the flag would block the plain re-run that is the
+recovery procedure. So liveness always comes from the scheduler. Once every
+ledgered job is terminal and no unresolved token matches a queued job, the run
+is allowed.
+
+The check is a read-only `squeue` from the invoking process, not a scheduler
+job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in
+`tests/unit/cli/test_cli_v2.py`.
 
 ## Legacy-tree migration (`--mode migrate`)
 
@@ -907,6 +1067,9 @@ member (`sdk_/_schema_shape.py:192`).
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
 `measurements_by_feature/<feature>.{csv,parquet}`,
+`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+with a present column; written beside the feature split by
+`finalize_post_master_outputs`),
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
 `dashboard.html`, `processing_report.html`, `README.md`,
@@ -994,8 +1157,8 @@ identity that matched no measured object survives as a phantom row with
 columns null, while a measured object whose key appears in **no** metadata row
 is dropped — an object outside the described experiment. The master keeps that
 object; the mirror does not. That asymmetry is the master/mirror distinction the
-"feed analysis and dashboards from the mirror" rule rests on. Per-feature splits
-and named analysis artifacts derive from the mirror. Analysis consumers resolve
+"feed analysis and dashboards from the mirror" rule rests on. Per-feature and per-category
+splits and named analysis artifacts derive from the mirror. Analysis consumers resolve
 tables through `analysis_manifest.json`, never by constructing filenames.
 
 **Reading a master written before the inversion.** Nothing stamps the file — a
@@ -1054,6 +1217,6 @@ file and then call `finalize_post_master_outputs` itself.
 
 Mid-run checkpoint writers (`_aggregate_chunks_locked` in
 `_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
-under `.phenotypic/progress/`; post, per-feature splits, analysis, and
+under `.phenotypic/progress/`; post, per-feature and per-category splits, analysis, and
 `pipeline.json` persistence are deferred to final aggregation. Do not add
 `finalize_post_master_outputs` to the chunk writer.

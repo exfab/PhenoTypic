@@ -185,6 +185,21 @@ class PlotColonyMorphology(BaseModel, PlotMeas):
         )
 ```
 
+A page can name the plot it belongs to with `plot=`. Pages sharing a plot are
+stored in one folder, one file per page, while a page without `plot=` is a
+plot of its own:
+
+```python
+PlotOutput(pages=(
+    PlotPage(key="roi_0", plot="tiles", figure=overlay_0),
+    PlotPage(key="roi_1", plot="tiles", figure=overlay_1),
+    PlotPage(key="delta_e", figure=chart),            # stored at delta_e/delta_e
+))
+```
+
+A plot name cannot contain `/`. A plot named `zarr.json` or `manifest.json` is
+stored under a suffixed folder name, so it never shadows those files.
+
 Because the pages come from decorated methods, each one is themed and
 backend-checked, and `report()` still composes them. A class that declares no
 `@figure` methods at all must also override `report()`, because the inherited
@@ -224,15 +239,18 @@ Inside `plots/<id>/`, the layout depends on the lifecycle and on what
 
 | Output | Published as |
 |---|---|
-| `PlotImage`, one figure | `<dataset>/<stem>-<hash>.<ext>`, one file per stored format, plus `.html` for a stored `plotly-json`; no manifest |
-| `PlotImage`, a multi-page `PlotOutput` | `<dataset>/<stem>-<hash>/`, holding the pages and a `manifest.json` |
-| `PlotMeas`, `PlotAnalysis`, `PlotQc` | the pages and a `manifest.json`, directly in `plots/<id>/` |
+| `PlotImage` | `<dataset>/<stem>-<hash>/`, holding one folder per plot (`<plot>/<key>.<ext>`, plus `.html` for a stored `plotly-json`) and a `manifest.json` (`schema_version` 3) |
+| `PlotMeas`, `PlotAnalysis`, `PlotQc` | `plots/<id>/`, holding one folder per plot (`<plot>/<label or key>.<ext>`) and a `manifest.json` (`schema_version` 3) |
 
 `<hash>` is derived from the original dataset and image name, so two plates
 whose names differ only in characters that are unsafe in a filename never
-overwrite each other. A page's filename comes from its `label`, or its `key`
-when it has no label. A single figure returned from an aggregate plot is the
-page `default`, so `PlotColonyArea` publishes `plots/PlotColonyArea/default.html`.
+overwrite each other. An aggregate plot names a page's file from its `label`,
+or its `key` when it has no label. An image figure copied out from the store is
+named by its `key`. A single figure is the page `default`, in a plot of the
+same name, so `PlotColonyArea` publishes
+`plots/PlotColonyArea/default/default.html`. A single-figure `PlotImage` is
+published the same way, as `<stem>-<hash>/default/default.<ext>` with a
+`manifest.json`.
 
 The tree also contains hidden `.lock` files, such as `.publication.lock` in
 each manifest directory and `.plotlyjs.lock` and `.failures.lock` at the
@@ -256,8 +274,8 @@ publish straight to `deliverables/plots/`, as described under **Two renderings**
 
 | Format | File in the store | `media_type` | Backends |
 |---|---|---|---|
-| `plotly-json` | `<page>.plotly.json` | `application/vnd.plotly.v1+json` | `plotly` |
-| `png` | `<page>.png` | `image/png` | `plotly` (needs Chrome), `mpl` |
+| `plotly-json` | `<plot>/<key>.plotly.json` | `application/vnd.plotly.v1+json` | `plotly` |
+| `png` | `<plot>/<key>.png` | `image/png` | `plotly` (needs Chrome), `mpl` |
 
 Leave `store` out and each backend stores its default. For `backend="plotly"`
 that is `("plotly-json",)`: lossless, interactive in any Plotly consumer, and
@@ -328,10 +346,11 @@ print([spec.store for spec in sizes.iter_figures()])
 # [('plotly-json', 'png')]
 ```
 
-A CLI run of this pipeline stores `PlotColonySizes/default.plotly.json` and
-`PlotColonySizes/default.png` in each plate's run folder, and publishes both
-under `deliverables/plots/PlotColonySizes/<dataset>/`, next to an `.html` page
-generated from the JSON.
+A CLI run of this pipeline stores `PlotColonySizes/default/default.plotly.json`
+and `PlotColonySizes/default/default.png` in each plate's run folder, and
+publishes both under
+`deliverables/plots/PlotColonySizes/<dataset>/<stem>-<hash>/default/`, next to
+an `.html` page generated from the JSON.
 
 ### Run folders
 
@@ -387,8 +406,8 @@ A rerun removes the other rendering of each page it publishes when that
 rendering is left over from an earlier run. A PNG written on a node that had
 Chrome is removed when the plot is rerun on a node without it, and an HTML page
 is removed when a plot switches to matplotlib. Otherwise the leftover would sit
-beside the new file as if this run had produced it. This applies to
-single-figure image plots and to every page a new manifest lists.
+beside the new file as if this run had produced it. This applies to every
+page a new manifest lists.
 
 The cleanup covers only those pages. If a page key from an earlier run no
 longer appears, or a page fails on the rerun, its old files stay on disk.
@@ -419,20 +438,23 @@ never fails it.
 ## The plot manifest
 
 Every directory holding a `manifest.json` records what the latest publication
-wrote there. The manifest is at `schema_version: 2`:
+wrote there. The manifest is at `schema_version: 3`, and every `files` value is a path
+relative to the manifest, including the plot folder:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "plot_id": "PlotColonyMorphology",
   "class": "PlotColonyMorphology",
   "renderers": {"html": "available", "png": "unavailable: chrome not found"},
   "pages": [
-    {"key": "area", "label": "Colony area", "backend": "plotly",
-     "files": {"html": "Colony-area.html"}, "metadata": {}}
+    {"key": "area", "plot": "area", "label": "Colony area",
+     "backend": "plotly",
+     "files": {"html": "area/Colony-area.html"}, "metadata": {}}
   ],
   "failed": [
-    {"key": "circularity", "label": "Colony circularity",
+    {"key": "circularity", "plot": "circularity",
+     "label": "Colony circularity",
      "error": "OSError: [Errno 28] No space left on device"}
   ]
 }
@@ -448,14 +470,14 @@ wrote there. The manifest is at `schema_version: 2`:
   a page is matplotlib. Its `files` show which stored formats were copied, and
   `partial` lists the errors of the formats that failed for that page, whether
   the store recorded them or the copy hit them.
-- `pages` lists each published page. `files` maps each format to the file it
-  produced. It omits `png` when Chrome was unavailable and `html` for a
+- `pages` lists each published page with its `key` and `plot`. `files` maps
+  each format to the file it produced, relative to the manifest. It omits `png` when Chrome was unavailable and `html` for a
   matplotlib page. `backend` is `"plotly"` or `"matplotlib"`.
 - `partial` appears on a page when one renderer failed but the other
   succeeded, for example when the HTML was written and the PNG export raised.
   It lists the errors.
 - `failed` lists each page that produced no file at all, with its `key`,
-  `label` and `error`. When every page fails, the manifest still says why.
+  `plot`, `label` and `error`. When every page fails, the manifest still says why.
 
 ## The failure record
 

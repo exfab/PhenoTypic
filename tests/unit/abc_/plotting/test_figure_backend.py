@@ -108,7 +108,7 @@ def test_a_plotly_figure_is_themed_after_construction() -> None:
 
     fig = _Plotly().inspect(object())
     # FONT_FAMILY_MONO, not FONT_FAMILY: _theme.py:171 sets the template's BASE
-    # font to the mono stack per DESIGN.md "02", and applies FONT_FAMILY to
+    # font to the mono stack per DESIGN.md "Typography", and applies FONT_FAMILY to
     # titles and legend separately (:174, :180, :187, :189). Measured.
     assert fig.layout.template.layout.font.family == FONT_FAMILY_MONO
 

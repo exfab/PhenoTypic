@@ -62,13 +62,13 @@ started.
       :class-card: intro-card
       :shadow: md
 
-      A quick reference for every column produced by PhenoTypic's per-object
-      measurement operators — useful if you've received processed data and
-      need to know what a column means.
+      A reference for every column in PhenoTypic's output tables, organized
+      by the operation that writes it. Useful if you've received processed
+      data and need to know what a column means.
 
       +++
 
-      .. button-ref:: measurements_ref/measurements/index
+      .. button-ref:: measurements_ref/index
          :ref-type: doc
          :click-parent:
          :color: secondary
@@ -124,7 +124,7 @@ started.
    how_to/index
    explanation/index
    extending/index
-   measurements_ref/measurements/index
+   measurements_ref/index
    api_reference/index
    contrib_guide/index
    downloads

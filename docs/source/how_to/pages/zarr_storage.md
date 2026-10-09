@@ -141,7 +141,8 @@ plate_01.ome.zarr/
 └── figures/
     ├── 2026-09-22-3f9a1c2b7e04/   <- one run: {UTC date}-{first 12 hex of the pipeline sha256}
     │   └── sym/                   <- one plot binding
-    │       └── default.plotly.json
+    │       └── default/           <- one plot
+    │           └── default.plotly.json
     └── 2026-10-03-a07bc5e91d22/   <- a later run with another pipeline
 ```
 
@@ -152,8 +153,10 @@ the folder names. Read the store as follows:
 1. **Read the descriptor.** Open the root `zarr.json` and take
    `attributes.phenotypic.figures`. A store without the key has no figures:
    it was written before this feature, or by a pipeline with no per-image
-   plot. `schema_version` is `1`. Refuse a version you do not know rather than
-   guessing at its layout.
+   plot. `schema_version` is `2`, or `1` for a run written before plots had
+   their own folder (`<binding>/<file>`). Each page of a version 2 run carries
+   a `plot`. Refuse a version you do not know rather than guessing at its
+   layout.
 2. **Choose a run.** `runs` maps each run folder to its entry. Every entry
    records the `date` the run started and the `pipeline_sha256` of the pipeline
    file it ran. An entry written by any CLI mode except `--mode process` also
@@ -184,7 +187,7 @@ from pathlib import Path
 store = Path("plate_01.ome.zarr")
 root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
 figures = root["attributes"].get("phenotypic", {}).get("figures")
-if figures is not None and figures["schema_version"] != 1:
+if figures is not None and figures["schema_version"] not in (1, 2):
     raise ValueError(f"unknown figures schema_version {figures['schema_version']}")
 
 
@@ -213,7 +216,7 @@ for binding_id, binding in (run["bindings"] if run is not None else {}).items():
             if hashlib.sha256(data).hexdigest() != entry["sha256"]:
                 print("changed since written, skipped:", entry["path"])
                 continue
-            print(binding_id, page["key"], entry["media_type"], len(data))
+            print(binding_id, page.get("plot"), page["key"], entry["media_type"], len(data))
 ```
 
 Several runs can share a date when the pipeline changed within a day. Filter

@@ -315,11 +315,22 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
     Recursive: a nested scope's input is threaded from its parent's cache
     (the container's main-flow predecessor store). Fingerprints chain so any
     upstream edit invalidates this scope and its descendants.
+
+    The session's reference table (``state.reference_metadata_path``) is
+    active around the apply and part of the root fingerprint, as are the
+    reference images it resolves for this image.
     """
     from phenotypic.abc_ import GridOperation
     from phenotypic._gui.builder._conversion_dag import to_pipeline_dag
     from phenotypic._gui.builder._linear_model import scope_at_path
+    from phenotypic._gui.builder._reference_metadata import (
+        preview_reference_context,
+        reference_error_message,
+        reference_identity,
+        reference_images_identity,
+    )
 
+    reference = getattr(state, "reference_metadata_path", None)
     scope = scope_at_path(state.root, list(scope_path))
     if scope is None:
         raise ValueError("compute_scope: stale scope_path")
@@ -339,6 +350,20 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
         input_identity = parent_fp
 
     fingerprint_inputs = [sig, input_identity]
+    if not scope_path and reference:
+        # Root only: nested scopes inherit it through parent_fp. Appended only
+        # when set, so every existing fingerprint (and cache) is unchanged.
+        fingerprint_inputs.append(reference_identity(reference))
+        # And the reference images this image resolves to (a blank re-exported
+        # in place), for a pipeline that reads any: stat only, no pixels.
+        image_columns = [
+            column
+            for columns in pipeline.reference_columns(images_only=True).values()
+            for column in columns
+        ]
+        images = reference_images_identity(reference, image_path, image_columns)
+        if images:
+            fingerprint_inputs.append(images)
     fingerprint = hashlib.sha1(
         "\x00".join(fingerprint_inputs).encode(),
         usedforsecurity=False,
@@ -383,7 +408,8 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
 
         # Side effect: writes one full-layer store per node into ``sdir``;
         # ``_build_manifest`` rebuilds the manifest from those on-disk stores.
-        pipeline.apply_with_intermediates(image, output_dir=sdir, full_layers=True)
+        with preview_reference_context(reference, image_path):
+            pipeline.apply_with_intermediates(image, output_dir=sdir, full_layers=True)
         manifest = _build_manifest(
             fingerprint, fingerprint_inputs, scope, pipeline, sdir,
         )
@@ -395,7 +421,7 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
             "version": MANIFEST_VERSION,
             "fingerprint": fingerprint, "fingerprint_inputs": fingerprint_inputs,
             "scope_key": "/".join(scope_path), "nodes": {},
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": reference_error_message(exc) or f"{type(exc).__name__}: {exc}",
         }
 
     write_manifest(session_id, list(scope_path), manifest)

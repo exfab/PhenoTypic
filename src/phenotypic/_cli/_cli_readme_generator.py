@@ -12,11 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from phenotypic.sdk_ import readme_md_path
+from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY, readme_md_path
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._cli._cli_types import ExecutionConfig, Dataset
+    from phenotypic.schema import MeasurementInfo
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class READMEGenerator:
             self._generate_output_structure(datasets),
             self._generate_layers_section(),
             self._generate_measurements_section(),
+            self._generate_categories_section(),
             self._generate_model_section(),
             self._generate_footer(),
         ]
@@ -99,6 +101,8 @@ output_folder/
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
 |   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
+|   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
+|   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
 |   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.csv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
@@ -203,7 +207,53 @@ No measurements configured in this pipeline."""
 
         return "\n".join(sections)
 
-    def _get_measurement_infoclasses(self, measurer) -> list[type]:
+    def _generate_categories_section(self) -> str:
+        """Document each category the configured measurers emit columns for.
+
+        Only columns this pipeline's measurers can produce are listed, so a
+        category whose members all come from an unconfigured measurer is
+        omitted. Returns ``""`` when no category applies.
+        """
+        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.schema import CATEGORIES
+
+        infos = [
+            info
+            for measurer in (self.pipeline._meas or {}).values()
+            if isinstance(measurer, MeasureFeatures)
+            for info in self._get_measurement_infoclasses(measurer)
+        ]
+        # One malformed info must cost only its own columns, not the README,
+        # mirroring the per-info guard in _generate_measurement_table.
+        tagged: list[tuple[str, frozenset[CATEGORIES]]] = []
+        for info in infos:
+            try:
+                tagged.extend(
+                    [
+                        (str(member), frozenset(getattr(member, "categories", ())))
+                        for member in info
+                    ]
+                )
+            except Exception as e:
+                logger.warning(f"Could not read categories for {info}: {e}")
+        blocks: list[str] = []
+        for category in CATEGORIES:
+            columns = [
+                column for column, categories in tagged if category in categories
+            ]
+            if not columns:
+                continue
+            listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
+            blocks.append(
+                f"### {category.display_name}\n\n{category.desc}\n\n"
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
+                f"(and `.parquet`), alongside every context column.\n\n{listed}"
+            )
+        if not blocks:
+            return ""
+        return "## Measurement Categories\n\n" + "\n\n".join(blocks)
+
+    def _get_measurement_infoclasses(self, measurer) -> list[type[MeasurementInfo]]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
 
         Uses the operation-level schema contract so built-in and custom
@@ -212,20 +262,31 @@ No measurements configured in this pipeline."""
         return list(measurer.get_measurement_infoclasses())
 
     def _generate_measurement_table(self, info_cls) -> str:
-        """Generate markdown table for a MeasurementInfo class."""
+        """Generate markdown table for a MeasurementInfo class.
+
+        A Categories column is added only when some member of *info_cls*
+        carries a category.
+        """
+        from phenotypic.schema import CATEGORIES
+
         try:
-            category = info_cls.category()
+            family = info_cls.metric_family()
             members = list(info_cls)
 
             if not members:
                 return ""
 
-            table = f"\n### {category}\n\n"
-            table += "| Column | Description |\n"
-            table += "|--------|-------------|\n"
+            has_categories = any(member.categories for member in members)
+            table = f"\n### {family}\n\n"
+            if has_categories:
+                table += "| Column | Description | Categories |\n"
+                table += "|--------|-------------|------------|\n"
+            else:
+                table += "| Column | Description |\n"
+                table += "|--------|-------------|\n"
 
             for member in members:
-                # Use the full header name (category_label)
+                # Use the full header name (family_label)
                 col_name = str(member)
                 desc = member.desc if hasattr(member, "desc") else ""
                 # Escape pipe characters in descriptions
@@ -233,7 +294,14 @@ No measurements configured in this pipeline."""
                 # Truncate very long descriptions
                 if len(desc) > 200:
                     desc = desc[:197] + "..."
-                table += f"| `{col_name}` | {desc} |\n"
+                row = f"| `{col_name}` | {desc} |"
+                if has_categories:
+                    names = ", ".join(
+                        category.display_name
+                        for category in CATEGORIES.in_order(member.categories)
+                    )
+                    row += f" {names} |"
+                table += row + "\n"
 
             return table
         except Exception as e:

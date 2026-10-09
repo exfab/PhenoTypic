@@ -8,7 +8,7 @@ from scipy.stats import permutation_test
 
 from pydantic import field_validator
 
-from phenotypic.schema import EDGE_CORRECTION
+from phenotypic.schema import EDGE_CORRECTION, MeasurementInfo
 from ..abc_ import EdgeCorrection
 
 if TYPE_CHECKING:
@@ -150,7 +150,9 @@ class EdgeCorrector(EdgeCorrection):
         Examples:
             Basic visualization of edge correction results:
 
-            >>> corrector = EdgeCorrector(on='Area', groupby=['ImageName'])
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.schema import IMAGE, SIZE
+            >>> corrector = EdgeCorrector(on=SIZE.AREA, groupby=[IMAGE.IMAGE_NAME])
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> fig, ax = corrector.show()  # doctest: +SKIP
             >>> # Single collapsed plot with all groups stacked vertically
@@ -166,7 +168,7 @@ class EdgeCorrector(EdgeCorrection):
             Filtered visualization for specific plate:
 
             >>> fig, ax = corrector.show(
-            ...     criteria={'Plate': 'P1'},
+            ...     criteria={IMAGE.IMAGE_NAME: 'plate_01'},
             ...     max_groups=10,
             ...     figsize=(12, 8)
             ... )  # doctest: +SKIP
@@ -665,27 +667,29 @@ class EdgeCorrector(EdgeCorrection):
 
         Returns:
             pd.DataFrame: Edge-corrected measurements with original data plus two new
-                correction columns:
-                - EDGE_CORRECTION.NEW_VAL-{self.on}: Capped measurement values
-                - EDGE_CORRECTION.CORRECTED_CAP-{self.on}: Threshold value used
+                correction columns, named by :meth:`output_header`:
+                - ``EdgeCorrection_NewVal-<on>``: Capped measurement values
+                - ``EdgeCorrection_Cap-<on>``: Threshold value used
                 Original measurement column (self.on) is preserved unchanged. If analyze()
                 has not been called, returns an empty DataFrame.
 
         Examples:
-            Retrieving corrected measurements after analysis:
+            Retrieving corrected colony areas after analysis:
 
-            >>> corrector = EdgeCorrector(
-            ...     on='Area',
-            ...     groupby=['ImageName']
-            ... )
+            >>> from phenotypic.analysis import EdgeCorrector
+            >>> from phenotypic.schema import EDGE_CORRECTION, IMAGE, SIZE
+            >>> corrector = EdgeCorrector(on=SIZE.AREA, groupby=[IMAGE.IMAGE_NAME])
+            >>> new_val = corrector.output_header(EDGE_CORRECTION.NEW_VAL, corrector.on)
+            >>> cap = corrector.output_header(EDGE_CORRECTION.CORRECTED_CAP, corrector.on)
+            >>> new_val, cap
+            ('EdgeCorrection_NewVal-Size_Area', 'EdgeCorrection_Cap-Size_Area')
             >>> corrected = corrector.analyze(data)  # doctest: +SKIP
             >>> results = corrector.results()  # doctest: +SKIP
             >>> assert results.equals(corrected)  # doctest: +SKIP
-            >>> # Access corrected values
-            >>> corrected_areas = results['Size-Area']  # doctest: +SKIP
-            >>> thresholds = results['Cap-Area']  # doctest: +SKIP
-            >>> # Original 'Area' column also available for comparison
-            >>> original_areas = results['Area']  # doctest: +SKIP
+            >>> corrected_areas = results[new_val]  # doctest: +SKIP
+            >>> thresholds = results[cap]  # doctest: +SKIP
+            >>> # The original Size_Area column is kept for comparison
+            >>> original_areas = results[corrector.on]  # doctest: +SKIP
 
         Notes:
             - Returns the DataFrame stored in self._latest_measurements
@@ -694,8 +698,39 @@ class EdgeCorrector(EdgeCorrection):
         """
         return self._latest_measurements
 
-    @staticmethod
+    @classmethod
+    def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str:
+        """Return the column header :meth:`analyze` writes for *member*.
+
+        Edge-correction columns keep the full measured column after a hyphen,
+        e.g. ``EdgeCorrection_NewVal-Size_Area``, so corrections of several
+        measurements can sit side by side.
+
+        Args:
+            member: An ``EDGE_CORRECTION`` member.
+            on: The measured column. ``None`` renders the ``<column>``
+                placeholder used in the Measurements reference.
+
+        Returns:
+            The emitted header.
+        """
+        if isinstance(member, EDGE_CORRECTION):
+            return f"{member.value}-{on if on is not None else '<column>'}"
+        return super().output_header(member, on)
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define ``<column>``, with a header this analyzer writes as the example."""
+        return {
+            "<column>": (
+                "the corrected column in full: correcting ``Size_Area`` writes "
+                f"``{cls.output_header(EDGE_CORRECTION.NEW_VAL, 'Size_Area')}``."
+            )
+        }
+
+    @classmethod
     def _apply2group_func(
+            cls,
             group: pd.DataFrame,
             on: str,
             nrows: int,
@@ -707,7 +742,7 @@ class EdgeCorrector(EdgeCorrection):
     ) -> pd.DataFrame:
         """Apply edge correction logic to a single group of measurements.
 
-        Static method called by analyze() via joblib.Parallel to process each group
+        Classmethod called by analyze() via joblib.Parallel to process each group
         independently. Identifies interior colonies, performs permutation testing, and
         creates new corrected columns. Original measurement column remains unchanged.
         Called once per group.
@@ -718,8 +753,8 @@ class EdgeCorrector(EdgeCorrection):
                 - on: Measurement column to correct
                 - time_label: Time point column (optional)
             on (str): Name of measurement column to analyze. Used as basis for new
-                corrected columns: EDGE_CORRECTION.NEW_VAL-{on} and
-                EDGE_CORRECTION.CORRECTED_CAP-{on}.
+                corrected columns ``EdgeCorrection_NewVal-<on>`` and
+                ``EdgeCorrection_Cap-<on>``, named by :meth:`output_header`.
             nrows (int): Grid rows (e.g., 8 for 96-well).
             ncols (int): Grid columns (e.g., 12 for 96-well).
             top_n (int): Number of top interior values for threshold.
@@ -731,9 +766,9 @@ class EdgeCorrector(EdgeCorrection):
 
         Returns:
             pd.DataFrame: Input group with two new correction columns added:
-                - EDGE_CORRECTION.NEW_VAL-{on}: Capped measurement values at threshold
+                - ``EdgeCorrection_NewVal-<on>``: Capped measurement values at threshold
                   (clipped if correction applied, original otherwise)
-                - EDGE_CORRECTION.CORRECTED_CAP-{on}: Threshold value computed
+                - ``EdgeCorrection_Cap-<on>``: Threshold value computed
                 Original measurement column (on) is preserved unchanged. All rows get
                 corrected values (not just edge wells) for consistency and reproducibility.
 
@@ -752,13 +787,14 @@ class EdgeCorrector(EdgeCorrection):
             Direct use in batch processing:
 
             >>> from phenotypic.analysis import EdgeCorrector
-            >>> group_data = data[data['Plate'] == 'P1']  # doctest: +SKIP
+            >>> from phenotypic.schema import CULTURE, SAMPLE, SIZE
+            >>> plate = data[data[SAMPLE.SOURCE_PLATE] == 'P1']  # doctest: +SKIP
             >>> corrected = EdgeCorrector._apply2group_func(
-            ...     group_data,
-            ...     on='Area',
+            ...     plate,
+            ...     on=SIZE.AREA,
             ...     nrows=8, ncols=12,
             ...     top_n=5,
-            ...     time_label='Time',
+            ...     time_label=CULTURE.TIME,
             ...     connectivity=4,
             ...     pvalue=0.05
             ... )  # doctest: +SKIP
@@ -768,10 +804,12 @@ class EdgeCorrector(EdgeCorrection):
         section_col = GRID.ROW_MAJOR_IDX
 
         # Set base case
-        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = group.loc[:, on]
+        group.loc[:, cls.output_header(EDGE_CORRECTION.NEW_VAL, on)] = group.loc[:, on]
 
         # TODO: Should this be the max or np.inf
-        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = group.loc[:, on].max()
+        group.loc[:, cls.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = (
+            group.loc[:, on].max()
+        )
 
         # Handle empty groups
         if len(group) == 0:
@@ -847,10 +885,10 @@ class EdgeCorrector(EdgeCorrection):
         threshold = top_values.mean()
 
         # Apply correction: cap ALL values that exceed for fairness
-        group.loc[:, f"{EDGE_CORRECTION.NEW_VAL}-{on}"] = np.clip(group.loc[:, on],
-                                                                  a_min=0,
-                                                                  a_max=threshold)
-        group.loc[:, f"{EDGE_CORRECTION.CORRECTED_CAP}-{on}"] = threshold
+        group.loc[:, cls.output_header(EDGE_CORRECTION.NEW_VAL, on)] = np.clip(
+            group.loc[:, on], a_min=0, a_max=threshold
+        )
+        group.loc[:, cls.output_header(EDGE_CORRECTION.CORRECTED_CAP, on)] = threshold
         return group
 
     @staticmethod

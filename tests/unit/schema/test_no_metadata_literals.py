@@ -51,6 +51,12 @@ _ALLOWED = {
         "Metadata_Strain",
         "Metadata_Medium",
     },
+    # Reference metadata: doctest layout tables, plus SubtractBlank's
+    # blank_column default. Metadata_BlankImage is a user --metadata column
+    # with no MetadataInfo member; Metadata_ImageName appears only as the
+    # doctest table's key column, as in _join_metadata.py above.
+    "_core/_reference_context.py": {"Metadata_ImageName", "Metadata_BlankImage"},
+    "enhance/_subtract_blank.py": {"Metadata_ImageName", "Metadata_BlankImage"},
 }
 
 
@@ -148,7 +154,7 @@ _LEGACY_ALLOWED = {
         "STUDY_METADATA",
         "ACQUISITION_METADATA",
     },
-    "src/phenotypic/schema/_experimental_tags/__init__.py": {
+    "src/phenotypic/schema/_metadata/_experimental_tags/__init__.py": {
         "GENETIC_METADATA",
         "SAMPLE_METADATA",
         "PLATE_METADATA",
@@ -158,7 +164,7 @@ _LEGACY_ALLOWED = {
         "STUDY_METADATA",
         "ACQUISITION_METADATA",
     },
-    "src/phenotypic/schema/_tiers.py": {"MetadataGenetic_Strain"},
+    "src/phenotypic/schema/_base/_tiers.py": {"MetadataGenetic_Strain"},
     # Live migration guidance labels historical strings as compatibility data.
     "src/phenotypic/schema/CLAUDE.md": {"MetadataGenetic_Strain"},
     "docs/source/explanation/metadata_namespace.md": {

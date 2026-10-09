@@ -118,7 +118,11 @@ class TestGridImageDtypeHandling:
         assert grid_image.isempty() is False
         assert grid_image.bit_depth == 8
         assert grid_image.rgb.isempty()  # No RGB for grayscale input
-        assert np.array_equal(grid_image.gray[:], uint8_gray)
+        # gray is float32 [0, 1]: the integers divided by the dtype max
+        assert grid_image.gray[:].dtype == np.float32
+        np.testing.assert_allclose(
+            grid_image.gray[:], uint8_gray.astype(np.float32) / 255, atol=1e-7
+        )
 
     @timeit
     def test_gridimage_float64_grayscale_initialization(self):

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-ColumnSource = Literal["measurements", "master_measurements"]
+ColumnSource = Literal["measurements", "master_measurements", "reference_metadata"]
 
 
 class _ColumnRefMarker:
@@ -45,6 +45,21 @@ class _ColumnRefMarker:
         return hash(("_ColumnRefMarker", self.source))
 
 
+class _ReferenceImageMarker:
+    """Sentinel: this reference column's value names an image to load."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "_ReferenceImageMarker()"
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _ReferenceImageMarker)
+
+    def __hash__(self) -> int:
+        return hash("_ReferenceImageMarker")
+
+
 #: Annotated alias for a single column name parameter. Resolves to
 #: ``str`` at runtime; the GUI renders a single-select dropdown.
 ColumnRef = Annotated[str, _ColumnRefMarker("measurements")]
@@ -53,10 +68,24 @@ ColumnRef = Annotated[str, _ColumnRefMarker("measurements")]
 #: ``list[str]`` at runtime; the GUI renders a multi-select dropdown.
 ColumnRefList = Annotated[list[str], _ColumnRefMarker("measurements")]
 
+#: A column of the run's reference metadata table (``ReferenceContext``),
+#: read per image by a :class:`~phenotypic.abc_.RefMetadata` operation.
+#: The GUI renders it as a dropdown of the active table's headers.
+RefColumn = Annotated[str, _ColumnRefMarker("reference_metadata")]
+
+#: A reference column whose value names another image (e.g. a media blank).
+#: The CLI resolves these to files at startup and in its preflight.
+RefImageColumn = Annotated[
+    str, _ColumnRefMarker("reference_metadata"), _ReferenceImageMarker()
+]
+
 
 __all__ = [
     "ColumnRef",
     "ColumnRefList",
     "ColumnSource",
+    "RefColumn",
+    "RefImageColumn",
     "_ColumnRefMarker",
+    "_ReferenceImageMarker",
 ]

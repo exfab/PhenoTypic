@@ -40,7 +40,7 @@ class DetectMatAccessor(SingleChannelAccessor):
     def _accessor_property_name(self) -> str:
         return "detect_mat"
 
-    def __getitem__(self, key) -> np.ndarray:
+    def __getitem__(self, key) -> np.ndarray | np.floating:
         """Return a non-writeable view of the detection matrix data for the given index.
 
         Retrieves a portion of the detection matrix array using standard NumPy indexing.
@@ -52,9 +52,10 @@ class DetectMatAccessor(SingleChannelAccessor):
                 Follows standard NumPy indexing conventions.
 
         Returns:
-            np.ndarray: A non-writeable view of the detection matrix data at the specified
-                index. The returned array shares memory with the underlying data but cannot
-                be modified.
+            np.ndarray | np.floating: A non-writeable view of the detection matrix data
+                at the specified index, or the pixel's scalar value when the key selects
+                a single pixel. The returned array shares memory with the underlying data
+                but cannot be modified.
 
         Raises:
             EmptyImageError: If the image has no data loaded (empty shape).
@@ -71,10 +72,7 @@ class DetectMatAccessor(SingleChannelAccessor):
         if self.isempty():
             raise EmptyImageError
         else:
-            view = self._root_image._data.detect_mat[key]
-            view.flags.writeable = False
-
-            return view
+            return self._read_only(self._root_image._data.detect_mat[key])
 
     def __setitem__(self, key, value):
         """Set detection matrix data at the specified index with validation.

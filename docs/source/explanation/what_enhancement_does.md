@@ -47,6 +47,9 @@ Remove large-scale brightness gradients.
 - **SubtractPolySurface** — fits and subtracts a constant, plane, polynomial
   surface, or per-scan-line polynomial (Gwyddion's leveling tools), with an
   optional robust fit that ignores colonies
+- **SubtractBlank** — subtracts a media-blank frame named in the experiment
+  metadata (needs a `ReferenceContext` or the CLI's `--metadata`; see
+  {doc}`/how_to/pages/reference_metadata`)
 
 ### Structural Enhancement
 

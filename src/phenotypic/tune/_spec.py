@@ -75,6 +75,21 @@ class Budget(BaseModel):
     max_failures: Optional[int] = None
 
 
+def _refuse_reference_metadata(pipeline: "ImagePipeline") -> None:
+    """Refuse a pipeline whose operations read reference metadata.
+
+    The tune evaluator does not enter a ReferenceContext yet, so such an op
+    would fail on every trial; refusing up front names the cause once.
+    """
+    needs = pipeline.reference_columns()
+    if needs:
+        where = ", ".join(f"{path} {cols}" for path, cols in needs.items())
+        raise ValueError(
+            "phenotypic-tune cannot tune a pipeline whose operations read reference "
+            f"metadata yet: {where}"
+        )
+
+
 def _check_field(op_obj: Any, field: str, op: int, cls_name: str) -> None:
     """Assert ``field`` exists on ``op_obj``; raise with a did-you-mean otherwise."""
     if field in type(op_obj).model_fields:
@@ -282,6 +297,12 @@ class TuningSpec(BaseModel):
                 not an Optuna strategy.
         """
         reject_grid_random_multi_objective(self.scorer, self.strategy)
+        return self
+
+    @model_validator(mode="after")
+    def _reject_reference_metadata(self) -> "TuningSpec":
+        """Refuse, at spec load, a pipeline whose ops read reference metadata."""
+        _refuse_reference_metadata(self.pipeline)
         return self
 
     @model_validator(mode="after")

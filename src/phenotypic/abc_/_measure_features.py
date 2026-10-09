@@ -330,6 +330,37 @@ class MeasureFeatures(BaseOperation, ABC):
             :class:`phenotypic.measure.MeasureSymZones`.
     """
 
+    @classmethod
+    def output_header(
+            cls, member: MeasurementInfo, on: str | None = None
+    ) -> str:
+        """Return the column header :meth:`measure` writes for *member*.
+
+        Measurement operations write every member under its own value
+        (``Size_Area``). The method exists so the Measurements reference can
+        ask every table producer the same question; see
+        :meth:`phenotypic.analysis.abc_.SetAnalyzer.output_header`.
+
+        Args:
+            member: A member of a schema this operation declares.
+            on: Unused; accepted for the shared ``output_header`` signature.
+
+        Returns:
+            The emitted header.
+        """
+        del on
+        return member.value
+
+    @classmethod
+    def output_header_placeholders(cls) -> dict[str, str]:
+        """Define the placeholders in this operation's :meth:`output_header` patterns.
+
+        Returns:
+            Placeholder (``<x>``) to an RST sentence saying what it stands
+            for, with an example. Empty when every header is fixed.
+        """
+        return {}
+
     def get_measurement_infoclasses(
             self,
     ) -> tuple[type[MeasurementInfo], ...]:

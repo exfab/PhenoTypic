@@ -40,7 +40,10 @@ else:
 
 import skimage as ski
 
-from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
+from phenotypic.sdk_.exceptions_ import (
+    ArrayKeyValueShapeMismatchError,
+    UnsupportedFileTypeError,
+)
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     ensure_metadata_prefix,
@@ -49,6 +52,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
 from ._image_color_handler import ImageColorSpace
+from ._image_data_manager import normalize_integer_matrix
 
 # -----------------------------------------------------------------------------
 # HDF5 schema helpers
@@ -246,6 +250,11 @@ class _BackCompatUnpickler(pickle.Unpickler):
 
     Scoped to the moved symbol only and used solely for unpickling — it does not
     reintroduce ``METADATA`` into ``constants_``'s import namespace.
+
+    ``_MOVED_CLASSES`` covers renamed *names* and pre-``schema`` paths. Any other
+    class pickled under a private ``phenotypic.schema._*`` module resolves by
+    name through the public package (:meth:`_public_schema_class`), so moving a
+    schema file needs no new row here.
     """
 
     _MOVED_CLASSES: dict[tuple[str, str], tuple[str, str]] = {
@@ -293,7 +302,30 @@ class _BackCompatUnpickler(pickle.Unpickler):
 
     def find_class(self, module: str, name: str):
         module, name = self._MOVED_CLASSES.get((module, name), (module, name))
+        if module.startswith("phenotypic.schema._"):
+            public = self._public_schema_class(name)
+            if public is not None:
+                return public
         return super().find_class(module, name)
+
+    @staticmethod
+    def _public_schema_class(name: str) -> type | None:
+        """Resolve a schema class pickled under any private module path.
+
+        Enum members pickle by their class's ``__module__``, which is the
+        private file the class lived in when the pickle was written (e.g.
+        ``phenotypic.schema._metadata`` before the 2026-09 reorganization moved
+        ``IMAGE`` to ``phenotypic.schema._metadata._image``). Resolving by name
+        through the public namespace makes every such path, past or future,
+        load without a per-move row. Legacy *names* still go through
+        ``_MOVED_CLASSES`` first, so their deprecation aliases never fire here.
+        """
+        import phenotypic.schema as schema
+
+        if name.startswith("_"):
+            return None
+        value = vars(schema).get(name)
+        return value if isinstance(value, type) else None
 
 
 class ImageIOHandler(ImageColorSpace):
@@ -1610,9 +1642,11 @@ class ImageIOHandler(ImageColorSpace):
         if "rgb" in layers:
             array_data = layers["rgb"][()]
             img = cls(arr=array_data, **kwargs)
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=group.file.filename)
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=group.file.filename, **kwargs
+            )
 
         # Detection matrix + mode. Backward compat: 'enh_gray' is the
         # pre-rename name, still accepted by valid_staged_hdf in
@@ -1630,7 +1664,9 @@ class ImageIOHandler(ImageColorSpace):
         else:
             detect_matrix_data = layers["enh_gray"][()]
             detect_mode = "gray"
-        img.detect_mat[:] = detect_matrix_data
+        # A single-channel file written before normalisation holds raw integers;
+        # the gray layer is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(detect_matrix_data)
         img._data.detect_mode = detect_mode
 
         # Object map preserves integer-label dtype.
@@ -1738,11 +1774,17 @@ class ImageIOHandler(ImageColorSpace):
                 arr=cls._read_store_array(path, series["rgb"], layer="rgb"),
                 **kwargs,
             )
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=path)
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=path, **kwargs
+            )
 
-        img.detect_mat[:] = cls._read_store_array(path, series["detect_mat"])
+        # A single-channel store written before normalisation holds raw integers;
+        # the gray series is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(
+            cls._read_store_array(path, series["detect_mat"])
+        )
         img._data.detect_mode = (
             block.get(ngff_.PhenotypicAttr.DETECT_MODE) or "gray"
         )
@@ -1760,6 +1802,10 @@ class ImageIOHandler(ImageColorSpace):
                 if original.ndim == 3
                 else original
             )
+            # A gray-only image's float gray came from these integers, so a
+            # later _retain_original must give them back, not float32.
+            if img.rgb.isempty() and np.issubdtype(original.dtype, np.integer):
+                img._gray_source_dtype = original.dtype
 
         provenance = block.get(ngff_.PhenotypicAttr.PROVENANCE)
         if isinstance(provenance, dict):
@@ -1788,6 +1834,93 @@ class ImageIOHandler(ImageColorSpace):
         # shape; this one is new, so it is narrowed here rather than adding a
         # fourth instance of the pattern.
         return cast("Image", img)
+
+    @classmethod
+    def _from_stored_matrix(cls, matrix: np.ndarray, *, source, **kwargs):
+        """Rebuild a gray-only image from its stored gray layer, as stored.
+
+        Stored state is not user input, so it skips the constructor's
+        ``[0, 1]`` refusal: a store, HDF file or pickle written before 0.20.0
+        from a float scan in counts must still load and migrate. Such a layer
+        is loaded as written, with a warning, because its scale is unknown. A
+        legacy integer layer is normalised as at construction.
+
+        Args:
+            matrix: The stored gray layer.
+            source: What it was read from, for the warning.
+            **kwargs: Constructor arguments (``name``, ``bit_depth``, ...).
+
+        Returns:
+            The rebuilt image.
+        """
+        img = cls(**kwargs)
+        img._restore_array(matrix)
+        cls._warn_if_stored_gray_off_scale(matrix, source)
+        return img
+
+    def _restore_stored_gray(self, matrix: np.ndarray, *, source) -> None:
+        """Put an RGB image's stored gray layer back, as stored.
+
+        The image was rebuilt from its stored ``rgb``; the stored ``gray`` then
+        replaces the one derived from it. It is stored state, so it skips the
+        public setter's ``[0, 1]`` assertion: an old ``PadImage(constant_value=255)``
+        wrote 255 into the float gray, and such a store must still load and
+        migrate. A float layer is loaded as written, with a warning when it is
+        outside ``[0, 1]`` or non-finite; a legacy integer layer is normalised
+        by its dtype's maximum, as a gray-only store's is.
+
+        Args:
+            matrix: The stored gray layer.
+            source: What it was read from, for the warning.
+
+        Raises:
+            ArrayKeyValueShapeMismatchError: If the stored gray does not match
+                the stored rgb's shape.
+        """
+        image = cast("Image", self)
+        if matrix.shape != image._data.gray.shape:
+            raise ArrayKeyValueShapeMismatchError
+        matrix = normalize_integer_matrix(matrix)
+        self._warn_if_stored_gray_off_scale(matrix, source)
+        image._data.gray = np.array(matrix, dtype=np.float32, copy=True)
+        image.detect_mat.reset()
+        image.objmap.reset()
+
+    @staticmethod
+    def _warn_if_stored_gray_off_scale(matrix: np.ndarray, source) -> None:
+        """Warn that a stored float gray layer is loaded as is, though unusable.
+
+        It is off scale when it holds a non-finite value or lies outside
+        ``[0, 1]``. The finite values alone are ranged, so an all-NaN layer
+        raises no numpy ``RuntimeWarning`` of its own.
+        """
+        if not (np.issubdtype(matrix.dtype, np.floating) and matrix.size):
+            return
+        finite = np.isfinite(matrix)
+        values = matrix
+        if not finite.all():
+            warnings.warn(
+                f"{source}: the stored gray layer holds non-finite values (NaN or "
+                f"inf) and is loaded as stored. Operations that assume finite "
+                f"intensities in [0, 1] will misread it; rebuild it from the "
+                f"source scan.",
+                UserWarning,
+                stacklevel=4,
+            )
+            if not finite.any():
+                return
+            values = matrix[finite]
+        lo, hi = float(values.min()), float(values.max())
+        if lo < 0 or hi > 1:
+            warnings.warn(
+                f"{source}: the stored gray layer spans [{lo:.4g}, {hi:.4g}], "
+                f"outside [0, 1]; it was written by an earlier version (before "
+                f"single-channel inputs were normalised, or by a PadImage that "
+                f"filled gray in counts) and is loaded as stored. Operations that "
+                f"assume [0, 1] will misread it; rebuild it from the source scan.",
+                UserWarning,
+                stacklevel=4,
+            )
 
     @staticmethod
     def _read_store_array(path, member: str, *, layer: str = "") -> np.ndarray:
@@ -1832,9 +1965,11 @@ class ImageIOHandler(ImageColorSpace):
         if "rgb" in group:
             array_data = group["rgb"][()]
             img = cls(arr=array_data, **kwargs)
-            img.gray[:] = matrix_data
+            img._restore_stored_gray(matrix_data, source=group.file.filename)
         else:
-            img = cls(arr=matrix_data, **kwargs)
+            img = cls._from_stored_matrix(
+                matrix_data, source=group.file.filename, **kwargs
+            )
 
         # Load detection matrix and object map with proper dtype casting.
         # Backward compat: try 'detect_mat' first, fall back to 'enh_gray'.
@@ -1847,7 +1982,9 @@ class ImageIOHandler(ImageColorSpace):
         else:
             detect_matrix_data = group["enh_gray"][()]
             detect_mode = "gray"
-        img.detect_mat[:] = detect_matrix_data
+        # A single-channel file written before normalisation holds raw integers;
+        # the gray layer is normalised by the constructor above.
+        img.detect_mat[:] = normalize_integer_matrix(detect_matrix_data)
         img._data.detect_mode = detect_mode
 
         # Object map should preserve its original dtype (usually integer labels).
@@ -2082,6 +2219,9 @@ class ImageIOHandler(ImageColorSpace):
                 "objmap": self.objmap[:],
                 "protected_metadata": self._metadata.protected,
                 "public_metadata": self._metadata.public,
+                "gamma": self.gamma.name,
+                "illuminant": self.illuminant,
+                "_observer": self._observer,
             }
 
             if hasattr(self, "grid_finder"):
@@ -2179,22 +2319,27 @@ class ImageIOHandler(ImageColorSpace):
             else:
                 instance = target_class(arr=loaded["_data.rgb"], name=None)
         else:
-            if has_grid_finder:
-                instance = target_class(
-                    arr=loaded["_data.gray"],
-                    name=None,
-                    grid_finder=grid_finder,
-                )
-            else:
-                instance = target_class(arr=loaded["_data.gray"], name=None)
+            finder_kwargs = {"grid_finder": grid_finder} if has_grid_finder else {}
+            instance = target_class._from_stored_matrix(
+                loaded["_data.gray"], source=filename, name=None, **finder_kwargs
+            )
+
+        # Pickles written before the colour configuration was stored load
+        # with the defaults, as they always did.
+        gamma_name = loaded.get("gamma")
+        if gamma_name is not None:
+            instance.gamma = GAMMA_ENCODINGS[gamma_name]
+        instance.illuminant = loaded.get("illuminant", instance.illuminant)
+        instance._observer = loaded.get("_observer", instance._observer)
 
         # Restore detection matrix, object map, and metadata
         instance.detect_mat.reset()
         instance.objmap.reset()
 
-        # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'
-        instance._data.detect_mat = loaded.get(
-            "_data.detect_mat", loaded.get("_data.enh_gray")
+        # Backward compat: old pickles use '_data.enh_gray', new use '_data.detect_mat'.
+        # A single-channel pickle written before normalisation holds raw integers.
+        instance._data.detect_mat = normalize_integer_matrix(
+            loaded.get("_data.detect_mat", loaded.get("_data.enh_gray"))
         )
         instance._data.detect_mode = loaded.get("_data.detect_mode", "gray")
         instance.objmap[:] = loaded["objmap"]

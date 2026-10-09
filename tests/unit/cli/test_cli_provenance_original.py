@@ -152,7 +152,7 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
     dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
     seen: dict[str, Any] = {}
     identity_calls = 0
-    real_work_id_for_image = strategies.work_id_for_image
+    real_work_id_for_image = strategies.work_identity_for_image
     expected_identity = real_work_id_for_image(config, "ds", image)
 
     def _work_identity(*args: Any, **kwargs: Any) -> tuple[str, str]:
@@ -171,7 +171,7 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
         del args
         published.update(kwargs)
 
-    monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
+    monkeypatch.setattr(strategies, "work_identity_for_image", _work_identity)
     monkeypatch.setattr(strategies, "process_single_image_core", _spy)
     monkeypatch.setattr(strategies, "_publish_local_image_success", _publish)
 
@@ -182,7 +182,7 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
     assert result[2] is True
     assert seen["drop_originals"] is True
     assert seen["work_id"] == expected_identity[0]
-    assert published["work_identity"] == expected_identity
+    assert published["work_identity"] == expected_identity[:2]
     assert identity_calls == 1
 
 
@@ -208,7 +208,7 @@ def test_local_strategy_reuses_preflight_identity_for_failure_publication(
         config, make_output_manager(output_dir, save_overlays=False)
     )
     dataset = Dataset("ds", [image], synth_one_level_input, output_dir)
-    real_work_id_for_image = strategies.work_id_for_image
+    real_work_id_for_image = strategies.work_identity_for_image
     expected_identity = real_work_id_for_image(config, "ds", image)
     identity_calls = 0
     recorded: dict[str, Any] = {}
@@ -227,7 +227,7 @@ def test_local_strategy_reuses_preflight_identity_for_failure_publication(
         recorded.update(kwargs)
         return True
 
-    monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
+    monkeypatch.setattr(strategies, "work_identity_for_image", _work_identity)
     monkeypatch.setattr(strategies, "process_single_image_core", _fail)
     monkeypatch.setattr(strategies, "_record_local_terminal_failure", _record)
 
@@ -236,7 +236,7 @@ def test_local_strategy_reuses_preflight_identity_for_failure_publication(
     )
 
     assert result[2] is False
-    assert recorded["work_identity"] == expected_identity
+    assert recorded["work_identity"] == expected_identity[:2]
     assert identity_calls == 1
 
 
@@ -266,7 +266,7 @@ def test_local_strategy_reports_identity_preflight_failure_without_masking(
         del args, kwargs
         raise OSError("input disappeared during identity preflight")
 
-    monkeypatch.setattr(strategies, "work_id_for_image", _unreadable)
+    monkeypatch.setattr(strategies, "work_identity_for_image", _unreadable)
 
     result = strategy._process_single_local(
         dataset, image, output_dir, tmp_path / "events.jsonl"

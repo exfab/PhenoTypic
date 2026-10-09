@@ -53,7 +53,7 @@ class ImageRGB(MultiChannelAccessor):
     def _accessor_property_name(self) -> str:
         return "rgb"
 
-    def __getitem__(self, key) -> np.ndarray:
+    def __getitem__(self, key) -> np.ndarray | np.integer:
         """Return a read-only view of the RGB subregion specified by the given key.
 
         This method supports NumPy-style indexing and slicing to extract subregions
@@ -67,8 +67,9 @@ class ImageRGB(MultiChannelAccessor):
                 select specific channels.
 
         Returns:
-            np.ndarray: A read-only NumPy array containing the extracted subregion
-                with shape matching the selected region.
+            np.ndarray | np.integer: A read-only NumPy array containing the extracted
+                subregion with shape matching the selected region, or the scalar value
+                when the key selects a single channel of a single pixel.
 
         Raises:
             EmptyImageError: If the image contains no RGB data and no grayscale
@@ -95,9 +96,7 @@ class ImageRGB(MultiChannelAccessor):
             else:
                 raise NoArrayError
         else:
-            view = self._root_image._data.rgb[key]
-            view.flags.writeable = False
-            return view
+            return self._read_only(self._root_image._data.rgb[key])
 
     def __setitem__(self, key, value):
         """Modify a subregion of the RGB image array.
@@ -167,28 +166,25 @@ class ImageRGB(MultiChannelAccessor):
 
     @property
     def _subject_arr(self) -> np.ndarray:
-        """Return a copy of the underlying RGB image array.
+        """Return a read-only view of the underlying RGB image array.
 
         This property implements the abstract _subject_arr interface from ImageAccessorBase,
         providing access to the RGB array data managed by the parent Image object.
 
-        The returned array is a copy, allowing safe inspection and manipulation without
-        affecting the underlying image data directly. Use __setitem__ to modify the
-        image and ensure proper synchronization with the parent Image object.
+        Only the returned view is read-only: the image's own array stays writable,
+        so ``image.rgb[key] = value`` still works after a whole-layer read such as
+        ``vmax()``, ``normed()`` or ``show()``.
 
         Returns:
-            np.ndarray: A copy of the RGB image array with shape (height, width, 3)
-                for RGB images. The array dtype matches the image's bit depth
-                (typically uint8 or uint16).
+            np.ndarray: A read-only view of the RGB image array with shape
+                (height, width, 3) for RGB images. The array dtype matches the
+                image's bit depth (uint8 or uint16).
 
         Note:
-            This property always returns a copy, not a view. Modifications to the
-            returned array do not affect the parent image. Use the indexing interface
-            (image.rgb[key] = value) to modify the image.
+            The view shares memory with the image. Copy it before modifying, and
+            use the indexing interface (image.rgb[key] = value) to modify the image.
         """
-        view = self._root_image._data.rgb
-        view.flags.writeable = False
-        return view
+        return self._read_only(self._root_image._data.rgb.view())
 
     def normed(self) -> np.ndarray:
         """Return a copy of the RGB image array normalized between 0 and 1."""

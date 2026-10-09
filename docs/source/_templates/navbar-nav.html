@@ -69,28 +69,13 @@
       </ul>
     </li>
 
-    {# --- Measurements dropdown --- #}
-    {% set _measurements_active = _pn.startswith('measurements_ref/') %}
-    <li class="nav-item dropdown{% if _measurements_active %} current active{% endif %}">
-      <button class="btn dropdown-toggle nav-item nav-link" type="button"
-              data-bs-toggle="dropdown" aria-expanded="false"
-              aria-controls="pst-nav-measurements">
+    {# --- Measurements: a plain link to the reference's Overview page. The
+         section's own pages (Tier System, Categories, Shared columns,
+         Metadata, one page per operation) are in its left sidebar. --- #}
+    <li class="nav-item{% if _pn.startswith('measurements_ref/') %} current active{% endif %}">
+      <a class="nav-link nav-internal" href="{{ pathto('measurements_ref/index') }}">
         Measurements
-      </button>
-      <ul id="pst-nav-measurements" class="dropdown-menu">
-        <li>
-          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('measurements_ref/measurements/') %} current active{% endif %}"
-             href="{{ pathto('measurements_ref/measurements/index') }}">
-            Measurements
-          </a>
-        </li>
-        <li>
-          <a class="nav-link dropdown-item nav-internal{% if _pn.startswith('measurements_ref/metadata/') %} current active{% endif %}"
-             href="{{ pathto('measurements_ref/metadata/index') }}">
-            Metadata
-          </a>
-        </li>
-      </ul>
+      </a>
     </li>
 
     {# --- Remaining top-level pages --- #}

@@ -88,7 +88,7 @@ def test_writer_lays_out_one_run_folder_and_a_hash_bound_descriptor(tmp_path: Pa
     assert (tmp_path / f"figures/{_RUN.run_id}/sym/default.plotly.json").read_bytes() == _JSON
 
     descriptor = fragment[ngff_.PhenotypicAttr.FIGURES]
-    assert descriptor["schema_version"] == 1
+    assert descriptor["schema_version"] == 2
     [(run_id, run)] = descriptor["runs"].items()
     assert run_id == _RUN.run_id
     assert (run["date"], run["pipeline_sha256"]) == ("2026-09-22", _SHA)
@@ -98,11 +98,14 @@ def test_writer_lays_out_one_run_folder_and_a_hash_bound_descriptor(tmp_path: Pa
     assert page["metadata"] == {"plate": 1}
     assert [f["format"] for f in page["files"]] == ["plotly-json", "png"]
     for entry in page["files"]:
-        assert split_figure_file_path(entry["path"]) == (_RUN.run_id, "sym", Path(entry["path"]).name)
+        assert split_figure_file_path(entry["path"]) == (
+            _RUN.run_id, "sym", None, Path(entry["path"]).name
+        )
         data = (tmp_path / entry["path"]).read_bytes()
         assert entry["sha256"] == hashlib.sha256(data).hexdigest()
     assert run["failed"] == [
-        {"binding": "orient", "page": None, "format": None, "error": "RuntimeError: boom"}
+        {"binding": "orient", "page": None, "plot": None, "format": None,
+         "error": "RuntimeError: boom"}
     ]
 
 
@@ -148,7 +151,7 @@ def test_apply_merges_a_run_and_keeps_every_other():
 
 def test_apply_never_merges_with_an_unknown_schema():
     """MINOR-7: never relabelled, never dropped (spec §1a)."""
-    newer = {"schema_version": 2, "layout": {"x": 1}}
+    newer = {"schema_version": 3, "layout": {"x": 1}}
     phenotypic: dict = {"figures": dict(newer)}
     apply_image_figures_attributes(
         phenotypic, {"figures": {"schema_version": 1, "runs": {"b": {"n": 3}}}}
@@ -181,9 +184,9 @@ def test_read_figure_run_picks_one_run_and_refuses_an_unknown_schema(tmp_path: P
     assert read_figure_run(store, _OTHER.run_id)["date"] == "2026-10-03"
     assert read_figure_run(store, "2026-01-01-000000000000") is None
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
-    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 2
+    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 3
     (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
-    with pytest.raises(ValueError, match="schema_version 2"):
+    with pytest.raises(ValueError, match="schema_version 3"):
         read_figure_run(store, _RUN.run_id)
 
 
@@ -253,3 +256,191 @@ def test_a_corrupt_file_is_carried_as_it_is_never_dropped(tmp_path: Path, caplog
     assert runs[_OTHER.run_id] == read_figure_run(store, _OTHER.run_id)
     assert (part / f"figures/{_OTHER.run_id}/sym/default.png").read_bytes() == b"corrupt"
     assert "does not match its recorded sha256" in caplog.text
+
+
+# --- Descriptor version 2: plot folders (spec 2026-09-30 §2) ---
+
+
+def _stored_v2(run: FigureRun = _RUN) -> StoredFigures:
+    tiles = tuple(
+        StoredFigurePage(
+            key=f"roi_{i}", label=None, backend="mpl", metadata={},
+            files=(StoredFigureFile("png", "image/png", f"roi_{i}.png", _PNG + bytes([i])),),
+            plot="tiles", directory="tiles",
+        )
+        for i in range(2)
+    )
+    delta = StoredFigurePage(
+        key="delta_e", label=None, backend="mpl", metadata={},
+        files=(StoredFigureFile("png", "image/png", "delta_e.png", _PNG + b"d"),),
+        plot="delta_e", directory="delta_e",
+    )
+    return StoredFigures(
+        run=run,
+        bindings=(StoredFigureBinding("cal", "CalibrateColorRpcc", "cal", (*tiles, delta)),),
+        failed=(StoredFigureFailure("cal", "roi_2", "png", "OSError: x", plot="tiles"),),
+    )
+
+
+def test_writer_lays_out_plot_folders_with_group_documents(tmp_path: Path):
+    fragment = write_image_figures(tmp_path, _stored_v2())
+    group = {"zarr_format": 3, "node_type": "group", "attributes": {}}
+    for level in ("cal", "cal/tiles", "cal/delta_e"):
+        document = tmp_path / "figures" / _RUN.run_id / level / "zarr.json"
+        assert json.loads(document.read_text(encoding="utf-8")) == group
+    assert (tmp_path / f"figures/{_RUN.run_id}/cal/tiles/roi_1.png").read_bytes() == _PNG + b"\x01"
+    descriptor = fragment[ngff_.PhenotypicAttr.FIGURES]
+    assert descriptor["schema_version"] == 2
+    run = descriptor["runs"][_RUN.run_id]
+    pages = run["bindings"]["cal"]["pages"]
+    assert [(p["plot"], p["key"]) for p in pages] == [
+        ("tiles", "roi_0"), ("tiles", "roi_1"), ("delta_e", "delta_e"),
+    ]
+    assert pages[0]["files"][0]["path"] == f"figures/{_RUN.run_id}/cal/tiles/roi_0.png"
+    assert run["failed"] == [
+        {"binding": "cal", "page": "roi_2", "plot": "tiles", "format": "png", "error": "OSError: x"}
+    ]
+
+
+def test_a_flat_page_is_written_flat_with_a_null_plot(tmp_path: Path):
+    fragment = write_image_figures(tmp_path, _stored())
+    page = fragment["figures"]["runs"][_RUN.run_id]["bindings"]["sym"]["pages"][0]
+    assert page["plot"] is None
+    assert page["files"][1]["path"] == f"figures/{_RUN.run_id}/sym/default.png"
+
+
+@pytest.mark.parametrize("path, expected", [
+    ("figures/r/b/f.png", ("r", "b", None, "f.png")),
+    ("figures/r/b/p/f.png", ("r", "b", "p", "f.png")),
+])
+def test_split_accepts_both_layouts(path, expected):
+    assert split_figure_file_path(path) == expected
+
+
+@pytest.mark.parametrize("path", [
+    "figures/r/f.png", "figures/r/b/p/q/f.png", "figures/r/../p/f.png",
+    "figures/r/b/./f.png", "/figures/r/b/f.png", "tables/r/b/f.png",
+])
+def test_split_refuses_every_other_shape(path):
+    with pytest.raises(ValueError):
+        split_figure_file_path(path)
+
+
+def test_figure_file_path_round_trips_both_layouts():
+    from phenotypic.sdk_._image_figures import figure_file_path
+
+    for plot in (None, "tiles"):
+        path = figure_file_path("r", "b", "f.png", plot)
+        assert split_figure_file_path(path) == ("r", "b", plot, "f.png")
+
+
+def test_a_v1_store_gains_a_v2_run_and_keeps_its_v1_run_byte_for_byte(tmp_path: Path):
+    """The save2zarr sequence over a v1 store that also holds the run being
+    re-saved: the other run is carried as it is, the re-saved one never is."""
+    store = _store_with(tmp_path, _stored(_OTHER), _stored())
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 1   # as 0.19 wrote it
+    # The true version 1 shape: 0.19 never wrote "plot".
+    for v1_run in root["attributes"]["phenotypic"]["figures"]["runs"].values():
+        for binding in v1_run["bindings"].values():
+            for page in binding["pages"]:
+                page.pop("plot")
+        for failure in v1_run["failed"]:
+            failure.pop("plot")
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+    old_entry = json.loads(json.dumps(
+        root["attributes"]["phenotypic"]["figures"]["runs"][_OTHER.run_id]
+    ))
+    old_bytes = (store / f"figures/{_OTHER.run_id}/sym/default.png").read_bytes()
+
+    part = tmp_path / "p.ome.zarr.part"
+    part.mkdir()
+    carried = carry_figure_runs(store, part, exclude=_RUN.run_id)
+    assert list(carried["figures"]["runs"]) == [_OTHER.run_id]
+    assert not (part / "figures" / _RUN.run_id).exists()   # the excluded run is never carried
+    phenotypic: dict = {}    # save2zarr builds a fresh root, then applies both fragments
+    apply_image_figures_attributes(phenotypic, carried)
+    apply_image_figures_attributes(phenotypic, write_image_figures(part, _stored_v2()))
+
+    assert phenotypic["figures"]["schema_version"] == 2
+    assert list(phenotypic["figures"]["runs"]) == [_OTHER.run_id, _RUN.run_id]
+    assert phenotypic["figures"]["runs"][_OTHER.run_id] == old_entry
+    assert (part / f"figures/{_OTHER.run_id}/sym/default.png").read_bytes() == old_bytes
+    assert (part / f"figures/{_RUN.run_id}/cal/tiles/roi_0.png").is_file()
+    assert not (part / f"figures/{_RUN.run_id}/sym").exists()
+
+
+def test_read_figure_run_reads_v1_and_v2(tmp_path: Path):
+    store = _store_with(tmp_path, _stored())
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    for version in (1, 2):
+        root["attributes"]["phenotypic"]["figures"]["schema_version"] = version
+        (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+        assert read_figure_run(store, _RUN.run_id)["date"] == "2026-09-22"
+
+
+def _tree(root: Path) -> dict:
+    return {
+        p.relative_to(root).as_posix(): p.read_bytes()
+        for p in sorted(root.rglob("*")) if p.is_file()
+    }
+
+
+def test_a_v1_only_writer_adds_no_run_to_a_v2_store(tmp_path: Path, monkeypatch):
+    """Review Focus 3, modelled with 0.19's constants on this code: a v2
+    descriptor is unknown, so applying adds no run to it, and a carry links
+    its whole tree and returns its descriptor as it is."""
+    from phenotypic.sdk_._image_figures import known_figures_schema
+
+    store = _store_with(tmp_path, _stored_v2(_OTHER), _stored_v2())   # written as v2
+    v2 = read_image_figures_descriptor(store)
+    assert v2["schema_version"] == 2
+    monkeypatch.setattr(ngff_, "FIGURES_SCHEMA_VERSION", 1)
+    monkeypatch.setattr(ngff_, "READABLE_FIGURES_SCHEMA_VERSIONS", frozenset({1}))
+    assert known_figures_schema(v2) is False
+
+    phenotypic = {"figures": json.loads(json.dumps(v2))}
+    apply_image_figures_attributes(
+        phenotypic, {"figures": {"schema_version": 1, "runs": {"b": {"n": 2}}}}
+    )
+    assert phenotypic == {"figures": v2}
+
+    part = tmp_path / "p.ome.zarr.part"
+    part.mkdir()
+    # Whole: the run it would exclude is carried too, never cleared.
+    assert carry_figure_runs(store, part, exclude=_RUN.run_id) == {"figures": v2}
+    stored_tree = _tree(store / "figures")
+    assert stored_tree, "no figure files to carry"   # an empty == empty proves nothing
+    assert _tree(part / "figures") == stored_tree
+    if sys.platform != "win32":
+        for name in stored_tree:
+            assert (part / "figures" / name).stat().st_ino == (
+                store / "figures" / name
+            ).stat().st_ino
+
+
+@pytest.mark.parametrize("plot, directory", [("tiles", None), (None, "tiles")])
+def test_a_stored_page_names_both_its_plot_and_its_folder_or_neither(plot, directory):
+    """Minor 5: a builder bug surfaces at construction, not at the next keep."""
+    with pytest.raises(ValueError, match="both its plot and its directory"):
+        StoredFigurePage(
+            key="k", label=None, backend="mpl", metadata={}, files=(),
+            plot=plot, directory=directory,
+        )
+
+
+def test_a_boolean_schema_version_is_not_a_known_one():
+    from phenotypic.sdk_._image_figures import known_figures_schema
+
+    assert known_figures_schema({"schema_version": True}) is False
+
+
+def test_carry_links_a_v2_run_into_its_plot_folders(tmp_path: Path):
+    store = _store_with(tmp_path, _stored_v2(_OTHER))
+    part = tmp_path / "p.ome.zarr.part"
+    part.mkdir()
+    carry_figure_runs(store, part, exclude=_RUN.run_id)
+    for name in ("tiles/roi_0.png", "tiles/roi_1.png", "delta_e/delta_e.png"):
+        carried = part / f"figures/{_OTHER.run_id}/cal/{name}"
+        assert carried.read_bytes() == (store / f"figures/{_OTHER.run_id}/cal/{name}").read_bytes()
+    assert (part / f"figures/{_OTHER.run_id}/cal/tiles/zarr.json").is_file()

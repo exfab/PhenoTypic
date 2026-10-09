@@ -565,9 +565,10 @@ def _widget_for_param(
             ``point_picker_param`` matches. Signature:
             ``factory(*, form_id_prefix, name, current_value) -> Component``.
         columns_provider: Callable returning the column-name list for a
-            given source (``"measurements"`` / ``"master_measurements"``).
-            Analysis sub-app passes ``MeasurementSchema.columns_for``;
-            builder leaves it as ``None``. When provided AND the param
+            given source (``"measurements"`` / ``"master_measurements"`` /
+            ``"reference_metadata"``). Analysis sub-app passes
+            ``MeasurementSchema.columns_for``; the builder passes the picked
+            reference table's columns, or ``None``. When provided AND the param
             carries a ``column_ref``, renders a column dropdown instead
             of a free-text input.
     """
@@ -582,9 +583,10 @@ def _widget_for_param(
             current_value=current_value,
         )
 
-    # ``columns_provider`` is supplied by the analysis sub-app only —
-    # builder ops carry no column-ref params, so this branch is dead
-    # code on the builder path.
+    # ``columns_provider`` comes from the analysis sub-app (measurement
+    # columns) and from the builder, which supplies ``reference_metadata``
+    # columns from the session's picked table (and ``None`` without one, so
+    # a ``RefColumn`` then falls through to the free-text input below).
     column_ref = getattr(p, "column_ref", None)
     if column_ref is not None and columns_provider is not None:
         try:

@@ -143,6 +143,7 @@ RC_INPUT_GPU_SHARDS = "rc-input-gpu-shards"
 #: sits outside ``RC_STAGED_GPU_SECTION`` because the refusal applies in Local
 #: mode too, and its ``is_open`` gates the Run button.
 RC_STAGED_GPU_REFUSAL = "rc-staged-gpu-refusal"
+RC_REFERENCE_METADATA_REQUIRED = "rc-reference-metadata-required"
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +315,7 @@ __all__ = [
     "RC_INPUT_GPU_SLURM",
     "RC_INPUT_GPU_SHARDS",
     "RC_STAGED_GPU_REFUSAL",
+    "RC_REFERENCE_METADATA_REQUIRED",
     "RC_BTN_PICK_PIPELINE",
     "RC_BTN_PICK_INPUT",
     "RC_BTN_PICK_OUTPUT",

@@ -1,7 +1,7 @@
 """Tests for the generic ``QUALITY_CHECK`` measurement info enum."""
 from __future__ import annotations
 
-from phenotypic.schema._quality_check import QUALITY_CHECK
+from phenotypic.schema import QUALITY_CHECK
 
 
 class TestQualityCheckMembers:
@@ -20,12 +20,12 @@ class TestQualityCheckMembers:
 
 class TestQualityCheckCategory:
     def test_category_classmethod(self) -> None:
-        assert QUALITY_CHECK.category() == "QC"
+        assert QUALITY_CHECK.metric_family() == "QC"
 
     def test_category_property_on_member(self) -> None:
-        assert QUALITY_CHECK.FLAG.CATEGORY == "QC"
-        assert QUALITY_CHECK.METRIC.CATEGORY == "QC"
-        assert QUALITY_CHECK.STATUS.CATEGORY == "QC"
+        assert QUALITY_CHECK.FLAG.METRIC_FAMILY == "QC"
+        assert QUALITY_CHECK.METRIC.METRIC_FAMILY == "QC"
+        assert QUALITY_CHECK.STATUS.METRIC_FAMILY == "QC"
 
 
 class TestQualityCheckHeaders:

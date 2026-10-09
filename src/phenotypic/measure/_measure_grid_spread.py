@@ -8,8 +8,8 @@ from phenotypic.schema import GRID_SPREAD
 
 import pandas as pd
 import numpy as np
-from scipy.spatial import distance_matrix
-from phenotypic.schema import BBOX, GRID
+from scipy.spatial.distance import pdist
+from phenotypic.schema import BBOX, GRID, OBJECT
 
 
 class MeasureGridSpread(GridMeasureFeatures):
@@ -21,12 +21,9 @@ class MeasureGridSpread(GridMeasureFeatures):
     fragmented growth, or invasive spreading.
 
     Returns:
-        pd.DataFrame: Section-level statistics sorted by spread
-        (descending) with columns:
-
-            - count: number of colonies detected in the section.
-            - ObjectSpread: sum of squared pairwise Euclidean distances
-              between colony centroids in the section.
+        pd.DataFrame: One row per object, keyed by ``Object_Label``. Each
+        object carries its grid section's spread and object count, so every
+        object in a section shares the same values.
 
     Best For:
         - Detecting over-segmented wells where multiple objects were
@@ -51,27 +48,27 @@ class MeasureGridSpread(GridMeasureFeatures):
     _measurement_infoclass: ClassVar[type] = GRID_SPREAD
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
-        gs_table = image.grid.info()
-        gs_counts = pd.DataFrame(
-                gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)].value_counts())
+        grid_info = image.grid.info(include_metadata=False)
+        section = grid_info.loc[:, str(GRID.ROW_MAJOR_IDX)]
 
-        obj_spread = []
-        for gs_bindex in gs_counts.index:
-            curr_gs_subtable = gs_table.loc[
-                gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)] == gs_bindex, :
-            ]
+        section_spread = {}
+        for section_idx, section_table in grid_info.groupby(section, observed=True):
+            centers = section_table.loc[
+                :, [str(BBOX.CENTER_CC), str(BBOX.CENTER_RR)]
+            ].to_numpy(dtype=float)
+            # pdist yields each unordered pair once, so distinct pairs at equal
+            # distances are all counted.
+            section_spread[section_idx] = float(np.sum(pdist(centers) ** 2))
 
-            x_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_CC)]
-            y_vector = curr_gs_subtable.loc[:, str(BBOX.CENTER_RR)]
-            obj_vector = np.array(list(zip(x_vector, y_vector)))
-            gs_distance_matrix = distance_matrix(x=obj_vector, y=obj_vector, p=2)
-
-            obj_spread.append(np.sum(np.unique(gs_distance_matrix) ** 2))
-        gs_counts.insert(loc=1, column=str(GRID_SPREAD.OBJECT_SPREAD),
-                         value=pd.Series(obj_spread))
-        gs_counts.sort_values(by=str(GRID_SPREAD.OBJECT_SPREAD), ascending=False,
-                              inplace=True)
-        return gs_counts
+        # Section-level values are broadcast to every object in the section so
+        # the frame keys on Object_Label like every other measurer.
+        return pd.DataFrame(
+                {
+                    OBJECT.LABEL: grid_info.loc[:, OBJECT.LABEL].to_numpy(),
+                    str(GRID_SPREAD.OBJECT_SPREAD): section.map(section_spread).to_numpy(),
+                    str(GRID_SPREAD.OBJECT_COUNT): section.map(section.value_counts()).to_numpy(),
+                }
+        )
 
 
 MeasureGridSpread.__doc__ = GRID_SPREAD.append_rst_to_doc(MeasureGridSpread)

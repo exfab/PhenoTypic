@@ -1188,7 +1188,7 @@ def _build_trials_table(store: "Optional[_ReadableStore]"):  # type: ignore[no-u
         }
         for t in store.trials
     ]
-    # Numeric columns render in mono per DESIGN.md "05 -- Data Tables": header
+    # Numeric columns render in mono per DESIGN.md "Components / Data Tables": header
     # is 11px mono uppercase muted with a 2px navy underline; cells are mono.
     return dash_table.DataTable(  # type: ignore[attr-defined]
         data=rows,

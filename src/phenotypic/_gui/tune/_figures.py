@@ -8,7 +8,7 @@ shared base layout (mono numeric font + transparent paper/plot backgrounds) so
 the three call sites can't drift on the font token or the transparent sentinel.
 
 The base font is the mono family because tune figures are data plots: axis
-ticks, hover values, and legends are numeric data, which DESIGN.md "02" renders
+ticks, hover values, and legends are numeric data, which DESIGN.md "Typography" renders
 in JetBrains Mono.
 
 Like the rest of :mod:`phenotypic._gui.tune`, importing this module must never
