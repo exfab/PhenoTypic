@@ -11,7 +11,7 @@ set -euo pipefail
 # The full non-slow verification scope is deterministically file-sharded across
 # 24 array tasks. Twelve CPUs leave enough headroom for tests that spawn eight
 # child processes while keeping the fully active array below account caps.
-WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.worktrees/worktree-ome-zarr-image-store
+WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.worktrees/sps-gate-2bf26ea
 PYTEST_GROUP_COUNT=24
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}

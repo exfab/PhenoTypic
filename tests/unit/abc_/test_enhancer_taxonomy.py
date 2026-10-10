@@ -55,6 +55,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
     BackgroundSubtraction : (
         "SubtractGaussian",
         "SubtractRollingBall",
+        "SubtractPolySurface",
         "SubtractOpening",
         "FlattenIllumination",
         "SubtractBlank",

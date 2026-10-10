@@ -37,6 +37,7 @@ from phenotypic.enhance import (
     SharpenEdgeGauss,
     SubtractGaussian,
     SubtractOpening,
+    SubtractPolySurface,
     SubtractRollingBall,
 )
 from phenotypic.tune import FloatRange, IntRange, infer_search_space
@@ -94,6 +95,9 @@ def _excluded(op, field_name: str):
             (ContrastStretching(), "lower_percentile", IntRange, (1, 5)),
             (ContrastStretching(), "upper_percentile", IntRange, (95, 99)),
             (SubtractRollingBall(), "radius", IntRange, (50, 200, True)),
+            (SubtractPolySurface(), "order", IntRange, (2, 5)),
+            (SubtractPolySurface(), "line_order", IntRange, (0, 3)),
+            (SubtractPolySurface(), "clip_sigma", FloatRange, (2.0, 4.0, False)),
             (ContrastGamma(), "gamma", FloatRange, (0.1, 5.0, True)),
             (ContrastGamma(), "gain", FloatRange, (0.5, 2.0, False)),
             (ContrastLog(), "gain", FloatRange, (0.5, 2.0, False)),
@@ -117,6 +121,7 @@ def test_tune_spec_resolves_tier1(op, field_name, expected_domain, expected_boun
         "op, field_name",
         [
             (BlurGauss(), "truncate"),
+            (SubtractPolySurface(), "max_iter"),
         ],
 )
 def test_tune_spec_off_excludes(op, field_name):
@@ -138,6 +143,7 @@ def test_tune_spec_off_excludes(op, field_name):
             lambda: MedianFilter(width=101),
             lambda: EnhanceLocalContrast(clip_limit=0.99),
             lambda: SubtractGaussian(sigma=5000.0),
+            lambda: SubtractPolySurface(order=11, line_order=5, clip_sigma=9.0),
             lambda: SharpenEdgeGauss(radius=999.0, amount=99.0),
             lambda: LocalEdgeDenoise(sigma_spatial=999.0),
             lambda: FocusEdgePhase(n_scale=99, min_wavelength=999.0, k=999.0),
@@ -159,6 +165,10 @@ def test_tunespec_is_pure_metadata(factory):
         "factory",
         [
             lambda: SubtractGaussian(n_iter=0),
+            lambda: SubtractPolySurface(order=1),
+            lambda: SubtractPolySurface(line_order=-1),
+            lambda: SubtractPolySurface(clip_sigma=0.0),
+            lambda: SubtractPolySurface(max_iter=0),
             lambda: SharpenEdgeGauss(radius=0.0),
             lambda: SharpenEdgeGauss(n_iter=0),
             lambda: LocalEdgeDenoise(sigma_spatial=0.0),
