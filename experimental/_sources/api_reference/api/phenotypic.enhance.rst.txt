@@ -33,6 +33,7 @@
       FocusEdgeFrangi
       BlurGauss
       SubtractGaussian
+      SubtractBlank
       GrayOpening
       FocusEdgeHessian
       FlattenIllumination
@@ -49,6 +50,7 @@
       FocusEdgeColorPhase
       RankMedianEnhancer
       SubtractRollingBall
+      SubtractPolySurface
       FocusEdgeSato
       FocusEdgeSobel
       SharpenEdgeGauss

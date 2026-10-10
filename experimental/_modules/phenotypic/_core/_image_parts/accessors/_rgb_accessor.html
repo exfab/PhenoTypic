@@ -623,7 +623,7 @@
 
 <div class="viewcode-block" id="ImageRGB.__getitem__">
 <a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._rgb_accessor.ImageRGB.__getitem__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a read-only view of the RGB subregion specified by the given key.</span>
 
 <span class="sd">        This method supports NumPy-style indexing and slicing to extract subregions</span>
@@ -637,8 +637,9 @@
 <span class="sd">                select specific channels.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            np.ndarray: A read-only NumPy array containing the extracted subregion</span>
-<span class="sd">                with shape matching the selected region.</span>
+<span class="sd">            np.ndarray | np.integer: A read-only NumPy array containing the extracted</span>
+<span class="sd">                subregion with shape matching the selected region, or the scalar value</span>
+<span class="sd">                when the key selects a single channel of a single pixel.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            EmptyImageError: If the image contains no RGB data and no grayscale</span>
@@ -665,9 +666,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">NoArrayError</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="n">view</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">writeable</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">return</span> <span class="n">view</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_only</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">key</span><span class="p">])</span></div>
 
 
 <div class="viewcode-block" id="ImageRGB.__setitem__">
@@ -741,28 +740,25 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_subject_arr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a copy of the underlying RGB image array.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a read-only view of the underlying RGB image array.</span>
 
 <span class="sd">        This property implements the abstract _subject_arr interface from ImageAccessorBase,</span>
 <span class="sd">        providing access to the RGB array data managed by the parent Image object.</span>
 
-<span class="sd">        The returned array is a copy, allowing safe inspection and manipulation without</span>
-<span class="sd">        affecting the underlying image data directly. Use __setitem__ to modify the</span>
-<span class="sd">        image and ensure proper synchronization with the parent Image object.</span>
+<span class="sd">        Only the returned view is read-only: the image&#39;s own array stays writable,</span>
+<span class="sd">        so ``image.rgb[key] = value`` still works after a whole-layer read such as</span>
+<span class="sd">        ``vmax()``, ``normed()`` or ``show()``.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            np.ndarray: A copy of the RGB image array with shape (height, width, 3)</span>
-<span class="sd">                for RGB images. The array dtype matches the image&#39;s bit depth</span>
-<span class="sd">                (typically uint8 or uint16).</span>
+<span class="sd">            np.ndarray: A read-only view of the RGB image array with shape</span>
+<span class="sd">                (height, width, 3) for RGB images. The array dtype matches the</span>
+<span class="sd">                image&#39;s bit depth (uint8 or uint16).</span>
 
 <span class="sd">        Note:</span>
-<span class="sd">            This property always returns a copy, not a view. Modifications to the</span>
-<span class="sd">            returned array do not affect the parent image. Use the indexing interface</span>
-<span class="sd">            (image.rgb[key] = value) to modify the image.</span>
+<span class="sd">            The view shares memory with the image. Copy it before modifying, and</span>
+<span class="sd">            use the indexing interface (image.rgb[key] = value) to modify the image.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span>
-        <span class="n">view</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">writeable</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">return</span> <span class="n">view</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_only</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">view</span><span class="p">())</span>
 
 <div class="viewcode-block" id="ImageRGB.normed">
 <a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._rgb_accessor.ImageRGB.normed">[docs]</a>

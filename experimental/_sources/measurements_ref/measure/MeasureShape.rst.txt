@@ -56,6 +56,20 @@ Parameters and usage: :py:class:`MeasureShape <phenotypic.measure.MeasureShape>`
    ``<Model>_MeanRadius_*`` and ``<Model>_MedianRadius_*`` fitted before and
    after 0.20.0 share a name but not a meaning.
 
+.. versionchanged:: 0.21.0
+   A single-channel (grayscale) integer image, such as an 8- or 16-bit
+   grayscale PNG, TIFF or JPEG, is now normalised to ``[0, 1]`` when it is
+   read, by dividing by its full-scale value (255 for 8-bit, 65535 for
+   16-bit; another integer dtype takes the narrower of the two its values
+   fit). An RGB image's grayscale was already on that scale, and RGB inputs
+   are unchanged. Detectors and enhancers that assume ``[0, 1]`` now see it, so the
+   segmentation of such an image changes, and with it every column measured
+   on its detected objects: ``Size_*``, ``Shape_*``, ``Bbox_*`` and the zone
+   columns included.
+   A single-channel run started before this change must be re-run with
+   ``--overwrite``, not resumed. Resuming reuses the images it already
+   finished, which were segmented and measured on raw integer counts.
+
 
 .. list-table:: Metric family: **Shape**
    :header-rows: 1

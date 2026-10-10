@@ -542,6 +542,9 @@
 </details></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../core/reference_context.html">ReferenceContext</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
 
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
@@ -577,6 +580,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.RefMetadata.html">phenotypic.abc_.RefMetadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
@@ -680,6 +684,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractBlank.html">phenotypic.enhance.SubtractBlank</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
@@ -696,6 +701,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
@@ -1037,6 +1043,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.AnalysisArtifactPaths.html">phenotypic.sdk_.AnalysisArtifactPaths</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.RefMetadataUnavailableError.html">phenotypic.sdk_.RefMetadataUnavailableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceContextError.html">phenotypic.sdk_.ReferenceContextError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceImageError.html">phenotypic.sdk_.ReferenceImageError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceLookupError.html">phenotypic.sdk_.ReferenceLookupError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceTableError.html">phenotypic.sdk_.ReferenceTableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.StaleDetectMatError.html">phenotypic.sdk_.StaleDetectMatError</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1297,7 +1309,7 @@ components.</p>
 <dl class="py class">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.napari_.</span></span><span class="sig-name descname"><span class="pre">LabelEditorWidget</span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_label_editor_widget.html#LabelEditorWidget"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Open a napari viewer to edit an image’s object labels and save them back.</p>
 <p>The viewer shows <code class="docutils literal notranslate"><span class="pre">rgb</span></code> (when present), <code class="docutils literal notranslate"><span class="pre">gray</span></code>, and <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> as
 image layers plus one editable labels layer seeded from the called accessor
@@ -1305,14 +1317,14 @@ image layers plus one editable labels layer seeded from the called accessor
 “Discard &amp; Close” buttons. <code class="docutils literal notranslate"><span class="pre">run</span></code> blocks until the viewer is closed.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accessor_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_label_editor_widget.html#LabelEditorWidget.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accessor_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">viewer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">napari.Viewer</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_label_editor_widget.html#LabelEditorWidget.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Open the editor and block until closed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>image</strong> – A PhenoTypic <code class="docutils literal notranslate"><span class="pre">Image</span></code> whose layers are displayed and whose
 <code class="docutils literal notranslate"><span class="pre">objmap</span></code>/<code class="docutils literal notranslate"><span class="pre">objmask</span></code> is edited.</p></li>
-<li><p><strong>accessor_name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – <code class="docutils literal notranslate"><span class="pre">&quot;objmap&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;objmask&quot;</span></code> — selects which accessor
+<li><p><strong>accessor_name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – <code class="docutils literal notranslate"><span class="pre">&quot;objmap&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;objmask&quot;</span></code> — selects which accessor
 the editable layer is seeded from and saved back to.</p></li>
 <li><p><strong>viewer</strong> (<em>napari.Viewer</em><em> | </em><em>None</em>) – Optional existing napari viewer to reuse. When <code class="docutils literal notranslate"><span class="pre">None</span></code> a new
 <code class="docutils literal notranslate"><span class="pre">napari.Viewer(title=&quot;Label</span> <span class="pre">Editor&quot;)</span></code> is created.</p></li>
@@ -1323,7 +1335,7 @@ the editable layer is seeded from and saved back to.</p></li>
 discarded or closed the viewer without saving.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If napari is not installed.</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError" title="(in Python v3.15)"><strong>ImportError</strong></a> – If napari is not installed.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>np.ndarray | None</p>
@@ -1335,12 +1347,12 @@ discarded or closed the viewer without saving.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.napari_.</span></span><span class="sig-name descname"><span class="pre">PointPickerWidget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_point_picker_widget.html#PointPickerWidget"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.napari_.</span></span><span class="sig-name descname"><span class="pre">PointPickerWidget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_point_picker_widget.html#PointPickerWidget"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Interactive point picker that opens a napari viewer for coordinate selection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>max_points</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of points allowed. None means unlimited.</p>
+<dd class="field-odd"><p><strong>max_points</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of points allowed. None means unlimited.</p>
 </dd>
 </dl>
 <dl class="py method">
@@ -1356,7 +1368,7 @@ discarded or closed the viewer without saving.</p>
 empty <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">2)</span></code> array if the viewer is closed without confirming.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If napari is not installed.</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError" title="(in Python v3.15)"><strong>ImportError</strong></a> – If napari is not installed.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
@@ -1368,7 +1380,7 @@ empty <code class="docutils literal notranslate"><span class="pre">(0,</span> <s
 
 <dl class="py function">
 <dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.napari_.</span></span><span class="sig-name descname"><span class="pre">add_image_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_layers.html#add_image_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.napari_.</span></span><span class="sig-name descname"><span class="pre">add_image_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viewer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/napari_/_layers.html#add_image_layer"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Add (or replace) an image layer with non-stretched contrast limits.</p>
 <p>Mirrors the contrast convention of the detect-mode preview tool
 (<code class="docutils literal notranslate"><span class="pre">DetectMat.preview_modes</span></code>): integer layers use the full dtype range and
@@ -1383,10 +1395,10 @@ shown together. Three-dimensional arrays are treated as RGB.</p>
 <li><p><strong>viewer</strong> – A napari <code class="docutils literal notranslate"><span class="pre">Viewer</span></code> (or any object exposing <code class="docutils literal notranslate"><span class="pre">layers</span></code> and
 <code class="docutils literal notranslate"><span class="pre">add_image</span></code>).</p></li>
 <li><p><strong>array</strong> – The image array — 2-D intensity or 3-D RGB.</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Layer name. An existing layer with this name is updated in place
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Layer name. An existing layer with this name is updated in place
 rather than duplicated.</p></li>
-<li><p><strong>visible</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Initial layer visibility. Defaults to True.</p></li>
-<li><p><strong>gamma</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Display gamma. Defaults to 1.0 (no gamma adjustment).</p></li>
+<li><p><strong>visible</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a>) – Initial layer visibility. Defaults to True.</p></li>
+<li><p><strong>gamma</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a>) – Display gamma. Defaults to 1.0 (no gamma adjustment).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

@@ -52,6 +52,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.parse_obj
       ~HeavyRoundPeaksPipeline.parse_raw
       ~HeavyRoundPeaksPipeline.preflight_requirements
+      ~HeavyRoundPeaksPipeline.reference_columns
       ~HeavyRoundPeaksPipeline.schema
       ~HeavyRoundPeaksPipeline.schema_json
       ~HeavyRoundPeaksPipeline.set_filters

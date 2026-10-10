@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Per-object grayscale intensity summary statistics.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._change_notes</span><span class="w"> </span><span class="kn">import</span> <span class="n">SINGLE_CHANNEL_PRODUCED_NOTE</span><span class="p">,</span> <span class="n">append_change_note</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
 
@@ -591,6 +592,13 @@
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;Intensity&quot;</span></div>
+
+
+<div class="viewcode-block" id="INTENSITY.change_note">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.INTENSITY.html#phenotypic.schema.INTENSITY.change_note">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">change_note</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SINGLE_CHANNEL_PRODUCED_NOTE</span></div>
 
 
     <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
@@ -627,6 +635,9 @@
         <span class="s2">&quot;The interquartile range of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
+
+
+<span class="n">INTENSITY</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">append_change_note</span><span class="p">(</span><span class="n">INTENSITY</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span> <span class="n">INTENSITY</span><span class="o">.</span><span class="n">change_note</span><span class="p">())</span>
 </pre></div>
 
                 </article>

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.ReferenceLookupError
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoexception:: ReferenceLookupError

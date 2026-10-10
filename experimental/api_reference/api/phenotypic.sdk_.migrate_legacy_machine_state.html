@@ -542,6 +542,9 @@
 </details></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../core/reference_context.html">ReferenceContext</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
 
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
@@ -577,6 +580,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.RefMetadata.html">phenotypic.abc_.RefMetadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
@@ -680,6 +684,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractBlank.html">phenotypic.enhance.SubtractBlank</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
@@ -696,6 +701,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
@@ -1037,6 +1043,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.AnalysisArtifactPaths.html">phenotypic.sdk_.AnalysisArtifactPaths</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.RefMetadataUnavailableError.html">phenotypic.sdk_.RefMetadataUnavailableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceContextError.html">phenotypic.sdk_.ReferenceContextError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceImageError.html">phenotypic.sdk_.ReferenceImageError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceLookupError.html">phenotypic.sdk_.ReferenceLookupError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceTableError.html">phenotypic.sdk_.ReferenceTableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.StaleDetectMatError.html">phenotypic.sdk_.StaleDetectMatError</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1271,7 +1283,7 @@
 <h1>phenotypic.sdk_.migrate_legacy_machine_state<a class="headerlink" href="#phenotypic-sdk-migrate-legacy-machine-state" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.migrate_legacy_machine_state">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">migrate_legacy_machine_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#migrate_legacy_machine_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.migrate_legacy_machine_state" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">migrate_legacy_machine_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#migrate_legacy_machine_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.migrate_legacy_machine_state" title="Link to this definition">#</a></dt>
 <dd><p>Move a pre-migration run’s machine-state into <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p>
 <p>If legacy machine-state (<code class="docutils literal notranslate"><span class="pre">progress/</span></code>, <code class="docutils literal notranslate"><span class="pre">processing_state.json</span></code>,
 <code class="docutils literal notranslate"><span class="pre">processing_events.log</span></code>) is present at the output root, move each artifact
@@ -1289,10 +1301,10 @@ of on <code class="docutils literal notranslate"><span class="pre">cache.exists(
 <dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if this call moved anything, else <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+<dd class="field-even"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a>)</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)">bool</a></p>
 </dd>
 </dl>
 </dd></dl>

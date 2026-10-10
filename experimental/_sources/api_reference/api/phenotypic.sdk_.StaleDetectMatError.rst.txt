@@ -1,0 +1,6 @@
+phenotypic.sdk\_.StaleDetectMatError
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoexception:: StaleDetectMatError

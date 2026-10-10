@@ -1,0 +1,6 @@
+phenotypic.sdk\_.ReferenceContextError
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoexception:: ReferenceContextError

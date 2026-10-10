@@ -52,6 +52,7 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.parse_obj
       ~FilamentousFungiPipeline.parse_raw
       ~FilamentousFungiPipeline.preflight_requirements
+      ~FilamentousFungiPipeline.reference_columns
       ~FilamentousFungiPipeline.schema
       ~FilamentousFungiPipeline.schema_json
       ~FilamentousFungiPipeline.set_filters

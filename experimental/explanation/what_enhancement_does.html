@@ -650,6 +650,12 @@ varying contrast</p></li>
 and reflectance</p></li>
 <li><p><strong>SubtractGaussian</strong> — subtracts a heavily blurred background estimate</p></li>
 <li><p><strong>SubtractRollingBall</strong> — morphological background estimation</p></li>
+<li><p><strong>SubtractPolySurface</strong> — fits and subtracts a constant, plane, polynomial
+surface, or per-scan-line polynomial (Gwyddion’s leveling tools), with an
+optional robust fit that ignores colonies</p></li>
+<li><p><strong>SubtractBlank</strong> — subtracts a media-blank frame named in the experiment
+metadata (needs a <code class="docutils literal notranslate"><span class="pre">ReferenceContext</span></code> or the CLI’s <code class="docutils literal notranslate"><span class="pre">--metadata</span></code>; see
+<a class="reference internal" href="../how_to/pages/reference_metadata.html"><span class="doc">Subtract a media blank with reference metadata</span></a>)</p></li>
 </ul>
 </section>
 <section id="structural-enhancement">

@@ -767,13 +767,27 @@ other fact about a run can be re-derived by looking at the tree; this cannot.</p
 <section id="what-survives-restart">
 <h3>What survives <code class="docutils literal notranslate"><span class="pre">--restart</span></code><a class="headerlink" href="#what-survives-restart" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">clear_machine_state</span></code> deletes everything under <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> except
-<code class="docutils literal notranslate"><span class="pre">_PRESERVED_ON_RESTART</span></code>, which has exactly three members:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">frozenset</span><span class="p">({</span><span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span> <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span> <span class="n">DIR_LEGACY_V2</span><span class="p">})</span>
+<code class="docutils literal notranslate"><span class="pre">_PRESERVED_ON_RESTART</span></code>, which has exactly four members:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">frozenset</span><span class="p">({</span>
+    <span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span>
+    <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span>
+    <span class="n">DIR_LEGACY_V2</span><span class="p">,</span>
+    <span class="n">REFERENCE_METADATA_CSV</span><span class="p">,</span>
+<span class="p">})</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">restart_epoch.json</span></code> is preserved because <strong>a counter that resets on the
 operation it fences is not a fence</strong>. <code class="docutils literal notranslate"><span class="pre">legacy-v2/</span></code> is preserved because a
-restart is not a revert.</p>
+restart is not a revert. <code class="docutils literal notranslate"><span class="pre">reference_metadata.csv</span></code> is preserved because it is a
+<strong>run input</strong>, not a verdict: the byte-exact snapshot of <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> that a
+<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span></code> run whose pipeline reads reference metadata (<code class="docutils literal notranslate"><span class="pre">SubtractBlank</span></code>)
+falls back to when <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is not passed again — the process-mode twin of
+<code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code>, which lives outside <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> and survives a
+restart for that reason. Written by <code class="docutils literal notranslate"><span class="pre">snapshot_reference_metadata</span></code>
+(<code class="docutils literal notranslate"><span class="pre">_cli/_cli_reference.py</span></code>); read through <code class="docutils literal notranslate"><span class="pre">resolve_reference_table_path</span></code>, by the
+run preflight and by startup when it plans the reference manifest.</p>
+<p><code class="docutils literal notranslate"><span class="pre">reference_manifest.json</span></code> beside it is <strong>not</strong> preserved: it is derived (see
+<strong>©</strong>), and the next startup derives it again.</p>
 </section>
 <section id="configuration-recorded-beside-the-inventory-is-not-tracked-state">
 <h3>Configuration recorded beside the inventory is not tracked state<a class="headerlink" href="#configuration-recorded-beside-the-inventory-is-not-tracked-state" title="Link to this heading">#</a></h3>
@@ -884,28 +898,47 @@ contributor writing a counter.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">derive_processing_generation</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_identity.py:148</span></code>)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">work_id</span></code></p></td>
-<td><p>schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">work_id_for_image</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_failure_tracker.py:310</span></code>)</p></td>
+<td><p>schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode, and the per-image reference digest (when the pipeline reads reference metadata, outside <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">work_id_for_image</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_failure_tracker.py:404</span></code>); the SLURM worker’s <code class="docutils literal notranslate"><span class="pre">_worker_work_identity</span></code> reads the same digest through <code class="docutils literal notranslate"><span class="pre">image_reference_digest</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>per-dataset completed / failed counts</p></td>
 <td><p>the per-image records</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">RunState.diagnostics</span></code> — <strong>and nothing branches on these</strong></p></td>
 </tr>
-<tr class="row-even"><td><p>the master</p></td>
+<tr class="row-even"><td><p>each image’s reference plan and per-image reference digest (<code class="docutils literal notranslate"><span class="pre">.phenotypic/reference_manifest.json</span></code>)</p></td>
+<td><p>the reference table (<code class="docutils literal notranslate"><span class="pre">--metadata</span></code>, else its snapshot), the input directories’ listings, and the reference images’ bytes (a store’s root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plan_references</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli/_cli_reference.py</span></code>), published by <code class="docutils literal notranslate"><span class="pre">publish_reference_inputs</span></code> at every forward startup; read by the worker cores through <code class="docutils literal notranslate"><span class="pre">worker_reference_context</span></code> and by <code class="docutils literal notranslate"><span class="pre">work_id_for_image</span></code> / <code class="docutils literal notranslate"><span class="pre">_worker_work_identity</span></code> through <code class="docutils literal notranslate"><span class="pre">image_reference_digest</span></code> → <code class="docutils literal notranslate"><span class="pre">reference_digest_for</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>the master</p></td>
 <td><p>the record-authorized embedded tables, each projected onto its own descriptor’s <code class="docutils literal notranslate"><span class="pre">measurement_columns</span></code>, minus any store the projection excludes — and nothing else</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">finalize_run</span></code> → <code class="docutils literal notranslate"><span class="pre">project_embedded_measurement_table</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><em>how many verified images the published master does not carry</em></p></td>
+<tr class="row-even"><td><p><em>how many verified images the published master does not carry</em></p></td>
 <td><p>the aggregate proof’s <code class="docutils literal notranslate"><span class="pre">source_image_count</span></code> vs. the live verified count</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">resolve_run_state</span></code> → <code class="docutils literal notranslate"><span class="pre">RunState.advisories</span></code> (count clause)</p></td>
 </tr>
-<tr class="row-even"><td><p><em>which store a re-finalization will exclude again</em></p></td>
+<tr class="row-odd"><td><p><em>which store a re-finalization will exclude again</em></p></td>
 <td><p>each verified image’s record (does it declare a <code class="docutils literal notranslate"><span class="pre">measurements</span></code> artifact?) and its store root (does it declare a projectable <code class="docutils literal notranslate"><span class="pre">measurement_columns</span></code>?)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">resolve_run_state</span></code> → <code class="docutils literal notranslate"><span class="pre">RunState.advisories</span></code> (naming clause)</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p><strong>The reference manifest is written down only so other processes read one
+derivation.</strong> Stage-3 and SLURM workers know the run root and a dataset name,
+not the input tree, so startup plans every image once and publishes the result;
+it is never a source of truth. It is rewritten at every forward startup
+(<code class="docutils literal notranslate"><span class="pre">_prepare_incremental_startup</span></code>, before that invocation’s first work-id),
+removed when the operations the mode runs read no reference metadata, cleared
+by <code class="docutils literal notranslate"><span class="pre">--restart</span></code> (the next
+startup derives it again), and never touched by <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span></code>. A worker
+refuses it when the table’s bytes no longer match its recorded SHA-256, or when
+the image’s digest no longer matches the one its work-id was computed from (a
+later invocation re-planned it). In either case it refuses rather than apply a
+plan made against a different table, and the refusal is not a terminal failure,
+so the next run re-attempts the image. An image whose planning failed is
+recorded as <code class="docutils literal notranslate"><span class="pre">unplanned:&lt;reason&gt;</span></code>, so fixing one cause and hitting another gives
+it a new work-id.</p>
 <p><strong>An excluded store makes a fully verified run read <code class="docutils literal notranslate"><span class="pre">incomplete</span></code>.</strong> The
 projection (P7 Task 4) leaves out a store whose table it cannot project safely —
 no measurement descriptor, or same-label rows that disagree — and the aggregate

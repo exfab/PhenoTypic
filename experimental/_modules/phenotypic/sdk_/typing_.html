@@ -600,6 +600,17 @@
 <span class="c1">#: the selected reference.</span>
 <span class="n">BoundaryMode</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;reflect&quot;</span><span class="p">,</span> <span class="s2">&quot;constant&quot;</span><span class="p">,</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="s2">&quot;mirror&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">]</span>
 
+<span class="c1">#: ``SubtractPolySurface.method``: offset (order 0), plane (order 1), polynomial</span>
+<span class="c1">#: surface, or per-scan-line polynomial.</span>
+<span class="n">SurfaceMethod</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="s2">&quot;plane&quot;</span><span class="p">,</span> <span class="s2">&quot;polynomial&quot;</span><span class="p">,</span> <span class="s2">&quot;line&quot;</span><span class="p">]</span>
+
+<span class="c1">#: ``SubtractPolySurface.fit``: plain least squares (Gwyddion) or sigma-clipped</span>
+<span class="c1">#: least squares.</span>
+<span class="n">SurfaceFit</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;lstsq&quot;</span><span class="p">,</span> <span class="s2">&quot;robust&quot;</span><span class="p">]</span>
+
+<span class="c1">#: ``SubtractPolySurface.line_axis``: which scan lines ``method=&quot;line&quot;`` levels.</span>
+<span class="n">LineAxis</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;row&quot;</span><span class="p">,</span> <span class="s2">&quot;column&quot;</span><span class="p">]</span>
+
 <span class="c1">#: Raster product selected by ``FilFinderDetector``. FilFinder exposes more</span>
 <span class="c1">#: graph and measurement products, but ``ObjectDetector`` returns exactly one</span>
 <span class="c1">#: of these three source-visible boolean rasters as consecutive labels.</span>

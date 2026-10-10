@@ -1,0 +1,6 @@
+phenotypic.sdk\_.RefMetadataUnavailableError
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoexception:: RefMetadataUnavailableError

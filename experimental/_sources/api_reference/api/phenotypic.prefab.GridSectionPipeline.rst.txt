@@ -52,6 +52,7 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.parse_obj
       ~GridSectionPipeline.parse_raw
       ~GridSectionPipeline.preflight_requirements
+      ~GridSectionPipeline.reference_columns
       ~GridSectionPipeline.schema
       ~GridSectionPipeline.schema_json
       ~GridSectionPipeline.set_filters

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.ReferenceTableError
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoexception:: ReferenceTableError

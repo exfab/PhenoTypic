@@ -118,15 +118,30 @@ other fact about a run can be re-derived by looking at the tree; this cannot.
 ### What survives `--restart`
 
 `clear_machine_state` deletes everything under `.phenotypic/` except
-`_PRESERVED_ON_RESTART`, which has exactly three members:
+`_PRESERVED_ON_RESTART`, which has exactly four members:
 
 ```python
-frozenset({TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2})
+frozenset({
+    TERMINAL_FAILURES_JSONL,
+    RESTART_EPOCH_JSON,
+    DIR_LEGACY_V2,
+    REFERENCE_METADATA_CSV,
+})
 ```
 
 `restart_epoch.json` is preserved because **a counter that resets on the
 operation it fences is not a fence**. `legacy-v2/` is preserved because a
-restart is not a revert.
+restart is not a revert. `reference_metadata.csv` is preserved because it is a
+**run input**, not a verdict: the byte-exact snapshot of `--metadata` that a
+`--mode process` run whose pipeline reads reference metadata (`SubtractBlank`)
+falls back to when `--metadata` is not passed again — the process-mode twin of
+`deliverables/metadata.csv`, which lives outside `.phenotypic/` and survives a
+restart for that reason. Written by `snapshot_reference_metadata`
+(`_cli/_cli_reference.py`); read through `resolve_reference_table_path`, by the
+run preflight and by startup when it plans the reference manifest.
+
+`reference_manifest.json` beside it is **not** preserved: it is derived (see
+**(c)**), and the next startup derives it again.
 
 ### Configuration recorded beside the inventory is not tracked state
 
@@ -201,11 +216,28 @@ contributor writing a counter.
 |---|---|---|
 | *Is this run done?* | (a) 1–4 plus the proofs in (b) | `resolve_run_state(output_dir, depth=...)` |
 | `processing_generation` | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` | `derive_processing_generation` (`_cli_identity.py:148`) |
-| `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` (`_cli_failure_tracker.py:310`) |
+| `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode, and the per-image reference digest (when the pipeline reads reference metadata, outside `--mode measure`) | `work_id_for_image` (`_cli_failure_tracker.py:404`); the SLURM worker's `_worker_work_identity` reads the same digest through `image_reference_digest` |
 | per-dataset completed / failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on these** |
+| each image's reference plan and per-image reference digest (`.phenotypic/reference_manifest.json`) | the reference table (`--metadata`, else its snapshot), the input directories' listings, and the reference images' bytes (a store's root `zarr.json`) | `plan_references` (`_cli/_cli_reference.py`), published by `publish_reference_inputs` at every forward startup; read by the worker cores through `worker_reference_context` and by `work_id_for_image` / `_worker_work_identity` through `image_reference_digest` → `reference_digest_for` |
 | the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
 | *how many verified images the published master does not carry* | the aggregate proof's `source_image_count` vs. the live verified count | `resolve_run_state` → `RunState.advisories` (count clause) |
 | *which store a re-finalization will exclude again* | each verified image's record (does it declare a `measurements` artifact?) and its store root (does it declare a projectable `measurement_columns`?) | `resolve_run_state` → `RunState.advisories` (naming clause) |
+
+**The reference manifest is written down only so other processes read one
+derivation.** Stage-3 and SLURM workers know the run root and a dataset name,
+not the input tree, so startup plans every image once and publishes the result;
+it is never a source of truth. It is rewritten at every forward startup
+(`_prepare_incremental_startup`, before that invocation's first work-id),
+removed when the operations the mode runs read no reference metadata, cleared
+by `--restart` (the next
+startup derives it again), and never touched by `--mode measure`. A worker
+refuses it when the table's bytes no longer match its recorded SHA-256, or when
+the image's digest no longer matches the one its work-id was computed from (a
+later invocation re-planned it). In either case it refuses rather than apply a
+plan made against a different table, and the refusal is not a terminal failure,
+so the next run re-attempts the image. An image whose planning failed is
+recorded as `unplanned:<reason>`, so fixing one cause and hitting another gives
+it a new work-id.
 
 **An excluded store makes a fully verified run read `incomplete`.** The
 projection (P7 Task 4) leaves out a store whose table it cannot project safely —

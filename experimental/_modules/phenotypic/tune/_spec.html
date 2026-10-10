@@ -644,6 +644,21 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_refuse_reference_metadata</span><span class="p">(</span><span class="n">pipeline</span><span class="p">:</span> <span class="s2">&quot;ImagePipeline&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Refuse a pipeline whose operations read reference metadata.</span>
+
+<span class="sd">    The tune evaluator does not enter a ReferenceContext yet, so such an op</span>
+<span class="sd">    would fail on every trial; refusing up front names the cause once.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">needs</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">reference_columns</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">needs</span><span class="p">:</span>
+        <span class="n">where</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">cols</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">cols</span> <span class="ow">in</span> <span class="n">needs</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;phenotypic-tune cannot tune a pipeline whose operations read reference &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;metadata yet: </span><span class="si">{</span><span class="n">where</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_check_field</span><span class="p">(</span><span class="n">op_obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cls_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Assert ``field`` exists on ``op_obj``; raise with a did-you-mean otherwise.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">op_obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_fields</span><span class="p">:</span>
@@ -856,6 +871,12 @@
 <span class="sd">                not an Optuna strategy.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">reject_grid_random_multi_objective</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scorer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reject_reference_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;TuningSpec&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Refuse, at spec load, a pipeline whose ops read reference metadata.&quot;&quot;&quot;</span>
+        <span class="n">_refuse_reference_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pipeline</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>

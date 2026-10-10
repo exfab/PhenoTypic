@@ -610,7 +610,7 @@
 
 <div class="viewcode-block" id="DetectMatAccessor.__getitem__">
 <a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._detect_mat_accessor.DetectMatAccessor.__getitem__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a non-writeable view of the detection matrix data for the given index.</span>
 
 <span class="sd">        Retrieves a portion of the detection matrix array using standard NumPy indexing.</span>
@@ -622,9 +622,10 @@
 <span class="sd">                Follows standard NumPy indexing conventions.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            np.ndarray: A non-writeable view of the detection matrix data at the specified</span>
-<span class="sd">                index. The returned array shares memory with the underlying data but cannot</span>
-<span class="sd">                be modified.</span>
+<span class="sd">            np.ndarray | np.floating: A non-writeable view of the detection matrix data</span>
+<span class="sd">                at the specified index, or the pixel&#39;s scalar value when the key selects</span>
+<span class="sd">                a single pixel. The returned array shares memory with the underlying data</span>
+<span class="sd">                but cannot be modified.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            EmptyImageError: If the image has no data loaded (empty shape).</span>
@@ -641,10 +642,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">EmptyImageError</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="n">view</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">writeable</span> <span class="o">=</span> <span class="kc">False</span>
-
-            <span class="k">return</span> <span class="n">view</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_only</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[</span><span class="n">key</span><span class="p">])</span></div>
 
 
 <div class="viewcode-block" id="DetectMatAccessor.__setitem__">

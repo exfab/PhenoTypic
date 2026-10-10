@@ -621,6 +621,12 @@
     <span class="s2">&quot;LazyWidgetMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;NormControlMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;NormalizedOutputMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RefMetadataUnavailableError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic._core._reference_context&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceContextError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic._core._reference_context&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceImageError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic._core._reference_context&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceLookupError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic._core._reference_context&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceTableError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic._core._reference_context&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StaleDetectMatError&quot;</span><span class="p">:</span> <span class="s2">&quot;phenotypic.enhance._subtract_blank&quot;</span><span class="p">,</span>
 <span class="p">}</span>
 
 
@@ -702,7 +708,13 @@
     <span class="n">atomic_write_with_writer</span><span class="p">,</span>
     <span class="n">publication_commit</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._column_ref</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span><span class="p">,</span> <span class="n">ColumnSource</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._column_ref</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">ColumnRef</span><span class="p">,</span>
+    <span class="n">ColumnRefList</span><span class="p">,</span>
+    <span class="n">ColumnSource</span><span class="p">,</span>
+    <span class="n">RefColumn</span><span class="p">,</span>
+    <span class="n">RefImageColumn</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
     <span class="c1"># Filenames (CLI artifacts)</span>
     <span class="n">CURATION_LABELS_PARQUET</span><span class="p">,</span>
@@ -1007,6 +1019,8 @@
     <span class="s2">&quot;ColumnRef&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ColumnRefList&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ColumnSource&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RefColumn&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RefImageColumn&quot;</span><span class="p">,</span>
     <span class="s2">&quot;FootprintMixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GridInferenceMixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;HDF&quot;</span><span class="p">,</span>
@@ -1014,6 +1028,12 @@
     <span class="s2">&quot;LazyWidgetMixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;NormControlMixin&quot;</span><span class="p">,</span>
     <span class="s2">&quot;NormalizedOutputMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RefMetadataUnavailableError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceContextError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceImageError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceLookupError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ReferenceTableError&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StaleDetectMatError&quot;</span><span class="p">,</span>
     <span class="s2">&quot;CommitGuard&quot;</span><span class="p">,</span>
     <span class="s2">&quot;atomic_write_bytes&quot;</span><span class="p">,</span>
     <span class="s2">&quot;atomic_write_json&quot;</span><span class="p">,</span>

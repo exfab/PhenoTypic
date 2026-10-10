@@ -542,6 +542,9 @@
 </details></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../core/reference_context.html">ReferenceContext</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
 
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
@@ -577,6 +580,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.RefMetadata.html">phenotypic.abc_.RefMetadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
@@ -680,6 +684,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractBlank.html">phenotypic.enhance.SubtractBlank</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
@@ -696,6 +701,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
@@ -1037,6 +1043,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.AnalysisArtifactPaths.html">phenotypic.sdk_.AnalysisArtifactPaths</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.RefMetadataUnavailableError.html">phenotypic.sdk_.RefMetadataUnavailableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceContextError.html">phenotypic.sdk_.ReferenceContextError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceImageError.html">phenotypic.sdk_.ReferenceImageError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceLookupError.html">phenotypic.sdk_.ReferenceLookupError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceTableError.html">phenotypic.sdk_.ReferenceTableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.StaleDetectMatError.html">phenotypic.sdk_.StaleDetectMatError</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1272,7 +1284,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">REMBI_MODULE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_base/_rembi.html#REMBI_MODULE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
 <p>REMBI metadata modules. Definition order is canonical.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1598,7 +1610,7 @@ cased characters have lower case.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.count">
-<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of non-overlapping occurrences of substring sub in
 string S[start:end].  Optional arguments start and end are
 interpreted as in slice notation.</p>
@@ -1613,7 +1625,7 @@ interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.find">
-<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.find" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.find" title="Link to this definition">#</a></dt>
 <dd><p>Return the lowest index in S where substring sub is found,
 such that sub is contained within S[start:end].  Optional
 arguments start and end are interpreted as in slice notation.</p>
@@ -1633,7 +1645,7 @@ and two empty strings.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.index">
-<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.index" title="Link to this definition">#</a></dt>
 <dd><p>Return the lowest index in S where substring sub is found,
 such that sub is contained within S[start:end].  Optional
 arguments start and end are interpreted as in slice notation.</p>
@@ -1662,7 +1674,7 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.rfind">
-<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.rfind" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.rfind" title="Link to this definition">#</a></dt>
 <dd><p>Return the highest index in S where substring sub is found,
 such that sub is contained within S[start:end].  Optional
 arguments start and end are interpreted as in slice notation.</p>
@@ -1671,7 +1683,7 @@ arguments start and end are interpreted as in slice notation.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.rindex">
-<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.rindex" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.rindex" title="Link to this definition">#</a></dt>
 <dd><p>Return the highest index in S where substring sub is found,
 such that sub is contained within S[start:end].  Optional
 arguments start and end are interpreted as in slice notation.</p>
@@ -1748,7 +1760,7 @@ left untouched.  Characters mapped to None are deleted.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.startswith">
-<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.startswith" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.startswith" title="Link to this definition">#</a></dt>
 <dd><p>Return True if S starts with the specified prefix, False otherwise.
 With optional start, test S beginning at that position.
 With optional end, stop comparing S at that position.
@@ -1757,7 +1769,7 @@ prefix can also be a tuple of strings to try.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.endswith">
-<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.endswith" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.endswith" title="Link to this definition">#</a></dt>
 <dd><p>Return True if S ends with the specified suffix, False otherwise.
 With optional start, test S beginning at that position.
 With optional end, stop comparing S at that position.
@@ -1885,14 +1897,14 @@ such as “def” or “class”.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.format">
-<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.format" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.format" title="Link to this definition">#</a></dt>
 <dd><p>Return a formatted version of S, using substitutions from args and kwargs.
 The substitutions are identified by braces (‘{’ and ‘}’).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.schema.REMBI_MODULE.format_map">
-<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.format_map" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.schema.REMBI_MODULE.format_map" title="Link to this definition">#</a></dt>
 <dd><p>Return a formatted version of S, using substitutions from mapping.
 The substitutions are identified by braces (‘{’ and ‘}’).</p>
 </dd></dl>

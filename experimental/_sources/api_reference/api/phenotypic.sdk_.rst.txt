@@ -244,6 +244,18 @@
 
    
    
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      RefMetadataUnavailableError
+      ReferenceContextError
+      ReferenceImageError
+      ReferenceLookupError
+      ReferenceTableError
+      StaleDetectMatError
+   
    
 
 

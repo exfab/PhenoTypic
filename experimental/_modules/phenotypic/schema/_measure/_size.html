@@ -569,7 +569,11 @@
   <h1>Source code for phenotypic.schema._measure._size</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the size measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._change_notes</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIZE_SHAPE_SPLIT_NOTE</span><span class="p">,</span> <span class="n">append_change_note</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._change_notes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SINGLE_CHANNEL_SIZE_NOTE</span><span class="p">,</span>
+    <span class="n">SIZE_SHAPE_SPLIT_NOTE</span><span class="p">,</span>
+    <span class="n">append_change_note</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
@@ -600,7 +604,7 @@
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SIZE.html#phenotypic.schema.SIZE.change_note">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">change_note</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">SIZE_SHAPE_SPLIT_NOTE</span></div>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">SIZE_SHAPE_SPLIT_NOTE</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">SINGLE_CHANNEL_SIZE_NOTE</span><span class="si">}</span><span class="s2">&quot;</span></div>
 
 
     <span class="n">AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>

@@ -575,7 +575,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Self</span>
 
@@ -723,16 +722,8 @@
         <span class="n">gmm_morph_open</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span> <span class="o">/</span> <span class="mi">30</span><span class="p">))</span>
         <span class="n">gmm_min_area</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_diameter</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">))</span>
 
-        <span class="c1"># --- Step 1: working copy with float32 detect_mat ---</span>
+        <span class="c1"># --- Step 1: working copy (detect_mat is float32 [0, 1] for every input) ---</span>
         <span class="n">work</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="c1"># Direct _data access: the accessor (detect_mat[:] =) writes into the</span>
-        <span class="c1"># existing backing array, which would truncate float32 values if the</span>
-        <span class="c1"># backing is uint8. We must replace the entire array object.</span>
-        <span class="n">dm</span> <span class="o">=</span> <span class="n">work</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span>
-        <span class="k">if</span> <span class="n">dm</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="s2">&quot;f&quot;</span><span class="p">:</span>
-            <span class="n">work</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">dm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
-        <span class="k">elif</span> <span class="n">dm</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
-            <span class="n">work</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;working copy created&quot;</span><span class="p">)</span>
 
         <span class="c1"># --- Step 2: Gaussian background subtraction ---</span>

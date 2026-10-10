@@ -1,0 +1,72 @@
+phenotypic.enhance.SubtractPolySurface
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SubtractPolySurface
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SubtractPolySurface.__init__
+      ~SubtractPolySurface.apply
+      ~SubtractPolySurface.construct
+      ~SubtractPolySurface.copy
+      ~SubtractPolySurface.dict
+      ~SubtractPolySurface.from_json
+      ~SubtractPolySurface.from_orm
+      ~SubtractPolySurface.json
+      ~SubtractPolySurface.model_construct
+      ~SubtractPolySurface.model_copy
+      ~SubtractPolySurface.model_dump
+      ~SubtractPolySurface.model_dump_json
+      ~SubtractPolySurface.model_json_schema
+      ~SubtractPolySurface.model_parametrized_name
+      ~SubtractPolySurface.model_post_init
+      ~SubtractPolySurface.model_rebuild
+      ~SubtractPolySurface.model_validate
+      ~SubtractPolySurface.model_validate_json
+      ~SubtractPolySurface.model_validate_strings
+      ~SubtractPolySurface.parse_file
+      ~SubtractPolySurface.parse_obj
+      ~SubtractPolySurface.parse_raw
+      ~SubtractPolySurface.preflight_requirements
+      ~SubtractPolySurface.schema
+      ~SubtractPolySurface.schema_json
+      ~SubtractPolySurface.to_json
+      ~SubtractPolySurface.update_forward_refs
+      ~SubtractPolySurface.validate
+      ~SubtractPolySurface.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SubtractPolySurface.model_computed_fields
+      ~SubtractPolySurface.model_config
+      ~SubtractPolySurface.model_extra
+      ~SubtractPolySurface.model_fields
+      ~SubtractPolySurface.model_fields_set
+      ~SubtractPolySurface.method
+      ~SubtractPolySurface.order
+      ~SubtractPolySurface.independent
+      ~SubtractPolySurface.line_order
+      ~SubtractPolySurface.line_axis
+      ~SubtractPolySurface.fit
+      ~SubtractPolySurface.clip_sigma
+      ~SubtractPolySurface.max_iter
+      ~SubtractPolySurface.norm
+   
+   

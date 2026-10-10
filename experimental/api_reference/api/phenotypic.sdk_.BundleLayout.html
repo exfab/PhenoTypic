@@ -64,7 +64,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.BundleLayout.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.sdk_.colourspace" href="phenotypic.sdk_.colourspace.html" />
+    <link rel="next" title="phenotypic.sdk_.RefMetadataUnavailableError" href="phenotypic.sdk_.RefMetadataUnavailableError.html" />
     <link rel="prev" title="phenotypic.sdk_.AnalysisArtifactPaths" href="phenotypic.sdk_.AnalysisArtifactPaths.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -542,6 +542,9 @@
 </details></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../core/reference_context.html">ReferenceContext</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../cli_reference.html">CLI Reference</a></li>
 
 <li class="toctree-l1"><a class="reference internal" href="../config_reference.html">Configuration Reference</a></li>
@@ -577,6 +580,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.RefMetadata.html">phenotypic.abc_.RefMetadata</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
@@ -680,6 +684,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeFrangi.html">phenotypic.enhance.FocusEdgeFrangi</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BlurGauss.html">phenotypic.enhance.BlurGauss</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractGaussian.html">phenotypic.enhance.SubtractGaussian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractBlank.html">phenotypic.enhance.SubtractBlank</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
@@ -696,6 +701,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
@@ -1037,6 +1043,12 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.AnalysisArtifactPaths.html">phenotypic.sdk_.AnalysisArtifactPaths</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.BundleLayout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.RefMetadataUnavailableError.html">phenotypic.sdk_.RefMetadataUnavailableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceContextError.html">phenotypic.sdk_.ReferenceContextError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceImageError.html">phenotypic.sdk_.ReferenceImageError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceLookupError.html">phenotypic.sdk_.ReferenceLookupError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ReferenceTableError.html">phenotypic.sdk_.ReferenceTableError</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.StaleDetectMatError.html">phenotypic.sdk_.StaleDetectMatError</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1271,8 +1283,8 @@
 <h1>phenotypic.sdk_.BundleLayout<a class="headerlink" href="#phenotypic-sdk-bundlelayout" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">BundleLayout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deliverables_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">BundleLayout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deliverables_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Resolved on-disk topology of a run output or a standalone deliverables bundle.</p>
 <p>Separates the <em>deliverables base</em> (the folder directly holding
 <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>) from the optional <em>output root</em> (the parent
@@ -1282,8 +1294,8 @@ that also holds <code class="docutils literal notranslate"><span class="pre">res
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>deliverables_base</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p></li>
-<li><p><strong>output_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>deliverables_base</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a>)</p></li>
+<li><p><strong>output_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -1293,7 +1305,7 @@ that also holds <code class="docutils literal notranslate"><span class="pre">res
 <dd><p>Folder containing <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)">pathlib.Path</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1305,7 +1317,7 @@ that also holds <code class="docutils literal notranslate"><span class="pre">res
 or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a standalone (deliverables-only) bundle.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a> | None</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)">pathlib.Path</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1402,17 +1414,17 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id0">
-<span class="sig-name descname"><span class="pre">deliverables_base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">deliverables_base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id1">
-<span class="sig-name descname"><span class="pre">output_root</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">output_root</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.detect">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.sdk_.BundleLayout" title="phenotypic.sdk_._io_constants.BundleLayout"><span class="pre">BundleLayout</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.detect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.detect" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">detect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.sdk_.BundleLayout" title="phenotypic.sdk_._io_constants.BundleLayout"><span class="pre">BundleLayout</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.detect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.detect" title="Link to this definition">#</a></dt>
 <dd><p>Classify <code class="docutils literal notranslate"><span class="pre">path</span></code> as a run output dir or a standalone deliverables bundle.</p>
 <p>Case 1 — <code class="docutils literal notranslate"><span class="pre">path</span></code> directly holds <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>: treat it
 as the deliverables base. Promote <code class="docutils literal notranslate"><span class="pre">path.parent</span></code> to <code class="docutils literal notranslate"><span class="pre">output_root</span></code> ONLY
@@ -1424,7 +1436,7 @@ guard stops a renamed standalone bundle from adopting an unrelated sibling
 <code class="docutils literal notranslate"><span class="pre">deliverables_base</span> <span class="pre">=</span> <span class="pre">path/deliverables</span></code> and <code class="docutils literal notranslate"><span class="pre">output_root</span> <span class="pre">=</span> <span class="pre">path</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Either a run output directory (containing a <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a>) – Either a run output directory (containing a <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>
 subdirectory) or a standalone deliverables folder (directly
 containing <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>).</p>
 </dd>
@@ -1433,7 +1445,7 @@ containing <code class="docutils literal notranslate"><span class="pre">master_m
 <code class="docutils literal notranslate"><span class="pre">output_root</span></code>.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – <code class="docutils literal notranslate"><span class="pre">path</span></code> is neither a run output directory nor a
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#FileNotFoundError" title="(in Python v3.15)"><strong>FileNotFoundError</strong></a> – <code class="docutils literal notranslate"><span class="pre">path</span></code> is neither a run output directory nor a
     deliverables bundle.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -1444,25 +1456,25 @@ containing <code class="docutils literal notranslate"><span class="pre">master_m
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.has_results">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_results</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.has_results" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_results</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.has_results" title="Link to this definition">#</a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> when a <code class="docutils literal notranslate"><span class="pre">results/</span></code> directory exists under the output root.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.results_dir">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">results_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.results_dir" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">results_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.results_dir" title="Link to this definition">#</a></dt>
 <dd><p>Return the <code class="docutils literal notranslate"><span class="pre">results/</span></code> directory, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a standalone bundle.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.store_path">
-<span class="sig-name descname"><span class="pre">store_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.store_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.store_path" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">store_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.store_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.store_path" title="Link to this definition">#</a></dt>
 <dd><p>Full-res per-image OME-Zarr store for <code class="docutils literal notranslate"><span class="pre">(dataset,</span> <span class="pre">stem)</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Dataset name (subdirectory under <code class="docutils literal notranslate"><span class="pre">results/</span></code>).</p></li>
-<li><p><strong>stem</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Image stem (filename without extension).</p></li>
+<li><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Dataset name (subdirectory under <code class="docutils literal notranslate"><span class="pre">results/</span></code>).</p></li>
+<li><p><strong>stem</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Image stem (filename without extension).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1472,44 +1484,44 @@ Note the <code class="docutils literal notranslate"><span class="pre">is_dir</sp
 per-image HDF file) would always return <code class="docutils literal notranslate"><span class="pre">None</span></code> here.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a> | None</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.master_parquet">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">master_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.master_parquet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">master_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.master_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code> in the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.mirror_parquet">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mirror_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.mirror_parquet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mirror_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.mirror_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">measurements.parquet</span></code> (post-applied mirror).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.mirror_csv">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mirror_csv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.mirror_csv" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mirror_csv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.mirror_csv" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">measurements.csv</span></code> (post-applied mirror).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.plots_dir">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plots_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.plots_dir" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plots_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.plots_dir" title="Link to this definition">#</a></dt>
 <dd><p>Return the resolved <code class="docutils literal notranslate"><span class="pre">plots/</span></code> directory inside the bundle.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.pipeline_config_path">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pipeline_config_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.pipeline_config_path" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pipeline_config_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.pipeline_config_path" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> in the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.resolved_pipeline_config_path">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_pipeline_config_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.resolved_pipeline_config_path" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_pipeline_config_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.resolved_pipeline_config_path" title="Link to this definition">#</a></dt>
 <dd><p>Return the best existing pipeline config path inside the bundle.</p>
 <p>Mirrors <a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html#phenotypic.sdk_.resolve_pipeline_config_path" title="phenotypic.sdk_.resolve_pipeline_config_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">resolve_pipeline_config_path()</span></code></a>’s precedence but anchored
 on <a class="reference internal" href="#id0" title="phenotypic.sdk_.BundleLayout.deliverables_base"><code class="xref py py-attr docutils literal notranslate"><span class="pre">deliverables_base</span></code></a> (so a standalone bundle resolves <em>inside
@@ -1521,7 +1533,7 @@ config files).</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.qc_dir">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_dir" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_dir" title="Link to this definition">#</a></dt>
 <dd><p>Return the QC directory, resolving legacy <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/</span></code> layouts.</p>
 <p>Prefers <code class="docutils literal notranslate"><span class="pre">deliverables/qc/</span></code> when it exists. Falls back to the
 legacy root <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/</span></code> when only that exists (pre-relocation
@@ -1531,109 +1543,109 @@ writes when neither is present.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.qc_duckdb">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_duckdb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_duckdb" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_duckdb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_duckdb" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">qc/qc.duckdb</span></code> (the QC analysis database).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.qc_review_state_path">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_review_state_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_review_state_path" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">qc_review_state_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.qc_review_state_path" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">deliverables/qc/review_state.json</span></code> (GUI-owned review progress).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.curation_labels_parquet">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">curation_labels_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.curation_labels_parquet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">curation_labels_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.curation_labels_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">deliverables/qc/curation_labels.parquet</span></code> (durable labels store).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.custom_categories_json">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">custom_categories_json</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.custom_categories_json" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">custom_categories_json</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.custom_categories_json" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">deliverables/qc/custom_categories.json</span></code> (custom-category registry).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.errors_dir">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">errors_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.errors_dir" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">errors_dir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.errors_dir" title="Link to this definition">#</a></dt>
 <dd><p>Return path to the <code class="docutils literal notranslate"><span class="pre">errors/</span></code> directory under the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.error_analysis_parquet">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_parquet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">error_analysis.parquet</span></code> in the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.error_analysis_csv">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_csv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_csv" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_csv</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_csv" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">error_analysis.csv</span></code> in the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.error_analysis_html">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_html</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_html" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">error_analysis_html</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_analysis_html" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">error_analysis.html</span></code> in the deliverables base.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.verified_parquet">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">verified_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.verified_parquet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">verified_parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></em><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.verified_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">verified.parquet</span></code> (GUI-written verified-good archive).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.error_category_parquet">
-<span class="sig-name descname"><span class="pre">error_category_parquet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.error_category_parquet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_category_parquet" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">error_category_parquet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">category</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.error_category_parquet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.error_category_parquet" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">errors/&lt;category&gt;.parquet</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>category</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Bare, already-sanitized category token
+<dd class="field-odd"><p><strong>category</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Bare, already-sanitized category token
 (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;background_noise&quot;</span></code>).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Path to the per-category error parquet file.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.overlays_dir">
-<span class="sig-name descname"><span class="pre">overlays_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.overlays_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.overlays_dir" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">overlays_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.overlays_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.overlays_dir" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">overlays/&lt;dataset&gt;/</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Dataset name.</p>
+<dd class="field-odd"><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Dataset name.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Directory path for overlay PNGs of the given dataset.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.BundleLayout.overlay_path">
-<span class="sig-name descname"><span class="pre">overlay_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.overlay_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.overlay_path" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">overlay_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#BundleLayout.overlay_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.BundleLayout.overlay_path" title="Link to this definition">#</a></dt>
 <dd><p>Return path to <code class="docutils literal notranslate"><span class="pre">overlays/&lt;dataset&gt;/&lt;stem&gt;.png</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Dataset name.</p></li>
-<li><p><strong>stem</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Image stem (filename without extension).</p></li>
+<li><p><strong>dataset</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Dataset name.</p></li>
+<li><p><strong>stem</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Image stem (filename without extension).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Path to the overlay PNG for the given image.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.15)"><em>Path</em></a></p>
 </dd>
 </dl>
 </dd></dl>

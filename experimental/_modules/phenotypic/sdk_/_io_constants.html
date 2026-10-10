@@ -1345,6 +1345,19 @@
 <span class="c1">#: :data:`_PRESERVED_ON_RESTART`.</span>
 <span class="n">RESTART_EPOCH_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;restart_epoch.json&quot;</span>
 
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/reference_metadata.csv`` -- byte-exact snapshot of the</span>
+<span class="c1">#: ``--metadata`` table for a ``--mode process`` run whose pipeline reads</span>
+<span class="c1">#: reference metadata (full mode reads ``deliverables/metadata.csv`` instead).</span>
+<span class="c1">#: Preserved across ``--restart``, as ``deliverables/metadata.csv`` is; the</span>
+<span class="c1">#: reason is at :data:`_PRESERVED_ON_RESTART`.</span>
+<span class="n">REFERENCE_METADATA_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;reference_metadata.csv&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/reference_manifest.json`` -- the run&#39;s resolved</span>
+<span class="c1">#: reference plan (table, reader settings, reference-image paths, per-image</span>
+<span class="c1">#: digests), rewritten at every forward startup. Workers build their</span>
+<span class="c1">#: ReferenceContext from it. Re-derived, so ``--restart`` clears it.</span>
+<span class="n">REFERENCE_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;reference_manifest.json&quot;</span>
+
 <span class="c1">#: Schema version of the persisted verification cache.</span>
 <span class="c1">#:</span>
 <span class="c1">#: **Bump this when the deep-verification RULES change, not only when the JSON</span>
@@ -1732,6 +1745,24 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">reference_metadata_snapshot_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/reference_metadata.csv``.</span>
+
+<span class="sd">    Pure path expression. The writer is</span>
+<span class="sd">    :func:`phenotypic._cli._cli_reference.snapshot_reference_metadata`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">REFERENCE_METADATA_CSV</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">reference_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/reference_manifest.json``.</span>
+
+<span class="sd">    Pure path expression. The writer and readers live in</span>
+<span class="sd">    :mod:`phenotypic._cli._cli_reference`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">REFERENCE_MANIFEST_JSON</span>
+
+
 <div class="viewcode-block" id="verification_cache_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.verification_cache_path.html#phenotypic.sdk_.verification_cache_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">verification_cache_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -2010,8 +2041,21 @@
 <span class="c1">#: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set</span>
 <span class="c1">#: those phases must find and extend does not belong in a function body where</span>
 <span class="c1">#: it can carry no documentation.</span>
+<span class="c1">#:</span>
+<span class="c1">#: ``reference_metadata.csv`` qualifies as a **run input**, not a verdict: it</span>
+<span class="c1">#: is the process-mode twin of ``deliverables/metadata.csv`` (which lives</span>
+<span class="c1">#: outside ``.phenotypic/`` and so already survives a restart), and the table a</span>
+<span class="c1">#: continuation without ``--metadata`` falls back to. Losing it would make a</span>
+<span class="c1">#: ``--restart`` without ``--metadata`` unrunnable, and nothing about it is a</span>
+<span class="c1">#: judgement made before the fence. ``reference_manifest.json`` does **not**</span>
+<span class="c1">#: qualify: it is derived from that table at every startup.</span>
 <span class="n">_PRESERVED_ON_RESTART</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
-    <span class="p">{</span><span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span> <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span> <span class="n">DIR_LEGACY_V2</span><span class="p">}</span>
+    <span class="p">{</span>
+        <span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span>
+        <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span>
+        <span class="n">DIR_LEGACY_V2</span><span class="p">,</span>
+        <span class="n">REFERENCE_METADATA_CSV</span><span class="p">,</span>
+    <span class="p">}</span>
 <span class="p">)</span>
 
 

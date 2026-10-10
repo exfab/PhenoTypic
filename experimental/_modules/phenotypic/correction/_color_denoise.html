@@ -775,8 +775,8 @@
             <span class="p">)</span>
 
         <span class="c1"># Read via the private data attribute: the public ``rgb[:]`` getter</span>
-        <span class="c1"># marks the underlying array non-writeable, which would poison the</span>
-        <span class="c1"># write-back below.</span>
+        <span class="c1"># returns a read-only view, and the write-back below needs the</span>
+        <span class="c1"># stored array itself.</span>
         <span class="n">raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span><span class="p">)</span>
         <span class="n">dtype</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">dtype</span>
         <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>

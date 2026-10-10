@@ -52,6 +52,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.parse_obj
       ~PrefabPipeline.parse_raw
       ~PrefabPipeline.preflight_requirements
+      ~PrefabPipeline.reference_columns
       ~PrefabPipeline.schema
       ~PrefabPipeline.schema_json
       ~PrefabPipeline.set_filters

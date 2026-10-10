@@ -585,6 +585,20 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_reference_error</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether *exc* is a typed reference-metadata failure that apply re-raises as is.</span>
+
+<span class="sd">    ``ReferenceContextError`` and its subclasses are user-actionable (a missing</span>
+<span class="sd">    table row, an unreadable blank) and must be catchable by type around</span>
+<span class="sd">    ``op.apply``. Every other exception keeps the generic wrapping below. The</span>
+<span class="sd">    CLI classifies the ``ImagePipeline``&#39;s own ``RuntimeError`` wrapper, not its</span>
+<span class="sd">    cause, so letting these through changes nothing it sees.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._reference_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceContextError</span>
+
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">ReferenceContextError</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="ImageOperation">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageOperation.html#phenotypic.abc_.ImageOperation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageOperation</span><span class="p">(</span><span class="n">BaseOperation</span><span class="p">,</span> <span class="n">LazyWidgetMixin</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
@@ -1022,6 +1036,8 @@
         <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_is_reference_error</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="k">raise</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> failed on image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">&quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -1075,6 +1091,8 @@
         <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_is_reference_error</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="k">raise</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cls_name</span><span class="si">}</span><span class="s2"> failed on image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span></div>
 </div>
 

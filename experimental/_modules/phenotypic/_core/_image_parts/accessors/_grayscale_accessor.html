@@ -616,7 +616,7 @@
 
 <div class="viewcode-block" id="Grayscale.__getitem__">
 <a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._grayscale_accessor.Grayscale.__getitem__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve a read-only view or slice of the grayscale image data.</span>
 
 <span class="sd">        Allows array-style indexing and slicing to access subsets of the grayscale data.</span>
@@ -625,12 +625,15 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            key: Index or slice specification. Can be an integer for single-row access,</span>
-<span class="sd">                tuple of slices for multi-dimensional slicing (e.g., [10:20, 5:15]),</span>
-<span class="sd">                or boolean arrays for advanced indexing.</span>
+<span class="sd">                a pair of integers for a single pixel (e.g., [100, 100]), tuple of</span>
+<span class="sd">                slices for multi-dimensional slicing (e.g., [10:20, 5:15]), or boolean</span>
+<span class="sd">                arrays for advanced indexing.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            np.ndarray: A read-only view of the requested grayscale data. Values are</span>
-<span class="sd">                normalized floating-point numbers in the range [0.0, 1.0].</span>
+<span class="sd">            np.ndarray | np.floating: A read-only view of the requested grayscale</span>
+<span class="sd">                data, or the pixel&#39;s scalar value when the key selects a single</span>
+<span class="sd">                pixel. Values are normalized floating-point numbers in the range</span>
+<span class="sd">                [0.0, 1.0].</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            EmptyImageError: If the underlying image data is empty (shape[0] == 0).</span>
@@ -644,15 +647,15 @@
 <span class="sd">            &gt;&gt;&gt; region = img.gray[10:20, 5:15]</span>
 <span class="sd">            &gt;&gt;&gt; # Access single row</span>
 <span class="sd">            &gt;&gt;&gt; row = img.gray[10]</span>
+<span class="sd">            &gt;&gt;&gt; # Access a single pixel&#39;s value</span>
+<span class="sd">            &gt;&gt;&gt; pixel = img.gray[10, 5]</span>
 <span class="sd">            &gt;&gt;&gt; # Advanced indexing not recommended but supported</span>
 <span class="sd">            &gt;&gt;&gt; mask = img.gray &gt; 0.5</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
             <span class="k">raise</span> <span class="n">EmptyImageError</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">view</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="n">view</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">writeable</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">return</span> <span class="n">view</span></div>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_only</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span><span class="p">[</span><span class="n">key</span><span class="p">])</span></div>
 
 
 <div class="viewcode-block" id="Grayscale.__setitem__">

@@ -1,0 +1,918 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.enhance._subtract_blank &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sidebar-resize.css?v=bc74e319" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/enhance/_subtract_blank';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script src="../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/enhance/_subtract_blank.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.20.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._subtract_blank</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.enhance._subtract_blank</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._reference_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceContextError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">RefMetadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_._enhance_markers._background_subtraction</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">RefImageColumn</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+
+<div class="viewcode-block" id="StaleDetectMatError">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.StaleDetectMatError.html#phenotypic.enhance.StaleDetectMatError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StaleDetectMatError</span><span class="p">(</span><span class="n">ReferenceContextError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SubtractBlank ran on a detect_mat or image that its raw blank does not match.&quot;&quot;&quot;</span></div>
+
+
+
+<span class="c1">#: Slack for float rounding in a [0, 1] projection (rgb2gray of white, say).</span>
+<span class="n">_UNIT_RANGE_TOLERANCE</span> <span class="o">=</span> <span class="mf">1e-6</span>
+
+
+<span class="c1">#: Classes already resolved from journal records. Misses are not cached: a</span>
+<span class="c1">#: module the user imports later must then resolve.</span>
+<span class="n">_RECORDED_CLASSES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_trusted_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The module *module_name*, importing it only if it is PhenoTypic&#39;s own.</span>
+
+<span class="sd">    A journal comes from an image store, which may be third-party; importing</span>
+<span class="sd">    whatever module it names would run that module&#39;s code. Outside the</span>
+<span class="sd">    ``phenotypic`` package only modules already loaded are used -- including</span>
+<span class="sd">    those ``PHENOTYPIC_PRELOAD_MODULES`` lists, which are loaded first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">module_name</span> <span class="o">==</span> <span class="s2">&quot;phenotypic&quot;</span> <span class="ow">or</span> <span class="n">module_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;phenotypic.&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 -- any import failure means &quot;not this prefix&quot;</span>
+            <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_recorded_class</span><span class="p">(</span><span class="n">operation_class</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a journal&#39;s ``module.qualname`` to its class, or ``None``.</span>
+
+<span class="sd">    The split between module and qualname is not recorded, so the longest</span>
+<span class="sd">    resolvable module prefix wins. A stored history names classes the</span>
+<span class="sd">    running pipeline never imported, so PhenoTypic&#39;s own modules are imported</span>
+<span class="sd">    here; any other module must already be loaded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cached</span> <span class="o">=</span> <span class="n">_RECORDED_CLASSES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">operation_class</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cached</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._preload</span><span class="w"> </span><span class="kn">import</span> <span class="n">preload_custom_operation_modules_once</span>
+
+    <span class="n">preload_custom_operation_modules_once</span><span class="p">()</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">operation_class</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">cut</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">_trusted_module</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">[:</span><span class="n">cut</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">attribute</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">[</span><span class="n">cut</span><span class="p">:]:</span>
+            <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">found</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">found</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="n">_RECORDED_CLASSES</span><span class="p">[</span><span class="n">operation_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">found</span>
+            <span class="k">return</span> <span class="n">found</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_outside_unit_range</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
+        <span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">_UNIT_RANGE_TOLERANCE</span> <span class="ow">or</span> <span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">_UNIT_RANGE_TOLERANCE</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="SubtractBlank">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.SubtractBlank.html#phenotypic.enhance.SubtractBlank">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SubtractBlank</span><span class="p">(</span><span class="n">BackgroundSubtraction</span><span class="p">,</span> <span class="n">RefMetadata</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Subtract a time series&#39; media-blank frame from ``detect_mat``.</span>
+
+<span class="sd">    Each image names its blank — typically the plate&#39;s frame 0, imaged before</span>
+<span class="sd">    inoculation — in a metadata column. The blank is read raw, taken in the</span>
+<span class="sd">    target&#39;s detection mode, and subtracted pixel by pixel, so the agar,</span>
+<span class="sd">    lid glare and scanner vignetting shared by every frame of that plate</span>
+<span class="sd">    cancel and only growth since frame 0 remains.</span>
+
+<span class="sd">    The metadata table is supplied at run time, never stored on the</span>
+<span class="sd">    operation: ``with phenotypic.ReferenceContext(table, image_root=...)`` in</span>
+<span class="sd">    Python, ``--metadata`` on the CLI, or the GUI&#39;s reference-metadata picker.</span>
+
+<span class="sd">    The blank is raw, so ``detect_mat`` must be raw too: place SubtractBlank</span>
+<span class="sd">    before any enhancer, or directly after a ``SetDetectMode``, and after no</span>
+<span class="sd">    ``ImageCorrector``. It refuses otherwise. A later ``SetDetectMode``</span>
+<span class="sd">    discards the subtraction, like any enhancement.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Time-lapse plates with a media-only frame taken before growth.</span>
+<span class="sd">        - Filamentous colonies whose faint mycelium is lost against uneven</span>
+<span class="sd">          agar when the background is estimated from the image itself.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`SubtractGaussian` or :class:`SubtractRollingBall` when no</span>
+<span class="sd">          blank frame exists and the background must be estimated from the</span>
+<span class="sd">          image alone.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        blank_column: Metadata column holding each image&#39;s blank, as a file</span>
+<span class="sd">            stem or file name in the same input directory. Default</span>
+<span class="sd">            ``&quot;Metadata_BlankImage&quot;``.</span>
+<span class="sd">        polarity: Which change from the blank counts as colony.</span>
+<span class="sd">            ``&quot;brighter&quot;`` keeps pixels brighter than the blank (white</span>
+<span class="sd">            mycelium on darker agar); ``&quot;darker&quot;`` keeps pixels darker than</span>
+<span class="sd">            the blank and flips them bright (pigmented colonies);</span>
+<span class="sd">            ``&quot;both&quot;`` keeps the absolute difference.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``detect_mat`` replaced by the clipped</span>
+<span class="sd">        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RefMetadataUnavailableError: No ReferenceContext is active.</span>
+<span class="sd">        ReferenceLookupError: The image&#39;s blank is missing, empty, ambiguous,</span>
+<span class="sd">            or the image itself.</span>
+<span class="sd">        ReferenceImageError: The blank cannot be resolved or read; its</span>
+<span class="sd">            shape or bit depth differs from the target&#39;s; one of the pair is</span>
+<span class="sd">            RGB and the other single-channel; or either projects outside</span>
+<span class="sd">            ``[0, 1]``.</span>
+<span class="sd">        StaleDetectMatError: ``detect_mat`` was already enhanced, or an</span>
+<span class="sd">            ``ImageCorrector`` appears anywhere in the image&#39;s recorded</span>
+<span class="sd">            history, or a class recorded there cannot be imported.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        All of these are :class:`~phenotypic.sdk_.ReferenceContextError`</span>
+<span class="sd">        subclasses and reach a bare ``op.apply`` caller unwrapped. Inside an</span>
+<span class="sd">        ``ImagePipeline`` each enclosing pipeline (and a composite holding a</span>
+<span class="sd">        branch pipeline) wraps them in a ``RuntimeError``, so walk</span>
+<span class="sd">        ``__cause__`` until you reach a ``ReferenceContextError``.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        A frame identical to its blank cancels to zero:</span>
+
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import ReferenceContext</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import SubtractBlank</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; plate.name = &quot;plate1_t04&quot;</span>
+<span class="sd">        &gt;&gt;&gt; blank = load_synth_yeast_plate()   # stands in for the media-only frame</span>
+<span class="sd">        &gt;&gt;&gt; layout = pd.DataFrame({&quot;Metadata_ImageName&quot;: [&quot;plate1_t04&quot;],</span>
+<span class="sd">        ...                        &quot;Metadata_BlankImage&quot;: [&quot;plate1_t00&quot;]})</span>
+<span class="sd">        &gt;&gt;&gt; with ReferenceContext(layout, images={&quot;plate1_t00&quot;: blank}):</span>
+<span class="sd">        ...     out = SubtractBlank().apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; float(out.detect_mat[:].max())</span>
+<span class="sd">        0.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">blank_column</span><span class="p">:</span> <span class="n">RefImageColumn</span> <span class="o">=</span> <span class="s2">&quot;Metadata_BlankImage&quot;</span>
+    <span class="n">polarity</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;brighter&quot;</span><span class="p">,</span> <span class="s2">&quot;darker&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brighter&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Image&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_detection_mode</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._reference_context</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">ReferenceImageError</span><span class="p">,</span>
+            <span class="n">ReferenceLookupError</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">source_image_stem</span>
+
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_values</span><span class="p">(</span><span class="n">image</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="p">]</span>
+        <span class="c1"># Compare by the resolved file too: a blank written with its extension</span>
+        <span class="c1"># (&quot;t04.tif&quot; for image &quot;t04&quot;) resolves to the image&#39;s own file, and</span>
+        <span class="c1"># subtracting a frame from itself would zero it with no error.</span>
+        <span class="c1"># An in-memory entry is compared by its own name, since a copy of the</span>
+        <span class="c1"># target defeats identity. normcase: on a case-insensitive filesystem</span>
+        <span class="c1"># &quot;T04.tif&quot; is the file of image &quot;t04&quot;.</span>
+        <span class="n">target_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_context</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">own</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="n">own</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">source_image_stem</span><span class="p">(</span><span class="n">target_file</span><span class="p">))</span> <span class="o">==</span> <span class="n">own</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">target_file</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ReferenceLookupError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> names itself as its blank in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="si">}</span><span class="s2">; &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;leave blank frames out of the input&quot;</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">column</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="n">get_detection_mode</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_require_raw_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="n">blank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_image</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">blank</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ReferenceImageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Blank </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> has shape </span><span class="si">{</span><span class="n">blank</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;has </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">; frames must be pixel-aligned&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">blank</span><span class="o">.</span><span class="n">bit_depth</span> <span class="o">!=</span> <span class="n">image</span><span class="o">.</span><span class="n">bit_depth</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ReferenceImageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Blank </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is </span><span class="si">{</span><span class="n">blank</span><span class="o">.</span><span class="n">bit_depth</span><span class="si">}</span><span class="s2">-bit, image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;is </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">bit_depth</span><span class="si">}</span><span class="s2">-bit&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">blank</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">()</span> <span class="o">!=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
+            <span class="n">single</span><span class="p">,</span> <span class="n">rgb</span> <span class="o">=</span> <span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">()</span> <span class="k">else</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ReferenceImageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">single</span><span class="si">!r}</span><span class="s2"> is a single-channel image and </span><span class="si">{</span><span class="n">rgb</span><span class="si">!r}</span><span class="s2"> is RGB; a &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;single-channel gray and an RGB frame&#39;s projection are different &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;quantities, so the blank and the image must both be RGB or both not&quot;</span>
+            <span class="p">)</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
+        <span class="c1"># The target&#39;s colour configuration, not the blank&#39;s: the blank was read</span>
+        <span class="c1"># with imread&#39;s defaults, and an L*a*b* projection under another</span>
+        <span class="c1"># illuminant or gamma would not cancel against identical pixels.</span>
+        <span class="n">background</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">mode</span><span class="o">.</span><span class="n">compute_from_rgb</span><span class="p">(</span><span class="n">blank</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">normed</span><span class="p">(),</span> <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mode</span><span class="o">.</span><span class="n">requires_rgb</span>
+            <span class="k">else</span> <span class="n">mode</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">blank</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="p">((</span><span class="sa">f</span><span class="s2">&quot;image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">),</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;blank </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">background</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">_outside_unit_range</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">ReferenceImageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;The </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> projects to [</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">())</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">())</span><span class="si">:</span><span class="s2">.4g</span><span class="si">}</span><span class="s2">] in detect mode </span><span class="si">{</span><span class="n">mode</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">, outside &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;[0, 1]; a difference of such values is not a growth signal&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">polarity</span> <span class="o">==</span> <span class="s2">&quot;brighter&quot;</span><span class="p">:</span>
+            <span class="n">difference</span> <span class="o">=</span> <span class="n">target</span> <span class="o">-</span> <span class="n">background</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">polarity</span> <span class="o">==</span> <span class="s2">&quot;darker&quot;</span><span class="p">:</span>
+            <span class="n">difference</span> <span class="o">=</span> <span class="n">background</span> <span class="o">-</span> <span class="n">target</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">difference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">target</span> <span class="o">-</span> <span class="n">background</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">difference</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="c1"># Limitation: the records of a corrector that ran inside the *same*</span>
+    <span class="c1"># composite branch are appended only when the composite finishes, so that</span>
+    <span class="c1"># case is caught by neither check unless the corrector also changed</span>
+    <span class="c1"># detect_mat. Correctors do not live inside composites today.</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_raw_target</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Every application, not only the last: a staged run&#39;s Stage-2 probe</span>
+        <span class="c1"># copy opens a fresh application, and a corrector recorded by Stage 1</span>
+        <span class="c1"># must still be seen there (else GPU time is spent, then Stage 3 refuses).</span>
+        <span class="c1"># _operations flattens both journal schemas (v1 top-level &quot;operations&quot;,</span>
+        <span class="c1"># v2 per-application). Each recorded class is resolved by importing it:</span>
+        <span class="c1"># a stored history comes from an earlier pipeline, whose classes this</span>
+        <span class="c1"># process need not have imported. A class that cannot be resolved is</span>
+        <span class="c1"># refused, since the guard cannot vouch for a history it cannot read.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._provenance</span><span class="w"> </span><span class="kn">import</span> <span class="n">_operations</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">_operations</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_metadata</span><span class="o">.</span><span class="n">provenance_journal</span><span class="p">):</span>
+            <span class="n">recorded</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;operation_class&quot;</span><span class="p">))</span>
+            <span class="bp">cls</span> <span class="o">=</span> <span class="n">_recorded_class</span><span class="p">(</span><span class="n">recorded</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">StaleDetectMatError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;SubtractBlank cannot resolve </span><span class="si">{</span><span class="n">recorded</span><span class="si">!r}</span><span class="s2"> in the image&#39;s recorded &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;history, so it cannot rule out an ImageCorrector there; import &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;the module that defines it (on the CLI or SLURM, list it in &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;PHENOTYPIC_PRELOAD_MODULES), or start from the raw image.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ImageCorrector</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">StaleDetectMatError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;SubtractBlank follows </span><span class="si">{</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;operation_name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, an &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;ImageCorrector; the raw blank does not share its correction. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Place SubtractBlank before any corrector.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">mode</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">image</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="n">StaleDetectMatError</span><span class="p">(</span>
+                <span class="s2">&quot;detect_mat was already enhanced; the raw blank cannot be subtracted &quot;</span>
+                <span class="s2">&quot;from it. Place SubtractBlank before any enhancer, or directly after &quot;</span>
+                <span class="s2">&quot;SetDetectMode.&quot;</span>
+            <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

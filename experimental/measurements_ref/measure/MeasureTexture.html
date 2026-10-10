@@ -637,6 +637,23 @@
 </dl>
 <section id="texture">
 <span id="measurement-info-texture"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.TEXTURE.html"><span class="doc">TEXTURE</span></a><a class="headerlink" href="#texture" title="Link to this heading">#</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>A single-channel (grayscale) integer image, such as an 8- or 16-bit
+grayscale PNG, TIFF or JPEG, is now normalised to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> when it is
+read, by dividing by its full-scale value (255 for 8-bit, 65535 for
+16-bit; another integer dtype takes the narrower of the two its values
+fit). An RGB image’s grayscale was already on that scale, and RGB inputs
+are unchanged. These columns are now produced for such
+an image; earlier versions raised on it instead. Their values equal those
+of the same scan supplied as a float array in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>.
+Detectors and enhancers that assume <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> now see it, so the
+segmentation of such an image changes, and with it every column measured
+on its detected objects: <code class="docutils literal notranslate"><span class="pre">Size_*</span></code>, <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code>, <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> and the zone
+columns included.
+A single-channel run started before this change must be re-run with
+<code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, not resumed. Resuming reuses the images it already
+finished, which were segmented and measured on raw integer counts.</p>
+</div>
 <div class="pst-scrollable-table-container"><table class="phenotypic-measurement-table table" id="id1">
 <caption><span class="caption-text">Metric family: <strong>Texture</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
