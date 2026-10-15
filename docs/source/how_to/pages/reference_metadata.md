@@ -193,6 +193,29 @@ The blank is taken in the target's detection mode (grey in grey mode, `LabL` in
 | `"brighter"` (default) | `clip(target - blank, 0, 1)` | Colonies brighter than the media, such as white mycelium on darker agar. |
 | `"darker"` | `clip(blank - target, 0, 1)` | Colonies darker than the media; the result is object-bright. |
 | `"both"` | `abs(target - blank)` | Either direction counts as colony. |
+| `"signed"` | `clip(0.5 + target - blank, 0, 1)` | A background-leveling step follows and must see both directions (bare agar sits at 0.5). |
+
+`"signed"` exists for leveling. Lighting often drifts between the blank and a
+later frame (lamp warm-up, condensation on the lid), leaving broad regions a
+little brighter or darker than the blank. With `"brighter"` every darker pixel,
+and the negative half of the agar noise, clips to the same 0, so a following
+`SubtractPolySurface` fits a censored background; leftover drift can then be
+thresholded as growth. Keep the sign and level it away:
+
+```python
+from phenotypic import ImagePipeline
+from phenotypic.enhance import BlurGauss, SubtractBlank, SubtractPolySurface
+
+pipe = ImagePipeline(ops=[
+    SubtractBlank(polarity="signed"),
+    SubtractPolySurface(method="polynomial", order=3, fit="robust", norm=None),
+    BlurGauss(sigma=2.0),
+    # ...detector with thresholds above 0, the leveled agar
+])
+```
+
+The surface fit's constant term removes the 0.5 offset, so the leveled agar
+lands at 0. A difference beyond ±0.5 saturates at 1 or 0.
 
 ## Limits and errors
 

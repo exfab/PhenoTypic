@@ -115,11 +115,25 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             ``"brighter"`` keeps pixels brighter than the blank (white
             mycelium on darker agar); ``"darker"`` keeps pixels darker than
             the blank and flips them bright (pigmented colonies);
-            ``"both"`` keeps the absolute difference.
+            ``"both"`` keeps the absolute difference; ``"signed"`` keeps
+            the difference with its sign, centred at 0.5
+            (``0.5 + target - blank``), for a background-leveling step
+            that must see both directions.
 
     Returns:
         Image: Input image with ``detect_mat`` replaced by the clipped
         difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.
+
+    Note:
+        **Signed output and leveling.** ``"brighter"`` zeroes every pixel
+        darker than the blank: the negative half of the agar noise and any
+        region that dimmed since the blank (lamp drift, condensation). A
+        background fit that follows then works on censored data, where every
+        darker pixel reads as the same zero. ``"signed"`` keeps both
+        directions, so the fit sees the background as it is: follow it with
+        ``SubtractPolySurface(fit="robust", norm=None)``, whose fitted
+        constant also removes the 0.5 offset, then threshold. Differences
+        beyond ±0.5 saturate at 1 or 0.
 
     Raises:
         RefMetadataUnavailableError: No ReferenceContext is active.
@@ -159,7 +173,7 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
     """
 
     blank_column: RefImageColumn = "Metadata_BlankImage"
-    polarity: Literal["brighter", "darker", "both"] = "brighter"
+    polarity: Literal["brighter", "darker", "both", "signed"] = "brighter"
 
     def _operate(self, image: "Image") -> "Image":
         from phenotypic._core._image_parts.detection_modes import get_detection_mode
@@ -232,6 +246,8 @@ class SubtractBlank(BackgroundSubtraction, RefMetadata):
             difference = target - background
         elif self.polarity == "darker":
             difference = background - target
+        elif self.polarity == "signed":
+            difference = 0.5 + (target - background)
         else:
             difference = np.abs(target - background)
         image.detect_mat[:] = np.clip(difference, 0.0, 1.0).astype(target.dtype, copy=False)
