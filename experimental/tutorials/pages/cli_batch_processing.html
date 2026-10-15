@@ -874,32 +874,27 @@ a position the staged GPU engine cannot run), the refusal of a <code class="docu
 <td><p>warning (error if all)</p></td>
 <td><p>Give each image one value</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-REF-SELF</span></code></p></td>
-<td><p>Some images name themselves as their reference</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-REF-UNRESOLVED</span></code></p></td>
+<td><p>A named reference image matches no single file in the image’s directory, or a reference file path is not an existing image</p></td>
 <td><p>warning (error if all)</p></td>
-<td><p>Leave blank frames out with <code class="docutils literal notranslate"><span class="pre">--image-manifest</span></code></p></td>
+<td><p>Name an existing file, by stem or full name, or give a path to one</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-REF-UNRESOLVED</span></code></p></td>
-<td><p>A named reference image matches no single file in the image’s directory</p></td>
-<td><p>warning (error if all)</p></td>
-<td><p>Name an existing file, by stem or full name</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-UNWRITABLE</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-UNWRITABLE</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">--output</span></code> (or its nearest existing parent) is not writable</p></td>
 <td><p>error</p></td>
 <td><p>Choose another <code class="docutils literal notranslate"><span class="pre">--output</span></code>, or fix permissions</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-SPACE</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-SPACE</span></code></p></td>
 <td><p>A <code class="docutils literal notranslate"><span class="pre">full</span></code> run’s output disk has less free space than the inputs’ size (a heuristic)</p></td>
 <td><p>warning</p></td>
 <td><p>Free space, or choose another <code class="docutils literal notranslate"><span class="pre">--output</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-NODE-LOCAL</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-NODE-LOCAL</span></code></p></td>
 <td><p>On a SLURM run, a path workers read or write is on node-local storage</p></td>
 <td><p>warning</p></td>
 <td><p>Move it to shared storage</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-CHECK-CRASHED</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-CHECK-CRASHED</span></code></p></td>
 <td><p>A check itself failed</p></td>
 <td><p>warning</p></td>
 <td><p>Report it; the run is not blocked</p></td>

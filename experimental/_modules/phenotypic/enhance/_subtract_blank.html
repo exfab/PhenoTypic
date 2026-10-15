@@ -567,9 +567,7 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -679,8 +677,9 @@
 <span class="sd">          image alone.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        blank_column: Metadata column holding each image&#39;s blank, as a file</span>
-<span class="sd">            stem or file name in the same input directory. Default</span>
+<span class="sd">        blank_column: Metadata column holding each image&#39;s blank: a file stem</span>
+<span class="sd">            or file name, searched for in the image&#39;s input directory, or a</span>
+<span class="sd">            file path (relative to the working directory). Default</span>
 <span class="sd">            ``&quot;Metadata_BlankImage&quot;``.</span>
 <span class="sd">        polarity: Which change from the blank counts as colony.</span>
 <span class="sd">            ``&quot;brighter&quot;`` keeps pixels brighter than the blank (white</span>
@@ -690,12 +689,14 @@
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the clipped</span>
-<span class="sd">        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged.</span>
+<span class="sd">        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged. The</span>
+<span class="sd">        reference plate itself, naming its own frame as its blank, is no</span>
+<span class="sd">        special case: it subtracts to an all-zero ``detect_mat``.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        RefMetadataUnavailableError: No ReferenceContext is active.</span>
-<span class="sd">        ReferenceLookupError: The image&#39;s blank is missing, empty, ambiguous,</span>
-<span class="sd">            or the image itself.</span>
+<span class="sd">        ReferenceLookupError: The image has no row, its blank cell is empty,</span>
+<span class="sd">            or its rows disagree.</span>
 <span class="sd">        ReferenceImageError: The blank cannot be resolved or read; its</span>
 <span class="sd">            shape or bit depth differs from the target&#39;s; one of the pair is</span>
 <span class="sd">            RGB and the other single-channel; or either projects outside</span>
@@ -734,35 +735,9 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Image&quot;</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_detection_mode</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._reference_context</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-            <span class="n">ReferenceImageError</span><span class="p">,</span>
-            <span class="n">ReferenceLookupError</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">source_image_stem</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._reference_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceImageError</span>
 
         <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_values</span><span class="p">(</span><span class="n">image</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="p">]</span>
-        <span class="c1"># Compare by the resolved file too: a blank written with its extension</span>
-        <span class="c1"># (&quot;t04.tif&quot; for image &quot;t04&quot;) resolves to the image&#39;s own file, and</span>
-        <span class="c1"># subtracting a frame from itself would zero it with no error.</span>
-        <span class="c1"># An in-memory entry is compared by its own name, since a copy of the</span>
-        <span class="c1"># target defeats identity. normcase: on a case-insensitive filesystem</span>
-        <span class="c1"># &quot;T04.tif&quot; is the file of image &quot;t04&quot;.</span>
-        <span class="n">target_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_context</span><span class="p">()</span><span class="o">.</span><span class="n">resolve_image</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="n">own</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span>
-            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="n">own</span>
-            <span class="ow">or</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>
-                <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">source_image_stem</span><span class="p">(</span><span class="n">target_file</span><span class="p">))</span> <span class="o">==</span> <span class="n">own</span><span class="p">)</span>
-            <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_file</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">target_file</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-        <span class="p">):</span>
-            <span class="k">raise</span> <span class="n">ReferenceLookupError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> names itself as its blank in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="si">}</span><span class="s2">; &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;leave blank frames out of the input&quot;</span><span class="p">,</span>
-                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;self&quot;</span><span class="p">,</span>
-                <span class="n">image_name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-                <span class="n">column</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">blank_column</span><span class="p">,</span>
-            <span class="p">)</span>
         <span class="n">mode</span> <span class="o">=</span> <span class="n">get_detection_mode</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mode</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_require_raw_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
         <span class="n">blank</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ref_image</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
