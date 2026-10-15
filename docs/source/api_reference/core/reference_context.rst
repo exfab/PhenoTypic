@@ -29,7 +29,7 @@ module.
 - :py:exc:`~phenotypic.sdk_.ReferenceTableError`: the table is missing,
   unreadable, or lacks a needed column.
 - :py:exc:`~phenotypic.sdk_.ReferenceLookupError`: an image has no row, or its
-  rows are empty, disagree, or name the image itself.
+  rows are empty or disagree.
 - :py:exc:`~phenotypic.sdk_.ReferenceImageError`: a reference image cannot be
   resolved, read, or matched to its target.
 - :py:exc:`~phenotypic.sdk_.StaleDetectMatError`: ``SubtractBlank`` ran on a

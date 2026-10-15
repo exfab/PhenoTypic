@@ -20,7 +20,7 @@ import threading
 from collections import OrderedDict
 from contextvars import ContextVar, Token
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Sequence
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
@@ -38,7 +38,7 @@ __all__ = [
     "ReferenceTableError",
 ]
 
-LookupReason = Literal["unmatched", "null", "ambiguous", "self"]
+LookupReason = Literal["unmatched", "null", "ambiguous"]
 
 
 class ReferenceContextError(ValueError):
@@ -57,9 +57,9 @@ class ReferenceLookupError(ReferenceContextError):
     """An image's rows cannot supply exactly one value for a column.
 
     Attributes:
-        reason: ``"unmatched"`` (no row), ``"null"`` (only empty values),
-            ``"ambiguous"`` (rows disagree), or ``"self"`` (an image names
-            itself as its own reference).
+        reason: ``"unmatched"`` (no row), ``"null"`` (only empty values), or
+            ``"ambiguous"`` (rows disagree). An image naming itself as its
+            reference is not an error: it subtracts to nothing.
         image_name: The image whose lookup failed.
         column: The column that failed, when one did.
     """
@@ -215,25 +215,46 @@ class _RootIndex:
         self.by_stem: dict[str, list[Path]] = {}
 
 
+def is_file_path_value(name: str) -> bool:
+    """Whether a reference value names a file by path rather than by name.
+
+    A value holding ``/`` (or the platform separator) or an absolute path
+    references that file directly; a bare name is searched for in the image's
+    input folder (``image_root``).
+    """
+    return "/" in name or os.sep in name or os.path.isabs(name)
+
+
+def _is_reference_image(
+    name: str, is_dir: Callable[[], bool], is_file: Callable[[], bool]
+) -> bool:
+    """The one rule for a reference-image candidate, by name or by path.
+
+    An image file with an accepted suffix, or a Zarr store directory.
+    Sidecars (``.json``, ``.xmp``, ``.txt``) are not candidates. The checks
+    are callables so a directory scan can answer them from its own read.
+    """
+    from phenotypic.sdk_._io_constants import is_zarr_store_name
+    from phenotypic.sdk_.constants_ import IO
+
+    if is_zarr_store_name(name):
+        return is_dir()
+    suffixes = {suffix.lower() for suffix in IO.ACCEPTED_FILE_EXTENSIONS}
+    return Path(name).suffix.lower() in suffixes and is_file()
+
+
 def _scan_image_root(root: Path, mtime_ns: int) -> _RootIndex:
     """List *root* once: image files by accepted suffix, and Zarr stores.
 
     ``DirEntry.is_file``/``is_dir`` reuse the directory read on Linux, so this
-    costs one listing rather than a ``stat`` per entry. Sidecars (``.json``,
-    ``.xmp``, ``.txt``) are not candidates.
+    costs one listing rather than a ``stat`` per entry.
     """
-    from phenotypic.sdk_._io_constants import is_zarr_store_name, source_image_stem
-    from phenotypic.sdk_.constants_ import IO
+    from phenotypic.sdk_._io_constants import source_image_stem
 
-    suffixes = {suffix.lower() for suffix in IO.ACCEPTED_FILE_EXTENSIONS}
     index = _RootIndex(mtime_ns)
     with os.scandir(root) as entries:
         for entry in entries:
-            if is_zarr_store_name(entry.name):
-                accepted = entry.is_dir()
-            else:
-                accepted = Path(entry.name).suffix.lower() in suffixes and entry.is_file()
-            if not accepted:
+            if not _is_reference_image(entry.name, entry.is_dir, entry.is_file):
                 continue
             path = root / entry.name
             index.by_name[os.path.normcase(entry.name)] = path
@@ -320,6 +341,9 @@ class ReferenceContext:
         #: ``{resolved path: sha256}`` a reference file must still match when
         #: loaded; ``None`` checks nothing. Set only through :meth:`narrow`.
         self.planned_digests: dict[str, str] | None = None
+        #: Vets a file-path value's absolute path: returns the path to use, or
+        #: ``None`` to refuse it unread. Set only through :meth:`narrow`.
+        self.file_path_guard: Callable[[Path], Path | None] | None = None
 
     # ------------------------------------------------------------- activation
     def __enter__(self) -> "ReferenceContext":
@@ -456,18 +480,25 @@ class ReferenceContext:
     def resolve_image(self, name: str) -> "Path | Image":
         """Return the in-memory image or the file that *name* refers to.
 
-        Only image files (by accepted suffix) and Zarr stores directly inside
-        ``image_root`` are candidates. The directory is listed once and the
-        listing reused until its modification time changes.
+        An ``images`` entry wins. Otherwise a value that is a file path
+        (:func:`is_file_path_value`) references that file directly, relative
+        to the current working directory when not absolute, and needs no
+        ``image_root``. A bare name is searched for in ``image_root``: only
+        image files (by accepted suffix) and Zarr stores directly inside it
+        are candidates, and the directory is listed once and the listing
+        reused until its modification time changes.
 
         Raises:
-            ReferenceImageError: No ``images`` entry and no ``image_root``; the
-                name is a path rather than a file name or stem; or it matches
+            ReferenceImageError: A file path that is not an existing image file
+                or Zarr store, or that ``file_path_guard`` refuses; a bare name
+                with no ``images`` entry and no ``image_root``; or one matching
                 zero or several images in ``image_root``.
         """
         if name in self.images:
             target = self.images[name]
             return Path(target) if isinstance(target, (str, Path)) else target
+        if is_file_path_value(name):
+            return self._resolve_file_path(name)
         if self.image_root is None:
             raise ReferenceImageError(
                 f"Cannot resolve reference image {name!r}: the ReferenceContext has "
@@ -492,6 +523,26 @@ class ReferenceContext:
                 f"{[c.name for c in candidates]}"
             )
         return candidates[0]
+
+    def _resolve_file_path(self, name: str) -> Path:
+        """The image file a file-path value names, vetted by ``file_path_guard``."""
+        candidate = Path(name).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path.cwd() / candidate
+        if self.file_path_guard is not None:
+            guarded = self.file_path_guard(candidate)
+            if guarded is None:
+                raise ReferenceImageError(
+                    f"Reference image {name!r} is outside the paths this context may read"
+                )
+            candidate = guarded
+        target = candidate.resolve()
+        if not _is_reference_image(target.name, target.is_dir, target.is_file):
+            raise ReferenceImageError(
+                f"Reference image {name!r} ({target}) is not an existing image file "
+                f"or OME-Zarr store"
+            )
+        return target
 
     def _root_index(self, root: Path) -> _RootIndex:
         try:
@@ -576,6 +627,7 @@ class ReferenceContext:
         image_root: str | Path | None = None,
         images: Mapping[str, Any] | None = None,
         planned_digests: Mapping[str, str] | None = None,
+        file_path_guard: Callable[[Path], Path | None] | None = None,
     ) -> "ReferenceContext":
         """Return a context sharing this table, its indexes and its root listings.
 
@@ -590,6 +642,9 @@ class ReferenceContext:
                 loaded through the clone must still match (the CLI's run plan);
                 a file absent from it never matches. A load that does not
                 raises :class:`ReferenceImageChangedError`.
+            file_path_guard: Called with a file-path value's absolute path;
+                returns the path to read, or ``None`` to refuse it unread (as
+                unresolved). The GUI confines blanks to its image root with it.
         """
         clone = object.__new__(ReferenceContext)
         clone._shared = self._shared
@@ -601,6 +656,9 @@ class ReferenceContext:
             dict(planned_digests)
             if planned_digests is not None
             else None if self.planned_digests is None else dict(self.planned_digests)
+        )
+        clone.file_path_guard = (
+            file_path_guard if file_path_guard is not None else self.file_path_guard
         )
         return clone
 

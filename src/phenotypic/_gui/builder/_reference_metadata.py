@@ -74,6 +74,32 @@ def confined_reference_path(path: object, image_root: object) -> Optional[Path]:
     return resolved
 
 
+def confined_image_path(path: Path, image_root: object) -> Optional[Path]:
+    """Where a file-path blank may be read from in the builder: under the image root.
+
+    The table's file-path blanks are confined like the table itself
+    (``SandboxRoot`` containment, symlinks judged by their target). Python and
+    the CLI accept any readable path; the builder serves a browser, so it
+    reads nothing outside the root it was given.
+
+    Args:
+        path: The blank's absolute path, as the ReferenceContext resolved it.
+        image_root: The builder's ``--image-root``; ``None`` refuses every path.
+
+    Returns:
+        The resolved path when it lies under ``image_root``; otherwise ``None``,
+        which the context reports as unresolved without reading the file.
+    """
+    if image_root is None:
+        return None
+    from phenotypic._gui.shell._sandbox import SandboxRoot
+
+    try:
+        return SandboxRoot.from_path(image_root).resolve(path)
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return None
+
+
 def _confined(path: object) -> Optional[Path]:
     """:func:`confined_reference_path` against the running builder's image root.
 
@@ -158,10 +184,11 @@ def _table_context(path: object) -> "Optional[ReferenceContext]":
 def _preview_context(path: object, image_path: Optional[str]) -> "Optional[ReferenceContext]":
     """The table narrowed for one preview image: its directory, and its dataset.
 
-    Reference images resolve beside the preview image. When the table has a
-    ``Metadata_Dataset`` column naming the image's directory, lookups narrow
-    to that dataset, as the CLI narrows each dataset by its input directory's
-    name.
+    Reference images named by file name resolve beside the preview image;
+    those named by file path resolve only under the image root
+    (:func:`confined_image_path`). When the table has a ``Metadata_Dataset``
+    column naming the image's directory, lookups narrow to that dataset, as
+    the CLI narrows each dataset by its input directory's name.
 
     Raises:
         ReferenceTableError: The confined table is missing or unreadable.
@@ -169,6 +196,9 @@ def _preview_context(path: object, image_path: Optional[str]) -> "Optional[Refer
     base = _table_context(path)
     if base is None:
         return None
+    from flask import current_app
+
+    from phenotypic._gui._config import CFG_IMAGE_ROOT
     from phenotypic._gui.builder._directory_browser import SYNTHETIC_SENTINEL
     from phenotypic.schema import EXPERIMENT
 
@@ -182,7 +212,13 @@ def _preview_context(path: object, image_path: Optional[str]) -> "Optional[Refer
         and root.name in base.table.get_column(dataset_column).to_list()
         else None
     )
-    return base.narrow(image_root=root, dataset=dataset)
+    # _table_context returned a table, so an app context with a root exists.
+    image_root = current_app.config.get(CFG_IMAGE_ROOT)
+    return base.narrow(
+        image_root=root,
+        dataset=dataset,
+        file_path_guard=lambda blank: confined_image_path(blank, image_root),
+    )
 
 
 def reference_columns_provider(path: Optional[str]) -> Optional[Callable[[str], list[str]]]:

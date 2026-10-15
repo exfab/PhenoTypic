@@ -21,7 +21,10 @@ from phenotypic._cli import (
     _cli_staged_slurm,
     _cli_staged_strategy,
 )
-from phenotypic._cli._cli_failure_tracker import work_identity_for_image
+from phenotypic._cli._cli_failure_tracker import (
+    read_terminal_failures,
+    work_identity_for_image,
+)
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_stage2_token import detector_slot, stage2_result_replayable
 from phenotypic._cli._cli_staged_resume import staged_store_matches_work_id
@@ -445,6 +448,165 @@ def test_full_mode_runs_and_joins_the_blank_column(run_inputs):
     measurements = pd.read_csv(base / "full" / "deliverables" / "measurements.csv")
     assert set(measurements["Metadata_ImageName"].astype(str)) == {"t01", "t02"}
     assert set(measurements["Metadata_BlankImage"].dropna()) == {"blank"}
+
+
+def _with_the_reference_plate(base: Path) -> tuple[Path, Path]:
+    """The input includes the plate's own blank frame, which names itself."""
+    manifest = base / "with_blank.txt"
+    manifest.write_text(
+        "plate1/blank.tiff\nplate1/t01.tiff\nplate1/t02.tiff\n", encoding="utf-8"
+    )
+    table = base / "with_blank.csv"
+    pd.DataFrame({
+        "ImageName": ["blank", "t01", "t02"],
+        "BlankImage": ["blank", "blank", "blank"],
+    }).to_csv(table, index=False)
+    return manifest, table
+
+
+def test_a_full_run_may_include_the_reference_plate(run_inputs):
+    """Every plate is treated alike: the reference plate subtracts itself to an
+    empty image, so in full mode it fails measurement like any plate with no
+    colonies -- an ordinary terminal failure, not a reference-metadata one. The
+    other frames are subtracted and certified."""
+    base, root, _, _, pipeline = run_inputs
+    out = base / "out"
+    manifest, table = _with_the_reference_plate(base)
+
+    result = _full(base, manifest, table, pipeline)
+
+    assert "PF-REF-SELF" not in result.output
+    for stem in ("t01", "t02"):
+        assert image_record_path(out, "plate1", stem).exists(), stem
+    assert not image_record_path(out, "plate1", "blank").exists()
+    (failure,) = read_terminal_failures(out)
+    assert Path(failure.relative_image_path).name == "blank.tiff"
+    detail = f"{failure.exception_type}: {failure.exception_message}\n{failure.traceback}"
+    assert "No objects" in detail, detail
+    assert "ReferenceLookupError" not in detail and "ReferenceImageError" not in detail
+    np.testing.assert_allclose(
+        Image.load_zarr(zarr_store_path(out, "plate1", "t01")).detect_mat[:],
+        _expected_subtraction(root / "t01.tiff", root / "blank.tiff"),
+        atol=1e-6,
+    )
+
+
+def test_a_process_run_exports_the_reference_plate_as_an_empty_image(run_inputs):
+    base, root, _, _, pipeline = run_inputs
+    manifest, table = _with_the_reference_plate(base)
+
+    result = _process(base, manifest, table, pipeline)
+
+    assert result.exit_code == 0, result.output
+    plate = tifffile.imread(_output(base, "blank"))
+    np.testing.assert_array_equal(plate, np.zeros_like(plate))
+    np.testing.assert_allclose(
+        tifffile.imread(_output(base, "t01")),
+        _expected_subtraction(root / "t01.tiff", root / "blank.tiff"),
+        atol=1e-6,
+    )
+    assert _no_terminal_failures(base / "out")
+
+
+def _path_blank_inputs(run_inputs) -> tuple[Path, Path, Path]:
+    """A blank outside the input folder, named by a path relative to ``run/``."""
+    base = run_inputs[0]
+    run = base / "run"
+    blank = run / "blanks" / "b0.tiff"
+    blank.parent.mkdir(parents=True)
+    tifffile.imwrite(blank, _rgb(20))
+    table = base / "path_blanks.csv"
+    pd.DataFrame({
+        "ImageName": ["t01", "t02"], "BlankImage": ["blanks/b0.tiff"] * 2,
+    }).to_csv(table, index=False)
+    return run, blank, table
+
+
+def test_a_relative_file_path_blank_is_planned_once_and_used_from_any_cwd(
+    run_inputs, monkeypatch
+):
+    """Startup resolves it against the submitter's cwd; the workers then run
+    from another cwd holding a different file at the same relative path, and
+    must still subtract the planned one."""
+    base, root, manifest, _, pipeline = run_inputs
+    run, blank, table = _path_blank_inputs(run_inputs)
+    decoy = base / "elsewhere" / "blanks" / "b0.tiff"
+    decoy.parent.mkdir(parents=True)
+    tifffile.imwrite(decoy, _rgb(90))
+    publish = _cli_reference.publish_reference_inputs
+
+    def publish_then_move(config, datasets, output_dir):
+        publish(config, datasets, output_dir)
+        monkeypatch.chdir(base / "elsewhere")
+
+    monkeypatch.chdir(run)
+    monkeypatch.setattr(_cli_reference, "publish_reference_inputs", publish_then_move)
+    result = _process(base, manifest, table, pipeline)
+    assert result.exit_code == 0, result.output
+    np.testing.assert_allclose(
+        tifffile.imread(_output(base, "t01")),
+        _expected_subtraction(root / "t01.tiff", blank),
+        atol=1e-6,
+    )
+
+
+def test_file_path_blanks_own_file_and_same_stem_are_ordinary_blanks(run_inputs):
+    """t01 names its own file by path: it subtracts itself to an empty image.
+    t02 names ``blanks/t02.tiff``, a different file with the same stem: an
+    ordinary blank, subtracted as usual."""
+    base, root, manifest, _, pipeline = run_inputs
+    same_stem = base / "blanks" / "t02.tiff"
+    same_stem.parent.mkdir()
+    tifffile.imwrite(same_stem, _rgb(20))
+    table = base / "own_paths.csv"
+    pd.DataFrame({
+        "ImageName": ["t01", "t02"],
+        "BlankImage": [str(root / "t01.tiff"), str(same_stem)],
+    }).to_csv(table, index=False)
+
+    result = _process(base, manifest, table, pipeline)
+
+    assert result.exit_code == 0, result.output
+    own = tifffile.imread(_output(base, "t01"))
+    np.testing.assert_array_equal(own, np.zeros_like(own))
+    np.testing.assert_allclose(
+        tifffile.imread(_output(base, "t02")),
+        _expected_subtraction(root / "t02.tiff", same_stem),
+        atol=1e-6,
+    )
+    assert _no_terminal_failures(base / "out")
+
+
+def test_a_file_path_blank_replaced_after_planning_is_never_certified(
+    run_inputs, monkeypatch
+):
+    """t01's blank is a file path, rewritten after planning: refused as stale.
+    t02's blank is the bare name ``blank``, untouched: certified. That control
+    is what proves the path resolved (a refused path would fail t01 alone too,
+    but the refusal would not name a changed file)."""
+    base, _, manifest, _, pipeline = run_inputs
+    out = base / "out"
+    run, blank, _ = _path_blank_inputs(run_inputs)
+    table = base / "mixed_blanks.csv"
+    pd.DataFrame({
+        "ImageName": ["t01", "t02"], "BlankImage": ["blanks/b0.tiff", "blank"],
+    }).to_csv(table, index=False)
+    publish = _cli_reference.publish_reference_inputs
+
+    def publish_then_reexport(config, datasets, output_dir):
+        publish(config, datasets, output_dir)
+        tifffile.imwrite(blank, _rgb(35))
+
+    monkeypatch.chdir(run)
+    monkeypatch.setattr(_cli_reference, "publish_reference_inputs", publish_then_reexport)
+    first = _process(base, manifest, table, pipeline)
+    assert first.exit_code != 0, first.output
+    assert not image_record_path(out, "plate1", "t01").exists()
+    assert image_record_path(out, "plate1", "t02").exists()
+    assert _no_terminal_failures(out)
+    events = resolve_event_log_path(out).read_text(encoding="utf-8")
+    assert "changed since the run planned its references" in events
+    assert str(blank.resolve()) in events
 
 
 # ---- staged GPU: SubtractBlank inside the detector's own branch (review B1) --

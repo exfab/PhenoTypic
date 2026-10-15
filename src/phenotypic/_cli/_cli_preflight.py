@@ -79,7 +79,6 @@ FindingCode = Literal[
     "PF-REF-COLUMN",
     "PF-REF-UNMATCHED",
     "PF-REF-AMBIGUOUS",
-    "PF-REF-SELF",
     "PF-REF-UNRESOLVED",
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
@@ -204,13 +203,10 @@ HINTS: dict[str, str] = {
         "Give each listed image exactly one non-empty value; its rows are empty "
         "or disagree."
     ),
-    "PF-REF-SELF": (
-        "A blank frame cannot be its own reference; leave blank frames out of "
-        "the input with --image-manifest."
-    ),
     "PF-REF-UNRESOLVED": (
         "Each named reference must match exactly one file (by stem or full "
-        "name) in the image's own input directory."
+        "name) in the image's own input directory, or be a path to an existing "
+        "image file (relative to where you run)."
     ),
     "PF-SBATCH-REJECTED": (
         "Fix the --slurm/--gpu-slurm option sbatch names above (a partition, "
@@ -1316,7 +1312,8 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
     the table and lists directories only -- reference images are resolved to
     file names, never opened or hashed (startup hashes them). Per-image
     findings are warnings, all escalated to errors when the images failing
-    for any reason cover every input image.
+    for any reason cover every input image. An image naming itself as its
+    reference (the reference plate) is no finding: it subtracts to nothing.
     """
     if context.mode not in ("full", "process"):
         return []
@@ -1367,13 +1364,12 @@ def check_reference_metadata(context: PreflightContext) -> list[PreflightFinding
         hash_images=False,
         operations=[op for _, op in in_scope],
     )
-    failing = {*plan.unmatched, *plan.ambiguous, *plan.self_referenced, *plan.unresolved}
+    failing = {*plan.unmatched, *plan.ambiguous, *plan.unresolved}
     severity = _severity_for(len(failing), plan.total_images)
     findings: list[PreflightFinding] = []
     for code, labels, what in (
         ("PF-REF-UNMATCHED", plan.unmatched, "have no row in the reference table"),
         ("PF-REF-AMBIGUOUS", plan.ambiguous, "have empty or disagreeing reference values"),
-        ("PF-REF-SELF", plan.self_referenced, "name themselves as their own reference"),
         ("PF-REF-UNRESOLVED", plan.unresolved, "name a reference image that matches no single file"),
     ):
         if labels:

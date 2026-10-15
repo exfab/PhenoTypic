@@ -138,21 +138,55 @@ def test_mixed_failures_covering_every_image_escalate_together(tmp_path):
     }
 
 
-def test_ambiguous_and_self_are_reported(tmp_path):
-    """t03 is clean, so the failures do not cover every image: warnings."""
+def test_ambiguous_is_reported_and_the_reference_plate_is_not(tmp_path):
+    """t02 names itself: the reference plate is an ordinary blank now. t03 is
+    clean, so the failure (t01) does not cover every image: a warning."""
     rows = {
         "Metadata_ImageName": ["t01", "t01", "t02", "t03"],
         "Metadata_BlankImage": ["blank", "other", "t02", "blank"],
     }
     findings = check_reference_metadata(_context(tmp_path, rows, stems=("t01", "t02", "t03")))
-    assert _codes(findings) == {
-        ("PF-REF-AMBIGUOUS", "warning"),
-        ("PF-REF-SELF", "warning"),
+    assert _codes(findings) == {("PF-REF-AMBIGUOUS", "warning")}
+    assert findings[0].subjects == ("plate1/t01",)
+
+
+def test_a_run_of_only_reference_plates_has_no_findings(tmp_path):
+    rows = {"Metadata_ImageName": ["t01", "t02"], "Metadata_BlankImage": ["t01", "t02.tif"]}
+    assert check_reference_metadata(_context(tmp_path, rows)) == []
+
+
+def test_an_empty_blank_cell_is_still_ambiguous(tmp_path):
+    rows = {"Metadata_ImageName": ["t01", "t02"], "Metadata_BlankImage": ["blank", None]}
+    findings = check_reference_metadata(_context(tmp_path, rows))
+    assert _codes(findings) == {("PF-REF-AMBIGUOUS", "warning")}
+    assert findings[0].subjects == ("plate1/t02",)
+
+
+def test_there_is_no_self_reference_code():
+    from typing import get_args
+
+    assert "PF-REF-SELF" not in get_args(_cli_preflight.FindingCode)
+    assert "PF-REF-SELF" not in _cli_preflight.HINTS
+
+
+def test_a_file_path_blank_that_is_not_an_image_is_unresolved(tmp_path):
+    """t01's path does not exist; t02's is no image. Both are PF-REF-UNRESOLVED."""
+    notes = tmp_path / "notes.json"
+    notes.write_text("{}", encoding="utf-8")
+    rows = {
+        "Metadata_ImageName": ["t01", "t02"],
+        "Metadata_BlankImage": [str(tmp_path / "missing.tif"), str(notes)],
     }
-    assert {f.code: f.subjects for f in findings} == {
-        "PF-REF-AMBIGUOUS": ("plate1/t01",),
-        "PF-REF-SELF": ("plate1/t02",),
-    }
+    findings = check_reference_metadata(_context(tmp_path, rows))
+    assert _codes(findings) == {("PF-REF-UNRESOLVED", "error")}
+    assert findings[0].subjects == ("plate1/t01", "plate1/t02")
+
+
+def test_a_file_path_blank_that_exists_has_no_findings(tmp_path):
+    blank = tmp_path / "blanks" / "b0.tif"
+    _images(blank.parent, "b0")
+    rows = {"Metadata_ImageName": ["t01", "t02"], "Metadata_BlankImage": [str(blank)] * 2}
+    assert check_reference_metadata(_context(tmp_path, rows)) == []
 
 
 def test_process_mode_is_checked(tmp_path):

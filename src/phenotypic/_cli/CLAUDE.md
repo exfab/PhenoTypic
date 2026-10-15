@@ -139,6 +139,22 @@ table as an argument; they read a run-level plan.
   changed cause re-derives it rather than matching a terminal failure recorded
   for the old one. Measure mode returns without touching the manifest. A
   pipeline that reads no reference metadata removes a stale one.
+- **A blank value is a file name or a file path.** A bare name (no `/`, not
+  absolute) is searched for in the image's input folder, as before. A path
+  (`is_file_path_value`) names that file, relative to the **cwd** when not
+  absolute; startup resolves it once in the submitting process, and the
+  manifest's `images`/`reference_files` hold only the absolute path, so a
+  SLURM worker (another cwd) never re-resolves it. The GUI builder preview
+  confines path blanks to its image root (`file_path_guard`); Python and the
+  CLI read any path.
+- **The reference plate is no special case** (user decision, 2026-10-07). A
+  blank naming or resolving to the image's own file is planned, hashed into
+  `reference_files` and digested like any blank, and the op subtracts it, so
+  the plate's `detect_mat` is all zero. In full mode that plate then fails
+  measurement with an ordinary `NoObjectsError` terminal record, like any plate
+  with no colonies. There is no `PF-REF-SELF`, no `unplanned:self`, and no
+  `ReferenceLookupError(reason="self")`. An empty blank cell is still
+  `unplanned:ambiguous` / `PF-REF-AMBIGUOUS` and the op's `reason="null"`.
 - **Every apply site enters `worker_reference_context`.** Seven call sites:
   `process_single_image_core` (`apply_and_measure`),
   `process_single_apply_only_core`, Stage 1's `pre_pipeline.apply`, Stage 2's
