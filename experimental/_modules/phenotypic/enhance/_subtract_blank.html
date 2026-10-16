@@ -685,13 +685,27 @@
 <span class="sd">            ``&quot;brighter&quot;`` keeps pixels brighter than the blank (white</span>
 <span class="sd">            mycelium on darker agar); ``&quot;darker&quot;`` keeps pixels darker than</span>
 <span class="sd">            the blank and flips them bright (pigmented colonies);</span>
-<span class="sd">            ``&quot;both&quot;`` keeps the absolute difference.</span>
+<span class="sd">            ``&quot;both&quot;`` keeps the absolute difference; ``&quot;signed&quot;`` keeps</span>
+<span class="sd">            the difference with its sign, centred at 0.5</span>
+<span class="sd">            (``0.5 + target - blank``), for a background-leveling step</span>
+<span class="sd">            that must see both directions.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``detect_mat`` replaced by the clipped</span>
 <span class="sd">        difference in ``[0, 1]``. ``rgb`` and ``gray`` are unchanged. The</span>
 <span class="sd">        reference plate itself, naming its own frame as its blank, is no</span>
 <span class="sd">        special case: it subtracts to an all-zero ``detect_mat``.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        **Signed output and leveling.** ``&quot;brighter&quot;`` zeroes every pixel</span>
+<span class="sd">        darker than the blank: the negative half of the agar noise and any</span>
+<span class="sd">        region that dimmed since the blank (lamp drift, condensation). A</span>
+<span class="sd">        background fit that follows then works on censored data, where every</span>
+<span class="sd">        darker pixel reads as the same zero. ``&quot;signed&quot;`` keeps both</span>
+<span class="sd">        directions, so the fit sees the background as it is: follow it with</span>
+<span class="sd">        ``SubtractPolySurface(fit=&quot;robust&quot;, norm=None)``, whose fitted</span>
+<span class="sd">        constant also removes the 0.5 offset, then threshold. Differences</span>
+<span class="sd">        beyond ±0.5 saturate at 1 or 0.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        RefMetadataUnavailableError: No ReferenceContext is active.</span>
@@ -731,7 +745,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">blank_column</span><span class="p">:</span> <span class="n">RefImageColumn</span> <span class="o">=</span> <span class="s2">&quot;Metadata_BlankImage&quot;</span>
-    <span class="n">polarity</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;brighter&quot;</span><span class="p">,</span> <span class="s2">&quot;darker&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brighter&quot;</span>
+    <span class="n">polarity</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;brighter&quot;</span><span class="p">,</span> <span class="s2">&quot;darker&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;signed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brighter&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Image&quot;</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_detection_mode</span>
@@ -778,6 +792,8 @@
             <span class="n">difference</span> <span class="o">=</span> <span class="n">target</span> <span class="o">-</span> <span class="n">background</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">polarity</span> <span class="o">==</span> <span class="s2">&quot;darker&quot;</span><span class="p">:</span>
             <span class="n">difference</span> <span class="o">=</span> <span class="n">background</span> <span class="o">-</span> <span class="n">target</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">polarity</span> <span class="o">==</span> <span class="s2">&quot;signed&quot;</span><span class="p">:</span>
+            <span class="n">difference</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="p">(</span><span class="n">target</span> <span class="o">-</span> <span class="n">background</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">difference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">target</span> <span class="o">-</span> <span class="n">background</span><span class="p">)</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">difference</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>

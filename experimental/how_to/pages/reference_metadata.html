@@ -869,9 +869,32 @@ enhancement. This is not detected.</p></li>
 <td><p><code class="docutils literal notranslate"><span class="pre">abs(target</span> <span class="pre">-</span> <span class="pre">blank)</span></code></p></td>
 <td><p>Either direction counts as colony.</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;signed&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">clip(0.5</span> <span class="pre">+</span> <span class="pre">target</span> <span class="pre">-</span> <span class="pre">blank,</span> <span class="pre">0,</span> <span class="pre">1)</span></code></p></td>
+<td><p>A background-leveling step follows and must see both directions (bare agar sits at 0.5).</p></td>
+</tr>
 </tbody>
 </table>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">&quot;signed&quot;</span></code> exists for leveling. Lighting often drifts between the blank and a
+later frame (lamp warm-up, condensation on the lid), leaving broad regions a
+little brighter or darker than the blank. With <code class="docutils literal notranslate"><span class="pre">&quot;brighter&quot;</span></code> every darker pixel,
+and the negative half of the agar noise, clips to the same 0, so a following
+<code class="docutils literal notranslate"><span class="pre">SubtractPolySurface</span></code> fits a censored background; leftover drift can then be
+thresholded as growth. Keep the sign and level it away:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">BlurGauss</span><span class="p">,</span> <span class="n">SubtractBlank</span><span class="p">,</span> <span class="n">SubtractPolySurface</span>
+
+<span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span>
+    <span class="n">SubtractBlank</span><span class="p">(</span><span class="n">polarity</span><span class="o">=</span><span class="s2">&quot;signed&quot;</span><span class="p">),</span>
+    <span class="n">SubtractPolySurface</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;polynomial&quot;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">fit</span><span class="o">=</span><span class="s2">&quot;robust&quot;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+    <span class="n">BlurGauss</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span>
+    <span class="c1"># ...detector with thresholds above 0, the leveled agar</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+<p>The surface fit’s constant term removes the 0.5 offset, so the leveled agar
+lands at 0. A difference beyond ±0.5 saturates at 1 or 0.</p>
 </section>
 <section id="limits-and-errors">
 <h2>Limits and errors<a class="headerlink" href="#limits-and-errors" title="Link to this heading">#</a></h2>
