@@ -13,7 +13,7 @@ from phenotypic._core._image_parts.detection_modes import get_detection_mode
 from phenotypic._core._reference_context import ReferenceImageError, ReferenceLookupError
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import CompositeDetector, OtsuDetector
-from phenotypic.enhance import BlurGauss, CompositeEnhance, SetDetectMode, SubtractBlank
+from phenotypic.enhance import BlurGauss, CompositeEnhance, SetDetectMode, SubtractBlank, SubtractPolySurface
 from phenotypic.enhance._subtract_blank import _RECORDED_CLASSES, StaleDetectMatError
 
 
@@ -46,6 +46,72 @@ def test_polarity_arithmetic(polarity, bright, dark):
     assert dm[1, 1] == pytest.approx(bright, abs=1e-6)
     assert dm[5, 5] == pytest.approx(dark, abs=1e-6)
     assert dm[0, 7] == pytest.approx(0.0, abs=1e-6)   # bare agar cancels
+
+
+def test_signed_polarity_centres_agar_at_one_half():
+    """'signed' keeps both directions: 0.5 + (target - blank)."""
+    target, blank = _pair()
+    with _ctx(blank=blank):
+        dm = SubtractBlank(polarity="signed").apply(target).detect_mat[:]
+    assert dm[1, 1] == pytest.approx(0.95, abs=1e-6)   # brighter colony: 0.5 + 0.45
+    assert dm[5, 5] == pytest.approx(0.25, abs=1e-6)   # darker colony:   0.5 - 0.25
+    assert dm[0, 7] == pytest.approx(0.5, abs=1e-6)    # bare agar sits at the midpoint
+
+
+def test_signed_polarity_keeps_a_uniformly_darker_frame():
+    """A frame darker than its blank everywhere (lamp drift) is not erased to 0."""
+    blank = np.full((8, 8), 0.40, dtype=np.float32)
+    with _ctx(blank=_gray(blank, "t00")):
+        dm = SubtractBlank(polarity="signed").apply(_gray(blank - 0.1, "t04")).detect_mat[:]
+        clipped = SubtractBlank(polarity="brighter").apply(_gray(blank - 0.1, "t04")).detect_mat[:]
+    np.testing.assert_allclose(dm, 0.4, atol=1e-6)
+    np.testing.assert_allclose(clipped, 0.0, atol=1e-6)
+
+
+def test_signed_polarity_clips_only_beyond_half_a_unit():
+    blank = np.full((4, 4), 0.5, dtype=np.float32)
+    frame = blank.copy()
+    frame[0, 0], frame[0, 1] = 1.0, 0.0      # +0.5 and -0.5: still inside [0, 1]
+    with _ctx(blank=_gray(blank, "t00")):
+        dm = SubtractBlank(polarity="signed").apply(_gray(frame, "t04")).detect_mat[:]
+    assert dm[0, 0] == pytest.approx(1.0, abs=1e-6)
+    assert dm[0, 1] == pytest.approx(0.0, abs=1e-6)
+    blank2 = np.full((4, 4), 0.2, dtype=np.float32)
+    frame2 = blank2.copy()
+    frame2[0, 0] = 0.9                       # +0.7 saturates at 1
+    with _ctx(blank=_gray(blank2, "t00")):
+        dm2 = SubtractBlank(polarity="signed").apply(_gray(frame2, "t04")).detect_mat[:]
+    assert dm2[0, 0] == pytest.approx(1.0, abs=1e-6)
+
+
+def _drift_pair():
+    """A frame whose lighting drifted by a left-to-right ramp (-0.03 .. +0.03) since
+    its blank, plus one bright colony -- the case 'signed' exists for."""
+    rng = np.random.default_rng(3)
+    h, w = 64, 96
+    blank = np.clip(0.40 + rng.normal(0, 0.004, (h, w)), 0, 1).astype(np.float32)
+    ramp = np.linspace(-0.03, 0.03, w, dtype=np.float32)[None, :]
+    frame = blank + ramp + rng.normal(0, 0.004, (h, w)).astype(np.float32)
+    frame[28:36, 44:52] += 0.30
+    return _gray(np.clip(frame, 0, 1), "t04"), _gray(blank, "t00")
+
+
+def test_signed_lets_a_surface_fit_level_drift_in_both_directions():
+    """With the sign kept, SubtractPolySurface(norm=None) removes a ramp that runs both
+    below and above the blank (agar left flat) and keeps the colony at its full height."""
+    agar = np.ones((64, 96), bool)
+    agar[24:40, 40:56] = False
+    level = SubtractPolySurface(method="plane", fit="robust", norm=None)
+
+    target, blank = _drift_pair()
+    with _ctx(blank=blank):
+        out = SubtractBlank(polarity="signed").apply(target)
+    signed = level.apply(out).detect_mat[:]
+    right_edge = signed[:, -8:][agar[:, -8:]]
+    assert abs(float(np.median(right_edge) - np.median(signed[agar]))) < 0.006   # ramp removed
+    left_edge = signed[:, :8][agar[:, :8]]
+    assert abs(float(np.median(left_edge) - np.median(signed[agar]))) < 0.006    # both ends
+    assert float(signed[32, 48] - np.median(signed[agar])) == pytest.approx(0.30, abs=0.02)
 
 
 def test_rgb_and_gray_are_untouched():
@@ -239,7 +305,7 @@ def test_blank_is_projected_through_the_targets_colour_configuration(gamma, illu
     assert float(out.detect_mat[:].max()) == 0.0
 
 
-@pytest.mark.parametrize("polarity", ["brighter", "darker", "both"])
+@pytest.mark.parametrize("polarity", ["brighter", "darker", "both", "signed"])
 def test_a_blank_projecting_outside_the_unit_range_is_refused(monkeypatch, polarity):
     """Unclipped 'both' once returned values far outside [0, 1] (P14); a
     projection outside [0, 1] is refused rather than clipped into a plausible map."""
@@ -265,7 +331,7 @@ def test_a_float_single_channel_frame_outside_the_unit_range_is_refused(scale):
         _gray(target.gray[:] * scale, "t04")
 
 
-@pytest.mark.parametrize("polarity", ["brighter", "darker", "both"])
+@pytest.mark.parametrize("polarity", ["brighter", "darker", "both", "signed"])
 def test_output_is_within_the_unit_range(polarity):
     target, blank = _pair()
     with _ctx(blank=blank):
