@@ -91,9 +91,10 @@ out/
 │   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts
 │   └── README.md                           # generated column documentation
 ├── results/<dataset>/
-│   ├── zarr/               # one <stem>.ome.zarr store per image — the
-│   │                       #   reusable segmentation
-│   └── measurements/       # one parquet per image
+│   └── zarr/               # one <stem>.ome.zarr store per image — the
+│                           #   reusable segmentation, plus that image's
+│                           #   object table at
+│                           #   tables/measurements/table.parquet
 └── .phenotypic/            # machine state: progress manifest, event log
 ```
 
