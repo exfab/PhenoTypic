@@ -128,12 +128,12 @@ output_folder/
         """Generate documentation for saved layers."""
         return """## Saved Layers
 
-Each dataset directory contains the following folders:
+Each dataset directory contains the following:
 
-| Folder | Format | Description |
-|--------|--------|-------------|
+| Path | Format | Description |
+|------|--------|-------------|
 | `zarr/` | OME-Zarr (NGFF 0.5) | Processed image (layers + `objmap` label image + metadata + grid state) saved as a single `<stem>.ome.zarr` store directory per input image, reloadable via `Image.load_zarr` / `GridImage.load_zarr`. |
-| `measurements/` | Parquet | Per-object measurements. |
+| `zarr/<stem>.ome.zarr/tables/measurements/table.parquet` | Parquet | Authoritative per-object measurements for that image, embedded in its store and described by the store's root `attributes.phenotypic.tables.measurements`. This run writes no separate per-image `measurements/` folder. |
 
 Each `.ome.zarr` store is a standard OME-NGFF image: **napari, QuPath, and
 Vizarr open it directly, with no PhenoTypic install** — drag the store

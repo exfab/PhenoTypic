@@ -621,6 +621,11 @@ def test_readme_documents_the_store_and_its_interoperability(
         assert viewer in text
     assert ".h5" not in text
     assert "load_hdf5" not in text
+    # Forward runs embed the object table in the store; the Saved Layers
+    # table must not advertise the retired per-image `measurements/` folder.
+    layers = text.split("## Saved Layers", 1)[1].split("\n## ", 1)[0]
+    assert "tables/measurements/table.parquet" in layers
+    assert "| `measurements/` |" not in layers
 
 
 # ---------------------------------------------------------------------------
