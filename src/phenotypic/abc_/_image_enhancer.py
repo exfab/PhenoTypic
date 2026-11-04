@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
@@ -15,35 +14,40 @@ from phenotypic.sdk_.mixin import FootprintMixin
 
 
 class DetectionClearedWarning(UserWarning):
-    """An enhancer ran on an image that already has detected colonies.
+    """A pipeline runs an image enhancer after an object detector.
 
     Enhancers write ``detect_mat``, and writing ``detect_mat`` resets the
     object map. So an enhancer that runs after a detector silently erases
     every colony the detector found, and whatever follows (a refiner, a
-    measurement) sees an empty plate. :meth:`ImageEnhancer.apply` emits this
-    warning when the image it receives already carries objects. The fix is to
-    put enhancers before the detector in the pipeline.
+    measurement) sees an empty plate unless something detects again.
 
-    The warning never changes a result: the enhancer still runs, and the
-    object map is still reset.
+    ``ImagePipeline.apply`` (and so ``apply_and_measure``) checks the order
+    of the pipeline's ``ops`` once per call, before running them, with nested
+    pipelines included in run order. The warning names the enhancer and the detector before it. The ``meas``,
+    ``post``, ``filters`` and ``model`` slots are not checked. Neither is a
+    bare ``enhancer.apply(image)``: an image may legitimately carry objects
+    before enhancement (``load_synth_yeast_plate()`` ships with its colonies
+    already in the object map).
+
+    The warning never changes a result: the pipeline still runs every step.
+    The fix is to put enhancers before the detector.
 
     Example:
-        Blurring a plate after detection clears its colonies:
+        Blurring after detection erases the colonies Otsu found:
 
         >>> import warnings
+        >>> from phenotypic import ImagePipeline
         >>> from phenotypic.abc_ import DetectionClearedWarning
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.enhance import BlurGauss
-        >>> detected = OtsuDetector().apply(load_synth_yeast_plate())
-        >>> detected.num_objects > 0
-        True
+        >>> pipeline = ImagePipeline(ops=[OtsuDetector(), BlurGauss(sigma=2.0)])
         >>> with warnings.catch_warnings(record=True) as caught:
         ...     warnings.simplefilter("always")
-        ...     blurred = BlurGauss(sigma=2.0).apply(detected)
+        ...     result = pipeline.apply(load_synth_yeast_plate())
         >>> any(w.category is DetectionClearedWarning for w in caught)
         True
-        >>> blurred.num_objects
+        >>> result.num_objects
         0
     """
 
@@ -76,8 +80,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     are applied to `image.detect_mat` (a working copy of grayscale), while the original image
     components (`image.rgb`, `image.gray`) remain protected and unchanged. This allows you to
     experiment with multiple enhancement chains without affecting raw data. Writing `detect_mat`
-    does reset the object map, so an enhancer run after a detector erases its colonies; ``apply``
-    emits :class:`DetectionClearedWarning` when that happens.
+    does reset the object map, so an enhancer run after a detector erases its colonies; an
+    ``ImagePipeline`` that orders its steps that way emits :class:`DetectionClearedWarning`.
 
     **Role in the Detection Pipeline**
 
@@ -285,7 +289,6 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     Methods:
         apply(image, inplace=False): Applies the enhancement to an image. Returns a modified
             Image with enhanced `detect_mat` but unchanged RGB/gray, and an empty object map.
-            Warns with :class:`DetectionClearedWarning` if the input already has objects.
             Handles copy/inplace logic and validates data integrity.
         _operate(self, image): Abstract instance method implemented by subclasses.
             Performs the actual enhancement algorithm. Access parameters via ``self.param_name``.
@@ -381,19 +384,6 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     @validate_operation_integrity("image.rgb", "image.gray")
     def apply(self, image: Image, inplace: bool = False) -> Image:
-        # Writing detect_mat resets the object map, so an enhancer after a
-        # detector erases its colonies. Checked once, before operating.
-        num_objects = image.num_objects
-        if num_objects > 0:
-            warnings.warn(
-                    f"{type(self).__name__} is running on an image that already "
-                    f"has {num_objects} detected objects. Enhancers write "
-                    f"detect_mat, and writing detect_mat clears the object map, "
-                    f"so these detections are lost. Put enhancers before the "
-                    f"detector in the pipeline.",
-                    DetectionClearedWarning,
-                    stacklevel=3,
-            )
         return super().apply(image=image, inplace=inplace)
 
     @abstractmethod

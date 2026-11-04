@@ -983,15 +983,26 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset (bool, optional): Whether to reset the image before applying the pipeline.
                 If None (default), uses the pipeline's reset setting from __init__.
                 If explicitly set to True or False, overrides the pipeline setting.
-        """
-        effective_reset = reset if reset is not None else self._reset
-        img = image if inplace else image.copy()
-        from phenotypic._core._provenance import provenance_application
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
-            if effective_reset:
-                img.reset()
-            self._run_operations(img)
+        Warns:
+            DetectionClearedWarning: Once per call, before any step runs, when
+                an image enhancer comes after an object detector in the run
+                order of ``ops`` (nested pipelines included). The steps still
+                all run.
+        """
+        from phenotypic._core._pipeline_parts._step_order_check import (
+            step_order_checked,
+        )
+
+        with step_order_checked(self, stacklevel=2):
+            effective_reset = reset if reset is not None else self._reset
+            img = image if inplace else image.copy()
+            from phenotypic._core._provenance import provenance_application
+
+            with provenance_application(img, pipeline=self._provenance_pipeline):
+                if effective_reset:
+                    img.reset()
+                self._run_operations(img)
         return img
 
     def apply_with_intermediates(
