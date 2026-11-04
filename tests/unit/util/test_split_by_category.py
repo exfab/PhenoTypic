@@ -52,10 +52,11 @@ def test_uncategorized_measurements_are_not_context() -> None:
 def test_tagged_columns_sharing_a_label_appear_once_each(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Two families with the same member label, both tagged: each column must be
-    # resolved by its full header, so each lands in the category exactly once.
-    # No real pair qualifies since the 2026-11 retag left both
-    # IntegratedIntensity columns uncategorized, so the pair is test-local.
+    # Three families with the same member label, two tagged and one not: each
+    # column must be resolved by its full header, so each tagged column lands
+    # in the category exactly once and the untagged one stays out. No real
+    # trio qualifies since the 2026-11 retag left both IntegratedIntensity
+    # columns uncategorized, so the families are test-local.
     class FIRST_FAMILY(MeasurementInfo):
         @classmethod
         def metric_family(cls) -> str:
@@ -70,8 +71,20 @@ def test_tagged_columns_sharing_a_label_appear_once_each(
 
         VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
 
-    monkeypatch.setattr(mo, "_public_info_classes", lambda: (FIRST_FAMILY, SECOND_FAMILY))
-    groups = mo._category_column_groups(["FirstFamily_Value", "SecondFamily_Value"])
+    class THIRD_FAMILY(MeasurementInfo):
+        @classmethod
+        def metric_family(cls) -> str:
+            return "ThirdFamily"
+
+        VALUE = Entry("Value", "A value.")
+
+    monkeypatch.setattr(
+        mo, "_public_info_classes", lambda: (FIRST_FAMILY, SECOND_FAMILY, THIRD_FAMILY)
+    )
+    groups = mo._category_column_groups(
+        ["FirstFamily_Value", "SecondFamily_Value", "ThirdFamily_Value"]
+    )
+    assert "ThirdFamily_Value" not in groups["StartingMetrics"]
     assert groups == {"StartingMetrics": ["FirstFamily_Value", "SecondFamily_Value"]}
 
 

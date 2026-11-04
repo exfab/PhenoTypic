@@ -36,7 +36,9 @@ def test_compactness_does_not_promise_one_for_a_round_colony() -> None:
     assert "1.1" in SHAPE.COMPACTNESS.desc
 
 
-@pytest.mark.parametrize("member", [SHAPE.CIRCULARITY, SHAPE.ECCENTRICITY, SIZE.AREA])
+@pytest.mark.parametrize(
+    "member", [SHAPE.CIRCULARITY, SHAPE.COMPACTNESS, SHAPE.ECCENTRICITY, SIZE.AREA]
+)
 def test_desc_opens_with_a_plain_sentence_not_a_formula(member) -> None:
     assert not member.desc.startswith(("Calculated as", ":math:"))
 
