@@ -23,7 +23,19 @@ class QUALITY_SE(QualityInfo):
     def default_unit(cls) -> UNITS:
         return UNITS.OF_INPUT
 
-    VALUE = Entry("Value", "Raw SE = stddev / sqrt(n) across replicates.")
+    VALUE = Entry(
+        "Value",
+        "Standard error of the replicates' mean at this group and time point, "
+        "before it is divided by the mean. It is the raw SE, stddev / "
+        "sqrt(n), with the sample standard deviation (dividing by n - 1).",
+    )
     MEAN = Entry("Mean", "Mean across replicates at this (group, time).")
-    CV = Entry("CV", "Coefficient of variation, stddev / |mean|.", unit=UNITS.UNITLESS)
+    CV = Entry(
+        "CV",
+        "Coefficient of variation of the replicates at this group and time "
+        "point: their standard deviation divided by the absolute value of "
+        "their mean. It is stddev / |mean|, and NaN when the mean is within "
+        "eps of 0.",
+        unit=UNITS.UNITLESS,
+    )
     NUM_REPLICATES = Entry("NumReplicates", "Replicate count contributing to the SE.", unit=UNITS.UNITLESS)

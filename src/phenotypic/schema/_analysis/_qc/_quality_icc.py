@@ -25,6 +25,6 @@ class QUALITY_ICC(QualityInfo):
     def default_unit(cls) -> UNITS:
         return UNITS.UNITLESS
 
-    NUM_SUBJECTS = Entry("NumSubjects", "Distinct subjects (e.g. timepoints) in the two-way model.")
+    NUM_SUBJECTS = Entry("NumSubjects", "Distinct subjects (for example timepoints) in the two-way model.")
     NUM_RATERS = Entry("NumRaters", "Replicates per subject in the two-way model.")
     NUM_MEMBERS = Entry("NumMembers", "Total measurements contributing to the ICC.")
