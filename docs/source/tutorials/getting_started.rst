@@ -299,7 +299,7 @@ the full URL:
 
 .. code-block:: bash
 
-   uv run phenotypic-gui --root /rhome/ejaco020 --host 0.0.0.0 --port 30099 --url-prefix /node/hz01/30099/
+   uv run phenotypic-gui --root /path/to/your/images --host 0.0.0.0 --port 30099 --url-prefix /node/hz01/30099/
 
 Then open the full proxy URL, for example
 ``https://ondemand.hpcc.ucr.edu/node/hz01/30099/``.
