@@ -34,5 +34,7 @@ class MODEL_METRICS(QualityInfo):
 
     # fit diagnostics
     NUM_SAMPLES = Entry("NumSamples", "The number of samples used for model fitting", unit=UNITS.UNITLESS)
+    # SEM-weighted (analysis/abc_/_linear_softplus_base.py:362), so its units
+    # vary by group and no conversion is ever valid: never OF_INPUT_SQUARED.
     LOSS = Entry("OptimizerLoss", "The loss of model fitting", unit=UNITS.NOT_A_QUANTITY)
     STATUS = Entry("OptimizerStatus", "The output of the optimizer status", unit=UNITS.NOT_A_QUANTITY)

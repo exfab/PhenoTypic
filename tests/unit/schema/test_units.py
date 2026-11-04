@@ -65,8 +65,7 @@ def test_members_are_the_closed_list_in_order():
     # The value is a unique lower-case key: equal values would alias members (K0-14).
     assert [m.name for m in UNITS] == [
         "PX", "PX2", "INTENSITY", "INTENSITY_PX2", "RADIAN", "DEGREE",
-        "CIELAB", "CIELAB2", "TURN", "RADIAN_PER_PX", "RADIAN_PER_PX2",
-        "RADIAN_PX", "DEGREE_PER_PX", "DEGREE_PER_PX2", "UNITLESS", "TIME",
+        "CIELAB", "CIELAB2", "TURN", "DEGREE_PER_PX", "DEGREE_PER_PX2", "UNITLESS", "TIME",
         "PER_TIME", "FRAME", "NOT_A_QUANTITY", "OF_INPUT", "OF_INPUT_SQUARED",
         "OF_INPUT_PER_TIME", "PER_INPUT",
     ]

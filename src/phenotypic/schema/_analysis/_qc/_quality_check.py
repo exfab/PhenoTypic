@@ -24,8 +24,9 @@ class QUALITY_CHECK(QualityInfo):
     )
     METRIC = Entry(
         "Metric",
-        "Headline metric in the check's own units; the bad direction is set "
-        "by the check's _HIGHER_IS_BAD flag. Drives Status.",
+        "Headline metric, a dimensionless ratio, fraction or score (for "
+        "example MAD / |median|); the bad direction is set by the check's "
+        "_HIGHER_IS_BAD flag. Drives Status.",
         unit=UNITS.UNITLESS,
     )
     STATUS = Entry("Status", "Categorical: pass | warn | fail.")

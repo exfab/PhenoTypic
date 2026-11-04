@@ -285,7 +285,7 @@ unchanged and stay in pixels; a unit is metadata only.
   on an unresolved input-dependent member raises `TypeError` pointing at
   `output_unit`, so `px_per_mm ** None` can never happen silently. An unknown
   input raises `ValueError`. A unitless input gives `"1/time"`, not `"/time"`,
-  and a compound input is wrapped first (`(rad/px)/time`). Unresolved, their
+  and a compound input is wrapped first (`(°/px)/time`). Unresolved, their
   `.symbol` is a readable placeholder (`input unit`, `(input unit)²`,
   `input unit/time`), never `""`, so nothing renders a fitted rate as unitless.
 - `None` means the member's unit has not been reviewed yet. **Metadata members

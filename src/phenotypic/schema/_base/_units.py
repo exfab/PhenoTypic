@@ -286,22 +286,6 @@ class UNITS(str, Enum):
         "cielab2", "CIELAB²", "A squared CIELAB coordinate, such as a variance of L*, a* and b*."
     )
     TURN = UnitEntry("turn", "turn", "Angle as a fraction of a full turn, in [0, 1).")
-    RADIAN_PER_PX = UnitEntry(
-        "radian_per_px", "rad/px", "Angle change per pixel of distance.", length_power=-1
-    )
-    RADIAN_PER_PX2 = UnitEntry(
-        "radian_per_px2",
-        "rad/px²",
-        "Angle change per pixel per pixel, the gradient of an angle-per-pixel rate.",
-        length_power=-2,
-    )
-    RADIAN_PX = UnitEntry(
-        "radian_px",
-        "rad·px",
-        "Angle multiplied by a pixel distance, such as the area under an angle "
-        "profile along a radius.",
-        length_power=1,
-    )
     DEGREE_PER_PX = UnitEntry(
         "degree_per_px", "°/px", "Angle change in degrees per pixel of distance.", length_power=-1
     )
