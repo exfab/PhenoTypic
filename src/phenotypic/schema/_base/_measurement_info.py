@@ -12,6 +12,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Final, cast
 
 from ._categories import CATEGORIES
+from ._units import UNITS
 
 if TYPE_CHECKING:
     from ._rembi import REMBI_MODULE
@@ -127,6 +128,8 @@ class Entry:
         categories: Curated categories (CATEGORIES members) this measurement
             belongs to. A bare member or an iterable of members (a mapping is
             refused); normalized to a frozenset.
+        unit: This member's unit (a UNITS member), overriding the class
+            :meth:`MeasurementInfo.default_unit`; ``None`` to take the default.
     """
 
     label: str
@@ -139,6 +142,7 @@ class Entry:
     derives_from: str | None = None
     rembi_module: "REMBI_MODULE | None" = None
     categories: "CATEGORIES | Iterable[CATEGORIES]" = frozenset()
+    unit: UNITS | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -161,6 +165,12 @@ class Entry:
             if not isinstance(self.rembi_module, REMBI_MODULE):
                 raise TypeError("Entry.rembi_module must be a REMBI_MODULE or None")
         object.__setattr__(self, "categories", _normalize_categories(self.categories))
+        # isinstance, never equality: UNITS is a str enum, so "px" == UNITS.PX.
+        if self.unit is not None and not isinstance(self.unit, UNITS):
+            raise TypeError(
+                f"Entry.unit takes a UNITS member or None, not {self.unit!r}. "
+                "Use UNITS.<NAME>."
+            )
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -397,6 +407,9 @@ class MeasurementInfo(str, Enum):
             both pieces of information together.
         METRIC_FAMILY (property): The metric family name returned by the metric_family()
             classmethod. Provides instance-level access to the measurement's metric family.
+        unit (property): The member's :class:`UNITS` member: the ``Entry.unit``
+            override, else the class :meth:`default_unit`. ``None`` means not yet
+            reviewed.
 
     Examples:
         Define a custom measurement enumeration:
@@ -461,6 +474,7 @@ class MeasurementInfo(str, Enum):
     image: str | None
     pair: tuple[str, str]
     tier_override: int | None
+    unit_override: UNITS | None
     derivation_type: str | None
     derives_from: str | None
     rembi_module_override: "REMBI_MODULE | None"
@@ -496,6 +510,16 @@ class MeasurementInfo(str, Enum):
     @classmethod
     def tier(cls) -> int | None:
         """Trust tier (1/2/3) for primary measurements, or None."""
+        return None
+
+    @classmethod
+    def default_unit(cls) -> UNITS | None:
+        """Class-default unit for this enum's members, or None until declared.
+
+        Named ``default_unit``, not ``unit``: a classmethod would shadow the
+        per-member :attr:`unit` property. An ``Entry(unit=...)`` override takes
+        precedence over this default.
+        """
         return None
 
     @classmethod
@@ -580,6 +604,7 @@ class MeasurementInfo(str, Enum):
         obj.image = entry.image
         obj.pair = (entry.label, entry.desc)
         obj.tier_override = entry.tier
+        obj.unit_override = entry.unit
         obj.derivation_type = entry.derivation_type
         obj.derives_from = entry.derives_from
         obj.rembi_module_override = entry.rembi_module
@@ -607,6 +632,18 @@ class MeasurementInfo(str, Enum):
     def resolved_tier(self) -> int | None:
         """The trust tier (1/2/3) for this member, or None for non-primary."""
         return _classify(self)[1]
+
+    @property
+    def unit(self) -> UNITS | None:
+        """This member's unit: the ``Entry(unit=...)`` override, else the class default.
+
+        ``None`` means the member's unit has not been reviewed. An
+        input-dependent unit (``UNITS.OF_INPUT`` and the like) must be resolved
+        against the input column before converting.
+        """
+        if self.unit_override is not None:
+            return self.unit_override
+        return type(self).default_unit()
 
     @property
     def resolved_rembi_module(self) -> "REMBI_MODULE":

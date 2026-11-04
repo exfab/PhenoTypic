@@ -11,7 +11,7 @@ private; `__init__.py` re-exports every class, and nothing else is public (see
 ```
 schema/
   __init__.py      the only public surface: flat re-exports + legacy-name __getattr__
-  _base/           MeasurementInfo, Entry, tiers, CATEGORIES, REMBI, change notes
+  _base/           MeasurementInfo, Entry, tiers, CATEGORIES, UNITS, REMBI, change notes
   _shared/         columns no single operation owns: OBJECT, GRID, METADATA_MATCH,
                    CURATION, ErrorCategory, RADIAL_EXPANSION
   _measure/        one file per MeasureFeatures schema: SIZE, SHAPE, BBOX, Color*, ...
@@ -31,7 +31,8 @@ show. Put a new schema in the folder of the stage that emits it.
 
 - `MeasurementInfo` (`_base/_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
-  derivation_type=None, derives_from=None, rembi_module=None, categories=frozenset())` plus a
+  derivation_type=None, derives_from=None, rembi_module=None, categories=frozenset(),
+  unit=None)` plus a
   `metric_family()` classmethod; the
   enum value is the family-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_base/_measurement_info.py` and exported from the package)
@@ -42,8 +43,8 @@ show. Put a new schema in the folder of the stage that emits it.
   Sphinx docs; `tier`/`derivation_type`/`derives_from` drive the classification
   system (below). Per-member attrs: `.label`, `.desc`, `.bio_desc`, `.image`,
   `.pair`, `.METRIC_FAMILY`, plus classification: `.resolved_kind`, `.resolved_tier`,
-  `.use_label`, `.use_badge`, and categories: `.categories`, `.category_badges`
-  (see "Measurement categories" below). Helpers: `get_labels()`, `get_headers()`,
+  `.use_label`, `.use_badge`, categories: `.categories`, `.category_badges`
+  (see "Measurement categories" below), and `.unit` (see "Units" below). Helpers: `get_labels()`, `get_headers()`,
   `rst_table()` (conditional Type/Categories/Biology/Image columns, suppressed
   when empty),
   `append_rst_to_doc()`. `metric_family()`/`.METRIC_FAMILY` were hard-renamed
@@ -247,6 +248,49 @@ intro and this section consistent.
   (the outline variant, so it reads as distinct from the solid Derived `info`
   Type pill). `dark` was rejected because pydata renders it `#222832` in both
   themes, which is invisible in dark mode.
+
+## Units
+
+Every non-metadata measurement column carries **exactly one unit** from a closed
+list, so a reader with a pixels-per-mm value can convert any length or area
+column with one recipe:
+`df[SIZE.AREA] / px_per_mm ** SIZE.AREA.unit.length_power`. Output tables are
+unchanged and stay in pixels; a unit is metadata only.
+
+- `UNITS` (`_base/_units.py`) is a closed, repo-defined `str` enum of
+  `UnitEntry(key, symbol, desc, *, length_power=0, input_power=0,
+  per_time=False)`, and value == key (a unique lower-case key such as `"px2"`;
+  equal values would alias members, which `@unique` refuses). Members expose
+  `.symbol`, `.desc`, `.length_power`, `.input_power`, `.per_time`,
+  `.is_input_dependent` and `.resolve(input_unit)`. Like `CATEGORIES`, it does
+  **not** subclass `MeasurementInfo`, and the module imports only the stdlib.
+- **`length_power`** is the power of length in the unit: 1 for `PX`, 2 for
+  `PX2` and `INTENSITY_PX2`, 0 for anything scale-free, negative for a per-px
+  rate. `NOT_A_QUANTITY` (labels, strings, flags, statuses) has `None`.
+- **A unit on each member works the way a tier does.** A class sets its default
+  with a `default_unit()` classmethod (base default `None`), and the exceptions
+  carry `Entry(..., unit=UNITS.X)`, stored as `member.unit_override`.
+  `member.unit` returns the override, else the class default. The classmethod is
+  `default_unit`, not `unit`, because a classmethod would shadow the per-member
+  `unit` property. `Entry(unit=)` refuses a raw string, even one equal to a
+  member's value.
+- **Input-dependent units** (`OF_INPUT`, `OF_INPUT_SQUARED`,
+  `OF_INPUT_PER_TIME`) tag columns whose unit depends on the column the producer
+  ran on: fitted rates, model metrics, QC statistics. The producer's
+  `output_unit(member, on)`, next to `output_header`, resolves them through
+  `UNITS.resolve(...)` into a concrete `ResolvedUnit(symbol, length_power)`:
+  `v` fitted on a radius is `px/time`, length power 1. Reading `.length_power`
+  on an unresolved input-dependent member raises `TypeError` pointing at
+  `output_unit`, so `px_per_mm ** None` can never happen silently. An unknown
+  input raises `ValueError`. A unitless input gives `"1/time"`, not `"/time"`.
+- `None` means the member's unit has not been reviewed yet. **Metadata members
+  (`MetadataInfo`) are user vocabulary and stay unit-less**; never tag one.
+- A unit describes the **value**, not the header: the texture `scale` in a
+  `Texture_*-scale##` header is a parameter in pixels, and the value is still
+  `UNITLESS`.
+- **To add a unit, add one `UnitEntry` line** to `UNITS` with a technical
+  `desc` (agents may write it), then update the member-order pin in
+  `tests/unit/schema/test_units.py`.
 
 ## Dynamic output headers (recognition schemes)
 

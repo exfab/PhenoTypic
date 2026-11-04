@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from phenotypic.schema import UNITS, ResolvedUnit
+from phenotypic.schema import UNITS, Entry, MeasurementInfo, ResolvedUnit
 
 
 def test_static_units_resolve_to_themselves():
@@ -67,3 +67,22 @@ def test_units_module_imports_only_stdlib():
     imported = {n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
     imported |= {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
     assert not any(m.startswith("phenotypic") for m in imported)
+
+
+class _Demo(MeasurementInfo):
+    @classmethod
+    def metric_family(cls): return "Demo"
+    @classmethod
+    def default_unit(cls): return UNITS.PX
+    WIDTH = Entry("Width", "A width.")
+    AREA = Entry("Area", "An area.", unit=UNITS.PX2)
+
+
+def test_class_default_and_override():
+    assert _Demo.WIDTH.unit is UNITS.PX
+    assert _Demo.AREA.unit is UNITS.PX2
+
+
+def test_entry_refuses_a_string_unit():
+    with pytest.raises(TypeError, match="UNITS"):
+        Entry("X", "x", unit="px")
