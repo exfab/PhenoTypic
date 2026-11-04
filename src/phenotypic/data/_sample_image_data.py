@@ -151,10 +151,10 @@ def load_yeast_plate_large(
 def load_fungi_plate(
     mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
-    """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
+    """Load a Neurospora filamentous fungi plate image cropped to the center.
 
-    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
-    in a 96-well grid. Irregular hyphal morphology with spreading growth --
+    Returns a pre-cropped plate image of Neurospora filamentous fungi on a
+    2 x 4 grid (``nrows=2``, ``ncols=4``). Irregular hyphal morphology with spreading growth --
     suitable for filamentous fungi tutorials and how-to guides.
 
     Args:
@@ -175,10 +175,10 @@ def load_fungi_plate(
 def load_fungi_plate_large(
     mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
-    """Load a cropped Neurospora filamentous fungi 96-well plate image.
+    """Load a cropped Neurospora filamentous fungi plate image.
 
-    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
-    in a 96-well grid. Irregular hyphal morphology with spreading growth --
+    Returns a pre-cropped plate image of Neurospora filamentous fungi on a
+    6 x 10 grid (``nrows=6``, ``ncols=10``). Irregular hyphal morphology with spreading growth --
     suitable for filamentous fungi tutorials and how-to guides.
 
     Args:
