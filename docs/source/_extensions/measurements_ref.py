@@ -56,9 +56,6 @@ _NOT_IN_OUTPUT_TABLES: dict[str, str] = {
         "``MeasureColorComposition`` is not exported from ``phenotypic.measure``, "
         "so no pipeline can run it."
     ),
-    # Interim: its producer, ``FittingWindow``, is ported in a later commit of
-    # the same change, and the coverage check refuses this entry once it lands.
-    "QUALITY_WINDOW": "No operation writes these columns yet.",
 }
 
 #: Members of a documented schema that are never written to a table, by member name.

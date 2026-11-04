@@ -410,6 +410,7 @@ class TestDiscoverability:
     EXPECTED = {
         "ReplicateAgreement",
         "ExpectedVsDetectedCount",
+        "FittingWindow",
         "GridOccupancy",
         "RelativeMAD",
         "MaxModifiedZScore",

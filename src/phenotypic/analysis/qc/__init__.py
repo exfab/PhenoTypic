@@ -7,6 +7,7 @@ mismatches, etc.).
 """
 
 from ._expected_vs_detected import ExpectedVsDetectedCount
+from ._fitting_window import FittingWindow
 from ._grid_occupancy import GridOccupancy
 from ._icc import ICC
 from ._max_modz import MaxModifiedZScore
@@ -16,6 +17,7 @@ from ._tukey_fraction import TukeyOutlierFraction
 
 __all__ = [
     "ExpectedVsDetectedCount",
+    "FittingWindow",
     "GridOccupancy",
     "ICC",
     "MaxModifiedZScore",
