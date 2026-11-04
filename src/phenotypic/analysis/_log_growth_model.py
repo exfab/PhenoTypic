@@ -31,7 +31,8 @@ class LogGrowthModel(ModelFitter):
 
            \mu_{\max} = \frac{K r}{4}
 
-        :math:`\mu_{\max}`: maximum specific growth rate
+        :math:`\mu_{\max}`: maximum absolute growth rate, the slope of the curve
+            where :math:`N_t = K/2` (the maximum specific growth rate is :math:`r`)
 
 
     Loss Function:
@@ -45,12 +46,12 @@ class LogGrowthModel(ModelFitter):
            \frac{1}{n}\sum_{i=1}^{n}
            \frac{1}{2}\left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
            + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)
-           + \beta \frac{\lvert K - \max(N_t) \rvert}{N_t}
+           + \beta \frac{\lvert K - N_{n} \rvert}{N_{n}}
 
         :math:`\lambda`: regularization term for growth rate and initial population size
 
         :math:`\beta`: penalty term for deviations in carrying capacity relative to
-            the largest measurement
+            :math:`N_{n}`, the measurement at the last time point
 
     Output column naming:
         ``analyze`` emits metric-qualified columns
@@ -113,7 +114,8 @@ class LogGrowthModel(ModelFitter):
             t: Time points for the observations.
             y: Observed population sizes (list, ndarray, or pandas Series).
             lam: Regularization weight for ``dN/dt`` and ``N0``.
-            beta: Scaling factor for the ``K`` vs. observed-max penalty.
+            beta: Scaling factor for the penalty on ``K`` versus the value
+                measured at the last time point.
 
         Returns:
             Flat residual vector consumed by

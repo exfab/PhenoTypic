@@ -13,7 +13,7 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
     measurement the model was fit on (``self.on`` with its metric-family prefix
     stripped, e.g. ``Size_Area`` → ``Area``). For example, fitting on
     ``Size_Area`` emits ``LogGrowthModel_Area_r`` (intrinsic growth rate) and
-    ``LogGrowthModel_Area_µmax`` (maximum specific growth rate). The labels
+    ``LogGrowthModel_Area_µmax`` (maximum absolute growth rate). The labels
     below are the ``<parameter>`` segment; the ``<metric>`` infix is filled in
     at fit time.
     """
