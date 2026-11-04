@@ -2,6 +2,7 @@
 
 from .._base._categories import CATEGORIES
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DescriptiveTrait
 
 
@@ -17,6 +18,10 @@ class ColorLab(DescriptiveTrait):
     @classmethod
     def metric_family(cls):
         return "ColorLab"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.CIELAB
 
     # -- ΔE76 geometric-median center (continuous, 0.5 breakdown) --
     L_STAR_GEOMEDIAN = Entry("L*GeoMedian", "L* of the ΔE76 (Euclidean) geometric-median center color of the object")
@@ -46,10 +51,10 @@ class ColorLab(DescriptiveTrait):
     DELTA_E2000_P95 = Entry("DeltaE2000P95FromMedoid", "95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)")
 
     # -- classical Euclidean spread --
-    LAB_TOTAL_VARIANCE = Entry("LabTotalVariance", "Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)")
+    LAB_TOTAL_VARIANCE = Entry("LabTotalVariance", "Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)", unit=UNITS.CIELAB2)
 
     # -- plot-only swatch --
-    MEDOID_COLOR_HEX = Entry("MedoidColorHex", "sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)")
+    MEDOID_COLOR_HEX = Entry("MedoidColorHex", "sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)", unit=UNITS.NOT_A_QUANTITY)
 
     @classmethod
     def robust_headers(cls):

@@ -17,6 +17,7 @@ Overall is ``CoreZoneEndRadius .. OuterRadius``, Dense is
 from __future__ import annotations
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DescriptiveTrait, QualityInfo
 
 
@@ -26,6 +27,10 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
     @classmethod
     def metric_family(cls) -> str:
         return "OrientZones"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.DEGREE
 
     OUTWARD_ROTATION_SUSTAINED_PEAK_OVERALL = Entry(
         "OutwardRotationSustainedPeak-Mask-Overall",
@@ -89,6 +94,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "pixel; positive is clockwise and negative is counterclockwise while "
         "moving outward in image coordinates. NaN means the run is shorter than "
         "the configured minimum.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     OUTWARD_ROTATION_RATE_DENSE = Entry(
         "OutwardRotationRate-Mask-Dense",
@@ -97,6 +103,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "to dense_end. Reported in signed degrees per pixel; positive is clockwise "
         "and negative is counterclockwise while moving outward in image "
         "coordinates. NaN means the run is shorter than the configured minimum.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     OUTWARD_ROTATION_RATE_SPARSE = Entry(
         "OutwardRotationRate-Mask-Sparse",
@@ -107,6 +114,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "image coordinates. NaN means the run is shorter than the configured "
         "minimum. The slope is unchanged by cumulative rotation carried into "
         "Sparse.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     OUTWARD_ROTATION_CONSISTENCY_OVERALL = Entry(
         "OutwardRotationConsistency-Mask-Overall",
@@ -116,6 +124,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, "
         "plateaus, or no ordered trend. Direction is carried by the rotation "
         "rate. NaN means the run is shorter than the configured minimum.",
+        unit=UNITS.UNITLESS,
     )
     OUTWARD_ROTATION_CONSISTENCY_DENSE = Entry(
         "OutwardRotationConsistency-Mask-Dense",
@@ -125,6 +134,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "monotonic and values near 0 indicate reversals, plateaus, or no ordered "
         "trend. Direction is carried by the rotation rate. NaN means the run is "
         "shorter than the configured minimum.",
+        unit=UNITS.UNITLESS,
     )
     OUTWARD_ROTATION_CONSISTENCY_SPARSE = Entry(
         "OutwardRotationConsistency-Mask-Sparse",
@@ -135,6 +145,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
         "ordered trend. Direction is carried by the rotation rate, and the rank "
         "association is unchanged by rotation carried into Sparse. NaN means the "
         "run is shorter than the configured minimum.",
+        unit=UNITS.UNITLESS,
     )
 
 
@@ -152,6 +163,10 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
     def metric_family(cls) -> str:
         return "OrientZones"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
+
     OUTWARD_ROTATION_RAW_PEAK_OVERALL = Entry(
         "OutwardRotationRawPeak-Mask-Overall",
         "Largest absolute cumulative literal skeleton-ring rotation from the "
@@ -159,6 +174,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "Reported in degrees, nonnegative with no fixed upper bound. This raw "
         "maximum is outlier-sensitive and should be compared with the primary "
         "sustained peak.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_RAW_PEAK_DENSE = Entry(
         "OutwardRotationRawPeak-Mask-Dense",
@@ -167,6 +183,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "nonnegative with no fixed upper bound. This raw maximum is "
         "outlier-sensitive and should be compared with the primary sustained "
         "peak.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_RAW_PEAK_SPARSE = Entry(
         "OutwardRotationRawPeak-Mask-Sparse",
@@ -176,6 +193,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "outlier-sensitive. Cumulative rotation is not rebased at dense_end, so "
         "this Sparse magnitude may include rotation accumulated while the profile "
         "was in Dense.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P90_OVERALL = Entry(
         "OutwardRotationP90-Mask-Overall",
@@ -183,6 +201,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "over supported rings from the CoreZone boundary through the "
         "configured SparseZone outer boundary. Reported in degrees, nonnegative with no "
         "fixed upper bound. This validation comparator ignores radial order.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P90_DENSE = Entry(
         "OutwardRotationP90-Mask-Dense",
@@ -190,6 +209,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "over supported rings from the CoreZone boundary to dense_end. "
         "Reported in degrees, nonnegative with no fixed upper bound. This "
         "validation comparator ignores radial order.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P90_SPARSE = Entry(
         "OutwardRotationP90-Mask-Sparse",
@@ -199,6 +219,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "comparator ignores radial order. Cumulative rotation is not rebased at "
         "dense_end, so this Sparse magnitude may include rotation accumulated "
         "while the profile was in Dense.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P95_OVERALL = Entry(
         "OutwardRotationP95-Mask-Overall",
@@ -207,6 +228,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "configured SparseZone outer boundary. Reported in degrees, nonnegative with no "
         "fixed upper bound. With few supported rings it remains close to the raw "
         "maximum and is not the primary robust metric.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P95_DENSE = Entry(
         "OutwardRotationP95-Mask-Dense",
@@ -214,6 +236,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "over supported rings from the CoreZone boundary to dense_end. "
         "Reported in degrees, nonnegative with no fixed upper bound. With few "
         "supported rings it remains close to the raw maximum.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_P95_SPARSE = Entry(
         "OutwardRotationP95-Mask-Sparse",
@@ -223,6 +246,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "Cumulative rotation is not rebased at dense_end, so this Sparse "
         "magnitude may include rotation accumulated while the profile was in "
         "Dense.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_MEDIAN_MAGNITUDE_OVERALL = Entry(
         "OutwardRotationMedianMagnitude-Mask-Overall",
@@ -231,6 +255,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "outer boundary. Reported in degrees, nonnegative with no fixed upper "
         "bound. This validation comparator describes typical magnitude but "
         "ignores radial order and localized outer turns.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_MEDIAN_MAGNITUDE_DENSE = Entry(
         "OutwardRotationMedianMagnitude-Mask-Dense",
@@ -238,6 +263,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "rings from the CoreZone boundary to dense_end. Reported in "
         "degrees, nonnegative with no fixed upper bound. This validation "
         "comparator describes typical magnitude but ignores radial order.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_MEDIAN_MAGNITUDE_SPARSE = Entry(
         "OutwardRotationMedianMagnitude-Mask-Sparse",
@@ -246,6 +272,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "in degrees, nonnegative with no fixed upper bound. Cumulative rotation "
         "is not rebased at dense_end, so this Sparse magnitude may include "
         "rotation accumulated while the profile was in Dense.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL = Entry(
         "OutwardRotationAbsoluteArea-Mask-Overall",
@@ -254,6 +281,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "outer boundary, divided by their total supported radial span. Reported "
         "in degrees, nonnegative with no fixed upper bound. It describes "
         "radially persistent rotation but can remain high after one early step.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_ABSOLUTE_AREA_DENSE = Entry(
         "OutwardRotationAbsoluteArea-Mask-Dense",
@@ -262,6 +290,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "total supported radial span. Reported in degrees, nonnegative with no "
         "fixed upper bound. It describes radially persistent rotation but can "
         "remain high after one early step.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE = Entry(
         "OutwardRotationAbsoluteArea-Mask-Sparse",
@@ -271,6 +300,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "no fixed upper bound. Cumulative rotation is not rebased at dense_end, "
         "so this Sparse magnitude may include rotation accumulated while the "
         "profile was in Dense.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_TOTAL_VARIATION_OVERALL = Entry(
         "OutwardRotationTotalVariation-Mask-Overall",
@@ -279,6 +309,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "outer boundary, without bridging gaps. Reported in degrees, nonnegative "
         "with no fixed upper bound. It is sensitive to oscillation, profile "
         "length, and noise and is diagnostic only.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_TOTAL_VARIATION_DENSE = Entry(
         "OutwardRotationTotalVariation-Mask-Dense",
@@ -287,6 +318,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "gaps. Reported in degrees, nonnegative with no fixed upper bound. It is "
         "sensitive to oscillation, profile length, and noise and is diagnostic "
         "only.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_TOTAL_VARIATION_SPARSE = Entry(
         "OutwardRotationTotalVariation-Mask-Sparse",
@@ -295,6 +327,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "bridging gaps. Reported in degrees, nonnegative with no fixed upper "
         "bound. It is sensitive to oscillation, profile length, and noise and is "
         "diagnostic only.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_ROTATION_RATE_GRADIENT_OVERALL = Entry(
         "OutwardRotationRateGradient-Mask-Overall",
@@ -304,6 +337,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "detected outer boundary. Reported in signed degrees per pixel squared. "
         "This is a spatial rate gradient, not temporal acceleration, and is NaN "
         "unless the run meets both the configured minimum and eight rings.",
+        unit=UNITS.DEGREE_PER_PX2,
     )
     OUTWARD_ROTATION_RATE_GRADIENT_DENSE = Entry(
         "OutwardRotationRateGradient-Mask-Dense",
@@ -313,6 +347,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "in signed degrees per pixel squared. This is a spatial rate gradient, "
         "not temporal acceleration, and is NaN unless the run meets both the "
         "configured minimum and eight rings.",
+        unit=UNITS.DEGREE_PER_PX2,
     )
     OUTWARD_ROTATION_RATE_GRADIENT_SPARSE = Entry(
         "OutwardRotationRateGradient-Mask-Sparse",
@@ -322,6 +357,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "Reported in signed degrees per pixel squared. This is a spatial rate "
         "gradient, not temporal acceleration, and is NaN for runs shorter than "
         "the larger of eight rings and the configured minimum.",
+        unit=UNITS.DEGREE_PER_PX2,
     )
     OUTWARD_ROTATION_RING_SUPPORT_OVERALL = Entry(
         "OutwardRotationRingSupport-Mask-Overall",
@@ -444,6 +480,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "tile pixels in the canonical Overall annulus (core_end .. sparse_end), in "
         "degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 "
         "indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     TURNING_RADIAL_DENSE = Entry(
         "Turning-Radial-Dense",
@@ -451,6 +488,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "tile pixels in the dense ring (core_end .. dense_end radii) region, in "
         "degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 "
         "indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     TURNING_RADIAL_SPARSE = Entry(
         "Turning-Radial-Sparse",
@@ -458,6 +496,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "tile pixels in the sparse ring (dense_end .. sparse_end radii) region, in "
         "degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 "
         "indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     TURNING_MASK_OVERALL = Entry(
         "Turning-Mask-Overall",
@@ -465,6 +504,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "detected-object pixels in the canonical Overall annulus (core_end .. sparse_end) "
         "region, in degrees per pixel. Higher values indicate curving/fanning hyphae; "
         "~0 indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     TURNING_MASK_DENSE = Entry(
         "Turning-Mask-Dense",
@@ -472,6 +512,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "detected-object pixels in the dense ring (core_end .. dense_end radii) "
         "region, in degrees per pixel. Higher values indicate curving/fanning hyphae; "
         "~0 indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     TURNING_MASK_SPARSE = Entry(
         "Turning-Mask-Sparse",
@@ -479,6 +520,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "detected-object pixels in the sparse ring (dense_end .. sparse_end radii) "
         "region, in degrees per pixel. Higher values indicate curving/fanning hyphae; "
         "~0 indicates straight parallel growth.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     COHERENCE_RADIAL_OVERALL = Entry(
         "Coherence-Radial-Overall",
@@ -534,6 +576,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "unchanged. A support-threshold crossing can add a newly reliable sector and "
         "change the estimate; mixed orientations within one sector remain "
         "pixel-weighted.",
+        unit=UNITS.DEGREE,
     )
     RADIAL_TILT_MASK_DENSE = Entry(
         "RadialTilt-Mask-Dense",
@@ -547,6 +590,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "unchanged. A support-threshold crossing can add a newly reliable sector and "
         "change the estimate; mixed orientations within one sector remain "
         "pixel-weighted.",
+        unit=UNITS.DEGREE,
     )
     RADIAL_TILT_MASK_SPARSE = Entry(
         "RadialTilt-Mask-Sparse",
@@ -560,6 +604,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "unchanged. A support-threshold crossing can add a newly reliable sector and "
         "change the estimate; mixed orientations within one sector remain "
         "pixel-weighted.",
+        unit=UNITS.DEGREE,
     )
     OUTWARD_TURNING_MASK_OVERALL = Entry(
         "OutwardTurning-Mask-Overall",
@@ -570,6 +615,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "field rotates relative to its radial spoke. The aggregation gives each "
         "occupied 10-degree angular sector equal weight. This is a field-level "
         "curvature measure, not parent-to-daughter branch tracking.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     OUTWARD_TURNING_MASK_DENSE = Entry(
         "OutwardTurning-Mask-Dense",
@@ -580,6 +626,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "field rotates relative to its radial spoke. The aggregation gives each "
         "occupied 10-degree angular sector equal weight. This is a field-level "
         "curvature measure, not parent-to-daughter branch tracking.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     OUTWARD_TURNING_MASK_SPARSE = Entry(
         "OutwardTurning-Mask-Sparse",
@@ -590,6 +637,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "field rotates relative to its radial spoke. The aggregation gives each "
         "occupied 10-degree angular sector equal weight. This is a field-level "
         "curvature measure, not parent-to-daughter branch tracking.",
+        unit=UNITS.DEGREE_PER_PX,
     )
     RADIAL_SECTOR_SUPPORT_MASK_OVERALL = Entry(
         "RadialSectorSupport-Mask-Overall",
@@ -626,6 +674,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "CoreZone. Each reliable ring-sector comparison contributes equally, so "
         "multiplying same-orientation branch evidence within an already reliable cell "
         "does not change its contribution.",
+        unit=UNITS.DEGREE,
     )
     LONG_RANGE_ROTATION_MASK_DENSE = Entry(
         "LongRangeRotation-Mask-Dense",
@@ -637,6 +686,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "bands begin outside the operational CoreZone. Each reliable ring-sector "
         "comparison contributes equally, so multiplying same-orientation branch "
         "evidence within an already reliable cell does not change its contribution.",
+        unit=UNITS.DEGREE,
     )
     LONG_RANGE_ROTATION_MASK_SPARSE = Entry(
         "LongRangeRotation-Mask-Sparse",
@@ -649,6 +699,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "ring-sector comparison contributes equally, so multiplying same-orientation "
         "branch evidence within an already reliable cell does not change its "
         "contribution.",
+        unit=UNITS.DEGREE,
     )
     SIGNED_LONG_RANGE_ROTATION_MASK_OVERALL = Entry(
         "SignedLongRangeRotation-Mask-Overall",
@@ -658,6 +709,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "and negative means counterclockwise while moving outward in image "
         "coordinates. Opposing reliable ring-sector changes cancel in this "
         "directional summary; inspect the absolute metric and support alongside it.",
+        unit=UNITS.DEGREE,
     )
     SIGNED_LONG_RANGE_ROTATION_MASK_DENSE = Entry(
         "SignedLongRangeRotation-Mask-Dense",
@@ -667,6 +719,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "counterclockwise while moving outward in image coordinates. Opposing "
         "reliable ring-sector changes cancel in this directional summary; inspect the "
         "absolute metric and support alongside it.",
+        unit=UNITS.DEGREE,
     )
     SIGNED_LONG_RANGE_ROTATION_MASK_SPARSE = Entry(
         "SignedLongRangeRotation-Mask-Sparse",
@@ -676,6 +729,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "counterclockwise while moving outward in image coordinates. Opposing "
         "reliable ring-sector changes cancel in this directional summary; inspect the "
         "absolute metric and support alongside it.",
+        unit=UNITS.DEGREE,
     )
     LONG_RANGE_ROTATION_SUPPORT_MASK_OVERALL = Entry(
         "LongRangeRotationSupport-Mask-Overall",
@@ -706,6 +760,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "in [0, 90]. Only 10-degree sectors reliable in both zones contribute, and "
         "each paired sector receives equal weight. This measures accumulated "
         "zone-to-zone rotation without detecting individual branches.",
+        unit=UNITS.DEGREE,
     )
     SIGNED_LONG_RANGE_ROTATION_MASK_DENSE_TO_SPARSE = Entry(
         "SignedLongRangeRotation-Mask-DenseToSparse",
@@ -713,6 +768,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "sectors, in degrees in [-90, 90]. Positive means clockwise and negative "
         "means counterclockwise radial-relative rotation while moving outward in "
         "image coordinates. Opposing sector rotations cancel.",
+        unit=UNITS.DEGREE,
     )
     LONG_RANGE_ROTATION_SUPPORT_MASK_DENSE_TO_SPARSE = Entry(
         "LongRangeRotationSupport-Mask-DenseToSparse",
@@ -727,25 +783,30 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
         "two-change Method B, 2 is collapsed one-change Method B, and 4 is "
         "canonical failure with missing zone measurements. This is a "
         "dimensionless categorical code.",
+        unit=UNITS.NOT_A_QUANTITY,
     )
     CORE_ZONE_END_RADIUS = Entry(
         "CoreZoneEndRadius",
         "Outer radius in pixels of the operational CoreZone, which includes "
         "the inoculum and any inner region without resolvable branch orientation.",
+        unit=UNITS.PX,
     )
     DENSE_RADIUS = Entry(
         "DenseRadius",
         "Outer radius in pixels of the Method B DenseZone. It equals "
         "CoreZoneEndRadius for a collapsed one-change solution.",
+        unit=UNITS.PX,
     )
     OUTER_RADIUS = Entry(
         "OuterRadius",
         "Exact outer measurement radius in pixels selected by "
         "outer_zone_percentile.",
+        unit=UNITS.PX,
     )
     FULL_EXTENT_RADIUS = Entry(
         "FullExtentRadius",
         "Maximum target-mask radius in pixels before percentile clipping.",
+        unit=UNITS.PX,
     )
     OUTER_ZONE_PERCENTILE = Entry(
         "OuterZonePercentile",

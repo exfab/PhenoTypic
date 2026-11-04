@@ -6,6 +6,7 @@ from .._base._change_notes import (
     append_change_note,
 )
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import PrimaryMeasure
 
 
@@ -22,6 +23,10 @@ class SHAPE(PrimaryMeasure):
     @classmethod
     def metric_family(cls):
         return "Shape"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     @classmethod
     def change_note(cls) -> str:
@@ -54,6 +59,7 @@ class SHAPE(PrimaryMeasure):
     ORIENTATION = Entry(
         "Orientation",
         "Angle (in radians) between the colony's major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.",
+        unit=UNITS.RADIAN,
     )
     MEAN_BOUNDARY_DIST = Entry(
         "MeanBoundaryDist",
@@ -64,6 +70,7 @@ class SHAPE(PrimaryMeasure):
         "compact body (runners, a hyphal fringe) pull that ratio below 1/3; a "
         "uniformly thin, elongated colony raises it toward 1/2. The image border "
         "counts as an edge.",
+        unit=UNITS.PX,
     )
     MEDIAN_BOUNDARY_DIST = Entry(
         "MedianBoundaryDist",
@@ -74,6 +81,7 @@ class SHAPE(PrimaryMeasure):
         "raggedness than MeanBoundaryDist. See Size_RobustMeanRadius and "
         "Size_MaxRadius for the colony's radial extent. The image border "
         "counts as an edge.",
+        unit=UNITS.PX,
     )
 
 

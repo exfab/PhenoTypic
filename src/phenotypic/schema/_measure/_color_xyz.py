@@ -1,6 +1,7 @@
 """Per-object summary statistics in the CIE XYZ color space."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DiscriminativeFeature
 
 
@@ -19,6 +20,10 @@ class ColorXYZ(DiscriminativeFeature):
     @classmethod
     def metric_family(cls):
         return "ColorXYZ"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     X_MINIMUM = Entry("CieXMin", "The minimum X value of the object in CIE XYZ color space")
     X_Q1 = Entry(

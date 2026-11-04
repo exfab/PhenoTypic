@@ -1,6 +1,7 @@
 """Fitted parameters for the double-softplus growth model (with saturation ceiling)."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import DerivedMeasure
 
 
@@ -22,17 +23,21 @@ class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
         return "LinearCapAndLagModel"
 
     @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
+
+    @classmethod
     def header_scheme(cls) -> str:
         return "metric_qualified"
 
     v = Entry("v", "The post-lag phase growth rate.",
-              tier=1, derivation_type="parameterization", derives_from="SIZE")
+              tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.OF_INPUT_PER_TIME)
     s0 = Entry("s0", "The initial size",
                tier=1, derivation_type="parameterization", derives_from="SIZE")
     lam = Entry("lambda", "The duration of the lag phase",
-                tier=1, derivation_type="parameterization", derives_from="SIZE")
+                tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.TIME)
     alpha = Entry("alpha", "lag phase transition sharpness",
-                  tier=2, derivation_type="parameterization", derives_from="SIZE")
+                  tier=2, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.PER_TIME)
     smax = Entry(
         "smax",
         "Carrying capacity used by the model. Either the user-provided "
@@ -46,6 +51,7 @@ class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
         "construction; held at the user-provided scalar (or the "
         "module default) when no shoulder is present.",
         tier=2, derivation_type="parameterization", derives_from="SIZE",
+        unit=UNITS.PER_INPUT,
     )
     mode = Entry(
         "mode",
@@ -54,4 +60,5 @@ class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
         "(beta fitted as a 5th free parameter when a saturation "
         "shoulder is detected).",
         derivation_type="diagnostic",
+        unit=UNITS.NOT_A_QUANTITY,
     )

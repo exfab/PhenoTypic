@@ -1,6 +1,7 @@
 """Constants for grid structure in the PhenoTypic module."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import IdentityInfo
 
 
@@ -11,19 +12,25 @@ class GRID(IdentityInfo):
     def metric_family(cls) -> str:
         return "Grid"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.NOT_A_QUANTITY
+
     ROW_NUM = Entry("RowNum", "The row idx of the object")
     ROW_INTERVAL_START = Entry(
         "RowIntervalStart",
         "The start of the row interval of the object",
+        unit=UNITS.PX,
     )
-    ROW_INTERVAL_END = Entry("RowIntervalEnd", "The end of the row interval of the object")
+    ROW_INTERVAL_END = Entry("RowIntervalEnd", "The end of the row interval of the object", unit=UNITS.PX)
 
     COL_NUM = Entry("ColNum", "The column idx of the object")
     COL_INTERVAL_START = Entry(
         "ColIntervalStart",
         "The start of the column interval of the object",
+        unit=UNITS.PX,
     )
-    COL_INTERVAL_END = Entry("ColIntervalEnd", "The end of the column interval of the object")
+    COL_INTERVAL_END = Entry("ColIntervalEnd", "The end of the column interval of the object", unit=UNITS.PX)
 
     ROW_MAJOR_IDX = Entry(
         "RowMajorIdx",

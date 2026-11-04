@@ -1,6 +1,7 @@
 """Per-object summary statistics in CIE chromaticity xy coordinates."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DiscriminativeFeature
 
 
@@ -19,6 +20,10 @@ class Colorxy(DiscriminativeFeature):
     @classmethod
     def metric_family(cls):
         return "Colorxy"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     x_MINIMUM = Entry("xMin", "The minimum chromaticity x coordinate of the object")
     x_Q1 = Entry("xQ1", "The lower quartile (Q1) chromaticity x coordinate of the object")

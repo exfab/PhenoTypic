@@ -1,6 +1,7 @@
 """The label and description of the per-object identifier column."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import IdentityInfo
 
 
@@ -18,6 +19,10 @@ class OBJECT(IdentityInfo):
     @classmethod
     def metric_family(cls):
         return "Object"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.NOT_A_QUANTITY
 
     LABEL = Entry(
         "Label",

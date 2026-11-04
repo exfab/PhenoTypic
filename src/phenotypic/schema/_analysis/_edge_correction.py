@@ -1,6 +1,7 @@
 """Measurement info container for edge correction analysis results."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DerivedMeasure
 
 
@@ -14,6 +15,10 @@ class EDGE_CORRECTION(DerivedMeasure):
     @classmethod
     def metric_family(cls) -> str:
         return "EdgeCorrection"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
 
     CORRECTED_CAP = Entry("Cap", "The carrying capacity for the target measurement",
                           derivation_type="normalization", derives_from="SIZE")

@@ -26,7 +26,7 @@ from phenotypic.sdk_ import (
     metadata_member_for_label,
     normalize_metadata_columns,
 )
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import MeasurementInfo, ResolvedUnit
 from phenotypic.sdk_._docstring_params import apply_docstring_descriptions
 
 
@@ -255,6 +255,50 @@ class SetAnalyzer(BaseModel, abc.ABC):
             stands for, with an example. Empty when every header is fixed.
         """
         return {}
+
+    @classmethod
+    def output_unit(
+        cls, member: MeasurementInfo, on: str | None = None
+    ) -> ResolvedUnit:
+        """Return the unit of the column :meth:`analyze` writes for *member*.
+
+        The one default every table producer shares, next to
+        :meth:`output_header`; no analyzer overrides it. A static unit
+        (``LINEAR_LAG_MODEL.lam`` is ``time``) resolves to itself and ignores
+        *on*. An input-dependent unit (a fitted rate, a model metric, a QC
+        statistic, an edge-corrected value) resolves against the unit of the
+        column it was computed on, so a rate fitted on a radius converts with
+        ``px_per_mm ** 1`` and one fitted on an area with ``px_per_mm ** 2``.
+
+        Unlike :meth:`output_header`, which ignores *on* for most producers,
+        this needs *on* for every input-dependent member. That includes the
+        quality checks' Median, MAD, SE and fence columns (``QUALITY_MAD``,
+        ``QUALITY_ZMAX``, ``QUALITY_SE``, ``QUALITY_TUKEY``), whose headers
+        never embed the analyzed column: pass the check's own ``on``
+        (``check.on``), or the call raises.
+
+        Args:
+            member: A member of a schema this analyzer declares.
+            on: The analyzed column, as passed to the analyzer's ``on``.
+
+        Returns:
+            The concrete unit, with its ``length_power`` filled in.
+
+        Raises:
+            ValueError: *member* has no unit; or its unit depends on *on* and
+                *on* is ``None``, not a known measurement header, or a column
+                with no unit of its own (a label, metadata, a model output or
+                an edge-corrected value), named in the message.
+
+        Examples:
+            >>> from phenotypic.analysis import LinearLagModel
+            >>> from phenotypic.schema import LINEAR_LAG_MODEL
+            >>> LinearLagModel.output_unit(LINEAR_LAG_MODEL.v, on="Size_RobustMeanRadius")
+            ResolvedUnit(symbol='px/time', length_power=1)
+        """
+        from phenotypic.util._measurement_outputs import resolve_output_unit
+
+        return resolve_output_unit(member, on)
 
     @abc.abstractmethod
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
