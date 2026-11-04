@@ -1641,7 +1641,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         image_grid = (
             f"The image is a GridImage whose {type(image.grid_finder).__name__} "
-            f"lays out an {image.nrows} x {image.ncols} grid"
+            f"lays out {image.nrows} rows x {image.ncols} columns"
         )
         explicit = [
             (key, step) for key, step in self._meas.items()

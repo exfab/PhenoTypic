@@ -94,7 +94,7 @@ def test_a_preset_grid_unlike_the_images_grid_raises(
     # The fix, in terms of the default finder and both shapes.
     assert "CenteredAutoGridFinder" in message
     assert f"nrows={nrows}, ncols={ncols}" in message
-    assert "8 x 12" in message
+    assert "lays out 8 rows x 12 columns" in message
     assert "leave nrows and ncols off the pipeline" in message
 
 

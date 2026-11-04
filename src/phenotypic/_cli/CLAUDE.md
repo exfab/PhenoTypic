@@ -59,7 +59,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 
 **`phenotypic_cli` has a read-only half and a mutating half, in that order.**
 The read-only half parses and validates options, scans the inputs, runs the
-refusals that cannot be skipped (the GPU placement refusal, the refusal of a
+refusals that cannot be skipped (the GPU placement refusal, the grid-preset
+refusal, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
 `--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
 reference-metadata refusals in **Reference metadata** below), loads the pipeline,
@@ -91,6 +92,22 @@ Walking everything would refuse a `process` run over a measurer it never runs.
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## The grid-preset refusal (`_refuse_grid_preset_unlike_cli_grid`)
+
+In `--mode full`, `--nrows`/`--ncols` shape each `GridImage`
+(`resolve_grid_shape`), while a pipeline that presets **both** `nrows` and
+`ncols` and holds no `GridFinder` in `meas` makes `measure()` add
+`CenteredAutoGridFinder` with the *preset* shape. Two shapes mean two grids
+that disagree on colonies' `Grid_*` values, and `measure()` raises
+`MeasurementConflictError` for every image (until PR H it silently dropped
+those colonies instead). So flags unlike such a preset are a `click.UsageError`
+beside the GPU placement refusal: un-skippable, above `--overwrite` and the
+`--dry-run` exit. A pipeline that fails to load is left to the validation.
+Not covered, and reported per image by the failure tracker instead: an
+explicit grid finder in `meas`, and `--mode measure`, whose stores carry the
+grid the forward run recorded. Pinned by
+`tests/unit/cli/test_cli_grid_preset_refusal.py`.
 
 ## Reference metadata (`_cli_reference.py`)
 

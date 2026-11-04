@@ -304,8 +304,10 @@ The same applies to `--metadata` and `--no-dataset-column`.
 ### Loading the images
 
 `--image-type` defaults to `GridImage`, which imposes an arrayed layout. Use
-`--nrows` / `--ncols` to override the pipeline's grid preset (the fallback is
-8 × 12); pass `--image-type Image` for non-arrayed plates.
+`--nrows` / `--ncols` to set the grid (without them the pipeline's grid preset
+is used, and the fallback is 8 × 12); a full run refuses flags unlike a
+pipeline that presets both `nrows` and `ncols`. Pass `--image-type Image` for
+non-arrayed plates.
 
 `--detect-mode` selects the channel the detector thresholds. It defaults to
 `gray`, but colony contrast often lives elsewhere — `LabA` separates
