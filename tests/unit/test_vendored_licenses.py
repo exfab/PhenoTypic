@@ -74,26 +74,74 @@ def _shipped_license_files() -> list[Path]:
     )
 
 
+def _license_problems(
+    vendored: list[Path], shipped: list[Path], notice: str, root: Path
+) -> list[str]:
+    """Why each vendored license is not shipped and named in NOTICE.
+
+    Identical texts are common (PhenoTypic's own ``LICENSE`` and several
+    ``licenses/*-Apache-2.0.txt`` are byte-identical), so a text maps to
+    every shipped file carrying it, and a vendored license passes when any
+    of those under ``licenses/`` is named in NOTICE.
+    """
+    by_text: dict[str, list[Path]] = {}
+    for path in shipped:
+        by_text.setdefault(_normalized_license_text(path), []).append(path)
+    problems = []
+    for path in vendored:
+        rel = path.relative_to(root).as_posix()
+        in_licenses_dir = [
+            match.relative_to(root).as_posix()
+            for match in by_text.get(_normalized_license_text(path), [])
+            if match.parent == root / "licenses"
+        ]
+        if not in_licenses_dir:
+            problems.append(
+                f"{rel}: its text is in no licenses/ file matched by "
+                "[project] license-files; copy it to "
+                "licenses/<name>-<license>.txt"
+            )
+        elif not any(name in notice for name in in_licenses_dir):
+            problems.append(
+                f"{rel}: NOTICE names none of {sorted(in_licenses_dir)}"
+            )
+    return problems
+
+
 def test_every_vendored_license_ships_and_is_named_in_notice() -> None:
     vendored = _vendored_license_files()
     rels = [path.relative_to(REPO).as_posix() for path in vendored]
     assert KNOWN_VENDORED_LICENSE in rels, f"scan is mis-wired: {rels}"
 
-    shipped = {
-        _normalized_license_text(path): path
-        for path in _shipped_license_files()
-    }
     notice = (REPO / "NOTICE").read_text(encoding="utf-8")
-    problems = []
-    for path, rel in zip(vendored, rels):
-        match = shipped.get(_normalized_license_text(path))
-        if match is None:
-            problems.append(
-                f"{rel}: its text is in no file matched by [project] "
-                "license-files; copy it to licenses/<name>-<license>.txt"
-            )
-        elif f"licenses/{match.name}" not in notice:
-            problems.append(
-                f"{rel}: NOTICE does not name licenses/{match.name}"
-            )
+    problems = _license_problems(
+        vendored, _shipped_license_files(), notice, REPO
+    )
     assert not problems, problems
+
+
+def test_identical_license_texts_do_not_hide_the_notice_entry(
+    tmp_path,
+) -> None:
+    """A text shared by the root LICENSE and a licenses/ file still passes.
+
+    Covers both orders, since the old one-path-per-text map kept whichever
+    file came last and then looked for ``licenses/LICENSE`` in NOTICE.
+    """
+    apache = "Apache License\nVersion 2.0\n"
+    vendored = tmp_path / "src" / "vendor" / "LICENSE"
+    vendored.parent.mkdir(parents=True)
+    vendored.write_text(apache.replace("\n", "\r\n"), encoding="utf-8")
+    (tmp_path / "licenses").mkdir()
+    own = tmp_path / "LICENSE"
+    third_party = tmp_path / "licenses" / "vendor-Apache-2.0.txt"
+    for path in (own, third_party):
+        path.write_text(apache, encoding="utf-8")
+    notice = "License:   licenses/vendor-Apache-2.0.txt\n"
+
+    for shipped in ([own, third_party], [third_party, own]):
+        assert _license_problems([vendored], shipped, notice, tmp_path) == []
+    assert _license_problems([vendored], [own], notice, tmp_path) == [
+        "src/vendor/LICENSE: its text is in no licenses/ file matched by "
+        "[project] license-files; copy it to licenses/<name>-<license>.txt"
+    ]
