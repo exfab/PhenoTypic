@@ -21,13 +21,29 @@ class IMAGE(MetadataInfo):
     def rembi_module(cls) -> REMBI_MODULE:
         return REMBI_MODULE.IMAGE_DATA
 
-    UUID = Entry("UUID", "The unique identifier of the image.")
-    IMAGE_NAME = Entry("ImageName", "The name of the image.")
+    UUID = Entry(
+        "UUID",
+        "Random identifier (a version-4 UUID) that PhenoTypic generates for "
+        "each image object.",
+    )
+    IMAGE_NAME = Entry(
+        "ImageName",
+        "Name of the image, which is the file name without its extension when "
+        "the image is read from a file.",
+    )
     PARENT_IMAGE_NAME = Entry("ParentImageName", "The name of the parent image.")
     PARENT_UUID = Entry("ParentUUID", "The UUID of the parent image.")
     IMFORMAT = Entry("ImageFormat", "The format of the image.")
-    IMAGE_TYPE = Entry("ImageType", "The type of the image.")
-    BIT_DEPTH = Entry("BitDepth", "The bit depth of the image.")
+    IMAGE_TYPE = Entry(
+        "ImageType",
+        "Kind of image the row was measured from: Image, GridImage, Crop, "
+        "Object or GridSection.",
+    )
+    BIT_DEPTH = Entry(
+        "BitDepth",
+        "Bit depth of the image's source pixel data, 8 or 16, either given "
+        "when the image is loaded or inferred from the array's data type.",
+    )
     SUFFIX = Entry(
         "FileSuffix",
         "The file suffix of the original file the image was imported from",
