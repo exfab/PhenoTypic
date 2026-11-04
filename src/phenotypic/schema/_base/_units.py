@@ -16,7 +16,9 @@ the column it was fitted on, per unit of time. Those members are tagged with an
 ``OF_INPUT_PER_TIME``), and the producer's ``output_unit(member, on)`` resolves
 the tag against the fitted column with :meth:`UNITS.resolve`. Reading
 ``length_power`` on an unresolved input-dependent unit raises ``TypeError``,
-so ``px_per_mm ** None`` can never happen silently.
+so ``px_per_mm ** None`` can never happen silently. Their ``symbol`` is a
+readable placeholder (``input unit/time``), never ``""``, so nothing renders a
+fitted rate as unitless.
 
 To add a unit, add one :class:`UnitEntry` line to :class:`UNITS`.
 
@@ -80,8 +82,10 @@ class UnitEntry:
     Args:
         key: Unique lower-case key, the member's enum value (e.g. ``"px2"``).
             Two members with equal values would alias, so it must be unique.
-        symbol: Display symbol (e.g. ``"px²"``); ``""`` for a unitless value,
-            a non-quantity, or an input-dependent unit.
+        symbol: Display symbol (e.g. ``"px²"``); ``""`` for a unitless value or
+            a non-quantity. An input-dependent unit carries a readable
+            placeholder (``"input unit/time"``), never ``""``, so a renderer
+            cannot show a fitted rate as unitless; resolve it for the real one.
         desc: Technical description of what the unit measures.
         length_power: Power of length in the unit, or ``None`` for a value that
             is not a quantity or a unit that depends on its input.
@@ -98,19 +102,25 @@ class UnitEntry:
     per_time: bool = False
 
     def __post_init__(self) -> None:
-        if not isinstance(self.key, str) or not _KEY_RE.fullmatch(self.key):
+        if not isinstance(self.key, str):
+            raise TypeError(f"UnitEntry.key must be a string, got {self.key!r}")
+        if not _KEY_RE.fullmatch(self.key):
             raise ValueError(f"UnitEntry.key must be a lower-case token, got {self.key!r}")
         if not isinstance(self.symbol, str):
             raise TypeError(f"UnitEntry.symbol must be a string, got {self.symbol!r}")
-        if not isinstance(self.desc, str) or not self.desc.strip():
+        if not isinstance(self.desc, str):
+            raise TypeError(f"UnitEntry.desc must be a string, got {self.desc!r}")
+        if not self.desc.strip():
             raise ValueError("UnitEntry.desc must be a non-empty string")
         if self.length_power is not None and not _is_int(self.length_power):
             raise TypeError(
                 f"UnitEntry.length_power must be an int or None, got {self.length_power!r}"
             )
-        if not _is_int(self.input_power) or self.input_power < 0:
+        if not _is_int(self.input_power):
+            raise TypeError(f"UnitEntry.input_power must be an int, got {self.input_power!r}")
+        if self.input_power < 0:
             raise ValueError(
-                f"UnitEntry.input_power must be a non-negative int, got {self.input_power!r}"
+                f"UnitEntry.input_power must be non-negative, got {self.input_power!r}"
             )
         if not isinstance(self.per_time, bool):
             raise TypeError(f"UnitEntry.per_time must be a bool, got {self.per_time!r}")
@@ -121,18 +131,38 @@ class UnitEntry:
             )
 
 
+def _has_top_level_solidus(symbol: str) -> bool:
+    """Whether *symbol* has a ``/`` outside parentheses (``rad/px``, not ``(rad/px)²``)."""
+    depth = 0
+    for char in symbol:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "/" and depth == 0:
+            return True
+    return False
+
+
 def _resolved_symbol(input_symbol: str, power: int, per_time: bool) -> str:
     """Symbol of *input_symbol* raised to *power*, then per time when asked.
 
     A unitless input stays ``""`` under any power, and per time reads
-    ``"1/time"`` rather than ``"/time"``.
+    ``"1/time"`` rather than ``"/time"``. A symbol that already has a solidus
+    is wrapped before ``/time`` is appended, so ``rad/px`` per time reads
+    ``(rad/px)/time``: two solidi without parentheses are ambiguous.
     """
     symbol = input_symbol
     if symbol and power != 1:
         base = f"({symbol})" if _COMPOUND_RE.search(symbol) else symbol
         symbol = base + str(power).translate(_SUPERSCRIPT)
     if per_time:
-        symbol = f"{symbol}/time" if symbol else "1/time"
+        if not symbol:
+            symbol = "1/time"
+        elif _has_top_level_solidus(symbol):
+            symbol = f"({symbol})/time"
+        else:
+            symbol = f"{symbol}/time"
     return symbol
 
 
@@ -285,14 +315,14 @@ class UNITS(str, Enum):
     )
     OF_INPUT = UnitEntry(
         "of_input",
-        "",
+        "input unit",
         "The unit of the column the producer ran on.",
         length_power=None,
         input_power=1,
     )
     OF_INPUT_SQUARED = UnitEntry(
         "of_input_squared",
-        "",
+        "(input unit)²",
         "The square of the unit of the column the producer ran on, as for a "
         "mean squared error.",
         length_power=None,
@@ -300,7 +330,7 @@ class UNITS(str, Enum):
     )
     OF_INPUT_PER_TIME = UnitEntry(
         "of_input_per_time",
-        "",
+        "input unit/time",
         "The unit of the column the producer ran on, per unit of time, as for a "
         "fitted growth rate.",
         length_power=None,

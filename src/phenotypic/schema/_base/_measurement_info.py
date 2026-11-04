@@ -367,6 +367,26 @@ def _refuse_legacy_category(cls: type) -> None:
             raise TypeError(f"{klass.__name__} defines {name!r}, which was removed: {advice}")
 
 
+def _refuse_unit_override(cls: type) -> None:
+    """Refuse a subclass that defines ``unit``, the per-member unit property.
+
+    A ``unit()`` classmethod written by analogy with ``tier()`` would shadow
+    the property, so ``member.unit`` would return a bound method instead of a
+    ``UNITS`` member (K0-01). Any attribute of that name is refused, a member
+    included. The scan stops at ``MeasurementInfo``, which owns the property.
+    """
+    for klass in cls.__mro__:
+        if klass is MeasurementInfo:
+            return
+        if "unit" in vars(klass):
+            raise TypeError(
+                f"{klass.__name__} defines 'unit', which is reserved for the "
+                "per-member unit property. Declare the class default with a "
+                "default_unit() classmethod, and an exception with "
+                "Entry(..., unit=UNITS.<NAME>)."
+            )
+
+
 class MeasurementInfo(str, Enum):
     """Base class for creating standardized measurement information enumerations.
 
@@ -501,6 +521,7 @@ class MeasurementInfo(str, Enum):
     def __init_subclass__(cls, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
         _refuse_legacy_category(cls)
+        _refuse_unit_override(cls)
 
     @classmethod
     def kind(cls) -> str | None:

@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from phenotypic.schema import UNITS, Entry, MeasurementInfo, ResolvedUnit
+from phenotypic.schema import UNITS, Entry, MeasurementInfo, ResolvedUnit, UnitEntry
 
 
 def test_static_units_resolve_to_themselves():
@@ -60,13 +60,87 @@ def test_members_are_the_closed_list_in_order():
     assert all(m.value == m.name.lower() for m in UNITS)
 
 
-def test_units_module_imports_only_stdlib():
+def _non_stdlib_imports(source: str) -> list[str]:
+    """Every import in *source* that is relative or not from the standard library."""
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.ImportFrom):
+            if node.level != 0:
+                found.append("." * node.level + (node.module or ""))
+            elif node.module.split(".")[0] not in sys.stdlib_module_names:
+                found.append(node.module)
+        elif isinstance(node, ast.Import):
+            found += [a.name for a in node.names if a.name.split(".")[0] not in sys.stdlib_module_names]
+    return found
+
+
+def _units_source() -> str:
     # Located through the class rather than a spelled private path, so a schema
     # file move cannot turn this guard into an ImportError.
-    tree = ast.parse(inspect.getsource(sys.modules[UNITS.__module__]))
-    imported = {n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
-    imported |= {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
-    assert not any(m.startswith("phenotypic") for m in imported)
+    return inspect.getsource(sys.modules[UNITS.__module__])
+
+
+def test_units_module_imports_only_stdlib():
+    assert _non_stdlib_imports(_units_source()) == []
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["import numpy", "import numpy.linalg as la", "from ._measurement_info import Entry",
+     "from . import _categories", "from phenotypic.schema import SIZE"],
+)
+def test_the_stdlib_guard_catches_a_non_stdlib_import(line):
+    # A scratch copy of the source with one bad import appended; the real file is untouched.
+    assert _non_stdlib_imports(_units_source() + "\n" + line + "\n") != []
+
+
+@pytest.mark.parametrize(
+    "build, error",
+    [
+        pytest.param(lambda: UnitEntry(1, "px", "d"), TypeError, id="key-not-a-string"),
+        pytest.param(lambda: UnitEntry("PX", "px", "d"), ValueError, id="key-not-lower-case"),
+        pytest.param(lambda: UnitEntry("k", 1, "d"), TypeError, id="symbol-not-a-string"),
+        pytest.param(lambda: UnitEntry("k", "s", None), TypeError, id="desc-not-a-string"),
+        pytest.param(lambda: UnitEntry("k", "s", " "), ValueError, id="desc-blank"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", 1), TypeError, id="power-positional"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", length_power=1.0), TypeError, id="length-power-float"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", length_power=True), TypeError, id="length-power-bool"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", input_power=1.0), TypeError, id="input-power-float"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", input_power=True), TypeError, id="input-power-bool"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", input_power=-1, length_power=None), ValueError,
+                     id="input-power-negative"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", per_time=1), TypeError, id="per-time-not-a-bool"),
+        pytest.param(lambda: UnitEntry("k", "s", "d", input_power=1), ValueError,
+                     id="input-dependent-with-a-length-power"),
+        pytest.param(lambda: ResolvedUnit(1, 1), TypeError, id="resolved-symbol-not-a-string"),
+        pytest.param(lambda: ResolvedUnit("px", 1.0), TypeError, id="resolved-power-float"),
+        pytest.param(lambda: ResolvedUnit("px", True), TypeError, id="resolved-power-bool"),
+        pytest.param(lambda: UNITS._new_member_(UNITS, "px"), TypeError, id="member-not-a-unit-entry"),
+    ],
+)
+def test_unit_declarations_refuse_bad_values(build, error):
+    with pytest.raises(error):
+        build()
+
+
+def test_per_time_wraps_a_compound_input():
+    # Two solidi without parentheses are ambiguous (S4).
+    per_time = UNITS.OF_INPUT_PER_TIME
+    assert per_time.resolve(ResolvedUnit("rad/px", -1)) == ResolvedUnit("(rad/px)/time", -1)
+    assert per_time.resolve(ResolvedUnit("1/time", 0)) == ResolvedUnit("(1/time)/time", 0)
+    assert per_time.resolve(ResolvedUnit("time", 0)) == ResolvedUnit("time/time", 0)
+    assert per_time.resolve(ResolvedUnit("(rad/px)²", -2)) == ResolvedUnit("(rad/px)²/time", -2)
+
+
+def test_input_dependent_units_carry_a_placeholder_symbol():
+    # Never "" like UNITLESS, so a renderer can't show a fitted rate as unitless.
+    assert UNITS.OF_INPUT.symbol == "input unit"
+    assert UNITS.OF_INPUT_SQUARED.symbol == "(input unit)²"
+    assert UNITS.OF_INPUT_PER_TIME.symbol == "input unit/time"
+    for member in UNITS:
+        if member.is_input_dependent:
+            with pytest.raises(TypeError, match="output_unit"):
+                member.length_power
 
 
 class _Demo(MeasurementInfo):
@@ -86,3 +160,35 @@ def test_class_default_and_override():
 def test_entry_refuses_a_string_unit():
     with pytest.raises(TypeError, match="UNITS"):
         Entry("X", "x", unit="px")
+
+
+
+def test_a_subclass_defining_unit_is_refused():
+    # A unit() classmethod would shadow the member property, so member.unit
+    # would be a bound method (K0-01, U1 review S1).
+    with pytest.raises(TypeError, match="default_unit"):
+        class _TrapClassmethod(MeasurementInfo):
+            @classmethod
+            def metric_family(cls): return "Trap"
+            @classmethod
+            def unit(cls): return UNITS.PX
+            X = Entry("X", "x")
+
+    with pytest.raises(TypeError, match="default_unit"):
+        class _TrapMemberless(MeasurementInfo):
+            @classmethod
+            def unit(cls): return UNITS.PX
+
+    with pytest.raises(TypeError, match="default_unit"):
+        class _TrapProperty(MeasurementInfo):
+            @classmethod
+            def metric_family(cls): return "Trap"
+            @property
+            def unit(self): return UNITS.PX
+            X = Entry("X", "x")
+
+    with pytest.raises(TypeError, match="default_unit"):
+        class _TrapMember(MeasurementInfo):
+            @classmethod
+            def metric_family(cls): return "Trap"
+            unit = Entry("Unit", "A member named unit.")

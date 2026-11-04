@@ -272,8 +272,9 @@ unchanged and stay in pixels; a unit is metadata only.
   carry `Entry(..., unit=UNITS.X)`, stored as `member.unit_override`.
   `member.unit` returns the override, else the class default. The classmethod is
   `default_unit`, not `unit`, because a classmethod would shadow the per-member
-  `unit` property. `Entry(unit=)` refuses a raw string, even one equal to a
-  member's value.
+  `unit` property; a subclass that defines anything named `unit` raises
+  `TypeError` at class creation. `Entry(unit=)` refuses a raw string, even one
+  equal to a member's value.
 - **Input-dependent units** (`OF_INPUT`, `OF_INPUT_SQUARED`,
   `OF_INPUT_PER_TIME`) tag columns whose unit depends on the column the producer
   ran on: fitted rates, model metrics, QC statistics. The producer's
@@ -282,7 +283,10 @@ unchanged and stay in pixels; a unit is metadata only.
   `v` fitted on a radius is `px/time`, length power 1. Reading `.length_power`
   on an unresolved input-dependent member raises `TypeError` pointing at
   `output_unit`, so `px_per_mm ** None` can never happen silently. An unknown
-  input raises `ValueError`. A unitless input gives `"1/time"`, not `"/time"`.
+  input raises `ValueError`. A unitless input gives `"1/time"`, not `"/time"`,
+  and a compound input is wrapped first (`(rad/px)/time`). Unresolved, their
+  `.symbol` is a readable placeholder (`input unit`, `(input unit)²`,
+  `input unit/time`), never `""`, so nothing renders a fitted rate as unitless.
 - `None` means the member's unit has not been reviewed yet. **Metadata members
   (`MetadataInfo`) are user vocabulary and stay unit-less**; never tag one.
 - A unit describes the **value**, not the header: the texture `scale` in a
