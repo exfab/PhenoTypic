@@ -4,7 +4,7 @@ import importlib.util
 import logging
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple
+from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple, cast
 
 import numpy as np
 from pydantic import (
@@ -1638,10 +1638,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 GRID.owns_header(column) for column in columns
         ):
             return _GENERIC_CONFLICT_ADVICE
+        grid_image = cast("GridImage", image)  # has a grid: duck-typed above
 
         image_grid = (
-            f"The image is a GridImage whose {type(image.grid_finder).__name__} "
-            f"lays out {image.nrows} rows x {image.ncols} columns"
+            f"The image is a GridImage whose {type(grid_image.grid_finder).__name__} "
+            f"lays out {grid_image.nrows} rows x {grid_image.ncols} columns"
         )
         if not any(isinstance(step, GridFinder) for step in run_order.values()):
             return _GENERIC_CONFLICT_ADVICE
@@ -1656,8 +1657,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 f"CenteredAutoGridFinder(nrows={self._nrows}, "
                 f"ncols={self._ncols}). Give the image and the pipeline the "
                 f"same grid, the default CenteredAutoGridFinder with one "
-                f"shape: set the pipeline's nrows/ncols to {image.nrows} and "
-                f"{image.ncols}, or build the image with nrows={self._nrows}, "
+                f"shape: set the pipeline's nrows/ncols to {grid_image.nrows} and "
+                f"{grid_image.ncols}, or build the image with nrows={self._nrows}, "
                 f"ncols={self._ncols}, or leave nrows and ncols off the "
                 f"pipeline so measure() uses the image's own grid."
             )
@@ -1668,7 +1669,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             f"{image_grid}, but the pipeline's measurement step {steps} "
             f"assigns colonies to a grid of its own. Give the image and the "
             f"pipeline the same grid: use the default CenteredAutoGridFinder "
-            f"with nrows={image.nrows}, ncols={image.ncols} in both, or remove "
+            f"with nrows={grid_image.nrows}, ncols={grid_image.ncols} in both, or remove "
             f"the grid finder from the pipeline's measurements so measure() "
             f"uses the image's own grid."
         )
