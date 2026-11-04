@@ -1386,6 +1386,71 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 apply_post=apply_post,
         )
 
+    def summary(self) -> pd.DataFrame:
+        """List the steps this pipeline runs, before any image is loaded.
+
+        One row per step, in run order: the ``ops`` chain, then the
+        measurers in ``meas``. Use it to check a pipeline before a long run --
+        that the steps are in the intended order (enhancement before
+        detection), and that each parameter you meant to change differs from
+        its default. Nothing is applied and no image is needed; the CLI's
+        ``--dry-run`` prints this table.
+
+        A pipeline nested in ``ops`` is expanded into its own steps, each
+        named by its path (``inner/BlurGauss``). Its ``meas`` are not listed,
+        because a nested pipeline's ``apply`` runs only its ``ops``. Any other
+        operation is one row, even one that holds operations (a
+        ``CompositeDetector``); those appear in its ``changed`` cell.
+
+        Returns:
+            pd.DataFrame: One row per step, with columns:
+
+            - ``step``: the step's path in the pipeline. A list of operations
+              is keyed by class name; a measurer is ``meas:<key>``.
+            - ``slot``: ``ops`` or ``meas``.
+            - ``operation``: the class name.
+            - ``module``: the ``phenotypic`` subpackage, such as ``enhance``
+              or ``detect``.
+            - ``writes``: the image layers the step writes, decided by its
+              kind (an enhancer writes only ``detect_mat``; a detector or
+              refiner ``objmask, objmap``; a corrector every layer), or
+              ``table`` for a measurer. Empty when the kind declares none.
+            - ``changed``: every parameter not at its default, as
+              ``name=value``, comma-separated. Empty when all are defaults.
+
+        Example:
+            >>> from phenotypic import ImagePipeline
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> from phenotypic.detect import OtsuDetector
+            >>> from phenotypic.enhance import BlurGauss
+            >>> from phenotypic.measure import MeasureSize
+            >>> from phenotypic.refine import SmallObjectRemover
+            >>> pipeline = ImagePipeline(
+            ...     ops=[BlurGauss(sigma=3.0), OtsuDetector(), SmallObjectRemover()],
+            ...     meas=[MeasureSize()],
+            ... )
+            >>> table = pipeline.summary()
+            >>> list(table["step"])
+            ['BlurGauss', 'OtsuDetector', 'SmallObjectRemover', 'meas:MeasureSize']
+            >>> list(table["writes"])
+            ['detect_mat', 'objmask, objmap', 'objmask, objmap', 'table']
+            >>> list(table["changed"])
+            ['sigma=3.0', '', '', '']
+
+            Only ``sigma`` was changed from its default (2.0). The summary
+            reads the pipeline and does not alter it, so the same pipeline
+            then runs on a plate:
+
+            >>> plate = load_synth_yeast_plate()
+            >>> pipeline.apply(plate).num_objects > 0
+            True
+        """
+        from phenotypic._core._pipeline_parts._pipeline_summary import (
+            summarize_pipeline,
+        )
+
+        return summarize_pipeline(self)
+
     def benchmark_results(self) -> pd.DataFrame:
         """Return execution times and memory usage for operations and measurements.
 
