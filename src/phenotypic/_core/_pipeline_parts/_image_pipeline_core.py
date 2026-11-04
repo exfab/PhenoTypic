@@ -1390,11 +1390,17 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """List the steps this pipeline runs, before any image is loaded.
 
         One row per step, in run order: the ``ops`` chain, then the
-        measurers in ``meas``. Use it to check a pipeline before a long run --
-        that the steps are in the intended order (enhancement before
-        detection), and that each parameter you meant to change differs from
-        its default. Nothing is applied and no image is needed; the CLI's
-        ``--dry-run`` prints this table.
+        measurers in the order :meth:`measure` runs them. Use it to check a
+        pipeline before a long run -- that the steps are in the intended order
+        (enhancement before detection), and that each parameter you meant to
+        change differs from its default. Nothing is applied and no image is
+        needed; the CLI's ``--dry-run`` prints this table.
+
+        When the pipeline's ``nrows`` and ``ncols`` are both set and ``meas``
+        holds no grid finder, :meth:`measure` adds a ``CenteredAutoGridFinder``
+        with that shape before the other measurers, and it is listed here as
+        ``meas:CenteredAutoGridFinder``. Its ``changed`` cell is empty when
+        the preset is 8 × 12, the finder's own default.
 
         A pipeline nested in ``ops`` is expanded into its own steps, each
         named by its path (``inner/BlurGauss``). Its ``meas`` are not listed,
@@ -1415,8 +1421,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
               kind (an enhancer writes only ``detect_mat``; a detector or
               refiner ``objmask, objmap``; a corrector every layer), or
               ``table`` for a measurer. Empty when the kind declares none.
-            - ``changed``: every parameter not at its default, as
-              ``name=value``, comma-separated. Empty when all are defaults.
+            - ``changed``: every parameter that differs from a
+              default-constructed instance of the same class, as
+              ``name=value``, comma-separated; empty when none does. A value
+              the class derives from its other parameters therefore shows only
+              when it differs from what the defaults derive. A class that
+              needs arguments to construct is compared with its declared
+              defaults instead.
 
         Example:
             >>> from phenotypic import ImagePipeline

@@ -108,21 +108,21 @@ def _display_local_config(config: ExecutionConfig) -> None:
         click.echo(f"    n_jobs:.............. {config.n_jobs}")
 
 
-def _load_preview_pipeline(config: ExecutionConfig) -> tuple[Any, Optional[str]]:
-    """``(pipeline, None)``, or ``(None, reason)`` when the pipeline cannot be read.
+def load_preview_pipeline(config: ExecutionConfig) -> tuple[Any, Optional[str]]:
+    """``(pipeline, None)``, or ``(None, message)`` when the pipeline cannot be read.
 
-    ``config.pipeline_json`` is a path. The main CLI path loaded it before the
-    dry-run exit, but ``--skip-validation`` skips that, so a preview must not
-    fail on an unreadable file; it says so instead.
+    ``config.pipeline_json`` is a path. The message is ``read_pipeline_file``'s,
+    the wording CLI validation reports. ``--skip-validation`` skips that
+    validation, so a preview must not fail on an unreadable file; it says so
+    instead.
     """
-    from phenotypic import ImagePipeline
+    from ._cli_validation import read_pipeline_file
 
-    try:
-        return ImagePipeline.from_json(config.pipeline_json), None
-    except Exception as exc:  # noqa: BLE001 -- a preview must not fail the dry run
-        lines = str(exc).strip().splitlines()
-        reason = f"{type(exc).__name__}: {lines[0]}" if lines else type(exc).__name__
-        return None, reason
+    pipeline, message, _ = read_pipeline_file(config.pipeline_json)
+    if pipeline is None:
+        lines = (message or "").strip().splitlines()
+        return None, lines[0] if lines else "Failed to load pipeline"
+    return pipeline, None
 
 
 _FROM_PIPELINE = "the pipeline"
@@ -141,22 +141,27 @@ def _grid_axis_source(cli_value: Optional[int], pipeline_value: Optional[int], f
     return _FROM_DEFAULT
 
 
-def _display_grid_shape(config: ExecutionConfig, pipeline: Any) -> None:
-    """Print the grid shape the run will load each ``GridImage`` with, and its source.
+def describe_grid_shape(config: ExecutionConfig, pipeline: Any) -> tuple[str, bool]:
+    """The grid shape a ``GridImage`` run will use, and where it came from.
 
-    ``resolve_grid_shape`` returns no source, so the source is worked out here
-    with the same precedence, one axis at a time (``--nrows`` alone leaves the
-    columns to the pipeline or the default).
+    The one description both the configuration panel and the dry-run preview
+    print, so the two cannot disagree. ``resolve_grid_shape`` returns no
+    source, so the source is worked out here with the same precedence, one
+    axis at a time (``--nrows`` alone leaves the columns to the pipeline or
+    the default).
+
+    Args:
+        config: The run's configuration.
+        pipeline: The loaded pipeline, or ``None`` when it could not be read.
+
+    Returns:
+        ``(text, from_default)``: the description, and whether either axis
+        fell back to the built-in default.
     """
     if config.measure_only:
-        click.echo(
-            "  Grid shape: as stored in each image store "
-            "(--mode measure re-measures existing stores)"
-        )
-        return
+        return "as stored in each image store (--mode measure re-measures existing stores)", False
     if pipeline is None:
-        click.echo("  Grid shape: unknown; the pipeline could not be read (see Pipeline Steps)")
-        return
+        return "unknown; the pipeline could not be read", False
 
     from ._cli_utils import resolve_grid_shape
 
@@ -172,12 +177,47 @@ def _display_grid_shape(config: ExecutionConfig, pipeline: Any) -> None:
         origin = f"from {rows_from}"
     else:
         origin = f"rows from {rows_from}, columns from {cols_from}"
-    click.echo(f"  Grid shape: {nrows} × {ncols} (rows × columns), {origin}")
-    if _FROM_DEFAULT in (rows_from, cols_from):
+    text = f"{nrows} × {ncols} (rows × columns), {origin}"
+    return text, _FROM_DEFAULT in (rows_from, cols_from)
+
+
+def _display_grid_shape(config: ExecutionConfig, pipeline: Any) -> None:
+    """Print the grid shape the run will load each ``GridImage`` with, and its source."""
+    text, from_default = describe_grid_shape(config, pipeline)
+    click.echo(f"  Grid shape: {text}")
+    if from_default:
         click.echo(
             "    If your plates differ, pass --nrows/--ncols or set "
             "ImagePipeline(nrows=, ncols=)."
         )
+
+
+#: Width at which the ``changed`` column wraps, so one long cell (a prefab
+#: detector holding a pipeline) does not widen every row of the table.
+_CHANGED_WIDTH = 60
+
+
+def _step_table_lines(table: Any) -> List[str]:
+    """``summary()`` as left-aligned text, with ``changed`` wrapped at ``_CHANGED_WIDTH``."""
+    import textwrap
+
+    fixed = [column for column in table.columns if column != "changed"]
+    rows = [{column: str(value) for column, value in row.items()} for _, row in table.iterrows()]
+    widths = {
+        column: max([len(column)] + [len(row[column]) for row in rows]) for column in fixed
+    }
+    indent = sum(widths.values()) + 2 * len(fixed)
+
+    def _line(cells: dict, changed: str) -> str:
+        left = "  ".join(cells[column].ljust(widths[column]) for column in fixed)
+        return f"{left}  {changed}".rstrip()
+
+    lines = [_line({column: column for column in fixed}, "changed")]
+    for row in rows:
+        wrapped = textwrap.wrap(row["changed"], width=_CHANGED_WIDTH, break_on_hyphens=False) or [""]
+        lines.append(_line(row, wrapped[0]))
+        lines.extend(" " * indent + more for more in wrapped[1:])
+    return lines
 
 
 def _display_pipeline_steps(config: ExecutionConfig, pipeline: Any, load_error: Optional[str]) -> None:
@@ -193,24 +233,42 @@ def _display_pipeline_steps(config: ExecutionConfig, pipeline: Any, load_error: 
     if table.empty:
         click.echo("  (no steps)")
         return
-    for line in table.to_string(index=False).splitlines():
-        click.echo(f"  {line.rstrip()}")
+    for line in _step_table_lines(table):
+        click.echo(f"  {line}")
 
 
-def _display_output_layout(config: ExecutionConfig, datasets: List[Dataset], output_dir: Path) -> None:
-    """Print where the run's outputs land, from the ``phenotypic.sdk_`` path helpers."""
+def _output_layout_entries(
+    config: ExecutionConfig, output_dir: Path, pipeline: Any
+) -> List[tuple[Path, bool, str]]:
+    """``(path, is_dir, what)`` for each output the run writes, from the ``sdk_`` helpers.
+
+    Only what the run actually writes: the analysis, plot and QC outputs
+    appear when the pipeline configures them, the metadata snapshot when
+    ``--metadata`` is given to a forward run, and overlays on a forward run.
+    """
     from phenotypic.sdk_ import (
+        analysis_manifest_path,
+        dashboard_html_path,
         dataset_overlays_dir,
+        deliverables_dir,
         master_measurements_parquet_path,
+        measurements_by_category_dir,
+        measurements_by_feature_dir,
         measurements_csv_path,
         measurements_parquet_path,
+        metadata_csv_deliverable_path,
+        named_analysis_csv_path,
         phenotypic_cache_dir,
         pipeline_json_path,
-        source_image_stem,
+        plots_dir,
+        processing_report_html_path,
+        qc_dir,
+        readme_md_path,
+        rembi_manifest_path,
         zarr_store_path,
     )
 
-    dataset, stem = "<dataset>", "<stem>"
+    forward = not config.measure_only
     entries: List[tuple[Path, bool, str]] = [
         (
             measurements_csv_path(output_dir),
@@ -221,22 +279,58 @@ def _display_output_layout(config: ExecutionConfig, datasets: List[Dataset], out
         (
             master_measurements_parquet_path(output_dir),
             False,
-            "every image's measurements, without metadata",
+            "every image's measurements, without your --metadata columns",
         ),
-        (pipeline_json_path(output_dir), False, "the pipeline this run used"),
+        (measurements_by_feature_dir(output_dir), True, "the table split by measurer"),
+        (measurements_by_category_dir(output_dir), True, "the table split by measurement category"),
     ]
-    if config.save_overlays and not config.measure_only:
+    model = pipeline.get_model() if pipeline is not None else None
+    if model is not None:
+        entries += [
+            (
+                named_analysis_csv_path(deliverables_dir(output_dir), type(model).__name__),
+                False,
+                "the model fit (also .parquet)",
+            ),
+            (analysis_manifest_path(deliverables_dir(output_dir)), False, "the analysis outputs, listed"),
+        ]
+    if pipeline is not None and pipeline.get_plots():
+        entries.append((plots_dir(output_dir), True, "the pipeline's configured plots"))
+    if pipeline is not None and pipeline.get_qc() and not config.no_qc:
+        entries.append((qc_dir(output_dir), True, "quality-control tables (qc.duckdb)"))
+    if forward and config.metadata_csv is not None:
         entries.append(
-            (dataset_overlays_dir(output_dir, dataset), True, "one detection overlay PNG per image")
+            (metadata_csv_deliverable_path(output_dir), False, "a byte-for-byte copy of your --metadata")
+        )
+    entries += [
+        (pipeline_json_path(output_dir), False, "the pipeline this run used"),
+        (processing_report_html_path(output_dir), False, "the processing report"),
+        (dashboard_html_path(output_dir), False, "the progress dashboard"),
+        (readme_md_path(output_dir), False, "what each output and column holds"),
+        (rembi_manifest_path(output_dir), False, "the REMBI run manifest"),
+    ]
+    if forward and config.save_overlays:
+        entries.append(
+            (dataset_overlays_dir(output_dir, "<dataset>"), True, "one detection overlay PNG per image")
         )
     entries += [
         (
-            zarr_store_path(output_dir, dataset, stem),
+            zarr_store_path(output_dir, "<dataset>", "<stem>"),
             True,
             "one OME-Zarr store per image: its layers and measurements",
         ),
         (phenotypic_cache_dir(output_dir), True, "machine state: progress, logs, SLURM scripts"),
     ]
+    return entries
+
+
+def _display_output_layout(
+    config: ExecutionConfig, datasets: List[Dataset], output_dir: Path, pipeline: Any
+) -> None:
+    """Print where the run's outputs land, from the ``phenotypic.sdk_`` path helpers."""
+    from phenotypic.sdk_ import source_image_stem, zarr_store_path
+
+    entries = _output_layout_entries(config, output_dir, pipeline)
 
     def _shown(path: Path, is_dir: bool) -> str:
         return f"{path.relative_to(output_dir)}{os.sep if is_dir else ''}"
@@ -292,7 +386,7 @@ def execute_dry_run(
         datasets: List of datasets to process
         output_dir: Output directory path
     """
-    pipeline, load_error = _load_preview_pipeline(config)
+    pipeline, load_error = load_preview_pipeline(config)
 
     click.echo("\n" + "=" * 80)
     click.echo("DRY-RUN MODE: Verbose Preview (No Jobs Will Be Executed)")
@@ -339,7 +433,7 @@ def execute_dry_run(
     else:
         click.echo("  ⊘ Validation skipped (--skip-validation flag)")
 
-    _display_output_layout(config, datasets, output_dir)
+    _display_output_layout(config, datasets, output_dir, pipeline)
 
     forward = not config.measure_only
     overlays = forward and config.save_overlays

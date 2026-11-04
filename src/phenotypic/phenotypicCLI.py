@@ -1549,12 +1549,18 @@ def _format_slurm_value(key: str, value) -> str:
     return str(value)
 
 
-def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
+def _display_execution_config(
+    config: ExecutionConfig, datasets: list, pipeline: Optional[Any] = None
+) -> None:
     """Display execution configuration in structured rich Table format.
 
     Args:
         config: ExecutionConfig containing pipeline and execution settings
         datasets: List of Dataset objects being processed
+        pipeline: The pipeline validation loaded, or ``None`` (under
+            ``--skip-validation``), when it is read here only if the grid row
+            needs it. The grid row is ``describe_grid_shape``'s, the same
+            text the ``--dry-run`` preview prints, so the two never disagree.
     """
     from rich.console import Console
     from rich.table import Table
@@ -1585,13 +1591,15 @@ def _display_execution_config(config: ExecutionConfig, datasets: list) -> None:
     # Image settings
     table.add_row("Image Type", config.image_type)
     if config.image_type == "GridImage":
-        if config.nrows is None and config.ncols is None:
-            grid_str = "auto (from pipeline preset, default 8 × 12)"
-        else:
-            nr = "auto" if config.nrows is None else str(config.nrows)
-            nc = "auto" if config.ncols is None else str(config.ncols)
-            grid_str = f"{nr} × {nc}"
-        table.add_row("Grid Dimensions", grid_str)
+        from phenotypic._cli._cli_interactive import (
+            describe_grid_shape,
+            load_preview_pipeline,
+        )
+
+        if pipeline is None and not config.measure_only:
+            pipeline, _ = load_preview_pipeline(config)
+        grid_str, _ = describe_grid_shape(config, pipeline)
+        table.add_row("Grid Shape", grid_str)
     if config.bit_depth:
         table.add_row("Bit Depth", str(config.bit_depth))
     if config.detect_mode != "gray":
@@ -2915,10 +2923,11 @@ def phenotypic_cli(
             from rich.console import Console
 
             console = Console()
+            loaded_pipeline = None
 
         # Display execution configuration
         try:
-            _display_execution_config(config, datasets)
+            _display_execution_config(config, datasets, loaded_pipeline)
         except Exception as e:
             click.echo(f"Error displaying configuration: {e}", err=True)
             import traceback
