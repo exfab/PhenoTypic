@@ -13,16 +13,19 @@ from phenotypic.measure import MeasureSize
 _SRC = Path(phenotypic.__file__).resolve().parent
 
 
-def _generator(*measurers) -> READMEGenerator:
+def _readme(tmp_path: Path, **config) -> str:
+    """The README a ``MeasureSize`` pipeline writes, with *config* over a plain-Image run."""
     # generate() reads config.image_type and config.pipeline_json.name.
-    return READMEGenerator(
-        config=SimpleNamespace(image_type="Image", pipeline_json=Path("pipeline.json")),
-        pipeline=ImagePipeline(meas=list(measurers)),
+    values = {"image_type": "Image", "pipeline_json": Path("pipeline.json"), **config}
+    generator = READMEGenerator(
+        config=SimpleNamespace(**values),
+        pipeline=ImagePipeline(meas=[MeasureSize()]),
     )
+    return generator.generate(tmp_path, []).read_text(encoding="utf-8")
 
 
 def test_readme_links_the_docs_home_and_names_the_version(tmp_path) -> None:
-    text = _generator(MeasureSize()).generate(tmp_path, []).read_text(encoding="utf-8")
+    text = _readme(tmp_path)
     assert "https://exfab.github.io/PhenoTypic/" in text
     last_line = text.rstrip().splitlines()[-1]
     assert f"v{phenotypic.__version__}" in last_line
@@ -39,32 +42,15 @@ def test_no_source_file_links_the_dead_docs_host() -> None:
 
 
 def test_grid_dimensions_use_the_shape_the_run_used(tmp_path) -> None:
-    gen = READMEGenerator(
-        config=SimpleNamespace(
-            image_type="GridImage",
-            pipeline_json=Path("pipeline.json"),
-            nrows=None,
-            ncols=None,
-        ),
-        pipeline=ImagePipeline(meas=[MeasureSize()]),
-    )
-    text = gen.generate(tmp_path, []).read_text(encoding="utf-8")
+    text = _readme(tmp_path, image_type="GridImage", nrows=None, ncols=None)
     line = next(ln for ln in text.splitlines() if ln.startswith("Grid Dimensions"))
     assert "None" not in line
     assert "8" in line and "12" in line
 
 
 def test_measure_mode_readme_says_the_grid_is_stored_per_image(tmp_path) -> None:
-    gen = READMEGenerator(
-        config=SimpleNamespace(
-            image_type="GridImage",
-            pipeline_json=Path("pipeline.json"),
-            nrows=None,
-            ncols=None,
-            measure_only=True,
-        ),
-        pipeline=ImagePipeline(meas=[MeasureSize()]),
+    text = _readme(
+        tmp_path, image_type="GridImage", nrows=None, ncols=None, measure_only=True
     )
-    text = gen.generate(tmp_path, []).read_text(encoding="utf-8")
     assert "Grid Dimensions: as stored in each image store" in text
     assert "rows x" not in text

@@ -154,8 +154,9 @@ def load_fungi_plate(
     """Load a Neurospora filamentous fungi plate image cropped to the center.
 
     Returns a pre-cropped plate image of Neurospora filamentous fungi on a
-    2 x 4 grid (``nrows=2``, ``ncols=4``). Irregular hyphal morphology with spreading
-    growth -- suitable for filamentous fungi tutorials and how-to guides.
+    2 x 4 grid (``nrows=2``, ``ncols=4``). Irregular hyphal morphology with
+    spreading growth -- suitable for filamentous fungi tutorials and how-to
+    guides.
 
     Args:
         mode: Return format. Default: ``'GridImage'``.
@@ -178,8 +179,9 @@ def load_fungi_plate_large(
     """Load a cropped Neurospora filamentous fungi plate image.
 
     Returns a pre-cropped plate image of Neurospora filamentous fungi on a
-    6 x 10 grid (``nrows=6``, ``ncols=10``). Irregular hyphal morphology with spreading
-    growth -- suitable for filamentous fungi tutorials and how-to guides.
+    6 x 10 grid (``nrows=6``, ``ncols=10``). Irregular hyphal morphology with
+    spreading growth -- suitable for filamentous fungi tutorials and how-to
+    guides.
 
     Args:
         mode: Return format. Default: ``'GridImage'``.
