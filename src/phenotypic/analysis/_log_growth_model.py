@@ -37,21 +37,48 @@ class LogGrowthModel(ModelFitter):
 
     Loss Function:
 
-        To solve for the parameters, we use the following loss function with the
-        SciPy linear least-squares solver:
+        The parameters minimize the cost of SciPy's nonlinear least-squares
+        solver, :func:`scipy.optimize.least_squares` with ``method="trf"``, over
+        the residual vector :meth:`_loss_func` returns. That vector holds the
+        :math:`n` data residuals and three penalty residuals:
 
         .. math::
 
-           J(K, N_0, r) =
-           \frac{1}{n}\sum_{i=1}^{n}
-           \frac{1}{2}\left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
-           + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)
-           + \beta \frac{\lvert K - N_{n} \rvert}{N_{n}}
+           z = \left(N_t^{(1)} - f_{K,N_0,r}(t^{(1)}),\ \dots,\;
+                N_t^{(n)} - f_{K,N_0,r}(t^{(n)}),\;
+                \sqrt{\lambda}\,\frac{rK}{4},\ \sqrt{\lambda}\,N_0,\;
+                \sqrt{\beta}\,\frac{\lvert K - N_{n} \rvert}{N_{n} + \varepsilon}\right)
 
-        :math:`\lambda`: regularization term for growth rate and initial population size
+        and the cost is
 
-        :math:`\beta`: penalty term for deviations in carrying capacity relative to
-            :math:`N_{n}`, the measurement at the last time point
+        .. math::
+
+           F(r, K, N_0) = \frac{1}{2} \sum_{j} C^2\,
+           \rho\!\left(\frac{z_j^2}{C^2}\right)
+
+        where :math:`C` is ``f_scale`` (default 1.0) and :math:`\rho` is the
+        ``loss`` (default ``"huber"``: :math:`\rho(s) = s` for :math:`s \le 1`
+        and :math:`2\sqrt{s} - 1` above). The robust loss applies to the
+        penalty residuals as well as the data. With ``loss="linear"``,
+        :math:`\rho(s) = s` and the cost is a sum, not a mean, with a squared
+        :math:`\beta` term:
+
+        .. math::
+
+           F = \frac{1}{2}\left[\sum_{i=1}^{n}
+           \left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
+           + \lambda\left(\left(\frac{rK}{4}\right)^2 + N_0^2\right)
+           + \beta\left(\frac{K - N_{n}}{N_{n} + \varepsilon}\right)^2\right]
+
+        :math:`\lambda`: regularization weight on the maximum growth rate
+            :math:`rK/4` and on :math:`N_0`
+
+        :math:`\beta`: weight of the penalty on the distance of :math:`K` from
+            :math:`N_{n}`, the measurement at the last time point (the first row
+            at the latest time), relative to :math:`N_{n}`
+
+        :math:`\varepsilon`: :math:`10^{-8}` times the median positive
+            measurement (or :math:`10^{-8}`), which keeps the division finite
 
     Output column naming:
         ``analyze`` emits metric-qualified columns
@@ -101,13 +128,18 @@ class LogGrowthModel(ModelFitter):
     def _loss_func(params, t, y, lam, beta):  # type: ignore[override]
         r"""Regularized residuals for :func:`scipy.optimize.least_squares`.
 
+        Returns the vector
+
         .. math::
 
-           J(K, N_0, r) =
-           \frac{1}{n}\sum_{i=1}^{n}
-           \left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2
-           + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)
-           + \beta \frac{\lvert K - N_{n} \rvert}{N_{n}}
+           z = \left(N_t^{(i)} - f_{K,N_0,r}(t^{(i)})\ \text{for each } i,\;
+                \sqrt{\lambda}\,\frac{rK}{4},\ \sqrt{\lambda}\,N_0,\;
+                \sqrt{\beta}\,\frac{\lvert K - N_{n} \rvert}{N_{n} + \varepsilon}\right)
+
+        with :math:`N_{n}` the measurement at the last time point. The solver
+        minimizes :math:`\frac{1}{2} \sum_j C^2 \rho(z_j^2 / C^2)` over it (see
+        the class docstring), which for ``loss="linear"`` is
+        :math:`\frac{1}{2} \sum_j z_j^2`.
 
         Args:
             params: ``[r, K, N0]`` — candidate parameter vector.
