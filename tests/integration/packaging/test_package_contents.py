@@ -5,7 +5,9 @@ sub-app static assets (CSS/JS + vendored OpenSeadragon control icons) are
 actually shipped. This is the regression guard for the ``pip install``
 deployment bug where the ``phenotypic-gui`` entry point crashed on import
 because ``_gui/shell/_assets/shell.css`` — read at import time — was missing
-from the wheel.
+from the wheel. They also guard the sample data under ``src/phenotypic/data``,
+whose subfolders were once left out of the wheel so ``phenotypic.data``
+loaders raised ``FileNotFoundError`` after ``pip install``.
 
 Two design choices matter:
 
@@ -38,6 +40,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GUI_DIR = REPO_ROOT / "src" / "phenotypic" / "_gui"
+DATA_DIR = REPO_ROOT / "src" / "phenotypic" / "data"
 ASSET_SUFFIXES = (".css", ".js", ".png")
 
 # Representative assets that MUST ship — one per GUI sub-app surface, plus a
@@ -56,6 +59,10 @@ REQUIRED_WHEEL_PATHS = [
     "phenotypic/_gui/tune/_assets/tune.css",
     # Pre-existing globbed asset (regression guard for the original config).
     "phenotypic/data/early_colony.png",
+    # Sample data in ``data/`` subfolders, read by ``phenotypic.data`` loaders.
+    "phenotypic/data/synthetic_test_plate/yeast_plate_rgb.png",
+    "phenotypic/data/snp-imager-samples/RhodotorulaYeastCenterCrop.png",
+    "phenotypic/data/meas/all_meas.csv",
 ]
 
 REQUIRED_THIRD_PARTY_LICENSES = {
@@ -82,6 +89,17 @@ def _expected_gui_asset_wheel_paths() -> list[str]:
             rel = path.relative_to(REPO_ROOT / "src")
             paths.append(rel.as_posix())
     return sorted(paths)
+
+
+def _expected_data_wheel_paths() -> list[str]:
+    """Every non-Python file under ``src/phenotypic/data`` as its in-wheel path."""
+    return sorted(
+        path.relative_to(REPO_ROOT / "src").as_posix()
+        for path in DATA_DIR.rglob("*")
+        if path.is_file()
+        and path.suffix not in {".py", ".pyc"}
+        and "__pycache__" not in path.parts
+    )
 
 
 def _build_dists(dest: Path) -> Path:
@@ -140,6 +158,17 @@ def test_wheel_contains_every_gui_asset(built_dists):
         f"{len(missing)} GUI asset(s) missing from wheel "
         f"(package-data globs do not cover them): {missing[:10]}"
     )
+
+
+@pytest.mark.slow
+def test_wheel_contains_every_bundled_data_file(built_dists):
+    """Every sample-data file a ``phenotypic.data`` loader may read ships."""
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        names = set(zf.namelist())
+    expected = _expected_data_wheel_paths()
+    assert expected, "no data files found on disk — test wiring is wrong"
+    missing = [p for p in expected if p not in names]
+    assert not missing, f"bundled data file(s) missing from wheel: {missing}"
 
 
 @pytest.mark.slow
