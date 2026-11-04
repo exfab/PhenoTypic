@@ -143,5 +143,10 @@ class NapariPipelineViewer(ImagePipelineCore):
                 accessor = getattr(current_img, accessor_name)
                 accessor.napari(viewer=viewer, layer_name=full_name)
 
-        self._run_operations(img, on_op_complete=_add_napari_layers)
+        from phenotypic._core._pipeline_parts._step_order_check import (
+            step_order_checked,
+        )
+
+        with step_order_checked(self, stacklevel=2):
+            self._run_operations(img, on_op_complete=_add_napari_layers)
         return NapariPipelineResult(image=img, viewer=viewer)

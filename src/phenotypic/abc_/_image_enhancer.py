@@ -14,20 +14,31 @@ from phenotypic.sdk_.mixin import FootprintMixin
 
 
 class DetectionClearedWarning(UserWarning):
-    """A pipeline runs an image enhancer after an object detector.
+    """A pipeline runs an image enhancer after its last object detector.
 
     Enhancers write ``detect_mat``, and writing ``detect_mat`` resets the
-    object map. So an enhancer that runs after a detector silently erases
-    every colony the detector found, and whatever follows (a refiner, a
-    measurement) sees an empty plate unless something detects again.
+    object map. So an enhancer that runs after the last detector silently
+    erases every colony that detector found, and whatever follows (a refiner,
+    a measurement) sees an empty plate.
 
-    ``ImagePipeline.apply`` (and so ``apply_and_measure``) checks the order
-    of the pipeline's ``ops`` once per call, before running them, with nested
-    pipelines included in run order. The warning names the enhancer and the detector before it. The ``meas``,
-    ``post``, ``filters`` and ``model`` slots are not checked. Neither is a
-    bare ``enhancer.apply(image)``: an image may legitimately carry objects
-    before enhancement (``load_synth_yeast_plate()`` ships with its colonies
-    already in the object map).
+    The pipeline run methods (``apply``, ``apply_and_measure``,
+    ``apply_with_intermediates`` and ``apply_napari``) check the order of the
+    pipeline's ``ops`` once per call, before any step runs, with nested
+    pipelines included in run order. A pipeline inside an operation, such as
+    a ``CompositeDetector`` branch, is checked in its own run order. The
+    warning names the enhancer and the detector before it.
+
+    These are not warned about:
+
+    - an enhancer that a later detector follows, since that detector
+      re-detects (detect, align with ``GridAligner``, enhance, detect again
+      loses nothing);
+    - the ``meas``, ``post``, ``filters`` and ``model`` slots;
+    - a bare ``enhancer.apply(image)``. An image may legitimately carry
+      objects before enhancement: ``load_synth_yeast_plate()`` ships with its
+      colonies already in the object map.
+
+    A ``GridApply`` whose ``image_op`` is a detector counts as a detector.
 
     The warning never changes a result: the pipeline still runs every step.
     The fix is to put enhancers before the detector.

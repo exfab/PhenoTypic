@@ -1,4 +1,4 @@
-"""Warn when a pipeline runs an image enhancer after an object detector.
+"""Warn when a pipeline runs an image enhancer after its last object detector.
 
 Writing ``detect_mat`` resets the object map, so an enhancer that runs after a
 detector erases the colonies it found. The check reads the pipeline's step
@@ -6,7 +6,12 @@ order, never the image: ``load_synth_yeast_plate()`` ships with its colonies
 already in the object map, so a per-image check would fire on the docs' first
 example and on most doctests (spec 2026-10-31 docs reorganization, §10.11).
 
-It runs once per outermost ``ImagePipelineCore.apply``. A pipeline applied while
+Only an enhancer that no later detector follows is reported. Detect, use the
+objects (``GridAligner`` rotates by them), enhance, then detect again is a
+documented pattern (``correction/_grid_aligner.py``), and it loses nothing.
+
+It runs once per outermost pipeline run: ``apply``, ``apply_and_measure``,
+``apply_with_intermediates`` and ``apply_napari``. A pipeline applied while
 another is already running (a nested ``ops`` pipeline, a detector's branch
 pipeline, a ``GridApply`` sub-pipeline) is covered by the outer check and skips
 its own, so one call warns at most once.
@@ -65,28 +70,50 @@ def _chain_roots(root: Any) -> Iterator[tuple[tuple[str, ...], Any]]:
         yield path, node
 
 
+def _is_detector(op: Any) -> bool:
+    """True for a step that writes a fresh object map.
+
+    A ``GridApply`` whose ``image_op`` is an ``ObjectDetector`` detects per
+    grid section, so it counts too. Any other ``GridApply`` stays an ordinary
+    step: one wrapping a sub-pipeline (``GridSectionPipeline``'s) is checked as
+    its own chain instead.
+    """
+    from phenotypic.abc_ import ObjectDetector
+    from phenotypic.grid import GridApply
+
+    if isinstance(op, ObjectDetector):
+        return True
+    return isinstance(op, GridApply) and isinstance(op.image_op, ObjectDetector)
+
+
 def find_enhancer_after_detector(
         pipeline: Any,
 ) -> tuple[tuple[str, ...], Any, tuple[str, ...], Any] | None:
-    """Return the first enhancer that runs after a detector, with that detector.
+    """Return the first enhancer that runs after the last detector of a chain.
+
+    An enhancer between two detectors is not reported: the later detector
+    re-detects, so nothing is lost.
 
     Args:
         pipeline: An ``ImagePipelineCore``.
 
     Returns:
         ``(enhancer_path, enhancer, detector_path, detector)``, where the
-        detector is the last one to run before the enhancer, or ``None`` when
-        every enhancer runs before every detector in each step chain.
+        detector is the last one in the enhancer's step chain, or ``None``
+        when no chain runs an enhancer after its last detector.
     """
-    from phenotypic.abc_ import ImageEnhancer, ObjectDetector
+    from phenotypic.abc_ import ImageEnhancer
 
     for root_path, chain_root in _chain_roots(pipeline):
-        last_detector: tuple[tuple[str, ...], Any] | None = None
-        for path, op in _run_order(chain_root, root_path):
-            if isinstance(op, ObjectDetector):
-                last_detector = (path, op)
-            elif isinstance(op, ImageEnhancer) and last_detector is not None:
-                return path, op, last_detector[0], last_detector[1]
+        steps = list(_run_order(chain_root, root_path))
+        detector_at = [i for i, (_, op) in enumerate(steps) if _is_detector(op)]
+        if not detector_at:
+            continue
+        last = detector_at[-1]
+        for path, op in steps[last + 1:]:
+            if isinstance(op, ImageEnhancer):
+                det_path, detector = steps[last]
+                return path, op, det_path, detector
     return None
 
 
@@ -101,10 +128,10 @@ def warn_if_enhancer_after_detector(pipeline: Any, *, stacklevel: int) -> None:
     enh_name, det_name = type(enhancer).__name__, type(detector).__name__
     warnings.warn(
             f"Step '{'/'.join(enh_path)}' ({enh_name}) runs after the detector "
-            f"at step '{'/'.join(det_path)}' ({det_name}). Enhancers write "
-            f"detect_mat, and writing detect_mat clears the object map, so "
-            f"{enh_name} erases the colonies {det_name} found. Put enhancers "
-            f"before the detector.",
+            f"at step '{'/'.join(det_path)}' ({det_name}), and no detector runs "
+            f"after it. Enhancers write detect_mat, and writing detect_mat "
+            f"clears the object map, so {enh_name} erases the colonies "
+            f"{det_name} found. Put enhancers before the detector.",
             DetectionClearedWarning,
             stacklevel=stacklevel + 1,
     )

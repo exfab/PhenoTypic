@@ -1123,7 +1123,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             else:
                 intermediates[key] = _detached_snapshot(current)
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
+        from phenotypic._core._pipeline_parts._step_order_check import (
+            step_order_checked,
+        )
+
+        with step_order_checked(self, stacklevel=2), provenance_application(
+                img, pipeline=self._provenance_pipeline
+        ):
             owns_application = len(
                 img._metadata.provenance_journal["applications"]
             ) == application_count + 1
@@ -1390,7 +1396,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             pd.DataFrame: A DataFrame containing measurement data for the
             processed image.
         """
-        img = self.apply(image=image, inplace=inplace, reset=reset)
+        from phenotypic._core._pipeline_parts._step_order_check import (
+            step_order_checked,
+        )
+
+        # Checked here as well as in ``apply`` so the warning points at the
+        # caller of ``apply_and_measure``; the inner ``apply`` then skips.
+        with step_order_checked(self, stacklevel=2):
+            img = self.apply(image=image, inplace=inplace, reset=reset)
         return self.measure(
                 image=img,
                 include_metadata=include_metadata,
