@@ -284,20 +284,22 @@ def _output_layout_entries(
         (measurements_by_feature_dir(output_dir), True, "the table split by measurer"),
         (measurements_by_category_dir(output_dir), True, "the table split by measurement category"),
     ]
-    model = pipeline.get_model() if pipeline is not None else None
-    if model is not None:
-        entries += [
-            (
-                named_analysis_csv_path(deliverables_dir(output_dir), type(model).__name__),
-                False,
-                "the model fit (also .parquet)",
-            ),
-            (analysis_manifest_path(deliverables_dir(output_dir)), False, "the analysis outputs, listed"),
-        ]
-    if pipeline is not None and pipeline.get_plots():
-        entries.append((plots_dir(output_dir), True, "the pipeline's configured plots"))
-    if pipeline is not None and pipeline.get_qc() and not config.no_qc:
-        entries.append((qc_dir(output_dir), True, "quality-control tables (qc.duckdb)"))
+    if pipeline is not None:
+        model = pipeline.get_model()
+        if model is not None:
+            deliverables = deliverables_dir(output_dir)
+            entries += [
+                (
+                    named_analysis_csv_path(deliverables, type(model).__name__),
+                    False,
+                    "the model fit (also .parquet)",
+                ),
+                (analysis_manifest_path(deliverables), False, "the analysis outputs, listed"),
+            ]
+        if pipeline.get_plots():
+            entries.append((plots_dir(output_dir), True, "the pipeline's configured plots"))
+        if pipeline.get_qc() and not config.no_qc:
+            entries.append((qc_dir(output_dir), True, "quality-control tables (qc.duckdb)"))
     if forward and config.metadata_csv is not None:
         entries.append(
             (metadata_csv_deliverable_path(output_dir), False, "a byte-for-byte copy of your --metadata")

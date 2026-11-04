@@ -53,9 +53,11 @@ def _save_pipeline(path: Path, ops=None, **kwargs) -> Path:
     return path
 
 
-def _invoke(*args: str):
+def _dry_run_cli(pipe: Path, inp: Path, tmp_path: Path):
+    """Run the real CLI with ``--dry-run`` over *pipe* and *inp*."""
+    args = ["--pipeline", str(pipe), "--input", str(inp), "--output", str(tmp_path / "out"), "--dry-run"]
     # A wide terminal, so the rich configuration panel does not wrap its cells.
-    return CliRunner().invoke(phenotypic_cli, [*args], env={"COLUMNS": "200"})
+    return CliRunner().invoke(phenotypic_cli, args, env={"COLUMNS": "200"})
 
 
 def _section(output: str, heading: str) -> list[str]:
@@ -66,12 +68,13 @@ def _section(output: str, heading: str) -> list[str]:
     return lines[start:end]
 
 
-def _preview(config, datasets, output_dir: Path) -> str:
-    """Run ``execute_dry_run`` alone and return what it printed."""
+def _preview(config, tmp_path: Path) -> str:
+    """Run ``execute_dry_run`` alone over a one-image dataset and return what it printed."""
+    datasets = make_datasets(tmp_path / "plate1" / "a.tiff")
 
     @click.command()
     def _command() -> None:
-        execute_dry_run(config, list(datasets), output_dir)
+        execute_dry_run(config, list(datasets), tmp_path / "out")
 
     result = CliRunner().invoke(_command, [])
     assert result.exit_code == 0, result.output
@@ -92,7 +95,7 @@ def inp(tmp_path: Path) -> Path:
 
 
 def test_dry_run_preview_is_current(tmp_path, pipe, inp):
-    result = _invoke("--pipeline", str(pipe), "--input", str(inp), "--output", str(tmp_path / "out"), "--dry-run")
+    result = _dry_run_cli(pipe, inp, tmp_path)
     assert result.exit_code == 0, result.output
     assert "None rows" not in result.output
     assert "8 × 12" in result.output
@@ -120,19 +123,19 @@ def test_dry_run_preview_is_current(tmp_path, pipe, inp):
 def test_flags_and_pipeline_each_name_their_axis(tmp_path):
     pipe = _save_pipeline(tmp_path / "pipeline.json", nrows=4, ncols=24)
     config = make_config(pipeline_json=pipe, nrows=16)
-    output = _preview(config, make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(config, tmp_path)
     assert "Grid shape: 16 × 24 (rows × columns), rows from --nrows, columns from the pipeline" in output
 
 
 def test_a_pipeline_preset_is_reported_as_the_source(tmp_path):
     pipe = _save_pipeline(tmp_path / "pipeline.json", nrows=16, ncols=24)
-    output = _preview(make_config(pipeline_json=pipe), make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(make_config(pipeline_json=pipe), tmp_path)
     assert "Grid shape: 16 × 24 (rows × columns), from the pipeline" in output
 
 
 def test_measure_mode_lists_only_the_measurers_and_the_stored_grid(tmp_path, pipe):
     config = make_config(pipeline_json=pipe, measure_only=True)
-    output = _preview(config, make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(config, tmp_path)
     assert "MeasureSize" in output
     assert "BlurGauss" not in output
     assert "Grid shape: 8 × 12" not in output
@@ -143,7 +146,7 @@ def test_an_unreadable_pipeline_does_not_fail_the_preview(tmp_path):
     broken = tmp_path / "broken.json"
     broken.write_text("{ not json", encoding="utf-8")
     config = make_config(pipeline_json=broken, skip_validation=True)
-    output = _preview(config, make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(config, tmp_path)
     assert "could not be read" in output
     assert "Failed to load pipeline: ValueError: Invalid JSON data" in output  # read_pipeline_file's wording (W2 S5)
     assert "None rows" not in output
@@ -151,7 +154,7 @@ def test_an_unreadable_pipeline_does_not_fail_the_preview(tmp_path):
 
 def test_the_configuration_panel_agrees_with_the_preview(tmp_path, pipe, inp):
     """The rich panel prints the preview's own grid text (review W2 S1)."""
-    result = _invoke("--pipeline", str(pipe), "--input", str(inp), "--output", str(tmp_path / "out"), "--dry-run")
+    result = _dry_run_cli(pipe, inp, tmp_path)
     assert result.exit_code == 0, result.output
     assert "auto (from pipeline preset" not in result.output
     grid = "8 × 12 (rows × columns), from the built-in default"
@@ -175,7 +178,7 @@ def test_the_step_table_is_left_aligned_and_wraps_long_parameters(tmp_path):
         ]
     )
     pipe = _save_pipeline(tmp_path / "pipeline.json", ops=[BlurGauss(sigma=3.0), wide])
-    output = _preview(make_config(pipeline_json=pipe), make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(make_config(pipeline_json=pipe), tmp_path)
     steps = _section(output, "Pipeline Steps:")
     assert steps[0].split() == ["step", "slot", "operation", "module", "writes", "changed"]
     assert steps[1].startswith("  BlurGauss ")  # left-aligned, not padded from the left
@@ -187,7 +190,7 @@ def test_the_step_table_is_left_aligned_and_wraps_long_parameters(tmp_path):
 
 
 def test_the_layout_lists_every_deliverable_a_plain_run_writes(tmp_path, pipe):
-    output = _preview(make_config(pipeline_json=pipe), make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out")
+    output = _preview(make_config(pipeline_json=pipe), tmp_path)
     layout = "\n".join(_section(output, "Output Layout:"))
     for written in (
         "measurements_by_feature",
@@ -210,6 +213,6 @@ def test_the_layout_adds_what_metadata_and_a_model_write(tmp_path):
         tmp_path / "pipeline.json", model=LogGrowthModel(on="Size_Area", groupby=["Metadata_Strain"])
     )
     config = make_config(pipeline_json=pipe, metadata_csv=tmp_path / "plates.csv")
-    layout = "\n".join(_section(_preview(config, make_datasets(tmp_path / "plate1" / "a.tiff"), tmp_path / "out"), "Output Layout:"))
+    layout = "\n".join(_section(_preview(config, tmp_path), "Output Layout:"))
     for written in ("metadata.csv", "LogGrowthModel.csv", "analysis_manifest.json"):
         assert written in layout, written
