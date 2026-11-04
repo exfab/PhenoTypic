@@ -19,8 +19,9 @@ class GRID(IdentityInfo):
     ROW_NUM = Entry(
         "RowNum",
         "Zero-based row number, from 0 at the top, of the grid cell that "
-        "holds the colony's bounding-box center. A colony whose center lies "
-        "outside the grid is assigned to the nearest edge row.",
+        "holds the colony's centroid (the mean position of its pixels). A "
+        "colony whose centroid lies outside the grid is assigned to the "
+        "nearest edge row.",
     )
     ROW_INTERVAL_START = Entry(
         "RowIntervalStart",
@@ -32,8 +33,9 @@ class GRID(IdentityInfo):
     COL_NUM = Entry(
         "ColNum",
         "Zero-based column number, from 0 at the left, of the grid cell that "
-        "holds the colony's bounding-box center. A colony whose center lies "
-        "outside the grid is assigned to the nearest edge column.",
+        "holds the colony's centroid (the mean position of its pixels). A "
+        "colony whose centroid lies outside the grid is assigned to the "
+        "nearest edge column.",
     )
     COL_INTERVAL_START = Entry(
         "ColIntervalStart",
