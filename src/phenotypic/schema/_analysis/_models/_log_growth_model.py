@@ -38,21 +38,30 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
                    tier=1, derivation_type="parameterization", derives_from="SIZE")
     LAM = Entry(
         "lambda",
-        "The regularization factor applied to the max specific growth rate "
-        "and initial population size",
+        "Regularization weight λ that penalizes a large maximum growth rate "
+        "(µmax = K·r/4) and a large initial value N0 during fitting.",
         derivation_type="diagnostic",
         unit=UNITS.UNITLESS,
     )
     BETA = Entry(
         "beta",
         (
-            "The penalty factor applied to relative difference of "
-            "the carrying capacity from the largest measurement"
+            "Penalty weight β on how far the fitted carrying capacity K lies "
+            "from the value measured at the last time point, relative to that "
+            "value."
         ),
         derivation_type="diagnostic",
         unit=UNITS.UNITLESS,
     )
-    GROWTH_RATE = Entry("µmax", "The growth rate of the colony calculated as (K*r)/4",
-                        tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.OF_INPUT_PER_TIME)
+    GROWTH_RATE = Entry(
+        "µmax",
+        "Maximum growth rate of the fitted logistic curve: its slope where "
+        "the curve reaches half the carrying capacity K. It is calculated as "
+        "(K*r)/4.",
+        tier=1,
+        derivation_type="parameterization",
+        derives_from="SIZE",
+        unit=UNITS.OF_INPUT_PER_TIME,
+    )
     K_MAX = Entry("Kmax", "The upper bound of the carrying capacity for model fitting",
                   derivation_type="diagnostic")

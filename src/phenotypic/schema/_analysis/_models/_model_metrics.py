@@ -27,14 +27,52 @@ class MODEL_METRICS(QualityInfo):
         return "metric_qualified"
 
     # fit-quality metrics
-    MAE = Entry("MAE", "The mean absolute error")
-    MSE = Entry("MSE", "The mean squared error", unit=UNITS.OF_INPUT_SQUARED)
-    RMSE = Entry("RMSE", "The root mean squared error")
-    R2 = Entry("R2", "The coefficient of determination", unit=UNITS.UNITLESS)
+    MAE = Entry(
+        "MAE",
+        "Mean absolute difference between the fitted curve and the data "
+        "points it was fitted to.",
+    )
+    MSE = Entry(
+        "MSE",
+        "Mean squared difference between the fitted curve and the data points "
+        "it was fitted to.",
+        unit=UNITS.OF_INPUT_SQUARED,
+    )
+    RMSE = Entry(
+        "RMSE",
+        "Typical distance between the fitted curve and the data points it was "
+        "fitted to, as the square root of the mean squared difference.",
+    )
+    R2 = Entry(
+        "R2",
+        "Share of the variation in the fitted data points that the curve "
+        "explains: 1 is a perfect fit, and 0 or below is no better than the "
+        "points' mean. It is the coefficient of determination, and NaN for a "
+        "group with two or fewer points.",
+        unit=UNITS.UNITLESS,
+    )
 
     # fit diagnostics
-    NUM_SAMPLES = Entry("NumSamples", "The number of samples used for model fitting", unit=UNITS.UNITLESS)
+    NUM_SAMPLES = Entry(
+        "NumSamples",
+        "Number of data points the model was fitted to, after any points the "
+        "fitter drops (such as post-saturation time points).",
+        unit=UNITS.UNITLESS,
+    )
     # SEM-weighted (analysis/abc_/_linear_softplus_base.py:362), so its units
     # vary by group and no conversion is ever valid: never OF_INPUT_SQUARED.
-    LOSS = Entry("OptimizerLoss", "The loss of model fitting", unit=UNITS.NOT_A_QUANTITY)
-    STATUS = Entry("OptimizerStatus", "The output of the optimizer status", unit=UNITS.NOT_A_QUANTITY)
+    LOSS = Entry(
+        "OptimizerLoss",
+        "Final value of the cost that the fitting optimizer minimized. It is "
+        "the cost of scipy's least_squares: half the sum of the squared "
+        "residuals after the robust loss, including any weighting or "
+        "regularization terms the model adds.",
+        unit=UNITS.NOT_A_QUANTITY,
+    )
+    STATUS = Entry(
+        "OptimizerStatus",
+        "Integer code from scipy's least_squares saying why the fit stopped: "
+        "0 when it reached the evaluation limit, 1 to 4 when a convergence "
+        "tolerance was met, and -1 for improper input.",
+        unit=UNITS.NOT_A_QUANTITY,
+    )
