@@ -187,6 +187,9 @@ def test_distance_weighted_center_is_a_weighted_centroid(member) -> None:
     first = _first_sentence(member.desc)
     assert "distance-weighted centroid" in first
     assert "maximum" not in first
+    # The plain-centroid fallback fires only when every pixel touches another
+    # colony (its zeroed contact ring leaves no distance weight).
+    assert "another colony among its eight neighbors" in member.desc
 
 
 @pytest.mark.parametrize("member", [BBOX.MAX_RR, BBOX.MAX_CC], ids=str)

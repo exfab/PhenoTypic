@@ -66,16 +66,20 @@ class BBOX(IdentityInfo):
         "Row coordinate of the colony's distance-weighted centroid: the mean "
         "position of its pixels, each weighted by its distance to the "
         "colony's edge. It is Σ dt·row / Σ dt over the Euclidean distance "
-        "transform dt, and the plain centroid for a colony with no interior "
-        "pixels. Robust to thin filamentous extensions that pull "
-        "intensity-weighted centroids off-body.",
+        "transform dt, and the plain centroid for a colony whose every pixel "
+        "has a pixel of another colony among its eight neighbors (those "
+        "pixels are zeroed before the transform, so its weights sum to 0). "
+        "Robust to thin filamentous extensions that pull intensity-weighted "
+        "centroids off-body.",
     )
     DIST_WEIGHTED_CENTER_CC = Entry(
         "DistWeightedCenterCC",
         "Column coordinate of the colony's distance-weighted centroid: the "
         "mean position of its pixels, each weighted by its distance to the "
         "colony's edge. It is Σ dt·col / Σ dt over the Euclidean distance "
-        "transform dt, and the plain centroid for a colony with no interior "
-        "pixels. Robust to thin filamentous extensions that pull "
-        "intensity-weighted centroids off-body.",
+        "transform dt, and the plain centroid for a colony whose every pixel "
+        "has a pixel of another colony among its eight neighbors (those "
+        "pixels are zeroed before the transform, so its weights sum to 0). "
+        "Robust to thin filamentous extensions that pull intensity-weighted "
+        "centroids off-body.",
     )
