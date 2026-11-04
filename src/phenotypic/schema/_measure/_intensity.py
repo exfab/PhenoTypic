@@ -31,7 +31,8 @@ class INTENSITY(DirectPhenotype):
 
     INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
-        "The sum of the object's pixels",
+        "Sum of the grayscale values of all the colony's pixels, so it grows with "
+        "both the colony's area and how bright its pixels are.",
         unit=UNITS.INTENSITY_PX2,
     )
     DENSITY = Entry(
@@ -50,34 +51,54 @@ class INTENSITY(DirectPhenotype):
         "four times Density). It is NaN for a single pixel or a one-pixel-wide "
         "line, which has no hull.",
     )
-    MINIMUM_INTENSITY = Entry("MinimumIntensity", "The minimum intensity of the object")
-    MAXIMUM_INTENSITY = Entry("MaximumIntensity", "The maximum intensity of the object")
+    MINIMUM_INTENSITY = Entry(
+        "MinimumIntensity",
+        "Lowest grayscale value among the colony's pixels.",
+    )
+    MAXIMUM_INTENSITY = Entry(
+        "MaximumIntensity",
+        "Highest grayscale value among the colony's pixels.",
+    )
     MEAN_INTENSITY = Entry(
         "MeanIntensity",
-        "The mean intensity of the object",
+        "Average grayscale value of the colony's pixels, read from the image's "
+        "gray layer.",
         categories=CATEGORIES.STARTING_METRICS,
     )
-    MEDIAN_INTENSITY = Entry("MedianIntensity", "The median intensity of the object")
+    MEDIAN_INTENSITY = Entry(
+        "MedianIntensity",
+        "Middle grayscale value of the colony's pixels: half of them are at or "
+        "below it, so a few very bright or very dark pixels move it less than "
+        "they move the mean.",
+    )
     STANDARD_DEVIATION_INTENSITY = Entry(
         "StandardDeviationIntensity",
-        "The standard deviation of the object",
+        "How much the grayscale values of the colony's pixels vary around their "
+        "mean, as their standard deviation. It is the population standard "
+        "deviation, dividing by the pixel count n.",
     )
     COEFFICIENT_VARIANCE_INTENSITY = Entry(
         "CoefficientVarianceIntensity",
-        "The coefficient of variation of the object",
+        "How much the colony's grayscale values vary relative to their mean, as "
+        "the standard deviation divided by the mean. The ratio is then "
+        "multiplied by (1 + 1/n), where n is the colony's pixel count.",
         unit=UNITS.UNITLESS,
     )
     Q1_INTENSITY = Entry(
         "LowerQuartileIntensity",
-        "The lower quartile intensity of the object",
+        "Grayscale value that about a quarter of the colony's pixels are at or "
+        "below. It is the 25th percentile, linearly interpolated.",
     )
     Q3_INTENSITY = Entry(
         "UpperQuartileIntensity",
-        "The upper quartile intensity of the object",
+        "Grayscale value that about three quarters of the colony's pixels are "
+        "at or below. It is the 75th percentile, linearly interpolated.",
     )
     IQR_INTENSITY = Entry(
         "InterquartileRangeIntensity",
-        "The interquartile range of the object",
+        "Spread of the middle half of the colony's grayscale values, from the "
+        "lower to the upper quartile. It is UpperQuartileIntensity minus "
+        "LowerQuartileIntensity.",
     )
 
 
