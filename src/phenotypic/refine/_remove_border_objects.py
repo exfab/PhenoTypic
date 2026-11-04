@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 import numpy as np
+from pydantic import field_validator
 
 from phenotypic.abc_ import ObjectRefiner
 
@@ -39,12 +40,14 @@ class RemoveBorderObjects(ObjectRefiner):
           colonies.
 
     Args:
-        border_size: Width of the exclusion band along each image edge.
-            ``None`` defaults to 1% of the smaller image dimension.
-            A float in ``(0, 1)`` is interpreted as a fraction of the
-            smaller image dimension. An integer or float ``>= 1`` is
-            treated as an absolute pixel count. Typical range: 1--30 px.
-            Default: 1.
+        border_size: Width of the exclusion band along each image edge, in
+            pixels: an object is removed when any of its pixels lies within
+            this many pixels of an edge, so ``1`` removes the objects that
+            touch the edge. ``None`` uses 1% of the smaller image dimension
+            (height or width). A float in ``(0, 1)`` is a fraction of that
+            dimension. A fractional or ``None`` band is at least 1 px wide; an
+            integer or a float ``>= 1`` is a pixel count (truncated), and
+            ``0`` removes nothing. Typical range: 1--30 px. Default: 1.
 
     Returns:
         Image: Input image with ``objmap`` and ``objmask`` updated to
@@ -52,7 +55,7 @@ class RemoveBorderObjects(ObjectRefiner):
         ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
 
     Raises:
-        TypeError: If ``border_size`` is not an integer, float, or ``None``.
+        pydantic.ValidationError: If ``border_size`` is negative.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
@@ -63,28 +66,42 @@ class RemoveBorderObjects(ObjectRefiner):
 
     border_size: int | float | None = 1
 
-    def _operate(self, image: Image) -> Image:
-        if self.border_size is None:
-            edge_size = int(np.min(image.shape[[1, 2]]) * 0.01)
-        elif type(self.border_size) is float and 0.0 < self.border_size < 1.0:
-            edge_size = int(np.min(image.shape) * self.border_size)
-        elif isinstance(self.border_size, (int, float)):
-            edge_size = self.border_size
-        else:
-            raise TypeError(
-                    "Invalid edge size. Should be int, float, or None to use default edge size."
-            )
+    @field_validator("border_size")
+    @classmethod
+    def _reject_negative_border(cls, value: int | float | None) -> int | float | None:
+        if value is not None and value < 0:
+            raise ValueError(f"border_size must be >= 0 or None, got {value}")
+        return value
 
+    def _band_width(self, height: int, width: int) -> int:
+        """The band width in pixels for an image of *height* x *width*.
+
+        Fractions are taken of the smaller *spatial* dimension: the object
+        map's, never ``image.shape``, which on an RGB image also counts the
+        three colour channels.
+        """
+        if self.border_size is None:
+            fraction = 0.01
+        elif isinstance(self.border_size, float) and 0.0 < self.border_size < 1.0:
+            fraction = self.border_size
+        else:
+            return int(self.border_size)
+        return max(1, int(min(height, width) * fraction))
+
+    def _operate(self, image: Image) -> Image:
         obj_map = image.objmap[:]
-        edges = [
-            obj_map[: edge_size - 1, :].ravel(),
-            obj_map[-edge_size:, :].ravel(),
-            obj_map[:, : edge_size - 1].ravel(),
-            obj_map[:, -edge_size:].ravel(),
-        ]
-        edge_labels = np.unique(np.concatenate(edges))
-        for label in edge_labels:
-            obj_map[obj_map == label] = 0
+        band = self._band_width(*obj_map.shape)
+        if band == 0:
+            return image
+
+        in_band = np.zeros(obj_map.shape, dtype=bool)
+        in_band[:band, :] = True
+        in_band[-band:, :] = True
+        in_band[:, :band] = True
+        in_band[:, -band:] = True
+        edge_labels = np.unique(obj_map[in_band])
+        edge_labels = edge_labels[edge_labels != 0]
+        obj_map[np.isin(obj_map, edge_labels)] = 0
 
         image.objmap = obj_map
         return image
