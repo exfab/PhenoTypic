@@ -8,7 +8,8 @@ import sys
 
 import pytest
 
-from phenotypic.schema import UNITS, Entry, MeasurementInfo, ResolvedUnit, UnitEntry
+import phenotypic.schema as S
+from phenotypic.schema import UNITS, Entry, MeasurementInfo, MetadataInfo, ResolvedUnit, UnitEntry
 
 
 def test_static_units_resolve_to_themselves():
@@ -30,6 +31,17 @@ def test_unitless_input_gives_one_over_time():
     assert UNITS.OF_INPUT_PER_TIME.resolve(unitless) == ResolvedUnit("1/time", 0)
     assert UNITS.OF_INPUT.resolve(unitless) == ResolvedUnit("", 0)
     assert UNITS.OF_INPUT_SQUARED.resolve(unitless) == ResolvedUnit("", 0)
+
+
+def test_per_input_is_the_reciprocal_of_the_input():
+    # LinearCapAndLagModel's beta multiplies (smax - s), so it is 1/(unit of s).
+    per_input = UNITS.PER_INPUT
+    assert per_input.is_input_dependent
+    assert per_input.resolve(ResolvedUnit("px", 1)) == ResolvedUnit("1/px", -1)
+    assert per_input.resolve(ResolvedUnit("px²", 2)) == ResolvedUnit("1/px²", -2)
+    assert per_input.resolve(ResolvedUnit("rad/px", -1)) == ResolvedUnit("1/(rad/px)", 1)
+    assert per_input.resolve(ResolvedUnit("intensity·px²", 2)) == ResolvedUnit("1/(intensity·px²)", -2)
+    assert per_input.resolve(ResolvedUnit("", 0)) == ResolvedUnit("", 0)
 
 
 def test_input_dependent_unit_needs_a_known_input():
@@ -56,7 +68,7 @@ def test_members_are_the_closed_list_in_order():
         "CIELAB", "CIELAB2", "TURN", "RADIAN_PER_PX", "RADIAN_PER_PX2",
         "RADIAN_PX", "DEGREE_PER_PX", "DEGREE_PER_PX2", "UNITLESS", "TIME",
         "PER_TIME", "FRAME", "NOT_A_QUANTITY", "OF_INPUT", "OF_INPUT_SQUARED",
-        "OF_INPUT_PER_TIME",
+        "OF_INPUT_PER_TIME", "PER_INPUT",
     ]
     assert all(m.value == m.name.lower() for m in UNITS)
 
@@ -108,8 +120,6 @@ def test_the_stdlib_guard_catches_a_non_stdlib_import(line):
         pytest.param(lambda: UnitEntry("k", "s", "d", length_power=True), TypeError, id="length-power-bool"),
         pytest.param(lambda: UnitEntry("k", "s", "d", input_power=1.0), TypeError, id="input-power-float"),
         pytest.param(lambda: UnitEntry("k", "s", "d", input_power=True), TypeError, id="input-power-bool"),
-        pytest.param(lambda: UnitEntry("k", "s", "d", input_power=-1, length_power=None), ValueError,
-                     id="input-power-negative"),
         pytest.param(lambda: UnitEntry("k", "s", "d", per_time=1), TypeError, id="per-time-not-a-bool"),
         pytest.param(lambda: UnitEntry("k", "s", "d", input_power=1), ValueError,
                      id="input-dependent-with-a-length-power"),
@@ -138,6 +148,7 @@ def test_input_dependent_units_carry_a_placeholder_symbol():
     assert UNITS.OF_INPUT.symbol == "input unit"
     assert UNITS.OF_INPUT_SQUARED.symbol == "(input unit)²"
     assert UNITS.OF_INPUT_PER_TIME.symbol == "input unit/time"
+    assert UNITS.PER_INPUT.symbol == "1/(input unit)"
     for member in UNITS:
         if member.is_input_dependent:
             with pytest.raises(TypeError, match="output_unit"):
@@ -193,3 +204,23 @@ def test_a_subclass_defining_unit_is_refused():
             @classmethod
             def metric_family(cls): return "Trap"
             unit = Entry("Unit", "A member named unit.")
+
+
+def _public_members():
+    seen = set()
+    for name in S.__all__:
+        cls = getattr(S, name)
+        if isinstance(cls, type) and issubclass(cls, MeasurementInfo) and cls not in seen and list(cls):
+            seen.add(cls)
+            yield from cls
+
+
+def test_every_non_metadata_member_has_a_unit():
+    # isinstance, not "is not None": a shadowed unit (a bound method) must fail too.
+    missing = [str(m) for m in _public_members() if not isinstance(m, MetadataInfo) and not isinstance(m.unit, UNITS)]
+    assert missing == []
+
+
+def test_no_metadata_member_has_a_unit():
+    tagged = [str(m) for m in _public_members() if isinstance(m, MetadataInfo) and m.unit is not None]
+    assert tagged == []

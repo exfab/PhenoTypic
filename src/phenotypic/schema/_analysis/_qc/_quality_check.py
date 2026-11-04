@@ -1,6 +1,7 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
 from ..._base._measurement_info import Entry, _info_row, _render_info_table
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -25,12 +26,17 @@ class QUALITY_CHECK(QualityInfo):
         "Metric",
         "Headline metric in the check's own units; the bad direction is set "
         "by the check's _HIGHER_IS_BAD flag. Drives Status.",
+        unit=UNITS.UNITLESS,
     )
     STATUS = Entry("Status", "Categorical: pass | warn | fail.")
 
     @classmethod
     def metric_family(cls) -> str:
         return "QC"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.NOT_A_QUANTITY
 
     @classmethod
     def header(cls, member: "QUALITY_CHECK", check_name: str | None = None) -> str:

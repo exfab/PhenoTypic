@@ -1,6 +1,7 @@
 """Measurement info container for replicate-agreement MAD QC."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -19,6 +20,10 @@ class QUALITY_MAD(QualityInfo):
     def metric_family(cls) -> str:
         return "QC_MAD"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
+
     MEDIAN = Entry("Median", "Group median of the measurement.")
     MAD = Entry("MAD", "Median absolute deviation (raw, before normalization).")
-    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.")
+    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.", unit=UNITS.UNITLESS)

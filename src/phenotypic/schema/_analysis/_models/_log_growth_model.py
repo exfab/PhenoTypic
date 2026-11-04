@@ -1,6 +1,7 @@
 """Fitted parameters and bounds for the logistic growth model."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import DerivedMeasure
 
 
@@ -22,11 +23,15 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
         return "LogGrowthModel"
 
     @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
+
+    @classmethod
     def header_scheme(cls) -> str:
         return "metric_qualified"
 
     R_FIT = Entry("r", "The intrinsic growth rate",
-                  tier=1, derivation_type="parameterization", derives_from="SIZE")
+                  tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.PER_TIME)
     K_FIT = Entry("K", "The carrying capacity",
                   tier=1, derivation_type="parameterization", derives_from="SIZE")
     N0_FIT = Entry("N0", "The initial number of the colony size metric being fitted",
@@ -36,6 +41,7 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
         "The regularization factor applied to the max specific growth rate "
         "and initial population size",
         derivation_type="diagnostic",
+        unit=UNITS.UNITLESS,
     )
     BETA = Entry(
         "beta",
@@ -44,8 +50,9 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
             "the carrying capacity from the largest measurement"
         ),
         derivation_type="diagnostic",
+        unit=UNITS.UNITLESS,
     )
     GROWTH_RATE = Entry("µmax", "The growth rate of the colony calculated as (K*r)/4",
-                        tier=1, derivation_type="parameterization", derives_from="SIZE")
+                        tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.OF_INPUT_PER_TIME)
     K_MAX = Entry("Kmax", "The upper bound of the carrying capacity for model fitting",
                   derivation_type="diagnostic")

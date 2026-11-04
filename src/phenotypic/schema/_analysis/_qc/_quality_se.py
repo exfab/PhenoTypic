@@ -1,6 +1,7 @@
 """Measurement info container for replicate-agreement standard-error QC."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -18,7 +19,11 @@ class QUALITY_SE(QualityInfo):
     def metric_family(cls) -> str:
         return "QC_SE"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
+
     VALUE = Entry("Value", "Raw SE = stddev / sqrt(n) across replicates.")
     MEAN = Entry("Mean", "Mean across replicates at this (group, time).")
-    CV = Entry("CV", "Coefficient of variation, stddev / |mean|.")
-    NUM_REPLICATES = Entry("NumReplicates", "Replicate count contributing to the SE.")
+    CV = Entry("CV", "Coefficient of variation, stddev / |mean|.", unit=UNITS.UNITLESS)
+    NUM_REPLICATES = Entry("NumReplicates", "Replicate count contributing to the SE.", unit=UNITS.UNITLESS)

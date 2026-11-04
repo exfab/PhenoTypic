@@ -13,7 +13,7 @@ for a value that is not a quantity at all (a label, a string, a status).
 Some columns have no unit of their own: a fitted growth rate is in the unit of
 the column it was fitted on, per unit of time. Those members are tagged with an
 **input-dependent** unit (``OF_INPUT``, ``OF_INPUT_SQUARED``,
-``OF_INPUT_PER_TIME``), and the producer's ``output_unit(member, on)`` resolves
+``OF_INPUT_PER_TIME``, ``PER_INPUT``), and the producer's ``output_unit(member, on)`` resolves
 the tag against the fitted column with :meth:`UNITS.resolve`. Reading
 ``length_power`` on an unresolved input-dependent unit raises ``TypeError``,
 so ``px_per_mm ** None`` can never happen silently. Their ``symbol`` is a
@@ -74,9 +74,10 @@ class ResolvedUnit:
 class UnitEntry:
     """Declarative value for a :class:`UNITS` member.
 
-    A static unit has ``input_power == 0``. An input-dependent unit has
-    ``input_power >= 1`` and ``length_power=None``: its length power comes from
-    the input column when it is resolved. The powers are keyword-only, so two
+    A static unit has ``input_power == 0``. An input-dependent unit has a
+    non-zero ``input_power`` (negative for a reciprocal, as ``PER_INPUT``) and
+    ``length_power=None``: its length power comes from the input column when it
+    is resolved. The powers are keyword-only, so two
     adjacent ints can never be swapped positionally.
 
     Args:
@@ -89,7 +90,8 @@ class UnitEntry:
         desc: Technical description of what the unit measures.
         length_power: Power of length in the unit, or ``None`` for a value that
             is not a quantity or a unit that depends on its input.
-        input_power: Power of the input column's unit; 0 for a static unit.
+        input_power: Power of the input column's unit; 0 for a static unit,
+            -1 for its reciprocal.
         per_time: Whether the unit is per unit of the fitted time column.
     """
 
@@ -118,10 +120,6 @@ class UnitEntry:
             )
         if not _is_int(self.input_power):
             raise TypeError(f"UnitEntry.input_power must be an int, got {self.input_power!r}")
-        if self.input_power < 0:
-            raise ValueError(
-                f"UnitEntry.input_power must be non-negative, got {self.input_power!r}"
-            )
         if not isinstance(self.per_time, bool):
             raise TypeError(f"UnitEntry.per_time must be a bool, got {self.per_time!r}")
         if self.input_power and self.length_power is not None:
@@ -131,15 +129,18 @@ class UnitEntry:
             )
 
 
-def _has_top_level_solidus(symbol: str) -> bool:
-    """Whether *symbol* has a ``/`` outside parentheses (``rad/px``, not ``(rad/px)²``)."""
+def _has_top_level(symbol: str, chars: str) -> bool:
+    """Whether *symbol* has any of *chars* outside parentheses.
+
+    ``rad/px`` has a top-level ``/``; ``(rad/px)²`` does not.
+    """
     depth = 0
     for char in symbol:
         if char == "(":
             depth += 1
         elif char == ")":
             depth -= 1
-        elif char == "/" and depth == 0:
+        elif depth == 0 and char in chars:
             return True
     return False
 
@@ -148,18 +149,24 @@ def _resolved_symbol(input_symbol: str, power: int, per_time: bool) -> str:
     """Symbol of *input_symbol* raised to *power*, then per time when asked.
 
     A unitless input stays ``""`` under any power, and per time reads
-    ``"1/time"`` rather than ``"/time"``. A symbol that already has a solidus
-    is wrapped before ``/time`` is appended, so ``rad/px`` per time reads
-    ``(rad/px)/time``: two solidi without parentheses are ambiguous.
+    ``"1/time"`` rather than ``"/time"``. A negative power is a reciprocal:
+    ``px`` to the -1 is ``1/px``, and a product or quotient is wrapped first
+    (``1/(rad/px)``). A symbol that already has a solidus is wrapped before
+    ``/time`` is appended, so ``rad/px`` per time reads ``(rad/px)/time``: two
+    solidi without parentheses are ambiguous.
     """
     symbol = input_symbol
     if symbol and power != 1:
-        base = f"({symbol})" if _COMPOUND_RE.search(symbol) else symbol
-        symbol = base + str(power).translate(_SUPERSCRIPT)
+        magnitude = abs(power)
+        if magnitude != 1:
+            base = f"({symbol})" if _COMPOUND_RE.search(symbol) else symbol
+            symbol = base + str(magnitude).translate(_SUPERSCRIPT)
+        if power < 0:
+            symbol = f"1/({symbol})" if _has_top_level(symbol, "/· ") else f"1/{symbol}"
     if per_time:
         if not symbol:
             symbol = "1/time"
-        elif _has_top_level_solidus(symbol):
+        elif _has_top_level(symbol, "/"):
             symbol = f"({symbol})/time"
         else:
             symbol = f"{symbol}/time"
@@ -209,7 +216,7 @@ class UNITS(str, Enum):
     @property
     def is_input_dependent(self) -> bool:
         """Whether the unit is the input column's unit to some power."""
-        return self.input_power >= 1
+        return self.input_power != 0
 
     @property
     def length_power(self) -> int | None:
@@ -348,4 +355,12 @@ class UNITS(str, Enum):
         length_power=None,
         input_power=1,
         per_time=True,
+    )
+    PER_INPUT = UnitEntry(
+        "per_input",
+        "1/(input unit)",
+        "The reciprocal of the unit of the column the producer ran on, as for a "
+        "sharpness parameter that multiplies a difference of input values.",
+        length_power=None,
+        input_power=-1,
     )

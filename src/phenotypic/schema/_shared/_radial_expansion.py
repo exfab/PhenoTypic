@@ -1,6 +1,7 @@
 """Radial expansion measurements for filamentous fungal colonies."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DescriptiveTrait
 
 
@@ -16,6 +17,10 @@ class RADIAL_EXPANSION(DescriptiveTrait):
     @classmethod
     def metric_family(cls) -> str:
         return "RadialExpansion"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
 
     ROBUST_MEAN_RADIUS = Entry(
         "RobustMeanRadius",
@@ -38,6 +43,7 @@ class RADIAL_EXPANSION(DescriptiveTrait):
         "NumBranches",
         "Number of skeleton branches extending from the core boundary to "
         "peripheral tips. Higher counts indicate denser branching morphology.",
+        unit=UNITS.UNITLESS,
     )
     MAX_BRANCH_LENGTH = Entry(
         "MaxBranchLength",
@@ -53,6 +59,7 @@ class RADIAL_EXPANSION(DescriptiveTrait):
         "RunnerDetected",
         "Boolean flag (0 or 1) indicating whether an outlier runner branch "
         "was detected for this colony.",
+        unit=UNITS.NOT_A_QUANTITY,
     )
     CORE_RADIUS = Entry(
         "CoreRadius",

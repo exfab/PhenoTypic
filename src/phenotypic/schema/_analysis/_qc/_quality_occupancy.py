@@ -1,6 +1,7 @@
 """Measurement info container for the grid-occupancy QC check."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -18,6 +19,10 @@ class QUALITY_OCCUPANCY(QualityInfo):
     @classmethod
     def metric_family(cls) -> str:
         return "QC_Occupancy"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     FILLED = Entry(
         "Filled",

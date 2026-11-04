@@ -276,8 +276,9 @@ unchanged and stay in pixels; a unit is metadata only.
   `TypeError` at class creation. `Entry(unit=)` refuses a raw string, even one
   equal to a member's value.
 - **Input-dependent units** (`OF_INPUT`, `OF_INPUT_SQUARED`,
-  `OF_INPUT_PER_TIME`) tag columns whose unit depends on the column the producer
-  ran on: fitted rates, model metrics, QC statistics. The producer's
+  `OF_INPUT_PER_TIME`, and `PER_INPUT` with `input_power=-1`) tag columns whose
+  unit depends on the column the producer ran on: fitted rates, model metrics,
+  QC statistics, a sharpness that multiplies a difference of input values. The producer's
   `output_unit(member, on)`, next to `output_header`, resolves them through
   `UNITS.resolve(...)` into a concrete `ResolvedUnit(symbol, length_power)`:
   `v` fitted on a radius is `px/time`, length power 1. Reading `.length_power`
