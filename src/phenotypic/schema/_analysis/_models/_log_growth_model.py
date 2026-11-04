@@ -30,12 +30,34 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
     def header_scheme(cls) -> str:
         return "metric_qualified"
 
-    R_FIT = Entry("r", "The intrinsic growth rate",
-                  tier=1, derivation_type="parameterization", derives_from="SIZE", unit=UNITS.PER_TIME)
-    K_FIT = Entry("K", "The carrying capacity",
-                  tier=1, derivation_type="parameterization", derives_from="SIZE")
-    N0_FIT = Entry("N0", "The initial number of the colony size metric being fitted",
-                   tier=1, derivation_type="parameterization", derives_from="SIZE")
+    R_FIT = Entry(
+        "r",
+        "Intrinsic growth rate r of the fitted logistic curve: its growth "
+        "rate relative to its current value while it is still far below the "
+        "carrying capacity K. The curve is N(t) = K / (1 + ((K − N0) / "
+        "N0)·e^(−r·t)).",
+        tier=1,
+        derivation_type="parameterization",
+        derives_from="SIZE",
+        unit=UNITS.PER_TIME,
+    )
+    K_FIT = Entry(
+        "K",
+        "Carrying capacity K of the fitted logistic curve: the value the "
+        "curve levels off at. It is bounded above by Kmax.",
+        tier=1,
+        derivation_type="parameterization",
+        derives_from="SIZE",
+    )
+    N0_FIT = Entry(
+        "N0",
+        "Value of the fitted logistic curve at time 0. It is bounded between "
+        "0 and the group's smallest measured value (1 if that value is not "
+        "positive).",
+        tier=1,
+        derivation_type="parameterization",
+        derives_from="SIZE",
+    )
     LAM = Entry(
         "lambda",
         "Regularization weight λ that penalizes a large maximum growth rate "
@@ -63,5 +85,11 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
         derives_from="SIZE",
         unit=UNITS.OF_INPUT_PER_TIME,
     )
-    K_MAX = Entry("Kmax", "The upper bound of the carrying capacity for model fitting",
-                  derivation_type="diagnostic")
+    K_MAX = Entry(
+        "Kmax",
+        "Upper bound placed on the carrying capacity K during fitting: the "
+        "largest value of the fitted measurement in the group, or of the "
+        "Kmax_label column when one is set. When that column has no value for "
+        "the group, it is the largest measured value plus 1.",
+        derivation_type="diagnostic",
+    )

@@ -64,15 +64,15 @@ class MODEL_METRICS(QualityInfo):
     LOSS = Entry(
         "OptimizerLoss",
         "Final value of the cost that the fitting optimizer minimized. It is "
-        "the cost of scipy's least_squares: half the sum of the squared "
-        "residuals after the robust loss, including any weighting or "
+        "the cost of scipy's least_squares: half the sum of the robust loss ρ "
+        "applied to each squared residual, including any weighting or "
         "regularization terms the model adds.",
         unit=UNITS.NOT_A_QUANTITY,
     )
     STATUS = Entry(
         "OptimizerStatus",
         "Integer code from scipy's least_squares saying why the fit stopped: "
-        "0 when it reached the evaluation limit, 1 to 4 when a convergence "
-        "tolerance was met, and -1 for improper input.",
+        "0 when it reached the evaluation limit and 1 to 4 when a convergence "
+        "tolerance was met. It is NaN when the fit failed.",
         unit=UNITS.NOT_A_QUANTITY,
     )
