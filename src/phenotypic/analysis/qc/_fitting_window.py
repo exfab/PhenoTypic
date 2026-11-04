@@ -339,13 +339,17 @@ class FittingWindow(QualityCheck, PlotQc):
         >>> full["LinearLagModel_RobustMeanRadius_s0"].round().tolist()
         [8.0, 8.0, 8.0]
 
-        The windowed fit's own lag and starting size are not those: its window
-        opens after the lag, so no frame in it constrains either. On the three
-        replicates it puts the lag at 36 to 42 h and the start at 9.5 to 11 px:
+        The windowed fit's own lag and starting size are not those. Its window
+        opens after the lag, so no frame in it constrains either, and the values
+        it reports are not even reproducible: the optimizer lands on different
+        ones on different machines. Here the lag comes out 6 to 15 h too long
+        and the start 1.5 to 4 px too large, on every replicate:
 
-        >>> lag = windowed["LinearLagModel_RobustMeanRadius_lambda"]
-        >>> start_size = windowed["LinearLagModel_RobustMeanRadius_s0"]
-        >>> bool(lag.between(35, 43).all()), bool(start_size.between(9, 11.5).all())
+        >>> lag = "LinearLagModel_RobustMeanRadius_lambda"
+        >>> s0 = "LinearLagModel_RobustMeanRadius_s0"
+        >>> lag_error = windowed[lag] - full[lag]
+        >>> start_error = windowed[s0] - full[s0]
+        >>> bool(lag_error.between(4, 20).all()), bool(start_error.between(1, 5).all())
         (True, True)
     """
 
