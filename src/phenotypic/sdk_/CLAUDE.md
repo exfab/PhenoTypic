@@ -188,5 +188,8 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
   raises a `FutureWarning` and `max_size` means `<=`) and as `min_size` before.
   **Every** `remove_small_objects` call in `src/` goes through it —
   `tests/unit/test_remove_small_objects_guard.py` fails on a direct call,
-  including one shown in a docstring example. Boundary pinned by
-  `tests/unit/refine/test_small_object_remover.py`.
+  including one shown in a docstring example. Boundary pinned on the
+  installed release by `tests/unit/refine/test_small_object_remover.py`; both
+  branches pinned on any release by `tests/unit/sdk_/test_skimage_compat.py`,
+  which swaps in stubs with each release's signature, because CI only ever
+  runs the lock's branch.

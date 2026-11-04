@@ -6,8 +6,12 @@ removes objects with **fewer than** ``min_size`` pixels, in favour of
 and warns with a ``FutureWarning`` on every ``min_size`` call. The lock pins
 0.25.2, which has no ``max_size``, while a fresh PyPI install resolves 0.26.
 These tests pin the boundary (an object of exactly ``min_size`` pixels is
-kept, one of ``min_size - 1`` is removed) with warnings raised as errors, so
-they fail on either release if the call regresses.
+kept, one of ``min_size - 1`` is removed) with warnings raised as errors,
+against the scikit-image that is installed -- the lock's, in CI. Run them
+under 0.26 with ``uv run --with scikit-image==0.26.0 python -m pytest``
+(``pytest`` alone runs the project interpreter and ignores ``--with``).
+``tests/unit/sdk_/test_skimage_compat.py`` drives both branches of the
+helper with stubs, on any release.
 """
 
 from __future__ import annotations

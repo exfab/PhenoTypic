@@ -150,15 +150,13 @@ class ObjectDetector(ImageOperation, ABC):
            threshold = skimage.filters.threshold_otsu(enh)
            binary_mask = enh > threshold
 
-           # Label connected components
-           labeled_map, num_objects = ndimage.label(binary_mask)
+           # Remove small noise: drop every component under 20 pixels
+           components, _ = ndimage.label(binary_mask)
+           sizes = np.bincount(components.ravel())
+           binary_mask &= sizes[components] >= 20
 
-           # Remove small noise: zero every component under 20 pixels
-           sizes = np.bincount(labeled_map.ravel())
-           too_small = sizes < 20
-           too_small[0] = False  # label 0 is background
-           labeled_map[too_small[labeled_map]] = 0
-           binary_mask = labeled_map > 0
+           # Label the surviving components
+           labeled_map, num_objects = ndimage.label(binary_mask)
 
            # Set both outputs
            image.objmask[:] = binary_mask
@@ -184,15 +182,15 @@ class ObjectDetector(ImageOperation, ABC):
 
     - **scipy.ndimage.label():** Assigns unique integers to connected components in a binary
       mask. Returns (labeled_array, num_features). Specify ``structure`` for connectivity
-      (default 3x3 with all 8 neighbors; use ``generate_binary_structure(2, 1)`` for
-      4-connectivity).
+      (default: cross-shaped, i.e. 4-connectivity in 2-D; use
+      ``generate_binary_structure(2, 2)`` for 8-connectivity).
 
     - **skimage.morphology.remove_small_objects():** Removes small connected regions.
-      scikit-image 0.26 deprecated its ``min_size`` (removes regions smaller than the
-      value) for ``max_size`` (removes regions of that size or fewer), and the locked
-      0.25.2 has no ``max_size``. Code inside PhenoTypic calls it only through
-      ``phenotypic.sdk_._skimage_compat.remove_objects_smaller_than``, which keeps the
-      ``min_size`` rule on both.
+      scikit-image 0.26 renamed its threshold: ``min_size`` (removes regions *smaller
+      than* the value) is deprecated in favour of ``max_size`` (removes regions of that
+      size *or smaller*), so ``max_size=n - 1`` keeps the old ``min_size=n`` boundary.
+      Earlier releases accept only ``min_size``. The label-size mask in step 4 behaves
+      the same on every release.
 
     - **skimage.segmentation.clear_border():** Sets pixels on the image border to False,
       eliminating objects that touch the edge (common in arrayed imaging where wells at
