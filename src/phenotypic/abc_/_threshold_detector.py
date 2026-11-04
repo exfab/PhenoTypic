@@ -53,8 +53,8 @@ class ThresholdDetector(ObjectDetector, ABC):
       Automatic, global, works for balanced histograms.
     - [LiDetector](src/phenotypic/detect/_li_detector.py): Minimizes Kullback-Leibler divergence.
       Good for dark colonies on bright background.
-    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes the correlation between the original
-      and binarised image (Yen's criterion). Handles skewed histograms.
+    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes the total
+      entropic correlation of the two classes (Yen's criterion).
     - [TriangleDetector](src/phenotypic/detect/_triangle_detector.py): Connects histogram
       extrema. Works well for non-overlapping bimodal distributions.
     - [IsodataDetector](src/phenotypic/detect/_isodata_detector.py): Iteratively refines based
@@ -230,28 +230,21 @@ class ThresholdDetector(ObjectDetector, ABC):
         ...     "Yen": YenDetector(),
         ...     "Triangle": TriangleDetector(),
         ... }
-        >>> counts = {
-        ...     name: detector.apply(plate).num_objects
-        ...     for name, detector in detectors.items()
-        ... }
-        >>> sorted(counts) == ["Li", "Otsu", "Triangle", "Yen"]
-        True
+        >>> for name, detector in detectors.items():
+        ...     print(f"{name}: {detector.apply(plate).num_objects} objects")
+        Otsu: 552 objects
+        Li: 543 objects
+        Yen: 500 objects
+        Triangle: 378 objects
 
         Build a pipeline with thresholding and refinement:
 
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.refine import SmallObjectRemover
-        >>> pipeline = ImagePipeline(
-        ...     ops=[
-        ...         BlurGauss(sigma=2),  # Suppress noise
-        ...         OtsuDetector(ignore_zeros=True),  # Threshold
-        ...         SmallObjectRemover(min_size=50),  # Cleanup
-        ...     ]
-        ... )
-        >>> result = pipeline.apply(plate)
-        >>> result.num_objects <= detected.num_objects
-        True
+        >>> detected.num_objects  # Otsu alone leaves many small fragments
+        552
+        >>> cleaned = SmallObjectRemover(min_size=50).apply(detected)
+        >>> cleaned.num_objects
+        96
 
         Tuning threshold detection on your plate images: apply several
         strategies to the same plate and keep the one whose count matches the
@@ -262,11 +255,11 @@ class ThresholdDetector(ObjectDetector, ABC):
         ...     "Yen": YenDetector(ignore_zeros=True),
         ...     "Triangle": TriangleDetector(),
         ... }
-        >>> results = {
-        ...     name: det.apply(plate).num_objects for name, det in strategies.items()
-        ... }
-        >>> len(results)
-        3
+        >>> for name, det in strategies.items():
+        ...     print(f"{name}: {det.apply(plate).num_objects} colonies detected")
+        Otsu: 552 colonies detected
+        Yen: 500 colonies detected
+        Triangle: 378 colonies detected
     """
 
     @abstractmethod

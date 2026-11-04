@@ -46,7 +46,8 @@ class UserThreshold(ThresholdDetector):
             no universal optimum, since it depends on the imaging setup and
             organism contrast. ``detect_mat`` is normalised to
             0.0--1.0 whatever the file's bit depth, so give the cutoff on
-            that scale (not 0--255); must be non-negative. Raising it is more conservative (fewer
+            that scale (not 0--255); must be non-negative. Raising it is
+            more conservative (fewer
             colonies, less noise); lowering it is more sensitive (more
             colonies, more noise). Default: 0.5. Start by inspecting the
             histogram for the valley between the background and colony
@@ -79,9 +80,8 @@ class UserThreshold(ThresholdDetector):
     """
 
     # ``detect_mat`` follows the project's float-normalized [0, 1] intensity
-    # convention, so the search window spans that range. The *valid* domain is
-    # bit-depth dependent (0--255 / 0--65535 for integer images), so no tight
-    # Field bound is added — only non-negativity is enforced in ``_operate``.
+    # convention, so the search window spans that range. No tight Field bound
+    # is added: only ``threshold < 0`` is rejected, in ``_operate``.
     threshold: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     ignore_zeros: bool = False
     ignore_borders: bool = True
@@ -97,16 +97,15 @@ class UserThreshold(ThresholdDetector):
 
         Args:
             image: The input image object. Must have an ``detect_mat`` attribute
-                (detection matrix for processing). Optionally uses
-                ``bit_depth`` to validate threshold range.
+                (detection matrix for processing), normalised to 0--1.
 
         Returns:
             Image: The input image with its ``objmask`` attribute updated to the
                 computed binary mask.
 
         Raises:
-            ValueError: If threshold is negative or exceeds the image's intensity
-                range (inferred from bit depth if available).
+            ValueError: If threshold is negative. No upper bound is checked;
+                ``detect_mat`` is on a 0--1 scale.
         """
         enh_matrix = image.detect_mat[:]
 

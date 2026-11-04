@@ -363,7 +363,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         >>> # Or use ImagePipeline, which chains the same operations
         >>> pipeline = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
         >>> processed = pipeline.apply(image)
-        >>> processed.num_objects > 0
+        >>> processed.num_objects == detected.num_objects
         True
 
         How instance methods work with parallel execution:

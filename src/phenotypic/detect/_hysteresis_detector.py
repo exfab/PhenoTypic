@@ -47,7 +47,8 @@ class HysteresisDetector(ThresholdDetector):
             name (``'otsu'``, ``'triangle'``, ``'li'``, ``'yen'``,
             ``'isodata'``, ``'mean'``, ``'minimum'``) for automatic
             computation, or a float for a manual value on the
-            normalised 0.0--1.0 scale of ``detect_mat`` (not 0--255). Default ``'mean'``. Lowering *low* grows
+            normalised 0.0--1.0 scale of ``detect_mat`` (not 0--255).
+            Default ``'mean'``. Lowering *low* grows
             each seed outward to capture more faint marginal pixels but
             risks bridging colonies into noise; raising it tightens each
             colony toward its bright core. Start with ``'mean'`` and adjust
