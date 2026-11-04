@@ -64,8 +64,8 @@ class SHAPE(PrimaryMeasure):
     )
     COMPACTNESS = Entry(
         "Compactness",
-        "How far the colony's outline departs from a circle: the inverse of "
-        r"Circularity, calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. "
+        "How far the colony's outline departs from a circle, as the inverse of "
+        r"Circularity. Calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. "
         "On pixel colonies the value depends on size: round colonies of 30 px "
         "radius or more read about 1.06 to 1.11, and very small colonies (under "
         "about 10 px) can read well below 1, down to about 0.86 at 5 px and "
@@ -74,7 +74,9 @@ class SHAPE(PrimaryMeasure):
     )
     ORIENTATION = Entry(
         "Orientation",
-        "Angle (in radians) between the colony's major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.",
+        "Angle, in radians from −π/2 to π/2, between the colony's major axis and "
+        "the image's vertical (row) axis: 0 for a colony elongated top to bottom "
+        "and about ±π/2 for one elongated left to right. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.",
         unit=UNITS.RADIAN,
     )
     MEAN_BOUNDARY_DIST = Entry(
