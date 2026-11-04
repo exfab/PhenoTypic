@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
+import logging
 import shutil
 import subprocess
 import warnings
@@ -67,6 +69,38 @@ _METADATA_SCHEMA_VERSION_ATTR = "metadata_schema_version"
 _METADATA_SCHEMA_VERSION_PER_TOPIC = 1
 _METADATA_SCHEMA_VERSION_FLAT = 2
 _METADATA_SCHEMA_VERSION = _METADATA_SCHEMA_VERSION_FLAT
+
+
+class _DropExifNotFound(logging.Filter):
+    """Drop exifread's ``<format> file does not have exif data.`` record.
+
+    ``exifread.process_file`` logs its ``ExifNotFound`` exception at WARNING
+    and returns ``{}`` for any image without an EXIF block, which is most
+    PNGs. With no logging configured that lands on stderr through
+    :data:`logging.lastResort` on every plate load. A missing EXIF block is
+    the ordinary case for a PNG, so the record is noise. Every other exifread
+    record, such as a corrupted field or an IFD loop in an image that does
+    carry EXIF, still passes.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not isinstance(record.msg, exifread.ExifNotFound)
+
+
+@contextlib.contextmanager
+def _quiet_missing_exif():
+    """Apply :class:`_DropExifNotFound` to the ``exifread`` logger, then remove it.
+
+    A fresh filter instance per call, so concurrent readers each remove only
+    their own.
+    """
+    logger = logging.getLogger("exifread")
+    drop = _DropExifNotFound()
+    logger.addFilter(drop)
+    try:
+        yield
+    finally:
+        logger.removeFilter(drop)
 
 
 def _encode_meta(val: Any) -> str:
@@ -450,7 +484,8 @@ class ImageIOHandler(ImageColorSpace):
         if exifread is not None:
             try:
                 with open(filepath, "rb") as f:
-                    tags = exifread.process_file(f, details=True)
+                    with _quiet_missing_exif():
+                        tags = exifread.process_file(f, details=True)
                     for tag, value in tags.items():
                         if tag.startswith("Thumbnail"):
                             continue  # Skip thumbnail data
