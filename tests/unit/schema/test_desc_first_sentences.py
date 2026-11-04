@@ -20,6 +20,7 @@ from phenotypic.schema import (
     BBOX,
     EDGE_CORRECTION,
     GRID,
+    GRID_SPREAD,
     IMAGE,
     INTENSITY,
     LOG_GROWTH_MODEL,
@@ -158,11 +159,20 @@ def test_intensity_cv_carries_the_small_sample_factor() -> None:
 
 
 @pytest.mark.parametrize(
-    "member", [GRID.ROW_NUM, GRID.COL_NUM, BBOX.CENTER_RR, BBOX.CENTER_CC]
+    "member",
+    [
+        GRID.ROW_NUM,
+        GRID.COL_NUM,
+        BBOX.CENTER_RR,
+        BBOX.CENTER_CC,
+        GRID_SPREAD.OBJECT_SPREAD,
+    ],
+    ids=str,
 )
 def test_grid_cells_and_bbox_centers_are_centroids(member) -> None:
-    # MeasureBounds writes skimage's centroid as Bbox_CenterRR/CC, and
-    # GridFinder cuts rows and columns on those columns.
+    # MeasureBounds writes skimage's centroid as Bbox_CenterRR/CC; GridFinder
+    # cuts rows and columns on those columns, and MeasureGridSpread takes its
+    # pairwise distances between them.
     first = _first_sentence(member.desc)
     assert "centroid" in first
     assert "center of the bounding box" not in first
