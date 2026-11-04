@@ -42,6 +42,13 @@ from phenotypic.plotting._pipeline import PlotBinding, normalize_plot_bindings
 
 logger = logging.getLogger("ImagePipeline")
 
+#: The remedy for a measure() merge conflict that is not about the grid.
+_GENERIC_CONFLICT_ADVICE = (
+    "Each column must come from one measurement, or from several that agree "
+    "on every colony: remove one of the steps, or configure them so their "
+    "output columns differ."
+)
+
 
 def _normalize_operation_collection(
         value: Any,
@@ -1158,6 +1165,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Raises:
             Exception: An exception is raised if a measurement operation fails while being
                 applied to the image.
+            MeasurementConflictError: If two measurement tables give any colony
+                different values for a column they share. The usual cause is a
+                ``GridImage`` whose grid differs from the one the pipeline's
+                ``nrows``/``ncols`` preset (or an explicit grid finder) lays
+                out; give both the same grid, or leave ``nrows``/``ncols`` off
+                the pipeline. A ``ValueError`` subclass, from
+                :mod:`phenotypic.sdk_.exceptions_`.
         """
         # Reset measurement times and memory for new measure run if benchmarking
         if self._benchmark:
@@ -1269,7 +1283,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        df = self._merge_on_object_labels(measurements)
+        df = self._merge_on_object_labels(
+                measurements,
+                sources=[
+                    *meas_to_run,
+                    "image.grid.info()" if hasattr(image, "grid") else "image.objects.info()",
+                ],
+                advice=lambda columns: self._measurement_conflict_advice(
+                        image, meas_to_run, columns
+                ),
+        )
 
         # Metadata (and, downstream, external-joined metadata) belongs at the
         # front, ahead of the measurements; the info block stays last. Ordering
@@ -1316,7 +1339,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         Returns a copy of ``self._meas`` with one optional addition: when both
         ``self._nrows`` and ``self._ncols`` are set and no existing measurement
-        is an instance of :class:`GridFinder`, an ``AutoGridFinder`` configured
+        is an instance of :class:`GridFinder`, a ``CenteredAutoGridFinder`` configured
         with the preset is prepended so it runs before downstream grid-aware
         measurements. The persistent ``self._meas`` mapping is never mutated,
         which keeps repeat ``measure()`` calls idempotent and serialization
@@ -1479,42 +1502,171 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return df
 
     @staticmethod
-    def _merge_on_object_labels(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
-        """
-        Merge multiple DataFrames only if share object labels
+    def _merge_on_object_labels(
+            dataframes_list: List[pd.DataFrame],
+            sources: Optional[List[str]] = None,
+            advice: Optional[Callable[[Tuple[str, ...]], str]] = None,
+    ) -> pd.DataFrame:
+        """Inner-join measurement tables on ``Object_Label``, keeping shared columns once.
+
+        A column present in more than one table (the ``Bbox_*`` geometry, the
+        ``Grid_*`` assignment) is kept from the first table that has it, after
+        checking that every colony both tables carry has the same value in
+        each: rows are aligned on ``Object_Label`` first, values are compared
+        exactly (the shared columns are computed by the same code from the same
+        object map, so no float tolerance is applied), and NaN in both tables
+        counts as the same value. A colony that only one table reports is
+        dropped by the inner join, as before.
 
         Args:
-            dataframes_list: List of pandas DataFrames to merge
+            dataframes_list: The tables to merge, in run order. A table indexed
+                by ``Object_Label`` is reset to carry it as a column.
+            sources: One name per table, used in the error message. Defaults to
+                ``table 1``, ``table 2``, ...
+            advice: Called with the conflicting columns to produce the remedy
+                appended to the error message. Defaults to a generic remedy.
 
         Returns:
-            Merged DataFrame containing only the data from DataFrames with matching index names
+            One row per colony present in every table: the first table's
+            columns, then each later table's columns that no earlier table had.
 
         Raises:
-            ValueError: If no DataFrames are provided or if no matching index names are found
+            ValueError: If no DataFrames are provided.
+            MeasurementConflictError: If two tables give any colony different
+                values for a shared column.
         """
         if not dataframes_list or not all(
                 [isinstance(x, pd.DataFrame) for x in dataframes_list]
         ):
             raise ValueError("No DataFrames provided")
+        if sources is None:
+            sources = [f"table {i + 1}" for i in range(len(dataframes_list))]
+
         new_df = dataframes_list[0]
         if new_df.index.name == OBJECT.LABEL:
             new_df = new_df.reset_index(drop=False)
+        owner = {column: sources[0] for column in new_df.columns}
 
-        if len(dataframes_list) > 1:
-            for df in dataframes_list[1:]:
-                if df.index.name == OBJECT.LABEL:
-                    df = df.reset_index(drop=False)
-
-                cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
-
-                for col_new_df in new_df.columns:
-                    if col_new_df != OBJECT.LABEL:  # skip the object label
-                        for col_other_df in df.columns:
-                            if col_new_df == col_other_df and np.all(
-                                    df[col_new_df] == df[col_other_df]
-                            ):
-                                cols_to_merge_on.append(col_other_df)
-
-                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=("", "_merged"))
+        for source, df in zip(sources[1:], dataframes_list[1:]):
+            if df.index.name == OBJECT.LABEL:
+                df = df.reset_index(drop=False)
+            shared = [
+                column
+                for column in new_df.columns
+                if column != OBJECT.LABEL and column in df.columns
+            ]
+            if shared:
+                ImagePipelineCore._refuse_conflicting_shared_columns(
+                        new_df, df, shared, owner, source, advice
+                )
+                df = df.drop(columns=shared)
+            new_df = new_df.merge(df, on=OBJECT.LABEL)
+            owner.update({column: source for column in df.columns if column not in owner})
 
         return new_df
+
+    @staticmethod
+    def _refuse_conflicting_shared_columns(
+            left: pd.DataFrame,
+            right: pd.DataFrame,
+            shared: List[Any],
+            owner: Dict[Any, str],
+            source: str,
+            advice: Optional[Callable[[Tuple[str, ...]], str]],
+    ) -> None:
+        """Raise ``MeasurementConflictError`` if *left* and *right* disagree on *shared*.
+
+        The two tables are aligned on ``Object_Label`` with an inner join, so
+        only colonies both carry are compared. Values are compared as Python
+        objects, which is exact for numbers and works for categoricals whose
+        category sets differ (two grid shapes give exactly that, and pandas
+        refuses ``==`` between such categoricals).
+        """
+        from phenotypic.sdk_.exceptions_ import MeasurementConflictError
+
+        aligned = left[[OBJECT.LABEL, *shared]].merge(
+                right[[OBJECT.LABEL, *shared]], on=OBJECT.LABEL
+        )
+        # merge() orders the result key, left columns, right columns, so the
+        # two sides are addressed by position rather than by suffixed name.
+        n_shared = len(shared)
+        differs_any = np.zeros(len(aligned), dtype=bool)
+        conflicting: List[Any] = []
+        for position, column in enumerate(shared):
+            left_values = aligned.iloc[:, 1 + position].astype(object).to_numpy()
+            right_values = aligned.iloc[:, 1 + n_shared + position].astype(object).to_numpy()
+            left_na = pd.isna(left_values)
+            right_na = pd.isna(right_values)
+            differs = left_na != right_na
+            both = ~left_na & ~right_na
+            differs[both] = left_values[both] != right_values[both]
+            if differs.any():
+                conflicting.append(column)
+                differs_any |= differs
+        if not conflicting:
+            return
+
+        columns = tuple(str(column) for column in conflicting)
+        earlier = list(dict.fromkeys(owner[column] for column in conflicting))
+        raise MeasurementConflictError(
+                columns=columns,
+                n_objects=int(differs_any.sum()),
+                n_compared=len(aligned),
+                sources=[*earlier, source],
+                advice=(
+                    advice(columns) if advice is not None else _GENERIC_CONFLICT_ADVICE
+                ),
+        )
+
+    def _measurement_conflict_advice(
+            self,
+            image: Image,
+            run_order: Dict[str, MeasureFeatures],
+            columns: Tuple[str, ...],
+    ) -> str:
+        """The remedy for a ``measure()`` merge conflict on *columns*.
+
+        Grid columns disagree when the image's grid and a grid finder the
+        pipeline runs lay out different grids, so the remedy names both shapes
+        and the default ``CenteredAutoGridFinder``. Any other column gets the
+        generic remedy.
+        """
+        from phenotypic.abc_ import GridFinder
+        from phenotypic.schema import GRID
+
+        if not hasattr(image, "grid") or not any(
+                GRID.owns_header(column) for column in columns
+        ):
+            return _GENERIC_CONFLICT_ADVICE
+
+        image_grid = (
+            f"The image is a GridImage whose {type(image.grid_finder).__name__} "
+            f"lays out an {image.nrows} x {image.ncols} grid"
+        )
+        explicit = [
+            (key, step) for key, step in self._meas.items()
+            if isinstance(step, GridFinder)
+        ]
+        if not explicit and any(isinstance(m, GridFinder) for m in run_order.values()):
+            return (
+                f"{image_grid}, but the pipeline's nrows={self._nrows}, "
+                f"ncols={self._ncols} preset makes measure() add "
+                f"CenteredAutoGridFinder(nrows={self._nrows}, "
+                f"ncols={self._ncols}). Give the image and the pipeline the "
+                f"same grid, the default CenteredAutoGridFinder with one "
+                f"shape: set the pipeline's nrows/ncols to {image.nrows} and "
+                f"{image.ncols}, or build the image with nrows={self._nrows}, "
+                f"ncols={self._ncols}, or leave nrows and ncols off the "
+                f"pipeline so measure() uses the image's own grid."
+            )
+        steps = ", ".join(
+                f"'{key}' ({type(step).__name__})" for key, step in explicit
+        )
+        return (
+            f"{image_grid}, but the pipeline's measurement step {steps} "
+            f"assigns colonies to a grid of its own. Give the image and the "
+            f"pipeline the same grid: use the default CenteredAutoGridFinder "
+            f"with nrows={image.nrows}, ncols={image.ncols} in both, or remove "
+            f"the grid finder from the pipeline's measurements so measure() "
+            f"uses the image's own grid."
+        )
