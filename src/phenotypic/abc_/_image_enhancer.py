@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
@@ -10,6 +11,56 @@ from ._image_operation import ImageOperation
 from phenotypic.sdk_.funcs_ import validate_operation_integrity
 from abc import ABC, abstractmethod
 from phenotypic.sdk_.mixin import FootprintMixin
+
+
+class DetectionClearedWarning(UserWarning):
+    """A pipeline runs an image enhancer after its last object detector.
+
+    Enhancers write ``detect_mat``, and writing ``detect_mat`` resets the
+    object map. So an enhancer that runs after the last detector silently
+    erases every colony that detector found, and whatever follows (a refiner,
+    a measurement) sees an empty plate.
+
+    The pipeline run methods (``apply``, ``apply_and_measure``,
+    ``apply_with_intermediates`` and ``apply_napari``) check the order of the
+    pipeline's ``ops`` once per call, before any step runs, with nested
+    pipelines included in run order. A pipeline inside an operation, such as
+    a ``CompositeDetector`` branch, is checked in its own run order. The
+    warning names the enhancer and the detector before it.
+
+    These are not warned about:
+
+    - an enhancer that a later detector follows, since that detector
+      re-detects (detect, align with ``GridAligner``, enhance, detect again
+      loses nothing);
+    - the ``meas``, ``post``, ``filters`` and ``model`` slots;
+    - a bare ``enhancer.apply(image)``. An image may legitimately carry
+      objects before enhancement: ``load_synth_yeast_plate()`` ships with its
+      colonies already in the object map.
+
+    A ``GridApply`` whose ``image_op`` is a detector counts as a detector.
+
+    The warning never changes a result: the pipeline still runs every step.
+    The fix is to put enhancers before the detector.
+
+    Example:
+        Blurring after detection erases the colonies Otsu found:
+
+        >>> import warnings
+        >>> from phenotypic import ImagePipeline
+        >>> from phenotypic.abc_ import DetectionClearedWarning
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.enhance import BlurGauss
+        >>> pipeline = ImagePipeline(ops=[OtsuDetector(), BlurGauss(sigma=2.0)])
+        >>> with warnings.catch_warnings(record=True) as caught:
+        ...     warnings.simplefilter("always")
+        ...     result = pipeline.apply(load_synth_yeast_plate())
+        >>> any(w.category is DetectionClearedWarning for w in caught)
+        True
+        >>> result.num_objects
+        0
+    """
 
 
 class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
@@ -37,10 +88,11 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     **What is ImageEnhancer?**
 
     ImageEnhancer operates on the principle of **non-destructive preprocessing**: all modifications
-    are applied to `image.detect_mat` (a working copy of grayscale), while original image components
-    (`image.rgb`, `image.gray`, `image.objmask`, `image.objmap`) remain protected and unchanged.
-    This allows you to experiment with multiple enhancement chains without affecting raw data or
-    detection results.
+    are applied to `image.detect_mat` (a working copy of grayscale), while the original image
+    components (`image.rgb`, `image.gray`) remain protected and unchanged. This allows you to
+    experiment with multiple enhancement chains without affecting raw data. Writing `detect_mat`
+    does reset the object map, so an enhancer run after a detector erases its colonies; an
+    ``ImagePipeline`` that orders its steps that way emits :class:`DetectionClearedWarning`.
 
     **Role in the Detection Pipeline**
 
@@ -247,8 +299,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
     Methods:
         apply(image, inplace=False): Applies the enhancement to an image. Returns a modified
-            Image with enhanced `detect_mat` but unchanged RGB/gray/objects. Handles copy/inplace
-            logic and validates data integrity.
+            Image with enhanced `detect_mat` but unchanged RGB/gray, and an empty object map.
+            Handles copy/inplace logic and validates data integrity.
         _operate(self, image): Abstract instance method implemented by subclasses.
             Performs the actual enhancement algorithm. Access parameters via ``self.param_name``.
         _make_footprint(shape, width): Static utility that creates a binary morphological

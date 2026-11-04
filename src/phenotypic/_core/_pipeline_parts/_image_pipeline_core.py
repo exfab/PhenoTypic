@@ -31,6 +31,7 @@ import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.abc_._post_measurement import PostMeasurement
+from phenotypic._core._pipeline_parts._step_order_check import step_order_checked
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
 from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # Import the entry type from the qc._recipe *submodule* (not the package
@@ -983,15 +984,22 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset (bool, optional): Whether to reset the image before applying the pipeline.
                 If None (default), uses the pipeline's reset setting from __init__.
                 If explicitly set to True or False, overrides the pipeline setting.
+
+        Warns:
+            DetectionClearedWarning: Once per call, before any step runs, when
+                an image enhancer comes after an object detector in the run
+                order of ``ops`` (nested pipelines included). The steps still
+                all run.
         """
-        effective_reset = reset if reset is not None else self._reset
-        img = image if inplace else image.copy()
         from phenotypic._core._provenance import provenance_application
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
-            if effective_reset:
-                img.reset()
-            self._run_operations(img)
+        with step_order_checked(self, stacklevel=2):
+            effective_reset = reset if reset is not None else self._reset
+            img = image if inplace else image.copy()
+            with provenance_application(img, pipeline=self._provenance_pipeline):
+                if effective_reset:
+                    img.reset()
+                self._run_operations(img)
         return img
 
     def apply_with_intermediates(
@@ -1112,7 +1120,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             else:
                 intermediates[key] = _detached_snapshot(current)
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
+        with step_order_checked(self, stacklevel=2), provenance_application(
+                img, pipeline=self._provenance_pipeline
+        ):
             owns_application = len(
                 img._metadata.provenance_journal["applications"]
             ) == application_count + 1
@@ -1379,7 +1389,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             pd.DataFrame: A DataFrame containing measurement data for the
             processed image.
         """
-        img = self.apply(image=image, inplace=inplace, reset=reset)
+        # Checked here as well as in ``apply`` so the warning points at the
+        # caller of ``apply_and_measure``; the inner ``apply`` then skips.
+        with step_order_checked(self, stacklevel=2):
+            img = self.apply(image=image, inplace=inplace, reset=reset)
         return self.measure(
                 image=img,
                 include_metadata=include_metadata,

@@ -14,6 +14,7 @@ power-user knobs that move on subclass override.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, ClassVar, Dict, Tuple
 
 import numpy as np
@@ -35,6 +36,61 @@ Used as the seed for fitted-β optimization in :class:`LinearCapAndLagModel`
 and as the fallback when the prediction row carries ``NaN`` for the
 ``beta`` field.
 """
+
+_RATE_BOUND_RTOL = 1e-6
+"""Relative tolerance for "``v`` sits at its upper bound".
+
+The trust-region optimizer returns a bound-pinned parameter a few ULPs
+inside the bound (``49.99999999999999`` for a bound of 50), so equality
+would miss it."""
+
+_RATE_BOUND_MAX_NAMED_GROUPS = 5
+"""How many affected groups :class:`GrowthRateAtBoundWarning` names."""
+
+
+class GrowthRateAtBoundWarning(UserWarning):
+    """A fitted growth rate sits at the optimizer's upper bound.
+
+    :class:`~phenotypic.analysis.LinearLagModel` and
+    :class:`~phenotypic.analysis.LinearCapAndLagModel` bound the post-lag
+    growth rate ``v`` at 50 units of ``on`` per unit of time. A fit that
+    returns ``v`` at that bound did not find the rate; it hit the ceiling,
+    and the true rate is probably higher. Area columns reach it easily,
+    because area grows with the square of radius.
+
+    The warning is emitted once per ``analyze`` call, from the calling
+    process (so ``n_jobs > 1`` still shows it). It names the model, the
+    number of affected groups and up to five of their keys. It never
+    changes the fitted values. To fix the cause, fit a radius column such
+    as ``Size_RobustMeanRadius``, or check that the time column is in the
+    units you expect (time in days rather than hours multiplies the rate
+    by 24). It is not raised for ``alpha``, the lag-transition sharpness,
+    which sits at its own bound whenever the growth onset is sharp.
+
+    Example:
+        A synthetic area series growing at 120 px per hour hits the bound:
+
+        >>> import warnings
+        >>> import numpy as np
+        >>> import pandas as pd
+        >>> from phenotypic.analysis import GrowthRateAtBoundWarning, LinearLagModel
+        >>> from phenotypic.schema import CULTURE, GENETIC
+        >>> strain, time = str(GENETIC.STRAIN), str(CULTURE.TIME)
+        >>> t = np.arange(0.0, 115.0, 6.0)
+        >>> area = 500.0 + 120.0 * np.logaddexp(0.0, t - 24.0)
+        >>> noise = 1 + 0.005 * np.random.default_rng(0).standard_normal(3 * t.size)
+        >>> df = pd.DataFrame({
+        ...     strain: "SYN-01",
+        ...     time: np.tile(t, 3),
+        ...     "Size_Area": np.tile(area, 3) * noise,
+        ... })
+        >>> model = LinearLagModel(on="Size_Area", groupby=[strain])
+        >>> with warnings.catch_warnings(record=True) as caught:
+        ...     warnings.simplefilter("always")
+        ...     fit = model.analyze(df)
+        >>> any(w.category is GrowthRateAtBoundWarning for w in caught)
+        True
+    """
 
 
 class _LinearSoftplusBase(ModelFitter):
@@ -376,4 +432,48 @@ class _LinearSoftplusBase(ModelFitter):
 
         self._prior.prepare(data, self.groupby, self.time_label)
 
-        return super().analyze(data)
+        scores = super().analyze(data)
+        # Checked here, in the calling process, rather than per group in
+        # ``_unpack_params``: with ``n_jobs > 1`` the per-group fit runs in
+        # a joblib worker whose warnings never reach the caller, and a
+        # per-group warning would repeat once per group (K0-05).
+        self._warn_if_rate_at_bound()
+        return scores
+
+    def _warn_if_rate_at_bound(self) -> None:
+        """Emit one :class:`GrowthRateAtBoundWarning` if any fitted ``v`` is pinned.
+
+        Reads the member-keyed ``_latest_fit_internal`` frame written by
+        :meth:`ModelFitter.analyze`. Only ``v`` is checked: ``alpha``
+        reaches its own bound on any sharp onset and is not a sign of a
+        wrong rate. Groups whose fit failed (``NaN``) never count.
+        """
+        fit = self._latest_fit_internal
+        # ``_measurement_infoclass`` is typed ``ClassVar[type]``; the enum of
+        # both subclasses declares a ``v`` member.
+        v_member = getattr(self._measurement_infoclass, "v")
+        if fit.empty or v_member not in fit.columns:
+            return
+        v = pd.to_numeric(fit[v_member], errors="coerce")
+        at_bound = fit.loc[v >= self._V_UPPER * (1 - _RATE_BOUND_RTOL)]
+        if at_bound.empty:
+            return
+
+        keys = [
+            "/".join(str(row[col]) for col in self.groupby)
+            for _, row in at_bound.head(_RATE_BOUND_MAX_NAMED_GROUPS).iterrows()
+        ]
+        more = len(at_bound) - len(keys)
+        named = ", ".join(keys) + (f", and {more} more" if more > 0 else "")
+        warnings.warn(
+                f"{type(self).__name__}: the fitted growth rate v sits at its "
+                f"upper bound of {self._V_UPPER:g} for {len(at_bound)} of "
+                f"{len(fit)} groups ({'/'.join(self.groupby)}: {named}). "
+                f"The true rate of {self.on!r} is probably higher than the "
+                f"value returned. Fit a radius column such as "
+                f"'Size_RobustMeanRadius', which grows far more slowly than "
+                f"area, or check the units of the time column "
+                f"{self.time_label!r}.",
+                GrowthRateAtBoundWarning,
+                stacklevel=3,
+        )
