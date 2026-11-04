@@ -37,7 +37,7 @@ class SIZE(DirectPhenotype):
 
     AREA = Entry(
         "Area",
-        "Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.",
+        "Total number of pixels the colony occupies.",
         bio_desc=(
             "Projected 2D footprint of the colony in pixels — a common proxy "
             "for colony size and overall growth in arrayed plate assays. With "
