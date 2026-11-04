@@ -108,11 +108,11 @@ def load_area_meas() -> pd.DataFrame:
 def load_yeast_plate(
     mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
-    """Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.
+    """Load a Rhodotorula yeast plate image cropped to the center.
 
-    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
-    in a 96-well grid. Irregular hyphal morphology with spreading growth --
-    suitable for filamentous fungi tutorials and how-to guides.
+    Returns a pre-cropped plate image of Rhodotorula yeast colonies on a
+    2 x 4 grid (``nrows=2``, ``ncols=4``) -- suitable for yeast tutorials and
+    how-to guides.
 
     Args:
         mode: Return format. Default: ``'GridImage'``.
@@ -202,8 +202,8 @@ def load_yeast_plate_full(
 
     Returns the full plate image including scanner margins and a color checker
     target. Use for tutorials and how-to guides that demonstrate cropping
-    (``CropImage``), padding (``PadImage``), vignetting correction
-    (``VignetteCorrector``), or color correction (``ColorCorrector``).
+    (``CropImage``), padding (``PadImage``), or color correction
+    (``ColorCorrector``).
 
     Args:
         mode: Return format. Default: ``'Image'``.
@@ -223,7 +223,7 @@ def load_fungi_plate_full(
     target. Use for fungi-specific correction workflow tutorials.
 
     Args:
-        mode: Return format. Default: ``'Image'``.
+        mode: Return format. Default: ``'GridImage'``.
 
     Returns:
         The full plate image in the requested format.

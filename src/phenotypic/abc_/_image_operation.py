@@ -199,23 +199,17 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     **Operation chaining and pipelines**
 
-    Operations are designed for method chaining:
+    Use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:
 
-    .. code-block:: python
-
-        result = (BlurGauss(sigma=2).apply(image)
-                 .apply_operation(OtsuDetector()))
-
-    Or use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:
-
-    .. code-block:: python
-
-        pipeline = ImagePipeline()
-        pipeline.add(BlurGauss(sigma=2))
-        pipeline.add(OtsuDetector())
-        pipeline.add(GridFinder())
-
-        results = pipeline.operate([image1, image2, image3])
+    >>> from phenotypic import ImagePipeline
+    >>> from phenotypic.data import load_synth_yeast_plate
+    >>> from phenotypic.detect import OtsuDetector
+    >>> from phenotypic.enhance import BlurGauss
+    >>> image = load_synth_yeast_plate()
+    >>> pipeline = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
+    >>> result = pipeline.apply(image)
+    >>> result.num_objects > 0
+    True
 
     **Parallel execution support**
 

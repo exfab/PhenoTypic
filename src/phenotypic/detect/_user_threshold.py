@@ -44,9 +44,9 @@ class UserThreshold(ThresholdDetector):
             intensity >= *threshold* become colony (True), others
             background (False). This is inherently a user choice -- there is
             no universal optimum, since it depends on the imaging setup and
-            organism contrast. Valid range is bit-depth dependent: 0--255
-            for 8-bit, 0--65535 for 16-bit, 0.0--1.0 for float images;
-            must be non-negative. Raising it is more conservative (fewer
+            organism contrast. ``detect_mat`` is normalised to
+            0.0--1.0 whatever the file's bit depth, so give the cutoff on
+            that scale (not 0--255); must be non-negative. Raising it is more conservative (fewer
             colonies, less noise); lowering it is more sensitive (more
             colonies, more noise). Default: 0.5. Start by inspecting the
             histogram for the valley between the background and colony

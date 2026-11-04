@@ -53,8 +53,8 @@ class ThresholdDetector(ObjectDetector, ABC):
       Automatic, global, works for balanced histograms.
     - [LiDetector](src/phenotypic/detect/_li_detector.py): Minimizes Kullback-Leibler divergence.
       Good for dark colonies on bright background.
-    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes object variance.
-      Excellent for sharply defined colonies.
+    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes the correlation between the original
+      and binarised image (Yen's criterion). Handles skewed histograms.
     - [TriangleDetector](src/phenotypic/detect/_triangle_detector.py): Connects histogram
       extrema. Works well for non-overlapping bimodal distributions.
     - [IsodataDetector](src/phenotypic/detect/_isodata_detector.py): Iteratively refines based
