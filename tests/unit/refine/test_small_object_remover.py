@@ -20,7 +20,10 @@ from scipy import ndimage as ndi
 
 from phenotypic import Image
 from phenotypic.refine import SmallObjectRemover
-from phenotypic.sdk_._skimage_compat import remove_objects_smaller_than
+from phenotypic.sdk_._skimage_compat import (
+    _max_size_for,
+    remove_objects_smaller_than,
+)
 
 MIN_SIZE = 12
 
@@ -68,13 +71,17 @@ def test_single_object_boundary_on_the_boolean_path(size, survives) -> None:
     assert _surviving_sizes(refined) == ([size] if survives else [])
 
 
-@pytest.mark.parametrize("min_size", [0, 1, 2, 3, 7, 30])
+@pytest.mark.parametrize(
+    "min_size", [0, 1, 2, 3, 7, 30, 0.5, 2.5, 6.01, 29.999]
+)
 @pytest.mark.parametrize("as_bool", [False, True])
 def test_helper_matches_the_strictly_smaller_rule(min_size, as_bool) -> None:
     """Oracle: zero every component whose pixel count is ``< min_size``.
 
     Computed with numpy/scipy only, independent of scikit-image, over a
-    random label image whose components span sizes 1..~40 pixels.
+    random label image whose components span sizes 1..~40 pixels. The
+    fractional values are where ``min_size - 1`` (``2.5`` -> ``1.5``) or a
+    floor (``2.5`` -> ``1``) would drop the wrong components on 0.26.
     """
     rng = np.random.default_rng(20261104)
     labels, _ = ndi.label(rng.random((48, 48)) > 0.55)
@@ -92,3 +99,23 @@ def test_helper_matches_the_strictly_smaller_rule(min_size, as_bool) -> None:
     np.testing.assert_array_equal(
         result, expected > 0 if as_bool else expected
     )
+
+
+@pytest.mark.parametrize(
+    ("min_size", "max_size"),
+    [
+        (12, 11),
+        (1, 0),
+        (0, 0),
+        (-3, 0),
+        (2.0, 1),
+        (2.5, 2),
+        (0.5, 0),
+        (29.999, 29),
+    ],
+)
+def test_max_size_is_the_largest_size_strictly_below_min_size(
+    min_size, max_size
+) -> None:
+    """The 0.26 argument, pinned whatever scikit-image is installed."""
+    assert _max_size_for(min_size) == max_size
