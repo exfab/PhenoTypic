@@ -108,9 +108,9 @@ def load_area_meas() -> pd.DataFrame:
 def load_yeast_plate(
     mode: Literal["array", "Image", "GridImage"] = "GridImage",
 ) -> Union[np.ndarray, Image, GridImage]:
-    """Load a Rhodotorula yeast plate image cropped to the center.
+    """Load a yeast plate image cropped to the center.
 
-    Returns a pre-cropped plate image of Rhodotorula yeast colonies on a
+    Returns a pre-cropped plate image of yeast colonies on a
     2 x 4 grid (``nrows=2``, ``ncols=4``) -- suitable for yeast tutorials and
     how-to guides.
 
