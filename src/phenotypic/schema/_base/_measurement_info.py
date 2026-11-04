@@ -413,6 +413,9 @@ class MeasurementInfo(str, Enum):
     to define column names in output DataFrames. Each measurement class defines its own enum
     and uses the enum values as DataFrame column headers.
 
+    Every member also carries a unit, documented on the
+    :attr:`~phenotypic.schema.MeasurementInfo.unit` property.
+
     Attributes:
         label (str): The short label for the measurement (without metric family prefix). Set
             automatically by __new__ from the ``Entry.label`` field.
@@ -427,9 +430,6 @@ class MeasurementInfo(str, Enum):
             both pieces of information together.
         METRIC_FAMILY (property): The metric family name returned by the metric_family()
             classmethod. Provides instance-level access to the measurement's metric family.
-        unit (property): The member's :class:`UNITS` member: the ``Entry.unit``
-            override, else the class :meth:`default_unit`. ``None`` means not yet
-            reviewed.
 
     Examples:
         Define a custom measurement enumeration:
@@ -656,7 +656,7 @@ class MeasurementInfo(str, Enum):
 
     @property
     def unit(self) -> UNITS | None:
-        """This member's unit: the ``Entry(unit=...)`` override, else the class default.
+        """This member's unit, from its ``Entry(unit=...)`` override or else the class default.
 
         ``None`` means the member's unit has not been reviewed. An
         input-dependent unit (``UNITS.OF_INPUT`` and the like) must be resolved
