@@ -59,7 +59,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         ImageOperation (this class)
         ├── ImageEnhancer
-        │   └── Modifies ONLY image.detect_mat
+        │   └── Modifies ONLY image.detect_mat (writing it clears any
+        │       detected objects, so enhancers belong before the detector)
         │       ├── BlurGauss, EnhanceLocalContrast, RankMedianEnhancer, ...
         │       └── Use for: noise reduction, contrast, edge sharpening
         │
@@ -82,7 +83,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     - **ImageEnhancer:** You only modify ``image.detect_mat`` (detection matrix).
       Original ``image.rgb`` and ``image.gray`` are protected by integrity checks.
-      Typical use: preprocessing before detection.
+      Writing ``detect_mat`` clears any detected objects, so enhancers belong
+      before the detector. Typical use: preprocessing before detection.
 
     - **ObjectDetector:** You analyze image data and produce only ``image.objmask``
       (binary mask) and ``image.objmap`` (labeled object map). Input image data is

@@ -52,3 +52,19 @@ def test_grid_dimensions_use_the_shape_the_run_used(tmp_path) -> None:
     line = next(ln for ln in text.splitlines() if ln.startswith("Grid Dimensions"))
     assert "None" not in line
     assert "8" in line and "12" in line
+
+
+def test_measure_mode_readme_says_the_grid_is_stored_per_image(tmp_path) -> None:
+    gen = READMEGenerator(
+        config=SimpleNamespace(
+            image_type="GridImage",
+            pipeline_json=Path("pipeline.json"),
+            nrows=None,
+            ncols=None,
+            measure_only=True,
+        ),
+        pipeline=ImagePipeline(meas=[MeasureSize()]),
+    )
+    text = gen.generate(tmp_path, []).read_text(encoding="utf-8")
+    assert "Grid Dimensions: as stored in each image store" in text
+    assert "rows x" not in text

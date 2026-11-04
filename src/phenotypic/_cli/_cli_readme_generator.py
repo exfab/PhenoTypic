@@ -74,7 +74,11 @@ class READMEGenerator:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         grid_info = ""
-        if self.config.image_type == "GridImage":
+        if getattr(self.config, "measure_only", False):
+            # --mode measure takes the grid from each image store, not from
+            # flags or the pipeline.
+            grid_info = "\nGrid Dimensions: as stored in each image store"
+        elif self.config.image_type == "GridImage":
             from phenotypic._cli._cli_utils import resolve_grid_shape
 
             nrows, ncols = resolve_grid_shape(
