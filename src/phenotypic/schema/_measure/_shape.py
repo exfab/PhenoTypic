@@ -39,13 +39,13 @@ class SHAPE(PrimaryMeasure):
 
     CIRCULARITY = Entry(
         "Circularity",
-        "How closely the colony's outline approximates a circle. Calculated as "
-        r":math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. On pixel colonies "
-        "the value depends on size: round colonies of 30 px radius or more read "
-        "about 0.90 to 0.94, and very small colonies (under about 10 px) can read "
-        "well above 1, up to about 1.15 at 5 px and higher below that. Values "
-        "fall as the outline becomes more irregular, so compare colonies of "
-        "similar size.",
+        "How closely the colony's outline approximates a circle. Calculated "
+        "as :math:`\\frac{4\\pi*\\text{Area}}{\\text{Perimeter}^2}`. An ideal "
+        "circle gives exactly 1. On pixel colonies the value depends on size: "
+        "round colonies of 30 px radius or more read about 0.90 to 0.94, and "
+        "very small colonies (under about 10 px) can read well above 1, up "
+        "to about 1.15 at 5 px and higher below that. Values fall as the "
+        "outline becomes more irregular, so compare colonies of similar size.",
         categories=CATEGORIES.STARTING_METRICS,
     )
     ECCENTRICITY = Entry(
@@ -64,13 +64,15 @@ class SHAPE(PrimaryMeasure):
     )
     COMPACTNESS = Entry(
         "Compactness",
-        "How far the colony's outline departs from a circle, as the inverse of "
-        r"Circularity. Calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. "
-        "On pixel colonies the value depends on size: round colonies of 30 px "
-        "radius or more read about 1.06 to 1.11, and very small colonies (under "
-        "about 10 px) can read well below 1, down to about 0.86 at 5 px and "
-        "lower below that. Values rise as the outline becomes more irregular or "
-        "filamentous, so compare colonies of similar size.",
+        "How far the colony's outline departs from a circle, as the inverse "
+        "of Circularity. Calculated as "
+        ":math:`\\frac{\\text{Perimeter}^2}{4\\pi*\\text{Area}}`. An ideal circle "
+        "gives exactly 1. On pixel colonies the value depends on size: round "
+        "colonies of 30 px radius or more read about 1.06 to 1.11, and very "
+        "small colonies (under about 10 px) can read well below 1, down to "
+        "about 0.86 at 5 px and lower below that. Values rise as the outline "
+        "becomes more irregular or filamentous, so compare colonies of "
+        "similar size.",
     )
     ORIENTATION = Entry(
         "Orientation",

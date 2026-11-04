@@ -17,6 +17,7 @@ import pytest
 
 import phenotypic.schema as schema
 from phenotypic.schema import (
+    ACQUISITION,
     BBOX,
     EDGE_CORRECTION,
     GRID,
@@ -24,6 +25,7 @@ from phenotypic.schema import (
     IMAGE,
     INTENSITY,
     LOG_GROWTH_MODEL,
+    METADATA_MATCH,
     MODEL_METRICS,
     QUALITY_OCCUPANCY,
     QUALITY_SE,
@@ -302,3 +304,36 @@ def test_first_sentence_does_not_restate_the_label(member) -> None:
     assert not first.startswith(_RESTATED_OPENINGS)
     assert "of the object" not in first
     assert "loss of model fitting" not in first
+
+
+@pytest.mark.parametrize(
+    "member", [SHAPE.CIRCULARITY, SHAPE.COMPACTNESS], ids=str
+)
+def test_shape_ratio_states_the_ideal_circle_value(member) -> None:
+    # 4*pi*A / P**2 is exactly 1 for a continuous circle; pixel colonies read
+    # off it, which the next sentence of each desc quantifies.
+    assert "An ideal circle gives exactly 1." in member.desc
+
+
+def test_mean_intensity_states_the_gray_scale() -> None:
+    # The gray layer is float32 in [0, 1]: rgb2gray luminance for RGB, the
+    # integer value over its 8- or 16-bit maximum for a single-channel scan.
+    first = _first_sentence(INTENSITY.MEAN_INTENSITY.desc)
+    assert "from 0 for black to 1" in first
+
+
+def test_resolution_is_recorded_in_pixels_per_mm() -> None:
+    # The unit recipe divides by px_per_mm; no code parses this column.
+    desc = ACQUISITION.RESOLUTION.desc
+    assert "pixels per mm" in _first_sentence(desc)
+    assert "DPI / 25.4" in desc
+    assert "DPI or pixels per mm" not in desc
+
+
+def test_metadata_only_reads_in_plain_terms() -> None:
+    # join_metadata(how="left") keeps an unmatched metadata row with null
+    # measurements and QC_MetadataOnly = True.
+    desc = METADATA_MATCH.METADATA_ONLY.desc
+    assert "no colony was detected" in _first_sentence(desc)
+    assert "empty, not zero" in desc
+    assert "CSV key" not in desc

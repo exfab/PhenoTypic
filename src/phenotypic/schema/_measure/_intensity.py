@@ -61,8 +61,11 @@ class INTENSITY(DirectPhenotype):
     )
     MEAN_INTENSITY = Entry(
         "MeanIntensity",
-        "Average grayscale value of the colony's pixels, read from the image's "
-        "gray layer.",
+        "Average grayscale value of the colony's pixels, on the gray layer's "
+        "scale from 0 for black to 1 for the brightest value the image's "
+        "pixels can hold. For an RGB scan the gray layer is its luminance, so "
+        "1 is white; for a single-channel scan 1 is the 8- or 16-bit "
+        "maximum.",
         categories=CATEGORIES.STARTING_METRICS,
     )
     MEDIAN_INTENSITY = Entry(
