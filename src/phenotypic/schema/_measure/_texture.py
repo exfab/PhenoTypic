@@ -143,8 +143,8 @@ class TEXTURE(DiscriminativeFeature):
             "DiffVariance",
             """Variance of the probabilities in the distribution of gray-level differences
             between pixels a fixed distance apart, not the variance of the differences
-            themselves. It is the variance, over the possible differences k, of
-            p_{x−y}(k), the probability that the gray levels of a pair differ by k
+            themselves. It is the variance, over k = 0 to the colony's highest quantized gray
+            level, of p_{x−y}(k), the probability that the gray levels of a pair differ by k
             (the mahotas default). High values → mixture of smooth and textured
             regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
             Highlights heterogeneity in edge magnitude across the colony.""",
@@ -162,13 +162,13 @@ class TEXTURE(DiscriminativeFeature):
 
     IMC1 = Entry(
             "InfoCorrelation1",
-            """How much knowing the gray level of one pixel tells you about the gray level of
-            a pixel a fixed distance away, from their entropies. It is (HXY – HXY1) /
+            """How much the gray level of one pixel tells you about the gray level of a pixel
+            a fixed distance away, as a value of 0 or below that is more negative the
+            stronger the dependence. It is (HXY – HXY1) /
             max(HX, HY), where HXY is Entropy, HXY1 = –Σ p(i,j)·log₂(p_x(i)·p_y(j)), and
             HX and HY are the entropies of the row and column sums p_x and p_y. Compares joint vs marginal entropies to quantify
-            mutual dependence between gray levels. Positive values → structured, predictable textures
-            (e.g., organized radial growth); near-zero → independence between adjacent regions.
-            Direction of sign varies with implementation.""",
+            mutual dependence between gray levels. More negative values → structured, predictable textures
+            (e.g., organized radial growth); near-zero → independence between adjacent regions.""",
     )
 
     IMC2 = Entry(
