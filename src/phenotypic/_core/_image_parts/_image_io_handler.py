@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import contextlib
 import importlib.util
 import json
-import logging
 import shutil
 import subprocess
 import warnings
@@ -52,6 +50,7 @@ from phenotypic.sdk_ import (
     is_metadata_header,
     metadata_member_for_label,
 )
+from phenotypic.sdk_._exif_logging import quiet_missing_exif
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
 from ._image_color_handler import ImageColorSpace
 from ._image_data_manager import normalize_integer_matrix
@@ -69,38 +68,6 @@ _METADATA_SCHEMA_VERSION_ATTR = "metadata_schema_version"
 _METADATA_SCHEMA_VERSION_PER_TOPIC = 1
 _METADATA_SCHEMA_VERSION_FLAT = 2
 _METADATA_SCHEMA_VERSION = _METADATA_SCHEMA_VERSION_FLAT
-
-
-class _DropExifNotFound(logging.Filter):
-    """Drop exifread's ``<format> file does not have exif data.`` record.
-
-    ``exifread.process_file`` logs its ``ExifNotFound`` exception at WARNING
-    and returns ``{}`` for any image without an EXIF block, which is most
-    PNGs. With no logging configured that lands on stderr through
-    :data:`logging.lastResort` on every plate load. A missing EXIF block is
-    the ordinary case for a PNG, so the record is noise. Every other exifread
-    record, such as a corrupted field or an IFD loop in an image that does
-    carry EXIF, still passes.
-    """
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        return not isinstance(record.msg, exifread.ExifNotFound)
-
-
-@contextlib.contextmanager
-def _quiet_missing_exif():
-    """Apply :class:`_DropExifNotFound` to the ``exifread`` logger, then remove it.
-
-    A fresh filter instance per call, so concurrent readers each remove only
-    their own.
-    """
-    logger = logging.getLogger("exifread")
-    drop = _DropExifNotFound()
-    logger.addFilter(drop)
-    try:
-        yield
-    finally:
-        logger.removeFilter(drop)
 
 
 def _encode_meta(val: Any) -> str:
@@ -484,7 +451,7 @@ class ImageIOHandler(ImageColorSpace):
         if exifread is not None:
             try:
                 with open(filepath, "rb") as f:
-                    with _quiet_missing_exif():
+                    with quiet_missing_exif():
                         tags = exifread.process_file(f, details=True)
                     for tag, value in tags.items():
                         if tag.startswith("Thumbnail"):

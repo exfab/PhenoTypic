@@ -3,9 +3,11 @@
 ``exifread.process_file`` logs ``PNG file does not have exif data.`` at
 WARNING for every image without an EXIF block. With no logging configured,
 that line reached stderr on every plate load, including every docs notebook
-cell that loads a sample plate. The reader now drops that one record for the
-duration of the call; EXIF is still read where present, and exifread's other
-warnings still pass.
+cell that loads a sample plate. Every ``process_file`` call now runs inside
+``phenotypic.sdk_._exif_logging.quiet_missing_exif``, which drops that one
+record for the duration of the call; EXIF is still read where present, and
+exifread's other warnings still pass. The Browse probe's use of the same
+scope is pinned in ``tests/gui/browse/test_source_probe.py``.
 """
 
 from __future__ import annotations
@@ -18,9 +20,7 @@ import pytest
 
 import phenotypic
 import phenotypic.data
-from phenotypic._core._image_parts._image_io_handler import (
-    _quiet_missing_exif,
-)
+from phenotypic.sdk_._exif_logging import quiet_missing_exif
 
 DATA_DIR = Path(phenotypic.data.__file__).parent
 PNG_WITHOUT_EXIF = DATA_DIR / "early_colony.png"
@@ -65,7 +65,7 @@ def test_quiet_scope_drops_only_exif_not_found_and_is_removed(caplog) -> None:
     logger = logging.getLogger("exifread")
     filters_before = list(logger.filters)
 
-    with _quiet_missing_exif():
+    with quiet_missing_exif():
         logger.warning(exifread.ExifNotFound("inside the scope"))
         logger.warning("Possibly corrupted field %s", "Make")
     logger.warning(exifread.ExifNotFound("after the scope"))
@@ -75,3 +75,18 @@ def test_quiet_scope_drops_only_exif_not_found_and_is_removed(caplog) -> None:
         "Possibly corrupted field Make",
         "after the scope",
     ]
+
+
+def test_quiet_scope_is_removed_when_the_block_raises(caplog) -> None:
+    """A ``process_file`` that raises must not leave the filter installed."""
+    caplog.set_level(logging.WARNING)
+    logger = logging.getLogger("exifread")
+    filters_before = list(logger.filters)
+
+    with pytest.raises(RuntimeError, match="corrupt header"):
+        with quiet_missing_exif():
+            raise RuntimeError("corrupt header")
+    logger.warning(exifread.ExifNotFound("after the failed read"))
+
+    assert logger.filters == filters_before
+    assert _exifread_records(caplog) == ["after the failed read"]
