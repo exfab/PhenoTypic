@@ -32,7 +32,6 @@ class INTENSITY(DirectPhenotype):
     INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
         "The sum of the object's pixels",
-        categories=CATEGORIES.STARTING_METRICS,
         unit=UNITS.INTENSITY_PX2,
     )
     DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
@@ -41,7 +40,11 @@ class INTENSITY(DirectPhenotype):
                                        "possible intensity of the object's convex hull")
     MINIMUM_INTENSITY = Entry("MinimumIntensity", "The minimum intensity of the object")
     MAXIMUM_INTENSITY = Entry("MaximumIntensity", "The maximum intensity of the object")
-    MEAN_INTENSITY = Entry("MeanIntensity", "The mean intensity of the object")
+    MEAN_INTENSITY = Entry(
+        "MeanIntensity",
+        "The mean intensity of the object",
+        categories=CATEGORIES.STARTING_METRICS,
+    )
     MEDIAN_INTENSITY = Entry("MedianIntensity", "The median intensity of the object")
     STANDARD_DEVIATION_INTENSITY = Entry(
         "StandardDeviationIntensity",

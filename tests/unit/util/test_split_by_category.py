@@ -38,22 +38,41 @@ def test_starting_metrics_split_holds_context_then_categorized_columns(ctor) -> 
     assert list(out.columns) == [
         *_CONTEXT,
         "Size_Area",
+        "Shape_Circularity",
         "ColorLab_L*Medoid",
-        "Intensity_IntegratedIntensity",
-        "Size_IntegratedIntensity",
     ]
 
 
 def test_uncategorized_measurements_are_not_context() -> None:
     out = split_measurements_by_category(pd.DataFrame(_frame()))["StartingMetrics"]
-    assert "Shape_Circularity" not in out.columns
+    assert "Size_IntegratedIntensity" not in out.columns
+    assert "Intensity_IntegratedIntensity" not in out.columns
 
 
-def test_both_integrated_intensities_appear_once_each() -> None:
-    out = split_measurements_by_category(pd.DataFrame(_frame()))["StartingMetrics"]
-    cols = list(out.columns)
-    assert cols.count("Size_IntegratedIntensity") == 1
-    assert cols.count("Intensity_IntegratedIntensity") == 1
+def test_tagged_columns_sharing_a_label_appear_once_each(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Two families with the same member label, both tagged: each column must be
+    # resolved by its full header, so each lands in the category exactly once.
+    # No real pair qualifies since the 2026-11 retag left both
+    # IntegratedIntensity columns uncategorized, so the pair is test-local.
+    class FIRST_FAMILY(MeasurementInfo):
+        @classmethod
+        def metric_family(cls) -> str:
+            return "FirstFamily"
+
+        VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
+
+    class SECOND_FAMILY(MeasurementInfo):
+        @classmethod
+        def metric_family(cls) -> str:
+            return "SecondFamily"
+
+        VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
+
+    monkeypatch.setattr(mo, "_public_info_classes", lambda: (FIRST_FAMILY, SECOND_FAMILY))
+    groups = mo._category_column_groups(["FirstFamily_Value", "SecondFamily_Value"])
+    assert groups == {"StartingMetrics": ["FirstFamily_Value", "SecondFamily_Value"]}
 
 
 def test_context_matches_the_feature_split() -> None:
@@ -72,7 +91,7 @@ def test_context_matches_the_feature_split() -> None:
     feature = list(split_measurements(df)["MeasureShape"].columns)
     category = list(split_measurements_by_category(df)["StartingMetrics"].columns)
     assert feature == [*trailing_context, "Shape_Circularity"]
-    assert category == [*trailing_context, "Size_Area"]
+    assert category == [*trailing_context, "Size_Area", "Shape_Circularity"]
 
 
 def test_member_lookup_agrees_with_every_category_member() -> None:
@@ -86,7 +105,7 @@ def test_member_lookup_agrees_with_every_category_member() -> None:
 
 def test_category_with_no_present_columns_has_no_key() -> None:
     df = pd.DataFrame(
-        {"Metadata_Dataset": ["ds1"], "Object_Label": [1], "Shape_Circularity": [0.9]}
+        {"Metadata_Dataset": ["ds1"], "Object_Label": [1], "Shape_Solidity": [0.9]}
     )
     assert split_measurements_by_category(df) == {}
 

@@ -5,6 +5,7 @@ from .._base._change_notes import (
     SIZE_SHAPE_SPLIT_NOTE,
     append_change_note,
 )
+from .._base._categories import CATEGORIES
 from .._base._measurement_info import Entry
 from .._base._units import UNITS
 from .._base._tiers import PrimaryMeasure
@@ -39,10 +40,12 @@ class SHAPE(PrimaryMeasure):
     CIRCULARITY = Entry(
         "Circularity",
         r"Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values < 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     ECCENTRICITY = Entry(
         "Eccentricity",
         "Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     SOLIDITY = Entry(
         "Solidity",

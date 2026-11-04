@@ -316,7 +316,7 @@ class TestSplitMasterByCategory:
                 "Metadata_Dataset": ["ds1"],
                 "Object_Label": [1],
                 "Size_Area": [10.0],
-                "Shape_Circularity": [0.9],
+                "Shape_Solidity": [0.9],
             }
         )
 
@@ -524,6 +524,7 @@ class TestAggregateMeasurementsAutoResolve:
             str(IMAGE.IMAGE_NAME),
             "Object_Label",
             "Size_Area",
+            "Shape_Circularity",
         ]
 
     def test_failing_category_split_does_not_block_publication(
