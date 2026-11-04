@@ -179,6 +179,22 @@ def test_distance_weighted_center_is_a_weighted_centroid(member) -> None:
     assert "maximum" not in first
 
 
+@pytest.mark.parametrize("member", [BBOX.MAX_RR, BBOX.MAX_CC], ids=str)
+def test_bbox_max_bounds_are_exclusive(member) -> None:
+    # skimage regionprops bbox is half-open: [min_row, max_row) and
+    # [min_col, max_col), so MaxRR/MaxCC are one past the last pixel.
+    rest = member.desc[len(_first_sentence(member.desc)) :]
+    assert "one past" in rest
+    assert "exclusive" in rest
+
+
+@pytest.mark.parametrize("member", [BBOX.MIN_RR, BBOX.MIN_CC], ids=str)
+def test_bbox_min_bounds_stay_inclusive(member) -> None:
+    # MinRR/MinCC are the first pixel row/column itself; nothing to qualify.
+    assert "one past" not in member.desc
+    assert "exclusive" not in member.desc
+
+
 def test_optimizer_status_lists_only_codes_trf_returns() -> None:
     # The fitter always uses method="trf"; -1 is MINPACK-only, and a failed
     # fit writes NaN.

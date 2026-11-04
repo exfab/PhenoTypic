@@ -28,7 +28,13 @@ class BBOX(IdentityInfo):
         "pixels (skimage ``centroid``).",
     )
     MIN_RR = Entry("MinRR", "The smallest row coordinate of the bounding box.")
-    MAX_RR = Entry("MaxRR", "The largest row coordinate of the bounding box.")
+    MAX_RR = Entry(
+        "MaxRR",
+        "The largest row coordinate of the bounding box. It is one past the "
+        "colony's last pixel row (exclusive, as in Python slicing), so rows "
+        "MinRR to MaxRR - 1 hold the colony and ``image[MinRR:MaxRR]`` covers "
+        "it.",
+    )
     CENTER_CC = Entry(
         "CenterCC",
         "Column coordinate of the colony's centroid, the mean position of its "
@@ -40,7 +46,10 @@ class BBOX(IdentityInfo):
     )
     MAX_CC = Entry(
         "MaxCC",
-        "The largest column coordinate of the bounding box.",
+        "The largest column coordinate of the bounding box. It is one past "
+        "the colony's last pixel column (exclusive, as in Python slicing), so "
+        "columns MinCC to MaxCC - 1 hold the colony and ``image[:, "
+        "MinCC:MaxCC]`` covers it.",
     )
     INTENSITY_WEIGHTED_CENTER_RR = Entry(
         "IntensityWeightedCenterRR",
