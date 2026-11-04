@@ -39,10 +39,14 @@ if TYPE_CHECKING:
 SUMMARY_COLUMNS = ("step", "slot", "operation", "module", "writes", "changed")
 
 #: The layers a step writes, decided by its base class; the first match wins.
-#: ``SetDetectMode`` is the one shipped operation that subclasses
-#: ``ImageOperation`` directly yet rewrites a layer (it replaces ``detect_mat``
-#: with a fresh channel), so it is named here rather than reported as writing
-#: nothing. Anything else unlisted writes ``""``: not declared, not "none".
+#: An enhancer writes ``detect_mat``, and writing it clears any detected
+#: objects (``objmask``/``objmap``), so an enhancer placed after a detector
+#: erases them; PhenoTypic warns when a pipeline does that
+#: (``DetectionClearedWarning``). ``SetDetectMode`` is the one shipped
+#: operation that subclasses ``ImageOperation`` directly yet rewrites a layer
+#: (it resets ``detect_mat`` to a fresh channel, leaving detected objects in
+#: place), so it is named here rather than reported as writing nothing.
+#: Anything else unlisted writes ``""``: not declared, not "none".
 _WRITES_BY_BASE: tuple[tuple[type, str], ...] = (
     (ImageEnhancer, "detect_mat"),
     (SetDetectMode, "detect_mat"),

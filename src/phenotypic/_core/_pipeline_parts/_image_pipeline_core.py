@@ -1406,7 +1406,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         named by its path (``inner/BlurGauss``). Its ``meas`` are not listed,
         because a nested pipeline's ``apply`` runs only its ``ops``. Any other
         operation is one row, even one that holds operations (a
-        ``CompositeDetector``); those appear in its ``changed`` cell.
+        ``CompositeDetector``); those appear in its ``changed`` cell. So a
+        step inside a composite operation's own branches, such as
+        ``CompositeDetector/ops[0]/BlurGauss``, is not a row of its own: it
+        sits inside its composite's row, and a message naming that path
+        refers to that row.
 
         Returns:
             pd.DataFrame: One row per step, with columns:
@@ -1418,9 +1422,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             - ``module``: the ``phenotypic`` subpackage, such as ``enhance``
               or ``detect``.
             - ``writes``: the image layers the step writes, decided by its
-              kind (an enhancer writes only ``detect_mat``; a detector or
-              refiner ``objmask, objmap``; a corrector every layer), or
-              ``table`` for a measurer. Empty when the kind declares none.
+              kind (an enhancer ``detect_mat``; a detector or refiner
+              ``objmask, objmap``; a corrector every layer), or ``table`` for
+              a measurer. Empty when the kind declares none. An enhancer's
+              write of ``detect_mat`` also clears any detected objects, so an
+              enhancer after a detector erases them; PhenoTypic warns when a
+              pipeline does that (``DetectionClearedWarning``).
             - ``changed``: every parameter that differs from a
               default-constructed instance of the same class, as
               ``name=value``, comma-separated; empty when none does. A value
