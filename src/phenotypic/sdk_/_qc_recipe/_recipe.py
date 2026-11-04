@@ -163,15 +163,60 @@ class QcRecipeEntry:
 
         Prefers the check's ``model_dump(mode="json")`` (so path-vs-frame
         normalization and ``PrivateAttr`` exclusion apply); falls back to
-        the raw :attr:`params` when the check cannot be instantiated.
+        the raw :attr:`params` when the check cannot be instantiated. A
+        param that is set but dumps to ``None`` is logged by
+        :meth:`_warn_unserializable_params`.
 
         Returns:
             A JSON-native params dict.
         """
         try:
-            return self.cls(**self.params).model_dump(mode="json")
+            rebuilt = self.cls(**self.params)
         except Exception:  # noqa: BLE001 - keep raw config for unbuildable entries
             return dict(self.params)
+        dumped = rebuilt.model_dump(mode="json")
+        self._warn_unserializable_params(rebuilt, dumped)
+        return dumped
+
+    def _warn_unserializable_params(
+        self, check: QualityCheck, dumped: dict[str, Any]
+    ) -> None:
+        """Log every configured param that JSON-dumps away to ``None``.
+
+        The motivating case is an
+        :class:`~phenotypic.analysis.qc.ExpectedVsDetectedCount` whose
+        ``metadata`` is an in-memory DataFrame: its field serializer emits
+        ``None`` in JSON mode because a frame has no source path, and ``None``
+        is that check's no-layout configuration. A reload of the persisted
+        ``pipeline.json`` therefore builds a *different* check — one that
+        derives its expectation from the analyzed frame — rather than failing.
+        In-session use of a frame is legitimate, so this **warns and does not
+        refuse**; a config that must survive a reload names a
+        ``.csv``/``.parquet`` path instead.
+
+        Comparison is written ``is not None`` throughout: the live value may
+        be a DataFrame, and ``!=`` on one raises rather than answering.
+
+        Args:
+            check: The instance built from :attr:`params`.
+            dumped: That instance's ``model_dump(mode="json")``.
+        """
+        dropped = sorted(
+            name
+            for name, value in dumped.items()
+            if value is None and getattr(check, name, None) is not None
+        )
+        if not dropped:
+            return
+        logger.warning(
+            "QC entry %s (%s): param(s) %s are configured but serialize to "
+            "null, so a reload of pipeline.json will not restore them. "
+            "Configure them from a file path if the QC config must survive "
+            "a reload.",
+            self.instance_id,
+            type(check).__name__,
+            ", ".join(dropped),
+        )
 
     @classmethod
     def from_dict(

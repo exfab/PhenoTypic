@@ -9,6 +9,7 @@ flags plates whose occupancy falls below threshold.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar, TYPE_CHECKING
 
 import pandas as pd
@@ -18,7 +19,10 @@ from phenotypic.analysis.abc_._set_analyzer import (
     normalize_measurement_metadata_columns,
     normalize_metadata_column_reference,
 )
-from phenotypic.analysis.qc._expected_vs_detected import ExpectedVsDetectedCount
+from phenotypic.analysis.qc._expected_vs_detected import (
+    ExpectedVsDetectedCount,
+    _MetadataField,
+)
 from phenotypic.schema import GRID, QUALITY_OCCUPANCY
 from phenotypic.sdk_ import ColumnRef
 
@@ -37,6 +41,10 @@ class GridOccupancy(ExpectedVsDetectedCount):
     re-reads on load), and the per-key expected-count precompute. The
     expected cell count for a group is the number of metadata rows for that
     ``groupby`` key (one row per expected pin position).
+
+    **A layout is required.** The parent's no-layout mode (``metadata``
+    unset, expectation derived from the analyzed frame) is not inherited:
+    ``metadata`` is a required field here, and ``None`` is refused.
 
     Where the parent counts ``len(group)`` (raw detections, doublets
     included), this check counts ``group[cell_label].nunique()`` distinct
@@ -89,8 +97,8 @@ class GridOccupancy(ExpectedVsDetectedCount):
         FileNotFoundError: (inherited) If ``metadata`` is a path that does
             not exist.
         ValueError: (inherited) If ``metadata`` is a path with an
-            unsupported suffix, or if it is ``None`` (a check serialized
-            from an in-memory frame, which cannot round-trip).
+            unsupported suffix; or if it is ``None`` (no layout, or a check
+            serialized from an in-memory frame, which cannot round-trip).
 
     Examples:
         Basic — 96-cell metadata vs. a measurement frame with 92 colonies
@@ -129,6 +137,33 @@ class GridOccupancy(ExpectedVsDetectedCount):
     warn_threshold: float = 0.95
     fail_threshold: float = 0.90
     cell_label: ColumnRef = str(GRID.ROW_MAJOR_IDX)
+    # Required, unlike the parent's: occupancy has no no-layout mode.
+    metadata: _MetadataField
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _normalize_metadata(
+        cls, value: pd.DataFrame | Path | str | None
+    ) -> pd.DataFrame | str:
+        """Refuse a missing layout; otherwise normalize as the parent does.
+
+        Overrides the parent's validator of the same name, which accepts
+        ``None`` as its no-layout mode.
+
+        Raises:
+            ValueError: If ``value`` is ``None``.
+        """
+        if value is None:
+            raise ValueError(
+                f"{cls.__name__} requires 'metadata' as a layout DataFrame "
+                "or a .csv/.parquet path. Got None — either no layout was "
+                "given, or the check was serialized from an in-memory "
+                "DataFrame, which has no source path to round-trip; "
+                "configure it from a metadata file path."
+            )
+        if isinstance(value, Path):
+            return str(value)
+        return value
 
     @field_validator("cell_label", mode="before")
     @classmethod
