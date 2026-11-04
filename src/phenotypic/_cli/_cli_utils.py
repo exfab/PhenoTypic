@@ -35,6 +35,7 @@ from typing import (
     Dict,
     Iterator,
     List,
+    Mapping,
     Optional,
     Sequence,
     Set,
@@ -161,6 +162,73 @@ def resolve_grid_shape(
         else (pipeline_ncols if pipeline_ncols is not None else default_ncols)
     )
     return nrows, ncols
+
+
+def input_read_settings(
+    bit_depth: Optional[int], detect_mode: Optional[str]
+) -> Dict[str, Any]:
+    """The run's ``--bit-depth`` and ``--detect-mode``, as reader kwargs.
+
+    Half of the one definition of how a forward run reads an input image;
+    :func:`image_read_kwargs` is the other half. Every caller that hands a
+    per-image core its ``read_kwargs`` builds them here: the local and SLURM
+    single-pass and process-only workers, and both staged Stage-1 paths (the
+    SLURM one from ``job_metadata.json``). Only non-default values are
+    carried, so an unset flag reaches ``imread`` unset.
+
+    Args:
+        bit_depth: ``--bit-depth``, or ``None`` to infer it.
+        detect_mode: ``--detect-mode``; ``None`` and ``"gray"`` are the default.
+
+    Returns:
+        ``bit_depth`` when set, and ``detect_mode`` when it is not ``"gray"``.
+        The cores pop ``detect_mode`` and apply it after reading.
+    """
+    settings: Dict[str, Any] = {}
+    if bit_depth:
+        settings["bit_depth"] = bit_depth
+    if detect_mode is not None and detect_mode != "gray":
+        settings["detect_mode"] = detect_mode
+    return settings
+
+
+def image_read_kwargs(
+    read_settings: Optional[Mapping[str, Any]],
+    *,
+    image_type: str,
+    cli_nrows: Optional[int],
+    cli_ncols: Optional[int],
+    pipeline: Any,
+) -> Dict[str, Any]:
+    """*read_settings* plus, for a ``GridImage``, the grid shape to read it with.
+
+    The other half of :func:`input_read_settings`, called by every per-image
+    core immediately before it reads the input, because only the core holds
+    the pipeline whose preset the shape falls back to:
+    :func:`resolve_grid_shape` (``--nrows``/``--ncols``, then the pipeline's
+    preset, then 8 x 12). Shared by the single-pass, process-only and staged
+    Stage-1 cores, so the three cannot read one image at different grids.
+
+    Args:
+        read_settings: The caller's :func:`input_read_settings`.
+        image_type: ``"Image"`` or ``"GridImage"``.
+        cli_nrows: ``--nrows``, or ``None``.
+        cli_ncols: ``--ncols``, or ``None``.
+        pipeline: The pipeline (or the staged plan's ``pre_pipeline``, which
+            carries the same preset) supplying ``nrows``/``ncols``.
+
+    Returns:
+        A new dict; *read_settings* is not modified.
+    """
+    kwargs = dict(read_settings or {})
+    if image_type == "GridImage":
+        kwargs["nrows"], kwargs["ncols"] = resolve_grid_shape(
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+            pipeline_nrows=pipeline.nrows,
+            pipeline_ncols=pipeline.ncols,
+        )
+    return kwargs
 
 # Thread-pinning snippet for SLURM bash scripts. Ensures Polars and NumPy
 # respect the SLURM CPU allocation. Must appear before any Python import.

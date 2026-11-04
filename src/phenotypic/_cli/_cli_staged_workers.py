@@ -69,6 +69,7 @@ from ._stages import (
     StageTag,
 )
 from ._cli_update_state import append_completion_event, append_event
+from ._cli_utils import image_read_kwargs
 from ._cli_failure_tracker import PerImageScientificError
 from ._cli_slurm_lifecycle import (
     SlurmGenerationInactiveError,
@@ -294,8 +295,15 @@ def stage1_preprocess_core(
     pipeline_identity: Mapping[str, str] | None = None,
     drop_originals: bool = False,
     reference_pin: ReferencePin | None = None,
+    cli_nrows: int | None = None,
+    cli_ncols: int | None = None,
 ) -> None:
     """Read raw image, apply the pre-detector ops, publish the staged store.
+
+    The image is read exactly as a single-pass run reads it:
+    ``image_read_kwargs`` adds, for a ``GridImage``, the grid shape
+    ``resolve_grid_shape`` gives from ``cli_nrows``/``cli_ncols`` and the
+    plan's preset, to the caller's ``read_kwargs`` (``input_read_settings``).
 
     ``reference_pin`` carries the reference digest *work_id* was computed
     from; the apply refuses a manifest that has re-planned the image since.
@@ -304,7 +312,13 @@ def stage1_preprocess_core(
     image: Image | None = None
     checkpoint_ready = False
     try:
-        read_kwargs = dict(read_kwargs or {})
+        read_kwargs = image_read_kwargs(
+            read_kwargs,
+            image_type=image_type,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+            pipeline=plan.pre_pipeline,
+        )
         image_cls = _image_class(image_type)
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)

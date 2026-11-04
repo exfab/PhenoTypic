@@ -67,7 +67,7 @@ from ._cli_slurm_lifecycle import (
     generation_publication_guard,
     slurm_generation_inactive_cause,
 )
-from ._cli_utils import normalize_extension
+from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extension
 from phenotypic.sdk_ import (
     CommitGuard,
     EnvVar,
@@ -277,19 +277,13 @@ def process_single_image_core(
         pipeline = ImagePipeline.from_json(pipeline_path)
         image_cls = GridImage if image_type == "GridImage" else Image
 
-        if image_type == "GridImage":
-            from ._cli_utils import resolve_grid_shape
-
-            nrows, ncols = resolve_grid_shape(
-                cli_nrows=cli_nrows,
-                cli_ncols=cli_ncols,
-                pipeline_nrows=pipeline.nrows,
-                pipeline_ncols=pipeline.ncols,
-            )
-            read_kwargs = dict(read_kwargs)
-            read_kwargs["nrows"] = nrows
-            read_kwargs["ncols"] = ncols
-
+        read_kwargs = image_read_kwargs(
+            read_kwargs,
+            image_type=image_type,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+            pipeline=pipeline,
+        )
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
         resolved_pipeline_identity = (
@@ -891,11 +885,7 @@ def main(
         if process_only_layer is not None:
             if input_root is None:
                 raise click.UsageError("--mode process requires --input-root")
-            process_only_read_kwargs: Dict[str, Any] = {}
-            if bit_depth is not None:
-                process_only_read_kwargs["bit_depth"] = bit_depth
-            if detect_mode != "gray":
-                process_only_read_kwargs["detect_mode"] = detect_mode
+            process_only_read_kwargs = input_read_settings(bit_depth, detect_mode)
             if event_log is not None:
                 append_event(
                     event_log=event_log,
@@ -1015,11 +1005,7 @@ def main(
             )
         else:
             # Forward run: prepare read kwargs and dispatch to the detection path.
-            read_kwargs: Dict[str, Any] = {}
-            if bit_depth is not None:
-                read_kwargs["bit_depth"] = bit_depth
-            if detect_mode != "gray":
-                read_kwargs["detect_mode"] = detect_mode
+            read_kwargs = input_read_settings(bit_depth, detect_mode)
 
             output_manager = OutputManager.from_config(
                 base_dir=output_dir,

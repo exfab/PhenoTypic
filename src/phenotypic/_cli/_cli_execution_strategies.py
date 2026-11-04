@@ -36,6 +36,7 @@ from ._cli_types import (
 from phenotypic._core._provenance import pipeline_source_identity
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
+from ._cli_utils import input_read_settings
 from phenotypic.sdk_.slurm import get_slurm_array_limit
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_slurm_array_scripts import (
@@ -540,12 +541,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         work_identity: tuple[str, str] | None = None
 
         try:
-            # Prepare read kwargs.
-            read_kwargs: Dict[str, Any] = {}
-            if self.config.bit_depth:
-                read_kwargs["bit_depth"] = self.config.bit_depth
-            if self.config.detect_mode != "gray":
-                read_kwargs["detect_mode"] = self.config.detect_mode
+            read_kwargs = input_read_settings(
+                self.config.bit_depth, self.config.detect_mode
+            )
 
             # Process. One identity per image, before the apply: its reference
             # digest pins the context, and its work-id is what is published.
@@ -671,11 +669,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         append_event(event_log, dataset.name, image_path.name, "started")
         work_identity: tuple[str, str] | None = None
         try:
-            read_kwargs: Dict[str, Any] = {}
-            if self.config.bit_depth:
-                read_kwargs["bit_depth"] = self.config.bit_depth
-            if self.config.detect_mode != "gray":
-                read_kwargs["detect_mode"] = self.config.detect_mode
+            read_kwargs = input_read_settings(
+                self.config.bit_depth, self.config.detect_mode
+            )
 
             # Before the apply, never after it (review F1): a later invocation
             # may re-plan the image meanwhile, and the output must be published

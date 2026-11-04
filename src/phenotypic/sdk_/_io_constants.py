@@ -2634,6 +2634,13 @@ class JobMetadataKey:
     IMAGE_TYPE: Final[str] = "image_type"
     NROWS: Final[str] = "nrows"
     NCOLS: Final[str] = "ncols"
+    #: ``--bit-depth`` and ``--detect-mode`` of a staged SLURM run. With
+    #: ``NROWS``/``NCOLS`` they are what the staged SLURM Stage-1 worker reads
+    #: each input with (``_cli_staged_slurm_worker``), so it reads it as a
+    #: single-pass run does. Absent from metadata written before they were
+    #: recorded, which reads as unset.
+    BIT_DEPTH: Final[str] = "bit_depth"
+    DETECT_MODE: Final[str] = "detect_mode"
     #: The initial CLI call of a measure-mode SLURM invocation (figures spec
     #: §1a): its UTC date (the figure-folder ``{date}``), UTC timestamp and
     #: pid. Measure mode keeps no processing state, so its workers read these

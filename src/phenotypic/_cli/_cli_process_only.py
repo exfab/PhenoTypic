@@ -315,19 +315,15 @@ def process_single_apply_only_core(
         pipeline = ImagePipeline.from_json(pipeline_path)
         image_cls = GridImage if image_type == "GridImage" else Image
 
-        read_kwargs = dict(read_kwargs)
-        if image_type == "GridImage":
-            from ._cli_utils import resolve_grid_shape
+        from ._cli_utils import image_read_kwargs
 
-            nrows, ncols = resolve_grid_shape(
-                cli_nrows=cli_nrows,
-                cli_ncols=cli_ncols,
-                pipeline_nrows=pipeline.nrows,
-                pipeline_ncols=pipeline.ncols,
-            )
-            read_kwargs["nrows"] = nrows
-            read_kwargs["ncols"] = ncols
-
+        read_kwargs = image_read_kwargs(
+            read_kwargs,
+            image_type=image_type,
+            cli_nrows=cli_nrows,
+            cli_ncols=cli_ncols,
+            pipeline=pipeline,
+        )
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
         if detect_mode != "gray":

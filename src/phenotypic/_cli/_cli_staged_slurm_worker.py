@@ -12,15 +12,17 @@ from contextlib import contextmanager
 import os
 import traceback
 from pathlib import Path
-from typing import Iterator, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.sdk_ import (
     CommitGuard,
+    JobMetadataKey,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    progress_dir,
     zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
@@ -51,6 +53,7 @@ from ._cli_completion import (
     valid_image_success,
 )
 from ._cli_staged_slurm import partition_shards
+from ._cli_utils import input_read_settings, load_job_metadata
 from ._cli_state_management import recorded_run_initiation
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
@@ -154,6 +157,29 @@ def _entry(entry: StagedManifestEntry | Sequence[str]) -> StagedManifestEntry:
     )
 
 
+def _recorded_image_read(
+    output_dir: Path,
+) -> tuple[dict[str, Any], int | None, int | None]:
+    """How the submitter's flags say to read an input: settings, nrows, ncols.
+
+    The staged submitter records ``--bit-depth``, ``--detect-mode``,
+    ``--nrows`` and ``--ncols`` in ``job_metadata.json`` before Controller 0
+    is submitted (``_write_staged_job_metadata``), so every Stage-1 task
+    reads the same values. Missing metadata, or a key written before it was
+    recorded, reads as unset: the run's defaults.
+    """
+    metadata = load_job_metadata(progress_dir(output_dir)) or {}
+    settings = input_read_settings(
+        metadata.get(JobMetadataKey.BIT_DEPTH),
+        metadata.get(JobMetadataKey.DETECT_MODE),
+    )
+    return (
+        settings,
+        metadata.get(JobMetadataKey.NROWS),
+        metadata.get(JobMetadataKey.NCOLS),
+    )
+
+
 def run_stage1_step(
     pipeline_path: Path,
     output_dir: Path,
@@ -202,6 +228,7 @@ def run_stage1_step(
         durable_writes=durable_writes,
         run_initiation=recorded_run_initiation(output_dir),
     )
+    read_kwargs, cli_nrows, cli_ncols = _recorded_image_read(output_dir)
     log = event_log_path(output_dir)
     try:
         with stage_event(
@@ -220,6 +247,9 @@ def run_stage1_step(
                 output_dir,
                 output_manager,
                 image_type,
+                read_kwargs,
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
                 active_check=check,
                 work_id=item.work_id,
                 commit_guard=commit_guard,

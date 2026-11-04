@@ -247,6 +247,26 @@ and runs three content-defined stages. The per-image stage cores live in
    Then apply post-ops + `measure(apply_post=False)`, re-promote the store, and
    consume the signal — **token first, then the raw array** (mandatory).
 
+**Stage 1 reads an input exactly as a single-pass run does.** Every forward
+reader builds its kwargs from the same two helpers in `_cli_utils.py`: the
+caller's `input_read_settings(bit_depth, detect_mode)`, then, inside the core
+that holds the pipeline, `image_read_kwargs(...)`, which adds a `GridImage`'s
+shape from `resolve_grid_shape` (flags, then the preset, then 8 x 12). The
+callers are `LocalParallelStrategy` (full and process), the single-pass SLURM
+worker (`_cli_process_single.py` `main`), `StagedGpuStrategy`, and the staged
+SLURM worker, which reads the four flags from `job_metadata.json`
+(`JobMetadataKey.NROWS`/`NCOLS`/`BIT_DEPTH`/`DETECT_MODE`, written by
+`_write_staged_job_metadata` before Controller 0 is submitted) rather than from
+its command line. Until PR H, Stage 1 applied no grid shape at all (every
+staged `GridImage` was 8 x 12) and the SLURM worker also dropped `--bit-depth`
+and `--detect-mode`. **Nothing fences a staged run resumed across that fix**:
+the work id carries the same flags before and after, so its Stage-1 stores and
+completed images are reused as they were read. A staged `GridImage` run whose
+grid is not 8 x 12, or a staged SLURM run given `--bit-depth` or a
+`--detect-mode` other than `gray`, must be re-run with `--restart` (or
+`--overwrite`). Pinned by
+`tests/unit/cli/test_staged_stage1_reads_like_single_pass.py`.
+
 ### Nested detectors: found tree-wide, cut at the top-level ancestor
 
 **`GpuDetector`s are found tree-wide**, not at the top level.
