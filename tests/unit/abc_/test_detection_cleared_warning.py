@@ -28,7 +28,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import CompositeDetector, OtsuDetector
 from phenotypic.enhance import BlurGauss
 from phenotypic.grid import GridApply
-from phenotypic.measure import MeasureSize
+from phenotypic.measure import MeasureSize, MeasureSymZones
 
 
 def _cleared(record) -> list[warnings.WarningMessage]:
@@ -144,6 +144,29 @@ def test_problem_inside_a_nested_pipeline_warns_once_not_per_level():
     with pytest.warns(DetectionClearedWarning) as rec:
         ImagePipeline(ops={"inner": _bad()}).apply(load_synth_yeast_plate())
     assert len(_cleared(rec)) == 1
+
+
+def test_nested_pipeline_is_judged_inline_so_a_later_outer_detector_re_detects():
+    """``{inner: [Otsu, Blur], redetect: Otsu}`` runs ``[Otsu, Blur, Otsu]``: nothing is lost."""
+    pipeline = ImagePipeline(ops={"inner": _bad(), "redetect": OtsuDetector()})
+    _assert_silent(pipeline)
+
+
+def test_an_ops_key_spelled_like_a_slot_segment_is_still_checked():
+    """Slots are told apart by structure, not by the key's text."""
+    branch = ImagePipeline(ops=[OtsuDetector(), BlurGauss(sigma=2.0)])
+    pipeline = ImagePipeline(ops={"meas:x": CompositeDetector(ops=[branch])})
+    with pytest.warns(DetectionClearedWarning) as rec:
+        pipeline.apply(load_synth_yeast_plate())
+    caught = _cleared(rec)
+    assert len(caught) == 1
+    assert "meas:x/" in str(caught[0].message)
+
+
+def test_a_pipeline_inside_the_meas_slot_is_not_checked():
+    probe = MeasureSymZones(center_detector=ImagePipeline(ops=[OtsuDetector(), BlurGauss()]))
+    pipeline = ImagePipeline(ops=[BlurGauss(), OtsuDetector()], meas=[probe])
+    assert find_enhancer_after_detector(pipeline) is None
 
 
 def test_detector_branch_that_re_detects_is_silent_after_an_outer_detector():

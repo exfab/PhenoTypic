@@ -53,21 +53,32 @@ def _chain_roots(root: Any) -> Iterator[tuple[tuple[str, ...], Any]]:
 
     That is *root* itself and any pipeline held in an operation's field (a
     ``CompositeDetector`` branch, a ``GridApply`` sub-pipeline), which runs on
-    its own copy of the image. Pipelines under the ``meas``/``post``/
-    ``filters``/``model`` slots are not ``ops`` and are skipped. A pipeline
-    nested directly in ``ops`` is yielded too; its steps are a subset of its
-    parent's chain, so it can only repeat a finding, and the first one wins.
+    its own copy of the image. A pipeline nested directly in ``ops`` is not
+    one: it runs inline, so its steps are judged only within its parent's
+    chain, where a later detector of the parent may re-detect.
+
+    The walk is structural. From a pipeline it descends only through
+    ``get_ops()``, never the ``meas``/``post``/``filters``/``model`` slots, so
+    an ``ops`` key that happens to be spelled like a slot segment (``"meas:x"``)
+    is still an ``ops`` step.
     """
     from phenotypic._core._pipeline_parts._image_pipeline_core import ImagePipelineCore
-    from phenotypic.sdk_._operation_tree import PIPELINE_SLOTS, walk_operations
+    from phenotypic.sdk_._operation_tree import iter_child_operations
 
-    yield (), root
-    for path, node in walk_operations(root):
-        if not isinstance(node, ImagePipelineCore):
-            continue
-        if any(seg.partition(":")[0] in PIPELINE_SLOTS and ":" in seg for seg in path):
-            continue
-        yield path, node
+    def visit(
+            node: Any, path: tuple[str, ...], *, inline: bool
+    ) -> Iterator[tuple[tuple[str, ...], Any]]:
+        if isinstance(node, ImagePipelineCore):
+            if not inline:
+                yield path, node
+            for key, child in node.get_ops().items():
+                if child is not None:
+                    yield from visit(child, path + (key,), inline=True)
+        else:
+            for segment, child in iter_child_operations(node):
+                yield from visit(child, path + (segment,), inline=False)
+
+    yield from visit(root, (), inline=False)
 
 
 def _is_detector(op: Any) -> bool:

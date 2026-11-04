@@ -74,15 +74,17 @@ class GrowthRateAtBoundWarning(UserWarning):
         >>> import numpy as np
         >>> import pandas as pd
         >>> from phenotypic.analysis import GrowthRateAtBoundWarning, LinearLagModel
+        >>> from phenotypic.schema import CULTURE, GENETIC
+        >>> strain, time = str(GENETIC.STRAIN), str(CULTURE.TIME)
         >>> t = np.arange(0.0, 115.0, 6.0)
         >>> area = 500.0 + 120.0 * np.logaddexp(0.0, t - 24.0)
         >>> noise = 1 + 0.005 * np.random.default_rng(0).standard_normal(3 * t.size)
         >>> df = pd.DataFrame({
-        ...     "Metadata_Strain": "SYN-01",
-        ...     "Metadata_Time": np.tile(t, 3),
+        ...     strain: "SYN-01",
+        ...     time: np.tile(t, 3),
         ...     "Size_Area": np.tile(area, 3) * noise,
         ... })
-        >>> model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
+        >>> model = LinearLagModel(on="Size_Area", groupby=[strain])
         >>> with warnings.catch_warnings(record=True) as caught:
         ...     warnings.simplefilter("always")
         ...     fit = model.analyze(df)
@@ -447,7 +449,9 @@ class _LinearSoftplusBase(ModelFitter):
         wrong rate. Groups whose fit failed (``NaN``) never count.
         """
         fit = self._latest_fit_internal
-        v_member = self._measurement_infoclass.v
+        # ``_measurement_infoclass`` is typed ``ClassVar[type]``; the enum of
+        # both subclasses declares a ``v`` member.
+        v_member = getattr(self._measurement_infoclass, "v")
         if fit.empty or v_member not in fit.columns:
             return
         v = pd.to_numeric(fit[v_member], errors="coerce")
