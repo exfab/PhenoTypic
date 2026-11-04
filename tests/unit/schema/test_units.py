@@ -54,8 +54,9 @@ def test_members_are_the_closed_list_in_order():
     assert [m.name for m in UNITS] == [
         "PX", "PX2", "INTENSITY", "INTENSITY_PX2", "RADIAN", "DEGREE",
         "CIELAB", "CIELAB2", "TURN", "RADIAN_PER_PX", "RADIAN_PER_PX2",
-        "RADIAN_PX", "UNITLESS", "TIME", "PER_TIME", "FRAME", "NOT_A_QUANTITY",
-        "OF_INPUT", "OF_INPUT_SQUARED", "OF_INPUT_PER_TIME",
+        "RADIAN_PX", "DEGREE_PER_PX", "DEGREE_PER_PX2", "UNITLESS", "TIME",
+        "PER_TIME", "FRAME", "NOT_A_QUANTITY", "OF_INPUT", "OF_INPUT_SQUARED",
+        "OF_INPUT_PER_TIME",
     ]
     assert all(m.value == m.name.lower() for m in UNITS)
 

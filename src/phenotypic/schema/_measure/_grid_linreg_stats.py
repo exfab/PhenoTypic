@@ -1,6 +1,7 @@
 """Grid linear regression statistics and residual errors."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import QualityInfo
 
 
@@ -18,9 +19,14 @@ class GRID_LINREG_STATS(QualityInfo):
     def metric_family(cls):
         return "GridLinReg"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
+
     ROW_LINREG_M = Entry(
         "RowM",
         "Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.",
+        unit=UNITS.UNITLESS,
     )
     ROW_LINREG_B = Entry(
         "RowB",
@@ -29,6 +35,7 @@ class GRID_LINREG_STATS(QualityInfo):
     COL_LINREG_M = Entry(
         "ColM",
         "Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.",
+        unit=UNITS.UNITLESS,
     )
     COL_LINREG_B = Entry(
         "ColB",

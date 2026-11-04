@@ -270,7 +270,10 @@ class UNITS(str, Enum):
     RADIAN = UnitEntry("radian", "rad", "Angle in radians.")
     DEGREE = UnitEntry("degree", "°", "Angle in degrees.")
     CIELAB = UnitEntry(
-        "cielab", "CIELAB", "A CIELAB colour coordinate (L*, a* or b*), in CIELAB units."
+        "cielab",
+        "CIELAB",
+        "A CIELAB colour coordinate (L*, a* or b*), or a colour difference (ΔE) "
+        "between two colours, in CIELAB units.",
     )
     CIELAB2 = UnitEntry(
         "cielab2", "CIELAB²", "A squared CIELAB coordinate, such as a variance of L*, a* and b*."
@@ -291,6 +294,15 @@ class UNITS(str, Enum):
         "Angle multiplied by a pixel distance, such as the area under an angle "
         "profile along a radius.",
         length_power=1,
+    )
+    DEGREE_PER_PX = UnitEntry(
+        "degree_per_px", "°/px", "Angle change in degrees per pixel of distance.", length_power=-1
+    )
+    DEGREE_PER_PX2 = UnitEntry(
+        "degree_per_px2",
+        "°/px²",
+        "Change of a degrees-per-pixel rate per pixel of distance.",
+        length_power=-2,
     )
     UNITLESS = UnitEntry(
         "unitless", "", "Dimensionless: a ratio, fraction, count, index or score."

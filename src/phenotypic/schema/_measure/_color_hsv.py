@@ -1,6 +1,7 @@
 """Per-object robust summary in the HSV color space (cone-embedded)."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DescriptiveTrait
 
 
@@ -17,7 +18,11 @@ class ColorHSV(DescriptiveTrait):
     def metric_family(cls):
         return "ColorHSV"
 
-    HUE_ROBUST_MEAN = Entry("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)")
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
+
+    HUE_ROBUST_MEAN = Entry("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)", unit=UNITS.TURN)
     SATURATION_ROBUST_MEAN = Entry("SaturationRobustMean", "Saturation of the cone-embedded geometric-median robust center")
     VALUE_ROBUST_MEAN = Entry("ValueRobustMean", "Value (brightness) of the cone-embedded geometric-median robust center")
     HSV_CONE_VARIANCE = Entry("HSVConeVariance", "Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)")

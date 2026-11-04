@@ -1,6 +1,7 @@
 """Bounding-box and centroid coordinate measurements."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import IdentityInfo
 
 
@@ -16,6 +17,10 @@ class BBOX(IdentityInfo):
     @classmethod
     def metric_family(cls) -> str:
         return "Bbox"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
 
     CENTER_RR = Entry("CenterRR", "The row coordinate of the center of the bounding box.")
     MIN_RR = Entry("MinRR", "The smallest row coordinate of the bounding box.")
