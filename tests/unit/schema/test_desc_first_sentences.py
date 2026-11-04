@@ -217,6 +217,27 @@ def test_optimizer_status_lists_only_codes_trf_returns() -> None:
     assert "NaN" in desc
 
 
+def test_optimizer_loss_applies_rho_to_each_squared_residual() -> None:
+    # scipy's cost is 0.5 * sum(C**2 * rho(f**2 / C**2)): the loss acts on each
+    # squared residual, not on their sum.
+    assert "applied to each squared residual" in MODEL_METRICS.LOSS.desc
+
+
+def test_logistic_n0_and_kmax_bounds_are_stated() -> None:
+    # LogGrowthModel._bounds: N0 in [0, min(y)], upper 1 if min(y) <= 0;
+    # _kmax_for: max of Kmax_label, else max(y), and max(y) + 1 when the
+    # Kmax_label column is empty for the group.
+    assert "1 if that value is not positive" in LOG_GROWTH_MODEL.N0_FIT.desc
+    assert "largest measured value plus 1" in LOG_GROWTH_MODEL.K_MAX.desc
+
+
+@pytest.mark.parametrize(
+    "member", [INTENSITY.DENSITY, INTENSITY.CONVEX_DENSITY], ids=str
+)
+def test_density_first_sentence_names_the_colony(member) -> None:
+    assert _first_sentence(member.desc).startswith("The colony's")
+
+
 def test_bit_depth_says_a_float_array_infers_16() -> None:
     assert "float" in IMAGE.BIT_DEPTH.desc
 
