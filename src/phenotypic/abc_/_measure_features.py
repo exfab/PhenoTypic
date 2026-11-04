@@ -19,7 +19,7 @@ from functools import partial, wraps
 from ._base_operation import BaseOperation
 from phenotypic.sdk_.exceptions_ import OperationFailedError
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
-from phenotypic.schema import MeasurementInfo, OBJECT
+from phenotypic.schema import MeasurementInfo, OBJECT, ResolvedUnit
 
 
 def catch_warnings_decorator(func):
@@ -360,6 +360,39 @@ class MeasureFeatures(BaseOperation, ABC):
             for, with an example. Empty when every header is fixed.
         """
         return {}
+
+    @classmethod
+    def output_unit(
+            cls, member: MeasurementInfo, on: str | None = None
+    ) -> ResolvedUnit:
+        """Return the unit of the column :meth:`measure` writes for *member*.
+
+        The one default every table producer shares, next to
+        :meth:`output_header`; no operation overrides it. A static unit
+        (``SIZE.AREA`` is ``px²``) resolves to itself, and an input-dependent
+        one resolves against the unit of column *on*. See
+        :meth:`phenotypic.analysis.abc_.SetAnalyzer.output_unit`.
+
+        Args:
+            member: A member of a schema this operation declares.
+            on: The analyzed column, for a member whose unit depends on it.
+
+        Returns:
+            The concrete unit, with its ``length_power`` filled in.
+
+        Raises:
+            ValueError: *member* has no unit, or its unit depends on *on* and
+                the unit of *on* is unknown.
+
+        Examples:
+            >>> from phenotypic.measure import MeasureSize
+            >>> from phenotypic.schema import SIZE
+            >>> MeasureSize.output_unit(SIZE.AREA)
+            ResolvedUnit(symbol='px²', length_power=2)
+        """
+        from phenotypic.util._measurement_outputs import resolve_output_unit
+
+        return resolve_output_unit(member, on)
 
     def get_measurement_infoclasses(
             self,

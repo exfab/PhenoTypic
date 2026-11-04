@@ -11,20 +11,25 @@ from typing import Iterable, Iterator, Protocol, TypeAlias, TypeGuard
 import pandas as pd
 import polars as pl
 
-from phenotypic.schema import CATEGORIES, MeasurementInfo
+from phenotypic.schema import CATEGORIES, UNITS, MeasurementInfo, ResolvedUnit
 
 
 MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
 
 
 class _TableProducer(Protocol):
-    """What the registry needs from a producer class: its header emitter."""
+    """What the registry needs from a producer class: its header and unit."""
 
     @classmethod
     def output_header(cls, member: MeasurementInfo, on: str | None = None) -> str: ...
 
     @classmethod
     def output_header_placeholders(cls) -> dict[str, str]: ...
+
+    @classmethod
+    def output_unit(
+        cls, member: MeasurementInfo, on: str | None = None
+    ) -> ResolvedUnit: ...
 
 
 @dataclass(frozen=True)
@@ -68,6 +73,28 @@ class MeasurementProducer:
             The emitted header.
         """
         return self.producer.output_header(member, on)
+
+    def output_unit(
+        self, member: MeasurementInfo, on: str | None = None
+    ) -> ResolvedUnit:
+        """Return the unit of the column the producer writes for *member*.
+
+        Delegates to the producer class's ``output_unit``; every producer
+        inherits the one default, :func:`resolve_output_unit`.
+
+        Args:
+            member: A member of one of this producer's schemas.
+            on: The analyzed column. Needed only for a member whose unit is
+                input-dependent (``UNITS.OF_INPUT`` and its kin).
+
+        Returns:
+            The concrete unit, with its ``length_power`` filled in.
+
+        Raises:
+            ValueError: *member* has no unit, or its unit depends on *on* and
+                the unit of *on* is unknown.
+        """
+        return self.producer.output_unit(member, on)
 
 
 def measurement_producers() -> tuple[MeasurementProducer, ...]:
@@ -418,6 +445,80 @@ def _describe_column(column: str) -> str | None:
     """Resolve *column* to its member's ``desc`` across all schemes, or None."""
     member = _member_for_column(column)
     return member.desc if member is not None else None
+
+
+def unit_of_column(column: str) -> ResolvedUnit | None:
+    """Return the static unit of a measurement column, or ``None``.
+
+    The column is decoded to its public schema member in any header scheme
+    (``Texture_Contrast-deg000-scale05`` is ``TEXTURE.CONTRAST``). A column
+    that is not a known header has no unit here, and neither has a known
+    header whose unit is not static: metadata, and the outputs that are
+    themselves in the unit of their input (fitted parameters, model metrics,
+    QC statistics). Edge-corrected headers (``EdgeCorrection_NewVal-<column>``)
+    also return ``None``; they are not resolved recursively through the
+    column they embed (K0-17). A label or status column returns its static
+    ``NOT_A_QUANTITY`` unit, whose ``length_power`` is ``None``.
+
+    Args:
+        column: An output column header, such as ``"Size_Area"``.
+
+    Returns:
+        The member's static unit, resolved, or ``None``.
+    """
+    member = _member_for_column(str(column))
+    if member is None:
+        return None
+    unit = member.unit
+    if not isinstance(unit, UNITS) or unit.is_input_dependent:
+        return None
+    return unit.resolve(None)
+
+
+def resolve_output_unit(
+    member: MeasurementInfo, on: str | None = None
+) -> ResolvedUnit:
+    """Resolve *member*'s unit, against the unit of column *on* when it needs one.
+
+    The single resolver behind every producer's default ``output_unit``
+    (``MeasureFeatures`` and ``SetAnalyzer``); no producer overrides it. A
+    static unit resolves to itself and ignores *on*. An input-dependent unit
+    (``OF_INPUT``, ``OF_INPUT_SQUARED``, ``OF_INPUT_PER_TIME``, ``PER_INPUT``)
+    resolves against :func:`unit_of_column` of *on*: ``v`` fitted on
+    ``Size_RobustMeanRadius`` is ``px/time``, length power 1. It never guesses
+    a unit for a column it does not know.
+
+    Args:
+        member: The schema member whose column's unit is wanted.
+        on: The analyzed column, for an input-dependent unit.
+
+    Returns:
+        The concrete unit, with its ``length_power`` filled in.
+
+    Raises:
+        ValueError: *member* has no unit; or its unit is input-dependent and
+            *on* is ``None``, unknown, or has no length power of its own (a
+            label, metadata, or a column itself in the unit of its input).
+    """
+    unit = member.unit
+    name = f"{type(member).__name__}.{member.name}"
+    if not isinstance(unit, UNITS):
+        raise ValueError(f"{name} ({member!s}) has no unit")
+    if not unit.is_input_dependent:
+        return unit.resolve(None)
+    if on is None:
+        raise ValueError(
+            f"{name} is in UNITS.{unit.name}, the unit of the column it was "
+            "computed on; pass on=<that column> to resolve it"
+        )
+    input_unit = unit_of_column(on)
+    if input_unit is None or input_unit.length_power is None:
+        raise ValueError(
+            f"cannot resolve the unit of {name}: column {str(on)!r} has no unit "
+            "of its own (it is not a known measurement header, or it is a "
+            "label, metadata, or itself in the unit of its input)"
+        )
+    return unit.resolve(input_unit)
 
 
 __all__ = ["generate_output_key", "split_measurements", "split_measurements_by_category"]

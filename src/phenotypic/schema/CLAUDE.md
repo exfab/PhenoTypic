@@ -283,13 +283,35 @@ unchanged and stay in pixels; a unit is metadata only.
   `UNITS.resolve(...)` into a concrete `ResolvedUnit(symbol, length_power)`:
   `v` fitted on a radius is `px/time`, length power 1. Reading `.length_power`
   on an unresolved input-dependent member raises `TypeError` pointing at
-  `output_unit`, so `px_per_mm ** None` can never happen silently. An unknown
-  input raises `ValueError`. A unitless input gives `"1/time"`, not `"/time"`,
-  and a compound input is wrapped first (`(°/px)/time`). Unresolved, their
+  `output_unit`, so `px_per_mm ** None` can never happen silently. A unitless
+  input gives `"1/time"`, not `"/time"`, and a compound input is wrapped first
+  (`(°/px)/time`). Unresolved, their
   `.symbol` is a readable placeholder (`input unit`, `(input unit)²`,
   `input unit/time`), never `""`, so nothing renders a fitted rate as unitless.
-- `None` means the member's unit has not been reviewed yet. **Metadata members
-  (`MetadataInfo`) are user vocabulary and stay unit-less**; never tag one.
+- **`output_unit` has one implementation.** `MeasureFeatures.output_unit` and
+  `SetAnalyzer.output_unit` both call `resolve_output_unit` in
+  `util/_measurement_outputs.py`, and **no producer overrides it**
+  (`test_no_producer_overrides_output_unit`); `MeasurementProducer.output_unit`
+  delegates to it. A static unit resolves to itself and ignores `on`. An
+  input-dependent one resolves against `unit_of_column(on)`, the static unit of
+  the member that column decodes to. `unit_of_column` returns `None` for an
+  unknown header, metadata, and any column whose own unit is input-dependent,
+  including the edge-corrected `EdgeCorrection_NewVal-<column>`, which is never
+  resolved recursively (K0-17). `output_unit` then raises `ValueError` naming
+  `on`, as it does for an `on` that is not a quantity (a label) or is `None`; a
+  member with no unit raises naming the member. It never makes a unit up.
+  Pinned by `tests/unit/util/test_output_units.py`.
+- `None` means the member's unit has not been reviewed yet, and **the gate
+  fails on it**: `test_every_non_metadata_member_has_a_unit` in
+  `tests/unit/schema/test_units.py` covers every public non-metadata member,
+  so a new schema without units fails CI rather than rendering "None" in the
+  docs. **Metadata members (`MetadataInfo`) are user vocabulary and stay
+  unit-less**; never tag one (`test_no_metadata_member_has_a_unit`).
+- **A wrong tag that looks plausible** is caught by
+  `tests/unit/measure/test_unit_scaling.py`: it measures disks at two image
+  scales (k = 2) and checks every size, shape, intensity, bounding-box and
+  neighbour-distance column against `k ** length_power`. A failure means the
+  tag is wrong; fix the tag, never the tolerance.
 - A unit describes the **value**, not the header: the texture `scale` in a
   `Texture_*-scale##` header is a parameter in pixels, and the value is still
   `UNITLESS`.
