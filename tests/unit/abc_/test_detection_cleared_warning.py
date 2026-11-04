@@ -31,8 +31,11 @@ from phenotypic.grid import GridApply
 from phenotypic.measure import MeasureSize, MeasureSymZones
 
 
-def _cleared(record) -> list[warnings.WarningMessage]:
-    return [w for w in record if w.category is DetectionClearedWarning]
+def _assert_one_cleared(record) -> warnings.WarningMessage:
+    """The one ``DetectionClearedWarning`` in *record*; fails on none or several."""
+    cleared = [w for w in record if w.category is DetectionClearedWarning]
+    assert len(cleared) == 1, [str(w.message) for w in cleared]
+    return cleared[0]
 
 
 def _bad() -> ImagePipeline:
@@ -62,13 +65,12 @@ def test_warning_is_a_user_warning():
 def test_enhancer_after_detector_warns_once_at_the_callers_line():
     with pytest.warns(DetectionClearedWarning) as rec:
         _bad().apply(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    message = str(caught[0].message)
+    caught = _assert_one_cleared(rec)
+    message = str(caught.message)
     assert "BlurGauss" in message
     assert "OtsuDetector" in message
     assert "before the detector" in message
-    assert caught[0].filename == __file__
+    assert caught.filename == __file__
 
 
 def test_enhancer_before_detector_on_the_prelabelled_plate_is_silent():
@@ -107,10 +109,9 @@ def test_enhancer_after_the_last_detector_warns_even_after_a_re_detection():
     )
     with pytest.warns(DetectionClearedWarning) as rec:
         pipeline.apply(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert "'late blur'" in str(caught[0].message)
-    assert "'redetect'" in str(caught[0].message)
+    message = str(_assert_one_cleared(rec).message)
+    assert "'late blur'" in message
+    assert "'redetect'" in message
 
 
 def test_grid_apply_of_a_detector_counts_as_a_detector():
@@ -135,15 +136,13 @@ def test_nested_enhancer_after_outer_detector_warns_once():
     outer = ImagePipeline(ops={"detect": OtsuDetector(), "inner": inner})
     with pytest.warns(DetectionClearedWarning) as rec:
         outer.apply(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert "inner/" in str(caught[0].message)
+    assert "inner/" in str(_assert_one_cleared(rec).message)
 
 
 def test_problem_inside_a_nested_pipeline_warns_once_not_per_level():
     with pytest.warns(DetectionClearedWarning) as rec:
         ImagePipeline(ops={"inner": _bad()}).apply(load_synth_yeast_plate())
-    assert len(_cleared(rec)) == 1
+    _assert_one_cleared(rec)
 
 
 def test_nested_pipeline_is_judged_inline_so_a_later_outer_detector_re_detects():
@@ -158,9 +157,7 @@ def test_an_ops_key_spelled_like_a_slot_segment_is_still_checked():
     pipeline = ImagePipeline(ops={"meas:x": CompositeDetector(ops=[branch])})
     with pytest.warns(DetectionClearedWarning) as rec:
         pipeline.apply(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert "meas:x/" in str(caught[0].message)
+    assert "meas:x/" in str(_assert_one_cleared(rec).message)
 
 
 def test_a_pipeline_inside_the_meas_slot_is_not_checked():
@@ -187,7 +184,7 @@ def test_bad_detector_branch_warns_although_the_outer_chain_re_detects():
     pipeline = ImagePipeline(ops=[CompositeDetector(ops=[branch]), OtsuDetector()])
     with pytest.warns(DetectionClearedWarning) as rec:
         pipeline.apply(load_synth_yeast_plate())
-    assert len(_cleared(rec)) == 1
+    _assert_one_cleared(rec)
 
 
 # ---------------------------------------------------------------------- #
@@ -199,17 +196,13 @@ def test_apply_and_measure_warns_once_at_the_callers_line():
     with pytest.warns(DetectionClearedWarning) as rec:
         with pytest.raises(RuntimeError, match="No objects"):
             pipeline.apply_and_measure(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert caught[0].filename == __file__
+    assert _assert_one_cleared(rec).filename == __file__
 
 
 def test_apply_with_intermediates_warns_once():
     with pytest.warns(DetectionClearedWarning) as rec:
         _bad().apply_with_intermediates(load_synth_yeast_plate())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert caught[0].filename == __file__
+    assert _assert_one_cleared(rec).filename == __file__
 
 
 def _mock_viewer() -> MagicMock:
@@ -234,9 +227,7 @@ def _mock_viewer() -> MagicMock:
 def test_apply_napari_warns_once():
     with pytest.warns(DetectionClearedWarning) as rec:
         _bad().apply_napari(load_synth_yeast_plate(), viewer=_mock_viewer())
-    caught = _cleared(rec)
-    assert len(caught) == 1
-    assert caught[0].filename == __file__
+    assert _assert_one_cleared(rec).filename == __file__
 
 
 def test_a_step_that_raises_does_not_leave_the_check_switched_off():
@@ -245,7 +236,7 @@ def test_a_step_that_raises_does_not_leave_the_check_switched_off():
         failing.apply(load_synth_yeast_plate())
     with pytest.warns(DetectionClearedWarning) as rec:
         _bad().apply(load_synth_yeast_plate())
-    assert len(_cleared(rec)) == 1
+    _assert_one_cleared(rec)
 
 
 def test_warning_does_not_change_the_result():

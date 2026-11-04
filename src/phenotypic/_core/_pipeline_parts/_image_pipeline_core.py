@@ -31,6 +31,7 @@ import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.abc_._post_measurement import PostMeasurement
+from phenotypic._core._pipeline_parts._step_order_check import step_order_checked
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
 from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # Import the entry type from the qc._recipe *submodule* (not the package
@@ -990,15 +991,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 order of ``ops`` (nested pipelines included). The steps still
                 all run.
         """
-        from phenotypic._core._pipeline_parts._step_order_check import (
-            step_order_checked,
-        )
+        from phenotypic._core._provenance import provenance_application
 
         with step_order_checked(self, stacklevel=2):
             effective_reset = reset if reset is not None else self._reset
             img = image if inplace else image.copy()
-            from phenotypic._core._provenance import provenance_application
-
             with provenance_application(img, pipeline=self._provenance_pipeline):
                 if effective_reset:
                     img.reset()
@@ -1122,10 +1119,6 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     intermediates[key] = None
             else:
                 intermediates[key] = _detached_snapshot(current)
-
-        from phenotypic._core._pipeline_parts._step_order_check import (
-            step_order_checked,
-        )
 
         with step_order_checked(self, stacklevel=2), provenance_application(
                 img, pipeline=self._provenance_pipeline
@@ -1396,10 +1389,6 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             pd.DataFrame: A DataFrame containing measurement data for the
             processed image.
         """
-        from phenotypic._core._pipeline_parts._step_order_check import (
-            step_order_checked,
-        )
-
         # Checked here as well as in ``apply`` so the warning points at the
         # caller of ``apply_and_measure``; the inner ``apply`` then skips.
         with step_order_checked(self, stacklevel=2):
