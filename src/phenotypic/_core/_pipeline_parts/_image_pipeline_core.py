@@ -1643,11 +1643,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             f"The image is a GridImage whose {type(image.grid_finder).__name__} "
             f"lays out {image.nrows} rows x {image.ncols} columns"
         )
+        if not any(isinstance(step, GridFinder) for step in run_order.values()):
+            return _GENERIC_CONFLICT_ADVICE
         explicit = [
             (key, step) for key, step in self._meas.items()
             if isinstance(step, GridFinder)
         ]
-        if not explicit and any(isinstance(m, GridFinder) for m in run_order.values()):
+        if not explicit:  # the finder measure() added for the preset
             return (
                 f"{image_grid}, but the pipeline's nrows={self._nrows}, "
                 f"ncols={self._ncols} preset makes measure() add "

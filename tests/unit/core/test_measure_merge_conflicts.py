@@ -280,3 +280,15 @@ def test_labels_present_on_one_side_only_keep_the_inner_join() -> None:
     merged = ImagePipeline._merge_on_object_labels([left, right])
 
     assert list(merged[OBJECT.LABEL]) == [1, 3]
+
+
+def test_grid_columns_from_no_grid_finder_get_the_generic_fix(plate: GridImage) -> None:
+    """A conflict on Grid_* with no grid finder in the run names no finder."""
+    pipeline = ImagePipeline(meas={"MeasureSize": MeasureSize()})
+
+    advice = pipeline._measurement_conflict_advice(
+        plate, pipeline._build_measurement_run_order(), ("Grid_RowNum",)
+    )
+
+    assert "remove one of the steps" in advice
+    assert "measurement step" not in advice
