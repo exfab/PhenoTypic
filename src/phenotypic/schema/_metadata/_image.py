@@ -31,9 +31,20 @@ class IMAGE(MetadataInfo):
         "Name of the image, which is the file name without its extension when "
         "the image is read from a file.",
     )
-    PARENT_IMAGE_NAME = Entry("ParentImageName", "The name of the parent image.")
-    PARENT_UUID = Entry("ParentUUID", "The UUID of the parent image.")
-    IMFORMAT = Entry("ImageFormat", "The format of the image.")
+    PARENT_IMAGE_NAME = Entry(
+        "ParentImageName",
+        "Reserved for the name of the image this image was derived from; "
+        "PhenoTypic does not set it.",
+    )
+    PARENT_UUID = Entry(
+        "ParentUUID",
+        "Reserved for the UUID of the image this image was derived from; "
+        "PhenoTypic does not set it.",
+    )
+    IMFORMAT = Entry(
+        "ImageFormat",
+        "Reserved for the format of the image; PhenoTypic does not set it.",
+    )
     IMAGE_TYPE = Entry(
         "ImageType",
         "Kind of image the row was measured from: Image, GridImage, Crop, "
@@ -42,7 +53,8 @@ class IMAGE(MetadataInfo):
     BIT_DEPTH = Entry(
         "BitDepth",
         "Bit depth of the image's source pixel data, 8 or 16, either given "
-        "when the image is loaded or inferred from the array's data type.",
+        "when the image is loaded or inferred from the pixel data (16 for a "
+        "float array).",
     )
     SUFFIX = Entry(
         "FileSuffix",

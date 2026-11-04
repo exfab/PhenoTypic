@@ -74,9 +74,13 @@ class SHAPE(PrimaryMeasure):
     )
     ORIENTATION = Entry(
         "Orientation",
-        "Angle, in radians from −π/2 to π/2, between the colony's major axis and "
-        "the image's vertical (row) axis: 0 for a colony elongated top to bottom "
-        "and about ±π/2 for one elongated left to right. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.",
+        "Angle, in radians from −π/2 to π/2, between the colony's major axis "
+        "and the image's vertical (row) axis: 0 for a colony elongated top to "
+        "bottom and about ±π/2 for one elongated left to right. Measures "
+        "colony alignment and growth directionality. Random orientations are "
+        "typical for most bacterial colonies, while consistent orientations "
+        "may indicate environmental gradients or mechanical stresses during "
+        "plating.",
         unit=UNITS.RADIAN,
     )
     MEAN_BOUNDARY_DIST = Entry(

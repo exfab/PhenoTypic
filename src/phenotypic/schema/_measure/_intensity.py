@@ -37,19 +37,19 @@ class INTENSITY(DirectPhenotype):
     )
     DENSITY = Entry(
         "Density",
-        "The object's integrated intensity divided by its area in pixels: the "
+        "The colony's integrated intensity divided by its area in pixels: the "
         "mean grayscale value of its pixels, equal to MeanIntensity.",
     )
     CONVEX_DENSITY = Entry(
         "ConvexDensity",
-        "The object's integrated intensity divided by the area of its convex "
+        "The colony's integrated intensity divided by the area of its convex "
         "hull, so indentations and gaps in the colony lower it relative to "
-        "Density. The hull passes through pixel centers, so its area is smaller "
-        "than the pixel count: slightly for a convex colony, where this value "
-        "can slightly exceed Density, and substantially for an object of only a "
-        "few pixels (a 2 x 2 pixel object has a hull area of 1, so this value is "
-        "four times Density). It is NaN for a single pixel or a one-pixel-wide "
-        "line, which has no hull.",
+        "Density. The hull passes through pixel centers, so its area is "
+        "smaller than the pixel count: slightly for a convex colony, where "
+        "this value can slightly exceed Density, and substantially for an "
+        "object of only a few pixels (a 2 x 2 pixel object has a hull area of "
+        "1, so this value is four times Density). It is NaN for a single "
+        "pixel or a one-pixel-wide line, which has no hull.",
     )
     MINIMUM_INTENSITY = Entry(
         "MinimumIntensity",

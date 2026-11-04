@@ -49,7 +49,7 @@ class ColorHSV(DescriptiveTrait):
         "sum of the variances of the three cone coordinates. It is the trace "
         "of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); "
         "spread about the arithmetic mean of the cone coordinates (NOT about "
-        "the reported RobustMean center)",
+        "the reported RobustMean center).",
     )
 
     @classmethod

@@ -55,7 +55,7 @@ class ColorLab(DescriptiveTrait):
         "exhaustive medoid on a unimodal colour cloud. That candidate centre "
         "is computed separately and more tightly than the reported "
         "``*GeoMedian`` columns, so it need not equal them. Only the object's "
-        "own pixels are used, never a neighbouring object's",
+        "own pixels are used, never a neighbouring object's.",
         categories=CATEGORIES.STARTING_METRICS,
     )
     A_STAR_MEDOID = Entry(
@@ -69,7 +69,7 @@ class ColorLab(DescriptiveTrait):
         "exhaustive medoid on a unimodal colour cloud. That candidate centre "
         "is computed separately and more tightly than the reported "
         "``*GeoMedian`` columns, so it need not equal them. Only the object's "
-        "own pixels are used, never a neighbouring object's",
+        "own pixels are used, never a neighbouring object's.",
         categories=CATEGORIES.STARTING_METRICS,
     )
     B_STAR_MEDOID = Entry(
@@ -83,14 +83,26 @@ class ColorLab(DescriptiveTrait):
         "exhaustive medoid on a unimodal colour cloud. That candidate centre "
         "is computed separately and more tightly than the reported "
         "``*GeoMedian`` columns, so it need not equal them. Only the object's "
-        "own pixels are used, never a neighbouring object's",
+        "own pixels are used, never a neighbouring object's.",
         categories=CATEGORIES.STARTING_METRICS,
     )
 
     # -- ΔE2000 within-colony consistency, measured from the medoid --
-    DELTA_E2000_MEDIAN = Entry("DeltaE2000MedianFromMedoid", "Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)")
-    DELTA_E2000_MEAN = Entry("DeltaE2000MeanFromMedoid", "Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)")
-    DELTA_E2000_P95 = Entry("DeltaE2000P95FromMedoid", "95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)")
+    DELTA_E2000_MEDIAN = Entry(
+        "DeltaE2000MedianFromMedoid",
+        "Median color difference (ΔE2000) between the colony's pixels and its "
+        "medoid color (robust perceptual MAD).",
+    )
+    DELTA_E2000_MEAN = Entry(
+        "DeltaE2000MeanFromMedoid",
+        "Mean color difference (ΔE2000) between the colony's pixels and its "
+        "medoid color (color-uniformity standard).",
+    )
+    DELTA_E2000_P95 = Entry(
+        "DeltaE2000P95FromMedoid",
+        "95th percentile of the color difference (ΔE2000) between the "
+        "colony's pixels and its medoid color (worst-case / sectoring flag).",
+    )
 
     # -- classical Euclidean spread --
     LAB_TOTAL_VARIANCE = Entry(
@@ -99,7 +111,7 @@ class ColorLab(DescriptiveTrait):
         "color, as the sum of the variances of L*, a* and b*. It is the trace "
         "of the 3x3 L*a*b* covariance (var L* + var a* + var b*); "
         "mean-squared ΔE76 spread about the arithmetic mean (NOT about the "
-        "reported GeoMedian/Medoid center)",
+        "reported GeoMedian/Medoid center).",
         unit=UNITS.CIELAB2,
     )
 

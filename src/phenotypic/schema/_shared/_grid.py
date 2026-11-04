@@ -25,10 +25,16 @@ class GRID(IdentityInfo):
     )
     ROW_INTERVAL_START = Entry(
         "RowIntervalStart",
-        "The start of the row interval of the object",
+        "Reserved for the pixel row where the colony's grid row starts; no "
+        "PhenoTypic operation writes this column.",
         unit=UNITS.PX,
     )
-    ROW_INTERVAL_END = Entry("RowIntervalEnd", "The end of the row interval of the object", unit=UNITS.PX)
+    ROW_INTERVAL_END = Entry(
+        "RowIntervalEnd",
+        "Reserved for the pixel row where the colony's grid row ends; no "
+        "PhenoTypic operation writes this column.",
+        unit=UNITS.PX,
+    )
 
     COL_NUM = Entry(
         "ColNum",
@@ -39,10 +45,16 @@ class GRID(IdentityInfo):
     )
     COL_INTERVAL_START = Entry(
         "ColIntervalStart",
-        "The start of the column interval of the object",
+        "Reserved for the pixel column where the colony's grid column starts; "
+        "no PhenoTypic operation writes this column.",
         unit=UNITS.PX,
     )
-    COL_INTERVAL_END = Entry("ColIntervalEnd", "The end of the column interval of the object", unit=UNITS.PX)
+    COL_INTERVAL_END = Entry(
+        "ColIntervalEnd",
+        "Reserved for the pixel column where the colony's grid column ends; "
+        "no PhenoTypic operation writes this column.",
+        unit=UNITS.PX,
+    )
 
     ROW_MAJOR_IDX = Entry(
         "RowMajorIdx",
