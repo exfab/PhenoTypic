@@ -75,7 +75,15 @@ class READMEGenerator:
 
         grid_info = ""
         if self.config.image_type == "GridImage":
-            grid_info = f"\nGrid Dimensions: {self.config.nrows} rows x {self.config.ncols} columns"
+            from phenotypic._cli._cli_utils import resolve_grid_shape
+
+            nrows, ncols = resolve_grid_shape(
+                getattr(self.config, "nrows", None),
+                getattr(self.config, "ncols", None),
+                getattr(self.pipeline, "nrows", None),
+                getattr(self.pipeline, "ncols", None),
+            )
+            grid_info = f"\nGrid Dimensions: {nrows} rows x {ncols} columns"
 
         return f"""# PhenoTypic Processing Results
 
