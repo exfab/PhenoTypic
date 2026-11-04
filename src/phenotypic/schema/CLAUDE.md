@@ -266,7 +266,9 @@ unchanged and stay in pixels; a unit is metadata only.
   **not** subclass `MeasurementInfo`, and the module imports only the stdlib.
 - **`length_power`** is the power of length in the unit: 1 for `PX`, 2 for
   `PX2` and `INTENSITY_PX2`, 0 for anything scale-free, negative for a per-px
-  rate. `NOT_A_QUANTITY` (labels, strings, flags, statuses) has `None`.
+  rate. `NOT_A_QUANTITY` (labels, strings, flags, statuses, and numbers with
+  no physical unit that must never be converted, such as `MODEL_METRICS.LOSS`)
+  has `None`.
 - **A unit on each member works the way a tier does.** A class sets its default
   with a `default_unit()` classmethod (base default `None`), and the exceptions
   carry `Entry(..., unit=UNITS.X)`, stored as `member.unit_override`.
@@ -308,10 +310,18 @@ unchanged and stay in pixels; a unit is metadata only.
   docs. **Metadata members (`MetadataInfo`) are user vocabulary and stay
   unit-less**; never tag one (`test_no_metadata_member_has_a_unit`).
 - **A wrong tag that looks plausible** is caught by
-  `tests/unit/measure/test_unit_scaling.py`: it measures disks at two image
-  scales (k = 2) and checks every size, shape, intensity, bounding-box and
-  neighbour-distance column against `k ** length_power`. A failure means the
-  tag is wrong; fix the tag, never the tolerance.
+  `tests/unit/measure/test_unit_scaling.py`: it measures synthetic scenes at
+  two image scales (k = 2) and checks every size, shape, intensity,
+  bounding-box, neighbour-distance, grid-spread, grid-regression and
+  symmetric-zone column against `k ** length_power`. A failure means the tag
+  is wrong; fix the tag, never the tolerance. Members it skips as
+  `NOT_A_QUANTITY` must match an explicit allowlist there.
+- **Every tag is pinned** by `tests/unit/schema/test_unit_tags_snapshot.py`, a
+  literal `{"<class>.<member>": "<unit key>"}` mapping. It catches what scaling
+  cannot: a swap between units of the same power (`RADIAN` for `DEGREE`), and
+  any tag in a family no synthetic scene measures (orientation zones, the
+  `GRID` intervals). **A tag change edits that line on purpose**; never
+  regenerate the mapping wholesale.
 - A unit describes the **value**, not the header: the texture `scale` in a
   `Texture_*-scale##` header is a parameter in pixels, and the value is still
   `UNITLESS`.

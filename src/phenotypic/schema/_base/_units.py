@@ -313,7 +313,9 @@ class UNITS(str, Enum):
     NOT_A_QUANTITY = UnitEntry(
         "not_a_quantity",
         "",
-        "Not a quantity: a label, identifier, flag, string or status. Nothing to convert.",
+        "Not a quantity: a label, identifier, flag, string or status, or a "
+        "number with no physical unit that must never be converted, such as "
+        "an optimizer cost. Nothing to convert.",
         length_power=None,
     )
     OF_INPUT = UnitEntry(

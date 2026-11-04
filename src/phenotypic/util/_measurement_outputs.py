@@ -453,12 +453,14 @@ def unit_of_column(column: str) -> ResolvedUnit | None:
     The column is decoded to its public schema member in any header scheme
     (``Texture_Contrast-deg000-scale05`` is ``TEXTURE.CONTRAST``). A column
     that is not a known header has no unit here, and neither has a known
-    header whose unit is not static: metadata, and the outputs that are
-    themselves in the unit of their input (fitted parameters, model metrics,
-    QC statistics). Edge-corrected headers (``EdgeCorrection_NewVal-<column>``)
-    also return ``None``; they are not resolved recursively through the
-    column they embed (K0-17). A label or status column returns its static
-    ``NOT_A_QUANTITY`` unit, whose ``length_power`` is ``None``.
+    header whose unit is not static: metadata, and the outputs whose own unit
+    is input-dependent (a fitted rate such as ``v``, ``RMSE``, a QC median).
+    A statically tagged output keeps its unit: the fitted lag ``lam`` is
+    ``time`` and ``alpha`` is ``1/time``, whatever column was fitted.
+    Edge-corrected headers (``EdgeCorrection_NewVal-<column>``) also return
+    ``None``; they are not resolved recursively through the column they embed
+    (K0-17). A label or status column returns its static ``NOT_A_QUANTITY``
+    unit, whose ``length_power`` is ``None``.
 
     Args:
         column: An output column header, such as ``"Size_Area"``.

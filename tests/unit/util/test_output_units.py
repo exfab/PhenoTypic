@@ -92,6 +92,9 @@ def test_unit_of_column():
     assert unit_of_column("my_custom_col") is None
     assert unit_of_column("Metadata_Strain") is None
     assert unit_of_column("LinearLagModel_Area_v") is None
+    # A statically tagged fit parameter keeps its unit, whatever was fitted.
+    assert unit_of_column("LinearLagModel_Area_lambda") == ResolvedUnit("time", 0)
+    assert unit_of_column("LinearLagModel_Area_alpha") == ResolvedUnit("1/time", 0)
     assert unit_of_column("EdgeCorrection_NewVal-Size_Area") is None
 
 

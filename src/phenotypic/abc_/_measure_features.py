@@ -373,6 +373,13 @@ class MeasureFeatures(BaseOperation, ABC):
         one resolves against the unit of column *on*. See
         :meth:`phenotypic.analysis.abc_.SetAnalyzer.output_unit`.
 
+        *on* means more here than in :meth:`output_header`, which ignores it
+        for most producers. Every measurement operation's members are static
+        today, so *on* is never needed for one; but on a quality check the
+        Median, MAD, SE and fence columns (``QUALITY_MAD``, ``QUALITY_ZMAX``,
+        ``QUALITY_SE``, ``QUALITY_TUKEY``) are in the unit of the check's
+        ``on`` column, and resolving them without it raises.
+
         Args:
             member: A member of a schema this operation declares.
             on: The analyzed column, for a member whose unit depends on it.

@@ -270,6 +270,13 @@ class SetAnalyzer(BaseModel, abc.ABC):
         column it was computed on, so a rate fitted on a radius converts with
         ``px_per_mm ** 1`` and one fitted on an area with ``px_per_mm ** 2``.
 
+        Unlike :meth:`output_header`, which ignores *on* for most producers,
+        this needs *on* for every input-dependent member. That includes the
+        quality checks' Median, MAD, SE and fence columns (``QUALITY_MAD``,
+        ``QUALITY_ZMAX``, ``QUALITY_SE``, ``QUALITY_TUKEY``), whose headers
+        never embed the analyzed column: pass the check's own ``on``
+        (``check.on``), or the call raises.
+
         Args:
             member: A member of a schema this analyzer declares.
             on: The analyzed column, as passed to the analyzer's ``on``.
