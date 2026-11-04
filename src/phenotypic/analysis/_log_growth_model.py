@@ -89,9 +89,11 @@ class LogGrowthModel(ModelFitter):
         ``self.on`` with a recognized metric-family prefix stripped.
 
     Attributes:
-        lam (float): The penalty factor applied to growth rates.
-        beta (float): The maximum penalty factor applied to the carrying
-            capacity.
+        lam (float): Regularization weight on the maximum growth rate
+            r·K/4 and on N0; larger values pull both toward 0.
+        beta (float): Weight of the penalty on the distance of the fitted
+            carrying capacity K from the value measured at the last time
+            point, relative to that value.
         Kmax_label (str | None): The column name for the maximum carrying capacity
             values, if provided.
     """
