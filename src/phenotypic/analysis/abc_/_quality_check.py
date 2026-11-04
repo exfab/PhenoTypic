@@ -14,6 +14,15 @@ from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK, Measurem
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
 
+#: What a check's JSON dump writes for a parameter that held a runtime-only
+#: value, such as an in-memory layout DataFrame, which JSON cannot carry. A
+#: check refuses it when it is rebuilt from that dump, and
+#: :class:`~phenotypic.sdk_._qc_recipe.QcRecipeEntry` logs a warning when it
+#: writes one. A placeholder rather than ``None``, because ``None`` can be a
+#: valid configuration of its own (``ExpectedVsDetectedCount`` reads it as "no
+#: layout").
+IN_MEMORY_PARAM = "<in-memory>"
+
 
 class QualityCheck(SetAnalyzer, ABC):
     """Detect quality-control issues in measurement frames.

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-from phenotypic.schema import GRID, IMAGE, METADATA_MATCH
+from phenotypic.schema import GRID, IMAGE, METADATA_MATCH, OBJECT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
@@ -81,6 +81,59 @@ def numeric_order_key(values: "pd.Series") -> "pd.Series":
     return numeric
 
 
+def _blank_position_message(
+    frame: "pd.DataFrame", blank: "pd.Series", columns: list[str]
+) -> str:
+    """Say why rows with a blank position cannot be expected positions.
+
+    Two causes need two different fixes, so they get two sentences. A blank
+    position on a row with no detected object (a phantom) means the metadata
+    is at the wrong grain. A blank position on a *detected* object means an
+    object was measured outside every grid cell. Without an object-label
+    column the two cannot be told apart, and the message says only that rows
+    are blank.
+
+    Args:
+        frame: The frame being analyzed.
+        blank: Which of its rows carry a blank position value.
+        columns: The position columns.
+
+    Returns:
+        The error message.
+    """
+    label = str(OBJECT.LABEL)
+    if label not in frame.columns:
+        return (
+            f"expected_positions: {int(blank.sum())} row(s) carry a blank value "
+            f"in one of the position columns {columns}. Expected positions can "
+            "only be derived when every row names one position on one image. "
+            "Pass per-position metadata, or supply expected counts explicitly."
+        )
+    detected = frame[label].notna()
+    off_grid = int((blank & detected).sum())
+    wrong_grain = int((blank & ~detected).sum())
+    parts = []
+    if wrong_grain:
+        parts.append(
+            f"{wrong_grain} row(s) with no detected object carry a blank value in "
+            f"one of the position columns {columns}. That is the signature of "
+            "metadata at the wrong grain — expected positions can only be derived "
+            "from metadata with one row per position per image. Pass per-position "
+            "metadata, or supply expected counts explicitly."
+        )
+    if off_grid:
+        parts.append(
+            f"{off_grid} detected object(s) carry a blank value in one of the "
+            f"position columns {columns}: objects measured outside every grid "
+            "cell (off-grid detections). They have no expected position to be "
+            "counted against, so expected "
+            "positions cannot be derived while they are in the frame. Drop them "
+            "first (keep only rows whose position columns are all set), or pass "
+            "a layout."
+        )
+    return "expected_positions: " + " ".join(parts)
+
+
 def _default_position_by() -> tuple[str, ...]:
     """Return the identity of one expected colony position, per the schema."""
     return (
@@ -122,10 +175,14 @@ def expected_positions(
       every group would pass. ``None`` is returned so the caller can say what to
       do about it: ``ExpectedVsDetectedCount`` refuses with a pointer to
       ``metadata=``, ``FittingWindow`` reports a null expected count.
-    * **Guard 2 — every row needs a position.** A blank ``position_by`` value is
-      the signature of metadata at the wrong grain: per-*image* metadata's
-      phantoms carry an image name and no grid cell. Dropping those rows would
-      quietly shrink the denominator, so this raises instead.
+    * **Guard 2 — every row needs a position.** A blank ``position_by`` value on
+      a row with no detected object is the signature of metadata at the wrong
+      grain: per-*image* metadata's phantoms carry an image name and no grid
+      cell. Dropping those rows would quietly shrink the denominator, so this
+      raises instead. A blank value on a *detected* object is a different
+      problem — an object measured outside every grid cell — and the error
+      says so, since the fix is to drop those detections, not to change the
+      metadata.
 
     Args:
         frame: The measurement frame being analyzed.
@@ -175,7 +232,7 @@ def expected_positions(
         >>> expected_positions(blank)  # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
-        ValueError: expected_positions: 1 row(s) carry a blank value in ...
+        ValueError: expected_positions: 1 row(s) with no detected object carry a blank value in ...
     """
     import pandas as pd
 
@@ -207,12 +264,6 @@ def expected_positions(
         blank = blank | column_blank
     if bool(blank.any()):
         # Guard 2.
-        raise ValueError(
-            f"expected_positions: {int(blank.sum())} row(s) carry a blank value "
-            f"in one of the position columns {columns}. That is the signature of "
-            "metadata at the wrong grain — expected positions can only be "
-            "derived from metadata with one row per position per image. Pass "
-            "per-position metadata, or supply expected counts explicitly."
-        )
+        raise ValueError(_blank_position_message(frame, blank, columns))
 
     return frame.drop_duplicates(subset=columns).reset_index(drop=True)

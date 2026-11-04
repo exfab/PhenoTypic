@@ -284,6 +284,27 @@ def test_every_non_found_outcome_fails(analyzed: FittingWindow):
             assert bool(row[analyzed.flag_col()]), name
 
 
+def test_a_warning_condition_is_not_flagged(rows: pd.DataFrame):
+    """The condition-grain flag follows ``fail`` only, as the base class's does.
+
+    With the default thresholds every found window here passes, so a flag
+    written as "not pass" would look identical. Tighter thresholds put some
+    found windows in the warn band, where the flag must stay down.
+    """
+    check = _make_check(warn_threshold=0.03, fail_threshold=0.05)
+    check.analyze(rows)
+    table = check.to_table()
+    statuses = set(table[check.status_col()])
+    assert {"pass", "warn", "fail"} <= statuses
+    pd.testing.assert_series_equal(
+        table[check.flag_col()],
+        table[check.status_col()] == "fail",
+        check_names=False,
+    )
+    member_flags = check.results().groupby(CONDITION)[check.flag_col()].first()
+    assert table.set_index(CONDITION)[check.flag_col()].to_dict() == member_flags.to_dict()
+
+
 def test_a_windowless_condition_with_the_best_minimum_still_fails(
     recording: dict, analyzed: FittingWindow
 ):
@@ -390,6 +411,39 @@ def test_a_string_time_column_gives_the_same_table_as_an_integer_one(
             np.testing.assert_array_equal(
                 np.asarray(a.y, dtype=float), np.asarray(b.y, dtype=float)
             )
+
+
+def test_analyze_hands_back_the_callers_time_column_unchanged(rows: pd.DataFrame):
+    """The text frame index is read as numbers for the series, not rewritten.
+
+    The coercion lives on a copy: the returned frame carries the caller's own
+    column, and the caller's frame is not touched.
+    """
+    textual = rows.assign(**{TIME_COL: rows[TIME_COL].astype(str)})
+    before = textual.copy()
+
+    result = _make_check().analyze(textual)
+
+    pd.testing.assert_frame_equal(textual, before)
+    pd.testing.assert_series_equal(
+        result[TIME_COL].sort_index(), textual[TIME_COL].sort_index()
+    )
+    assert pd.api.types.is_object_dtype(result[TIME_COL])
+
+
+def test_the_bar_is_nan_when_no_condition_is_long_enough(pair_frame: pd.DataFrame):
+    """Nothing contributes to the pool, so there is no bar — and nothing reads it.
+
+    Every condition exits ``too_few_frames`` before the bar is consulted, so a
+    NaN bar cannot change a verdict; it is published as NaN rather than as a
+    number nothing produced.
+    """
+    check = _make_check(min_series_frames=10_000)
+    check.analyze(pair_frame)
+    assert check.results()[BAR].isna().all()
+    assert {row[OUTCOME] for row in _verdicts(check).values()} == {
+        str(WindowOutcome.TOO_FEW_FRAMES)
+    }
 
 
 def test_hours_are_refused_as_a_time_axis(rows: pd.DataFrame):

@@ -12,7 +12,8 @@ Nothing in the file is real.
 **The answer comes from the reference, not from the op.**
 `reference_frame_index` was recorded by running the reference implementation's
 own frame-index derivation (a polars script kept outside this repository) on
-these rows. The reference ranks each plate's distinct images by their parsed
+these rows. The generator that built the plates and ran it is kept in the
+project's planning files. The reference ranks each plate's distinct images by their parsed
 capture time, 0-based. `AddFrameIndex` ranks them by image name, 1-based, so the
 parity test asserts it gives exactly `reference_frame_index + 1` on every row.
 

@@ -49,6 +49,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.analysis.abc_ import QualityCheck
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM
 from phenotypic.sdk_ import DIR_DELIVERABLES
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -183,16 +184,15 @@ class QcRecipeEntry:
     ) -> None:
         """Log every configured param that JSON-dumps away to ``None``.
 
-        The motivating case is an
+        Two forms count: ``None`` where the live value was set, and the
+        in-memory placeholder a check writes for a runtime-only value. The
+        motivating case is an
         :class:`~phenotypic.analysis.qc.ExpectedVsDetectedCount` whose
-        ``metadata`` is an in-memory DataFrame: its field serializer emits
-        ``None`` in JSON mode because a frame has no source path, and ``None``
-        is that check's no-layout configuration. A reload of the persisted
-        ``pipeline.json`` therefore builds a *different* check — one that
-        derives its expectation from the analyzed frame — rather than failing.
-        In-session use of a frame is legitimate, so this **warns and does not
-        refuse**; a config that must survive a reload names a
-        ``.csv``/``.parquet`` path instead.
+        ``metadata`` is an in-memory DataFrame: it dumps to the placeholder,
+        which a reload of the persisted ``pipeline.json`` refuses, so the check
+        is skipped there. In-session use of a frame is legitimate, so this
+        **warns and does not refuse**; a config that must survive a reload
+        names a ``.csv``/``.parquet`` path instead.
 
         Comparison is written ``is not None`` throughout: the live value may
         be a DataFrame, and ``!=`` on one raises rather than answering.
@@ -204,13 +204,14 @@ class QcRecipeEntry:
         dropped = sorted(
             name
             for name, value in dumped.items()
-            if value is None and getattr(check, name, None) is not None
+            if (isinstance(value, str) and value == IN_MEMORY_PARAM)
+            or (value is None and getattr(check, name, None) is not None)
         )
         if not dropped:
             return
         logger.warning(
-            "QC entry %s (%s): param(s) %s are configured but serialize to "
-            "null, so a reload of pipeline.json will not restore them. "
+            "QC entry %s (%s): param(s) %s hold a runtime-only value that "
+            "pipeline.json cannot carry, so a reload will not restore them. "
             "Configure them from a file path if the QC config must survive "
             "a reload.",
             self.instance_id,

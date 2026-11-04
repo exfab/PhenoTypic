@@ -29,7 +29,7 @@ from pydantic import (
     field_validator,
 )
 
-from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM, QualityCheck
 from phenotypic.abc_.plotting import PlotQc
 from phenotypic.sdk_ import (
     ColumnRef,
@@ -63,9 +63,10 @@ if TYPE_CHECKING:
 #
 # Only a path string is JSON-native, so that is the form that round-trips
 # through ``model_dump`` / ``pipeline.json``: ``_serialize_metadata``
-# emits the path when ``metadata`` is a string and ``None`` when it is an
-# in-memory frame (which therefore cannot be rebuilt from JSON — configure
-# the check from a path whenever it must round-trip). A raw
+# emits the path when ``metadata`` is a string, ``None`` when it is unset (the
+# no-layout mode), and the ``"<in-memory>"`` placeholder when it is an
+# in-memory frame (which a reload refuses — configure the check from a path
+# whenever it must round-trip). A raw
 # ``pandas.DataFrame`` has no JSON schema, so the object branch attaches a
 # placeholder so ``model_json_schema()`` succeeds.
 _MetadataField = Annotated[
@@ -92,6 +93,23 @@ _MetadataField = Annotated[
 
 
 _EXTERNAL_QUALIFIED_HEADER = re.compile(r"^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$")
+
+
+def _refuse_in_memory_layout(cls_name: str) -> ValueError:
+    """The error a check raises when rebuilt from an in-memory layout's dump.
+
+    Args:
+        cls_name: The check's class name, for the message.
+
+    Returns:
+        The error to raise.
+    """
+    return ValueError(
+        f"{cls_name} was saved with an in-memory layout DataFrame, which has no "
+        f"source path to round-trip (its JSON form is {IN_MEMORY_PARAM!r}), so "
+        "it cannot be rebuilt. Configure it from a .csv/.parquet metadata path "
+        "so the layout survives a reload."
+    )
 
 
 def _is_known_nonmetadata_header(column: str) -> bool:
@@ -296,10 +314,12 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
     key and a reloaded instance re-reads the file. When ``metadata`` is unset
     the JSON form is ``None``, and a reload is the same derive-mode check.
     When ``metadata`` is an in-memory DataFrame there is no source path to
-    persist: the JSON form is also ``None``, so a reload would come back in
-    derive mode rather than with the frame. Writing such a QC entry logs a
-    warning that names the parameter. Configure QC checks from a metadata
-    *path* whenever the pipeline is meant to round-trip.
+    persist: the JSON form is the placeholder ``"<in-memory>"``, and a reload
+    **refuses** it with a clear error (surfaced as a skip-with-warning by the
+    lazy QC instantiation path) rather than coming back as a different,
+    derive-mode check. Writing such a QC entry also logs a warning that names
+    the parameter. Configure QC checks from a metadata *path* whenever the
+    pipeline is meant to round-trip.
 
     Args:
         metadata: Layout whose row count per ``groupby`` key is the
@@ -465,12 +485,11 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         :meth:`model_post_init`.
 
         ``None`` is accepted and means "derive expected positions from the
-        analyzed frame". It used to be refused, because it is also what a JSON
-        dump of an *in-memory-frame* check emits. It is now the derive-mode
-        configuration's own serialized form, so refusing it would make that
-        mode impossible to round-trip. The frame-cannot-round-trip signal is
-        the warning :class:`~phenotypic.sdk_._qc_recipe.QcRecipeEntry` logs
-        when it writes such an entry.
+        analyzed frame"; it is that configuration's own serialized form. A
+        JSON dump of an *in-memory-frame* check writes the placeholder
+        ``"<in-memory>"`` instead, and that is refused here, so such a check
+        fails to rebuild as it always did instead of silently reloading in
+        derive mode.
 
         Args:
             value: An in-memory DataFrame, a path (``Path`` or ``str``) to
@@ -479,9 +498,15 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         Returns:
             ``None`` unchanged, the DataFrame unchanged, or the path coerced
             to ``str``.
+
+        Raises:
+            ValueError: If ``value`` is the in-memory placeholder — the check
+                was serialized from an in-memory frame and cannot be rebuilt.
         """
         if value is None:
             return None
+        if isinstance(value, str) and value == IN_MEMORY_PARAM:
+            raise _refuse_in_memory_layout(cls.__name__)
         if isinstance(value, Path):
             return str(value)
         return value
@@ -493,9 +518,11 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         """Serialize ``metadata`` as its source *path*, never the frame.
 
         A path string is JSON-native and round-trips; an in-memory frame is
-        not, so the JSON form is ``None`` (a reload then fails fast in
-        :meth:`_normalize_metadata` with a clear error). In Python mode the
-        frame passes through unchanged.
+        not, so its JSON form is the placeholder ``"<in-memory>"`` (a reload
+        then fails fast in :meth:`_normalize_metadata` with a clear error). It
+        is not ``None``, because ``None`` is the no-layout configuration and a
+        reload would accept it as one. In Python mode the frame passes through
+        unchanged.
 
         Args:
             value: The stored ``metadata`` value (a frame or a path str).
@@ -504,13 +531,13 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
 
         Returns:
             ``None`` when ``metadata`` is unset; the path string when it is a
-            path; otherwise the frame in Python mode, or ``None`` in JSON
-            mode.
+            path; otherwise the frame in Python mode, or the in-memory
+            placeholder in JSON mode.
         """
         if value is None or isinstance(value, str):
             return value
         if info.mode == "json":
-            return None
+            return IN_MEMORY_PARAM
         return value
 
     def model_post_init(self, __context: Any) -> None:

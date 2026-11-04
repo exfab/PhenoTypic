@@ -339,12 +339,14 @@ class FittingWindow(QualityCheck, PlotQc):
         >>> full["LinearLagModel_RobustMeanRadius_s0"].round().tolist()
         [8.0, 8.0, 8.0]
 
-        The windowed fit's own lag is not that: its window opens after the lag,
-        so no frame in it constrains one.
+        The windowed fit's own lag and starting size are not those: its window
+        opens after the lag, so no frame in it constrains either. On the three
+        replicates it puts the lag at 36 to 42 h and the start at 9.5 to 11 px:
 
-        >>> lag = "LinearLagModel_RobustMeanRadius_lambda"
-        >>> bool(((windowed[lag] - full[lag]).abs() > 3).all())
-        True
+        >>> lag = windowed["LinearLagModel_RobustMeanRadius_lambda"]
+        >>> start_size = windowed["LinearLagModel_RobustMeanRadius_s0"]
+        >>> bool(lag.between(35, 43).all()), bool(start_size.between(9, 11.5).all())
+        (True, True)
     """
 
     name: ClassVar[str] = "Window"
@@ -457,7 +459,10 @@ class FittingWindow(QualityCheck, PlotQc):
                 metadata-joined mirror.
 
         Returns:
-            The augmented frame from :meth:`QualityCheck.analyze`.
+            The augmented frame from :meth:`QualityCheck.analyze`. Its
+            ``time_col`` is the caller's own column, unchanged: a frame index
+            stored as text is read as numbers for the series, and comes back
+            as text.
 
         Raises:
             KeyError: If ``on``, ``time_col`` or any ``groupby`` /
@@ -487,14 +492,16 @@ class FittingWindow(QualityCheck, PlotQc):
         # whose order *is* the series axis Rule D's rolling windows run over.
         # A ``time_col`` stored as text sorts frame 10 between 1 and 2, which
         # scrambles the series and every window bound read off it while every
-        # published number still looks plausible.
+        # published number still looks plausible. The coerced copy feeds the
+        # series only: the frame handed back keeps the caller's own column.
+        series_input = data
         ordered_time = numeric_order_key(data[self.time_col])
         if ordered_time is not data[self.time_col]:
-            data = data.assign(**{self.time_col: ordered_time})
+            series_input = data.assign(**{self.time_col: ordered_time})
 
         pending: dict[tuple, _PendingCondition] = {}
         pool: list[tuple[np.ndarray, np.ndarray]] = []
-        for _, group in data.groupby(self.groupby, dropna=False):
+        for _, group in series_input.groupby(self.groupby, dropna=False):
             values = self._condition_values(group)
             series = mean_cv_series(
                 group,

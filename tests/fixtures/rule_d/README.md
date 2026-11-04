@@ -15,9 +15,11 @@ running the reference implementation itself — the polars scripts
 `prototype_rule_d.py` (`abrupt_bar`, `rule_d`, `_derivatives`) and
 `c10_cv_by_ph.py` (`_cv_series`, `_cv_by_time`, `_detected`) — on that table. A
 fixture recorded from the port would pin the port to its own output and be blind
-to every transcription error in it. The reference scripts and the generator that
-ran them are kept outside this repository; `synthetic_windows.json` records the
-scripts' sha256 under `reference_sha256`.
+to every transcription error in it. Only the reference scripts, and the helper
+module they import their column names from, stay outside this repository;
+`synthetic_windows.json` records the scripts' sha256 under `reference_sha256`.
+The generators that built the synthetic table and ran the reference on it are
+kept in the project's planning files.
 
 ## `synthetic_series.parquet`
 

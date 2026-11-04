@@ -104,6 +104,50 @@ def test_guard_2_refuses_a_whitespace_only_position_value():
         expected_positions(frame)
 
 
+def test_guard_2_calls_a_blank_phantom_metadata_at_the_wrong_grain():
+    frame = _joined_frame()
+    frame.loc[2, COL_NUM] = None  # row 2 is the phantom
+    with pytest.raises(ValueError) as excinfo:
+        expected_positions(frame)
+    message = str(excinfo.value)
+    assert "1 row(s) with no detected object" in message
+    assert "wrong grain" in message
+    assert "off-grid" not in message
+
+
+def test_guard_2_calls_a_blank_detection_an_off_grid_object():
+    """A detected object with no grid cell is not a metadata problem."""
+    frame = _joined_frame()
+    frame.loc[0, ROW_NUM] = None  # row 0 is a detection
+    with pytest.raises(ValueError) as excinfo:
+        expected_positions(frame)
+    message = str(excinfo.value)
+    assert "1 detected object(s)" in message
+    assert "off-grid" in message
+    assert "wrong grain" not in message
+
+
+def test_guard_2_names_both_causes_when_both_occur():
+    frame = _joined_frame()
+    frame.loc[0, ROW_NUM] = None
+    frame.loc[2, COL_NUM] = None
+    with pytest.raises(ValueError) as excinfo:
+        expected_positions(frame)
+    message = str(excinfo.value)
+    assert "1 row(s) with no detected object" in message
+    assert "1 detected object(s)" in message
+
+
+def test_guard_2_without_a_label_column_cannot_tell_the_causes_apart():
+    frame = _joined_frame().drop(columns=[LABEL])
+    frame.loc[0, ROW_NUM] = None
+    with pytest.raises(ValueError, match="1 row\\(s\\) carry a blank value") as excinfo:
+        expected_positions(frame)
+    message = str(excinfo.value)
+    assert "off-grid" not in message
+    assert "wrong grain" not in message
+
+
 def test_guard_2_refuses_rather_than_dropping():
     """The refusal is the point: dropping the row shrinks the denominator."""
     frame = _joined_frame()

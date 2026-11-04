@@ -33,6 +33,7 @@ from phenotypic.schema import (
     QUALITY_COUNT,
     SIZE,
 )
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 
 IMAGE_NAME = str(IMAGE.IMAGE_NAME)
@@ -163,6 +164,30 @@ class TestDeriveModeExpectedCount:
 
         assert _per_image(result, EXPECTED) == {"p1.png": 1}
 
+    def test_a_bare_unknown_position_label_is_found_in_the_frame(self) -> None:
+        """A position column the user spelled bare, as their metadata CSV does.
+
+        ``Well`` is not a schema member, so the configured ``position_by``
+        normalizes it to ``Metadata_Well`` — and the frame's own ``Well``
+        column must be normalized to match, which happens only because the
+        position columns are among the references the join normalizer serves.
+        """
+        frame = pd.DataFrame({
+            IMAGE_NAME: ["p1.png"] * 3 + ["p2.png"] * 3,
+            "Well": ["A1", "A1", "A2", "A1", "A2", "A3"],
+            LABEL: [1.0, 2.0, None, 1.0, 2.0, 3.0],
+            FLAG: [False, False, True, False, False, False],
+        })
+        check = ExpectedVsDetectedCount(
+            groupby=[IMAGE_NAME], position_by=[IMAGE_NAME, "Well"]
+        )
+        assert check.position_by == [IMAGE_NAME, "Metadata_Well"]
+
+        result = check.analyze(frame)
+
+        assert _per_image(result, EXPECTED) == {"p1.png": 2, "p2.png": 3}
+        assert _per_image(result, DETECTED) == {"p1.png": 2, "p2.png": 3}
+
     def test_a_bare_position_by_spelling_resolves_to_the_joined_column(self) -> None:
         """``position_by`` gets the same layout namespace rule ``groupby`` does."""
         check = ExpectedVsDetectedCount(
@@ -247,6 +272,29 @@ class TestDeriveModeOnABareMeasurementsCsv:
             via_csv[columns].reset_index(drop=True),
             check_dtype=False,
         )
+
+    def test_an_off_grid_detection_is_named_as_such(self, tmp_path: Path) -> None:
+        """A detected object with no grid cell is not metadata at the wrong grain.
+
+        On a real table an object measured outside every cell carries a label
+        and no ``Grid_RowNum``/``Grid_ColNum``. The check still refuses — such
+        an object has no expected position — but the message must say what it
+        is, since the fix is to drop it, not to change the metadata.
+        """
+        frame = pd.concat(
+            [_joined_frame(), pd.DataFrame([_joined_row("p1.png", 1, 1, label=99.0)])],
+            ignore_index=True,
+        )
+        frame.loc[len(frame) - 1, [ROW, COL]] = None
+        table = self._round_trip(frame, tmp_path)
+
+        with pytest.raises(ValueError, match="blank value") as excinfo:
+            ExpectedVsDetectedCount(groupby=[IMAGE_NAME]).analyze(table)
+
+        message = str(excinfo.value)
+        assert "1 detected object(s)" in message
+        assert "off-grid" in message
+        assert "wrong grain" not in message
 
     def test_a_csv_without_the_flag_column_is_refused(self, tmp_path: Path) -> None:
         """A table that never went through the metadata join cannot say."""
@@ -355,6 +403,28 @@ class TestGridOccupancyStillNeedsALayout:
 
         assert check.metadata is layout
 
+    def test_position_by_is_refused_not_ignored(self) -> None:
+        """It only applies to the count check's no-layout mode."""
+        layout = pd.DataFrame({IMAGE_NAME: ["p1.png"] * 4, "Object_Label": [1, 2, 3, 4]})
+
+        with pytest.raises(ValidationError, match="takes no position_by"):
+            GridOccupancy(
+                metadata=layout, groupby=[IMAGE_NAME], position_by=[IMAGE_NAME, ROW]
+            )
+
+    def test_position_by_is_not_in_its_schema_or_its_dump(self, tmp_path: Path) -> None:
+        layout_csv = tmp_path / "layout.csv"
+        pd.DataFrame({IMAGE_NAME: ["p1.png"] * 4, "Object_Label": [1, 2, 3, 4]}).to_csv(
+            layout_csv, index=False
+        )
+        check = GridOccupancy(metadata=str(layout_csv), groupby=[IMAGE_NAME])
+
+        assert "position_by" not in GridOccupancy.model_json_schema()["properties"]
+        assert "position_by" not in check.model_dump(mode="json")
+        assert "position_by" in ExpectedVsDetectedCount.model_json_schema()["properties"]
+        rebuilt = GridOccupancy(**check.model_dump(mode="json"))
+        assert rebuilt.metadata == str(layout_csv)
+
 
 class TestSerializationRoundTrip:
     """Derive mode survives ``pipeline.json``; a frame says it will not."""
@@ -408,7 +478,7 @@ class TestSerializationRoundTrip:
     def test_an_in_memory_frame_warns_that_it_will_not_survive_a_reload(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """A frame dumps to ``None``, which a reload reads as derive mode."""
+        """A frame dumps to the placeholder, and writing it says so."""
         layout = pd.DataFrame({IMAGE_NAME: ["p1.png"] * 4, "Object_Label": [1, 2, 3, 4]})
         entry = QcRecipeEntry(
             cls=ExpectedVsDetectedCount,
@@ -420,7 +490,7 @@ class TestSerializationRoundTrip:
         with caplog.at_level(logging.WARNING):
             dumped = entry.to_dict()
 
-        assert dumped["params"]["metadata"] is None
+        assert dumped["params"]["metadata"] == IN_MEMORY_PARAM
         warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
         assert any(
             "qc-Count-frame01" in m and "metadata" in m and "reload" in m
@@ -454,3 +524,60 @@ class TestSerializationRoundTrip:
                 entry.to_dict()
 
         assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+class TestAnInMemoryLayoutDoesNotReloadAsADifferentCheck:
+    """A layout given as a DataFrame cannot round-trip, and a reload says so.
+
+    Its JSON form is a placeholder, not ``None``: ``None`` is the count check's
+    no-layout configuration, so dumping a frame to ``None`` would reload as a
+    check that counts against a different expectation under the same
+    ``instance_id``. The placeholder is refused instead, as a missing layout
+    was before the no-layout mode existed.
+    """
+
+    @staticmethod
+    def _layout() -> pd.DataFrame:
+        return pd.DataFrame({IMAGE_NAME: ["p1.png"] * 4, "Object_Label": [1, 2, 3, 4]})
+
+    @pytest.mark.parametrize("cls", [ExpectedVsDetectedCount, GridOccupancy])
+    def test_the_json_dump_is_the_placeholder_and_a_rebuild_refuses_it(
+        self, cls: type
+    ) -> None:
+        check = cls(metadata=self._layout(), groupby=[IMAGE_NAME])
+        dumped = check.model_dump(mode="json")
+
+        assert dumped["metadata"] == IN_MEMORY_PARAM
+        with pytest.raises(ValidationError, match="in-memory layout DataFrame"):
+            cls(**dumped)
+
+    @pytest.mark.parametrize("cls", [ExpectedVsDetectedCount, GridOccupancy])
+    def test_a_pipeline_round_trip_keeps_the_entry_but_refuses_to_build_it(
+        self, cls: type, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The entry survives ``pipeline.json``; building it fails loudly."""
+        pipeline = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=cls,
+                    params={"metadata": self._layout(), "groupby": [IMAGE_NAME]},
+                    instance_id="qc-frame-0001",
+                    enabled=True,
+                )
+            ]
+        )
+        with caplog.at_level(logging.WARNING):
+            config = pipeline.to_json()
+        assert any("qc-frame-0001" in r.getMessage() for r in caplog.records)
+
+        reloaded = ImagePipeline.from_json(config)
+        (entry,) = [e for e in reloaded.get_qc() if e.cls is cls]
+        assert entry.params["metadata"] == IN_MEMORY_PARAM
+        with pytest.raises(ValidationError, match="in-memory layout DataFrame"):
+            entry.instantiate()
+
+    def test_a_real_none_still_means_no_layout(self) -> None:
+        """The placeholder is the only refusal; ``None`` is the no-layout mode."""
+        dumped = ExpectedVsDetectedCount(groupby=[IMAGE_NAME]).model_dump(mode="json")
+        assert dumped["metadata"] is None
+        assert ExpectedVsDetectedCount(**dumped).metadata is None
