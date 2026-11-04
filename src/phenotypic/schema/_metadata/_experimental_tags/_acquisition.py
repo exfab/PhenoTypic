@@ -24,5 +24,5 @@ class ACQUISITION(MetadataInfo):
         "Experimenter",
         "Person who acquired the image or ran the experiment.",
     )
-    RESOLUTION = Entry("Resolution", "Image resolution (e.g. DPI or pixels per mm).")
+    RESOLUTION = Entry("Resolution", "Image resolution (for example DPI or pixels per mm).")
     EXPOSURE_TIME = Entry("ExposureTime", "Camera exposure time.")
