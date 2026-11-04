@@ -68,6 +68,7 @@ REQUIRED_WHEEL_PATHS = [
 REQUIRED_THIRD_PARTY_LICENSES = {
     "filfinder-MIT.txt",
     "gudhi-MIT.txt",
+    "openseadragon-BSD-3-Clause.txt",
     "rolling-hough-MIT.txt",
     "tensor-voting-BSD-like.txt",
     "tensor-voting-LGPL-3.0-claim.txt",
@@ -99,6 +100,23 @@ def _expected_data_wheel_paths() -> list[str]:
         if path.is_file()
         and path.suffix not in {".py", ".pyc"}
         and "__pycache__" not in path.parts
+    )
+
+
+def _normalized_license_text(raw: bytes) -> str:
+    """License text with line endings and trailing whitespace normalised."""
+    text = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return "\n".join(line.rstrip() for line in text.split("\n")).strip()
+
+
+def _vendored_license_files() -> list[Path]:
+    """``LICENSE*``/``COPYING*`` files under ``src/``; each marks vendored code."""
+    return sorted(
+        path
+        for path in (REPO_ROOT / "src").rglob("*")
+        if path.is_file()
+        and path.name.upper().startswith(("LICENSE", "COPYING"))
+        and "egg-info" not in path.as_posix()
     )
 
 
@@ -196,6 +214,33 @@ def test_wheel_contains_fungi_port_license_texts(built_dists):
     missing = sorted(REQUIRED_THIRD_PARTY_LICENSES - basenames)
     assert not missing, (
         f"third-party license texts missing from wheel: {missing}"
+    )
+
+
+@pytest.mark.slow
+def test_wheel_carries_every_vendored_license_text(built_dists):
+    """Each license vendored beside third-party code ships as a license file.
+
+    BSD-3-Clause (OpenSeadragon) requires its notice in binary
+    redistributions. Package-data does not ship the vendored ``LICENSE``
+    files themselves, so their text must arrive through ``license-files``
+    under ``*.dist-info/licenses/``.
+    """
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        shipped = {
+            _normalized_license_text(zf.read(name))
+            for name in zf.namelist()
+            if ".dist-info/licenses/" in name and not name.endswith("/")
+        }
+    vendored = _vendored_license_files()
+    assert vendored, "no vendored LICENSE found on disk — test wiring is wrong"
+    missing = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in vendored
+        if _normalized_license_text(path.read_bytes()) not in shipped
+    ]
+    assert not missing, (
+        f"vendored license text(s) not shipped in the wheel: {missing}"
     )
 
 
