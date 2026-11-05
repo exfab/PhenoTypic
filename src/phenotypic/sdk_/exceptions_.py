@@ -316,6 +316,55 @@ class ObjectNotFoundError(AttributeError):
         )
 
 
+# Measurement exceptions
+class MeasurementConflictError(ValueError):
+    """Two measurement tables give the same colonies different values for a column.
+
+    ``ImagePipeline.measure()`` joins every measurer's table on
+    ``Object_Label``. Some columns come from more than one table: the
+    ``Bbox_*`` geometry (``MeasureBounds``, any ``GridFinder`` and the image's
+    info block) and the ``Grid_*`` assignment (a ``GridFinder`` and a
+    ``GridImage``'s info block). Such a column is kept once, and only when
+    every colony has the same value in both tables (NaN in both counts as the
+    same). When they disagree there is no correct value to keep, so the merge
+    raises this instead of dropping the colonies or picking a side.
+
+    The usual cause is two grids: a ``GridImage`` laid out with one
+    ``nrows``/``ncols`` measured by a pipeline whose ``nrows``/``ncols`` preset
+    (or explicit grid finder) uses another.
+
+    Attributes:
+        columns: The shared columns whose values differ, in table order.
+        n_objects: How many colonies differ in at least one of ``columns``.
+        n_compared: How many colonies both tables carry.
+        sources: The names of the tables that disagree: the earlier ones that
+            supplied the columns, then the one being merged in.
+    """
+
+    def __init__(
+            self,
+            *,
+            columns,
+            n_objects: int,
+            n_compared: int,
+            sources,
+            advice: str,
+    ):
+        self.columns = tuple(str(column) for column in columns)
+        self.n_objects = int(n_objects)
+        self.n_compared = int(n_compared)
+        self.sources = tuple(str(source) for source in sources)
+        *earlier, incoming = [f"'{source}'" for source in self.sources]
+        super().__init__(
+                f"measure() cannot merge the measurement tables: "
+                f"{' and '.join(earlier)} and {incoming} give "
+                f"{self.n_objects} of {self.n_compared} colonies different "
+                f"values for {', '.join(self.columns)}. Keeping either value "
+                f"would mislabel those colonies, and dropping them would lose "
+                f"them, so nothing was merged. {advice}"
+        )
+
+
 # Grid exceptions
 class GridImageInputError(ValueError):
     """Exception raised when a non-GriddedImage object is provided as arr."""

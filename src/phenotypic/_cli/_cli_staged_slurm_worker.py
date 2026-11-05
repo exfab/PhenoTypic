@@ -12,15 +12,18 @@ from contextlib import contextmanager
 import os
 import traceback
 from pathlib import Path
-from typing import Iterator, Mapping, Sequence
+from typing import Any, Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
 from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.sdk_ import (
     CommitGuard,
+    JobMetadataKey,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    job_metadata_path,
+    progress_dir,
     zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import ImageTypeName
@@ -51,6 +54,7 @@ from ._cli_completion import (
     valid_image_success,
 )
 from ._cli_staged_slurm import partition_shards
+from ._cli_utils import input_read_settings, load_job_metadata
 from ._cli_state_management import recorded_run_initiation
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
@@ -154,6 +158,45 @@ def _entry(entry: StagedManifestEntry | Sequence[str]) -> StagedManifestEntry:
     )
 
 
+def _recorded_image_read(
+    output_dir: Path,
+) -> tuple[dict[str, Any], int | None, int | None]:
+    """How the submitter's flags say to read an input: settings, nrows, ncols.
+
+    The staged submitter records ``--bit-depth``, ``--detect-mode``,
+    ``--nrows`` and ``--ncols`` in ``job_metadata.json`` before Controller 0
+    is submitted (``_write_staged_job_metadata``), so every Stage-1 task
+    reads the same values. A key absent from the file (one written before it
+    was recorded) reads as unset, which is what that run did.
+
+    Raises:
+        RuntimeError: The file is missing or unreadable. A Stage-1 task never
+            starts before the submitter has written it, so this is a broken
+            run, and reading the image with the defaults instead would
+            silently apply the wrong grid, bit depth and detect mode.
+    """
+    metadata = load_job_metadata(progress_dir(output_dir))
+    if not isinstance(metadata, dict):
+        path = job_metadata_path(output_dir)
+        state = "is unreadable" if path.exists() else "does not exist"
+        raise RuntimeError(
+            f"Staged Stage 1 reads --nrows, --ncols, --bit-depth and "
+            f"--detect-mode from {path}, which {state}. The submitter writes "
+            "it before any worker starts, so this run's machine state is "
+            "incomplete; re-run the same command (or with --restart) to "
+            "submit it again."
+        )
+    settings = input_read_settings(
+        metadata.get(JobMetadataKey.BIT_DEPTH),
+        metadata.get(JobMetadataKey.DETECT_MODE),
+    )
+    return (
+        settings,
+        metadata.get(JobMetadataKey.NROWS),
+        metadata.get(JobMetadataKey.NCOLS),
+    )
+
+
 def run_stage1_step(
     pipeline_path: Path,
     output_dir: Path,
@@ -186,6 +229,9 @@ def run_stage1_step(
     commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
+    # Before anything is cleared or written: a run with no recorded flags
+    # must not touch the image at all.
+    read_kwargs, cli_nrows, cli_ncols = _recorded_image_read(output_dir)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     if resume:
         clear_downstream_artifacts_for_stage1(
@@ -220,6 +266,9 @@ def run_stage1_step(
                 output_dir,
                 output_manager,
                 image_type,
+                read_kwargs,
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
                 active_check=check,
                 work_id=item.work_id,
                 commit_guard=commit_guard,

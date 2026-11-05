@@ -716,6 +716,71 @@ def _refuse_measuring_reference_pipeline(paths: Sequence[str]) -> None:
     )
 
 
+def _refuse_grid_preset_unlike_cli_grid(
+    *,
+    pipeline_json: Optional[Path],
+    cli_mode: str,
+    image_type: str,
+    nrows: Optional[int],
+    ncols: Optional[int],
+) -> None:
+    """Refuse ``--nrows``/``--ncols`` that contradict the pipeline's grid preset.
+
+    In ``--mode full`` the flags shape each ``GridImage`` (``resolve_grid_shape``:
+    flag, then preset, then 8 x 12), while a pipeline that presets both
+    ``nrows`` and ``ncols`` and holds no grid finder of its own makes
+    ``measure()`` add ``CenteredAutoGridFinder`` with the *preset* shape. When
+    the two shapes differ, the two grids disagree on colonies' ``Grid_*``
+    positions and every image fails with ``MeasurementConflictError`` (it
+    used to lose those colonies silently). One refusal up front, un-skippable
+    and before anything under ``--output`` changes, is truer than every image
+    failing one at a time.
+
+    A pipeline that cannot be loaded is left to the pipeline validation, which
+    reports it in its own words. Other modes are not checked: ``process`` never
+    measures, and ``measure`` re-measures stores whose grid the forward run
+    recorded, which a per-image ``MeasurementConflictError`` reports.
+
+    Raises:
+        click.UsageError: The flags give the images a grid other than the preset.
+    """
+    if pipeline_json is None or cli_mode != "full" or image_type != "GridImage":
+        return
+    if nrows is None and ncols is None:
+        return
+    from phenotypic._cli._cli_utils import resolve_grid_shape
+    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.abc_ import GridFinder
+
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_json)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return
+    preset = (pipeline.nrows, pipeline.ncols)
+    if None in preset or any(
+        isinstance(step, GridFinder) for step in pipeline.get_meas().values()
+    ):
+        return
+    image_grid = resolve_grid_shape(
+        cli_nrows=nrows,
+        cli_ncols=ncols,
+        pipeline_nrows=pipeline.nrows,
+        pipeline_ncols=pipeline.ncols,
+    )
+    if image_grid == preset:
+        return
+    raise click.UsageError(
+        f"--nrows/--ncols lay the images out as {image_grid[0]} rows x "
+        f"{image_grid[1]} columns, but the pipeline presets nrows={preset[0]}, "
+        f"ncols={preset[1]}, "
+        "so measure() would lay out a second grid with "
+        f"CenteredAutoGridFinder(nrows={preset[0]}, ncols={preset[1]}) and the "
+        "two would disagree on colonies' grid positions. Pass "
+        f"--nrows {preset[0]} --ncols {preset[1]}, or remove nrows and ncols "
+        "from the pipeline file so measure() uses the images' grid."
+    )
+
+
 def _refuse_unusable_reference_table(
     *,
     metadata_csv: Optional[Path],
@@ -1834,15 +1899,19 @@ def _print_process_only_dry_run_plan(
     "--nrows",
     type=click.IntRange(min=1),
     default=None,
-    help="Number of rows for GridImage. Overrides any pipeline-level "
-    "preset; when omitted, the pipeline preset is used, falling back to 8.",
+    help="Number of rows for GridImage; when omitted, the pipeline preset is "
+    "used, falling back to 8. --mode full refuses a value unlike a pipeline "
+    "that presets both nrows and ncols, since measure() lays out the preset "
+    "grid.",
 )
 @click.option(
     "--ncols",
     type=click.IntRange(min=1),
     default=None,
-    help="Number of columns for GridImage. Overrides any pipeline-level "
-    "preset; when omitted, the pipeline preset is used, falling back to 12.",
+    help="Number of columns for GridImage; when omitted, the pipeline preset "
+    "is used, falling back to 12. --mode full refuses a value unlike a "
+    "pipeline that presets both nrows and ncols, since measure() lays out the "
+    "preset grid.",
 )
 @click.option(
     "--bit-depth",
@@ -2660,6 +2729,15 @@ def phenotypic_cli(
             raise click.UsageError(str(exc)) from exc
         except Exception:  # noqa: BLE001
             pass
+        # Likewise above every mutation, and regardless of --skip-validation:
+        # a grid preset the flags contradict fails every image.
+        _refuse_grid_preset_unlike_cli_grid(
+            pipeline_json=pipeline_json,
+            cli_mode=cli_mode,
+            image_type=narrowed_image_type,
+            nrows=nrows,
+            ncols=ncols,
+        )
         manifest_snapshot = None
         if image_manifest is not None:
             try:

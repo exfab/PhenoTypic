@@ -34,6 +34,7 @@ from typing import Any, Callable
 import pytest
 
 from phenotypic.sdk_.ngff_ import durable_writes_enabled
+from tests._support.staged_job_metadata import write_staged_job_metadata
 
 
 @pytest.fixture(autouse=True)
@@ -235,6 +236,8 @@ def test_staged_stage_step_hands_the_flag_to_its_output_manager(
         input_path=str(tmp_path / "img.tiff"),
     )
     step = worker.run_stage1_step if stage == 1 else worker.run_stage3_step
+    # Stage 1 reads the run's reader flags before anything else.
+    write_staged_job_metadata(tmp_path / "out")
 
     with pytest.raises(_Stop):
         step(

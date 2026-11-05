@@ -22,7 +22,10 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /path/to/plate
 ## Grid Plates
 
 `--image-type` already defaults to `GridImage`; pass `--nrows` / `--ncols` to
-override the pipeline's grid preset (which itself falls back to 8 × 12).
+set the grid. Without them the pipeline's grid preset is used, falling back to
+8 × 12. A pipeline that presets both `nrows` and `ncols` lays out that grid
+again when it measures, so a full run refuses flags that disagree with it:
+match the preset, or remove it from the pipeline file.
 
 ```bash
 python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ \

@@ -39,6 +39,7 @@ from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.refine import SmallObjectRemover
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+from tests._support.staged_job_metadata import write_staged_job_metadata
 
 
 def _write_synth_image(target_path: Path) -> None:
@@ -268,6 +269,8 @@ def _build_stage_harness(
     load_synth_yeast_plate().rgb.imsave(filepath=image_path)
     output_dir = tmp_path / "out"
     output_dir.mkdir(exist_ok=True)
+    # What the staged SLURM submitter leaves for Stage 1 (it refuses without).
+    write_staged_job_metadata(output_dir)
     pipeline = ImagePipeline(ops=ops, meas=[MeasureSize()])
     pipeline_path = tmp_path / "pipeline.json"
     pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
