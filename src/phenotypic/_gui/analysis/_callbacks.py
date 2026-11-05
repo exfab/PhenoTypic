@@ -104,20 +104,23 @@ _EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
         "groupby": [str(GENETIC.STRAIN)],
     },
 }
+# Growth fits default to the colony radius, not its area: an area rate scales
+# with colony size and can reach the linear models' rate bound (``_V_UPPER``).
+# LogGrowthModel has no bound and follows the same default for consistency.
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
     "LogGrowthModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
         "n_jobs": 1,
     },
     "LinearLagModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
     },
     "LinearCapAndLagModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
     },
