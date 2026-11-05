@@ -192,3 +192,77 @@ def test_an_explicit_grid_finder_conflict_is_recorded_per_image(
     assert "MeasurementConflictError" in detail, detail
     assert "Grid_RowNum" in failure.exception_message, detail
     assert "'plate_grid' (CenteredAutoGridFinder)" in failure.exception_message, detail
+
+
+def test_an_explicit_grid_finder_beside_a_preset_is_not_refused(
+    image_tree: Path, tmp_path: Path
+) -> None:
+    """``measure()`` adds no finder for the preset when ``meas`` has one.
+
+    So the preset's 8 x 12 lays out nothing, and flags matching the explicit
+    finder's 4 x 6 run cleanly. Refusing here would refuse a valid run.
+    """
+    pipeline = _pipeline_file(
+        tmp_path,
+        ImagePipeline(
+            ops={"det": OtsuDetector()},
+            meas={
+                "plate_grid": CenteredAutoGridFinder(nrows=4, ncols=6),
+                "size": MeasureSize(),
+            },
+            nrows=8,
+            ncols=12,
+        ),
+    )
+    output_dir = tmp_path / "out"
+
+    result = _invoke(
+        "--pipeline", str(pipeline),
+        "--input", str(image_tree),
+        "--output", str(output_dir),
+        "--nrows", "4",
+        "--ncols", "6",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "presets nrows" not in result.output
+    assert read_terminal_failures(output_dir) == []
+
+
+@pytest.mark.parametrize(
+    ("preset_nrows", "preset_ncols"),
+    [
+        pytest.param(None, None, id="no-preset"),
+        pytest.param(8, None, id="nrows-only"),
+        pytest.param(None, 12, id="ncols-only"),
+    ],
+)
+def test_a_partial_or_absent_preset_is_not_refused(
+    image_tree: Path,
+    tmp_path: Path,
+    preset_nrows: int | None,
+    preset_ncols: int | None,
+) -> None:
+    """``measure()`` adds a finder only for a preset of both; the flags rule."""
+    pipeline = _pipeline_file(
+        tmp_path,
+        ImagePipeline(
+            ops={"det": OtsuDetector()},
+            meas={"size": MeasureSize()},
+            nrows=preset_nrows,
+            ncols=preset_ncols,
+        ),
+    )
+    output_dir = tmp_path / "out"
+
+    result = _invoke(
+        "--pipeline", str(pipeline),
+        "--input", str(image_tree),
+        "--output", str(output_dir),
+        "--nrows", "4",
+        "--ncols", "6",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "presets nrows" not in result.output
+    assert read_terminal_failures(output_dir) == []
