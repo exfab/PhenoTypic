@@ -33,15 +33,15 @@ class SAMPLE(MetadataInfo):
     CLONE = Entry("Clone", "Clone or isolate identifier.")
     LIBRARY_ID = Entry(
             "LibraryID",
-            "Source library or collection identifier (e.g. a deletion collection).",
+            "Source library or collection identifier (for example a deletion collection).",
     )
     SOURCE_PLATE = Entry(
             "SourcePlate",
             "Identifier of the source plate the sample was pinned from.",
     )
     SOURCE_WELL = Entry("SourceWell",
-                        "Well position on the source plate (e.g. A1). This can "
+                        "Well position on the source plate (for example A1). This can "
                         "potentially be distinct from `Grid` values when using "
                         "irregular or sparse grid parameters.")
     BARCODE = Entry("Barcode", "Molecular or sample barcode.")
-    CONTROL = Entry("Control", "Control designation (e.g. positive, negative, blank).")
+    CONTROL = Entry("Control", "Control designation (for example positive, negative, blank).")

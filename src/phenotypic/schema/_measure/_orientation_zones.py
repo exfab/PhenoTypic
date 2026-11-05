@@ -251,7 +251,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
     OUTWARD_ROTATION_MEDIAN_MAGNITUDE_OVERALL = Entry(
         "OutwardRotationMedianMagnitude-Mask-Overall",
         "Median absolute cumulative literal skeleton-ring rotation over supported "
-        "rings from the CoreZone boundary through the configured SparseZone outer "
+        "rings from the CoreZone boundary through the configured SparseZone "
         "outer boundary. Reported in degrees, nonnegative with no fixed upper "
         "bound. This validation comparator describes typical magnitude but "
         "ignores radial order and localized outer turns.",
@@ -277,7 +277,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
     OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL = Entry(
         "OutwardRotationAbsoluteArea-Mask-Overall",
         "Trapezoidal area under absolute cumulative rotation within supported "
-        "runs from the CoreZone boundary through the configured SparseZone outer "
+        "runs from the CoreZone boundary through the configured SparseZone "
         "outer boundary, divided by their total supported radial span. Reported "
         "in degrees, nonnegative with no fixed upper bound. It describes "
         "radially persistent rotation but can remain high after one early step.",
@@ -305,7 +305,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
     OUTWARD_ROTATION_TOTAL_VARIATION_OVERALL = Entry(
         "OutwardRotationTotalVariation-Mask-Overall",
         "Sum of absolute adjacent cumulative-rotation changes within supported "
-        "runs from the CoreZone boundary through the configured SparseZone outer "
+        "runs from the CoreZone boundary through the configured SparseZone "
         "outer boundary, without bridging gaps. Reported in degrees, nonnegative "
         "with no fixed upper bound. It is sensitive to oscillation, profile "
         "length, and noise and is diagnostic only.",

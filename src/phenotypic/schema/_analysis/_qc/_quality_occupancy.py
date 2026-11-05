@@ -34,5 +34,6 @@ class QUALITY_OCCUPANCY(QualityInfo):
     )
     VACANT = Entry(
         "Vacant",
-        "Expected - Filled; empty/missing grid cells in the group.",
+        "Number of expected grid cells in the group that hold no colony. It "
+        "is Expected - Filled, floored at 0.",
     )

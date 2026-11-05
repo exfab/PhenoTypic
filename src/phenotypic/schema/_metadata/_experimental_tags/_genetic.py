@@ -19,15 +19,15 @@ class GENETIC(MetadataInfo):
     def rembi_module(cls) -> REMBI_MODULE:
         return REMBI_MODULE.BIOSAMPLE
 
-    ORGANISM = Entry("Organism", "Species or organism name (e.g. Saccharomyces cerevisiae).")
-    STRAIN = Entry("Strain", "Strain name or identifier (e.g. BY4741).")
+    ORGANISM = Entry("Organism", "Species or organism name (for example Saccharomyces cerevisiae).")
+    STRAIN = Entry("Strain", "Strain name or identifier (for example BY4741).")
     GENOTYPE = Entry("Genotype", "Genotype description of the strain.")
     BACKGROUND = Entry("Background", "Genetic background or parent strain.")
     ALLELE = Entry("Allele", "Specific allele or mutation under study.")
     PLASMID = Entry("Plasmid", "Plasmid carried by the sample.")
     SELECTION_MARKER = Entry(
         "SelectionMarker",
-        "Selectable marker gene (e.g. URA3, KanMX).",
+        "Selectable marker gene (for example URA3, KanMX).",
     )
-    MATING_TYPE = Entry("MatingType", "Mating type for yeast (e.g. MATa, MATalpha).")
-    PLOIDY = Entry("Ploidy", "Ploidy of the organism (e.g. haploid, diploid).")
+    MATING_TYPE = Entry("MatingType", "Mating type for yeast (for example MATa, MATalpha).")
+    PLOIDY = Entry("Ploidy", "Ploidy of the organism (for example haploid, diploid).")

@@ -21,11 +21,11 @@ class CULTURE(MetadataInfo):
 
     TIME = Entry("Time", "Elapsed growth time.",
                  rembi_module=REMBI_MODULE.BIOSAMPLE)
-    TIME_UNIT = Entry("TimeUnit", "Unit for the Time value (e.g. hours, days).",
+    TIME_UNIT = Entry("TimeUnit", "Unit for the Time value (for example hours, days).",
                       rembi_module=REMBI_MODULE.BIOSAMPLE)
     TIMEPOINT = Entry(
             "Timepoint",
-            "Human-readable label for a discrete timepoint in a time series (e.g. "
+            "Human-readable label for a discrete timepoint in a time series (for example "
             "'24h', 'stationary'); may be non-numeric. For the integer capture "
             "ordinal, use FrameIndex.",
             rembi_module=REMBI_MODULE.BIOSAMPLE,
@@ -41,4 +41,4 @@ class CULTURE(MetadataInfo):
     GENERATION = Entry("Generation", "Generation or passage number.")
     TEMPERATURE = Entry("Temperature", "Culture temperature in degrees Celsius.")
     HUMIDITY = Entry("Humidity", "Relative humidity during culture.")
-    ATMOSPHERE = Entry("Atmosphere", "Atmospheric condition (e.g. aerobic, anaerobic).")
+    ATMOSPHERE = Entry("Atmosphere", "Atmospheric condition (for example aerobic, anaerobic).")

@@ -24,7 +24,17 @@ class QUALITY_TUKEY(QualityInfo):
     def default_unit(cls) -> UNITS:
         return UNITS.OF_INPUT
 
-    LOWER_FENCE = Entry("LowerFence", "Lower Tukey fence, Q1 - k*IQR.")
-    UPPER_FENCE = Entry("UpperFence", "Upper Tukey fence, Q3 + k*IQR.")
+    LOWER_FENCE = Entry(
+        "LowerFence",
+        "Lowest value a member can have without counting as an outlier, set "
+        "from the quartiles of the group at this time point. It is the lower "
+        "Tukey fence, Q1 - k*IQR.",
+    )
+    UPPER_FENCE = Entry(
+        "UpperFence",
+        "Highest value a member can have without counting as an outlier, set "
+        "from the quartiles of the group at this time point. It is the upper "
+        "Tukey fence, Q3 + k*IQR.",
+    )
     NUM_OUTLIERS = Entry("NumOutliers", "Members falling outside the fences.", unit=UNITS.UNITLESS)
     NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.", unit=UNITS.UNITLESS)

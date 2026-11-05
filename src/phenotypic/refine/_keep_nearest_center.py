@@ -12,10 +12,11 @@ from phenotypic.schema import BBOX
 
 
 class KeepNearestCenter(ObjectRefiner):
-    """Retain only the object whose bounding-box center lies closest to the image center.
+    """Retain only the object whose centroid lies closest to the image center.
 
-    Computes the Euclidean distance from each detected object's bounding-box
-    center to the image center and discards all objects except the single
+    Computes the Euclidean distance from each detected object's centroid
+    (``Bbox_CenterRR``, ``Bbox_CenterCC``: the mean position of its pixels)
+    to the image center and discards all objects except the single
     nearest. The operation
     produces an ``objmap`` with at most one labeled region. It is most effective on
     per-cell crops where the intended colony occupies the center of the field and
@@ -42,7 +43,7 @@ class KeepNearestCenter(ObjectRefiner):
 
     Returns:
         Image: Input image with ``objmap`` reduced to the single object whose
-        bounding-box center is closest to the image center; all other objects
+        centroid is closest to the image center; all other objects
         are set to background.
 
     See Also:

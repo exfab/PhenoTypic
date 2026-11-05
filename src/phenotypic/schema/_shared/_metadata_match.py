@@ -25,6 +25,9 @@ class METADATA_MATCH(QualityInfo):
 
     METADATA_ONLY = Entry(
         "MetadataOnly",
-        "True when the row came from a --metadata CSV key that matched no "
-        "measured object; every measurement/info column on the row is null.",
+        "True on a row that comes only from the metadata file: a listed well "
+        "(or other metadata row) where no colony was detected. Its "
+        "measurement cells are empty, not zero, and both an empty well and a "
+        "colony that detection missed produce such a row. It is False on "
+        "every row that carries a measured colony.",
     )

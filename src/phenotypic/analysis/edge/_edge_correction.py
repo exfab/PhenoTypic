@@ -780,7 +780,7 @@ class EdgeCorrector(EdgeCorrection):
             - Threshold = mean of top_n interior values at last time point
             - If no interior colonies exist, returns group with new columns set to original values
             - If interior/edge difference not significant (p > pvalue), returns with new columns
-              set to original values (threshold = inf)
+              set to original values (the Cap column holds the group's maximum)
             - New columns always created for consistency, even if no correction applied
 
         Examples:
