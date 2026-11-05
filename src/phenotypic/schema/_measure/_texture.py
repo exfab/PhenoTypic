@@ -145,9 +145,11 @@ class TEXTURE(DiscriminativeFeature):
             between pixels a fixed distance apart, not the variance of the differences
             themselves. It is the variance, over k = 0 to the colony's highest quantized gray
             level, of p_{x−y}(k), the probability that the gray levels of a pair differ by k
-            (the mahotas default). High values → mixture of smooth and textured
-            regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
-            Highlights heterogeneity in edge magnitude across the colony.""",
+            (the mahotas default). High values mean the differences concentrate on a few values,
+            as on a uniform surface where most neighbouring pixels match; low values mean they
+            spread over many values, as on a surface rough throughout. Releases before 0.21.0
+            described high values as a mixture of smooth and textured regions; for the values
+            PhenoTypic writes, that reading runs backwards.""",
     )
 
     DIFFERENCE_ENTROPY = Entry(
@@ -167,8 +169,13 @@ class TEXTURE(DiscriminativeFeature):
             stronger the dependence. It is (HXY – HXY1) /
             max(HX, HY), where HXY is Entropy, HXY1 = –Σ p(i,j)·log₂(p_x(i)·p_y(j)), and
             HX and HY are the entropies of the row and column sums p_x and p_y. Compares joint vs marginal entropies to quantify
-            mutual dependence between gray levels. More negative values → structured, predictable textures
-            (e.g., organized radial growth); near-zero → independence between adjacent regions.""",
+            mutual dependence between gray levels. Positive values → structured, predictable textures
+            (e.g., organized radial growth); near-zero → independence between adjacent regions.
+            Direction of sign varies with implementation. Note on the sign: the two sentences
+            above are kept as earlier releases documented them, and they describe the dependence
+            as positive. The value PhenoTypic writes, from mahotas as Haralick (1973) defines it,
+            is 0 or below, so read "positive" there as "more negative": more negative values mean
+            stronger dependence.""",
     )
 
     IMC2 = Entry(

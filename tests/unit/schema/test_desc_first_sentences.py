@@ -107,6 +107,15 @@ def test_diff_variance_says_it_is_the_variance_of_the_probabilities() -> None:
     assert "highest quantized gray" in desc
 
 
+def test_diff_variance_reads_high_as_uniform() -> None:
+    # var(p_{x-y}) is highest when differences concentrate on a few values:
+    # measured with mahotas 1.4.18, uniform 0.0040 > half smooth 0.0006 > rough 0.00002.
+    desc = " ".join(TEXTURE.DIFFERENCE_VARIANCE.desc.split())
+    assert "High values mean the differences concentrate on a few values" in desc
+    assert "that reading runs backwards" in desc
+    assert "smooth margins with wrinkled centers" not in desc
+
+
 @pytest.mark.parametrize(
     "member",
     [TEXTURE.SUM_ENTROPY, TEXTURE.ENTROPY, TEXTURE.DIFFERENCE_ENTROPY],
@@ -126,11 +135,13 @@ def test_correlation_compares_pixels_one_scale_apart() -> None:
 
 def test_info_correlation_1_states_its_sign() -> None:
     # (HXY - HXY1) / max(HX, HY) is minus a mutual information: never above 0.
+    # The maintainer kept the earlier "Positive values" wording, because projects
+    # already read the column against it; a note maps it onto the written sign.
     desc = " ".join(TEXTURE.IMC1.desc.split())
     assert "0 or below" in _first_sentence(desc)
-    assert "Positive values" not in desc
-    assert "More negative values" in desc
-    assert "varies with implementation" not in desc
+    assert "Positive values → structured" in desc
+    assert 'read "positive" there as "more negative"' in desc
+    assert "Haralick (1973)" in desc
 
 
 def test_log_growth_beta_compares_k_with_the_last_time_point() -> None:
