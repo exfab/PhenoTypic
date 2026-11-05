@@ -6,7 +6,7 @@ below places one 2 x 2 object at a known distance ``d`` from each edge (``d`` is
 the index of its nearest row or column, counted from that edge), so an object
 must go exactly when ``d < e``.
 
-Three bugs this file pins, all present before PR H:
+Three bugs this file pins, all present before 0.21.0:
 
 - The top and left slices were ``[: e - 1]``, one row short, so at the default
   ``border_size=1`` an object touching the top or left edge was kept.
@@ -142,6 +142,8 @@ def test_a_zero_band_removes_nothing() -> None:
     assert _surviving(image, labels) == set(labels)
 
 
-def test_a_negative_band_is_refused() -> None:
+@pytest.mark.parametrize("border_size", [-1, -0.5, float("nan"), float("inf")])
+def test_an_unusable_band_is_refused_at_construction(border_size) -> None:
+    """Not at apply time, as ``int(nan)`` / ``int(inf)`` would raise then."""
     with pytest.raises(ValueError, match="border_size"):
-        RemoveBorderObjects(border_size=-1)
+        RemoveBorderObjects(border_size=border_size)

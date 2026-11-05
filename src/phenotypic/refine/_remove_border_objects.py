@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+import math
+
 import numpy as np
 from pydantic import field_validator
 
@@ -55,22 +57,38 @@ class RemoveBorderObjects(ObjectRefiner):
         ``rgb``, ``gray``, and ``detect_mat`` are unchanged.
 
     Raises:
-        pydantic.ValidationError: If ``border_size`` is negative.
+        pydantic.ValidationError: If ``border_size`` is negative, NaN or
+            infinite.
 
     See Also:
         :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough
         of border and edge refinement on real plate images.
         :doc:`/explanation/refinement_strategies` for choosing the right
         refinement sequence.
+
+    .. versionchanged:: 0.21.0
+       The band now has its full width on the top and left edges too. It was
+       one pixel short there, so at the default ``border_size=1`` objects
+       touching the top or left edge were kept. ``None`` (which raised) and a
+       fraction on an RGB image (which removed every object) now work as
+       documented, ``0`` removes nothing (it removed every object), and a
+       negative or non-finite value is refused. The prefab pipelines built on
+       this operation change with it, among them ``HeavyOtsuPipeline`` and
+       ``HeavyRoundPeaksPipeline`` at their default ``border_remover_size=1``.
+       A run started before 0.21.0 must be re-run with ``--restart`` or
+       ``--overwrite``, not resumed: resuming reuses the images it already
+       finished, refined the old way.
     """
 
     border_size: int | float | None = 1
 
     @field_validator("border_size")
     @classmethod
-    def _reject_negative_border(cls, value: int | float | None) -> int | float | None:
-        if value is not None and value < 0:
-            raise ValueError(f"border_size must be >= 0 or None, got {value}")
+    def _reject_unusable_border(cls, value: int | float | None) -> int | float | None:
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError(
+                f"border_size must be a finite number >= 0, or None, got {value}"
+            )
         return value
 
     def _band_width(self, height: int, width: int) -> int:
