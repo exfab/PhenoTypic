@@ -100,14 +100,16 @@ In `--mode full`, `--nrows`/`--ncols` shape each `GridImage`
 `ncols` and holds no `GridFinder` in `meas` makes `measure()` add
 `CenteredAutoGridFinder` with the *preset* shape. Two shapes mean two grids
 that disagree on colonies' `Grid_*` values, and `measure()` raises
-`MeasurementConflictError` for every image (until PR H it silently dropped
-those colonies instead). So flags unlike such a preset are a `click.UsageError`
+`MeasurementConflictError` for every image (before `887e2533e`, 2026-11-04,
+it silently dropped those colonies instead). So flags unlike such a preset are a `click.UsageError`
 beside the GPU placement refusal: un-skippable, above `--overwrite` and the
 `--dry-run` exit. A pipeline that fails to load is left to the validation.
-Not covered, and reported per image by the failure tracker instead: an
-explicit grid finder in `meas`, and `--mode measure`, whose stores carry the
-grid the forward run recorded. Pinned by
-`tests/unit/cli/test_cli_grid_preset_refusal.py`.
+Not refused, because `measure()` adds no finder for them: a preset of only
+one of `nrows`/`ncols`, or none. Not covered, and reported per image by the
+failure tracker instead: an explicit grid finder in `meas` (then the preset
+lays out nothing, and the finder is what must match the image), and
+`--mode measure`, whose stores carry the grid the forward run recorded.
+Pinned, both halves, by `tests/unit/cli/test_cli_grid_preset_refusal.py`.
 
 ## Reference metadata (`_cli_reference.py`)
 
@@ -257,7 +259,9 @@ worker (`_cli_process_single.py` `main`), `StagedGpuStrategy`, and the staged
 SLURM worker, which reads the four flags from `job_metadata.json`
 (`JobMetadataKey.NROWS`/`NCOLS`/`BIT_DEPTH`/`DETECT_MODE`, written by
 `_write_staged_job_metadata` before Controller 0 is submitted) rather than from
-its command line. Until PR H, Stage 1 applied no grid shape at all (every
+its command line, and refuses to run when that file is missing or
+unreadable (a key an older submitter never wrote still reads as unset).
+Before `fe8863c81` (2026-11-04), Stage 1 applied no grid shape at all (every
 staged `GridImage` was 8 x 12) and the SLURM worker also dropped `--bit-depth`
 and `--detect-mode`. **Nothing fences a staged run resumed across that fix**:
 the work id carries the same flags before and after, so its Stage-1 stores and
