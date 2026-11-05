@@ -169,7 +169,13 @@ def test_the_example_series_is_the_recorded_page_series(rows: pd.DataFrame):
     theirs = page.assign(
         _k=page.groupby(keys)[LABEL].rank(method="first")
     ).sort_values([*keys, "_k"])
-    np.testing.assert_array_equal(ours[METRIC].to_numpy(), theirs[METRIC].to_numpy())
+    # The metric is float arithmetic, so its last bit depends on the CPU: a
+    # Cascade Lake node differs from the recording node by up to 4e-16
+    # relative. 1e-12 is far above that and far below any real change (a
+    # different seed or formula moves values by whole units).
+    np.testing.assert_allclose(
+        ours[METRIC].to_numpy(), theirs[METRIC].to_numpy(), rtol=1e-12, atol=0
+    )
     np.testing.assert_array_equal(
         ours[TIME_COL].astype("int64").to_numpy(), theirs[TIME_COL].to_numpy()
     )
