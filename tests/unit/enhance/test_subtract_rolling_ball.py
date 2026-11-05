@@ -2,14 +2,19 @@
 
 scikit-image's ``rolling_ball`` treats intensity as height and sizes its ball
 in the image's own units: ``radius`` pixels wide and ``radius`` intensity
-units tall. ``detect_mat`` spans ``[0, 1]``, so before PR H a radius-100 ball
-was 100 whole intensity ranges tall; its surface falls by a colony's height
-(~0.04) within about 3 px of the apex, so the ball fitted inside every colony
-and the "background" it traced was the colonies themselves. On the bundled
-72 h plate a colony's height above background went from 0.037 to 0.000.
-scikit-image's own gallery (``plot_rolling_ball.py``, "Image Datatypes")
-describes this and prescribes an ellipsoid kernel whose intensity axis is
-``radius / 255`` for a float image.
+units tall. ``detect_mat`` spans ``[0, 1]``, so before 0.21.0 a radius-100
+ball was 100 whole intensity ranges tall; its surface falls by a colony's
+height (~0.04) within about 3 px of the apex, so the ball fitted inside every
+colony and the "background" it traced was the colonies themselves. On the
+bundled 72 h plate a colony's median height above background went from 0.208
+to 0.000.
+
+scikit-image's gallery (``plot_rolling_ball.py``, "Image Datatypes")
+describes the same problem and scales the ellipsoid by ``/255`` for a
+``[0, 1]`` image. Its example doubles the intensity axis (``2 r / 255``);
+this operation uses ``r / 255``, which reproduces ``ball_kernel(r)`` exactly
+on 8-bit values, as ``test_the_ball_equals_the_textbook_ball_on_8_bit_values``
+pins.
 
 The known answer below: flat-topped disks of known height on a tilted plane.
 Under a plane a ball touches at one fixed offset, so the plane's residual is

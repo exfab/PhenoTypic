@@ -27,7 +27,10 @@ class SubtractRollingBall(BackgroundSubtraction):
     The ball is ``radius`` pixels wide and ``radius`` grey levels tall, with
     ``detect_mat``'s ``[0, 1]`` range counted as 255 grey levels: the result
     is exactly that of rolling a ``radius``-pixel ball over the image scaled
-    to 8-bit values, the scale scikit-image documents for float images.
+    to 8-bit values. scikit-image's gallery likewise scales the ellipsoid by
+    ``/255`` for ``[0, 1]`` images; its example doubles the intensity axis
+    (``2 * radius / 255``), while ``radius / 255`` is the one that reproduces
+    ``ball_kernel(radius)`` exactly on 8-bit values.
     Rolled on the ``[0, 1]`` values directly, a ball ``radius`` units tall
     falls away by a colony's whole height within a few pixels of its apex,
     so it fits inside every colony and subtracts it.
@@ -78,6 +81,18 @@ class SubtractRollingBall(BackgroundSubtraction):
         visual walkthrough of background subtraction on plate images.
         :doc:`/explanation/what_enhancement_does` for background on
         rolling-ball and other illumination correction strategies.
+
+    .. versionchanged:: 0.21.0
+       The default ball is ``radius`` grey levels tall, counting
+       ``detect_mat``'s ``[0, 1]`` as 255 levels. It was ``radius`` whole
+       intensity ranges tall, so it fitted inside every colony and subtracted
+       it: on the bundled 72 h plate a colony's height above background fell
+       to 0.000 at ``radius=100``. The output now keeps colonies, so it
+       differs throughout from earlier versions', and a threshold tuned on the
+       old output needs re-tuning. A custom ``kernel`` is used as before. A
+       run started before 0.21.0 must be re-run with ``--restart`` or
+       ``--overwrite``, not resumed: resuming reuses the images it already
+       finished, enhanced the old way.
     """
 
     # TODO: review bound (unverified vs literature)
