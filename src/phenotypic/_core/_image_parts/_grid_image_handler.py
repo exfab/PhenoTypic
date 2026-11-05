@@ -268,9 +268,9 @@ class ImageGridHandler(Image):
            A slice keeps the image's metadata and is typed ``"Crop"``. Earlier
            versions kept only the bit depth, so the slice had no name, the
            base ``"Image"`` type, and none of the image's other keys. The
-           colony crop ``objects.iloc(i)`` is such a slice, so on a GridImage
-           it now reports ``ImageType`` ``"Crop"`` where it reported
-           ``"Image"``.
+           colony crops ``objects.iloc(i)`` and ``objects.loc(label)`` are
+           such slices, so on a GridImage they report ``ImageType``
+           ``"Crop"``: ``iloc`` reported ``"Image"``, and ``loc`` raised.
 
         Returns:
             Image: A copy of the image at the slices indicated

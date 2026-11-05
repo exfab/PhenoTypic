@@ -122,6 +122,10 @@ def detected_plates():
     return {cls: OtsuDetector().apply(_read_plate(cls)) for cls in (Image, GridImage)}
 
 
+def _first_label(image):
+    return image.objects.labels[0]
+
+
 def _first_occupied_section(image):
     info = image.grid.info(include_metadata=False)
     return int(info[str(GRID.ROW_MAJOR_IDX)].iloc[0])
@@ -134,6 +138,11 @@ def _first_occupied_section(image):
         pytest.param(GridImage, lambda im: im.objects[0], IMAGE_TYPES.OBJECT, id="GridImage-objects[0]"),
         pytest.param(Image, lambda im: im.objects.iloc(0), IMAGE_TYPES.CROP, id="Image-iloc"),
         pytest.param(GridImage, lambda im: im.objects.iloc(0), IMAGE_TYPES.CROP, id="GridImage-iloc"),
+        pytest.param(Image, lambda im: im.objects.loc(_first_label(im)), IMAGE_TYPES.CROP, id="Image-loc"),
+        pytest.param(
+            GridImage, lambda im: im.objects.loc(_first_label(im)), IMAGE_TYPES.CROP,
+            id="GridImage-loc",
+        ),
         pytest.param(
             GridImage, lambda im: im.grid[_first_occupied_section(im)],
             IMAGE_TYPES.GRID_SECTION, id="GridImage-grid-section",
