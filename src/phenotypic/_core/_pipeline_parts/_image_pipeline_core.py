@@ -1139,6 +1139,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         logging of the measurement process is displayed. A progress bar is used to track progress
         if the tqdm library is available.
 
+        .. versionchanged:: 0.21.0
+           Raises :class:`~phenotypic.sdk_.exceptions_.MeasurementConflictError`
+           when two measurement tables give a colony different values for a
+           column they share. Earlier versions dropped those colonies
+           silently: a ``GridImage`` measured by a pipeline whose ``nrows``/``ncols``
+           preset laid out a different grid lost all or nearly all of them.
+           Agreeing tables give the same output as before, except that a
+           shared column holding NaN in both is no longer repeated under a
+           ``_merged`` suffix.
+
         Args:
             image (Image): The image object for which measurements are performed. It must support
                 the `info` method and optionally a `grid` or `objects` attribute.
