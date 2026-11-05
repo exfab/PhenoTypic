@@ -183,29 +183,36 @@ class GridFinder(GridMeasureFeatures, ABC):
 
         Assign colonies to wells with the default grid finder:
 
-        When the grid position is unknown, ``CenteredAutoGridFinder`` fits the
-        grid to the detected colonies. Select the grid columns by their schema
-        names:
+        When the grid position is unknown, CenteredAutoGridFinder fits the
+        grid to the detected colonies. Here the plate is a 96-colony
+        *K. marxianus* array at 72 h. A bare threshold also picks up specks too
+        small to be colonies, so remove them before gridding. Select the grid
+        columns by their schema names:
 
-        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import CenteredAutoGridFinder
+        >>> from phenotypic.refine import SmallObjectRemover
         >>> from phenotypic.schema import GRID
-        >>> # Load and detect colonies on plate
-        >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+        >>> plate = load_plate_72hr(mode="GridImage")
+        >>> image = SmallObjectRemover().apply(OtsuDetector().apply(plate))
         >>> grid_finder = CenteredAutoGridFinder(nrows=8, ncols=12)
         >>> grid_df = grid_finder.measure(image)
-        >>> # One row per detected object, with its well assignment
-        >>> print(f"Assigned {len(grid_df)} objects to the grid")
-        Assigned 552 objects to the grid
+        >>> # One row per colony, with its well assignment
+        >>> wells = grid_df[str(GRID.ROW_MAJOR_IDX)]
+        >>> print(f"{len(grid_df)} colonies in {wells.nunique()} wells")
+        92 colonies in 92 wells
+        >>> # The wells where no colony was detected
+        >>> sorted(set(range(96)) - set(wells.astype(int)))
+        [22, 26, 56, 76]
         >>> well_columns = [str(GRID.ROW_NUM), str(GRID.COL_NUM), str(GRID.ROW_MAJOR_IDX)]
         >>> print(grid_df[well_columns].head())
           Grid_RowNum Grid_ColNum Grid_RowMajorIdx
-        0           0           1                1
-        1           0          10               10
-        2           0           1                1
-        3           0           1                1
-        4           0          10               10
+        0           0          10               10
+        1           0          11               11
+        2           0           9                9
+        3           0           8                8
+        4           0           5                5
         >>> # 8 rows x 12 columns need 9 row edges and 13 column edges
         >>> len(grid_finder.get_row_edges(image)), len(grid_finder.get_col_edges(image))
         (9, 13)
@@ -213,15 +220,17 @@ class GridFinder(GridMeasureFeatures, ABC):
         Create a ManualGridFinder for a 96-well plate with known geometry:
 
         When grid geometry is known from calibration, specify the row and column
-        edges for reproducible grid assignment. Here the edges divide the
-        600 x 800 pixel synthetic plate evenly:
+        edges for reproducible grid assignment. The synthetic plate ships with its
+        96 colonies already labelled, and edges that divide its 600 x 800 pixel
+        image evenly into 8 x 12 cells put each colony in a well of its own:
 
         >>> import numpy as np
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import ManualGridFinder
         >>> from phenotypic.schema import GRID
-        >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+        >>> image = load_synth_yeast_plate()
+        >>> image.num_objects
+        96
         >>> height, width = image.shape[:2]
         >>> # 9 row edges for 8 rows, 13 column edges for 12 columns
         >>> row_edges = np.linspace(0, height, 9, dtype=int)
@@ -230,14 +239,9 @@ class GridFinder(GridMeasureFeatures, ABC):
         [  0  75 150 225 300 375 450 525 600]
         >>> grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
         >>> grid_df = grid_finder.measure(image)
-        >>> well_columns = [str(GRID.ROW_NUM), str(GRID.COL_NUM), str(GRID.ROW_MAJOR_IDX)]
-        >>> print(grid_df[well_columns].head())
-          Grid_RowNum Grid_ColNum Grid_RowMajorIdx
-        0           0           0                0
-        1           0          10               10
-        2           0           0                0
-        3           0           0                0
-        4           0          10               10
+        >>> wells = grid_df[str(GRID.ROW_MAJOR_IDX)]
+        >>> print(f"{len(grid_df)} colonies in {wells.nunique()} wells")
+        96 colonies in 96 wells
 
         Understanding ROW_MAJOR_IDX for well mapping:
 
@@ -246,21 +250,23 @@ class GridFinder(GridMeasureFeatures, ABC):
         grid it runs 0-95, left-to-right, top-to-bottom: section 0 is A1 (row 0,
         column 0), 11 is A12, 12 is B1, and 95 is H12.
 
-        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import CenteredAutoGridFinder
+        >>> from phenotypic.refine import SmallObjectRemover
         >>> from phenotypic.schema import GRID
-        >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+        >>> plate = load_plate_72hr(mode="GridImage")
+        >>> image = SmallObjectRemover().apply(OtsuDetector().apply(plate))
         >>> grid_df = CenteredAutoGridFinder(nrows=8, ncols=12).measure(image)
-        >>> # Filter the objects in one well
+        >>> # Select the colony in one well
         >>> section_5 = grid_df[grid_df[str(GRID.ROW_MAJOR_IDX)] == 5]
         >>> len(section_5)
-        5
+        1
         >>> # Map the section number back to its well coordinates
         >>> well_row, well_col = divmod(5, 12)
         >>> (well_row, well_col)
         (0, 5)
-        >>> section_5[[str(GRID.ROW_NUM), str(GRID.COL_NUM)]].drop_duplicates().values.tolist()
+        >>> section_5[[str(GRID.ROW_NUM), str(GRID.COL_NUM)]].values.tolist()
         [[0, 5]]
     """
 
