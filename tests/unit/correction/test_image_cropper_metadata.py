@@ -19,7 +19,7 @@ from phenotypic import GridImage, Image
 from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.schema import GENETIC, IMAGE
+from phenotypic.schema import GENETIC, GRID, IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
 _PLATE_FILE = Path(phenotypic.data.__file__).parent / "StandardDay6.jpg"
@@ -116,15 +116,58 @@ def test_slice_metadata_is_a_copy():
     assert source._metadata.imported
 
 
-def test_object_crop_keeps_metadata():
-    """``image.objects`` builds each colony image by slicing, so it keeps them too."""
-    source = OtsuDetector().apply(_read_plate(Image))
+@pytest.fixture(scope="module")
+def detected_plates():
+    """The sample plate read from its file, keys set, Otsu-detected, per class."""
+    return {cls: OtsuDetector().apply(_read_plate(cls)) for cls in (Image, GridImage)}
+
+
+def _first_occupied_section(image):
+    info = image.grid.info(include_metadata=False)
+    return int(info[str(GRID.ROW_MAJOR_IDX)].iloc[0])
+
+
+@pytest.mark.parametrize(
+    ("image_class", "derive", "expected_type"),
+    [
+        pytest.param(Image, lambda im: im.objects[0], IMAGE_TYPES.OBJECT, id="Image-objects[0]"),
+        pytest.param(GridImage, lambda im: im.objects[0], IMAGE_TYPES.OBJECT, id="GridImage-objects[0]"),
+        pytest.param(Image, lambda im: im.objects.iloc(0), IMAGE_TYPES.CROP, id="Image-iloc"),
+        pytest.param(GridImage, lambda im: im.objects.iloc(0), IMAGE_TYPES.CROP, id="GridImage-iloc"),
+        pytest.param(
+            GridImage, lambda im: im.grid[_first_occupied_section(im)],
+            IMAGE_TYPES.GRID_SECTION, id="GridImage-grid-section",
+        ),
+    ],
+)
+def test_colony_and_section_images_keep_metadata(
+    detected_plates, image_class, derive, expected_type
+):
+    """Colony crops and grid sections are built by slicing, so they keep it too."""
+    source = detected_plates[image_class]
     before = _keys(source)
 
-    colony = source.objects[0]
-    after = _keys(colony)
+    derived = derive(source)
+    after = _keys(derived)
 
-    assert colony.metadata[IMAGE.IMAGE_TYPE] == IMAGE_TYPES.OBJECT.value
+    assert derived.metadata[IMAGE.IMAGE_TYPE] == expected_type.value
     assert {k: v for k, v in after.items() if k not in _CHANGED_ON_PURPOSE} == {
         k: v for k, v in before.items() if k not in _CHANGED_ON_PURPOSE
     }
+    assert derived._metadata.imported == source._metadata.imported
+
+
+def _operation_names(image):
+    return [record["operation_name"] for record in image.provenance]
+
+
+def test_slice_starts_a_fresh_journal_and_crop_records_one_operation():
+    """A slice does not copy the provenance journal; CropImage.apply extends it."""
+    source = OtsuDetector().apply(_read_plate(Image))
+    assert _operation_names(source) == ["OtsuDetector"]
+
+    sliced = _slice(source)
+    cropped = _crop(source)
+
+    assert sliced._metadata.provenance_journal["applications"] == []
+    assert _operation_names(cropped) == ["OtsuDetector", "CropImage"]

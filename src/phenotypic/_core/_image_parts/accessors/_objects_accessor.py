@@ -534,7 +534,11 @@ class ObjectsAccessor:
             Image: A cropped Image containing the bounding box region of the specified colony.
                 Unlike __getitem__, this crop preserves all label values in the objmap without
                 zeroing non-matching pixels. The metadata is inherited from the parent Image,
-                and ImageType is not changed to 'Object'.
+                and ImageType is not changed to 'Object': it is 'Crop', as for any slice.
+
+        .. versionchanged:: 0.21.0
+           On a GridImage the crop is typed 'Crop' and keeps the plate's
+           metadata; earlier versions typed it 'Image' and gave it none.
 
         Raises:
             IndexError: If index is negative or >= num_objects.
