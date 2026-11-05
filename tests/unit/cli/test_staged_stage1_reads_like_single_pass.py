@@ -1,6 +1,6 @@
 """Staged Stage 1 reads each input exactly as a single-pass run does.
 
-Before PR H the staged engine's Stage 1 never applied ``--nrows``/``--ncols``
+Before 0.21.0 the staged engine's Stage 1 never applied ``--nrows``/``--ncols``
 or the pipeline's grid preset: the local path built ``read_kwargs`` from
 ``bit_depth``/``detect_mode`` only, and the SLURM worker called
 ``stage1_preprocess_core`` with no ``read_kwargs`` at all, so on SLURM
@@ -266,7 +266,7 @@ def test_staged_runs_read_with_bit_depth_and_detect_mode(
 ) -> None:
     """At the default grid, so only the two reader settings are under test.
 
-    The local path already carried them before PR H; the SLURM worker did not.
+    The local path already carried them before 0.21.0; the SLURM worker did not.
     """
     out = tmp_path / "out"
     reference, table = _reference(
@@ -285,3 +285,48 @@ def test_staged_runs_read_with_bit_depth_and_detect_mode(
     _assert_store_matches(out, reference, table)
     stored = GridImage.load_zarr(zarr_store_path(out, DATASET, STEM))
     assert stored.detect_mode == "LabL"
+
+
+@pytest.mark.parametrize(
+    "content", [None, "{not json"], ids=["missing", "unparseable"]
+)
+def test_the_slurm_stage1_worker_refuses_without_job_metadata(
+    tmp_path, pipeline_file, plate_4x6, content
+) -> None:
+    """Falling back to the defaults would be the 8 x 12 bug again, silently."""
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+    from phenotypic.sdk_ import job_metadata_path
+
+    out = tmp_path / "out"
+    if content is not None:
+        path = job_metadata_path(out)
+        path.parent.mkdir(parents=True)
+        path.write_text(content, encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="job_metadata.json"):
+        worker.run_stage1_step(
+            pipeline_path=pipeline_file, output_dir=out, image_type="GridImage",
+            manifest=[(DATASET, STEM, str(plate_4x6))], index=0,
+        )
+
+    assert not zarr_store_path(out, DATASET, STEM).exists()
+
+
+def test_keys_an_older_submitter_never_wrote_read_as_unset(
+    tmp_path, pipeline_file, plate_4x6
+) -> None:
+    """Metadata from before the reader flags were recorded: the defaults."""
+    import phenotypic._cli._cli_staged_slurm_worker as worker
+    from phenotypic.sdk_ import JobMetadataKey, atomic_write_json, job_metadata_path
+
+    out = tmp_path / "out"
+    job_metadata_path(out).parent.mkdir(parents=True)
+    atomic_write_json(job_metadata_path(out), {JobMetadataKey.EXECUTION_MODE: "slurm"})
+
+    worker.run_stage1_step(
+        pipeline_path=pipeline_file, output_dir=out, image_type="GridImage",
+        manifest=[(DATASET, STEM, str(plate_4x6))], index=0,
+    )
+
+    stored = GridImage.load_zarr(zarr_store_path(out, DATASET, STEM))
+    assert (stored.nrows, stored.ncols) == (8, 12)

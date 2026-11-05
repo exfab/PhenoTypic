@@ -22,6 +22,7 @@ from phenotypic.sdk_ import (
     JobMetadataKey,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    job_metadata_path,
     progress_dir,
     zarr_store_path,
 )
@@ -165,10 +166,26 @@ def _recorded_image_read(
     The staged submitter records ``--bit-depth``, ``--detect-mode``,
     ``--nrows`` and ``--ncols`` in ``job_metadata.json`` before Controller 0
     is submitted (``_write_staged_job_metadata``), so every Stage-1 task
-    reads the same values. Missing metadata, or a key written before it was
-    recorded, reads as unset: the run's defaults.
+    reads the same values. A key absent from the file (one written before it
+    was recorded) reads as unset, which is what that run did.
+
+    Raises:
+        RuntimeError: The file is missing or unreadable. A Stage-1 task never
+            starts before the submitter has written it, so this is a broken
+            run, and reading the image with the defaults instead would
+            silently apply the wrong grid, bit depth and detect mode.
     """
-    metadata = load_job_metadata(progress_dir(output_dir)) or {}
+    metadata = load_job_metadata(progress_dir(output_dir))
+    if not isinstance(metadata, dict):
+        path = job_metadata_path(output_dir)
+        state = "is unreadable" if path.exists() else "does not exist"
+        raise RuntimeError(
+            f"Staged Stage 1 reads --nrows, --ncols, --bit-depth and "
+            f"--detect-mode from {path}, which {state}. The submitter writes "
+            "it before any worker starts, so this run's machine state is "
+            "incomplete; re-run the same command (or with --restart) to "
+            "submit it again."
+        )
     settings = input_read_settings(
         metadata.get(JobMetadataKey.BIT_DEPTH),
         metadata.get(JobMetadataKey.DETECT_MODE),
@@ -212,6 +229,9 @@ def run_stage1_step(
     commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
+    # Before anything is cleared or written: a run with no recorded flags
+    # must not touch the image at all.
+    read_kwargs, cli_nrows, cli_ncols = _recorded_image_read(output_dir)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     if resume:
         clear_downstream_artifacts_for_stage1(
@@ -228,7 +248,6 @@ def run_stage1_step(
         durable_writes=durable_writes,
         run_initiation=recorded_run_initiation(output_dir),
     )
-    read_kwargs, cli_nrows, cli_ncols = _recorded_image_read(output_dir)
     log = event_log_path(output_dir)
     try:
         with stage_event(

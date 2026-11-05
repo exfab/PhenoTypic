@@ -49,6 +49,7 @@ from phenotypic.sdk_._io_constants import (
 )
 from phenotypic.sdk_.typing_ import OperationField
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
+from tests._support.staged_job_metadata import write_staged_job_metadata
 from tests.unit.cli._preflight_support import make_config
 
 #: A lid scratch present in every frame of the plate, blank included. It is as
@@ -811,6 +812,7 @@ def _slurm_setup(run_inputs, pipeline: Path, out: Path):
         _cli_staged_slurm.staged_manifest_entry(config, "plate1", image)
         for image in dataset.images
     ]
+    write_staged_job_metadata(out)  # what the submitter leaves for Stage 1
     return config, dataset, manifest
 
 
