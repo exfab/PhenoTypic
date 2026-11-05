@@ -260,6 +260,15 @@ class ImageGridHandler(Image):
     def __getitem__(self, key) -> Image:
         """Returns a copy of the image at the slices specified as a regular Image object.
 
+        The slice keeps a copy of the image's metadata, as
+        :meth:`Image.__getitem__` does. Only ``Metadata_UUID`` and
+        ``Metadata_ImageType`` (``"Crop"``) differ.
+
+        .. versionchanged:: 0.21.0
+           A slice keeps the image's metadata and is typed ``"Crop"``. Earlier
+           versions kept only the bit depth, so the slice had no name, the
+           base ``"Image"`` type, and none of the image's other keys.
+
         Returns:
             Image: A copy of the image at the slices indicated
         """
@@ -270,6 +279,8 @@ class ImageGridHandler(Image):
         subimage._data.detect_mode = self._data.detect_mode
         subimage.detect_mat[:] = self.detect_mat[key]
         subimage.objmap[:] = self.objmap[key]
+        # A GridImage's own type would misname a plain Image slice.
+        subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
         return subimage
 
     def napari(

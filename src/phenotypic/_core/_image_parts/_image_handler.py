@@ -93,6 +93,17 @@ class ImageHandler(ImageDataManager):
         Note:
             - The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.
             - We may add this functionality in future updates if there is demand for it.
+            - The subimage keeps a copy of the image's metadata: its name, file
+              suffix, bit depth, imported (EXIF) block, and keys set by hand such
+              as ``Metadata_Strain``. Only ``Metadata_UUID`` (the subimage is a
+              new image) and ``Metadata_ImageType`` (``"Crop"``) differ.
+
+        .. versionchanged:: 0.21.0
+           A slice keeps the image's metadata. Earlier versions kept only the
+           bit depth, renamed the slice ``<name>_crop``, and dropped every other
+           key, including user keys, the file suffix and the imported block;
+           ``CropImage`` lost them the same way.
+
         Args:
             key: A slicing key or index used to extract a subset or part of the image object.
 
@@ -111,8 +122,6 @@ class ImageHandler(ImageDataManager):
         subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
-        subimage.metadata[IMAGE.IMAGE_NAME] \
-            = f"{self.metadata[IMAGE.IMAGE_NAME]}_crop"
         return subimage
 
     def __setitem__(self, key, other_image):

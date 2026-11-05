@@ -144,14 +144,12 @@ class CropImage(ImageCorrector):
         """
         top, bottom_idx, left, right_idx = self._get_idxes(image)
 
-        # Use existing slicing (__getitem__) - returns Image for both Image and GridImage
+        # Use existing slicing (__getitem__) - returns Image for both Image and
+        # GridImage, carrying a copy of the image's metadata (name included).
         cropped = image[top:bottom_idx, left:right_idx]
 
         # Import GridImage locally to avoid potential circular imports
         from phenotypic import GridImage
-
-        # Preserve original image's name before modifications
-        original_name = image.name
 
         # If input was GridImage, upgrade the cropped Image back to GridImage
         if isinstance(image, GridImage):
@@ -167,14 +165,10 @@ class CropImage(ImageCorrector):
                 gamma=cropped.gamma,
             )
 
-        result = self._cpy_new_arrs(image, cropped)
-        # Restore original name (may be overwritten by set_image).
-        # set_image() calls _set_from_class_instance() which deep copies all metadata
-        # from the source image, including the name. We preserve the original image's
-        # name to maintain its identity through the cropping operation.
-        result.name = original_name
-
-        return result
+        # set_image() copies the crop's metadata over the image's. The crop
+        # carries the image's own metadata, so every key survives; only the
+        # type is the crop's ("Crop", or "GridImage" for a rebuilt GridImage).
+        return self._cpy_new_arrs(image, cropped)
 
     @staticmethod
     def _cpy_new_arrs(

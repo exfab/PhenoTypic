@@ -100,6 +100,13 @@ Via `image.color`: `Lab[:]` (CIELAB), `hsv[:]`, `XYZ[:]`, `XYZ_D65[:]`, `xy[:]` 
   are the `UNSET` sentinel (`_image_color_handler.py`), not `"D65"`/`SRGB`, because
   `gamma=None` already means linear and an explicit `"D65"` must still override a
   D50 source.
+- **A slice keeps the source's metadata** (since 0.21.0). `_restore_crop_of` ends
+  with `_adopt_metadata_of`, the same protected/public/imported copy that
+  `copy()` makes, so `image[...]`, `CropImage`, a grid section and `objects[i]`
+  keep the name, suffix, EXIF block and user keys such as `Metadata_Strain`.
+  Only `Metadata_UUID` and `Metadata_ImageType` differ (`Crop`, `Object`,
+  `GridSection`; a `GridImage` rebuilt by `CropImage` stamps `GridImage`). The
+  provenance journal is not copied by a slice; `apply()` carries it.
 
 ---
 
