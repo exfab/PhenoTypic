@@ -107,6 +107,11 @@ Via `image.color`: `Lab[:]` (CIELAB), `hsv[:]`, `XYZ[:]`, `XYZ_D65[:]`, `xy[:]` 
   Only `Metadata_UUID` and `Metadata_ImageType` differ (`Crop`, `Object`,
   `GridSection`; a `GridImage` rebuilt by `CropImage` stamps `GridImage`). The
   provenance journal is not copied by a slice; `apply()` carries it.
+  **Display code must not key on `name` alone**: `napari()` replaces a layer of
+  the same name, so a crop would overwrite its plate. Default layer names and
+  matplotlib titles use `ImageHandler._display_name`, which is `name` for a
+  plate and `<name>_<type>_<8 hex of UUID>` for a `Crop`/`Object`/`GridSection`
+  (`tests/unit/core/test_derived_image_display_names.py`).
 
 ---
 
