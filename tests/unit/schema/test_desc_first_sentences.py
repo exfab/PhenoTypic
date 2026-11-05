@@ -135,13 +135,14 @@ def test_correlation_compares_pixels_one_scale_apart() -> None:
 
 def test_info_correlation_1_states_its_sign() -> None:
     # (HXY - HXY1) / max(HX, HY) is minus a mutual information: never above 0.
-    # The maintainer kept the earlier "Positive values" wording, because projects
-    # already read the column against it; a note maps it onto the written sign.
+    # The desc reads as the value is written (Haralick's definition, <= 0), and
+    # records the earlier "Positive values" wording for projects that read it.
     desc = " ".join(TEXTURE.IMC1.desc.split())
     assert "0 or below" in _first_sentence(desc)
-    assert "Positive values → structured" in desc
-    assert 'read "positive" there as "more negative"' in desc
-    assert "Haralick (1973)" in desc
+    assert "More negative values → structured" in desc
+    assert "Releases before 0.21.0" in desc and "that meant more negative values" in desc
+    assert "Haralick, 1973" in desc
+    assert "varies with implementation" not in desc
 
 
 def test_log_growth_beta_compares_k_with_the_last_time_point() -> None:

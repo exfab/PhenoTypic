@@ -169,13 +169,12 @@ class TEXTURE(DiscriminativeFeature):
             stronger the dependence. It is (HXY – HXY1) /
             max(HX, HY), where HXY is Entropy, HXY1 = –Σ p(i,j)·log₂(p_x(i)·p_y(j)), and
             HX and HY are the entropies of the row and column sums p_x and p_y. Compares joint vs marginal entropies to quantify
-            mutual dependence between gray levels. Positive values → structured, predictable textures
-            (e.g., organized radial growth); near-zero → independence between adjacent regions.
-            Direction of sign varies with implementation. Note on the sign: the two sentences
-            above are kept as earlier releases documented them, and they describe the dependence
-            as positive. The value PhenoTypic writes, from mahotas as Haralick (1973) defines it,
-            is 0 or below, so read "positive" there as "more negative": more negative values mean
-            stronger dependence.""",
+            mutual dependence between gray levels. More negative values → structured, predictable
+            textures (e.g., organized radial growth); near-zero → independence between adjacent
+            regions. The value is 0 or below by definition (Haralick, 1973), as mahotas computes
+            it and PhenoTypic has always written it. Releases before 0.21.0 described this as
+            "Positive values → structured, predictable textures"; for the values those releases
+            wrote, that meant more negative values.""",
     )
 
     IMC2 = Entry(
