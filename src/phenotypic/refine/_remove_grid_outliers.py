@@ -115,18 +115,23 @@ class RemoveGridOutliers(GridObjectRefiner):
         # Create container to hold the id of objects to be removed
         outlier_obj_ids = []
 
+        # The row/column keys are categorical (``pd.cut`` in the grid finder),
+        # so every groupby names ``observed`` explicitly: pandas warns on the
+        # implicit default. ``False`` is that default, so an empty grid line
+        # still yields a NaN coefficient, which the ``>`` comparison drops.
+
         # Row-wise residual outlier discovery
         if self.axis is None or self.axis == 0:
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            row_variance = grid_info.groupby(str(GRID.ROW_NUM))[
+            row_variance = grid_info.groupby(str(GRID.ROW_NUM), observed=False)[
                 str(GRID_LINREG_STATS.RESIDUAL_ERR)
             ].std()
 
             #   Divide standard deviation by mean
             row_variance = (
                     row_variance
-                    / grid_info.groupby(str(GRID.ROW_NUM))[
+                    / grid_info.groupby(str(GRID.ROW_NUM), observed=False)[
                         str(GRID_LINREG_STATS.RESIDUAL_ERR)
                     ].mean()
             )
@@ -157,14 +162,14 @@ class RemoveGridOutliers(GridObjectRefiner):
         if self.axis is None or self.axis == 1:
             # Calculate the coefficient of variance (std/mean)
             #   Collect the standard deviation
-            col_variance = grid_info.groupby(str(GRID.COL_NUM))[
+            col_variance = grid_info.groupby(str(GRID.COL_NUM), observed=False)[
                 str(GRID_LINREG_STATS.RESIDUAL_ERR)
             ].std()
 
             #   Divide standard deviation by mean
             col_variance = (
                     col_variance
-                    / grid_info.groupby(str(GRID.COL_NUM))[
+                    / grid_info.groupby(str(GRID.COL_NUM), observed=False)[
                         str(GRID_LINREG_STATS.RESIDUAL_ERR)
                     ].mean()
             )
