@@ -22,6 +22,7 @@ from typing import Any, Callable
 import pytest
 
 from phenotypic.sdk_._image_figures import RunInitiation
+from tests._support.staged_job_metadata import write_staged_job_metadata
 
 DATE = "2026-09-22"
 CALL = RunInitiation(date=DATE, at_utc="2026-09-22T23:59:58.123Z", pid=4242)
@@ -463,6 +464,7 @@ def test_a_staged_step_builds_its_manager_from_the_recorded_call(
     monkeypatch.setattr(worker, "split_pipeline_at_gpu", lambda _p: object())
     out = tmp_path / "out"
     recorded_state(out)
+    write_staged_job_metadata(out)  # Stage 1 reads the run's reader flags first
     entry = StagedManifestEntry(
         dataset="ds", image_name="img.tiff", stem="img",
         input_path=str(tmp_path / "img.tiff"),
