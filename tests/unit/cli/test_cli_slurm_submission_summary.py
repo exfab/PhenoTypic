@@ -118,6 +118,13 @@ def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     return seen
 
 
+def test_version_is_0_21_0() -> None:
+    """0.21.0 is the release that removed ``--wait`` and the automatic report."""
+    import phenotypic
+
+    assert phenotypic.__version__ == "0.21.0"
+
+
 def _slurm_args(pipeline: Path, input_root: Path, output: Path) -> list[str]:
     return [
         "--pipeline",
