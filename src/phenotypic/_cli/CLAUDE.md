@@ -624,8 +624,13 @@ generation, control references, and the terminal status file its finalizer
 writes. That file is where a SLURM attempt's verdict is read: 0.21.0 removed
 `--wait`, which used to wait for the lifecycle to close and turn a failed
 terminal status into a Click error, so a submitted migration exits 0 whatever
-its jobs later do. Each rerun is a new generation/attempt, rather than reuse
-of a prior failed scheduler token.
+its jobs later do. **If the finalizer itself never finishes** (out of memory,
+time limit, node failure, or cancelled while pending), no terminal status file
+appears. Once no job of the attempt is queued, re-run `--mode migrate`:
+`reconcile_interrupted_migration_attempt` terminalizes the dead attempt as
+failed, writing its terminal status file, before it starts a new attempt.
+Each rerun is a new generation/attempt, rather than reuse of a prior failed
+scheduler token.
 
 Local mutation and the complete plan/initialize/submit critical section hold a
 shared-filesystem migration attempt lease. Recovery must acquire that lease

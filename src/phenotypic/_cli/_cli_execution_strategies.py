@@ -937,15 +937,21 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Execute processing on SLURM cluster using array jobs.
 
         Generates array job scripts with automatic chunking based on SLURM
-        limits, submits via direct sbatch with sequential dataset dependencies,
-        and optionally monitors progress.
+        limits, submits them through the drip-feed dispatcher chain with the
+        dependent terminal finalizer, prints how to follow the jobs, and
+        returns at submission.
+
+        .. versionchanged:: 0.21.0
+           Always returns at submission; ``--wait`` and its progress monitor
+           were removed.
 
         Args:
             datasets: List of datasets to process
             output_dir: Base output directory
 
         Returns:
-            Execution results (may be incomplete if jobs still running)
+            Zero-count results with ``submitted=True``: no image has been
+            counted, and the dependent finalizer publishes the run.
         """
         start_time = datetime.now()
         measure_only = bool(self.config.measure_only)

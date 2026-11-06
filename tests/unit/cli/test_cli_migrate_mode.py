@@ -2223,3 +2223,15 @@ def test_slurm_is_refused_for_a_target_with_no_stores(tmp_path: Path) -> None:
     assert "nothing to distribute" in result.output
     # The refusal has to say what to do instead, or it is a dead end.
     assert "without --slurm" in result.output
+
+
+def test_help_says_where_a_slurm_migration_verdict_lives() -> None:
+    """0.21.0 removed --wait; --help names the file that holds the verdict."""
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    text = " ".join(result.output.split())
+    assert (
+        "With --slurm it returns at submission: read the attempt's verdict "
+        "from the terminal status file it prints." in text
+    )

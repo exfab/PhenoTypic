@@ -2383,6 +2383,13 @@ def handle_migrate_mode(
     returns after durable submission, and prints the durable control
     references, including the terminal status file its finalizer writes.
 
+    If the finalizer itself never finishes (out of memory, time limit, node
+    failure, or cancelled while pending), no terminal status file appears.
+    Once no job of the attempt is queued, re-run ``--mode migrate``:
+    ``reconcile_interrupted_migration_attempt`` terminalizes the dead attempt
+    as failed, writing its terminal status file, before it starts a new
+    attempt.
+
     .. versionchanged:: 0.21.0
        ``wait`` was removed with ``--wait``. A SLURM attempt's verdict is read
        from its terminal status file rather than awaited by the CLI.

@@ -248,11 +248,15 @@ isolation before attributing it — most of them pass.
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. **Every SLURM run returns at submission** (0.21.0 removed `--wait`,
-  with no shim): the CLI writes the README, prints `PROCESSING SUBMITTED` (or
-  `PROCESS-ONLY SUBMITTED`) pointing at the strategy's "Monitor progress"
-  lines, and exits 0. It never aggregates in-process for a SLURM run, so the
-  dependent finalizer is the **sole** publisher of the aggregated outputs, the
-  dashboard and the completion marker. **P5 does not change that.** The forward
+  with no shim) and exits 0. A full, measure or staged run writes the README
+  and prints `PROCESSING SUBMITTED`; a process run prints `PROCESS-ONLY
+  SUBMITTED` and has no README; recompile and migrate print their own
+  submission lines. The submitting CLI never aggregates for a SLURM run, so
+  the dependent finalizer is the **sole** publisher of the aggregated outputs
+  and the completion marker. (An ordinary submission does write the live
+  `dashboard.html` skeleton, which the finalizer regenerates.) `--study` and
+  `--no-qc` reach that finalizer through `job_metadata.json` (`study_yaml`,
+  `no_qc`). **P5 does not change that.** The forward
   run's dependent finalizer becomes a `0-K` array whose indices `0..K-1`
   aggregate measurement shards and whose index K is the reserved
   `TASK_FINALIZE` entry — running the same command it always ran. The finalizer

@@ -2101,7 +2101,9 @@ def phenotypic_cli(
                  stores and process-output trees upgrade only schema-v1 root
                  provenance. It runs locally by default or through a
                  generation-scoped SLURM attempt with --slurm; re-running it
-                 creates a fresh attempt for interrupted work.
+                 creates a fresh attempt for interrupted work. With --slurm
+                 it returns at submission: read the attempt's verdict from
+                 the terminal status file it prints.
 
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
