@@ -9,10 +9,10 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from skimage.filters import apply_hysteresis_threshold
-from skimage.morphology import remove_small_objects
 from skimage.segmentation import clear_border
 
 from ..abc_ import ThresholdDetector
+from ..sdk_._skimage_compat import remove_objects_smaller_than
 from ..sdk_.typing_ import TuneSpec
 
 
@@ -169,8 +169,8 @@ class MadHysteresisDetector(ThresholdDetector):
         mask = mask.astype(bool)
 
         # Remove small objects
-        mask = remove_small_objects(mask, min_size=self.min_size,
-                                    connectivity=self.connectivity)
+        mask = remove_objects_smaller_than(mask, self.min_size,
+                                           connectivity=self.connectivity)
 
         # Optionally clear borders
         if self.ignore_borders:

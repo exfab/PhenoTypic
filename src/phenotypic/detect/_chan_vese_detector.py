@@ -7,10 +7,11 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from pydantic import Field
-from skimage import segmentation, morphology
+from skimage import segmentation
 from scipy import ndimage
 
 from ..abc_ import ObjectDetector
+from ..sdk_._skimage_compat import remove_objects_smaller_than
 from ..sdk_.typing_ import TuneSpec
 
 
@@ -174,7 +175,7 @@ class ChanVeseDetector(ObjectDetector):
         )
 
         # Remove small objects
-        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
+        objmap = remove_objects_smaller_than(objmap, self.min_size)
 
         # Ensure correct dtype
         if objmap.dtype != image._OBJMAP_DTYPE:

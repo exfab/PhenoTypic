@@ -90,6 +90,24 @@ compatible with PhenoTypic's Apache-2.0.
   Upstream:  https://github.com/hms-dbmi/vizarr
   License:   licenses/vizarr-MIT.txt
 
+Vendored OpenSeadragon (browse, results viewer)
+-----------------------------------------------
+
+`src/phenotypic/_gui/browse/_assets/openseadragon/` and
+`src/phenotypic/_gui/results_viewer/_assets/openseadragon/` each REDISTRIBUTE
+the OpenSeadragon 5.0.1 release build (`openseadragon.min.js`; the two copies
+differ only in line endings) and its control-icon images, served from that
+sub-app's Dash assets folder.
+OpenSeadragon is BSD-3-Clause, which is compatible with PhenoTypic's
+Apache-2.0 and requires its copyright notice and license text to accompany
+binary redistributions. The `LICENSE` vendored beside each copy is reproduced
+in the license file named below, which every wheel and sdist carries.
+
+- OpenSeadragon 5.0.1, CodePlex Foundation and OpenSeadragon contributors —
+  deep-zoom (DZI) image viewer.
+  Upstream:  https://github.com/openseadragon/openseadragon
+  License:   licenses/openseadragon-BSD-3-Clause.txt
+
 Reviewed filamentary-structure method ports
 --------------------------------------------
 

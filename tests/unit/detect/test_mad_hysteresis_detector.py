@@ -202,3 +202,31 @@ class TestMadHysteresisDetectorIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+@pytest.mark.parametrize(("connectivity", "kept"), [(2, 12), (1, 0)])
+def test_min_size_counts_components_at_the_configured_connectivity(
+    connectivity, kept
+):
+    """``connectivity`` reaches the small-object filter, not just the docs.
+
+    A 12-pixel diagonal is one 12-pixel component when diagonal neighbours
+    connect (``connectivity=2``) and twelve 1-pixel components when they do
+    not (``connectivity=1``). With ``min_size=10`` the first survives and
+    the second is removed entirely. A filter that fell back to its default
+    4-connectivity would remove the diagonal in both cases.
+    """
+    rng = np.random.default_rng(7)
+    # Background median 0.01 and MAD 0.01, so t_low = 2.5 * 1.4826 * 0.01
+    # ~= 0.037 sits above every background pixel and the diagonal (1.0)
+    # clears t_high ~= 0.074; hysteresis keeps exactly the diagonal.
+    arr = rng.choice(np.array([0.0, 0.01, 0.02], dtype=np.float32), (40, 40))
+    index = np.arange(10, 22)
+    arr[index, index] = 1.0
+    image = Image(arr)
+
+    result = MadHysteresisDetector(
+        min_size=10, connectivity=connectivity
+    ).apply(image, inplace=False)
+
+    assert int(result.objmask[:].sum()) == kept
