@@ -46,7 +46,6 @@ from ._cli_slurm_lifecycle import (
     scheduler_comment,
     submit_with_lifecycle,
 )
-from ._cli_staged_resume import stage3_completion_exists
 
 # 4 added ``StagedManifestEntry.reference_digest``. The bump is what makes a
 # version-3 reader stop at its own version check instead of failing on an
@@ -280,33 +279,6 @@ def retryable_digest(
     identities = sorted(entry.identity for entry in entries)
     digest = hashlib.sha256("\n".join(identities).encode("utf-8")).hexdigest()
     return digest, len(identities)
-
-
-def completed_inventory_images(
-    output_dir: Path, dataset: str, image_names: Sequence[str]
-) -> set[str]:
-    """Return full-inventory image names with terminal staged artifacts."""
-    measurements = dataset_measurements_dir(output_dir, dataset)
-    state = load_orchestration_state(output_dir) or {}
-    markers_required = bool(state.get("stage3_markers_required", False))
-    old_fingerprints = state.get("restart_parquet_fingerprints", {})
-    completed: set[str] = set()
-    for image_name in image_names:
-        stem = source_image_stem(Path(image_name))
-        if markers_required:
-            if stage3_completion_exists(output_dir, dataset, stem):
-                completed.add(image_name)
-            continue
-        parquet = measurements / f"{stem}.parquet"
-        try:
-            stat = parquet.stat()
-        except FileNotFoundError:
-            continue
-        fingerprint = [stat.st_ino, stat.st_size, stat.st_mtime_ns]
-        if old_fingerprints.get(f"{dataset}\0{image_name}") == fingerprint:
-            continue
-        completed.add(image_name)
-    return completed
 
 
 def snapshot_inventory_parquets(
@@ -908,7 +880,6 @@ __all__ = [
     "append_stage2_terminal_failure",
     "assert_active_epoch",
     "cancel_staged_jobs",
-    "completed_inventory_images",
     "current_slurm_job_id",
     "deactivate_orchestration",
     "epoch_deactivation_journal_path",
