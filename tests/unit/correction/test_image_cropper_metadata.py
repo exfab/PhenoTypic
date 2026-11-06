@@ -4,8 +4,8 @@ A slice is a new image (its own UUID) of the same plate, so every other
 metadata key keeps its value: the file name and suffix, the bit depth, the
 EXIF block, and keys a user set by hand. Only two keys change on purpose:
 ``Metadata_UUID``, and ``Metadata_ImageType``, which a slice sets to ``Crop``.
-``CropImage`` on a ``GridImage`` rebuilds a ``GridImage``, which stamps its
-own ``GridImage`` type, as before.
+``CropImage`` is not a slice: it returns the image itself, cropped, so it
+keeps the input's type too (``Image`` or ``GridImage``).
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def _crop(image):
     [
         pytest.param(Image, _slice, IMAGE_TYPES.CROP, id="Image-slice"),
         pytest.param(GridImage, _slice, IMAGE_TYPES.CROP, id="GridImage-slice"),
-        pytest.param(Image, _crop, IMAGE_TYPES.CROP, id="Image-CropImage"),
+        pytest.param(Image, _crop, IMAGE_TYPES.BASE, id="Image-CropImage"),
         pytest.param(GridImage, _crop, IMAGE_TYPES.GRID, id="GridImage-CropImage"),
     ],
 )

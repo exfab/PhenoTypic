@@ -4,17 +4,19 @@ A slice keeps its source's metadata, name included (0.21.0), and ``napari()``
 names a layer ``{accessor}_{image name}`` and replaces a layer that already has
 that name. So a derived image's default name adds its type and the first 8 hex
 digits of its UUID, and so do the default matplotlib titles. A plate's own
-layer names and titles are unchanged.
+layer names are unchanged. CropImage returns the image itself, cropped,
+so it keeps the plate's layers. The matching matplotlib titles are tested in
+``test_derived_image_titles.py``, which does not need napari.
 """
 
 from __future__ import annotations
 
 import re
 
-import matplotlib.pyplot as plt
 import pytest
 
 from phenotypic import GridImage, Image
+from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 
 pytest.importorskip("napari")
@@ -140,22 +142,17 @@ def test_explicit_name_is_used_as_given():
     assert set(viewer.layers) == {"gray_colony_a1"}
 
 
-def test_default_titles_tell_a_crop_from_its_plate():
-    plate = load_synth_yeast_plate()
-    crop = plate[100:300, 100:300]
-    figures = []
-    try:
-        titles = {}
-        for label, image in (("plate", plate), ("crop", crop)):
-            fig, _ = image.gray.histogram()
-            channel_fig, channel_ax = image.rgb.show(channel=0)
-            figures += [fig, channel_fig]
-            titles[label] = (fig.axes[0].get_title(), channel_ax.get_title())
-    finally:
-        for fig in figures:
-            plt.close(fig)
+@pytest.mark.parametrize("image_class", [Image, GridImage])
+def test_two_cropimage_runs_give_the_same_default_layer_names(image_class):
+    """Re-running a crop updates the plate's layers instead of adding new ones."""
+    plate = _plate(image_class)
+    crop = CropImage(left=20, right=20, top=20, bottom=20)
+    viewer = _FakeViewer()
 
-    assert titles["plate"] == (_PLATE_NAME, f"{_PLATE_NAME} - Channel 0")
-    crop_title, crop_channel_title = titles["crop"]
-    assert re.fullmatch(rf"{_PLATE_NAME}_crop_[0-9a-f]{{8}}", crop_title)
-    assert crop_channel_title == f"{crop_title} - Channel 0"
+    for _ in range(2):
+        cropped = crop.apply(plate)
+        cropped.rgb.napari(viewer=viewer)
+        cropped.objmap.napari(viewer=viewer)
+
+    assert set(viewer.layers) == {f"rgb_{_PLATE_NAME}", f"objmap_{_PLATE_NAME}"}
+    assert viewer.layers[f"rgb_{_PLATE_NAME}"].data.shape == (560, 760, 3)
