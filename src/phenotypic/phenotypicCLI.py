@@ -1911,7 +1911,8 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--force-local",
     is_flag=True,
-    help="Force local execution even if SLURM available",
+    help="Ignore any --slurm options and run locally (the CLI already runs "
+    "locally unless --slurm is given)",
 )
 @click.option(
     "--wait",

@@ -1027,3 +1027,132 @@ def test_a_changed_table_is_parsed_again(tmp_path, table_reads, change):
         expected = "t00x" if change == "size" else "t00"
         assert ctx.lookup("t01", ["BlankImage"]) == {"BlankImage": expected}
     assert len(table_reads) == 2
+
+
+@pytest.mark.parametrize("reselection_first", [False, True])
+def test_a_batched_reselection_does_not_drop_the_parameter_blur(
+    tmp_path, monkeypatch, registry, reselection_first
+):
+    """One callback must apply a blur even if redundant selection is first."""
+    import inspect
+    from phenotypic._gui.builder import _callbacks, _ids
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    _, spec = _spec(app, "fan_in_state_mutation")
+    callback = spec["callback"].__wrapped__
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    state = _state_with_selected_block("BlurGauss", {"sigma": 2.0})
+    block_id = state.selected_block_id
+    select_id = {"type": _ids.LINEAR_NODE_ACTION, "action": "select", "block_id": block_id}
+    edit_id = {"type": "param-num", "prefix": block_id, "name": "sigma"}
+    events = [
+        {"prop_id": json.dumps(select_id) + ".n_clicks", "value": 1},
+        {"prop_id": json.dumps(edit_id) + ".n_blur", "value": 1},
+    ]
+    if not reselection_first:
+        events.reverse()
+    monkeypatch.setattr(_callbacks, "ctx", SimpleNamespace(
+        triggered_id=select_id if reselection_first else edit_id, triggered=events
+    ))
+    before = state_to_json(state)
+    args = {name: [] for name in inspect.signature(callback).parameters}
+    args.update(state_data=before, num_values=[3.0], num_ids=[edit_id])
+    with app.server.app_context():
+        result = callback(**args)
+    after = state_from_json(result[0])
+    block = next(b for b in after.root.blocks if b.block_id == block_id)
+    assert block.params["sigma"] == 3.0
+    assert after.selected_block_id == block_id
+    assert _callbacks._pipeline_revision(result[0]) != _callbacks._pipeline_revision(before)
+
+
+@pytest.mark.parametrize("different_selection", [False, True])
+def test_coalesced_selection_does_not_invent_a_blur_edit(different_selection):
+    """Do not override a new selection or treat a mounted zero blur as an edit."""
+    from phenotypic._gui.builder import _callbacks, _ids
+
+    selected = "current-block"
+    select_id = {
+        "type": _ids.LINEAR_NODE_ACTION, "action": "select",
+        "block_id": "other-block" if different_selection else selected,
+    }
+    edit_id = {"type": "param-num", "prefix": selected, "name": "sigma"}
+    events = [{"prop_id": json.dumps(edit_id) + ".n_blur", "value": 1 if different_selection else 0}]
+    assert _callbacks._coalesced_reselection_edit(
+        {"selected_block_id": selected}, select_id, events
+    ) is None
+
+
+@pytest.mark.parametrize("target_first", [False, True])
+def test_batched_fill_target_and_new_pipeline_apply_in_dependency_order(
+    tmp_path, monkeypatch, registry, target_first
+):
+    """Both event orders fill the chosen side port exactly once and drill in."""
+    import inspect
+
+    from phenotypic._gui.builder import _callbacks, _ids
+
+    app = _builder_app(tmp_path, monkeypatch, registry)
+    _, spec = _spec(app, "fan_in_state_mutation")
+    callback = spec["callback"].__wrapped__
+    monkeypatch.setattr(_callbacks, "_render_views", lambda state: ([], [], []))
+    state = _state_with_selected_block("FilamentousFungiDetector")
+    consumer_id = state.selected_block_id
+    target_id = _ids.linear_port_id(
+        kind="parameter", scope_path=[], block_id=consumer_id,
+        param="inoculum_detector", slot=None, surface="side",
+    )
+    events = [
+        {"prop_id": json.dumps(target_id) + ".n_clicks", "value": 1},
+        {"prop_id": _ids.BTN_NEW_PIPELINE_NODE + ".n_clicks", "value": 1},
+    ]
+    if not target_first:
+        events.reverse()
+    monkeypatch.setattr(_callbacks, "ctx", SimpleNamespace(
+        triggered_id=target_id if target_first else _ids.BTN_NEW_PIPELINE_NODE,
+        triggered=events,
+    ))
+    before = state_to_json(state)
+    selected = _callbacks._dispatch_state_update(before, "target_select", {
+        "target": _callbacks._linear_target_payload_from_id(target_id),
+        "open_menu": True,
+    })
+    assert _callbacks._pipeline_revision(selected) == _callbacks._pipeline_revision(before)
+    args = {name: [] for name in inspect.signature(callback).parameters}
+    args.update(state_data=before)
+    with app.server.app_context():
+        result = callback(**args)
+    after = state_from_json(result[0])
+    pipelines = [block for block in after.root.blocks if block.class_name == "ImagePipeline"]
+    assert len(pipelines) == 1
+    pipeline_id = pipelines[0].block_id
+    assert after.breadcrumb == [pipeline_id]
+    assert after.selected_block_id is None
+    assert len(after.root.blocks) == 3
+    aux_edges = [edge for edge in after.root.edges if edge.kind == "aux"]
+    assert len(aux_edges) == 1
+    assert aux_edges[0].source_block_id == pipeline_id
+    assert aux_edges[0].target_block_id == consumer_id
+    assert aux_edges[0].target_port == "inoculum_detector"
+    assert _callbacks._pipeline_revision(result[0]) != _callbacks._pipeline_revision(before)
+
+
+@pytest.mark.parametrize("other_batch", ["port_zero", "pipeline_zero", "unrelated", "extra"])
+def test_new_pipeline_coalescing_keeps_other_event_batches_unchanged(other_batch):
+    """Only the two real dependent clicks receive special dispatch."""
+    from phenotypic._gui.builder import _callbacks, _ids
+
+    target_id = _ids.linear_port_id(
+        kind="parameter", scope_path=[], block_id="consumer",
+        param="inoculum_detector", slot=None, surface="side",
+    )
+    events = [
+        {"prop_id": json.dumps(target_id) + ".n_clicks", "value": 0 if other_batch == "port_zero" else 1},
+        {"prop_id": _ids.BTN_NEW_PIPELINE_NODE + ".n_clicks", "value": 0 if other_batch == "pipeline_zero" else 1},
+    ]
+    triggered = target_id
+    if other_batch == "unrelated":
+        triggered = {"type": _ids.LINEAR_NODE_ACTION, "action": "select"}
+    elif other_batch == "extra":
+        events.append({"prop_id": "unrelated.n_clicks", "value": 1})
+    assert _callbacks._coalesced_new_pipeline_target(triggered, events) is None

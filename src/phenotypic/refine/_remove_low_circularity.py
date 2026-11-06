@@ -20,7 +20,10 @@ class RemoveLowCircularity(ObjectRefiner):
     """Remove objects whose Polsby-Popper circularity score falls below a threshold.
 
     Computes ``4π × area / perimeter²`` for each labeled object and
-    discards those below ``cutoff``. A perfect circle scores 1.0; elongated
+    discards those at or below ``cutoff``. This is the same formula as the
+    ``Shape_Circularity`` column. A perfect circle scores 1.0, but a round
+    colony of 30 px or more, drawn in pixels, reads about 0.90 to 0.94, and
+    very small ones can read above 1. Elongated
     or jagged shapes score lower. Well-formed round colonies are retained
     while scratches, merged blobs, and irregular segmentation debris are
     removed.
@@ -50,11 +53,15 @@ class RemoveLowCircularity(ObjectRefiner):
     Args:
         cutoff: Minimum Polsby-Popper circularity score in ``[0, 1]``
             required to retain an object. A perfect circle has a score of
-            1.0; elongated or irregular shapes score lower. The default
+            1.0, but round pixel colonies of 30 px or more read about 0.90
+            to 0.94, so a cutoff above about 0.9 starts to remove genuine
+            round colonies; very small objects can read above 1. Elongated
+            or irregular shapes score lower. The default
             0.785 (π/4) is the area ratio of a circle inscribed in its
             bounding square and provides a reasonable boundary between
             compact colonies and elongated artefacts. Higher values enforce
-            stricter roundness; lower values tolerate irregular morphology.
+            stricter roundness (check the scores of colonies you want to
+            keep before raising it); lower values tolerate irregular morphology.
             Typical range: 0.5--0.9. Default: 0.785.
 
     Returns:
