@@ -39,7 +39,7 @@ class VisuShrinkCorrector(NormalizedOutputMixin, _GATSupportMixin, ImageCorrecto
           computation.
         - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D collaborative
           filtering when Poisson-Gaussian noise modelling is important.
-        - :class:`VisuShrinkEnhancer` when only the detection matrix should
+        - :class:`DenoiseVisuShrink` when only the detection matrix should
           be denoised and RGB and gray must remain untouched.
 
     Args:

@@ -203,7 +203,7 @@ code template before the formal API. Canonical subclass example:
 | `ImageEnhancer` + FootprintMixin | GrayOpening        | `enhance/_gray_opening.py`        |
 | `ObjectDetector`                 | OtsuDetector       | `detect/_otsu_detector.py`        |
 | `ThresholdDetector`              | HysteresisDetector | `detect/_hysteresis_detector.py`  |
-| `ObjectRefiner`                  | SmallObjectRemover | `refine/_small_object_remover.py` |
+| `ObjectRefiner`                  | RemoveSmallObjects | `refine/_small_object_remover.py` |
 | `ObjectRefiner` + FootprintMixin | MaskDilation       | `refine/_mask_dilation.py`        |
 | `ImageCorrector`                 | GridAligner        | `correction/_grid_aligner.py`     |
 | `GridFinder`                     | AutoGridFinder     | `grid/_auto_grid_finder.py`       |

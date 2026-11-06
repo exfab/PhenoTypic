@@ -44,7 +44,7 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
           all components when CBM3D runtime is prohibitive.
         - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D on the grayscale
           channel when only intensity measurements are needed.
-        - :class:`NonLocalMeansDenoiser` when a simpler, lower-cost denoiser
+        - :class:`DenoiseNonLocalMeans` when a simpler, lower-cost denoiser
           for the detection matrix is sufficient.
 
     Args:

@@ -192,10 +192,10 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import CenteredAutoGridFinder
-        >>> from phenotypic.refine import SmallObjectRemover
+        >>> from phenotypic.refine import RemoveSmallObjects
         >>> from phenotypic.schema import GRID
         >>> plate = load_plate_72hr(mode="GridImage")
-        >>> image = SmallObjectRemover().apply(OtsuDetector().apply(plate))
+        >>> image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))
         >>> grid_finder = CenteredAutoGridFinder(nrows=8, ncols=12)
         >>> grid_df = grid_finder.measure(image)
         >>> # One row per colony, with its well assignment
@@ -253,10 +253,10 @@ class GridFinder(GridMeasureFeatures, ABC):
         >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import CenteredAutoGridFinder
-        >>> from phenotypic.refine import SmallObjectRemover
+        >>> from phenotypic.refine import RemoveSmallObjects
         >>> from phenotypic.schema import GRID
         >>> plate = load_plate_72hr(mode="GridImage")
-        >>> image = SmallObjectRemover().apply(OtsuDetector().apply(plate))
+        >>> image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))
         >>> grid_df = CenteredAutoGridFinder(nrows=8, ncols=12).measure(image)
         >>> # Select the colony in one well
         >>> section_5 = grid_df[grid_df[str(GRID.ROW_MAJOR_IDX)] == 5]

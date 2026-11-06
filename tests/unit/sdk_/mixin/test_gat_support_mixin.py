@@ -26,9 +26,9 @@ from skimage.restoration import denoise_wavelet
 from phenotypic import Image, ImagePipeline
 from phenotypic.correction import BayesShrinkCorrector, VisuShrinkCorrector
 from phenotypic.enhance import (
-    BayesShrinkEnhancer,
+    DenoiseBayesShrink,
     EnhanceBlockMatch,
-    VisuShrinkEnhancer,
+    DenoiseVisuShrink,
 )
 from phenotypic.sdk_._anscombe import gat_forward, gat_inverse
 
@@ -90,8 +90,8 @@ class TestEquivalenceWithExplicitTriple:
     @pytest.mark.parametrize(
             "cls,method",
             [
-                (BayesShrinkEnhancer, "BayesShrink"),
-                (VisuShrinkEnhancer, "VisuShrink"),
+                (DenoiseBayesShrink, "BayesShrink"),
+                (DenoiseVisuShrink, "VisuShrink"),
             ],
     )
     def test_wavelet_use_gat_matches_manual_triple(
@@ -359,7 +359,7 @@ class TestDeferValues:
     """``_GAT_DEFER_VALUES`` maps each deferred attribute to its inert value."""
 
     def test_defer_values_is_a_mapping_with_correct_inert_values(self):
-        assert VisuShrinkEnhancer._GAT_DEFER_VALUES == {
+        assert DenoiseVisuShrink._GAT_DEFER_VALUES == {
             "norm"         : None,
             "rescale_sigma": False,
         }
@@ -373,12 +373,12 @@ class TestDeferValues:
         outside [0, 1]. If ``norm`` is not deferred to ``None``, the inner
         denoiser clips or rescales it and the inverse transform collapses.
         """
-        op = VisuShrinkEnhancer(
+        op = DenoiseVisuShrink(
                 use_gat=True, norm="clip", gat_scale_factor=255.0
         )
         seen = {}
 
-        original = VisuShrinkEnhancer._denoise_detect_mat
+        original = DenoiseVisuShrink._denoise_detect_mat
 
         def spy(self, image):
             seen["norm_inside"] = self.norm
@@ -386,7 +386,7 @@ class TestDeferValues:
             seen["max_inside"] = float(image.detect_mat[:].max())
             return original(self, image)
 
-        monkeypatch.setattr(VisuShrinkEnhancer, "_denoise_detect_mat", spy)
+        monkeypatch.setattr(DenoiseVisuShrink, "_denoise_detect_mat", spy)
         op.apply(synth_image, inplace=True)
 
         assert seen["norm_inside"] is None

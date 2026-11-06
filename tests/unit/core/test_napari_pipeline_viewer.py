@@ -23,7 +23,7 @@ from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 from phenotypic.measure import MeasureSize
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class TestNapariLayersFor:
         assert result == [("objmap", True)]
 
     def test_refiner_returns_objmap(self):
-        result = _napari_layers_for(SmallObjectRemover(min_size=10))
+        result = _napari_layers_for(RemoveSmallObjects(min_size=10))
         assert result == [("objmap", True)]
 
     def test_corrector_returns_rgb_gray(self):

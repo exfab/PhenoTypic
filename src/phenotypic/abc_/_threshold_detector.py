@@ -239,10 +239,10 @@ class ThresholdDetector(ObjectDetector, ABC):
 
         Build a pipeline with thresholding and refinement:
 
-        >>> from phenotypic.refine import SmallObjectRemover
+        >>> from phenotypic.refine import RemoveSmallObjects
         >>> detected.num_objects  # Otsu alone leaves many small fragments
         552
-        >>> cleaned = SmallObjectRemover(min_size=50).apply(detected)
+        >>> cleaned = RemoveSmallObjects(min_size=50).apply(detected)
         >>> cleaned.num_objects
         96
 

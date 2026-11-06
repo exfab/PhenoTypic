@@ -12,7 +12,7 @@ from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX
 
 
-class GridOversizedObjectRemover(GridObjectRefiner):
+class RemoveOversizedGridObjects(GridObjectRefiner):
     """Discard objects whose bounding box equals or exceeds the maximum grid cell span.
 
     Measures each detected object's bounding-box width and height and removes
@@ -35,9 +35,9 @@ class GridOversizedObjectRemover(GridObjectRefiner):
     Consider Also:
         - :class:`KeepSectionLargest` when keeping the single largest valid
           object per cell is preferable to removing oversized candidates.
-        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object
+        - :class:`RefineGridAlignment` for full grid-aware dominant-object
           selection with configurable strategies.
-        - :class:`SmallObjectRemover` when the problem is undersized debris
+        - :class:`RemoveSmallObjects` when the problem is undersized debris
           rather than oversized merged detections.
 
     Returns:

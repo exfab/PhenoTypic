@@ -1,4 +1,4 @@
-"""``SmallObjectRemover`` keeps the ``min_size`` boundary across scikit-image.
+"""``RemoveSmallObjects`` keeps the ``min_size`` boundary across scikit-image.
 
 scikit-image 0.26 deprecated ``remove_small_objects(min_size=...)``, which
 removes objects with **fewer than** ``min_size`` pixels, in favour of
@@ -23,7 +23,7 @@ import pytest
 from scipy import ndimage as ndi
 
 from phenotypic import Image
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.sdk_._skimage_compat import (
     _max_size_for,
     remove_objects_smaller_than,
@@ -50,7 +50,7 @@ def _surviving_sizes(image: Image) -> list[int]:
 def _apply_with_warnings_as_errors(image: Image, min_size: int) -> Image:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        return SmallObjectRemover(min_size=min_size).apply(image)
+        return RemoveSmallObjects(min_size=min_size).apply(image)
 
 
 def test_label_image_keeps_min_size_and_drops_one_pixel_smaller() -> None:

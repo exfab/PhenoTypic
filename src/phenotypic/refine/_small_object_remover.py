@@ -10,7 +10,7 @@ from ..sdk_._skimage_compat import remove_objects_smaller_than
 from ..sdk_.typing_ import TuneSpec
 
 
-class SmallObjectRemover(ObjectRefiner):
+class RemoveSmallObjects(ObjectRefiner):
     """Remove detected objects below a minimum pixel area from the detection mask.
 
     Eliminates dust particles, condensation specks, agar debris, and
@@ -35,7 +35,7 @@ class SmallObjectRemover(ObjectRefiner):
           image edges regardless of their size.
         - :class:`RemoveLowCircularity` for discarding non-circular artefacts
           regardless of area.
-        - :class:`SmallToLargeMerger` when small fragments should be
+        - :class:`MergeSmallToLarge` when small fragments should be
           absorbed into a nearby large colony rather than discarded.
 
     Args:

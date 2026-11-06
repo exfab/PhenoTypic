@@ -13,7 +13,7 @@ from phenotypic.abc_ import Smoothing
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
-class RankMedianEnhancer(Smoothing):
+class EnhanceRankMedian(Smoothing):
     """Suppress impulsive noise in ``detect_mat`` with rank-based median filtering.
 
     Applies a local median using rank filters with a configurable structuring
@@ -35,7 +35,7 @@ class RankMedianEnhancer(Smoothing):
         - :class:`LocalEdgeDenoise` for edge-preserving smoothing of
           Gaussian noise without the uint8 conversion required by rank
           filters.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising that
+        - :class:`DenoiseNonLocalMeans` for patch-based denoising that
           preserves fine colony texture better on noisy plates.
         - :class:`GrayOpening` for morphological artifact removal that
           does not require uint8 quantization.

@@ -1,6 +1,6 @@
 """Tests for spatial merger ObjectRefiner classes.
 
-Covers MergeFragmentChains, NearestNeighborMerger, and SmallToLargeMerger
+Covers MergeFragmentChains, MergeNearestNeighbors, and MergeSmallToLarge
 with edge cases and algorithm-specific behavior validation.
 """
 
@@ -9,8 +9,8 @@ import numpy as np
 from phenotypic import Image
 from phenotypic.refine import (
     MergeFragmentChains,
-    NearestNeighborMerger,
-    SmallToLargeMerger,
+    MergeNearestNeighbors,
+    MergeSmallToLarge,
 )
 
 
@@ -200,28 +200,28 @@ class TestTransitiveDistanceMerger:
 
 
 # =====================================================================
-# NearestNeighborMerger Tests
+# MergeNearestNeighbors Tests
 # =====================================================================
 
 
 class TestNearestNeighborMerger:
-    """Test suite for NearestNeighborMerger."""
+    """Test suite for MergeNearestNeighbors."""
 
     def test_empty_objmap(self, empty_image):
         """Empty objmap should return unchanged."""
-        merger = NearestNeighborMerger(distance_threshold=20.0)
+        merger = MergeNearestNeighbors(distance_threshold=20.0)
         result = merger.apply(empty_image)
         assert result.objmap[:].max() == 0
 
     def test_single_object(self, single_object_image):
         """Single object should return unchanged."""
-        merger = NearestNeighborMerger(distance_threshold=20.0)
+        merger = MergeNearestNeighbors(distance_threshold=20.0)
         result = merger.apply(single_object_image)
         assert result.objmap[:].max() == 1
 
     def test_size_filter_preserves_large(self, size_mixed_image):
         """Large objects (>= min_size) should not merge."""
-        merger = NearestNeighborMerger(distance_threshold=100.0, min_size=50)
+        merger = MergeNearestNeighbors(distance_threshold=100.0, min_size=50)
         result = merger.apply(size_mixed_image)
         # Large object (label 1) should still exist
         assert 1 in result.objmap[:]
@@ -229,7 +229,7 @@ class TestNearestNeighborMerger:
     def test_size_filter_merges_small(self, size_mixed_image):
         """Small objects (< min_size) should merge to nearest."""
         original_count = size_mixed_image.objmap[:].max()
-        merger = NearestNeighborMerger(distance_threshold=100.0, min_size=50)
+        merger = MergeNearestNeighbors(distance_threshold=100.0, min_size=50)
         result = merger.apply(size_mixed_image)
         # Merging should reduce or maintain count
         assert result.objmap[:].max() <= original_count
@@ -237,14 +237,14 @@ class TestNearestNeighborMerger:
     def test_no_size_filter_merges_all(self, two_close_objects_image):
         """With min_size=None, merging should occur."""
         original_count = two_close_objects_image.objmap[:].max()
-        merger = NearestNeighborMerger(distance_threshold=50.0, min_size=None)
+        merger = MergeNearestNeighbors(distance_threshold=50.0, min_size=None)
         result = merger.apply(two_close_objects_image)
         # Merging should not increase count
         assert result.objmap[:].max() <= original_count
 
     def test_distance_threshold_respected(self, two_distant_objects_image):
         """Objects beyond threshold should remain independent."""
-        merger = NearestNeighborMerger(distance_threshold=10.0)
+        merger = MergeNearestNeighbors(distance_threshold=10.0)
         result = merger.apply(two_distant_objects_image)
         # Both objects too far apart to merge
         assert result.objmap[:].max() == 2
@@ -252,21 +252,21 @@ class TestNearestNeighborMerger:
     def test_invalid_distance_raises_error(self):
         """Non-positive distance_threshold should raise ValueError."""
         with pytest.raises(ValueError, match="greater than 0"):
-            NearestNeighborMerger(distance_threshold=0)
+            MergeNearestNeighbors(distance_threshold=0)
 
     def test_invalid_min_size_raises_error(self):
         """Non-positive min_size should raise ValueError."""
         with pytest.raises(ValueError, match="min_size must be positive"):
-            NearestNeighborMerger(distance_threshold=20, min_size=0)
+            MergeNearestNeighbors(distance_threshold=20, min_size=0)
         with pytest.raises(ValueError, match="min_size must be positive"):
-            NearestNeighborMerger(distance_threshold=20, min_size=-5)
+            MergeNearestNeighbors(distance_threshold=20, min_size=-5)
 
     def test_preserves_mask_coverage(self, size_mixed_image):
         """Merged objects should maintain same total coverage."""
         original = size_mixed_image.objmap[:]
         original_coverage = (original > 0).sum()
 
-        merger = NearestNeighborMerger(distance_threshold=100.0, min_size=50)
+        merger = MergeNearestNeighbors(distance_threshold=100.0, min_size=50)
         result = merger.apply(size_mixed_image)
 
         merged = result.objmap[:]
@@ -276,29 +276,29 @@ class TestNearestNeighborMerger:
 
 
 # =====================================================================
-# SmallToLargeMerger Tests
+# MergeSmallToLarge Tests
 # =====================================================================
 
 
 class TestSmallToLargeMerger:
-    """Test suite for SmallToLargeMerger."""
+    """Test suite for MergeSmallToLarge."""
 
     def test_empty_objmap(self, empty_image):
         """Empty objmap should return unchanged."""
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=30.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=30.0)
         result = merger.apply(empty_image)
         assert result.objmap[:].max() == 0
 
     def test_single_object(self, single_object_image):
         """Single object should return unchanged."""
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=30.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=30.0)
         result = merger.apply(single_object_image)
         assert result.objmap[:].max() == 1
 
     def test_no_large_objects_returns_unchanged(self, size_mixed_image):
         """No large objects => no merging possible."""
         # All objects small (< 200)
-        merger = SmallToLargeMerger(size_threshold=200, distance_threshold=30.0)
+        merger = MergeSmallToLarge(size_threshold=200, distance_threshold=30.0)
 
         original = size_mixed_image.objmap[:].copy()
         result = merger.apply(size_mixed_image)
@@ -315,7 +315,7 @@ class TestSmallToLargeMerger:
         image.objmap[:] = objmap
 
         original = objmap.copy()
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=30.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=30.0)
         result = merger.apply(image)
 
         # Should be unchanged (no small objects)
@@ -331,7 +331,7 @@ class TestSmallToLargeMerger:
         objmap[50:55, 50:55] = 2
         image.objmap[:] = objmap
 
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=50.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=50.0)
         result = merger.apply(image)
 
         # Small object should merge into large
@@ -348,7 +348,7 @@ class TestSmallToLargeMerger:
         objmap[80:85, 80:85] = 2
         image.objmap[:] = objmap
 
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=10.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=10.0)
         result = merger.apply(image)
 
         # Small object too far, should remain
@@ -366,7 +366,7 @@ class TestSmallToLargeMerger:
         objmap[60:65, 30:35] = 3
         image.objmap[:] = objmap
 
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=30.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=30.0)
         result = merger.apply(image)
 
         # Both small objects should merge to large
@@ -385,7 +385,7 @@ class TestSmallToLargeMerger:
         objmap[60:80, 60:80] = 2
         image.objmap[:] = objmap
 
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=100.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=100.0)
         result = merger.apply(image)
 
         # Large objects should remain (even though close with large threshold)
@@ -395,19 +395,19 @@ class TestSmallToLargeMerger:
     def test_invalid_distance_raises_error(self):
         """Non-positive distance_threshold should raise ValueError."""
         with pytest.raises(ValueError, match="greater than 0"):
-            SmallToLargeMerger(distance_threshold=0, size_threshold=100)
+            MergeSmallToLarge(distance_threshold=0, size_threshold=100)
 
     def test_invalid_size_threshold_raises_error(self):
         """Non-positive size_threshold should raise ValueError."""
         with pytest.raises(ValueError, match="greater than 0"):
-            SmallToLargeMerger(distance_threshold=30, size_threshold=0)
+            MergeSmallToLarge(distance_threshold=30, size_threshold=0)
 
     def test_preserves_mask_coverage(self, size_mixed_image):
         """Merged objects should maintain same total coverage."""
         original = size_mixed_image.objmap[:]
         original_coverage = (original > 0).sum()
 
-        merger = SmallToLargeMerger(size_threshold=100, distance_threshold=100.0)
+        merger = MergeSmallToLarge(size_threshold=100, distance_threshold=100.0)
         result = merger.apply(size_mixed_image)
 
         merged = result.objmap[:]
@@ -428,7 +428,7 @@ class TestMergerIntegration:
         """Multiple refiners can be chained."""
         # Apply transitive merger then nearest neighbor
         merger1 = MergeFragmentChains(distance_threshold=20.0)
-        merger2 = NearestNeighborMerger(distance_threshold=15.0, min_size=50)
+        merger2 = MergeNearestNeighbors(distance_threshold=15.0, min_size=50)
 
         result1 = merger1.apply(chain_objects_image)
         result2 = merger2.apply(result1)
@@ -451,8 +451,8 @@ class TestMergerIntegration:
         import pickle
 
         merger1 = MergeFragmentChains(distance_threshold=25.0)
-        merger2 = NearestNeighborMerger(distance_threshold=20.0, min_size=50)
-        merger3 = SmallToLargeMerger(distance_threshold=30.0, size_threshold=100)
+        merger2 = MergeNearestNeighbors(distance_threshold=20.0, min_size=50)
+        merger3 = MergeSmallToLarge(distance_threshold=30.0, size_threshold=100)
 
         # Should pickle and unpickle without error
         for merger in [merger1, merger2, merger3]:

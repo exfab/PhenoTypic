@@ -28,10 +28,10 @@ from phenotypic.abc_ import (
 # Marker ABC -> the concrete enhancer class names that must subclass it.
 TAXONOMY: dict[type, tuple[str, ...]] = {
     ImageDenoiser         : (
-        "BayesShrinkEnhancer",
+        "DenoiseBayesShrink",
         "EnhanceBlockMatch",
-        "NonLocalMeansDenoiser",
-        "VisuShrinkEnhancer",
+        "DenoiseNonLocalMeans",
+        "DenoiseVisuShrink",
         "LocalEdgeDenoise",
     ),
     FocusEdge             : (
@@ -49,7 +49,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
     Smoothing             : (
         "BlurGauss",
         "MedianFilter",
-        "RankMedianEnhancer",
+        "EnhanceRankMedian",
         "StructureSmoothing",
     ),
     BackgroundSubtraction : (
@@ -71,7 +71,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
         "ContrastGamma",
         "ContrastLog",
         "ContrastSigmoid",
-        "ImageInverter",
+        "InvertImage",
         "SharpenEdgeGauss",
     ),
 }

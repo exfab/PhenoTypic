@@ -9,18 +9,18 @@ from pydantic import ValidationError
 from phenotypic import ImagePipeline
 from phenotypic.correction import BayesShrinkCorrector, ColorDenoise, VisuShrinkCorrector
 from phenotypic.enhance import (
-    BayesShrinkEnhancer,
+    DenoiseBayesShrink,
     CompositeEnhance,
     EnhanceBlockMatch,
     LocalEdgeDenoise,
-    VisuShrinkEnhancer,
+    DenoiseVisuShrink,
 )
 
 MIGRATED = [
     LocalEdgeDenoise,
-    BayesShrinkEnhancer,
+    DenoiseBayesShrink,
     EnhanceBlockMatch,
-    VisuShrinkEnhancer,
+    DenoiseVisuShrink,
     CompositeEnhance,
     ColorDenoise,
     VisuShrinkCorrector,
@@ -82,7 +82,7 @@ def test_norm_field_carries_a_description(cls):
 
 
 def test_rescale_sigma_untouched():
-    assert VisuShrinkEnhancer.model_fields["rescale_sigma"].annotation is bool
+    assert DenoiseVisuShrink.model_fields["rescale_sigma"].annotation is bool
 
 
 #: The only two fixtures that ever serialized a ``clip`` param. Both were

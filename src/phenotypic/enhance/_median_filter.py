@@ -36,7 +36,7 @@ class MedianFilter(Smoothing):
           impulsive.
         - :class:`LocalEdgeDenoise` for bilateral edge-preserving smoothing
           with continuous intensity gradients.
-        - :class:`RankMedianEnhancer` for configurable rank-based filtering
+        - :class:`EnhanceRankMedian` for configurable rank-based filtering
           with explicit footprint control.
 
     Args:

@@ -24,7 +24,7 @@ noise (long exposures), compression artifacts.
   illumination).
 
 **Mitigation:** `BlurGauss`, `MedianFilter`, `DenoiseBlockMatch` (BM3D),
-`VisuShrinkEnhancer` (wavelet).
+`DenoiseVisuShrink` (wavelet).
 
 ## Contrast
 

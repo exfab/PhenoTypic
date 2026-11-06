@@ -30,13 +30,13 @@ class ObjectRefiner(ImageOperation, ABC):
     - **ObjectRefiner vs ObjectDetector:** Refiners work on existing masks (objmask/objmap), detectors create
       masks from image data. Refiners are for cleanup, detectors are for initial analysis.
     - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions
-      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).
+      (too large). Example: [RemoveSmallObjects](src/phenotypic/refine/_small_object_remover.py).
     - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:
       [MaskDilation](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).
     - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.
     - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.
     - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:
-      [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py).
+      [MergeNearestNeighbors](src/phenotypic/refine/_nearest_neighbor_merger.py).
     - **When to chain:** Combine multiple refiners in ImagePipeline (remove small noise before filling holes,
       filter shapes before morphological operations) for clearer, divide-and-conquer approach.
 
@@ -131,7 +131,7 @@ class ObjectRefiner(ImageOperation, ABC):
 
     Common ObjectRefiner implementations address specific issues:
 
-    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py) removes
+    - **Size filtering:** [RemoveSmallObjects](src/phenotypic/refine/_small_object_remover.py) removes
       objects below/above thresholds. Targets: spurious noise, dust, agar artifacts, oversized regions.
 
     - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity, high
@@ -147,7 +147,7 @@ class ObjectRefiner(ImageOperation, ABC):
     - **Border removal:** Remove or exclude objects touching image/well boundaries.
       Targets: incomplete colonies in arrayed formats.
 
-    - **Merging/splitting:** [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py)
+    - **Merging/splitting:** [MergeNearestNeighbors](src/phenotypic/refine/_nearest_neighbor_merger.py)
       combines nearby objects via dilation and relabeling. Targets: fragmented colonies, nearby regions.
 
     **Integrity Validation: Protection of Core Data**
@@ -327,11 +327,11 @@ class ObjectRefiner(ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic import Image, ImagePipeline
-        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveLowCircularity
+        from phenotypic.refine import RemoveSmallObjects, MaskFill, RemoveLowCircularity
 
         # Build a refinement pipeline
         pipeline = ImagePipeline()
-        pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise
+        pipeline.add(RemoveSmallObjects(min_size=100))          # Remove dust/noise
         pipeline.add(MaskFill())                                 # Fill holes in colonies
         pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove elongated artifacts
 
@@ -575,7 +575,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.refine import (
-        ...     SmallObjectRemover, MaskFill, RemoveLowCircularity
+        ...     RemoveSmallObjects, MaskFill, RemoveLowCircularity
         ... )
         >>> from phenotypic.measure import MeasureColor
         >>> # Build complete processing pipeline with enhancement, detection, and refinement
@@ -585,7 +585,7 @@ class ObjectRefiner(ImageOperation, ABC):
         >>> # Detection
         >>> pipeline.add(OtsuDetector())
         >>> # Refinement (chain multiple cleanup operations)
-        >>> pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust
+        >>> pipeline.add(RemoveSmallObjects(min_size=100))          # Remove dust
         >>> pipeline.add(MaskFill())                                 # Fill internal holes
         >>> pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove merged/irregular
         >>> # Measurement
