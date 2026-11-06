@@ -8,6 +8,7 @@
       "tests/unit/assets/",
       "tests/unit/ci/",
       "tests/unit/core/",
+      "tests/unit/data/",
       "tests/unit/docs/",
       "tests/unit/resources/",
       "tests/unit/schema/"

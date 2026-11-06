@@ -59,6 +59,7 @@ from phenotypic._gui._design import (
 from phenotypic._gui.analysis import _ids as ids
 from phenotypic._gui.analysis._layout import (
     build_section_stack,
+    missing_model_columns,
     pipeline_header_children,
 )
 from phenotypic._gui.analysis._plot_controls import collect_plot_kwargs
@@ -199,7 +200,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return (
             section,
             _pipeline_summary(recipe),
-            mutations_disabled or model is None,
+            mutations_disabled
+            or model is None
+            or bool(missing_model_columns(model, _columns_provider)),
             type(model).__name__ if model is not None else "",
         )
 
@@ -924,6 +927,17 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
     analysis_pipeline, recipe_revision = recipe_snapshot
+    from phenotypic._gui._schema_cache import MeasurementSchema
+
+    schema = MeasurementSchema.from_layout(layout)
+    missing = missing_model_columns(analysis_pipeline.get_model(), schema.columns_for)
+    if missing:
+        return html.Span(
+            "Missing measurement columns: "
+            + ", ".join(missing)
+            + ". Choose available columns before running analysis.",
+            style={"color": OI_VERMILION_TEXT},
+        )
     source_fingerprint = paths_fingerprint(
         (measurements,),
         root=layout.deliverables_base,

@@ -161,6 +161,7 @@ def build_app_layout(
         ),
         _build_run_console(
             recipe,
+            columns_provider=columns_provider,
             mutations_disabled=mutations_disabled,
         ),
         dcc.Interval(
@@ -836,6 +837,42 @@ def _build_model_panel(
     )
 
 
+def missing_model_columns(
+    model: Any,
+    columns_provider: Optional[ColumnsProvider],
+) -> list[str]:
+    """Return configured model column references absent from their source.
+
+    Args:
+        model: Configured analyzer, or None when no endpoint is selected.
+        columns_provider: Live source-schema lookup; None skips this check.
+
+    Returns:
+        Missing column names in parameter order, without duplicates.
+    """
+    if model is None or columns_provider is None:
+        return []
+    info = get_registry().get(type(model).__name__)
+    if info is None:
+        return []
+    missing: list[str] = []
+    for parameter in info.parameters.values():
+        spec = parameter.column_ref
+        if spec is None:
+            continue
+        value = getattr(model, parameter.name, None)
+        values = value if isinstance(value, (list, tuple)) else [value]
+        available = columns_provider(spec.source)
+        for column in values:
+            if (
+                isinstance(column, str)
+                and column not in available
+                and column not in missing
+            ):
+                missing.append(column)
+    return missing
+
+
 def _build_model_section(
     model: object,
     *,
@@ -862,9 +899,20 @@ def _build_model_section(
             f"No registry info for {type(model).__name__}",
             style={"color": COLOR_MUTED},
         )
+    missing = missing_model_columns(model, columns_provider)
     return html.Div(
         [
             html.Strong(type(model).__name__),
+            (
+                dbc.Alert(
+                    "Missing measurement columns: "
+                    + ", ".join(missing)
+                    + ". Choose available columns before running analysis.",
+                    color="warning",
+                )
+                if missing
+                else None
+            ),
             html.Div(body),
             plot_controls_form("model", 0, model, plot_prefs),
         ],
@@ -880,6 +928,7 @@ def _build_model_section(
 def _build_run_console(
     recipe: "RecipeState",
     *,
+    columns_provider: Optional[ColumnsProvider] = None,
     mutations_disabled: bool = False,
 ) -> html.Div:
     has_model = recipe.pipeline.get_model() is not None
@@ -889,7 +938,15 @@ def _build_run_console(
                 "Run analysis",
                 id=ids.ANALYSIS_RUN_BUTTON,
                 color="primary",
-                disabled=mutations_disabled or not has_model,
+                disabled=(
+                    mutations_disabled
+                    or not has_model
+                    or bool(
+                        missing_model_columns(
+                            recipe.pipeline.get_model(), columns_provider
+                        )
+                    )
+                ),
                 n_clicks=0,
             ),
             dcc.Loading(
