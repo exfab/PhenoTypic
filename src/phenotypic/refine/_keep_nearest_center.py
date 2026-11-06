@@ -35,7 +35,7 @@ class KeepNearestCenter(ObjectRefiner):
     Consider Also:
         - :class:`KeepSectionLargest` when the largest object per grid cell is
           a more reliable proxy for the true colony than spatial centrality.
-        - :class:`SmallObjectRemover` when peripheral artefacts are consistently
+        - :class:`RemoveSmallObjects` when peripheral artefacts are consistently
           smaller than the genuine colony and size is the better discriminant.
         - :class:`ReduceSectionsByLine` for grid-aware multi-detection reduction
           using expected positional regression rather than centroid distance.

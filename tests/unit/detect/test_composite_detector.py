@@ -314,7 +314,7 @@ class TestCompositeDetector:
     def test_pipeline_with_multiple_operations(self, synth_plate):
         """Test CompositeDetector in a complex pipeline."""
         from phenotypic.enhance import BlurGauss
-        from phenotypic.refine import SmallObjectRemover
+        from phenotypic.refine import RemoveSmallObjects
 
         image = synth_plate.copy()
 
@@ -324,7 +324,7 @@ class TestCompositeDetector:
                     ops=[OtsuDetector(), CannyDetector(sigma=2)],
                     mode='union'
             ),
-            SmallObjectRemover(min_size=50)
+            RemoveSmallObjects(min_size=50)
         ])
 
         # Apply pipeline

@@ -7,8 +7,8 @@ from phenotypic.sdk_.typing_ import NormOut
 from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, EnhanceBlockMatch
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
-from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
+from phenotypic.refine import ReduceSectionsByLine, RemoveOversizedGridObjects
+from phenotypic.refine import RemoveBorderObjects, RemoveSmallObjects
 from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
     MeasureIntensity,
@@ -31,11 +31,11 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. RoundPeaksDetector — first detection pass
-        5. MaskOpening, RemoveBorderObjects, SmallObjectRemover, MaskFill — cleanup
-        6. GridOversizedObjectRemover, ReduceSectionsByLine — grid refinement
+        5. MaskOpening, RemoveBorderObjects, RemoveSmallObjects, MaskFill — cleanup
+        6. RemoveOversizedGridObjects, ReduceSectionsByLine — grid refinement
         7. GridAligner — straighten the grid
         8. RoundPeaksDetector — second detection pass after alignment
-        9. RemoveBorderObjects, SmallObjectRemover, MaskFill — final cleanup
+        9. RemoveBorderObjects, RemoveSmallObjects, MaskFill — final cleanup
         10. ReduceSectionsByLine — final grid refinement
 
     Measurements: MeasureSize, MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
@@ -252,17 +252,17 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             MaskOpening(shape=mask_opener_footprint, width=mask_opener_width,
                         n_iter=mask_opener_n_iter),
             RemoveBorderObjects(border_size=border_remover_size),
-            SmallObjectRemover(min_size=small_object_min_size),
+            RemoveSmallObjects(min_size=small_object_min_size),
             MaskFill(structure=mask_fill_structure, origin=mask_fill_origin),
-            GridOversizedObjectRemover(),
+            RemoveOversizedGridObjects(),
             ReduceSectionsByLine(),
             GridAligner(axis=grid_aligner_axis, mode=grid_aligner_mode),
             # Second detection pass
             RoundPeaksDetector(**detector_kwargs),
             MaskOpening(shape=None),
             RemoveBorderObjects(border_size=border_remover_size),
-            SmallObjectRemover(min_size=small_object_min_size),
-            GridOversizedObjectRemover(),
+            RemoveSmallObjects(min_size=small_object_min_size),
+            RemoveOversizedGridObjects(),
             MaskFill(structure=mask_fill_structure, origin=mask_fill_origin),
             ReduceSectionsByLine(),
         ]

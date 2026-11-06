@@ -42,7 +42,7 @@ class SubtractGaussian(BackgroundSubtraction):
           background subtraction in high-throughput pipelines.
         - :class:`FlattenIllumination` for homomorphic filtering that
           separates illumination from reflectance in the frequency domain.
-        - :class:`ImageInverter` before this operation when colonies are
+        - :class:`InvertImage` before this operation when colonies are
           dark on bright agar and should be made bright explicitly.
 
     Args:

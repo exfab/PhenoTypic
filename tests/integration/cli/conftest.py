@@ -37,7 +37,7 @@ from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
 
 
@@ -104,7 +104,7 @@ def simple_pipeline_json():
 class _FixedBlobDetector(GpuDetector):
     """Emit a fixed three-blob instance map, ignoring the pixels entirely.
 
-    Areas are 400, 400 and 25 px, so ``SmallObjectRemover(min_size=100)``
+    Areas are 400, 400 and 25 px, so ``RemoveSmallObjects(min_size=100)``
     removes label 3 and nothing else. Relabeling and background dropping are
     off so the emitted label VALUES survive to the store unchanged -- the
     post-refined test compares label sets, and a relabel would renumber them.
@@ -294,7 +294,7 @@ def staged_run_with_size_filter(tmp_path: Path) -> StagedStageHarness:
     """A post-op that removes exactly one of the detector's three blobs."""
     return _build_stage_harness(
         tmp_path,
-        [_FixedBlobDetector(), SmallObjectRemover(min_size=100)],
+        [_FixedBlobDetector(), RemoveSmallObjects(min_size=100)],
         work_id=None,
     )
 
@@ -307,7 +307,7 @@ def staged_run_with_provenance(tmp_path: Path) -> StagedStageHarness:
         {
             "pre-crop": CropImage(left=1, right=1, top=1, bottom=1),
             "gpu-detect": _FixedBlobDetector(),
-            "post-filter": SmallObjectRemover(min_size=100),
+            "post-filter": RemoveSmallObjects(min_size=100),
         },
         work_id=None,
     )

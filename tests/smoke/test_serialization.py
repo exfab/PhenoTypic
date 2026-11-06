@@ -14,7 +14,7 @@ from phenotypic.detect import CompositeDetector, OtsuDetector, TriangleDetector
 from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
-from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
+from phenotypic.refine import RemoveBorderObjects, RemoveSmallObjects
 from phenotypic.sdk_ import (
     CONFIG_SUFFIX_OPERATION,
     CONFIG_SUFFIX_PIPELINE,
@@ -232,6 +232,54 @@ def test_legacy_correction_imports_resolve_with_deprecation() -> None:
         assert correction.ImagePadder is PadImage
 
 
+_VERB_FIRST_RENAMES = [
+    ("phenotypic.enhance", "ImageInverter", "InvertImage"),
+    ("phenotypic.enhance", "NonLocalMeansDenoiser", "DenoiseNonLocalMeans"),
+    ("phenotypic.enhance", "RankMedianEnhancer", "EnhanceRankMedian"),
+    ("phenotypic.enhance", "BayesShrinkEnhancer", "DenoiseBayesShrink"),
+    ("phenotypic.enhance", "VisuShrinkEnhancer", "DenoiseVisuShrink"),
+    ("phenotypic.refine", "GridOversizedObjectRemover", "RemoveOversizedGridObjects"),
+    ("phenotypic.refine", "SmallObjectRemover", "RemoveSmallObjects"),
+    ("phenotypic.refine", "NearestNeighborMerger", "MergeNearestNeighbors"),
+    ("phenotypic.refine", "SmallToLargeMerger", "MergeSmallToLarge"),
+    ("phenotypic.refine", "GridAlignmentRefiner", "RefineGridAlignment"),
+]
+
+
+@pytest.mark.parametrize(("module_name", "legacy_name", "live_name"), _VERB_FIRST_RENAMES)
+def test_verb_first_legacy_names_deserialize(
+    module_name: str, legacy_name: str, live_name: str
+) -> None:
+    """A pipeline saved under a pre-rename class name loads as the live class."""
+    import importlib
+
+    live_type = getattr(importlib.import_module(module_name), live_name)
+    pipeline = ImagePipeline(ops=[live_type()])
+    payload = pipeline.to_json()
+    assert payload is not None
+    assert live_name in payload
+    payload = payload.replace(live_name, legacy_name)
+    assert live_name not in payload
+
+    loaded = ImagePipeline.from_json(payload)
+
+    assert type(next(iter(loaded._ops.values()))) is live_type
+
+
+@pytest.mark.parametrize(("module_name", "legacy_name", "live_name"), _VERB_FIRST_RENAMES)
+def test_verb_first_legacy_imports_resolve_with_deprecation(
+    module_name: str, legacy_name: str, live_name: str
+) -> None:
+    """Old public import names still resolve, with a pointer to the new name."""
+    import importlib
+
+    module = importlib.import_module(module_name)
+    assert legacy_name not in module.__all__
+
+    with pytest.warns(DeprecationWarning, match=f"use {live_name}"):
+        assert getattr(module, legacy_name) is getattr(module, live_name)
+
+
 @pytest.mark.smoke
 @timeit
 def test_prefab_custom_params_roundtrip():
@@ -245,7 +293,7 @@ def test_prefab_custom_params_roundtrip():
     assert first_op.sigma == 7
 
     removers = [
-        op for op in loaded._ops.values() if isinstance(op, SmallObjectRemover)
+        op for op in loaded._ops.values() if isinstance(op, RemoveSmallObjects)
     ]
     assert all(r.min_size == 150 for r in removers)
 
@@ -255,14 +303,14 @@ def test_prefab_custom_params_roundtrip():
 def test_pipeline_embedded_in_pipeline():
     """ImagePipeline nested inside another ImagePipeline survives round-trip."""
     inner = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
-    outer = ImagePipeline(ops=[inner, SmallObjectRemover(min_size=30)])
+    outer = ImagePipeline(ops=[inner, RemoveSmallObjects(min_size=30)])
 
     loaded = ImagePipeline.from_json(outer.to_json())
     ops = list(loaded._ops.values())
 
     assert len(ops) == 2
     assert isinstance(ops[0], ImagePipeline)
-    assert isinstance(ops[1], SmallObjectRemover)
+    assert isinstance(ops[1], RemoveSmallObjects)
 
     inner_ops = list(ops[0]._ops.values())
     assert len(inner_ops) == 2

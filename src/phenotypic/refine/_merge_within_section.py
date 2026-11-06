@@ -40,7 +40,7 @@ class MergeWithinSection(GridObjectRefiner):
           object.
         - :class:`MergeFragmentChains` for proximity-based transitive
           merging on non-grid images where section membership is unknown.
-        - :class:`SmallToLargeMerger` when small fragments should absorb
+        - :class:`MergeSmallToLarge` when small fragments should absorb
           into the nearest large colony regardless of grid section
           boundaries.
 

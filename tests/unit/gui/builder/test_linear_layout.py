@@ -567,7 +567,7 @@ def test_linear_card_width_fits_longest_operation_label():
     operation class label, and never shrinks below the legacy 220px.
 
     Sized at server-build time so long names like
-    ``GridOversizedObjectRemover`` render without the title ellipsis.
+    ``RemoveOversizedGridObjects`` render without the title ellipsis.
     """
     from phenotypic._gui._operation_registry import get_registry
 

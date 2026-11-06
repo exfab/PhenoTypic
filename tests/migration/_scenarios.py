@@ -397,7 +397,7 @@ CURATED_EXTRAS: tuple[_CuratedExtra, ...] = (
     _CuratedExtra("SharpenEdgeGauss", "strong", {"amount": 2.0}),
     # -- refine --
     _CuratedExtra(
-            "SmallObjectRemover", "aggressive", {"min_size": 256}
+            "RemoveSmallObjects", "aggressive", {"min_size": 256}
     ),
     _CuratedExtra(
             "MaskDilation", "disk3x", {"width": 5, "n_iter": 2}

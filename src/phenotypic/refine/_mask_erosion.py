@@ -38,7 +38,7 @@ class MaskErosion(ObjectRefiner, FootprintMixin):
           outward to recover halos or bridge gaps.
         - :class:`MaskOpening` for erosion followed by dilation that removes
           thin protrusions without permanently shrinking the colony body.
-        - :class:`SmallObjectRemover` for discarding small objects entirely by
+        - :class:`RemoveSmallObjects` for discarding small objects entirely by
           area threshold rather than shrinking all objects uniformly.
 
     Args:

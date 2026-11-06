@@ -10,7 +10,7 @@ import numpy as np
 from ..abc_ import ContrastAdjustment
 
 
-class ImageInverter(ContrastAdjustment):
+class InvertImage(ContrastAdjustment):
     """Invert ``detect_mat`` pixel intensities so dark colonies become bright.
 
     Reverses the brightness scale so dark regions become bright and vice versa.

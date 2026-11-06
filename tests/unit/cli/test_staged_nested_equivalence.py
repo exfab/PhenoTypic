@@ -88,7 +88,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import CompositeDetector, ManualPointDetector
 from phenotypic.enhance import BlurGauss, ContrastStretching, SubtractGaussian
 from phenotypic.measure import MeasureShape, MeasureSize
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
 from phenotypic.sdk_._operation_tree import substitute_at_path
@@ -196,7 +196,7 @@ def _make_pipeline(factory) -> ImagePipeline:
             "BlurGauss": BlurGauss(sigma=2.0),
             "SubtractGaussian": SubtractGaussian(sigma=50.0),
             "CompositeDetector": factory(),
-            "SmallObjectRemover": SmallObjectRemover(min_size=50),
+            "RemoveSmallObjects": RemoveSmallObjects(min_size=50),
         },
         meas={"MeasureShape": MeasureShape(), "MeasureSize": MeasureSize()},
     )

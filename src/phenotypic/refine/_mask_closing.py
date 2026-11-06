@@ -37,7 +37,7 @@ class MaskClosing(ObjectRefiner, FootprintMixin):
           bridging separately labeled colonies.
         - :class:`MaskOpening` for the opposite effect — removing thin connections
           between objects that should remain distinct.
-        - :class:`NearestNeighborMerger` for merging distant fragments that are
+        - :class:`MergeNearestNeighbors` for merging distant fragments that are
           too far apart for morphological closing to bridge.
 
     Args:

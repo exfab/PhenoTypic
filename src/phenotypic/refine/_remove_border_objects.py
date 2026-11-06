@@ -31,10 +31,10 @@ class RemoveBorderObjects(ObjectRefiner):
           between frames, intermittently clipping the same edge colonies.
 
     Consider Also:
-        - :class:`SmallObjectRemover` when the target artefacts are small
+        - :class:`RemoveSmallObjects` when the target artefacts are small
           noise fragments scattered across the plate, not limited to the
           border region.
-        - :class:`GridOversizedObjectRemover` when the problem is objects
+        - :class:`RemoveOversizedGridObjects` when the problem is objects
           that span multiple grid sections rather than partial border
           colonies.
 

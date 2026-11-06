@@ -127,7 +127,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic import ImagePipeline
         from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import CannyDetector  # Different detector
-        from phenotypic.refine import SmallObjectRemover, MaskFill
+        from phenotypic.refine import RemoveSmallObjects, MaskFill
         from phenotypic.measure import MeasureShape, MeasureSize, MeasureColor
 
         # Custom pipeline for your specific use case
@@ -135,7 +135,7 @@ class PrefabPipeline(ImagePipeline):
         custom.add(BlurGauss(sigma=3))
         custom.add(EnhanceLocalContrast())
         custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
-        custom.add(SmallObjectRemover(min_size=100))
+        custom.add(RemoveSmallObjects(min_size=100))
         custom.add(MaskFill())
         custom.add(MeasureSize())
         custom.add(MeasureShape())
@@ -155,13 +155,13 @@ class PrefabPipeline(ImagePipeline):
 
         from phenotypic import ImagePipeline
         from phenotypic.prefab import HeavyOtsuPipeline, RoundPeaksPipeline
-        from phenotypic.refine import SmallObjectRemover
+        from phenotypic.refine import RemoveSmallObjects
         from phenotypic.measure import MeasureIntensity
 
         # Combine different detection strategies with shared refinement
         pipeline = ImagePipeline()
         pipeline.add(HeavyOtsuPipeline())  # First detection attempt
-        pipeline.add(SmallObjectRemover(min_size=100))  # Noise removal
+        pipeline.add(RemoveSmallObjects(min_size=100))  # Noise removal
         pipeline.add(MeasureIntensity())  # Measurement
 
         # Apply to image
@@ -193,7 +193,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic.abc_ import PrefabPipeline
         from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import OtsuDetector
-        from phenotypic.refine import SmallObjectRemover
+        from phenotypic.refine import RemoveSmallObjects
         from phenotypic.measure import MeasureShape, MeasureSize
 
         class MyCustomPrefabPipeline(PrefabPipeline):
@@ -206,7 +206,7 @@ class PrefabPipeline(ImagePipeline):
                     BlurGauss(sigma=param2),
                     EnhanceLocalContrast(),
                     OtsuDetector(),
-                    SmallObjectRemover(min_size=param1),
+                    RemoveSmallObjects(min_size=param1),
                 ]
                 meas = [MeasureSize(), MeasureShape()]
                 super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,
@@ -286,7 +286,7 @@ class PrefabPipeline(ImagePipeline):
         >>> from phenotypic import GridImage, ImagePipeline
         >>> from phenotypic.prefab import HeavyOtsuPipeline
         >>> from phenotypic.detect import CannyDetector
-        >>> from phenotypic.refine import SmallObjectRemover
+        >>> from phenotypic.refine import RemoveSmallObjects
         >>> image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
         >>> # Option 1: Use pre-built validated pipeline
         >>> prefab = HeavyOtsuPipeline()
@@ -296,7 +296,7 @@ class PrefabPipeline(ImagePipeline):
         >>> from phenotypic.enhance import BlurGauss
         >>> custom.add(BlurGauss(sigma=2))
         >>> custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
-        >>> custom.add(SmallObjectRemover(min_size=100))
+        >>> custom.add(RemoveSmallObjects(min_size=100))
         >>> result2 = custom.apply(image)
         >>> # Compare results
         >>> print(f"Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}")

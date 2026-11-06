@@ -4,11 +4,11 @@ import pytest
 
 from phenotypic.abc_ import ImageCorrector, ImageDenoiser, ImageEnhancer
 from phenotypic.enhance import (
-    BayesShrinkEnhancer,
+    DenoiseBayesShrink,
     LocalEdgeDenoise,
     EnhanceBlockMatch,
-    NonLocalMeansDenoiser,
-    VisuShrinkEnhancer,
+    DenoiseNonLocalMeans,
+    DenoiseVisuShrink,
 )
 
 
@@ -32,9 +32,9 @@ class TestImageDenoiserABC:
             "denoiser_cls",
             [
                 EnhanceBlockMatch,
-                BayesShrinkEnhancer,
-                VisuShrinkEnhancer,
-                NonLocalMeansDenoiser,
+                DenoiseBayesShrink,
+                DenoiseVisuShrink,
+                DenoiseNonLocalMeans,
                 LocalEdgeDenoise,
             ],
     )
@@ -47,9 +47,9 @@ class TestImageDenoiserABC:
             "denoiser_cls",
             [
                 EnhanceBlockMatch,
-                BayesShrinkEnhancer,
-                VisuShrinkEnhancer,
-                NonLocalMeansDenoiser,
+                DenoiseBayesShrink,
+                DenoiseVisuShrink,
+                DenoiseNonLocalMeans,
                 LocalEdgeDenoise,
             ],
     )

@@ -22,8 +22,8 @@ with uniform backgrounds.
 
 **Pipeline steps:**
 BlurGauss → EnhanceLocalContrast → MedianFilter → FocusEdgeSobel → OtsuDetector →
-MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
-GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner
+MaskOpening → RemoveBorderObjects → RemoveSmallObjects → MaskFill →
+RemoveOversizedGridObjects → ReduceSectionsByLine → GridAligner
 
 **Measurements:** MeasureSize, MeasureShape, MeasureColor, MeasureTexture,
 MeasureIntensity

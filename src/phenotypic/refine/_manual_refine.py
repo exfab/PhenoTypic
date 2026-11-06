@@ -27,7 +27,7 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
     Unlike :class:`ManualPointDetector`, which *produces* an ``objmap`` from
     scratch at picked coordinates, this refiner *filters* the output of an
     earlier detector. It is the manual-curation counterpart to automated
-    refiners such as :class:`SmallObjectRemover` or
+    refiners such as :class:`RemoveSmallObjects` or
     :class:`RemoveLowCircularity`, and is suitable for ground-truth
     curation, interactive review, and correcting systematic detector misses
     on a handful of colonies. For where refinement sits in a pipeline see
@@ -49,7 +49,7 @@ class ManualRefine(ObjectRefiner, PointPickerMixin, FootprintMixin):
           one.
         * :class:`RemoveBorderObjects` for automated exclusion of objects
           touching the image border (no manual step required).
-        * :class:`SmallObjectRemover` for size-based filtering when
+        * :class:`RemoveSmallObjects` for size-based filtering when
           artefacts are systematically smaller than true colonies.
 
     Args:

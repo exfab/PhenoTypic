@@ -2,7 +2,7 @@
 
 This module contains GridInferenceMixin, which provides static methods for inferring
 grid structure from colony patterns. Used by both ObjectDetector (RoundPeaksDetector)
-and ObjectRefiner (GridAlignmentRefiner) subclasses.
+and ObjectRefiner (RefineGridAlignment) subclasses.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class GridInferenceMixin:
     All methods are static to support parallelization in pipeline operations.
 
     This is an internal utility for advanced users creating custom grid-based operations.
-    Most users should use RoundPeaksDetector for detection or GridAlignmentRefiner for
+    Most users should use RoundPeaksDetector for detection or RefineGridAlignment for
     post-detection refinement directly.
     """
 

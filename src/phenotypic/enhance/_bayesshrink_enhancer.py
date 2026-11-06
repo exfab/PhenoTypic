@@ -12,7 +12,7 @@ from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class BayesShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
+class DenoiseBayesShrink(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with adaptive per-subband BayesShrink wavelet thresholding.
 
     Decomposes the detection matrix into wavelet subbands and applies a separate
@@ -34,11 +34,11 @@ class BayesShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser
           reproducible across runs.
 
     Consider Also:
-        - :class:`VisuShrinkEnhancer` when a single universal threshold
+        - :class:`DenoiseVisuShrink` when a single universal threshold
           across all subbands is preferred for speed or simplicity.
         - :class:`EnhanceBlockMatch` for structured scanner banding or systematic
           CCD patterned noise that wavelet thresholding does not fully remove.
-        - :class:`NonLocalMeansDenoiser` when patch-based self-similarity
+        - :class:`DenoiseNonLocalMeans` when patch-based self-similarity
           in the agar or colony texture can be exploited.
         - :class:`MedianFilter` for salt-and-pepper impulse noise rather
           than Gaussian additive noise.

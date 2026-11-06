@@ -60,7 +60,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ImageOperation (this class)
         ├── ImageEnhancer
         │   └── Modifies ONLY image.detect_mat
-        │       ├── BlurGauss, EnhanceLocalContrast, RankMedianEnhancer, ...
+        │       ├── BlurGauss, EnhanceLocalContrast, EnhanceRankMedian, ...
         │       └── Use for: noise reduction, contrast, edge sharpening
         │
         ├── ObjectDetector

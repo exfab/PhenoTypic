@@ -3,7 +3,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.enhance import BlurGauss
 from phenotypic.detect import OtsuDetector
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.measure import MeasureSize
 from phenotypic.measure import MeasureSymZones
 from phenotypic.abc_.plotting import PlotImage
@@ -16,7 +16,7 @@ from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 def test_splits_at_first_gpu_detector():
     pipe = ImagePipeline(
-            ops=[BlurGauss(), FakeGpuDetector(), SmallObjectRemover()],
+            ops=[BlurGauss(), FakeGpuDetector(), RemoveSmallObjects()],
             meas=[MeasureSize()],
     )
     plan = split_pipeline_at_gpu(pipe)
@@ -31,7 +31,7 @@ def test_splits_at_first_gpu_detector():
     # detector on a CPU node.
     assert list(plan.post_pipeline.get_ops().keys()) == [
         "FakeGpuDetector",
-        "SmallObjectRemover",
+        "RemoveSmallObjects",
     ]
     # post pipeline carries the measurements
     assert "MeasureSize" in plan.post_pipeline.get_meas()

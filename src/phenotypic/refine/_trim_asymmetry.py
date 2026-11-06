@@ -52,7 +52,7 @@ class TrimAsymmetry(ObjectRefiner):
           reconnection loops must be removed while linear hyphae are kept.
 
     Consider Also:
-        - :class:`SmallObjectRemover` when spurious fragments are
+        - :class:`RemoveSmallObjects` when spurious fragments are
           distinguishable by size alone rather than by radial position
           relative to the colony centre.
         - :class:`RemoveLowCircularity` when the entire colony shape should be

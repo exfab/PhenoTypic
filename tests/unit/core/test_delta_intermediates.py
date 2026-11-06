@@ -25,7 +25,7 @@ from phenotypic.abc_ import ImageCorrector
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureSize
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 
 _ALL_LAYERS = {"rgb", "gray", "detect_mat", "objmap"}
 
@@ -67,7 +67,7 @@ class TestLayersModifiedBy:
         assert _layers_modified_by(OtsuDetector()) == ("objmap",)
 
     def test_refiner_returns_objmap(self):
-        assert _layers_modified_by(SmallObjectRemover(min_size=10)) == ("objmap",)
+        assert _layers_modified_by(RemoveSmallObjects(min_size=10)) == ("objmap",)
 
     def test_corrector_returns_all_layers(self):
         result = _layers_modified_by(_DummyCorrector())

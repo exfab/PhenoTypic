@@ -39,10 +39,10 @@ class MergeFragmentChains(ObjectRefiner):
           fragmented colony edges.
 
     Consider Also:
-        - :class:`SmallToLargeMerger` when only small fragments should
+        - :class:`MergeSmallToLarge` when only small fragments should
           absorb into large anchor colonies while distinct large colonies
           remain separate.
-        - :class:`NearestNeighborMerger` for size-selective nearest-neighbor
+        - :class:`MergeNearestNeighbors` for size-selective nearest-neighbor
           merging without transitive closure, preserving large colonies as
           independent anchors.
         - :class:`MaskClosing` for morphological closing that bridges small
