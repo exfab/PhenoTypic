@@ -2644,6 +2644,12 @@ class JobMetadataKey:
     FIGURES_RUN_DATE: Final[str] = "figures_run_date"
     INITIATED_AT_UTC: Final[str] = "initiated_at_utc"
     INITIATED_PID: Final[str] = "initiated_pid"
+    #: The ``--study`` file's text, or ``None``. The SLURM finalizer parses it
+    #: with ``_cli_utils.parse_study_yaml`` -- the parse a local run uses -- so
+    #: ``rembi.yaml`` carries the study on SLURM too (0.21.0; it was silently
+    #: dropped before). The text, not a parsed dict, because YAML types such as
+    #: dates do not survive a JSON round trip.
+    STUDY_YAML: Final[str] = "study_yaml"
 
 
 class DashboardManifestKey:

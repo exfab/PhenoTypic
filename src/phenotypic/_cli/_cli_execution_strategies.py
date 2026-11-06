@@ -1114,6 +1114,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.PROCESSING_GENERATION: (
                 self.config.processing_generation
             ),
+            # The finalizer's aggregation honours these as a local run's does.
+            JobMetadataKey.NO_QC: self.config.no_qc,
+            JobMetadataKey.STUDY_YAML: self.config.study_yaml,
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
         }

@@ -13,11 +13,14 @@ the real scheduler.
 
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -28,8 +31,12 @@ pytestmark = pytest.mark.skipif(
 
 from phenotypic.phenotypicCLI import phenotypic_cli  # noqa: E402
 from phenotypic.sdk_ import (  # noqa: E402
+    JobMetadataKey,
+    job_metadata_path,
     processing_report_html_path,
+    progress_dir,
     readme_md_path,
+    rembi_manifest_path,
 )
 
 #: Scheduler clients a test must never start.
@@ -213,6 +220,143 @@ def test_a_staged_slurm_run_returns_at_submission(
     assert "dashboard.html" not in result.output.split(_MONITOR_HEADER, 1)[1]
     assert readme_md_path(output).is_file()
     assert not processing_report_html_path(output).exists()
+
+
+def _local_then_slurm_continuation(
+    pipeline: Path, input_root: Path, output: Path, *slurm_flags: str
+):
+    """A finished local run, one new plate, then a ``--slurm`` continuation."""
+    base = [
+        "--pipeline",
+        str(pipeline),
+        "--input",
+        str(input_root),
+        "--output",
+        str(output),
+        "--skip-validation",
+    ]
+    local = CliRunner().invoke(phenotypic_cli, [*base, "--force-local", "--njobs", "1"])
+    assert local.exit_code == 0, local.output
+    day = input_root / "day1"
+    shutil.copy(day / "plateA.tif", day / "plateB.tif")
+    return CliRunner().invoke(
+        phenotypic_cli, [*base, "--slurm", "slurm_partition=short", *slurm_flags]
+    )
+
+
+_STUDY = "Title: PROBE-STUDY-TITLE\nRelease date: 2026-11-05\n"
+
+
+def test_a_slurm_submission_records_no_qc_and_the_study(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    simple_pipeline_json: Path,
+    submissions: list[str],
+) -> None:
+    study = tmp_path / "study.yaml"
+    study.write_text(_STUDY, encoding="utf-8")
+    output = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            *_slurm_args(simple_pipeline_json, synth_one_level_input, output),
+            "--no-qc",
+            "--study",
+            str(study),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
+    assert metadata[JobMetadataKey.NO_QC] is True
+    assert metadata[JobMetadataKey.STUDY_YAML] == _STUDY
+
+
+def test_a_staged_submission_records_no_qc_and_the_study(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    submissions: list[str],
+) -> None:
+    from tests.unit.cli.conftest import write_stageable_pipeline
+
+    study = tmp_path / "study.yaml"
+    study.write_text(_STUDY, encoding="utf-8")
+    output = tmp_path / "out"
+    pipeline = write_stageable_pipeline(tmp_path / "staged_pipeline.json")
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            *_slurm_args(pipeline, synth_one_level_input, output),
+            "--image-type",
+            "Image",
+            "--no-qc",
+            "--study",
+            str(study),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert submissions == ["staged"]
+    metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
+    assert metadata[JobMetadataKey.NO_QC] is True
+    assert metadata[JobMetadataKey.STUDY_YAML] == _STUDY
+
+
+def test_the_slurm_finalizer_applies_no_qc_and_the_study(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    simple_pipeline_json: Path,
+    submissions: list[str],
+) -> None:
+    """``--no-qc`` and ``--study`` reach a SLURM run's one aggregation.
+
+    Before 0.21.0 only the in-process aggregation honoured them, which a SLURM
+    run no longer performs (review I-a, finding 2). The finalizer is driven
+    directly over the real submission's ``job_metadata.json``; the image jobs
+    and the aggregation shards are not run, so only the plates the local run
+    finished are aggregated.
+    """
+    from phenotypic._cli import _cli_output_manager
+    from phenotypic._cli._cli_checkpoint_handler import _run_finalize
+
+    study = tmp_path / "study.yaml"
+    study.write_text(_STUDY, encoding="utf-8")
+    output = tmp_path / "out"
+    submitted = _local_then_slurm_continuation(
+        simple_pipeline_json,
+        synth_one_level_input,
+        output,
+        "--no-qc",
+        "--study",
+        str(study),
+    )
+    assert submitted.exit_code == 0, submitted.output
+
+    forwarded: dict[str, Any] = {}
+    real_aggregate = _cli_output_manager.aggregate_measurements
+
+    def _spy(**kwargs: Any):
+        forwarded.update(kwargs)
+        return real_aggregate(**kwargs)
+
+    with (
+        patch("phenotypic._cli._cli_checkpoint_handler._wait_for_completion"),
+        patch(
+            "phenotypic._cli._cli_finalize_fanout.resolve_finalizer_shard_inputs",
+            return_value=None,
+        ),
+        patch.object(_cli_output_manager, "aggregate_measurements", _spy),
+        patch("phenotypic._cli._dashboard._manifest_builder.build_manifest"),
+        patch("phenotypic._cli._dashboard._generator.generate_dashboard"),
+    ):
+        _run_finalize(output, progress_dir(output))
+
+    assert forwarded["no_qc"] is True
+    assert forwarded["study_config"]["Title"] == "PROBE-STUDY-TITLE"
+    rembi = rembi_manifest_path(output).read_text(encoding="utf-8")
+    assert "PROBE-STUDY-TITLE" in rembi
 
 
 @pytest.mark.parametrize(

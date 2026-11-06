@@ -189,8 +189,12 @@ class ExecutionConfig:
     # the entries themselves stay local to the scan that consumes them.
     image_manifest_digest: Optional[str] = None
 
-    # Skip QC during final aggregation, including staged SLURM finalization.
+    # Skip QC during final aggregation, including the SLURM finalizer.
     no_qc: bool = False
+
+    # The ``--study`` file's text (read once, at startup). A local run parses
+    # it in-process; a SLURM run records it for its finalizer.
+    study_yaml: Optional[str] = None
 
     # Checkpoint interval for SLURM array jobs
     checkpoint_interval: Optional[int] = None

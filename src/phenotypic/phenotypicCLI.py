@@ -151,7 +151,6 @@ from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
 from uuid import UUID
 
 import click
-import yaml  # type: ignore[import-untyped]
 from click.core import ParameterSource
 
 from phenotypic._cli._cli_directory_scanner import (
@@ -180,6 +179,8 @@ from phenotypic._cli._cli_update_state import (
 from phenotypic._cli._cli_utils import (
     normalize_extension,
     parse_slurm_args,
+    parse_study_yaml,
+    read_study_yaml,
     resolve_local_worker_count,
 )
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
@@ -2638,6 +2639,7 @@ def phenotypic_cli(
             metadata_csv=metadata_csv,
             image_manifest=image_manifest,
             no_qc=no_qc,
+            study_yaml=read_study_yaml(study),
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]
@@ -3667,15 +3669,9 @@ def phenotypic_cli(
         # Parse the optional --study YAML once; its REMBI Study-level fields are
         # folded into deliverables/rembi.yaml and override constant Metadata_*
         # study columns. Best-effort: a malformed/unreadable file is logged and
-        # the manifest still emits from the mirror's own columns.
-        study_config: Optional[dict] = None
-        if study is not None:
-            try:
-                study_config = yaml.safe_load(
-                    Path(study).read_text(encoding="utf-8")
-                )
-            except Exception as e:
-                logger.warning(f"Failed to read --study file {study}: {e}")
+        # the manifest still emits from the mirror's own columns. A SLURM run's
+        # finalizer makes the same parse from job_metadata.json.
+        study_config = parse_study_yaml(config.study_yaml, source=study)
 
         # Aggregate every current marker-authorized success. This republishes
         # a valid partial snapshot even when this invocation ended with only

@@ -527,6 +527,7 @@ def _write_staged_job_metadata(
             str(config.metadata_csv) if config.metadata_csv else None
         ),
         JobMetadataKey.NO_QC: config.no_qc,
+        JobMetadataKey.STUDY_YAML: getattr(config, "study_yaml", None),
         JobMetadataKey.INPUT_PATH: source_image_stem(config.input_path),
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
         JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(

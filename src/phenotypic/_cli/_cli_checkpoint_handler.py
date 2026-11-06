@@ -15,7 +15,7 @@ from pathlib import Path
 import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
-from ._cli_utils import load_job_metadata, logged_step
+from ._cli_utils import load_job_metadata, logged_step, parse_study_yaml
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     DashboardManifestKey,
@@ -304,6 +304,10 @@ def _run_finalize(
             ),
             metadata_csv=metadata_csv,
             no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
+            study_config=parse_study_yaml(
+                job_metadata.get(JobMetadataKey.STUDY_YAML),
+                source="job_metadata.json",
+            ),
             shard_paths=shard_paths,
             planned_work_ids=planned_work_ids,
         )
