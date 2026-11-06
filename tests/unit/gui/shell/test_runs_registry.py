@@ -1849,18 +1849,25 @@ def test_rehydrate_invalid_owner_does_not_invent_generation(
 # ----------------------------------------------------------------------
 
 
-def _a_dead_pid() -> int:
-    """Return a pid no live process holds.
+@pytest.fixture
+def dead_owner_pid(monkeypatch: pytest.MonkeyPatch) -> int:
+    """Model a dead local owner without racing the host's process allocator.
 
-    Racy in principle -- the kernel could hand this number out between the
-    probe and the assertion -- and safe in practice, because it starts above
-    every pid currently allocated and pids are handed out ascending.
+    An unused real pid can become occupied before the registry probes it,
+    especially when parallel test workers start subprocesses. Pin the shared
+    liveness probe for this fixture's pid; other pids use the real probe.
     """
-    import psutil
+    import os
 
-    pid = max(psutil.pids()) + 1
-    while psutil.pid_exists(pid):
-        pid += 1
+    from phenotypic.sdk_ import _run_state
+
+    pid = os.getpid()
+    real_probe = _run_state._process_is_alive
+    monkeypatch.setattr(
+        _run_state,
+        "_process_is_alive",
+        lambda candidate: False if candidate == pid else real_probe(candidate),
+    )
     return pid
 
 
@@ -1893,6 +1900,7 @@ def _abandoned_owner(
 
 def test_a_sigkilled_gui_does_not_lock_the_output_forever(
     tmp_path: Path,
+    dead_owner_pid: int,
 ) -> None:
     """DEFERRED D-2 / audit S7: the permanent dead end.
 
@@ -1904,7 +1912,7 @@ def test_a_sigkilled_gui_does_not_lock_the_output_forever(
     it. The record already stored the pid; nothing read it.
     """
     output = tmp_path / "run"
-    _abandoned_owner(output, pid=_a_dead_pid())
+    _abandoned_owner(output, pid=dead_owner_pid)
 
     claimed = RunRegistry().allocate(
         mode="local",
@@ -2009,6 +2017,7 @@ def test_a_record_predating_the_boot_is_released_without_any_pid(
 
 def test_releasing_a_dead_owner_reads_its_status_off_the_tree(
     tmp_path: Path,
+    dead_owner_pid: int,
 ) -> None:
     """A GUI killed *after* its child finished owns a complete run.
 
@@ -2019,7 +2028,7 @@ def test_releasing_a_dead_owner_reads_its_status_off_the_tree(
     would leave the dead end in place under a new name.
     """
     output = build_complete_run(tmp_path)
-    _abandoned_owner(output, pid=_a_dead_pid())
+    _abandoned_owner(output, pid=dead_owner_pid)
 
     registry = RunRegistry()
     registry._assert_output_claimable_locked(
@@ -2038,6 +2047,7 @@ def test_releasing_a_dead_owner_reads_its_status_off_the_tree(
 
 def test_the_registry_and_the_ladder_share_one_liveness_probe(
     tmp_path: Path,
+    dead_owner_pid: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Two authorities for one fact is the defect this change removes.
@@ -2049,7 +2059,7 @@ def test_the_registry_and_the_ladder_share_one_liveness_probe(
     not, the registry grew its own.
     """
     output = tmp_path / "run"
-    _abandoned_owner(output, pid=_a_dead_pid())
+    _abandoned_owner(output, pid=dead_owner_pid)
 
     monkeypatch.setattr(
         "phenotypic.sdk_._run_state._process_is_alive",
