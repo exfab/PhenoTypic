@@ -16,7 +16,7 @@ schema/
                    CURATION, ErrorCategory, RADIAL_EXPANSION
   _measure/        one file per MeasureFeatures schema: SIZE, SHAPE, BBOX, Color*, ...
   _analysis/       SetAnalyzer schemas: EDGE_CORRECTION
-    _qc/           QUALITY_CHECK (shared QC columns) + the seven QUALITY_* enums
+    _qc/           QUALITY_CHECK (shared QC columns) + the eight QUALITY_* enums
     _models/       the three growth models + MODEL_METRICS
   _metadata/       _image.py (IMAGE) + _experimental_tags/ (the eight owners)
   _experimental_tags.py  compatibility module at the pre-2026-09 path; it only
