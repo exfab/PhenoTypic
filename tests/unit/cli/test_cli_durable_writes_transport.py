@@ -297,6 +297,7 @@ def test_staged_submitter_hands_the_flag_to_the_script_generator(
             "include_dataset_column": False,
             "metadata_csv": None,
             "no_qc": False,
+            "study_yaml": None,
             "input_path": tmp_path / "inputs",
             "resume": False,
             "restart": False,

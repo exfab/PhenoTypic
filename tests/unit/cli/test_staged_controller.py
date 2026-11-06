@@ -588,6 +588,43 @@ def test_restart_quarantines_unchanged_parquet_before_aggregation(
     ).is_file()
 
 
+def test_restart_leaves_a_replaced_parquet_in_place(tmp_path: Path) -> None:
+    """A parquet the restart epoch rewrote is its output, not a stale one.
+
+    Only an *unchanged* pre-restart parquet is quarantined; the fingerprint is
+    ``(inode, size, mtime_ns)``, and an atomic replace gives a new inode.
+    Without this, quarantining every fingerprinted parquet -- this epoch's
+    fresh output included -- passed the suite (review I-a, re-review R1).
+    """
+    parquet = dataset_measurements_dir(tmp_path, "plate") / "image.parquet"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    parquet.write_bytes(b"old")
+    state = initialize_orchestration(
+        tmp_path,
+        epoch="restart-epoch",
+        mode="restart",
+        controller_config_path=tmp_path / "controller.json",
+    )
+    state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(
+        tmp_path, {"plate": ["image.tif"]}
+    )
+    save_orchestration_state(tmp_path, state)
+    replacement = parquet.with_suffix(".replacement")
+    replacement.write_bytes(b"current epoch")
+    replacement.replace(parquet)
+
+    assert quarantine_unchanged_restart_parquets(tmp_path, "restart-epoch") == 0
+    assert parquet.read_bytes() == b"current epoch"
+    assert not (
+        tmp_path
+        / ".phenotypic"
+        / "progress"
+        / "restart_stale_parquets"
+        / "plate"
+        / "image.parquet"
+    ).exists()
+
+
 def test_completion_marker_must_match_epoch(tmp_path: Path) -> None:
     atomic_write_json(staged_completion_path(tmp_path), {"epoch": "old"})
 
