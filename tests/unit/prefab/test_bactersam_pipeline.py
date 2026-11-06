@@ -35,9 +35,18 @@ _COLOUR_AND_DENOISE = {
 
 
 def _sections(pipeline: ImagePipeline) -> dict:
-    """The parts of a pipeline's JSON that say what it computes."""
+    """The parts of a pipeline's JSON that say what it computes.
+
+    ``pipe_cfgs`` and ``meas`` become ordered ``(key, config)`` lists, because
+    dict equality ignores order and ``pipe_cfgs`` order is execution order.
+    """
     data = json.loads(pipeline.to_json())
-    return {key: data[key] for key in ("pipe_cfgs", "meas", "nrows", "ncols")}
+    return {
+        "pipe_cfgs": list(data["pipe_cfgs"].items()),
+        "meas": list(data["meas"].items()),
+        "nrows": data["nrows"],
+        "ncols": data["ncols"],
+    }
 
 
 def test_default_config_equals_the_reference_run():
@@ -46,6 +55,19 @@ def test_default_config_equals_the_reference_run():
     with pytest.warns(UserWarning, match="saved with phenotypic version"):
         reference = ImagePipeline.from_json(FIXTURE)
     assert _sections(BacterSamPipeline()) == _sections(reference)
+
+
+def test_golden_comparison_sees_op_order():
+    # ``pipe_cfgs`` order is execution order, so a reordered chain is a
+    # different pipeline and the golden comparison must say so.
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    keys = list(data["pipe_cfgs"])
+    keys[3], keys[5] = keys[5], keys[3]  # BorderFilter before Detector
+    data["pipe_cfgs"] = {key: data["pipe_cfgs"][key] for key in keys}
+    data["meas"] = dict(reversed(list(data["meas"].items())))
+    with pytest.warns(UserWarning, match="saved with phenotypic version"):
+        reordered = ImagePipeline.from_json(data)
+    assert _sections(BacterSamPipeline()) != _sections(reordered)
 
 
 def test_no_colour_correction_or_denoising_anywhere_in_the_tree():
