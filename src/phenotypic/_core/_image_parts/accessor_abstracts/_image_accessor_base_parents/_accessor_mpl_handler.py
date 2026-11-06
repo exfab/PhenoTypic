@@ -200,7 +200,7 @@ class AccessorMplHandler(AccessorIOHandler):
                 axes[0] = self._mpl_plot(
                     arr=self._subject_arr,
                     figsize=figsize,
-                    title=self._root_image.name,
+                    title=self._root_image._display_name,
                     cmap=cmap,
                     ax=axes[0],
                 )
@@ -219,7 +219,7 @@ class AccessorMplHandler(AccessorIOHandler):
                         self._mpl_plot(
                             arr=self._subject_arr[:],
                             figsize=figsize,
-                            title=self._root_image.name,
+                            title=self._root_image._display_name,
                             ax=ax,
                         )
                     else:
@@ -297,7 +297,7 @@ class AccessorMplHandler(AccessorIOHandler):
         ax.grid(False)
 
         if title is True:
-            ax.set_title(self._root_image.name)
+            ax.set_title(self._root_image._display_name)
         elif title:
             ax.set_title(title)
 

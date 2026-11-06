@@ -578,7 +578,9 @@ def test_an_unresolvable_value_is_still_shown_as_stale(registry):
         form_id_prefix="b",
         columns_provider=lambda source: columns if source == rm.REFERENCE_SOURCE else [],
     )
-    assert _column_widget_for(form, "blank_column").value is None
+    widget = _column_widget_for(form, "blank_column")
+    assert widget.value == "Blank2"
+    assert {"label": "Blank2 (missing)", "value": "Blank2"} in widget.options
     assert len(_components_with_class(form, "param-column-stale")) == 1
 
 
