@@ -14,6 +14,7 @@ workflow. Each is tuned for a specific imaging scenario.
 | `HeavyRoundPeaksPipeline`  | Yeast                             | Grid plates        | Extended peak detection with refinement |
 | `FilamentousFungiPipeline` | *Neurospora*, *Aspergillus*, etc. | Grid plates        | BM3D + FilamentousFungiDetector         |
 | `GridSectionPipeline`      | Any                               | Pre-tiled sections | Per-section processing                  |
+| `BacterSamPipeline`        | Bacteria                          | 96-well grid       | SAM2 on a smoothed, flattened image     |
 
 ## HeavyOtsuPipeline
 
@@ -56,6 +57,32 @@ denoising, homomorphic illumination correction, and the specialized
 
 **When to choose:** The organism grows as a mycelial network rather
 than a compact round colony. Standard detectors miss the outer hyphae.
+
+## BacterSamPipeline
+
+**Best for:** Bacterial colonies pinned in a grid and imaged over a growth
+time course, where a global threshold merges colony edges with agar texture.
+
+**Input assumptions:** Images must already be colour-corrected and denoised.
+The pipeline does neither. Run a pipeline with `ColorCorrector` or
+`CalibrateColorRpcc` followed by `ColorDenoise` first, export it with
+`python -m phenotypic --mode process --layer rgb`, and give the resulting
+OME-Zarr tree to this pipeline as `--input`.
+
+**Pipeline steps:**
+CropImage → BlurGauss → SubtractGaussian → Sam2 → RemoveLowCircularity →
+RemoveBorderObjects → SmallObjectRemover → KeepSectionLargest
+
+**Measurements:** MeasureNeighborDist, MeasureShape, MeasureSize,
+MeasureIntensity, MeasureColor, and MeasureTexture at 10, 20, 30 and 40 px
+
+**When to choose:** Classical detectors miss small early colonies or split
+large late ones, and a GPU is available. The CLI splits the run into CPU
+preprocessing, GPU detection and CPU measurement on its own. The crop
+defaults fit one imager, so check them against your plates first.
+
+The GUI pipeline builder cannot load this prefab yet, because it does not
+offer GPU detectors. Use it from Python or the CLI.
 
 ## Customizing Prefabs
 
