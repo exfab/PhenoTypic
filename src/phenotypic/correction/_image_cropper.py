@@ -155,9 +155,6 @@ class CropImage(ImageCorrector):
             >>> cropped.show(overlay=True, show_grid=True)  # doctest: +SKIP
         """
         top, bottom_idx, left, right_idx = self._get_idxes(image)
-        # The result is this image, cropped, not a sub-image, so it keeps the
-        # input's type rather than the slice's "Crop".
-        image_type = image.metadata[IMAGE.IMAGE_TYPE]
 
         # Use existing slicing (__getitem__) - returns Image for both Image and
         # GridImage, carrying a copy of the image's metadata (name included).
@@ -181,8 +178,10 @@ class CropImage(ImageCorrector):
             )
 
         # set_image() copies the crop's metadata over the image's. The crop
-        # carries the image's own metadata, so every key survives; only the
-        # type needs restoring.
+        # carries the image's own metadata, so every key survives except the
+        # type, which the slice set to "Crop". The result is this image,
+        # cropped, not a sub-image, so it keeps the input's type.
+        image_type = image.metadata[IMAGE.IMAGE_TYPE]
         result = self._cpy_new_arrs(image, cropped)
         result.metadata[IMAGE.IMAGE_TYPE] = image_type
         return result

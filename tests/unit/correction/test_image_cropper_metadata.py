@@ -41,6 +41,11 @@ def _keys(image) -> dict[str, object]:
     return {str(key): value for key, value in image.metadata.items()}
 
 
+def _kept(keys: dict[str, object]) -> dict[str, object]:
+    """The keys a derived image must carry over with the same value."""
+    return {k: v for k, v in keys.items() if k not in _CHANGED_ON_PURPOSE}
+
+
 def _slice(image):
     return image[20:-20, 20:-20]
 
@@ -68,9 +73,7 @@ def test_derived_image_keeps_every_metadata_key(image_class, derive, expected_ty
 
     assert source_imported, "the sample JPEG should carry EXIF to compare"
     assert set(after) == set(before)
-    assert {k: v for k, v in after.items() if k not in _CHANGED_ON_PURPOSE} == {
-        k: v for k, v in before.items() if k not in _CHANGED_ON_PURPOSE
-    }
+    assert _kept(after) == _kept(before)
     assert derived._metadata.imported == source_imported
     assert derived.metadata[IMAGE.UUID] != source.metadata[IMAGE.UUID]
     assert derived.metadata[IMAGE.IMAGE_TYPE] == expected_type.value
@@ -160,9 +163,7 @@ def test_colony_and_section_images_keep_metadata(
     after = _keys(derived)
 
     assert derived.metadata[IMAGE.IMAGE_TYPE] == expected_type.value
-    assert {k: v for k, v in after.items() if k not in _CHANGED_ON_PURPOSE} == {
-        k: v for k, v in before.items() if k not in _CHANGED_ON_PURPOSE
-    }
+    assert _kept(after) == _kept(before)
     assert derived._metadata.imported == source._metadata.imported
 
 

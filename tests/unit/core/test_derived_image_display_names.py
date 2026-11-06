@@ -12,6 +12,7 @@ so it keeps the plate's layers. The matching matplotlib titles are tested in
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 
 import pytest
 
@@ -25,26 +26,20 @@ _PLATE_NAME = "Synthetic96PlateWithObjects"
 _ACCESSORS = ("rgb", "gray", "detect_mat", "objmask", "objmap")
 
 
-class _FakeLayer:
-    def __init__(self, data):
-        self.data = data
-
-
-class _FakeLayers(dict):
-    """``viewer.layers``: a ``KeyError`` for a missing name, like napari's."""
-
-
 class _FakeViewer:
-    """Records the layers ``napari()`` adds or replaces, keyed by name."""
+    """Records the layers ``napari()`` adds or replaces, keyed by name.
+
+    ``layers`` is a dict, so a missing name raises ``KeyError`` as napari's
+    layer list does.
+    """
 
     def __init__(self):
-        self.layers = _FakeLayers()
+        self.layers = {}
 
     def add_image(self, data, *, name, **kwargs):
-        self.layers[name] = _FakeLayer(data)
+        self.layers[name] = SimpleNamespace(data=data)
 
-    def add_labels(self, data, *, name, **kwargs):
-        self.layers[name] = _FakeLayer(data)
+    add_labels = add_image
 
 
 @pytest.fixture(autouse=True)

@@ -123,18 +123,10 @@ class RemoveGridOutliers(GridObjectRefiner):
         # Row-wise residual outlier discovery
         if self.axis is None or self.axis == 0:
             # Calculate the coefficient of variance (std/mean)
-            #   Collect the standard deviation
-            row_variance = grid_info.groupby(str(GRID.ROW_NUM), observed=False)[
-                str(GRID_LINREG_STATS.RESIDUAL_ERR)
-            ].std()
-
-            #   Divide standard deviation by mean
-            row_variance = (
-                    row_variance
-                    / grid_info.groupby(str(GRID.ROW_NUM), observed=False)[
-                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                    ].mean()
-            )
+            row_err_by_row = grid_info.groupby(
+                    str(GRID.ROW_NUM), observed=False
+            )[str(GRID_LINREG_STATS.RESIDUAL_ERR)]
+            row_variance = row_err_by_row.std() / row_err_by_row.mean()
 
             over_limit_row_variance = row_variance.loc[
                 row_variance > self.max_coeff_variance
@@ -161,18 +153,10 @@ class RemoveGridOutliers(GridObjectRefiner):
         # Column-wise residual outlier discovery
         if self.axis is None or self.axis == 1:
             # Calculate the coefficient of variance (std/mean)
-            #   Collect the standard deviation
-            col_variance = grid_info.groupby(str(GRID.COL_NUM), observed=False)[
-                str(GRID_LINREG_STATS.RESIDUAL_ERR)
-            ].std()
-
-            #   Divide standard deviation by mean
-            col_variance = (
-                    col_variance
-                    / grid_info.groupby(str(GRID.COL_NUM), observed=False)[
-                        str(GRID_LINREG_STATS.RESIDUAL_ERR)
-                    ].mean()
-            )
+            col_err_by_col = grid_info.groupby(
+                    str(GRID.COL_NUM), observed=False
+            )[str(GRID_LINREG_STATS.RESIDUAL_ERR)]
+            col_variance = col_err_by_col.std() / col_err_by_col.mean()
 
             over_limit_col_variance = col_variance.loc[
                 col_variance > self.max_coeff_variance
