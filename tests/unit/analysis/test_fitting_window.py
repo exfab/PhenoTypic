@@ -182,6 +182,81 @@ def test_the_example_series_is_the_recorded_page_series(rows: pd.DataFrame):
     np.testing.assert_array_equal(ours[HOURS].to_numpy(), theirs[HOURS].to_numpy())
 
 
+# --- categorical condition groups --------------------------------------------------
+
+
+@pytest.mark.parametrize("multiple_groupers", [False, True])
+@pytest.mark.parametrize("include_missing", [False, True])
+def test_categorical_conditions_match_observed_string_groups(
+    rows: pd.DataFrame, multiple_groupers: bool, include_missing: bool
+):
+    """Filtering categorical conditions must not create empty QC groups."""
+    frame = rows.copy()
+    groupby = [CONDITION]
+    if multiple_groupers:
+        batch = "Metadata_TestBatch"
+        frame[batch] = np.where(frame[CONDITION] == PAIR[0], "first", "second")
+        groupby.append(batch)
+    if include_missing:
+        frame.loc[frame[CONDITION] == PAIR[1], CONDITION] = np.nan
+    selected = frame[CONDITION].eq(PAIR[0]) | (
+        frame[CONDITION].isna() if include_missing else frame[CONDITION].eq(PAIR[1])
+    )
+    ordinary = frame.loc[selected].copy()
+    for column in groupby:
+        frame[column] = pd.Categorical(frame[column])
+    categorical = frame.loc[selected].copy()
+    before = categorical.copy(deep=True)
+
+    expected = _make_check(groupby=groupby)
+    expected_result = expected.analyze(ordinary)
+    actual = _make_check(groupby=groupby)
+    actual_result = actual.analyze(categorical)
+
+    pairs = [
+        (actual_result.sort_index(), expected_result.sort_index()),
+        (actual.summary(), expected.summary()),
+        (actual.to_table(), expected.to_table()),
+    ]
+    for observed, control in pairs:
+        observed = observed.copy()
+        for column in groupby:
+            observed[column] = observed[column].astype(object)
+        pd.testing.assert_frame_equal(
+            observed.sort_values(groupby).reset_index(drop=True),
+            control.sort_values(groupby).reset_index(drop=True),
+        )
+    assert len(actual.to_table()) == 2
+    assert [page.key for page in actual.inspect().pages] == [
+        page.key for page in expected.inspect().pages
+    ]
+    pd.testing.assert_frame_equal(categorical, before)
+
+
+@pytest.mark.parametrize("categorical", [False, True])
+def test_filtering_all_conditions_returns_empty_outputs(
+    pair_frame: pd.DataFrame, categorical: bool
+):
+    """An empty selection has no verdicts, including retained category levels."""
+    frame = pair_frame.copy()
+    if categorical:
+        frame[CONDITION] = pd.Categorical(frame[CONDITION])
+    check = _make_check()
+    result = check.analyze(frame.iloc[:0])
+
+    assert result.empty
+    assert check.summary().empty
+    table = check.to_table()
+    assert table.empty
+    assert list(table.columns) == [
+        CONDITION,
+        *(str(member) for member in QUALITY_WINDOW),
+        check.metric_col(),
+        check.status_col(),
+        check.flag_col(),
+    ]
+
+
 # --- the pooled bar -----------------------------------------------------------------
 
 

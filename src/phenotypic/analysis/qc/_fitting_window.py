@@ -505,7 +505,9 @@ class FittingWindow(QualityCheck, PlotQc):
 
         pending: dict[tuple, _PendingCondition] = {}
         pool: list[tuple[np.ndarray, np.ndarray]] = []
-        for _, group in series_input.groupby(self.groupby, dropna=False):
+        for _, group in series_input.groupby(
+            self.groupby, dropna=False, observed=True
+        ):
             values = self._condition_values(group)
             series = mean_cv_series(
                 group,
@@ -573,7 +575,7 @@ class FittingWindow(QualityCheck, PlotQc):
 
         Args:
             group: One group as produced by
-                ``data.groupby(self.groupby, dropna=False)``.
+                ``data.groupby(self.groupby, dropna=False, observed=True)``.
 
         Returns:
             The group frame (a copy) with the metric and every
@@ -616,13 +618,21 @@ class FittingWindow(QualityCheck, PlotQc):
             QC_Window_Status, QC_Window_Flag]``.
         """
         df = self._latest_measurements
+        if df.empty:
+            return df.reindex(columns=[
+                *self.groupby,
+                *(str(member) for member in QUALITY_WINDOW),
+                self.metric_col(),
+                self.status_col(),
+                self.flag_col(),
+            ])
         extras = [
             str(member)
             for member in QUALITY_WINDOW
             if str(member) in df.columns
         ]
         first = (
-            df.groupby(self.groupby, dropna=False)[extras]
+            df.groupby(self.groupby, dropna=False, observed=True)[extras]
             .first()
             .reset_index()
         )
