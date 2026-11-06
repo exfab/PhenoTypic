@@ -70,7 +70,7 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 
 | Feature                    | Element           | Expected behaviour                                      | Status     | Test layer  | Test ref                                                                |
 |----------------------------|-------------------|---------------------------------------------------------|------------|-------------|-------------------------------------------------------------------------|
-| Welcome card               | Landing pane      | Shows project name + sandbox root + tutorial links      | ✅ shipping | e2e         | tests/e2e/gui/test_topbar_nav.py::test_home_loads_with_chrome           |
+| Welcome card               | Landing pane      | Shows project name + sandbox root; tutorial links open the published documentation at `https://exfab.github.io/PhenoTypic/`. | ✅ shipping | integration | tests/integration/gui/test_app.py::test_home_tutorial_links_use_published_documentation |
 | Sandbox capability summary | Capability counts | Shows ``n images / n outputs / n pipelines`` discovered | ✅ shipping | integration | tests/integration/gui/test_app.py::test_home_capability_summary_renders |
 
 ## Browse tab (source image viewer)
