@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -691,11 +691,11 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">load_yeast_plate</span><span class="p">(</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a yeast plate image cropped to the center.</span>
 
-<span class="sd">    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged</span>
-<span class="sd">    in a 96-well grid. Irregular hyphal morphology with spreading growth --</span>
-<span class="sd">    suitable for filamentous fungi tutorials and how-to guides.</span>
+<span class="sd">    Returns a pre-cropped plate image of yeast colonies on a</span>
+<span class="sd">    2 x 4 grid (``nrows=2``, ``ncols=4``) -- suitable for yeast tutorials and</span>
+<span class="sd">    how-to guides.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        mode: Return format. Default: ``&#39;GridImage&#39;``.</span>
@@ -737,11 +737,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fungi_plate</span><span class="p">(</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a Neurospora filamentous fungi plate image cropped to the center.</span>
 
-<span class="sd">    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged</span>
-<span class="sd">    in a 96-well grid. Irregular hyphal morphology with spreading growth --</span>
-<span class="sd">    suitable for filamentous fungi tutorials and how-to guides.</span>
+<span class="sd">    Returns a pre-cropped plate image of Neurospora filamentous fungi on a</span>
+<span class="sd">    2 x 4 grid (``nrows=2``, ``ncols=4``). Irregular hyphal morphology with</span>
+<span class="sd">    spreading growth -- suitable for filamentous fungi tutorials and how-to</span>
+<span class="sd">    guides.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        mode: Return format. Default: ``&#39;GridImage&#39;``.</span>
@@ -762,11 +763,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fungi_plate_large</span><span class="p">(</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a cropped Neurospora filamentous fungi 96-well plate image.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a cropped Neurospora filamentous fungi plate image.</span>
 
-<span class="sd">    Returns a pre-cropped plate image of Neurospora filamentous fungi arranged</span>
-<span class="sd">    in a 96-well grid. Irregular hyphal morphology with spreading growth --</span>
-<span class="sd">    suitable for filamentous fungi tutorials and how-to guides.</span>
+<span class="sd">    Returns a pre-cropped plate image of Neurospora filamentous fungi on a</span>
+<span class="sd">    6 x 10 grid (``nrows=6``, ``ncols=10``). Irregular hyphal morphology with</span>
+<span class="sd">    spreading growth -- suitable for filamentous fungi tutorials and how-to</span>
+<span class="sd">    guides.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        mode: Return format. Default: ``&#39;GridImage&#39;``.</span>
@@ -791,8 +793,8 @@
 
 <span class="sd">    Returns the full plate image including scanner margins and a color checker</span>
 <span class="sd">    target. Use for tutorials and how-to guides that demonstrate cropping</span>
-<span class="sd">    (``CropImage``), padding (``PadImage``), vignetting correction</span>
-<span class="sd">    (``VignetteCorrector``), or color correction (``ColorCorrector``).</span>
+<span class="sd">    (``CropImage``), padding (``PadImage``), or color correction</span>
+<span class="sd">    (``ColorCorrector``).</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        mode: Return format. Default: ``&#39;Image&#39;``.</span>
@@ -815,7 +817,7 @@
 <span class="sd">    target. Use for fungi-specific correction workflow tutorials.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        mode: Return format. Default: ``&#39;Image&#39;``.</span>
+<span class="sd">        mode: Return format. Default: ``&#39;GridImage&#39;``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        The full plate image in the requested format.</span>

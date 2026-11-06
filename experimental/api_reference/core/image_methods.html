@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="API Reference" href="../index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1899,7 +1899,12 @@ None.</p></li>
 <p>Layers are named using the pattern <code class="docutils literal notranslate"><span class="pre">{accessor}_{image_name}</span></code> to
 ensure descriptive identification. If a layer with the same name
 already exists, it is replaced with the new image data. This allows
-for easy updates and comparison of different processing stages.</p>
+for easy updates and comparison of different processing stages.
+A crop, colony (<code class="docutils literal notranslate"><span class="pre">objects[i]</span></code>) or grid section keeps its
+plate’s name, so its default <code class="docutils literal notranslate"><span class="pre">image_name</span></code> adds the image type
+and the first 8 hex digits of its UUID
+(<code class="docutils literal notranslate"><span class="pre">rgb_StandardDay6_crop_3f2a9c1b</span></code>) and never replaces the
+plate’s layer.</p>
 </div>
 </dd></dl>
 
@@ -2585,7 +2590,12 @@ None.</p></li>
 <p>Layers are named using the pattern <code class="docutils literal notranslate"><span class="pre">{accessor}_{image_name}</span></code> to
 ensure descriptive identification. If a layer with the same name
 already exists, it is replaced with the new image data. This allows
-for easy updates and comparison of different processing stages.</p>
+for easy updates and comparison of different processing stages.
+A crop, colony (<code class="docutils literal notranslate"><span class="pre">objects[i]</span></code>) or grid section keeps its
+plate’s name, so its default <code class="docutils literal notranslate"><span class="pre">image_name</span></code> adds the image type
+and the first 8 hex digits of its UUID
+(<code class="docutils literal notranslate"><span class="pre">rgb_StandardDay6_crop_3f2a9c1b</span></code>) and never replaces the
+plate’s layer.</p>
 </div>
 </dd></dl>
 
@@ -3256,7 +3266,12 @@ None.</p></li>
 <p>Layers are named using the pattern <code class="docutils literal notranslate"><span class="pre">{accessor}_{image_name}</span></code> to
 ensure descriptive identification. If a layer with the same name
 already exists, it is replaced with the new image data. This allows
-for easy updates and comparison of different processing stages.</p>
+for easy updates and comparison of different processing stages.
+A crop, colony (<code class="docutils literal notranslate"><span class="pre">objects[i]</span></code>) or grid section keeps its
+plate’s name, so its default <code class="docutils literal notranslate"><span class="pre">image_name</span></code> adds the image type
+and the first 8 hex digits of its UUID
+(<code class="docutils literal notranslate"><span class="pre">rgb_StandardDay6_crop_3f2a9c1b</span></code>) and never replaces the
+plate’s layer.</p>
 </div>
 </dd></dl>
 
@@ -3861,6 +3876,11 @@ starting from 1.</p>
 </pre></div>
 </div>
 </div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>Works for every label. It used to compare the labels list to the
+integer as a whole, which is never equal, so every call raised
+ValueError (and so did <a class="reference internal" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.loc" title="phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.loc"><code class="xref py py-meth docutils literal notranslate"><span class="pre">loc()</span></code></a>).</p>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -3882,7 +3902,7 @@ for context-aware analysis workflows.</p>
 <dd class="field-even"><p><dl class="simple">
 <dt>A cropped Image containing the bounding box region of the specified colony.</dt><dd><p>Unlike __getitem__, this crop preserves all label values in the objmap without
 zeroing non-matching pixels. The metadata is inherited from the parent Image,
-and ImageType is not changed to ‘Object’.</p>
+and ImageType is not changed to ‘Object’: it is ‘Crop’, as for any slice.</p>
 </dd>
 </dl>
 </p>
@@ -3890,8 +3910,20 @@ and ImageType is not changed to ‘Object’.</p>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Image</p>
 </dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#IndexError" title="(in Python v3.15)"><strong>IndexError</strong></a> – If index is negative or &gt;= num_objects.</p>
+</dl>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>On a GridImage the crop is typed ‘Crop’ and keeps the plate’s
+metadata; earlier versions typed it ‘Image’ and gave it none.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#IndexError" title="(in Python v3.15)"><strong>IndexError</strong></a> – If index is negative or &gt;= num_objects.</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>index</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Image</p>
 </dd>
 </dl>
 <div class="admonition-examples admonition">
@@ -4106,7 +4138,8 @@ colonies were filtered or removed.</p>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
 <dt>A cropped Image containing the bounding box region of the colony with the</dt><dd><p>specified label. The crop preserves all label values in the objmap without
-zeroing non-matching pixels.</p>
+zeroing non-matching pixels. It keeps the parent’s metadata and is typed
+‘Crop’, as for any slice.</p>
 </dd>
 </dl>
 </p>
@@ -4118,6 +4151,11 @@ zeroing non-matching pixels.</p>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#IndexError" title="(in Python v3.15)"><strong>IndexError</strong></a> – If label_number does not exist in the current labels list.</p>
 </dd>
 </dl>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>Works: every call used to raise ValueError (see
+<a class="reference internal" href="#phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.get_label_idx" title="phenotypic._core._image_parts.accessors._objects_accessor.ObjectsAccessor.get_label_idx"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_label_idx()</span></code></a>). On a GridImage the crop is typed ‘Crop’ and
+keeps the plate’s metadata.</p>
+</div>
 <div class="admonition-examples admonition">
 <p class="admonition-title">Examples</p>
 <p>Access colony by its label:</p>
@@ -7497,7 +7535,17 @@ image object. This method supports 2-dimensional slicing and indexing.</p>
 <ul class="simple">
 <li><p>The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.</p></li>
 <li><p>We may add this functionality in future updates if there is demand for it.</p></li>
+<li><p>The subimage keeps a copy of the image’s metadata: its name, file
+suffix, bit depth, imported (EXIF) block, and keys set by hand such
+as <code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code>. Only <code class="docutils literal notranslate"><span class="pre">Metadata_UUID</span></code> (the subimage is a
+new image) and <code class="docutils literal notranslate"><span class="pre">Metadata_ImageType</span></code> (<code class="docutils literal notranslate"><span class="pre">&quot;Crop&quot;</span></code>) differ.</p></li>
 </ul>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>A slice keeps the image’s metadata. Earlier versions kept only the
+bit depth, renamed the slice <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;_crop</span></code>, and dropped every other
+key, including user keys, the file suffix and the imported block;
+<code class="docutils literal notranslate"><span class="pre">CropImage</span></code> lost them the same way.</p>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

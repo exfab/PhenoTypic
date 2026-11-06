@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.abc_.ObjectDetector" href="phenotypic.abc_.ObjectDetector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1422,9 +1422,9 @@ to guarantee that preprocessing data are never modified:</p>
 (development-time safety; disabled in production for performance).</p>
 <p><strong>Implementing a Custom ObjectRefiner</strong></p>
 <p>Subclass ObjectRefiner and implement a single method:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">remove_small_objects</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyCustomRefiner</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
     <span class="n">min_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>  <span class="c1"># Annotated class-level field</span>
@@ -1432,10 +1432,11 @@ to guarantee that preprocessing data are never modified:</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="c1"># Modify ONLY objmap; read, process, write back</span>
         <span class="c1"># objmask will be auto-updated from objmap via relabel()</span>
-        <span class="n">refined_map</span> <span class="o">=</span> <span class="n">remove_small_objects</span><span class="p">(</span>
-            <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
-        <span class="p">)</span>
-        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">refined_map</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">objmap</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>  <span class="c1"># pixels per label</span>
+        <span class="n">too_small</span> <span class="o">=</span> <span class="n">sizes</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
+        <span class="n">too_small</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># label 0 is background</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">too_small</span><span class="p">[</span><span class="n">objmap</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmap</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span>
 </pre></div>
 </div>
@@ -1632,9 +1633,9 @@ via connected-component labeling.</p></li>
 <div class="admonition-examples admonition">
 <p class="admonition-title">Examples</p>
 <p>Removing small spurious objects below minimum size:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="kn">import</span> <span class="n">remove_small_objects</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">SimpleSmallObjectRemover</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
 <span class="gp">... </span><span class="w">    </span><span class="sd">&#39;&#39;&#39;Remove objects smaller than a minimum size threshold.&#39;&#39;&#39;</span>
@@ -1645,10 +1646,12 @@ via connected-component labeling.</p></li>
 <span class="gp">... </span><span class="w">        </span><span class="sd">&#39;&#39;&#39;Remove small objects from labeled map.&#39;&#39;&#39;</span>
 <span class="gp">... </span>        <span class="c1"># Get current labeled map</span>
 <span class="gp">... </span>        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-<span class="gp">... </span>        <span class="c1"># Remove small objects (automatically updates objmap)</span>
-<span class="gp">... </span>        <span class="n">refined</span> <span class="o">=</span> <span class="n">remove_small_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Pixel count per label; zero the labels below min_size</span>
+<span class="gp">... </span>        <span class="n">sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">objmap</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+<span class="gp">... </span>        <span class="n">too_small</span> <span class="o">=</span> <span class="n">sizes</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
+<span class="gp">... </span>        <span class="n">too_small</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># label 0 is background</span>
 <span class="gp">... </span>        <span class="c1"># Set refined result</span>
-<span class="gp">... </span>        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">refined</span>
+<span class="gp">... </span>        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">too_small</span><span class="p">[</span><span class="n">objmap</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objmap</span><span class="p">)</span>
 <span class="gp">... </span>        <span class="k">return</span> <span class="n">image</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Usage</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>

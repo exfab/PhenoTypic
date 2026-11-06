@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -741,6 +741,21 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bit_depth must be 8 or 16&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_array_layout</span><span class="p">(</span>
+        <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">plate_h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">plate_w</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (pitch, first_row_y, first_col_x) for a centred colony array.</span>
+
+<span class="sd">    Pinned arrays have one centre-to-centre spacing along rows and columns, so</span>
+<span class="sd">    the pitch is the largest that leaves one pitch of margin on the tighter</span>
+<span class="sd">    axis, and the array is centred on the other.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pitch</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">plate_h</span> <span class="o">/</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">plate_w</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">first_row_y</span> <span class="o">=</span> <span class="p">(</span><span class="n">plate_h</span> <span class="o">-</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pitch</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">first_col_x</span> <span class="o">=</span> <span class="p">(</span><span class="n">plate_w</span> <span class="o">-</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pitch</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">first_row_y</span><span class="p">,</span> <span class="n">first_col_x</span>
+
+
 <span class="c1"># --- Main Generators ---</span>
 
 <div class="viewcode-block" id="make_synthetic_colony">
@@ -788,27 +803,32 @@
         <span class="n">spacing_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.85</span><span class="p">,</span>
         <span class="n">colony_size_variation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic array plate with multiple circular colonies.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic array plate with multiple circular colonies.</span>
+
+<span class="sd">    .. versionchanged:: 0.21.0</span>
+<span class="sd">       Colonies sit on one pitch for rows and columns,</span>
+<span class="sd">       ``min(plate_h / (nrows + 1), plate_w / (ncols + 1))``, with the array</span>
+<span class="sd">       centred in the plate, as on a pinned plate. Rows and columns used to be</span>
+<span class="sd">       spaced ``plate_h / (nrows + 1)`` and ``plate_w / (ncols + 1)`` apart,</span>
+<span class="sd">       which differ on most plate shapes, so the same ``seed`` now gives a</span>
+<span class="sd">       different image. The bundled synthetic plates, such as</span>
+<span class="sd">       ``load_synth_yeast_plate``, are pre-rendered and unchanged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="c1"># 1. Background</span>
     <span class="n">img</span> <span class="o">=</span> <span class="n">_create_agar_background</span><span class="p">(</span><span class="n">plate_h</span><span class="p">,</span> <span class="n">plate_w</span><span class="p">,</span> <span class="n">agar_rgb</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
 
     <span class="c1"># 2. Grid Setup</span>
-    <span class="n">margin_y</span> <span class="o">=</span> <span class="n">plate_h</span> <span class="o">/</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">margin_x</span> <span class="o">=</span> <span class="n">plate_w</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">spacing_y</span> <span class="o">=</span> <span class="n">plate_h</span> <span class="o">/</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">spacing_x</span> <span class="o">=</span> <span class="n">plate_w</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">base_r</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">spacing_y</span><span class="p">,</span> <span class="n">spacing_x</span><span class="p">)</span> <span class="o">*</span> <span class="n">spacing_factor</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="n">pitch</span><span class="p">,</span> <span class="n">first_row_y</span><span class="p">,</span> <span class="n">first_col_x</span> <span class="o">=</span> <span class="n">_array_layout</span><span class="p">(</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">plate_h</span><span class="p">,</span> <span class="n">plate_w</span><span class="p">)</span>
+    <span class="n">base_r</span> <span class="o">=</span> <span class="n">pitch</span> <span class="o">*</span> <span class="n">spacing_factor</span> <span class="o">*</span> <span class="mf">0.5</span>
     <span class="n">col_rgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">colony_rgb</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="c1"># 3. Iterate</span>
     <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nrows</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">col_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncols</span><span class="p">):</span>
-            <span class="n">cy</span> <span class="o">=</span> <span class="n">margin_y</span> <span class="o">+</span> <span class="n">row</span> <span class="o">*</span> <span class="n">spacing_y</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">spacing_y</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                                                          <span class="n">spacing_y</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
-            <span class="n">cx</span> <span class="o">=</span> <span class="n">margin_x</span> <span class="o">+</span> <span class="n">col_idx</span> <span class="o">*</span> <span class="n">spacing_x</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">spacing_x</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                                                              <span class="n">spacing_x</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">cy</span> <span class="o">=</span> <span class="n">first_row_y</span> <span class="o">+</span> <span class="n">row</span> <span class="o">*</span> <span class="n">pitch</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">cx</span> <span class="o">=</span> <span class="n">first_col_x</span> <span class="o">+</span> <span class="n">col_idx</span> <span class="o">*</span> <span class="n">pitch</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
             <span class="n">r</span> <span class="o">=</span> <span class="n">base_r</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">colony_size_variation</span><span class="p">,</span>
                                             <span class="n">colony_size_variation</span><span class="p">))</span>
 
@@ -835,8 +855,16 @@
         <span class="n">filament_density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
         <span class="n">filament_reach</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.2</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Generate a synthetic plate with filamentous (hairy/branching) colonies.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic plate with filamentous (hairy/branching) colonies.</span>
+
+<span class="sd">    .. versionchanged:: 0.21.0</span>
+<span class="sd">       Colonies sit on one pitch for rows and columns,</span>
+<span class="sd">       ``min(plate_h / (nrows + 1), plate_w / (ncols + 1))``, with the array</span>
+<span class="sd">       centred in the plate, as on a pinned plate. Rows and columns used to be</span>
+<span class="sd">       spaced ``plate_h / (nrows + 1)`` and ``plate_w / (ncols + 1)`` apart,</span>
+<span class="sd">       which differ on most plate shapes, so the same ``seed`` now gives a</span>
+<span class="sd">       different image. The bundled synthetic plates, such as</span>
+<span class="sd">       ``load_synth_yeast_plate``, are pre-rendered and unchanged.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
@@ -844,20 +872,15 @@
     <span class="n">img</span> <span class="o">=</span> <span class="n">_create_agar_background</span><span class="p">(</span><span class="n">plate_h</span><span class="p">,</span> <span class="n">plate_w</span><span class="p">,</span> <span class="n">agar_rgb</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
 
     <span class="c1"># 2. Grid Setup</span>
-    <span class="n">margin_y</span> <span class="o">=</span> <span class="n">plate_h</span> <span class="o">/</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">margin_x</span> <span class="o">=</span> <span class="n">plate_w</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">spacing_y</span> <span class="o">=</span> <span class="n">plate_h</span> <span class="o">/</span> <span class="p">(</span><span class="n">nrows</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">spacing_x</span> <span class="o">=</span> <span class="n">plate_w</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">base_r_global</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">spacing_y</span><span class="p">,</span> <span class="n">spacing_x</span><span class="p">)</span> <span class="o">*</span> <span class="n">spacing_factor</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="n">pitch</span><span class="p">,</span> <span class="n">first_row_y</span><span class="p">,</span> <span class="n">first_col_x</span> <span class="o">=</span> <span class="n">_array_layout</span><span class="p">(</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">plate_h</span><span class="p">,</span> <span class="n">plate_w</span><span class="p">)</span>
+    <span class="n">base_r_global</span> <span class="o">=</span> <span class="n">pitch</span> <span class="o">*</span> <span class="n">spacing_factor</span> <span class="o">*</span> <span class="mf">0.5</span>
     <span class="n">col_rgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">colony_rgb</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="c1"># 3. Iterate</span>
     <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nrows</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">col_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ncols</span><span class="p">):</span>
-            <span class="n">cy</span> <span class="o">=</span> <span class="n">margin_y</span> <span class="o">+</span> <span class="n">row</span> <span class="o">*</span> <span class="n">spacing_y</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">spacing_y</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                                                          <span class="n">spacing_y</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
-            <span class="n">cx</span> <span class="o">=</span> <span class="n">margin_x</span> <span class="o">+</span> <span class="n">col_idx</span> <span class="o">*</span> <span class="n">spacing_x</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">spacing_x</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                                                              <span class="n">spacing_x</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">cy</span> <span class="o">=</span> <span class="n">first_row_y</span> <span class="o">+</span> <span class="n">row</span> <span class="o">*</span> <span class="n">pitch</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">cx</span> <span class="o">=</span> <span class="n">first_col_x</span> <span class="o">+</span> <span class="n">col_idx</span> <span class="o">*</span> <span class="n">pitch</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">pitch</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
             <span class="n">r</span> <span class="o">=</span> <span class="n">base_r_global</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">colony_size_variation</span><span class="p">,</span>
                                                    <span class="n">colony_size_variation</span><span class="p">))</span>
 

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -588,7 +588,10 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove objects whose Polsby-Popper circularity score falls below a threshold.</span>
 
 <span class="sd">    Computes ``4π × area / perimeter²`` for each labeled object and</span>
-<span class="sd">    discards those below ``cutoff``. A perfect circle scores 1.0; elongated</span>
+<span class="sd">    discards those at or below ``cutoff``. This is the same formula as the</span>
+<span class="sd">    ``Shape_Circularity`` column. A perfect circle scores 1.0, but a round</span>
+<span class="sd">    colony of 30 px or more, drawn in pixels, reads about 0.90 to 0.94, and</span>
+<span class="sd">    very small ones can read above 1. Elongated</span>
 <span class="sd">    or jagged shapes score lower. Well-formed round colonies are retained</span>
 <span class="sd">    while scratches, merged blobs, and irregular segmentation debris are</span>
 <span class="sd">    removed.</span>
@@ -618,11 +621,15 @@
 <span class="sd">    Args:</span>
 <span class="sd">        cutoff: Minimum Polsby-Popper circularity score in ``[0, 1]``</span>
 <span class="sd">            required to retain an object. A perfect circle has a score of</span>
-<span class="sd">            1.0; elongated or irregular shapes score lower. The default</span>
+<span class="sd">            1.0, but round pixel colonies of 30 px or more read about 0.90</span>
+<span class="sd">            to 0.94, so a cutoff above about 0.9 starts to remove genuine</span>
+<span class="sd">            round colonies; very small objects can read above 1. Elongated</span>
+<span class="sd">            or irregular shapes score lower. The default</span>
 <span class="sd">            0.785 (π/4) is the area ratio of a circle inscribed in its</span>
 <span class="sd">            bounding square and provides a reasonable boundary between</span>
 <span class="sd">            compact colonies and elongated artefacts. Higher values enforce</span>
-<span class="sd">            stricter roundness; lower values tolerate irregular morphology.</span>
+<span class="sd">            stricter roundness (check the scores of colonies you want to</span>
+<span class="sd">            keep before raising it); lower values tolerate irregular morphology.</span>
 <span class="sd">            Typical range: 0.5--0.9. Default: 0.785.</span>
 
 <span class="sd">    Returns:</span>

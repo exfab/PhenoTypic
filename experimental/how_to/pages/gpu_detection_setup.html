@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="How To: Merge Fragmented Detections" href="../notebooks/merge_fragmented_detections.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1288,10 +1288,13 @@ array master. Workers do not install a walltime signal handler and do not call
 makes no progress, the remaining images become terminal failures and Stage 3
 continues for completed images. All dynamic job IDs are written to the run
 ledger, which cancellation uses after atomically deactivating the epoch.</p>
-<p>Without <code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the command prints <code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code> and returns. The
-dependent finalizer alone publishes aggregate measurements, QC, analyses,
-dashboard, HTML report, README, and the atomic completion marker. With
-<code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the CLI monitors that marker; Ctrl+C only detaches monitoring.</p>
+<p>The command prints <code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code>, writes the README, and returns
+after submission. The dependent finalizer alone publishes aggregate
+measurements, QC, analyses, the dashboard, and the atomic completion marker.
+Follow the printed monitoring commands and completion evidence to determine
+when those outputs are ready. The CLI no longer waits for the marker;
+version 0.21.0 removed <code class="docutils literal notranslate"><span class="pre">--wait</span></code>. The HTML processing report is available on
+demand after the run through <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.sdk_.generate_report</span> <span class="pre">&lt;output&gt;</span></code>.</p>
 <p><strong>Pre-staging gated weights.</strong> For offline compute nodes, download checkpoints on
 the login node first and export <code class="docutils literal notranslate"><span class="pre">HF_HUB_OFFLINE=1</span></code> (and <code class="docutils literal notranslate"><span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code> for gated
 Hugging Face models). Gated foundation-model weights are never bundled; accept

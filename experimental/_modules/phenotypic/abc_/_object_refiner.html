@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -749,9 +749,9 @@
 
 <span class="sd">    .. code-block:: python</span>
 
+<span class="sd">        import numpy as np</span>
 <span class="sd">        from phenotypic.abc_ import ObjectRefiner</span>
 <span class="sd">        from phenotypic import Image</span>
-<span class="sd">        from skimage.morphology import remove_small_objects</span>
 
 <span class="sd">        class MyCustomRefiner(ObjectRefiner):</span>
 <span class="sd">            min_size: int = 50  # Annotated class-level field</span>
@@ -759,10 +759,11 @@
 <span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
 <span class="sd">                # Modify ONLY objmap; read, process, write back</span>
 <span class="sd">                # objmask will be auto-updated from objmap via relabel()</span>
-<span class="sd">                refined_map = remove_small_objects(</span>
-<span class="sd">                    image.objmap[:], min_size=self.min_size</span>
-<span class="sd">                )</span>
-<span class="sd">                image.objmap[:] = refined_map</span>
+<span class="sd">                objmap = image.objmap[:]</span>
+<span class="sd">                sizes = np.bincount(objmap.ravel())  # pixels per label</span>
+<span class="sd">                too_small = sizes &lt; self.min_size</span>
+<span class="sd">                too_small[0] = False  # label 0 is background</span>
+<span class="sd">                image.objmap[:] = np.where(too_small[objmap], 0, objmap)</span>
 <span class="sd">                return image</span>
 
 <span class="sd">    **Morphological Operations with FootprintMixin**</span>
@@ -968,9 +969,9 @@
 <span class="sd">    Examples:</span>
 <span class="sd">        Removing small spurious objects below minimum size:</span>
 
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
-<span class="sd">        &gt;&gt;&gt; from skimage.morphology import remove_small_objects</span>
 <span class="sd">        &gt;&gt;&gt; from scipy import ndimage</span>
 <span class="sd">        &gt;&gt;&gt; class SimpleSmallObjectRemover(ObjectRefiner):</span>
 <span class="sd">        ...     &#39;&#39;&#39;Remove objects smaller than a minimum size threshold.&#39;&#39;&#39;</span>
@@ -981,10 +982,12 @@
 <span class="sd">        ...         &#39;&#39;&#39;Remove small objects from labeled map.&#39;&#39;&#39;</span>
 <span class="sd">        ...         # Get current labeled map</span>
 <span class="sd">        ...         objmap = image.objmap[:]</span>
-<span class="sd">        ...         # Remove small objects (automatically updates objmap)</span>
-<span class="sd">        ...         refined = remove_small_objects(objmap, min_size=self.min_size)</span>
+<span class="sd">        ...         # Pixel count per label; zero the labels below min_size</span>
+<span class="sd">        ...         sizes = np.bincount(objmap.ravel())</span>
+<span class="sd">        ...         too_small = sizes &lt; self.min_size</span>
+<span class="sd">        ...         too_small[0] = False  # label 0 is background</span>
 <span class="sd">        ...         # Set refined result</span>
-<span class="sd">        ...         image.objmap[:] = refined</span>
+<span class="sd">        ...         image.objmap[:] = np.where(too_small[objmap], 0, objmap)</span>
 <span class="sd">        ...         return image</span>
 <span class="sd">        &gt;&gt;&gt; # Usage</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>

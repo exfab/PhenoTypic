@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.abc_.ImageCorrector" href="phenotypic.abc_.ImageCorrector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1410,10 +1410,12 @@ Typical approaches:</p>
 <span class="n">threshold</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh</span><span class="p">)</span>
 <span class="n">binary_mask</span> <span class="o">=</span> <span class="n">enh</span> <span class="o">&gt;</span> <span class="n">threshold</span>
 
-<span class="c1"># Remove small noise</span>
-<span class="n">binary_mask</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span><span class="n">binary_mask</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="c1"># Remove small noise: drop every component under 20 pixels</span>
+<span class="n">components</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">binary_mask</span><span class="p">)</span>
+<span class="n">sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">components</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+<span class="n">binary_mask</span> <span class="o">&amp;=</span> <span class="n">sizes</span><span class="p">[</span><span class="n">components</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">20</span>
 
-<span class="c1"># Label connected components</span>
+<span class="c1"># Label the surviving components</span>
 <span class="n">labeled_map</span><span class="p">,</span> <span class="n">num_objects</span> <span class="o">=</span> <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">binary_mask</span><span class="p">)</span>
 
 <span class="c1"># Set both outputs</span>
@@ -1430,8 +1432,9 @@ Typical approaches:</p>
 mask topology (remove noise, bridge fragments, smooth boundaries).</p></li>
 <li><p><strong>Clear borders:</strong> Use <code class="docutils literal notranslate"><span class="pre">skimage.segmentation.clear_border()</span></code> to remove objects
 touching image edges.</p></li>
-<li><p><strong>Remove small/large objects:</strong> Use <code class="docutils literal notranslate"><span class="pre">skimage.morphology.remove_small_objects()</span></code> or
-<code class="docutils literal notranslate"><span class="pre">skimage.morphology.remove_large_objects()</span></code> to filter by area.</p></li>
+<li><p><strong>Remove small/large objects:</strong> Filter by area with a label-size mask, as in
+step 4, or leave it to <a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html#phenotypic.refine.SmallObjectRemover" title="phenotypic.refine.SmallObjectRemover"><code class="xref py py-class docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></a> or
+<a class="reference internal" href="phenotypic.refine.RemoveByFeature.html#phenotypic.refine.RemoveByFeature" title="phenotypic.refine.RemoveByFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">RemoveByFeature</span></code></a> later in the pipeline.</p></li>
 <li><p><strong>Relabel:</strong> Call <code class="docutils literal notranslate"><span class="pre">image.objmap.relabel(connectivity=...)</span></code> to ensure consecutive
 labels.</p></li>
 </ul>
@@ -1442,12 +1445,14 @@ labels.</p></li>
 <ul class="simple">
 <li><p><strong>scipy.ndimage.label():</strong> Assigns unique integers to connected components in a binary
 mask. Returns (labeled_array, num_features). Specify <code class="docutils literal notranslate"><span class="pre">structure</span></code> for connectivity
-(default 3x3 with all 8 neighbors; use <code class="docutils literal notranslate"><span class="pre">generate_binary_structure(2,</span> <span class="pre">1)</span></code> for
-4-connectivity).</p></li>
-<li><p><strong>skimage.morphology.remove_small_objects():</strong> Removes binary regions smaller than
-min_size pixels. Helpful for filtering noise or spurious detections.</p></li>
-<li><p><strong>skimage.morphology.remove_large_objects():</strong> Removes regions larger than a threshold.
-Useful for excluding large artefacts or plate boundaries.</p></li>
+(default: cross-shaped, i.e. 4-connectivity in 2-D; use
+<code class="docutils literal notranslate"><span class="pre">generate_binary_structure(2,</span> <span class="pre">2)</span></code> for 8-connectivity).</p></li>
+<li><p><strong>skimage.morphology.remove_small_objects():</strong> Removes small connected regions.
+scikit-image 0.26 renamed its threshold: <code class="docutils literal notranslate"><span class="pre">min_size</span></code> (removes regions <em>smaller
+than</em> the value) is deprecated in favour of <code class="docutils literal notranslate"><span class="pre">max_size</span></code> (removes regions of that
+size <em>or smaller</em>), so <code class="docutils literal notranslate"><span class="pre">max_size=n</span> <span class="pre">-</span> <span class="pre">1</span></code> keeps the old <code class="docutils literal notranslate"><span class="pre">min_size=n</span></code> boundary.
+Earlier releases accept only <code class="docutils literal notranslate"><span class="pre">min_size</span></code>. The label-size mask in step 4 behaves
+the same on every release.</p></li>
 <li><p><strong>skimage.segmentation.clear_border():</strong> Sets pixels on the image border to False,
 eliminating objects that touch the edge (common in arrayed imaging where wells at
 plate boundaries may be partially cut off).</p></li>
@@ -1476,7 +1481,7 @@ for round colonies</p></li>
 <p>Raw detections often need cleanup:</p>
 <ul class="simple">
 <li><p><strong>Remove small noise:</strong> Spurious single-pixel detections or tiny salt-and-pepper artifacts.
-Use ObjectRefiner + remove_small_objects.</p></li>
+Use <a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html#phenotypic.refine.SmallObjectRemover" title="phenotypic.refine.SmallObjectRemover"><code class="xref py py-class docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></a> (an ObjectRefiner).</p></li>
 <li><p><strong>Clean borders:</strong> Colonies at plate edges may be incomplete. Use ObjectRefiner or
 clear_border() in detector.</p></li>
 <li><p><strong>Merge fragments:</strong> Noise or uneven lighting can fragment a single colony into multiple

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -721,10 +721,12 @@
 <span class="sd">           threshold = skimage.filters.threshold_otsu(enh)</span>
 <span class="sd">           binary_mask = enh &gt; threshold</span>
 
-<span class="sd">           # Remove small noise</span>
-<span class="sd">           binary_mask = skimage.morphology.remove_small_objects(binary_mask, min_size=20)</span>
+<span class="sd">           # Remove small noise: drop every component under 20 pixels</span>
+<span class="sd">           components, _ = ndimage.label(binary_mask)</span>
+<span class="sd">           sizes = np.bincount(components.ravel())</span>
+<span class="sd">           binary_mask &amp;= sizes[components] &gt;= 20</span>
 
-<span class="sd">           # Label connected components</span>
+<span class="sd">           # Label the surviving components</span>
 <span class="sd">           labeled_map, num_objects = ndimage.label(binary_mask)</span>
 
 <span class="sd">           # Set both outputs</span>
@@ -739,8 +741,9 @@
 <span class="sd">         mask topology (remove noise, bridge fragments, smooth boundaries).</span>
 <span class="sd">       - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects</span>
 <span class="sd">         touching image edges.</span>
-<span class="sd">       - **Remove small/large objects:** Use ``skimage.morphology.remove_small_objects()`` or</span>
-<span class="sd">         ``skimage.morphology.remove_large_objects()`` to filter by area.</span>
+<span class="sd">       - **Remove small/large objects:** Filter by area with a label-size mask, as in</span>
+<span class="sd">         step 4, or leave it to :class:`~phenotypic.refine.SmallObjectRemover` or</span>
+<span class="sd">         :class:`~phenotypic.refine.RemoveByFeature` later in the pipeline.</span>
 <span class="sd">       - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive</span>
 <span class="sd">         labels.</span>
 
@@ -750,14 +753,15 @@
 
 <span class="sd">    - **scipy.ndimage.label():** Assigns unique integers to connected components in a binary</span>
 <span class="sd">      mask. Returns (labeled_array, num_features). Specify ``structure`` for connectivity</span>
-<span class="sd">      (default 3x3 with all 8 neighbors; use ``generate_binary_structure(2, 1)`` for</span>
-<span class="sd">      4-connectivity).</span>
+<span class="sd">      (default: cross-shaped, i.e. 4-connectivity in 2-D; use</span>
+<span class="sd">      ``generate_binary_structure(2, 2)`` for 8-connectivity).</span>
 
-<span class="sd">    - **skimage.morphology.remove_small_objects():** Removes binary regions smaller than</span>
-<span class="sd">      min_size pixels. Helpful for filtering noise or spurious detections.</span>
-
-<span class="sd">    - **skimage.morphology.remove_large_objects():** Removes regions larger than a threshold.</span>
-<span class="sd">      Useful for excluding large artefacts or plate boundaries.</span>
+<span class="sd">    - **skimage.morphology.remove_small_objects():** Removes small connected regions.</span>
+<span class="sd">      scikit-image 0.26 renamed its threshold: ``min_size`` (removes regions *smaller</span>
+<span class="sd">      than* the value) is deprecated in favour of ``max_size`` (removes regions of that</span>
+<span class="sd">      size *or smaller*), so ``max_size=n - 1`` keeps the old ``min_size=n`` boundary.</span>
+<span class="sd">      Earlier releases accept only ``min_size``. The label-size mask in step 4 behaves</span>
+<span class="sd">      the same on every release.</span>
 
 <span class="sd">    - **skimage.segmentation.clear_border():** Sets pixels on the image border to False,</span>
 <span class="sd">      eliminating objects that touch the edge (common in arrayed imaging where wells at</span>
@@ -792,7 +796,7 @@
 <span class="sd">    Raw detections often need cleanup:</span>
 
 <span class="sd">    - **Remove small noise:** Spurious single-pixel detections or tiny salt-and-pepper artifacts.</span>
-<span class="sd">      Use ObjectRefiner + remove_small_objects.</span>
+<span class="sd">      Use :class:`~phenotypic.refine.SmallObjectRemover` (an ObjectRefiner).</span>
 
 <span class="sd">    - **Clean borders:** Colonies at plate edges may be incomplete. Use ObjectRefiner or</span>
 <span class="sd">      clear_border() in detector.</span>

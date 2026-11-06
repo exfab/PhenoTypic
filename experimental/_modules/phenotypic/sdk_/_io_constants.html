@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1262,7 +1262,8 @@
 <span class="c1">#: the CLI decides whether an output is otherwise fresh.</span>
 <span class="n">GUI_LOG_FILENAMES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="n">STDOUT_LOG</span><span class="p">})</span>
 
-<span class="c1">#: Top-level processing report HTML emitted by recompile mode.</span>
+<span class="c1">#: The processing report, written only on demand by</span>
+<span class="c1">#: ``python -m phenotypic.sdk_.generate_report`` (since 0.21.0).</span>
 <span class="n">PROCESSING_REPORT_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_report.html&quot;</span>
 
 <span class="c1">#: Legacy-named rolling aggregation state that the chunk writer rewrites as</span>
@@ -3591,7 +3592,13 @@
     <span class="c1">#: (``_cli_state_management.RUN_INITIATION_KEYS``).</span>
     <span class="n">FIGURES_RUN_DATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;figures_run_date&quot;</span>
     <span class="n">INITIATED_AT_UTC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initiated_at_utc&quot;</span>
-    <span class="n">INITIATED_PID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initiated_pid&quot;</span></div>
+    <span class="n">INITIATED_PID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initiated_pid&quot;</span>
+    <span class="c1">#: The ``--study`` file&#39;s text, or ``None``. The SLURM finalizer parses it</span>
+    <span class="c1">#: with ``_cli_utils.parse_study_yaml`` -- the parse a local run uses -- so</span>
+    <span class="c1">#: ``rembi.yaml`` carries the study on SLURM too (0.21.0; it was silently</span>
+    <span class="c1">#: dropped before). The text, not a parsed dict, because YAML types such as</span>
+    <span class="c1">#: dates do not survive a JSON round trip.</span>
+    <span class="n">STUDY_YAML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;study_yaml&quot;</span></div>
 
 
 

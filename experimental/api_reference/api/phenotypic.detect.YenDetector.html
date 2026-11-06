@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.detect.WatershedDetector" href="phenotypic.detect.WatershedDetector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1285,11 +1285,12 @@
 <dt class="sig sig-object py" id="phenotypic.detect.YenDetector">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.detect.</span></span><span class="sig-name descname"><span class="pre">YenDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_zeros</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_borders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/detect/_yen_detector.html#YenDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.detect.YenDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.ThresholdDetector.html#phenotypic.abc_.ThresholdDetector" title="phenotypic.abc_._threshold_detector.ThresholdDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThresholdDetector</span></code></a></p>
-<p>Detect colonies by maximising the correlation between the original and binarised image.</p>
-<p>Compute a threshold that maximises the squared correlation coefficient
-between the original intensity image and its binarised version. Handles
-skewed histograms reliably, offering a middle ground between variance-based
-(Otsu) and entropy-based (Li) criteria. For a full comparison of detection
+<p>Detect colonies with Yen’s entropic-correlation threshold.</p>
+<p>Compute the threshold that maximises the total entropic correlation of the
+two classes it creates: the sum over both classes of -ln(sum((p_i / P)^2)),
+where p_i is the histogram probability of grey level i and P is the class’s
+total probability (Yen, Chang and Chang, 1995). It is an entropy-based
+criterion. For a full comparison of detection
 strategies see <a class="reference internal" href="../../explanation/detection_strategies_compared.html"><span class="doc">Detection Strategies Compared</span></a>.</p>
 <dl class="simple">
 <dt>Best For:</dt><dd><ul class="simple">

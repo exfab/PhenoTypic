@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.data.load_colony" href="phenotypic.data.load_colony.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1284,10 +1284,10 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.data.load_yeast_plate">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_yeast_plate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'GridImage'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_sample_image_data.html#load_yeast_plate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.data.load_yeast_plate" title="Link to this definition">#</a></dt>
-<dd><p>Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</p>
-<p>Returns a pre-cropped plate image of Neurospora filamentous fungi arranged
-in a 96-well grid. Irregular hyphal morphology with spreading growth –
-suitable for filamentous fungi tutorials and how-to guides.</p>
+<dd><p>Load a yeast plate image cropped to the center.</p>
+<p>Returns a pre-cropped plate image of yeast colonies on a
+2 x 4 grid (<code class="docutils literal notranslate"><span class="pre">nrows=2</span></code>, <code class="docutils literal notranslate"><span class="pre">ncols=4</span></code>) – suitable for yeast tutorials and
+how-to guides.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>, </em><em>'GridImage'</em><em>]</em>) – Return format. Default: <code class="docutils literal notranslate"><span class="pre">'GridImage'</span></code>.</p>

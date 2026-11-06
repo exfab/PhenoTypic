@@ -144,12 +144,13 @@ SLURM Options
    keys ``mem_gb`` and ``time``. ``time`` is an **integer number of minutes**.
    The deprecated ``time_min`` key is auto-migrated to ``time``.
 
-``--wait``
-   Wait for SLURM jobs and their dependent finalizer to complete. For staged GPU
-   runs, success requires the finalizer completion marker. Without this flag,
-   the CLI prints ``PROCESSING SUBMITTED`` and returns without running local
-   aggregation or claiming completion. Ctrl+C detaches monitoring without
-   cancelling the active epoch.
+SLURM runs return after submission. The CLI prints a submission summary
+and monitoring information; the dependent finalizer publishes aggregated outputs
+and the completion marker. A submission exit code of zero does not certify
+that image processing has completed. Follow the printed scheduler commands
+and the run's completion evidence before starting work that consumes its outputs.
+Migration submissions print a terminal-status file whose verdict is written
+by their finalizer. The ``--wait`` option was removed in version 0.21.0.
 
 GPU Staging Options
 -------------------

@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="Command-Line Tutorials" href="../cli.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -731,7 +731,7 @@ estimated output size without processing anything or writing under
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── measurements_by_category/           # one file per measurement category
 │   ├── overlays/&lt;dataset&gt;/                 # detection overlay PNGs
-│   ├── dashboard.html, processing_report.html
+│   ├── dashboard.html
 │   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts
 │   └── README.md                           # generated column documentation
 ├── results/&lt;dataset&gt;/
@@ -740,6 +740,11 @@ estimated output size without processing anything or writing under
 │                           #   object table at
 │                           #   tables/measurements/table.parquet
 └── .phenotypic/            # machine state: progress manifest, event log
+</pre></div>
+</div>
+<p>The CLI does not automatically write <code class="docutils literal notranslate"><span class="pre">processing_report.html</span></code>. After the run,
+generate it from the event log when needed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.sdk_.generate_report<span class="w"> </span>./out
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">zarr/</span></code> directory is what makes the other modes cheap: each store holds that
@@ -972,14 +977,16 @@ is often faster than swapping.</p>
 </div>
 <p>Use the <code class="docutils literal notranslate"><span class="pre">slurm_</span></code> prefix for standard SBATCH directives, or the convenience keys
 <code class="docutils literal notranslate"><span class="pre">mem_gb</span></code> and <code class="docutils literal notranslate"><span class="pre">time</span></code>. <strong><code class="docutils literal notranslate"><span class="pre">time</span></code> is in minutes, as an integer</strong> — <code class="docutils literal notranslate"><span class="pre">time=120</span></code>, not
-<code class="docutils literal notranslate"><span class="pre">time=02:00:00</span></code>. The CLI returns as soon as the jobs are submitted; add <code class="docutils literal notranslate"><span class="pre">--wait</span></code>
-to block and monitor them. A staged GPU run without <code class="docutils literal notranslate"><span class="pre">--wait</span></code> prints
-<code class="docutils literal notranslate"><span class="pre">PROCESSING</span> <span class="pre">SUBMITTED</span></code> and leaves aggregation, reports, and README publication
-to its dependent finalizer. It does not print a premature completion summary.
-With <code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the CLI follows the active orchestration epoch through the
-finalizer completion marker. Ctrl+C detaches monitoring while the jobs continue.
-<code class="docutils literal notranslate"><span class="pre">--force-local</span></code> overrides SLURM detection, which is
-what you want when testing on a login node.</p>
+<code class="docutils literal notranslate"><span class="pre">time=02:00:00</span></code>. The CLI returns as soon as the jobs are submitted, prints
+a submission summary and monitoring commands, and writes the README for a full
+or measurement run. Its
+dependent finalizer publishes aggregate outputs and the completion marker.
+It does not print a premature completion summary. Follow the printed
+scheduler commands and completion evidence before consuming the results;
+version 0.21.0 removed <code class="docutils literal notranslate"><span class="pre">--wait</span></code>. Generate the HTML processing report on demand
+with the command above. The CLI runs locally unless <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> is supplied;
+<code class="docutils literal notranslate"><span class="pre">--force-local</span></code> keeps a command local when testing a configured profile on a
+login node.</p>
 <p><code class="docutils literal notranslate"><span class="pre">--checkpoint-interval</span> <span class="pre">N</span></code> inserts checkpoint tasks every N images in a SLURM
 array so a walltime kill loses at most N images of progress.</p>
 </section>

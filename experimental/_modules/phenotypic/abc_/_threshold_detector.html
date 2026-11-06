@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -624,8 +624,8 @@
 <span class="sd">      Automatic, global, works for balanced histograms.</span>
 <span class="sd">    - [LiDetector](src/phenotypic/detect/_li_detector.py): Minimizes Kullback-Leibler divergence.</span>
 <span class="sd">      Good for dark colonies on bright background.</span>
-<span class="sd">    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes object variance.</span>
-<span class="sd">      Excellent for sharply defined colonies.</span>
+<span class="sd">    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes the total</span>
+<span class="sd">      entropic correlation of the two classes (Yen&#39;s criterion).</span>
 <span class="sd">    - [TriangleDetector](src/phenotypic/detect/_triangle_detector.py): Connects histogram</span>
 <span class="sd">      extrema. Works well for non-overlapping bimodal distributions.</span>
 <span class="sd">    - [IsodataDetector](src/phenotypic/detect/_isodata_detector.py): Iteratively refines based</span>
@@ -780,30 +780,21 @@
 <span class="sd">    Examples:</span>
 <span class="sd">        Detect colonies using Otsu&#39;s automatic threshold:</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
-<span class="sd">        &gt;&gt;&gt; # Load a plate image</span>
-<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; # Apply Otsu threshold detection</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
 <span class="sd">        &gt;&gt;&gt; detector = OtsuDetector(ignore_zeros=True, ignore_borders=True)</span>
 <span class="sd">        &gt;&gt;&gt; detected = detector.apply(plate)</span>
-<span class="sd">        &gt;&gt;&gt; # Access results</span>
 <span class="sd">        &gt;&gt;&gt; mask = detected.objmask[:]  # Binary mask</span>
 <span class="sd">        &gt;&gt;&gt; objmap = detected.objmap[:]  # Labeled map</span>
-<span class="sd">        &gt;&gt;&gt; num_colonies = objmap.max()</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Detected {num_colonies} colonies&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; # Iterate over colonies</span>
-<span class="sd">        &gt;&gt;&gt; for colony in detected.objects:</span>
-<span class="sd">        ...     print(f&quot;Colony {colony.label}: area={colony.area} px&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; int(objmap.max()) == detected.num_objects</span>
+<span class="sd">        True</span>
 
 <span class="sd">        Compare different threshold strategies:</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import (</span>
 <span class="sd">        ...     OtsuDetector, LiDetector, YenDetector, TriangleDetector</span>
 <span class="sd">        ... )</span>
-<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; # Test multiple threshold strategies</span>
 <span class="sd">        &gt;&gt;&gt; detectors = {</span>
 <span class="sd">        ...     &quot;Otsu&quot;: OtsuDetector(),</span>
 <span class="sd">        ...     &quot;Li&quot;: LiDetector(),</span>
@@ -811,52 +802,35 @@
 <span class="sd">        ...     &quot;Triangle&quot;: TriangleDetector(),</span>
 <span class="sd">        ... }</span>
 <span class="sd">        &gt;&gt;&gt; for name, detector in detectors.items():</span>
-<span class="sd">        ...     result = detector.apply(plate)</span>
-<span class="sd">        ...     num = result.objmap[:].max()</span>
-<span class="sd">        ...     print(f&quot;{name}: detected {num} colonies&quot;)</span>
+<span class="sd">        ...     print(f&quot;{name}: {detector.apply(plate).num_objects} objects&quot;)</span>
+<span class="sd">        Otsu: 552 objects</span>
+<span class="sd">        Li: 543 objects</span>
+<span class="sd">        Yen: 500 objects</span>
+<span class="sd">        Triangle: 378 objects</span>
 
 <span class="sd">        Build a pipeline with thresholding and refinement:</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import ContrastEnhancer</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjectsRefiner</span>
-<span class="sd">        &gt;&gt;&gt; # Create pipeline</span>
-<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(ContrastEnhancer(factor=1.5))  # Boost contrast</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector(ignore_zeros=True))  # Threshold</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup</span>
-<span class="sd">        &gt;&gt;&gt; # Process image</span>
-<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; result = pipeline.operate([plate])[0]</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Final colonies: {result.objmap[:].max()}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; detected.num_objects  # Otsu alone leaves many small fragments</span>
+<span class="sd">        552</span>
+<span class="sd">        &gt;&gt;&gt; cleaned = SmallObjectRemover(min_size=50).apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; cleaned.num_objects</span>
+<span class="sd">        96</span>
 
-<span class="sd">        Tuning threshold detection on your plate images:</span>
+<span class="sd">        Tuning threshold detection on your plate images: apply several</span>
+<span class="sd">        strategies to the same plate and keep the one whose count matches the</span>
+<span class="sd">        number of colonies you can see.</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import (</span>
-<span class="sd">        ...     OtsuDetector, YenDetector, TriangleDetector</span>
-<span class="sd">        ... )</span>
-<span class="sd">        &gt;&gt;&gt; # Load a sample plate image</span>
-<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;sample_plate.jpg&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; # Test different threshold strategies</span>
 <span class="sd">        &gt;&gt;&gt; strategies = {</span>
 <span class="sd">        ...     &quot;Otsu&quot;: OtsuDetector(ignore_zeros=True),</span>
 <span class="sd">        ...     &quot;Yen&quot;: YenDetector(ignore_zeros=True),</span>
-<span class="sd">        ...     &quot;Triangle&quot;: TriangleDetector(ignore_zeros=True),</span>
+<span class="sd">        ...     &quot;Triangle&quot;: TriangleDetector(),</span>
 <span class="sd">        ... }</span>
-<span class="sd">        &gt;&gt;&gt; best_detector = None</span>
-<span class="sd">        &gt;&gt;&gt; best_count = 0</span>
-<span class="sd">        &gt;&gt;&gt; for name, detector in strategies.items():</span>
-<span class="sd">        ...     result = detector.apply(plate)</span>
-<span class="sd">        ...     num_colonies = result.objmap[:].max()</span>
-<span class="sd">        ...     print(f&quot;{name}: {num_colonies} colonies detected&quot;)</span>
-<span class="sd">        ...     # Choose detector that finds expected number of colonies</span>
-<span class="sd">        ...     if best_detector is None:</span>
-<span class="sd">        ...         best_detector = detector</span>
-<span class="sd">        ...         best_count = num_colonies</span>
-<span class="sd">        &gt;&gt;&gt; # Use best detector for batch processing</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Selected: {type(best_detector).__name__}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; for name, det in strategies.items():</span>
+<span class="sd">        ...     print(f&quot;{name}: {det.apply(plate).num_objects} colonies detected&quot;)</span>
+<span class="sd">        Otsu: 552 colonies detected</span>
+<span class="sd">        Yen: 500 colonies detected</span>
+<span class="sd">        Triangle: 378 colonies detected</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>

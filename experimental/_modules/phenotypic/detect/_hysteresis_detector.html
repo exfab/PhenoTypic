@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -614,8 +614,9 @@
 <span class="sd">            universal best value -- it is a user choice. Accepts a method</span>
 <span class="sd">            name (``&#39;otsu&#39;``, ``&#39;triangle&#39;``, ``&#39;li&#39;``, ``&#39;yen&#39;``,</span>
 <span class="sd">            ``&#39;isodata&#39;``, ``&#39;mean&#39;``, ``&#39;minimum&#39;``) for automatic</span>
-<span class="sd">            computation, or a float for a manual value (0--255 for 8-bit,</span>
-<span class="sd">            0--65535 for 16-bit). Default ``&#39;mean&#39;``. Lowering *low* grows</span>
+<span class="sd">            computation, or a float for a manual value on the</span>
+<span class="sd">            normalised 0.0--1.0 scale of ``detect_mat`` (not 0--255).</span>
+<span class="sd">            Default ``&#39;mean&#39;``. Lowering *low* grows</span>
 <span class="sd">            each seed outward to capture more faint marginal pixels but</span>
 <span class="sd">            risks bridging colonies into noise; raising it tightens each</span>
 <span class="sd">            colony toward its bright core. Start with ``&#39;mean&#39;`` and adjust</span>

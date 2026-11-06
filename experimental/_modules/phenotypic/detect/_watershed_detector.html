@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -581,6 +581,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span> <span class="n">morphology</span><span class="p">,</span> <span class="n">segmentation</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._skimage_compat</span><span class="w"> </span><span class="kn">import</span> <span class="n">remove_objects_smaller_than</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
 
 
@@ -745,8 +746,8 @@
         <span class="k">del</span> <span class="n">threshold</span>  <span class="c1"># don&#39;t need this after obtaining binary mask</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_log_memory_usage</span><span class="p">(</span><span class="s2">&quot;threshold calculation and binary mask creation&quot;</span><span class="p">)</span>
 
-        <span class="n">binary</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span>
-                <span class="n">binary</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
+        <span class="n">binary</span> <span class="o">=</span> <span class="n">remove_objects_smaller_than</span><span class="p">(</span>
+                <span class="n">binary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
         <span class="p">)</span>  <span class="c1"># clean to reduce runtime</span>
 
         <span class="c1"># Ensure binary is contiguous for memory-efficient operations (only if needed)</span>
@@ -811,7 +812,7 @@
         <span class="k">del</span> <span class="n">max_peaks</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">binary</span>
         <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># Force garbage collection after watershed to free memory</span>
 
-        <span class="n">objmap</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span><span class="p">)</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">remove_objects_smaller_than</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_size</span><span class="p">)</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmap</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">relabel</span><span class="p">:</span>
             <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>

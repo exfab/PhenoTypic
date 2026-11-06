@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -579,12 +579,13 @@
 <div class="viewcode-block" id="YenDetector">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.detect.YenDetector.html#phenotypic.detect.YenDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">YenDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by maximising the correlation between the original and binarised image.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies with Yen&#39;s entropic-correlation threshold.</span>
 
-<span class="sd">    Compute a threshold that maximises the squared correlation coefficient</span>
-<span class="sd">    between the original intensity image and its binarised version. Handles</span>
-<span class="sd">    skewed histograms reliably, offering a middle ground between variance-based</span>
-<span class="sd">    (Otsu) and entropy-based (Li) criteria. For a full comparison of detection</span>
+<span class="sd">    Compute the threshold that maximises the total entropic correlation of the</span>
+<span class="sd">    two classes it creates: the sum over both classes of -ln(sum((p_i / P)^2)),</span>
+<span class="sd">    where p_i is the histogram probability of grey level i and P is the class&#39;s</span>
+<span class="sd">    total probability (Yen, Chang and Chang, 1995). It is an entropy-based</span>
+<span class="sd">    criterion. For a full comparison of detection</span>
 <span class="sd">    strategies see :doc:`/explanation/detection_strategies_compared`.</span>
 
 <span class="sd">    Best For:</span>

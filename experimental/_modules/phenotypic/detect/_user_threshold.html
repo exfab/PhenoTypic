@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -612,9 +612,10 @@
 <span class="sd">            intensity &gt;= *threshold* become colony (True), others</span>
 <span class="sd">            background (False). This is inherently a user choice -- there is</span>
 <span class="sd">            no universal optimum, since it depends on the imaging setup and</span>
-<span class="sd">            organism contrast. Valid range is bit-depth dependent: 0--255</span>
-<span class="sd">            for 8-bit, 0--65535 for 16-bit, 0.0--1.0 for float images;</span>
-<span class="sd">            must be non-negative. Raising it is more conservative (fewer</span>
+<span class="sd">            organism contrast. ``detect_mat`` is normalised to</span>
+<span class="sd">            0.0--1.0 whatever the file&#39;s bit depth, so give the cutoff on</span>
+<span class="sd">            that scale (not 0--255); must be non-negative. Raising it is</span>
+<span class="sd">            more conservative (fewer</span>
 <span class="sd">            colonies, less noise); lowering it is more sensitive (more</span>
 <span class="sd">            colonies, more noise). Default: 0.5. Start by inspecting the</span>
 <span class="sd">            histogram for the valley between the background and colony</span>
@@ -647,9 +648,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># ``detect_mat`` follows the project&#39;s float-normalized [0, 1] intensity</span>
-    <span class="c1"># convention, so the search window spans that range. The *valid* domain is</span>
-    <span class="c1"># bit-depth dependent (0--255 / 0--65535 for integer images), so no tight</span>
-    <span class="c1"># Field bound is added — only non-negativity is enforced in ``_operate``.</span>
+    <span class="c1"># convention, so the search window spans that range. No tight Field bound</span>
+    <span class="c1"># is added: only ``threshold &lt; 0`` is rejected, in ``_operate``.</span>
     <span class="n">threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.5</span>
     <span class="n">ignore_zeros</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">ignore_borders</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
@@ -665,16 +665,15 @@
 
 <span class="sd">        Args:</span>
 <span class="sd">            image: The input image object. Must have an ``detect_mat`` attribute</span>
-<span class="sd">                (detection matrix for processing). Optionally uses</span>
-<span class="sd">                ``bit_depth`` to validate threshold range.</span>
+<span class="sd">                (detection matrix for processing), normalised to 0--1.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Image: The input image with its ``objmask`` attribute updated to the</span>
 <span class="sd">                computed binary mask.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If threshold is negative or exceeds the image&#39;s intensity</span>
-<span class="sd">                range (inferred from bit depth if available).</span>
+<span class="sd">            ValueError: If threshold is negative. No upper bound is checked;</span>
+<span class="sd">                ``detect_mat`` is on a 0--1 scale.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
 

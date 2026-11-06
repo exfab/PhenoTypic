@@ -47,5 +47,6 @@ phenotypic.sdk\_.JobMetadataKey
       ~JobMetadataKey.PROCESSING_GENERATION
       ~JobMetadataKey.SLURM_JOB_IDS
       ~JobMetadataKey.START_TIME
+      ~JobMetadataKey.STUDY_YAML
    
    

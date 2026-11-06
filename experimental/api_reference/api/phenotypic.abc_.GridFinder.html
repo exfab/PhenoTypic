@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.abc_.GridOperation" href="phenotypic.abc_.GridOperation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1292,11 +1292,16 @@ detected object to its corresponding grid cell (well). This is essential for
 high-throughput phenotyping experiments where samples are arranged in regular grids
 (e.g., 96-well, 384-well formats).</p>
 <p><strong>Quick Decision Guide</strong></p>
-<p>Use [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py) when:
-- Grid position is unknown or image is rotated/shifted
-- Colonies are detected but well boundaries are unclear
-- You want automatic optimization of row/column edge positions
-- Tolerance parameter allows tuning optimization precision</p>
+<p>Use [CenteredAutoGridFinder](src/phenotypic/grid/_centered_auto_grid_finder.py)
+(the default, which a <code class="docutils literal notranslate"><span class="pre">GridImage</span></code> builds when given no finder) when:
+- Grid position is unknown and the plate is roughly centered in the frame
+- Some rows or columns are empty, at the edges or inside the plate: it fits</p>
+<blockquote>
+<div><p>the grid by its periodicity rather than by the span of the colonies</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>Colonies are detected but well boundaries are unclear</p></li>
+</ul>
 <p>Use [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py) when:
 - You know exact grid geometry from microscope calibration
 - Grid position is fixed and repeatable across images
@@ -1304,7 +1309,7 @@ high-throughput phenotyping experiments where samples are arranged in regular gr
 - You want deterministic, non-optimized grid assignment</p>
 <p>Combining with detection pipelines:
 - Use GridFinder after ObjectDetector to map colonies to wells
-- AutoGridFinder works with any detection result
+- CenteredAutoGridFinder works with any detection result
 - ManualGridFinder requires pre-computed edge coordinates
 - Grid assignment is independent of detection algorithm</p>
 <p><strong>What it does</strong></p>
@@ -1383,22 +1388,29 @@ to image bounds (prevents indexing errors).</p></li>
 <p>The _operate() method returns a pandas DataFrame with detected objects and their
 grid assignments:</p>
 <ul class="simple">
-<li><p><strong>ROW_NUM:</strong> Grid row index (0 to nrows-1), representing vertical well position</p></li>
-<li><p><strong>COL_NUM:</strong> Grid column index (0 to ncols-1), representing horizontal well position</p></li>
-<li><p><strong>ROW_MAJOR_IDX:</strong> Well identifier (0 to nrows*ncols-1), ordered left-to-right,
-top-to-bottom for convenient database mapping</p></li>
+<li><p><strong>ROW_NUM</strong> (<code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code>): Grid row index (0 to nrows-1), representing
+vertical well position</p></li>
+<li><p><strong>COL_NUM</strong> (<code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code>): Grid column index (0 to ncols-1), representing
+horizontal well position</p></li>
+<li><p><strong>ROW_MAJOR_IDX</strong> (<code class="docutils literal notranslate"><span class="pre">Grid_RowMajorIdx</span></code>): Well identifier (0 to nrows*ncols-1),
+ordered left-to-right, top-to-bottom for convenient database mapping</p></li>
 <li><p><strong>Additional columns:</strong> Object metadata (centroid, bounding box, morphology) from
 image.objects.info()</p></li>
 </ul>
 <p>Objects whose centers fall outside the grid edges are clamped to the nearest
 edge cell (row 0 or nrows-1, col 0 or ncols-1).</p>
 <p><strong>Concrete Implementations</strong></p>
-<p>PhenoTypic provides two built-in GridFinder implementations:</p>
+<p>PhenoTypic provides three built-in GridFinder implementations:</p>
 <ul class="simple">
+<li><p>[CenteredAutoGridFinder](src/phenotypic/grid/_centered_auto_grid_finder.py): the
+default. Fits a regular axis-aligned grid to the colony centers by their
+periodicity, so empty edge or interior rows do not shift it. Assumes the plate
+is roughly centered in the frame.</p></li>
 <li><p>[AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Deterministic robust fit
 using weighted object centers. Estimates pitch from center range, fits grid indices
 via least-squares, rejects outliers, and refits. Robust to protruding colonies
-(e.g., filamentous fungi). Use when grid position is unknown.</p></li>
+(e.g., filamentous fungi). Its pitch comes from the span of the centers, so it
+suits plates whose outer rows and columns are occupied.</p></li>
 <li><p>[ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py): User specifies exact
 row and column edge coordinates from calibration or measurement. Use when grid geometry
 is known and fixed.</p></li>
@@ -1428,70 +1440,89 @@ objects are assigned based on which interval they fall into</p></li>
 </ul>
 <p><strong>Examples</strong></p>
 <blockquote>
-<div><p>Use AutoGridFinder when grid position is unknown:</p>
-<p>When the image is rotated, shifted, or geometry is unclear, let AutoGridFinder
-automatically compute optimal edge positions by optimizing alignment:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoGridFinder</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+<div><p>Assign colonies to wells with the default grid finder:</p>
+<p>When the grid position is unknown, CenteredAutoGridFinder fits the
+grid to the detected colonies. Here the plate is a 96-colony
+<em>K. marxianus</em> array at 72 h. A bare threshold also picks up specks too
+small to be colonies, so remove them before gridding. Select the grid
+columns by their schema names:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_plate_72hr</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load and detect colonies on plate</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image_with_objects</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># AutoGridFinder optimizes edge positions to align with colonies</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_finder</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image_with_objects</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Access well assignments</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grid_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> colonies assigned to grid&quot;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">grid_df</span><span class="p">[[</span><span class="s1">&#39;ROW_NUM&#39;</span><span class="p">,</span> <span class="s1">&#39;COL_NUM&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW_MAJOR_IDX&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">CenteredAutoGridFinder</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SmallObjectRemover</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plate</span> <span class="o">=</span> <span class="n">load_plate_72hr</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;GridImage&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">SmallObjectRemover</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_finder</span> <span class="o">=</span> <span class="n">CenteredAutoGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># One row per colony, with its well assignment</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">wells</span> <span class="o">=</span> <span class="n">grid_df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grid_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> colonies in </span><span class="si">{</span><span class="n">wells</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2"> wells&quot;</span><span class="p">)</span>
+<span class="go">92 colonies in 92 wells</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># The wells where no colony was detected</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">))</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">wells</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span>
+<span class="go">[22, 26, 56, 76]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">well_columns</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">grid_df</span><span class="p">[</span><span class="n">well_columns</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="go">  Grid_RowNum Grid_ColNum Grid_RowMajorIdx</span>
+<span class="go">0           0          10               10</span>
+<span class="go">1           0          11               11</span>
+<span class="go">2           0           9                9</span>
+<span class="go">3           0           8                8</span>
+<span class="go">4           0           5                5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># 8 rows x 12 columns need 9 row edges and 13 column edges</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(</span><span class="n">image</span><span class="p">)),</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
+<span class="go">(9, 13)</span>
 </pre></div>
 </div>
 <p>Create a ManualGridFinder for a 96-well plate with known geometry:</p>
-<p>When grid geometry is known from microscope calibration, manually specify
-row and column edges for reproducible grid assignment:</p>
+<p>When grid geometry is known from calibration, specify the row and column
+edges for reproducible grid assignment. The synthetic plate ships with its
+96 colonies already labelled, and edges that divide its 600 x 800 pixel
+image evenly into 8 x 12 cells put each colony in a well of its own:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">ManualGridFinder</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load and detect colonies</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">ManualGridFinder</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image_with_objects</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Define grid for 8 rows x 12 columns (96-well)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Rows: 8 wells vertically, evenly spaced from pixel 100 to 2000</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2000</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Columns: 12 wells horizontally, evenly spaced from pixel 50 to 3050</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">3050</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create grid finder with known edge coordinates</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span>
+<span class="go">96</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># 9 row edges for 8 rows, 13 column edges for 12 columns</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">row_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">col_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span>
+<span class="go">[  0  75 150 225 300 375 450 525 600]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">grid_finder</span> <span class="o">=</span> <span class="n">ManualGridFinder</span><span class="p">(</span><span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image_with_objects</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Result includes grid assignments plus object metadata</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">grid_df</span><span class="p">[[</span><span class="s1">&#39;ROW_NUM&#39;</span><span class="p">,</span> <span class="s1">&#39;COL_NUM&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW_MAJOR_IDX&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">wells</span> <span class="o">=</span> <span class="n">grid_df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grid_df</span><span class="p">)</span><span class="si">}</span><span class="s2"> colonies in </span><span class="si">{</span><span class="n">wells</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2"> wells&quot;</span><span class="p">)</span>
+<span class="go">96 colonies in 96 wells</span>
 </pre></div>
 </div>
 <p>Understanding ROW_MAJOR_IDX for well mapping:</p>
-<p>ROW_MAJOR_IDX provides a single integer ID for each well, useful for organizing
-results and correlating with sample metadata:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoGridFinder</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+<p>ROW_MAJOR_IDX provides a single integer ID for each well, useful for
+organizing results and correlating with sample metadata. On an 8 x 12
+grid it runs 0-95, left-to-right, top-to-bottom: section 0 is A1 (row 0,
+column 0), 11 is A12, 12 is B1, and 95 is H12.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_plate_72hr</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Detect and assign colonies to grid</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">detector</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">image_with_objects</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_finder</span> <span class="o">=</span> <span class="n">AutoGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image_with_objects</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Example: 8x12 grid (96-well plate)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ROW_MAJOR_IDX runs 0-95, numbered left-to-right, top-to-bottom</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Section 0 = Row 0, Col 0 (top-left, A1)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Section 11 = Row 0, Col 11 (top-right, A12)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Section 12 = Row 1, Col 0 (second row left, B1)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Section 95 = Row 7, Col 11 (bottom-right, H12)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Filter colonies in a specific well</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">section_5_objects</span> <span class="o">=</span> <span class="n">grid_df</span><span class="p">[</span><span class="n">grid_df</span><span class="p">[</span><span class="s1">&#39;ROW_MAJOR_IDX&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">5</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Map section numbers back to well coordinates</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">well_row</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">//</span> <span class="mi">12</span>  <span class="c1"># Row index</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">well_col</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">%</span> <span class="mi">12</span>   <span class="c1"># Column index</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">CenteredAutoGridFinder</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">SmallObjectRemover</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plate</span> <span class="o">=</span> <span class="n">load_plate_72hr</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;GridImage&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">SmallObjectRemover</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid_df</span> <span class="o">=</span> <span class="n">CenteredAutoGridFinder</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Select the colony in one well</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">section_5</span> <span class="o">=</span> <span class="n">grid_df</span><span class="p">[</span><span class="n">grid_df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">==</span> <span class="mi">5</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">section_5</span><span class="p">)</span>
+<span class="go">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Map the section number back to its well coordinates</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">well_row</span><span class="p">,</span> <span class="n">well_col</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">well_row</span><span class="p">,</span> <span class="n">well_col</span><span class="p">)</span>
+<span class="go">(0, 5)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">section_5</span><span class="p">[[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="go">[[0, 5]]</span>
 </pre></div>
 </div>
 </div></blockquote>

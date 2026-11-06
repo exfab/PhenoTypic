@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../../../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -65,7 +65,7 @@
     <link rel="search" title="Search" href="../../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1021,8 +1021,17 @@
 <span class="sd">            ...     print(f&quot;Found colony {desired_label} at index {idx}&quot;)</span>
 <span class="sd">            ... else:</span>
 <span class="sd">            ...     print(f&quot;Colony {desired_label} not found&quot;)</span>
+
+<span class="sd">        .. versionchanged:: 0.21.0</span>
+<span class="sd">           Works for every label. It used to compare the labels list to the</span>
+<span class="sd">           integer as a whole, which is never equal, so every call raised</span>
+<span class="sd">           ValueError (and so did :meth:`loc`).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">==</span> <span class="n">object_label</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
+        <span class="c1"># labels is a list: compare it element-wise, not as a whole.</span>
+        <span class="n">matches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="p">)</span> <span class="o">==</span> <span class="n">object_label</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matches</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No object with label </span><span class="si">{</span><span class="n">object_label</span><span class="si">}</span><span class="s2"> in the object map.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">matches</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
 
 
     <span class="nd">@property</span>
@@ -1122,7 +1131,11 @@
 <span class="sd">            Image: A cropped Image containing the bounding box region of the specified colony.</span>
 <span class="sd">                Unlike __getitem__, this crop preserves all label values in the objmap without</span>
 <span class="sd">                zeroing non-matching pixels. The metadata is inherited from the parent Image,</span>
-<span class="sd">                and ImageType is not changed to &#39;Object&#39;.</span>
+<span class="sd">                and ImageType is not changed to &#39;Object&#39;: it is &#39;Crop&#39;, as for any slice.</span>
+
+<span class="sd">        .. versionchanged:: 0.21.0</span>
+<span class="sd">           On a GridImage the crop is typed &#39;Crop&#39; and keeps the plate&#39;s</span>
+<span class="sd">           metadata; earlier versions typed it &#39;Image&#39; and gave it none.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            IndexError: If index is negative or &gt;= num_objects.</span>
@@ -1180,10 +1193,16 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Image: A cropped Image containing the bounding box region of the colony with the</span>
 <span class="sd">                specified label. The crop preserves all label values in the objmap without</span>
-<span class="sd">                zeroing non-matching pixels.</span>
+<span class="sd">                zeroing non-matching pixels. It keeps the parent&#39;s metadata and is typed</span>
+<span class="sd">                &#39;Crop&#39;, as for any slice.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            IndexError: If label_number does not exist in the current labels list.</span>
+
+<span class="sd">        .. versionchanged:: 0.21.0</span>
+<span class="sd">           Works: every call used to raise ValueError (see</span>
+<span class="sd">           :meth:`get_label_idx`). On a GridImage the crop is typed &#39;Crop&#39; and</span>
+<span class="sd">           keeps the plate&#39;s metadata.</span>
 
 <span class="sd">        Examples:</span>
 <span class="sd">            Access colony by its label:</span>

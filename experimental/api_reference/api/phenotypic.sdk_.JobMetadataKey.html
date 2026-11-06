@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.sdk_.EnvVar" href="phenotypic.sdk_.EnvVar.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -1365,6 +1365,9 @@ should fail fast at every site.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.sdk_.JobMetadataKey.START_TIME" title="phenotypic.sdk_.JobMetadataKey.START_TIME"><code class="xref py py-obj docutils literal notranslate"><span class="pre">START_TIME</span></code></a></p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.sdk_.JobMetadataKey.STUDY_YAML" title="phenotypic.sdk_.JobMetadataKey.STUDY_YAML"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STUDY_YAML</span></code></a></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">--study</span></code> file's text, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1485,6 +1488,16 @@ three names key <code class="docutils literal notranslate"><span class="pre">sta
 <span class="sig-name descname"><span class="pre">INITIATED_PID</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Final" title="(in Python v3.15)"><span class="pre">Final</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'initiated_pid'</span></em><a class="headerlink" href="#phenotypic.sdk_.JobMetadataKey.INITIATED_PID" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.JobMetadataKey.STUDY_YAML">
+<span class="sig-name descname"><span class="pre">STUDY_YAML</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Final" title="(in Python v3.15)"><span class="pre">Final</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'study_yaml'</span></em><a class="headerlink" href="#phenotypic.sdk_.JobMetadataKey.STUDY_YAML" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">--study</span></code> file’s text, or <code class="docutils literal notranslate"><span class="pre">None</span></code>. The SLURM finalizer parses it
+with <code class="docutils literal notranslate"><span class="pre">_cli_utils.parse_study_yaml</span></code> – the parse a local run uses – so
+<code class="docutils literal notranslate"><span class="pre">rembi.yaml</span></code> carries the study on SLURM too (0.21.0; it was silently
+dropped before). The text, not a parsed dict, because YAML types such as
+dates do not survive a JSON round trip.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1534,6 +1547,7 @@ three names key <code class="docutils literal notranslate"><span class="pre">sta
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.JobMetadataKey.FIGURES_RUN_DATE"><code class="docutils literal notranslate"><span class="pre">JobMetadataKey.FIGURES_RUN_DATE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.JobMetadataKey.INITIATED_AT_UTC"><code class="docutils literal notranslate"><span class="pre">JobMetadataKey.INITIATED_AT_UTC</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.JobMetadataKey.INITIATED_PID"><code class="docutils literal notranslate"><span class="pre">JobMetadataKey.INITIATED_PID</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.JobMetadataKey.STUDY_YAML"><code class="docutils literal notranslate"><span class="pre">JobMetadataKey.STUDY_YAML</span></code></a></li>
 </ul>
 </li>
 </ul>

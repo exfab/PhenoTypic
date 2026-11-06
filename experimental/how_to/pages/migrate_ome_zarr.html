@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=65dafe09"></script>
+    <script src="../../_static/documentation_options.js?v=88e4c0c0"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="Serialize and Share Pipelines" href="serialize_pipelines.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.20.2" />
+  <meta name="docsearch:version" content="0.21.0" />
   </head>
   
   
@@ -719,15 +719,16 @@ upgrade a schema-v1 provenance journal.</p>
 <span class="w">  </span>--mode<span class="w"> </span>migrate<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>/path/to/target<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--slurm<span class="w"> </span><span class="nv">slurm_partition</span><span class="o">=</span>short<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--slurm<span class="w"> </span><span class="nv">time</span><span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--wait
+<span class="w">  </span>--slurm<span class="w"> </span><span class="nv">time</span><span class="o">=</span><span class="m">30</span>
 </pre></div>
 </div>
 <p>Do not combine an explicit <code class="docutils literal notranslate"><span class="pre">--njobs</span></code> with <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>; the scheduler owns array
-parallelism. Without <code class="docutils literal notranslate"><span class="pre">--wait</span></code>, the command returns after durable submission and
-prints the generation, control root, manifest, and finalizer script. With
-<code class="docutils literal notranslate"><span class="pre">--wait</span></code>, it reads the matching typed terminal report after the finalizer closes
-the lifecycle.</p>
+parallelism. The command returns after durable submission and prints the
+generation, control root, manifest, finalizer script, and terminal-status path.
+The dependent finalizer writes that generation’s success or failure verdict
+to the printed status file before closing the lifecycle. Inspect the status
+file and the scheduler logs to determine the outcome; exit code zero from the
+submitting command certifies submission only. Version 0.21.0 removed <code class="docutils literal notranslate"><span class="pre">--wait</span></code>.</p>
 <p>Full runs retain the metadata → image → seal → optional reclaim → finalizer
 chain. Direct stores and process trees use an indexed store array → provenance
 seal → finalizer chain. Both go through the shared drip-feed dispatcher and
