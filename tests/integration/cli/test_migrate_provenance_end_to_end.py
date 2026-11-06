@@ -236,6 +236,29 @@ def _provenance_snapshot(tree: Path) -> dict[str, object]:
     }
 
 
+
+_TERMINAL_STATUS_PREFIX = "Terminal status (written by the finalizer): "
+
+
+def _terminal_status(output: str) -> dict:
+    """Read the SLURM attempt's verdict from the file its submission names.
+
+    0.21.0 removed ``--wait``, so the CLI no longer prints the verdict; it
+    prints where the finalizer writes it. The generated workers here run
+    synchronously inside the patched submission, so the file exists when the
+    command returns.
+    """
+    import json
+
+    (line,) = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(_TERMINAL_STATUS_PREFIX)
+    ]
+    path = Path(line[len(_TERMINAL_STATUS_PREFIX):])
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _migrate_both_ways(
     source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[dict[str, object], dict[str, object]]:
@@ -266,10 +289,10 @@ def _migrate_both_ways(
             str(slurm_tree),
             "--slurm",
             "slurm_partition=short",
-            "--wait",
         ],
     )
     assert slurm.exit_code == 0, slurm.output
+    assert _terminal_status(slurm.output)["status"] == "succeeded"
 
     return _provenance_snapshot(local_tree), _provenance_snapshot(slurm_tree)
 

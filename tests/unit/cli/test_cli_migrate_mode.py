@@ -460,10 +460,10 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
     assert science.read_bytes() == b"immutable science"
 
 
-def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
+def test_direct_slurm_dry_run_submission_writes_no_science(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Waited dry validation observes terminal authority without science writes."""
+    """A SLURM dry validation is submitted without a science write."""
     from phenotypic._cli import _cli_migrate as migrate
     from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 
@@ -495,7 +495,6 @@ def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
         output,
         slurm_args={"slurm_partition": "short"},
         dry_run=True,
-        wait=True,
     )
 
     assert result == 0
@@ -748,10 +747,15 @@ def test_slurm_recovery_refuses_unknown_scheduler_state(tmp_path: Path) -> None:
     assert state is not None and state["active"] is True
 
 
-def test_wait_terminalizes_quiescent_slurm_attempt_missing_finalizer(
+def test_recovery_terminalizes_quiescent_slurm_attempt_missing_finalizer(
     tmp_path: Path,
 ) -> None:
-    """Terminal scheduler states cannot leave public wait polling forever."""
+    """A quiescent attempt with no finalizer verdict is terminalized as failed.
+
+    Exercised through ``--wait``'s poller until 0.21.0 removed it; the
+    terminalization itself is ``reconcile_interrupted_migration_attempt``'s,
+    which the next ``--mode migrate`` invocation runs.
+    """
     from phenotypic._cli import _cli_migrate as migrate
     from phenotypic._cli._cli_slurm_lifecycle import (
         append_lifecycle_entry,
@@ -777,14 +781,17 @@ def test_wait_terminalizes_quiescent_slurm_attempt_missing_finalizer(
         job_id="101",
     )
 
-    terminal = migrate._wait_for_migration_terminal_status(
+    assert migrate.reconcile_interrupted_migration_attempt(
         output,
         control_root=control_root,
-        generation="quiescent",
-        poll_interval=0.0,
         scheduler_state_query=lambda _ids: {"101": "COMPLETED"},
     )
+    terminal = migrate._read_migration_terminal_status(
+        migrate.migration_terminal_status_path(control_root, "quiescent"),
+        generation="quiescent",
+    )
 
+    assert terminal is not None
     assert terminal["status"] == "failed"
     assert "SLURM attempt became quiescent" in terminal["reason"]
 
@@ -873,98 +880,6 @@ def test_slurm_migration_dry_run_preserves_every_output_byte(
     )
 
 
-def test_waited_slurm_failure_is_reported_as_a_click_error_after_closure(
-    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A durable failed terminal status must not be hidden as an unexpected error."""
-    from phenotypic._cli import _cli_migrate as migrate
-    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
-
-    plan = _migration_plan(tmp_path, "attempt-1")
-    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
-    monkeypatch.setattr(
-        migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan
-    )
-
-    def _submit(*_args, **_kwargs):
-        report = MigrationReport(
-            failed=((Path("/source.h5"), "conversion failed"),)
-        )
-        migrate.publish_migration_terminal_status(
-            legacy_run,
-            generation="attempt-1",
-            succeeded=False,
-            failure_category="image",
-            reason="conversion failed",
-            report=report,
-            control_root=plan.control_root,
-        )
-        assert migrate.mark_generation_failed(
-            legacy_run, "attempt-1", "conversion failed"
-        ) is True
-        return SimpleNamespace(job_ids=["101"])
-
-    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", _submit)
-
-    result = CliRunner().invoke(
-        phenotypic_cli,
-        [
-            "--mode",
-            "migrate",
-            "--output",
-            str(legacy_run),
-            "--slurm",
-            "slurm_partition=short",
-            "--wait",
-        ],
-    )
-
-    assert result.exit_code == 1
-    assert "Error: SLURM migration failed after lifecycle closure" in result.output
-    assert "Unexpected error" not in result.output
-
-
-def test_wait_rejects_missing_lifecycle_authority_without_polling(
-    tmp_path: Path,
-) -> None:
-    """A vanished attempt fence is terminal evidence failure, not an endless wait."""
-    import click
-
-    from phenotypic._cli._cli_migrate import _wait_for_migration_terminal_status
-
-    with pytest.raises(click.ClickException, match="lifecycle authority is missing"):
-        _wait_for_migration_terminal_status(
-            tmp_path / "output",
-            control_root=tmp_path / "control",
-            generation="attempt-1",
-            poll_interval=0.0,
-            timeout=0.0,
-        )
-
-
-def test_wait_rereads_terminal_status_after_observing_lifecycle_closure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A finalizer publish between the two probes cannot become false absence."""
-    from phenotypic._cli import _cli_migrate as migrate
-
-    terminal = _terminal_status_payload(generation="attempt-1")
-    reads = iter((None, terminal))
-    monkeypatch.setattr(migrate, "_read_migration_terminal_status", lambda *_a, **_k: next(reads))
-    monkeypatch.setattr(
-        migrate,
-        "load_slurm_lifecycle",
-        lambda *_a: {"generation": "attempt-1", "active": False},
-    )
-
-    assert migrate._wait_for_migration_terminal_status(
-        tmp_path / "output",
-        control_root=tmp_path / "control",
-        generation="attempt-1",
-        poll_interval=0.0,
-    ) == terminal
-
-
 @pytest.mark.parametrize(
     "field,value",
     [
@@ -1032,53 +947,7 @@ def test_succeeded_terminal_rejects_any_failure_rows(tmp_path: Path) -> None:
     assert _read_migration_terminal_status(path, generation="attempt-1") is None
 
 
-def test_waited_success_prints_typed_migration_summary(
-    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A real waiter reports final pass counts only after lifecycle closure."""
-    from phenotypic._cli import _cli_migrate as migrate
-
-    plan = _migration_plan(tmp_path, "attempt-1")
-    terminal = _terminal_status_payload(generation="attempt-1")
-    terminal_report = terminal["report"]
-    assert isinstance(terminal_report, dict)
-    terminal_report["failed"] = []
-    monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
-    monkeypatch.setattr(migrate, "generate_migration_slurm_plan", lambda *_a, **_k: plan)
-
-    def _submit(*_args, **_kwargs):
-        migrate.publish_migration_terminal_status(
-            legacy_run,
-            generation="attempt-1",
-            succeeded=True,
-            failure_category=None,
-            reason=None,
-            report=_migration_report_from_payload(terminal_report),
-            control_root=plan.control_root,
-        )
-        migrate.deactivate_generation(legacy_run, "attempt-1")
-        return SimpleNamespace(job_ids=["101"])
-
-    monkeypatch.setattr(migrate, "submit_migration_slurm_plan", _submit)
-    result = CliRunner().invoke(
-        phenotypic_cli,
-        [
-            "--mode",
-            "migrate",
-            "--output",
-            str(legacy_run),
-            "--slurm",
-            "slurm_partition=short",
-            "--wait",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert "Pass 1" in result.output
-    assert "converted 2, skipped 1" in result.output
-
-
-def test_no_wait_reports_job_ids_without_scientific_publication(
+def test_submission_reports_job_ids_without_scientific_publication(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Submission output names durable IDs while scientific files stay untouched."""
@@ -1108,6 +977,9 @@ def test_no_wait_reports_job_ids_without_scientific_publication(
 
     assert result.exit_code == 0, result.output
     assert "Initial job IDs: 101, 102" in result.output
+    # Where the verdict will be: 0.21.0 removed --wait, so nothing awaits it.
+    terminal = migrate.migration_terminal_status_path(plan.control_root, "attempt-1")
+    assert f"Terminal status (written by the finalizer): {terminal}" in result.output
     assert _scientific_tree_snapshot(legacy_run) == before
 
 
@@ -1118,7 +990,7 @@ def test_public_submission_rejects_missing_or_invalid_job_ids(
     monkeypatch: pytest.MonkeyPatch,
     job_ids: object,
 ) -> None:
-    """No-wait success is permitted only after durable numeric scheduler IDs."""
+    """Submission success is permitted only after durable numeric scheduler IDs."""
     from phenotypic._cli import _cli_migrate as migrate
 
     plan = _migration_plan(tmp_path, "attempt-1")
@@ -1204,61 +1076,10 @@ def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
     assert _tree_snapshot(legacy_run) == before
 
 
-def test_wait_rejects_closed_lifecycle_without_terminal_status(
-    tmp_path: Path,
-) -> None:
-    """Closure without terminal authority is reported immediately, not polled."""
-    import click
-
-    from phenotypic._cli._cli_migrate import _wait_for_migration_terminal_status
-    from phenotypic._cli._cli_slurm_lifecycle import (
-        deactivate_generation,
-        initialize_slurm_lifecycle,
-    )
-
-    initialize_slurm_lifecycle(tmp_path, generation="attempt-1", mode="migrate")
-    assert deactivate_generation(tmp_path, "attempt-1") is True
-
-    with pytest.raises(click.ClickException, match="closed without a valid terminal"):
-        _wait_for_migration_terminal_status(
-            tmp_path,
-            control_root=tmp_path / "control",
-            generation="attempt-1",
-            poll_interval=0.0,
-        )
-
-
-@pytest.mark.parametrize("dry_run", [False, True])
-def test_local_wait_combinations_reject_before_any_artifact_write(
-    legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dry_run: bool
-) -> None:
-    """Local wait has no terminal scheduler authority and is invalid before work."""
-    from phenotypic._cli import _cli_migrate as migrate
-
-    cache = tmp_path / "cache"
-    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
-    monkeypatch.setattr(
-        migrate,
-        "generate_migration_slurm_plan",
-        lambda *_a, **_k: pytest.fail("local wait planned scheduler work"),
-    )
-    before = _tree_snapshot(legacy_run)
-    args = ["--mode", "migrate", "--output", str(legacy_run), "--wait"]
-    if dry_run:
-        args.append("--dry-run")
-
-    result = CliRunner().invoke(phenotypic_cli, args)
-
-    assert result.exit_code != 0
-    assert "--wait requires --slurm" in result.output
-    assert _tree_snapshot(legacy_run) == before
-    assert not cache.exists()
-
-
-def test_slurm_wait_dry_run_observes_typed_terminal_outside_science(
+def test_slurm_dry_run_keeps_its_terminal_outside_science(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A waited dry validation closes and reports from its external root."""
+    """A dry validation's control files, terminal included, stay external."""
     from phenotypic._cli import _cli_migrate as migrate
     from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 
@@ -1293,20 +1114,22 @@ def test_slurm_wait_dry_run_observes_typed_terminal_outside_science(
             str(legacy_run),
             "--slurm",
             "slurm_partition=short",
-            "--wait",
             "--dry-run",
         ],
     )
 
     assert result.exit_code == 0, result.output
-    assert "SLURM migration complete" in result.output
+    assert "SLURM migration dry-run submitted" in result.output
+    assert migrate.migration_terminal_status_path(
+        plan.control_root, "attempt-1"
+    ).is_file()
     assert _tree_snapshot(legacy_run) == before_science
 
 
-def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
+def test_public_rerun_after_terminal_failure_uses_new_attempt(
     legacy_run, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """After a real waited finalizer failure, a new public call owns a new generation."""
+    """After a finalizer failure, a new public call owns a new generation."""
     from phenotypic._cli import _cli_migrate as migrate
     from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 
@@ -1352,13 +1175,13 @@ def test_public_rerun_after_waited_terminal_failure_uses_new_attempt(
         str(legacy_run),
         "--slurm",
         "slurm_partition=short",
-        "--wait",
     ]
 
     first = CliRunner().invoke(phenotypic_cli, args)
     second = CliRunner().invoke(phenotypic_cli, args)
 
-    assert first.exit_code == 1
+    # Submission succeeds either way; the verdict is in the terminal file.
+    assert first.exit_code == 0, first.output
     assert second.exit_code == 0, second.output
     assert planned == ["attempt-1", "attempt-2"]
 
@@ -2254,9 +2077,8 @@ def test_revert_is_rejected_outside_migrate_mode(legacy_run: Path) -> None:
         (["--delete-sources"], "a revert deletes no sources"),
         (["--slurm", "slurm_partition=short"], "a revert distributes nothing"),
         (["--njobs", "4"], "a revert parallelizes nothing"),
-        (["--wait"], "a revert is synchronous"),
     ],
-    ids=["dry-run", "delete-sources", "slurm", "njobs", "wait"],
+    ids=["dry-run", "delete-sources", "slurm", "njobs"],
 )
 def test_revert_refuses_the_options_that_describe_a_conversion(
     legacy_run: Path, flag: list[str], because: str
@@ -2264,10 +2086,8 @@ def test_revert_refuses_the_options_that_describe_a_conversion(
     """Every option here describes *how to convert*, and a revert converts nothing.
 
     Refused rather than ignored: accepting one would let a user believe they
-    had asked for something the command never does. `--wait` is the one worth
-    naming -- the revert arm returns before the guard that normally rejects
-    `--wait` without `--slurm`, so without its own refusal it would be
-    accepted and silently dropped.
+    had asked for something the command never does. (`--wait` was the one
+    worth naming here until 0.21.0 removed it; it is now an unknown option.)
 
     **Fires when** any of them becomes a no-op instead of a usage error.
     """

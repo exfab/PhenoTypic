@@ -59,7 +59,6 @@ def test_gui_slurm_shaped_run_never_publishes_local_completion(
                 execution_mode="slurm",
                 start_time=now,
                 end_time=now,
-                remote_managed=False,
             )
 
     def _injected_strategy(config, _output_manager):

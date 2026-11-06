@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import shlex
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Sequence, TypeVar
@@ -14,7 +13,6 @@ from uuid import uuid4
 from phenotypic.sdk_ import (
     JobMetadataKey,
     atomic_write_json,
-    event_log_path,
     job_metadata_path,
     logs_dir,
     progress_dir,
@@ -31,12 +29,14 @@ from phenotypic.sdk_.slurm import (
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.typing_ import ImageTypeName
 
-from ._cli_execution_strategies import ExecutionStrategy
+from ._cli_execution_strategies import (
+    ExecutionStrategy,
+    echo_slurm_monitor_commands,
+)
 from ._cli_failure_tracker import work_identity_for_image
 from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
-    completed_inventory_images,
     deactivate_orchestration,
     initialize_orchestration,
     load_orchestration_state,
@@ -44,7 +44,6 @@ from ._cli_staged_orchestration import (
     orchestration_lock_path,
     save_orchestration_state,
     snapshot_inventory_parquets,
-    staged_completion_matches,
     submit_with_intent,
     write_staged_manifest,
 )
@@ -53,7 +52,6 @@ from ._cli_types import (
     DatasetResults,
     ExecutionConfig,
     ExecutionResults,
-    ImageFailure,
 )
 from ._cli_update_state import PROCESSING_GENERATION_ENV_VAR
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
@@ -735,104 +733,31 @@ class StagedSlurmStrategy(ExecutionStrategy):
             controller_id,
         )
 
-        if not cfg.wait:
-            return self._submitted_results(start)
-        return self._wait_for_finalizer(output_dir, start, epoch)
+        echo_slurm_monitor_commands(output_dir, dashboard=False)
+        return self._submitted_results(datasets, start)
 
-    def _submitted_results(self, start: datetime) -> ExecutionResults:
-        """Return immediately after SLURM accepted the initial jobs."""
-        inventory = self.config.full_dataset_inventory
+    def _submitted_results(
+        self, datasets: List[Dataset], start: datetime
+    ) -> ExecutionResults:
+        """Return immediately after SLURM accepted the initial jobs.
+
+        .. versionchanged:: 0.21.0
+           Always: ``--wait`` was removed, and with it the loop that followed
+           the epoch to its finalizer. The finalizer publishes the run's
+           outputs and completion marker; the CLI prints a submission summary.
+        """
         return ExecutionResults(
             datasets={
-                name: DatasetResults(name, len(images), 0, 0, [])
-                for name, images in inventory.items()
+                dataset.name: DatasetResults(
+                    dataset.name, len(dataset.images), 0, 0, []
+                )
+                for dataset in datasets
             },
-            total_images=sum(len(images) for images in inventory.values()),
+            total_images=sum(len(dataset.images) for dataset in datasets),
             total_completed=0,
             total_failed=0,
             execution_mode="slurm",
             start_time=start,
             end_time=datetime.now(),
             submitted=True,
-            remote_managed=True,
-        )
-
-    def _wait_for_finalizer(
-        self, output_dir: Path, start: datetime, epoch: str
-    ) -> ExecutionResults:
-        """Monitor the active epoch until its remote finalizer is terminal."""
-        detached = False
-        try:
-            while True:
-                state = load_orchestration_state(output_dir)
-                if state is None or state.get("epoch") != epoch:
-                    raise RuntimeError(
-                        "Staged orchestration state was replaced"
-                    )
-                if state.get("phase") in {"complete", "failed", "cancelled"}:
-                    break
-                time.sleep(10)
-        except KeyboardInterrupt:
-            detached = True
-        return self._results_from_events(output_dir, start, epoch, detached)
-
-    def _results_from_events(
-        self, output_dir: Path, start: datetime, epoch: str, detached: bool
-    ) -> ExecutionResults:
-        """Build full-inventory results from terminal Stage-3 events."""
-        from ._cli_update_state import aggregate_state_from_events
-
-        states = aggregate_state_from_events(event_log_path(output_dir))
-        inventory = self.config.full_dataset_inventory
-        dataset_results: dict[str, DatasetResults] = {}
-        for name, images in inventory.items():
-            ds_state = states.get(name)
-            completed = completed_inventory_images(output_dir, name, images)
-            event_failed = set() if ds_state is None else ds_state.failed
-            failed = (set(images) - completed) | event_failed
-            failed -= completed
-            errors = {} if ds_state is None else ds_state.errors
-            failures = [
-                ImageFailure(
-                    dataset=name,
-                    image_filename=image_name,
-                    error_type="StageFailure",
-                    error_message=errors.get(
-                        image_name, "Staged processing failed"
-                    ),
-                    traceback="",
-                    timestamp=datetime.now(),
-                )
-                for image_name in sorted(failed)
-            ]
-            dataset_results[name] = DatasetResults(
-                name=name,
-                total=len(images),
-                completed=len(completed),
-                failed=len(failed),
-                failures=failures,
-            )
-        state = load_orchestration_state(output_dir) or {}
-        succeeded = (
-            state.get("epoch") == epoch
-            and state.get("phase") == "complete"
-            and staged_completion_matches(output_dir, epoch)
-        )
-        return ExecutionResults(
-            datasets=dataset_results,
-            total_images=sum(
-                result.total for result in dataset_results.values()
-            ),
-            total_completed=sum(
-                result.completed for result in dataset_results.values()
-            ),
-            total_failed=sum(
-                result.failed for result in dataset_results.values()
-            ),
-            execution_mode="slurm",
-            start_time=start,
-            end_time=datetime.now(),
-            detached=detached,
-            remote_finalized=succeeded,
-            remote_managed=True,
         )

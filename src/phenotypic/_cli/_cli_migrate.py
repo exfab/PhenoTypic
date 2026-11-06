@@ -36,7 +36,6 @@ from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 import socket
-import time
 from typing import Any, Iterator
 
 import click
@@ -2107,14 +2106,11 @@ def echo_migration_summary(
 def _validate_migration_slurm_selection(
     *,
     slurm_args: Mapping[str, Any] | None,
-    wait: bool,
     dry_run: bool,
     njobs_was_explicit: bool,
 ) -> None:
     """Reject incompatible dispatch options before writing a control artifact."""
     if slurm_args is None:
-        if wait:
-            raise click.UsageError("--wait requires --slurm with --mode migrate.")
         return
     if njobs_was_explicit:
         raise click.UsageError(
@@ -2130,7 +2126,6 @@ def _validate_migration_revert_selection(
     delete_sources: bool,
     slurm_args: Mapping[str, Any] | None,
     njobs_was_explicit: bool,
-    wait: bool,
 ) -> None:
     """Reject options that cannot mean anything alongside ``--revert``.
 
@@ -2164,15 +2159,6 @@ def _validate_migration_revert_selection(
         raise click.UsageError(
             "--revert cannot be combined with --njobs; a revert is one local "
             "rename and has no work to parallelize."
-        )
-    # Named explicitly, because the revert arm returns before
-    # `_validate_migration_slurm_selection` -- the guard that otherwise
-    # rejects `--wait` without `--slurm`. Without this the flag would be
-    # accepted and ignored.
-    if wait:
-        raise click.UsageError(
-            "--revert cannot be combined with --wait; a revert is synchronous "
-            "and there is no scheduler attempt to wait for."
         )
 
 
@@ -2356,66 +2342,6 @@ def _valid_terminal_timestamp(value: object) -> bool:
     return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
-def _wait_for_migration_terminal_status(
-    output_dir: Path,
-    *,
-    control_root: Path,
-    generation: str,
-    poll_interval: float = 10.0,
-    timeout: float | None = None,
-    scheduler_state_query: Callable[[Sequence[str]], Mapping[str, str]] | None = None,
-) -> dict[str, Any]:
-    """Wait for a closed lifecycle and its matching typed terminal authority."""
-    status_path = migration_terminal_status_path(control_root, generation)
-    deadline = time.monotonic() + timeout if timeout is not None else None
-    while True:
-        status = _read_migration_terminal_status(
-            status_path, generation=generation
-        )
-        lifecycle = load_slurm_lifecycle(output_dir)
-        if lifecycle is None:
-            raise click.ClickException(
-                "SLURM migration lifecycle authority is missing: "
-                f"{output_dir}"
-            )
-        if lifecycle.get("generation") != generation:
-            raise click.ClickException(
-                "SLURM migration attempt was superseded before terminal "
-                f"authority was observed: {generation}"
-            )
-        if lifecycle.get("active") is False:
-            # The finalizer publishes terminal authority before closing the
-            # lifecycle. Re-read it *after* observing closure so a publication
-            # between the first probe and this lifecycle read cannot be
-            # mistaken for a missing status.
-            status = _read_migration_terminal_status(
-                status_path, generation=generation
-            )
-            if status is not None:
-                return status
-            raise click.ClickException(
-                "SLURM migration lifecycle closed without a valid terminal "
-                f"status: {status_path}"
-            )
-        try:
-            recovered = reconcile_interrupted_migration_attempt(
-                output_dir,
-                control_root=control_root,
-                scheduler_state_query=scheduler_state_query,
-            )
-        except (RuntimeError, SchedulerQueryUnavailable, ValueError) as exc:
-            raise click.ClickException(
-                f"Could not reconcile active SLURM migration: {exc}"
-            ) from exc
-        if recovered:
-            continue
-        if deadline is not None and time.monotonic() >= deadline:
-            raise click.ClickException(
-                f"Timed out waiting for SLURM migration terminal status: {status_path}"
-            )
-        time.sleep(poll_interval)
-
-
 def _echo_migration_slurm_submission(
     plan: MigrationSlurmPlan, *, job_ids: Sequence[str] | None, dry_run: bool
 ) -> None:
@@ -2432,52 +2358,12 @@ def _echo_migration_slurm_submission(
     click.echo(f"  Control root: {plan.control_root}")
     click.echo(f"  Manifest: {plan.manifest_path}")
     click.echo(f"  Finalizer script: {plan.finalizer_script}")
-
-
-def _echo_migration_terminal_summary(
-    terminal: Mapping[str, Any], *, terminal_path: Path
-) -> None:
-    """Print the validated terminal counts and failure details for a waiter."""
-    report = terminal["report"]
-    assert isinstance(report, Mapping)
-    click.echo("SLURM migration complete")
-    click.echo(f"  Terminal status: {terminal_path}")
+    # 0.21.0 removed --wait, so this file is where the attempt's verdict is
+    # read: the finalizer writes it before closing the lifecycle.
     click.echo(
-        "  Pass 1 (metadata headers, non-image targets): "
-        f"migrated {report['headers_migrated']} target(s)"
+        "  Terminal status (written by the finalizer): "
+        f"{migration_terminal_status_path(plan.control_root, plan.generation)}"
     )
-    click.echo(
-        "  Pass 2 (per-image .h5 -> .ome.zarr): "
-        f"converted {report['converted']}, skipped {report['skipped']}"
-    )
-    click.echo(
-        "  Pass 3 (external Parquet -> embedded table): "
-        f"migrated {report['tables_migrated']}, skipped {report['tables_skipped']}"
-    )
-    click.echo(
-        "  Pass 4 (store -> overlay PNG): "
-        f"rendered {report['overlays_created']}, preserved {report['overlays_skipped']}"
-    )
-    click.echo(
-        "  Pass 5 (provenance schema v1 -> v2): "
-        f"migrated {report['provenance_upgraded']} store root(s)"
-    )
-    for field, label in (
-        ("header_failures", "Pass 1"),
-        ("failed", "Pass 2"),
-        ("table_failures", "Pass 3"),
-        ("overlay_failures", "Pass 4"),
-        ("provenance_failures", "Pass 5"),
-        ("publication_failures", "Publication"),
-    ):
-        failures = report[field]
-        assert isinstance(failures, list)
-        for failure in failures:
-            assert isinstance(failure, Mapping)
-            click.echo(
-                f"  {label} FAILED {failure['path']}: {failure['reason']}",
-                err=True,
-            )
 
 
 def handle_migrate_mode(
@@ -2489,15 +2375,17 @@ def handle_migrate_mode(
     dry_run: bool = False,
     delete_sources: bool = False,
     slurm_args: Mapping[str, Any] | None = None,
-    wait: bool = False,
     revert: bool = False,
 ) -> int:
     """Run local or SLURM ``--mode migrate`` and return its exit semantics.
 
-    SLURM scheduling deliberately creates a fresh generation for each call.
-    With ``wait=False`` it returns after durable submission and prints only
-    durable control references. With ``wait=True`` it waits for the finalizer
-    to close the lifecycle and validates its typed terminal authority.
+    SLURM scheduling deliberately creates a fresh generation for each call,
+    returns after durable submission, and prints the durable control
+    references, including the terminal status file its finalizer writes.
+
+    .. versionchanged:: 0.21.0
+       ``wait`` was removed with ``--wait``. A SLURM attempt's verdict is read
+       from its terminal status file rather than awaited by the CLI.
 
     Args:
         output_dir: Run output root, converted in place.
@@ -2507,13 +2395,12 @@ def handle_migrate_mode(
         dry_run: Validate locally or through SLURM without changing science.
         delete_sources: Delete each provably-faithful source after conversion.
         slurm_args: Parsed SLURM arguments, or ``None`` for the local path.
-        wait: Wait for a SLURM attempt's finalizer authority.
         revert: Undo a previous migration by renaming the retained legacy
             trees back, instead of converting anything.
 
     Returns:
-        ``0`` on a clean local run, submitted dry run, submitted attempt, or
-        waited successful terminal authority; ``1`` on local migration failure.
+        ``0`` on a clean local run, submitted dry run, or submitted attempt;
+        ``1`` on local migration failure.
     """
     if revert:
         _validate_migration_revert_selection(
@@ -2521,12 +2408,10 @@ def handle_migrate_mode(
             delete_sources=delete_sources,
             slurm_args=slurm_args,
             njobs_was_explicit=njobs_was_explicit,
-            wait=wait,
         )
         return _run_migration_revert(output_dir)
     _validate_migration_slurm_selection(
         slurm_args=slurm_args,
-        wait=wait,
         dry_run=dry_run,
         njobs_was_explicit=njobs_was_explicit,
     )
@@ -2681,23 +2566,6 @@ def handle_migrate_mode(
             "submission owner is active"
         ) from exc
     _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=dry_run)
-    if not wait:
-        return 0
-
-    terminal = _wait_for_migration_terminal_status(
-        lifecycle_root,
-        control_root=plan.control_root,
-        generation=generation,
-    )
-    if terminal["status"] == "failed":
-        raise click.ClickException(
-            "SLURM migration failed after lifecycle closure "
-            f"({terminal['failure_category']}): {terminal['reason']}"
-        )
-    _echo_migration_terminal_summary(
-        terminal,
-        terminal_path=migration_terminal_status_path(plan.control_root, generation),
-    )
     return 0
 
 

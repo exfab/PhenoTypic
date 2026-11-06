@@ -106,8 +106,8 @@ def run_recompile_task(
         attempt_id: Attempt namespace supplied independently by the scheduler
             script.
         terminal_status_path: Attempt-scoped finalizer status supplied by the
-            scheduler script so a waiter can observe manifest bootstrap
-            failures before finalizer task metadata is available.
+            scheduler script, so a manifest bootstrap failure is recorded
+            before finalizer task metadata is available.
     """
     output_dir = Path(output_dir).resolve()
     _assert_worker_generation(output_dir, slurm_generation, attempt_id)
@@ -255,11 +255,10 @@ def _assert_worker_generation(
     one variable into both options.
 
     **``phenotypicCLI.py`` is not a supplier**, and an earlier version of this
-    docstring said it was. The line it cited calls
-    ``_wait_for_recompile_finalizer_status(..., slurm_generation=attempt_id)``,
-    which takes no ``attempt_id`` parameter and never reaches this function --
-    whose only caller is ``run_recompile_task``, invoked only by the generated
-    sbatch script. Cited by symbol here, not by line: the bad citation had
+    docstring said it was. The line it cited called the ``--wait`` poller
+    (removed in 0.21.0), which took no ``attempt_id`` parameter and never
+    reached this function -- whose only caller is ``run_recompile_task``,
+    invoked only by the generated sbatch script. Cited by symbol here, not by line: the bad citation had
     also drifted by nine lines, so a reader following it landed on neither the
     right function nor the right place (gate IMPL-F7).
 

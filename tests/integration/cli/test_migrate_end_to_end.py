@@ -243,6 +243,46 @@ def _summary_counters(output: str) -> tuple[str, ...]:
     )
 
 
+_TERMINAL_STATUS_PREFIX = "Terminal status (written by the finalizer): "
+
+
+def _terminal_status(output: str) -> dict:
+    """Read the SLURM attempt's verdict from the file its submission names.
+
+    0.21.0 removed ``--wait``, so the CLI no longer prints the verdict; it
+    prints where the finalizer writes it. The generated workers here run
+    synchronously inside the patched submission, so the file exists when the
+    command returns.
+    """
+    import json
+
+    (line,) = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(_TERMINAL_STATUS_PREFIX)
+    ]
+    path = Path(line[len(_TERMINAL_STATUS_PREFIX):])
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _terminal_counters(output: str) -> tuple[str, ...]:
+    """The same four pass counters, from a SLURM attempt's terminal status."""
+    terminal = _terminal_status(output)
+    assert terminal["status"] == "succeeded", terminal
+    report = terminal["report"]
+    return (
+        "Pass 1 (metadata headers, non-image targets): "
+        f"migrated {report['headers_migrated']} target(s)",
+        "Pass 2 (per-image .h5 -> .ome.zarr): "
+        f"converted {report['converted']}, skipped {report['skipped']}",
+        "Pass 3 (external Parquet -> embedded table): "
+        f"migrated {report['tables_migrated']}, skipped {report['tables_skipped']}",
+        "Pass 4 (store -> overlay PNG): "
+        f"rendered {report['overlays_created']}, "
+        f"preserved {report['overlays_skipped']}",
+    )
+
+
 @WINDOWS_ONLY
 def test_windows_click_fresh_local_migrate_reaches_terminal_success(
     finished_legacy_run: LegacyRun,
@@ -361,7 +401,6 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
             str(slurm_tree),
             "--slurm",
             "slurm_partition=short",
-            "--wait",
         ],
     )
     assert slurm.exit_code == 0, slurm.output
@@ -379,7 +418,7 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
         "Pass 4 (store -> overlay PNG): rendered 0, preserved 2",
     )
     assert _summary_counters(local.output) == expected_first_counters
-    assert _summary_counters(slurm.output) == expected_first_counters
+    assert _terminal_counters(slurm.output) == expected_first_counters
     assert _retained_source_snapshot(local_tree, finished_legacy_run.stems) == local_sources
     assert _retained_source_snapshot(slurm_tree, finished_legacy_run.stems) == slurm_sources
     local_snapshot = _published_migration_snapshot(local_tree, finished_legacy_run.stems)
@@ -407,7 +446,6 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
                 str(slurm_tree),
                 "--slurm",
                 "slurm_partition=short",
-                "--wait",
             ],
         ),
     ):
@@ -415,7 +453,12 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
         sources_before = _retained_source_snapshot(tree, finished_legacy_run.stems)
         rerun = CliRunner().invoke(phenotypic_cli, rerun_args)
         assert rerun.exit_code == 0, rerun.output
-        assert _summary_counters(rerun.output) == expected_noop_counters
+        counters = (
+            _summary_counters(rerun.output)
+            if tree == local_tree
+            else _terminal_counters(rerun.output)
+        )
+        assert counters == expected_noop_counters
         assert _published_migration_snapshot(tree, finished_legacy_run.stems) == before
         assert _retained_source_snapshot(tree, finished_legacy_run.stems) == sources_before
 

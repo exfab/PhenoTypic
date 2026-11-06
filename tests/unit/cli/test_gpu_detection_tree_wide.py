@@ -383,7 +383,7 @@ def test_a_ROOT_meas_slot_gpu_detector_does_not_route_to_the_cpu_strategy(tmp_pa
     config = ExecutionConfig(
         pipeline_json=path, input_path=tmp_path, output_dir=tmp_path,
         image_type="Image", nrows=None, ncols=None, bit_depth=None,
-        n_jobs=1, slurm_args={}, force_local=True, wait=False, ext=".tiff",
+        n_jobs=1, slurm_args={}, force_local=True, ext=".tiff",
         overlay_alpha=0.5, include_dataset_column=False, dry_run=False,
         sample=None, resume=False, retry_failures=False, skip_validation=True,
         save_overlays=False, measure_only=False, process_only_layer=None,

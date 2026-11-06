@@ -303,7 +303,6 @@ def test_staged_submitter_hands_the_flag_to_the_script_generator(
             "staged_resume_phase": None,
             "staged_finalizer_only": False,
             "staged_stage3_markers": True,
-            "wait": False,
             "full_dataset_inventory": {},
             "nrows": None,
             "ncols": None,

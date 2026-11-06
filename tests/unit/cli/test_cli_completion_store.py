@@ -657,7 +657,6 @@ def _legacy_migration_inputs(tmp_path: Path):
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,

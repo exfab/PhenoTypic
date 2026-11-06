@@ -11,13 +11,10 @@ import json
 import logging
 import time
 from pathlib import Path
-from types import SimpleNamespace
-from typing import cast
 
 import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
-from ._cli_preload import preload_custom_operation_modules
 from ._cli_utils import load_job_metadata, logged_step
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
@@ -368,8 +365,6 @@ def _run_finalize(
         logger.warning("Dashboard generation failed", exc_info=True)
 
     if epoch is not None:
-        with logged_step(logger, "finalize: publish README"):
-            _publish_staged_readme(output_dir, job_metadata, epoch)
         from ._cli_completion import (
             _all_accepted_images_succeeded,
             publish_run_completion_evidence,
@@ -501,56 +496,6 @@ def _publish_run_completion_marker(
                 "could not be deactivated"
             )
         return True
-
-
-def _publish_staged_readme(
-    output_dir: Path, job_metadata: dict, epoch: str
-) -> None:
-    """Publish the README as part of the sole remote finalizer.
-
-    .. versionchanged:: 0.21.0
-       No longer writes ``processing_report.html``; the report is generated
-       only on demand, with ``python -m phenotypic.sdk_.generate_report``.
-    """
-    preload_custom_operation_modules()
-
-    from phenotypic import ImagePipeline
-
-    from ._cli_readme_generator import READMEGenerator
-    from ._cli_types import Dataset, ExecutionConfig
-
-    datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
-    datasets = [
-        Dataset(
-            name=name,
-            images=[
-                Path(image)
-                for image in (
-                    raw.get("images", []) if isinstance(raw, dict) else []
-                )
-            ],
-            input_dir=Path("."),
-            output_dir=output_dir,
-        )
-        for name, raw in datasets_raw.items()
-    ]
-    from ._cli_staged_orchestration import assert_active_epoch
-
-    assert_active_epoch(output_dir, epoch)
-
-    pipeline_path = Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
-    pipeline = ImagePipeline.from_json(pipeline_path)
-    config = cast(
-        ExecutionConfig,
-        SimpleNamespace(
-            pipeline_json=pipeline_path,
-            image_type=job_metadata.get(JobMetadataKey.IMAGE_TYPE, "Image"),
-            nrows=job_metadata.get(JobMetadataKey.NROWS),
-            ncols=job_metadata.get(JobMetadataKey.NCOLS),
-        ),
-    )
-    READMEGenerator(config, pipeline).generate(output_dir, datasets)
-    assert_active_epoch(output_dir, epoch)
 
 
 def _wait_for_completion(

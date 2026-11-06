@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import builtins
 import importlib
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from phenotypic._cli import _cli_checkpoint_handler as checkpoint_handler
 from phenotypic._cli import _cli_staged_slurm_worker as staged_worker
 from phenotypic._cli._cli_preload import preload_custom_operation_modules
-from phenotypic.sdk_ import JobMetadataKey
 
 
 def test_preload_ignores_whitespace_and_empty_entries(
@@ -97,65 +93,3 @@ def test_staged_worker_preloads_before_loading_manifest(
 
     assert result == 0
     assert events == ["preload", "manifest", "stage"]
-
-
-def test_staged_finalizer_imports_registration_before_deserialization(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The finalizer registers custom operations before loading its pipeline."""
-    module_name = "_phenotypic_finalizer_preload_probe"
-    module_path = tmp_path / f"{module_name}.py"
-    module_path.write_text(
-        "import builtins\n"
-        "builtins._phenotypic_preload_events.append('import')\n",
-        encoding="utf-8",
-    )
-    events: list[str] = []
-    monkeypatch.setattr(
-        builtins,
-        "_phenotypic_preload_events",
-        events,
-        raising=False,
-    )
-    monkeypatch.syspath_prepend(str(tmp_path))
-    monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", f"  {module_name}  ")
-    sys.modules.pop(module_name, None)
-
-    pipeline_path = tmp_path / "pipeline.json"
-    output_dir = tmp_path / "out"
-    job_metadata = {
-        JobMetadataKey.DATASETS: {},
-        JobMetadataKey.START_TIME: "2026-07-25T00:00:00",
-        JobMetadataKey.PIPELINE_PATH: str(pipeline_path),
-        JobMetadataKey.IMAGE_TYPE: "Image",
-    }
-
-    def deserialize_after_registration(_path: Path) -> object:
-        events.append("deserialize")
-        assert events == ["import", "deserialize"]
-        return object()
-
-    with (
-        patch(
-            "phenotypic._cli._cli_staged_orchestration.assert_active_epoch"
-        ),
-        patch(
-            "phenotypic._cli._cli_readme_generator.READMEGenerator"
-        ) as readme_generator,
-        patch(
-            "phenotypic.ImagePipeline.from_json",
-            side_effect=deserialize_after_registration,
-        ),
-    ):
-        checkpoint_handler._publish_staged_readme(
-            output_dir,
-            job_metadata,
-            "epoch-1",
-        )
-
-    assert events == ["import", "deserialize"]
-    readme_generator.return_value.generate.assert_called_once_with(
-        output_dir,
-        [],
-    )

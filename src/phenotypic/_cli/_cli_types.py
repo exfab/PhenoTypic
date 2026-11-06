@@ -97,7 +97,12 @@ class ProcessingState:
 
 @dataclass
 class ExecutionConfig:
-    """Complete configuration for CLI execution."""
+    """Complete configuration for CLI execution.
+
+    .. versionchanged:: 0.21.0
+       ``wait`` was removed with the ``--wait`` option: every SLURM run
+       returns at submission.
+    """
 
     # Core paths
     pipeline_json: Path
@@ -116,7 +121,6 @@ class ExecutionConfig:
     n_jobs: int
     slurm_args: Dict[str, Any]
     force_local: bool
-    wait: bool  # Wait for SLURM jobs to complete
 
     # Output options
     ext: str  # Extension for overlay PNG / legacy call sites (no longer the forward-run switch)
@@ -262,14 +266,9 @@ class ExecutionResults:
     execution_mode: ExecutionMode
     start_time: datetime
     end_time: datetime
-    # True when SLURM work was accepted but remote finalization is still pending.
+    # True when SLURM work was accepted: every SLURM run returns at submission
+    # (0.21.0 removed --wait), and its dependent finalizer publishes the run.
     submitted: bool = False
-    # True when ``--wait`` was interrupted and monitoring detached.
-    detached: bool = False
-    # True when a dependent SLURM finalizer already published all outputs.
-    remote_finalized: bool = False
-    # True when publication belongs to a dependent remote finalizer.
-    remote_managed: bool = False
 
     @property
     def duration(self) -> float:
