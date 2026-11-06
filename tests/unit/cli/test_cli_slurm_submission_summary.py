@@ -125,7 +125,7 @@ def test_version_is_0_21_0() -> None:
     assert phenotypic.__version__ == "0.21.0"
 
 
-def _slurm_args(pipeline: Path, input_root: Path, output: Path) -> list[str]:
+def _run_args(pipeline: Path, input_root: Path, output: Path) -> list[str]:
     return [
         "--pipeline",
         str(pipeline),
@@ -133,9 +133,15 @@ def _slurm_args(pipeline: Path, input_root: Path, output: Path) -> list[str]:
         str(input_root),
         "--output",
         str(output),
+        "--skip-validation",
+    ]
+
+
+def _slurm_args(pipeline: Path, input_root: Path, output: Path) -> list[str]:
+    return [
+        *_run_args(pipeline, input_root, output),
         "--slurm",
         "slurm_partition=short",
-        "--skip-validation",
     ]
 
 
@@ -236,21 +242,15 @@ def _local_then_slurm_continuation(
     pipeline: Path, input_root: Path, output: Path, *slurm_flags: str
 ):
     """A finished local run, one new plate, then a ``--slurm`` continuation."""
-    base = [
-        "--pipeline",
-        str(pipeline),
-        "--input",
-        str(input_root),
-        "--output",
-        str(output),
-        "--skip-validation",
-    ]
-    local = CliRunner().invoke(phenotypic_cli, [*base, "--force-local", "--njobs", "1"])
+    local = CliRunner().invoke(
+        phenotypic_cli,
+        [*_run_args(pipeline, input_root, output), "--force-local", "--njobs", "1"],
+    )
     assert local.exit_code == 0, local.output
     day = input_root / "day1"
     shutil.copy(day / "plateA.tif", day / "plateB.tif")
     return CliRunner().invoke(
-        phenotypic_cli, [*base, "--slurm", "slurm_partition=short", *slurm_flags]
+        phenotypic_cli, [*_slurm_args(pipeline, input_root, output), *slurm_flags]
     )
 
 

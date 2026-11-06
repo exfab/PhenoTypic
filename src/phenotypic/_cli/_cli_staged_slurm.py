@@ -32,6 +32,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 from ._cli_execution_strategies import (
     ExecutionStrategy,
     echo_slurm_monitor_commands,
+    finalizer_aggregation_options,
 )
 from ._cli_failure_tracker import work_identity_for_image
 from ._cli_stage2_token import staged_detector_slot
@@ -526,8 +527,7 @@ def _write_staged_job_metadata(
         JobMetadataKey.METADATA_CSV: (
             str(config.metadata_csv) if config.metadata_csv else None
         ),
-        JobMetadataKey.NO_QC: config.no_qc,
-        JobMetadataKey.STUDY_YAML: config.study_yaml,
+        **finalizer_aggregation_options(config),
         JobMetadataKey.INPUT_PATH: source_image_stem(config.input_path),
         JobMetadataKey.ORCHESTRATION_EPOCH: epoch,
         JobMetadataKey.GUI_RECORD_GENERATION: os.environ.get(

@@ -1120,9 +1120,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.PROCESSING_GENERATION: (
                 self.config.processing_generation
             ),
-            # The finalizer's aggregation honours these as a local run's does.
-            JobMetadataKey.NO_QC: self.config.no_qc,
-            JobMetadataKey.STUDY_YAML: self.config.study_yaml,
+            **finalizer_aggregation_options(self.config),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
         }
@@ -1261,11 +1259,6 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             output_dir, dashboard=not self.config.process_only_layer
         )
 
-        # The run was only submitted (0.21.0 removed --wait): `submitted`
-        # tells the main flow to print a submission summary, not a completion
-        # one built from these zero counts. The dependent finalizer publishes
-        # the run's outputs when its jobs finish.
-        total_images = sum(len(d.images) for d in datasets)
         return ExecutionResults(
             datasets={},  # Unknown until jobs complete
             total_images=total_images,
@@ -1294,6 +1287,19 @@ def echo_slurm_monitor_commands(output_dir: Path, *, dashboard: bool) -> None:
         click.echo(f"  Open: {dashboard_html_path(output_dir)}")
     click.echo("  squeue -u $USER --array")
     click.echo(f"  tail -f {event_log_path(output_dir)}")
+
+
+def finalizer_aggregation_options(config: ExecutionConfig) -> Dict[str, Any]:
+    """The ``job_metadata.json`` entries the SLURM finalizer aggregates with.
+
+    Both SLURM writers (ordinary and staged) record them, so the finalizer's
+    one aggregation honours ``--no-qc`` and ``--study`` as a local run's
+    in-process aggregation does.
+    """
+    return {
+        JobMetadataKey.NO_QC: config.no_qc,
+        JobMetadataKey.STUDY_YAML: config.study_yaml,
+    }
 
 
 def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:

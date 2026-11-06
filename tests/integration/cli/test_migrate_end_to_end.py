@@ -47,6 +47,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
 
+from tests.integration.cli.conftest import read_migration_terminal_status
 from tests.unit.sdk_._migration_fixtures import (
     LegacyRun,
     build_completed_run,
@@ -243,31 +244,9 @@ def _summary_counters(output: str) -> tuple[str, ...]:
     )
 
 
-_TERMINAL_STATUS_PREFIX = "Terminal status (written by the finalizer): "
-
-
-def _terminal_status(output: str) -> dict:
-    """Read the SLURM attempt's verdict from the file its submission names.
-
-    0.21.0 removed ``--wait``, so the CLI no longer prints the verdict; it
-    prints where the finalizer writes it. The generated workers here run
-    synchronously inside the patched submission, so the file exists when the
-    command returns.
-    """
-    import json
-
-    (line,) = [
-        line.strip()
-        for line in output.splitlines()
-        if line.strip().startswith(_TERMINAL_STATUS_PREFIX)
-    ]
-    path = Path(line[len(_TERMINAL_STATUS_PREFIX):])
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def _terminal_counters(output: str) -> tuple[str, ...]:
     """The same four pass counters, from a SLURM attempt's terminal status."""
-    terminal = _terminal_status(output)
+    terminal = read_migration_terminal_status(output)
     assert terminal["status"] == "succeeded", terminal
     report = terminal["report"]
     return (

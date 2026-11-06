@@ -258,9 +258,10 @@ def _assert_worker_generation(
     docstring said it was. The line it cited called the ``--wait`` poller
     (removed in 0.21.0), which took no ``attempt_id`` parameter and never
     reached this function -- whose only caller is ``run_recompile_task``,
-    invoked only by the generated sbatch script. Cited by symbol here, not by line: the bad citation had
-    also drifted by nine lines, so a reader following it landed on neither the
-    right function nor the right place (gate IMPL-F7).
+    invoked only by the generated sbatch script. Cited by symbol here, not by
+    line: the bad citation had also drifted by nine lines, so a reader
+    following it landed on neither the right function nor the right place
+    (gate IMPL-F7).
 
     So ``if slurm_generation != attempt_id: raise`` was **unreachable** --
     a value compared with itself, routed through two options. It read as a

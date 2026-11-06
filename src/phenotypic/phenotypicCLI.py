@@ -167,12 +167,7 @@ from phenotypic._cli._cli_failure_tracker import (
     work_id_for_image,
 )
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_types import (
-    Dataset,
-    DatasetState,
-    ExecutionConfig,
-    ExecutionResults,
-)
+from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
 )
@@ -3622,7 +3617,7 @@ def phenotypic_cli(
             if config.process_only_layer:
                 _echo_submitted_summary(
                     "PROCESS-ONLY SUBMITTED",
-                    results,
+                    results.total_images,
                     [f"Layer to export: {config.process_only_layer}"],
                     f"Mirrored layer files will be written under: {output_dir}",
                 )
@@ -3630,7 +3625,7 @@ def phenotypic_cli(
             _write_readme(config, None, output_dir, finalization_datasets)
             _echo_submitted_summary(
                 "PROCESSING SUBMITTED",
-                results,
+                results.total_images,
                 [
                     "The SLURM finalizer publishes the aggregated measurements "
                     "when the jobs finish."
@@ -3645,9 +3640,10 @@ def phenotypic_cli(
             )
             sys.exit(0)
 
+        # Only a local run reaches this point: every SLURM run exited or was
+        # refused above.
         local_staged_publication = (
             uses_staged_gpu_strategy(config)
-            and not config.is_slurm_mode()
             and config.process_only_layer is None
         )
 
@@ -3656,7 +3652,7 @@ def phenotypic_cli(
         # deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
-            if not config.is_slurm_mode() and results.total_failed == 0:
+            if results.total_failed == 0:
                 from phenotypic._cli._cli_gui_lifecycle import (
                     publish_local_gui_completion,
                 )
@@ -3683,11 +3679,10 @@ def phenotypic_cli(
         except Exception as e:
             logger.warning(f"Failed to load pipeline for finalizer: {e}")
 
-        # Parse the optional --study YAML once; its REMBI Study-level fields are
-        # folded into deliverables/rembi.yaml and override constant Metadata_*
-        # study columns. Best-effort: a malformed/unreadable file is logged and
-        # the manifest still emits from the mirror's own columns. A SLURM run's
-        # finalizer makes the same parse from job_metadata.json.
+        # The optional --study file's REMBI Study-level fields are folded into
+        # deliverables/rembi.yaml and override constant Metadata_* study
+        # columns. A SLURM run's finalizer makes the same parse from
+        # job_metadata.json.
         study_config = parse_study_yaml(config.study_yaml, source=study)
 
         # Aggregate every current marker-authorized success. This republishes
@@ -3810,11 +3805,7 @@ def phenotypic_cli(
             )
             sys.exit(1)
 
-        if (
-            not config.is_slurm_mode()
-            and finalization_succeeded
-            and results.total_failed == 0
-        ):
+        if finalization_succeeded and results.total_failed == 0:
             from phenotypic._cli._cli_gui_lifecycle import (
                 publish_local_gui_completion,
             )
@@ -4210,11 +4201,11 @@ def _handle_recompile_slurm(
             f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]"
         )
 
+    from phenotypic.sdk_ import logs_dir
+
     click.echo("\nRecompile jobs submitted. Monitor progress with:")
     click.echo(f"  Open: {dashboard_html_path(output_dir)}")
     click.echo("  squeue -u $USER --array")
-    from phenotypic.sdk_ import logs_dir
-
     click.echo(
         f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
     )
@@ -4622,7 +4613,7 @@ def _write_readme(
 
 def _echo_submitted_summary(
     title: str,
-    results: ExecutionResults,
+    total_images: int,
     details: Sequence[str],
     destination: str,
     *,
@@ -4636,22 +4627,22 @@ def _echo_submitted_summary(
 
     Args:
         title: The header, e.g. ``"PROCESSING SUBMITTED"``.
-        results: The strategy's results; only ``total_images`` is read.
+        total_images: Images the submission covers.
         details: Mode-specific lines printed after the status line.
         destination: The closing line naming where the outputs will appear.
         status: Replaces the default "Submitted: N image(s)" line, for a
             submission with no image work (a staged finalizer-only
             continuation).
     """
+    if status is None:
+        status = (
+            f"Submitted: {total_images} image(s). The jobs have not "
+            "finished, so nothing has been counted yet."
+        )
     click.echo("\n" + "=" * 60)
     click.echo(title)
     click.echo("=" * 60)
-    click.echo(
-        status
-        if status is not None
-        else f"Submitted: {results.total_images} image(s). The jobs have not "
-        "finished, so nothing has been counted yet."
-    )
+    click.echo(status)
     for line in details:
         click.echo(line)
     click.echo('Follow the jobs with the "Monitor progress" commands above.')
