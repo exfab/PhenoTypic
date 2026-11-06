@@ -125,6 +125,7 @@ class CATEGORIES(str, Enum):
 
     STARTING_METRICS = CategoryEntry(
         "StartingMetrics",
-        "Core per-colony magnitudes to examine first: the size measurements, "
-        "integrated grayscale intensity, and the CIELAB medoid colour.",
+        "Per-colony values to examine first: area and robust mean radius, "
+        "circularity and eccentricity, mean grayscale intensity, and the CIELAB "
+        "medoid colour.",
     )

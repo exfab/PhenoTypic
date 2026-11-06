@@ -132,15 +132,15 @@ def test_every_cell_sits_under_its_own_column_header() -> None:
 
 
 def test_uncategorized_table_has_no_categories_column() -> None:
-    from phenotypic.schema import SHAPE
+    from phenotypic.schema import TEXTURE
 
-    assert "Categories" not in SHAPE.rst_table()
+    assert "Categories" not in TEXTURE.rst_table()
 
 
 def test_category_badges_is_empty_for_an_uncategorized_member() -> None:
     from phenotypic.schema import SHAPE, SIZE
 
-    assert next(iter(SHAPE)).category_badges == ""
+    assert SHAPE.SOLIDITY.category_badges == ""
     assert SIZE.AREA.category_badges.count(":bdg-ref-") == 1
 
 
