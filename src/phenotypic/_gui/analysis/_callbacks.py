@@ -60,6 +60,7 @@ from phenotypic._gui.analysis import _ids as ids
 from phenotypic._gui.analysis._layout import (
     build_section_stack,
     missing_model_columns,
+    model_columns_provider,
     pipeline_header_children,
 )
 from phenotypic._gui.analysis._plot_controls import collect_plot_kwargs
@@ -185,10 +186,11 @@ def register_callbacks(app: "dash.Dash") -> None:
         from phenotypic._gui.analysis._layout import _build_model_section
 
         model = recipe.pipeline.get_model()
+        model_columns = model_columns_provider(recipe.pipeline, _columns_provider)
         section = (
             _build_model_section(
                 model,
-                columns_provider=_columns_provider,
+                columns_provider=model_columns,
                 plot_prefs=plot_prefs,
                 mutations_disabled=mutations_disabled,
             )
@@ -202,7 +204,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             _pipeline_summary(recipe),
             mutations_disabled
             or model is None
-            or bool(missing_model_columns(model, _columns_provider)),
+            or bool(missing_model_columns(model, model_columns)),
             type(model).__name__ if model is not None else "",
         )
 
@@ -930,7 +932,10 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
     from phenotypic._gui._schema_cache import MeasurementSchema
 
     schema = MeasurementSchema.from_layout(layout)
-    missing = missing_model_columns(analysis_pipeline.get_model(), schema.columns_for)
+    missing = missing_model_columns(
+        analysis_pipeline.get_model(),
+        model_columns_provider(analysis_pipeline, schema.columns_for),
+    )
     if missing:
         return html.Span(
             "Missing measurement columns: "

@@ -800,7 +800,7 @@ def _build_model_panel(
             html.Div(
                 _build_model_section(
                     model,
-                    columns_provider=columns_provider,
+                    columns_provider=model_columns_provider(pipeline, columns_provider),
                     plot_prefs=plot_prefs,
                     mutations_disabled=mutations_disabled,
                 )
@@ -835,6 +835,42 @@ def _build_model_panel(
         ],
         style={"padding": "0.5rem 1rem"},
     )
+
+
+def model_columns_provider(
+    pipeline: Any,
+    columns_provider: Optional[ColumnsProvider],
+) -> Optional[ColumnsProvider]:
+    """Include declared filter outputs in the model's measurement schema.
+
+    Filters run before the model, so their declared headers are valid model
+    inputs even when absent from the stored measurement table. Reading these
+    declarations never executes a filter or infers a schema from sample data.
+
+    Args:
+        pipeline: Analysis pipeline containing filters followed by a model.
+        columns_provider: Live source-schema lookup, or None when unavailable.
+
+    Returns:
+        Schema lookup including declared filter outputs for measurements.
+    """
+    if columns_provider is None:
+        return None
+    declared: list[str] = []
+    for analyzer in pipeline.get_filters().values():
+        info = getattr(analyzer, "_measurement_infoclass", None)
+        if info is not None:
+            declared.extend(
+                analyzer.output_header(member, analyzer.on) for member in info
+            )
+
+    def columns_for(source: str) -> list[str]:
+        columns = columns_provider(source)
+        if source == "measurements":
+            return list(dict.fromkeys([*columns, *declared]))
+        return columns
+
+    return columns_for
 
 
 def missing_model_columns(
@@ -943,7 +979,8 @@ def _build_run_console(
                     or not has_model
                     or bool(
                         missing_model_columns(
-                            recipe.pipeline.get_model(), columns_provider
+                            recipe.pipeline.get_model(),
+                            model_columns_provider(recipe.pipeline, columns_provider),
                         )
                     )
                 ),
