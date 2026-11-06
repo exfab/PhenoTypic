@@ -25,11 +25,12 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     **Quick Decision Guide**
 
-    Use [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py) when:
-    - Grid position is unknown or image is rotated/shifted
+    Use [CenteredAutoGridFinder](src/phenotypic/grid/_centered_auto_grid_finder.py)
+    (the default, which a ``GridImage`` builds when given no finder) when:
+    - Grid position is unknown and the plate is roughly centered in the frame
+    - Some rows or columns are empty, at the edges or inside the plate: it fits
+      the grid by its periodicity rather than by the span of the colonies
     - Colonies are detected but well boundaries are unclear
-    - You want automatic optimization of row/column edge positions
-    - Tolerance parameter allows tuning optimization precision
 
     Use [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py) when:
     - You know exact grid geometry from microscope calibration
@@ -39,7 +40,7 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     Combining with detection pipelines:
     - Use GridFinder after ObjectDetector to map colonies to wells
-    - AutoGridFinder works with any detection result
+    - CenteredAutoGridFinder works with any detection result
     - ManualGridFinder requires pre-computed edge coordinates
     - Grid assignment is independent of detection algorithm
 
@@ -125,10 +126,12 @@ class GridFinder(GridMeasureFeatures, ABC):
     The _operate() method returns a pandas DataFrame with detected objects and their
     grid assignments:
 
-    - **ROW_NUM:** Grid row index (0 to nrows-1), representing vertical well position
-    - **COL_NUM:** Grid column index (0 to ncols-1), representing horizontal well position
-    - **ROW_MAJOR_IDX:** Well identifier (0 to nrows*ncols-1), ordered left-to-right,
-      top-to-bottom for convenient database mapping
+    - **ROW_NUM** (``Grid_RowNum``): Grid row index (0 to nrows-1), representing
+      vertical well position
+    - **COL_NUM** (``Grid_ColNum``): Grid column index (0 to ncols-1), representing
+      horizontal well position
+    - **ROW_MAJOR_IDX** (``Grid_RowMajorIdx``): Well identifier (0 to nrows*ncols-1),
+      ordered left-to-right, top-to-bottom for convenient database mapping
     - **Additional columns:** Object metadata (centroid, bounding box, morphology) from
       image.objects.info()
 
@@ -137,12 +140,17 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     **Concrete Implementations**
 
-    PhenoTypic provides two built-in GridFinder implementations:
+    PhenoTypic provides three built-in GridFinder implementations:
 
+    - [CenteredAutoGridFinder](src/phenotypic/grid/_centered_auto_grid_finder.py): the
+      default. Fits a regular axis-aligned grid to the colony centers by their
+      periodicity, so empty edge or interior rows do not shift it. Assumes the plate
+      is roughly centered in the frame.
     - [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Deterministic robust fit
       using weighted object centers. Estimates pitch from center range, fits grid indices
       via least-squares, rejects outliers, and refits. Robust to protruding colonies
-      (e.g., filamentous fungi). Use when grid position is unknown.
+      (e.g., filamentous fungi). Its pitch comes from the span of the centers, so it
+      suits plates whose outer rows and columns are occupied.
     - [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py): User specifies exact
       row and column edge coordinates from calibration or measurement. Use when grid geometry
       is known and fixed.
@@ -173,74 +181,93 @@ class GridFinder(GridMeasureFeatures, ABC):
 
     **Examples**
 
-        Use AutoGridFinder when grid position is unknown:
+        Assign colonies to wells with the default grid finder:
 
-        When the image is rotated, shifted, or geometry is unclear, let AutoGridFinder
-        automatically compute optimal edge positions by optimizing alignment:
+        When the grid position is unknown, CenteredAutoGridFinder fits the
+        grid to the detected colonies. Here the plate is a 96-colony
+        *K. marxianus* array at 72 h. A bare threshold also picks up specks too
+        small to be colonies, so remove them before gridding. Select the grid
+        columns by their schema names:
 
-        >>> from phenotypic.grid import AutoGridFinder
-        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
-        >>> # Load and detect colonies on plate
-        >>> image = load_synth_yeast_plate()
-        >>> detector = OtsuDetector()
-        >>> image_with_objects = detector.apply(image)
-        >>> # AutoGridFinder optimizes edge positions to align with colonies
-        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12)
-        >>> grid_df = grid_finder.measure(image_with_objects)
-        >>> # Access well assignments
-        >>> print(f"Found {len(grid_df)} colonies assigned to grid")
-        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'ROW_MAJOR_IDX']].head())
+        >>> from phenotypic.grid import CenteredAutoGridFinder
+        >>> from phenotypic.refine import RemoveSmallObjects
+        >>> from phenotypic.schema import GRID
+        >>> plate = load_plate_72hr(mode="GridImage")
+        >>> image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))
+        >>> grid_finder = CenteredAutoGridFinder(nrows=8, ncols=12)
+        >>> grid_df = grid_finder.measure(image)
+        >>> # One row per colony, with its well assignment
+        >>> wells = grid_df[str(GRID.ROW_MAJOR_IDX)]
+        >>> print(f"{len(grid_df)} colonies in {wells.nunique()} wells")
+        92 colonies in 92 wells
+        >>> # The wells where no colony was detected
+        >>> sorted(set(range(96)) - set(wells.astype(int)))
+        [22, 26, 56, 76]
+        >>> well_columns = [str(GRID.ROW_NUM), str(GRID.COL_NUM), str(GRID.ROW_MAJOR_IDX)]
+        >>> print(grid_df[well_columns].head())
+          Grid_RowNum Grid_ColNum Grid_RowMajorIdx
+        0           0          10               10
+        1           0          11               11
+        2           0           9                9
+        3           0           8                8
+        4           0           5                5
+        >>> # 8 rows x 12 columns need 9 row edges and 13 column edges
+        >>> len(grid_finder.get_row_edges(image)), len(grid_finder.get_col_edges(image))
+        (9, 13)
 
         Create a ManualGridFinder for a 96-well plate with known geometry:
 
-        When grid geometry is known from microscope calibration, manually specify
-        row and column edges for reproducible grid assignment:
+        When grid geometry is known from calibration, specify the row and column
+        edges for reproducible grid assignment. The synthetic plate ships with its
+        96 colonies already labelled, and edges that divide its 600 x 800 pixel
+        image evenly into 8 x 12 cells put each colony in a well of its own:
 
         >>> import numpy as np
-        >>> from phenotypic.grid import ManualGridFinder
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.detect import OtsuDetector
-        >>> # Load and detect colonies
+        >>> from phenotypic.grid import ManualGridFinder
+        >>> from phenotypic.schema import GRID
         >>> image = load_synth_yeast_plate()
-        >>> detector = OtsuDetector()
-        >>> image_with_objects = detector.apply(image)
-        >>> # Define grid for 8 rows x 12 columns (96-well)
-        >>> # Rows: 8 wells vertically, evenly spaced from pixel 100 to 2000
-        >>> row_edges = np.linspace(100, 2000, 9, dtype=int)
-        >>> # Columns: 12 wells horizontally, evenly spaced from pixel 50 to 3050
-        >>> col_edges = np.linspace(50, 3050, 13, dtype=int)
-        >>> # Create grid finder with known edge coordinates
+        >>> image.num_objects
+        96
+        >>> height, width = image.shape[:2]
+        >>> # 9 row edges for 8 rows, 13 column edges for 12 columns
+        >>> row_edges = np.linspace(0, height, 9, dtype=int)
+        >>> col_edges = np.linspace(0, width, 13, dtype=int)
+        >>> print(row_edges)
+        [  0  75 150 225 300 375 450 525 600]
         >>> grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)
-        >>> grid_df = grid_finder.measure(image_with_objects)
-        >>> # Result includes grid assignments plus object metadata
-        >>> print(grid_df[['ROW_NUM', 'COL_NUM', 'ROW_MAJOR_IDX']].head())
+        >>> grid_df = grid_finder.measure(image)
+        >>> wells = grid_df[str(GRID.ROW_MAJOR_IDX)]
+        >>> print(f"{len(grid_df)} colonies in {wells.nunique()} wells")
+        96 colonies in 96 wells
 
         Understanding ROW_MAJOR_IDX for well mapping:
 
-        ROW_MAJOR_IDX provides a single integer ID for each well, useful for organizing
-        results and correlating with sample metadata:
+        ROW_MAJOR_IDX provides a single integer ID for each well, useful for
+        organizing results and correlating with sample metadata. On an 8 x 12
+        grid it runs 0-95, left-to-right, top-to-bottom: section 0 is A1 (row 0,
+        column 0), 11 is A12, 12 is B1, and 95 is H12.
 
-        >>> from phenotypic.grid import AutoGridFinder
-        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.data import load_plate_72hr
         >>> from phenotypic.detect import OtsuDetector
-        >>> # Detect and assign colonies to grid
-        >>> image = load_synth_yeast_plate()
-        >>> detector = OtsuDetector()
-        >>> image_with_objects = detector.apply(image)
-        >>> grid_finder = AutoGridFinder(nrows=8, ncols=12)
-        >>> grid_df = grid_finder.measure(image_with_objects)
-        >>> # Example: 8x12 grid (96-well plate)
-        >>> # ROW_MAJOR_IDX runs 0-95, numbered left-to-right, top-to-bottom
-        >>> # Section 0 = Row 0, Col 0 (top-left, A1)
-        >>> # Section 11 = Row 0, Col 11 (top-right, A12)
-        >>> # Section 12 = Row 1, Col 0 (second row left, B1)
-        >>> # Section 95 = Row 7, Col 11 (bottom-right, H12)
-        >>> # Filter colonies in a specific well
-        >>> section_5_objects = grid_df[grid_df['ROW_MAJOR_IDX'] == 5]
-        >>> # Map section numbers back to well coordinates
-        >>> well_row = 5 // 12  # Row index
-        >>> well_col = 5 % 12   # Column index
+        >>> from phenotypic.grid import CenteredAutoGridFinder
+        >>> from phenotypic.refine import RemoveSmallObjects
+        >>> from phenotypic.schema import GRID
+        >>> plate = load_plate_72hr(mode="GridImage")
+        >>> image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))
+        >>> grid_df = CenteredAutoGridFinder(nrows=8, ncols=12).measure(image)
+        >>> # Select the colony in one well
+        >>> section_5 = grid_df[grid_df[str(GRID.ROW_MAJOR_IDX)] == 5]
+        >>> len(section_5)
+        1
+        >>> # Map the section number back to its well coordinates
+        >>> well_row, well_col = divmod(5, 12)
+        >>> (well_row, well_col)
+        (0, 5)
+        >>> section_5[[str(GRID.ROW_NUM), str(GRID.COL_NUM)]].values.tolist()
+        [[0, 5]]
     """
 
     nrows: int

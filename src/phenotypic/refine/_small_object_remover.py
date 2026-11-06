@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING, Annotated
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from skimage.morphology import remove_small_objects
-
 from ..abc_ import ObjectRefiner
+from ..sdk_._skimage_compat import remove_objects_smaller_than
 from ..sdk_.typing_ import TuneSpec
 
 
@@ -65,10 +64,12 @@ class RemoveSmallObjects(ObjectRefiner):
         # non-zero label (treats it as ambiguous binary vs labeled). Pass a
         # boolean array in that case; re-label afterwards if needed.
         if objmap.max() <= 1:
-            cleaned = remove_small_objects(
-                    objmap.astype(bool), min_size=self.min_size
+            cleaned = remove_objects_smaller_than(
+                    objmap.astype(bool), self.min_size
             )
             image.objmap[:] = cleaned.astype(objmap.dtype)
         else:
-            image.objmap[:] = remove_small_objects(objmap, min_size=self.min_size)
+            image.objmap[:] = remove_objects_smaller_than(
+                    objmap, self.min_size
+            )
         return image

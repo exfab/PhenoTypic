@@ -15,9 +15,10 @@ import numpy as np
 from scipy.ndimage import label as ndi_label
 from skimage.filters import threshold_otsu
 from skimage.measure import label
-from skimage.morphology import dilation, disk, remove_small_objects
+from skimage.morphology import dilation, disk
 from skimage.segmentation import find_boundaries
 
+from .._skimage_compat import remove_objects_smaller_than
 from ..branch_pathfinding import (
     DijkstraResult,
     _apply_border_penalty_inplace,
@@ -141,7 +142,9 @@ def select_reconnect_fragments(
     )
     fragment_mask = (fragment_labels > 0) | media_frag_mask
     if min_fragment_size > 1:
-        fragment_mask = remove_small_objects(fragment_mask, min_size=min_fragment_size)
+        fragment_mask = remove_objects_smaller_than(
+            fragment_mask, min_fragment_size
+        )
     return central_mask, label(fragment_mask).astype(np.int32)
 
 

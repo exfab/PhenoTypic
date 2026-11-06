@@ -178,9 +178,9 @@ class ObjectRefiner(ImageOperation, ABC):
 
     .. code-block:: python
 
+        import numpy as np
         from phenotypic.abc_ import ObjectRefiner
         from phenotypic import Image
-        from skimage.morphology import remove_small_objects
 
         class MyCustomRefiner(ObjectRefiner):
             min_size: int = 50  # Annotated class-level field
@@ -188,10 +188,11 @@ class ObjectRefiner(ImageOperation, ABC):
             def _operate(self, image: Image) -> Image:
                 # Modify ONLY objmap; read, process, write back
                 # objmask will be auto-updated from objmap via relabel()
-                refined_map = remove_small_objects(
-                    image.objmap[:], min_size=self.min_size
-                )
-                image.objmap[:] = refined_map
+                objmap = image.objmap[:]
+                sizes = np.bincount(objmap.ravel())  # pixels per label
+                too_small = sizes < self.min_size
+                too_small[0] = False  # label 0 is background
+                image.objmap[:] = np.where(too_small[objmap], 0, objmap)
                 return image
 
     **Morphological Operations with FootprintMixin**
@@ -397,9 +398,9 @@ class ObjectRefiner(ImageOperation, ABC):
     Examples:
         Removing small spurious objects below minimum size:
 
+        >>> import numpy as np
         >>> from phenotypic.abc_ import ObjectRefiner
         >>> from phenotypic import Image
-        >>> from skimage.morphology import remove_small_objects
         >>> from scipy import ndimage
         >>> class SimpleSmallObjectRemover(ObjectRefiner):
         ...     '''Remove objects smaller than a minimum size threshold.'''
@@ -410,10 +411,12 @@ class ObjectRefiner(ImageOperation, ABC):
         ...         '''Remove small objects from labeled map.'''
         ...         # Get current labeled map
         ...         objmap = image.objmap[:]
-        ...         # Remove small objects (automatically updates objmap)
-        ...         refined = remove_small_objects(objmap, min_size=self.min_size)
+        ...         # Pixel count per label; zero the labels below min_size
+        ...         sizes = np.bincount(objmap.ravel())
+        ...         too_small = sizes < self.min_size
+        ...         too_small[0] = False  # label 0 is background
         ...         # Set refined result
-        ...         image.objmap[:] = refined
+        ...         image.objmap[:] = np.where(too_small[objmap], 0, objmap)
         ...         return image
         >>> # Usage
         >>> from phenotypic.detect import OtsuDetector

@@ -344,7 +344,6 @@ def test_the_local_stage2_call_site_forwards_the_prefix(tmp_path, monkeypatch):
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,

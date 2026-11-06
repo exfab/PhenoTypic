@@ -161,6 +161,7 @@ def build_app_layout(
         ),
         _build_run_console(
             recipe,
+            columns_provider=columns_provider,
             mutations_disabled=mutations_disabled,
         ),
         dcc.Interval(
@@ -799,7 +800,7 @@ def _build_model_panel(
             html.Div(
                 _build_model_section(
                     model,
-                    columns_provider=columns_provider,
+                    columns_provider=model_columns_provider(pipeline, columns_provider),
                     plot_prefs=plot_prefs,
                     mutations_disabled=mutations_disabled,
                 )
@@ -836,6 +837,78 @@ def _build_model_panel(
     )
 
 
+def model_columns_provider(
+    pipeline: Any,
+    columns_provider: Optional[ColumnsProvider],
+) -> Optional[ColumnsProvider]:
+    """Include declared filter outputs in the model's measurement schema.
+
+    Filters run before the model, so their declared headers are valid model
+    inputs even when absent from the stored measurement table. Reading these
+    declarations never executes a filter or infers a schema from sample data.
+
+    Args:
+        pipeline: Analysis pipeline containing filters followed by a model.
+        columns_provider: Live source-schema lookup, or None when unavailable.
+
+    Returns:
+        Schema lookup including declared filter outputs for measurements.
+    """
+    if columns_provider is None:
+        return None
+    declared: list[str] = []
+    for analyzer in pipeline.get_filters().values():
+        info = getattr(analyzer, "_measurement_infoclass", None)
+        if info is not None:
+            declared.extend(
+                analyzer.output_header(member, analyzer.on) for member in info
+            )
+
+    def columns_for(source: str) -> list[str]:
+        columns = columns_provider(source)
+        if source == "measurements":
+            return list(dict.fromkeys([*columns, *declared]))
+        return columns
+
+    return columns_for
+
+
+def missing_model_columns(
+    model: Any,
+    columns_provider: Optional[ColumnsProvider],
+) -> list[str]:
+    """Return configured model column references absent from their source.
+
+    Args:
+        model: Configured analyzer, or None when no endpoint is selected.
+        columns_provider: Live source-schema lookup; None skips this check.
+
+    Returns:
+        Missing column names in parameter order, without duplicates.
+    """
+    if model is None or columns_provider is None:
+        return []
+    info = get_registry().get(type(model).__name__)
+    if info is None:
+        return []
+    missing: list[str] = []
+    for parameter in info.parameters.values():
+        spec = parameter.column_ref
+        if spec is None:
+            continue
+        value = getattr(model, parameter.name, None)
+        values = value if isinstance(value, (list, tuple)) else [value]
+        available = columns_provider(spec.source)
+        for column in values:
+            if (
+                isinstance(column, str)
+                and column not in available
+                and column not in missing
+            ):
+                missing.append(column)
+    return missing
+
+
 def _build_model_section(
     model: object,
     *,
@@ -862,9 +935,20 @@ def _build_model_section(
             f"No registry info for {type(model).__name__}",
             style={"color": COLOR_MUTED},
         )
+    missing = missing_model_columns(model, columns_provider)
     return html.Div(
         [
             html.Strong(type(model).__name__),
+            (
+                dbc.Alert(
+                    "Missing measurement columns: "
+                    + ", ".join(missing)
+                    + ". Choose available columns before running analysis.",
+                    color="warning",
+                )
+                if missing
+                else None
+            ),
             html.Div(body),
             plot_controls_form("model", 0, model, plot_prefs),
         ],
@@ -880,6 +964,7 @@ def _build_model_section(
 def _build_run_console(
     recipe: "RecipeState",
     *,
+    columns_provider: Optional[ColumnsProvider] = None,
     mutations_disabled: bool = False,
 ) -> html.Div:
     has_model = recipe.pipeline.get_model() is not None
@@ -889,7 +974,16 @@ def _build_run_console(
                 "Run analysis",
                 id=ids.ANALYSIS_RUN_BUTTON,
                 color="primary",
-                disabled=mutations_disabled or not has_model,
+                disabled=(
+                    mutations_disabled
+                    or not has_model
+                    or bool(
+                        missing_model_columns(
+                            recipe.pipeline.get_model(),
+                            model_columns_provider(recipe.pipeline, columns_provider),
+                        )
+                    )
+                ),
                 n_clicks=0,
             ),
             dcc.Loading(

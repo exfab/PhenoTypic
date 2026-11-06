@@ -30,7 +30,9 @@ class ImageVisualizationHandler(ImageObjectsHandler):
 
         Args:
             name: Optional custom name for image layers. Each layer is named
-                ``{accessor}_{name}``. Defaults to the image's name attribute.
+                ``{accessor}_{name}``. Defaults to the image's name; for a
+                crop, colony or grid section, to that name plus the image type
+                and a short UUID, so it does not replace its plate's layers.
             reset: If True, closes the current viewer and creates a fresh one
                 before adding layers. Defaults to False.
             viewer: Optional external napari viewer instance to use instead of the

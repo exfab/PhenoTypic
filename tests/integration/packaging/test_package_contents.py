@@ -5,7 +5,9 @@ sub-app static assets (CSS/JS + vendored OpenSeadragon control icons) are
 actually shipped. This is the regression guard for the ``pip install``
 deployment bug where the ``phenotypic-gui`` entry point crashed on import
 because ``_gui/shell/_assets/shell.css`` — read at import time — was missing
-from the wheel.
+from the wheel. They also guard the sample data under ``src/phenotypic/data``,
+whose subfolders were once left out of the wheel so ``phenotypic.data``
+loaders raised ``FileNotFoundError`` after ``pip install``.
 
 Two design choices matter:
 
@@ -38,6 +40,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GUI_DIR = REPO_ROOT / "src" / "phenotypic" / "_gui"
+DATA_DIR = REPO_ROOT / "src" / "phenotypic" / "data"
 ASSET_SUFFIXES = (".css", ".js", ".png")
 
 # Representative assets that MUST ship — one per GUI sub-app surface, plus a
@@ -56,11 +59,16 @@ REQUIRED_WHEEL_PATHS = [
     "phenotypic/_gui/tune/_assets/tune.css",
     # Pre-existing globbed asset (regression guard for the original config).
     "phenotypic/data/early_colony.png",
+    # Sample data in ``data/`` subfolders, read by ``phenotypic.data`` loaders.
+    "phenotypic/data/synthetic_test_plate/yeast_plate_rgb.png",
+    "phenotypic/data/snp-imager-samples/RhodotorulaYeastCenterCrop.png",
+    "phenotypic/data/meas/all_meas.csv",
 ]
 
 REQUIRED_THIRD_PARTY_LICENSES = {
     "filfinder-MIT.txt",
     "gudhi-MIT.txt",
+    "openseadragon-BSD-3-Clause.txt",
     "rolling-hough-MIT.txt",
     "tensor-voting-BSD-like.txt",
     "tensor-voting-LGPL-3.0-claim.txt",
@@ -82,6 +90,34 @@ def _expected_gui_asset_wheel_paths() -> list[str]:
             rel = path.relative_to(REPO_ROOT / "src")
             paths.append(rel.as_posix())
     return sorted(paths)
+
+
+def _expected_data_wheel_paths() -> list[str]:
+    """Every non-Python file under ``src/phenotypic/data`` as its in-wheel path."""
+    return sorted(
+        path.relative_to(REPO_ROOT / "src").as_posix()
+        for path in DATA_DIR.rglob("*")
+        if path.is_file()
+        and path.suffix not in {".py", ".pyc"}
+        and "__pycache__" not in path.parts
+    )
+
+
+def _normalized_license_text(raw: bytes) -> str:
+    """License text with line endings and trailing whitespace normalised."""
+    text = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return "\n".join(line.rstrip() for line in text.split("\n")).strip()
+
+
+def _vendored_license_files() -> list[Path]:
+    """``LICENSE*``/``COPYING*`` files under ``src/``; each marks vendored code."""
+    return sorted(
+        path
+        for path in (REPO_ROOT / "src").rglob("*")
+        if path.is_file()
+        and path.name.upper().startswith(("LICENSE", "COPYING"))
+        and "egg-info" not in path.as_posix()
+    )
 
 
 def _build_dists(dest: Path) -> Path:
@@ -143,6 +179,17 @@ def test_wheel_contains_every_gui_asset(built_dists):
 
 
 @pytest.mark.slow
+def test_wheel_contains_every_bundled_data_file(built_dists):
+    """Every sample-data file a ``phenotypic.data`` loader may read ships."""
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        names = set(zf.namelist())
+    expected = _expected_data_wheel_paths()
+    assert expected, "no data files found on disk — test wiring is wrong"
+    missing = [p for p in expected if p not in names]
+    assert not missing, f"bundled data file(s) missing from wheel: {missing}"
+
+
+@pytest.mark.slow
 def test_wheel_contains_required_paths(built_dists):
     """Representative per-sub-app + pre-existing assets ship in the wheel."""
     with zipfile.ZipFile(built_dists["wheel"]) as zf:
@@ -167,6 +214,33 @@ def test_wheel_contains_fungi_port_license_texts(built_dists):
     missing = sorted(REQUIRED_THIRD_PARTY_LICENSES - basenames)
     assert not missing, (
         f"third-party license texts missing from wheel: {missing}"
+    )
+
+
+@pytest.mark.slow
+def test_wheel_carries_every_vendored_license_text(built_dists):
+    """Each license vendored beside third-party code ships as a license file.
+
+    BSD-3-Clause (OpenSeadragon) requires its notice in binary
+    redistributions. Package-data does not ship the vendored ``LICENSE``
+    files themselves, so their text must arrive through ``license-files``
+    under ``*.dist-info/licenses/``.
+    """
+    with zipfile.ZipFile(built_dists["wheel"]) as zf:
+        shipped = {
+            _normalized_license_text(zf.read(name))
+            for name in zf.namelist()
+            if ".dist-info/licenses/" in name and not name.endswith("/")
+        }
+    vendored = _vendored_license_files()
+    assert vendored, "no vendored LICENSE found on disk — test wiring is wrong"
+    missing = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in vendored
+        if _normalized_license_text(path.read_bytes()) not in shipped
+    ]
+    assert not missing, (
+        f"vendored license text(s) not shipped in the wheel: {missing}"
     )
 
 

@@ -439,8 +439,17 @@ class ObjectsAccessor:
             ...     print(f"Found colony {desired_label} at index {idx}")
             ... else:
             ...     print(f"Colony {desired_label} not found")
+
+        .. versionchanged:: 0.21.0
+           Works for every label. It used to compare the labels list to the
+           integer as a whole, which is never equal, so every call raised
+           ValueError (and so did :meth:`loc`).
         """
-        return np.where(self.labels == object_label)[0][0]
+        # labels is a list: compare it element-wise, not as a whole.
+        matches = np.flatnonzero(np.asarray(self.labels) == object_label)
+        if matches.size == 0:
+            raise IndexError(f"No object with label {object_label} in the object map.")
+        return int(matches[0])
 
     @property
     def num_objects(self) -> int:
@@ -534,7 +543,11 @@ class ObjectsAccessor:
             Image: A cropped Image containing the bounding box region of the specified colony.
                 Unlike __getitem__, this crop preserves all label values in the objmap without
                 zeroing non-matching pixels. The metadata is inherited from the parent Image,
-                and ImageType is not changed to 'Object'.
+                and ImageType is not changed to 'Object': it is 'Crop', as for any slice.
+
+        .. versionchanged:: 0.21.0
+           On a GridImage the crop is typed 'Crop' and keeps the plate's
+           metadata; earlier versions typed it 'Image' and gave it none.
 
         Raises:
             IndexError: If index is negative or >= num_objects.
@@ -589,10 +602,16 @@ class ObjectsAccessor:
         Returns:
             Image: A cropped Image containing the bounding box region of the colony with the
                 specified label. The crop preserves all label values in the objmap without
-                zeroing non-matching pixels.
+                zeroing non-matching pixels. It keeps the parent's metadata and is typed
+                'Crop', as for any slice.
 
         Raises:
             IndexError: If label_number does not exist in the current labels list.
+
+        .. versionchanged:: 0.21.0
+           Works: every call used to raise ValueError (see
+           :meth:`get_label_idx`). On a GridImage the crop is typed 'Crop' and
+           keeps the plate's metadata.
 
         Examples:
             Access colony by its label:

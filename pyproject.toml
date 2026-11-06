@@ -239,8 +239,15 @@ version = { attr = "phenotypic.__version__" }
 
 [tool.setuptools.package-data]
 "phenotypic" = [
-    "data/*.jpg",
-    "data/*.png",
+    # Bundled sample data read by ``phenotypic.data`` loaders, including the
+    # ``meas/``, ``snp-imager-samples/`` and ``synthetic_test_plate/``
+    # subfolders (``**`` also matches files directly under ``data/``). Spelled
+    # per extension rather than ``data/**/*`` so a local build cannot sweep in
+    # ``__pycache__``. ``tests/unit/test_package_data.py`` fails if a tracked
+    # data file is left unmatched.
+    "data/**/*.jpg",
+    "data/**/*.png",
+    "data/**/*.csv",
     "_assets/logos/*",
     "_assets/logos/*/*",
     "_assets/measurements/*",

@@ -70,13 +70,16 @@ def _seed_analysis_output(sandbox: Path) -> Path:
         for t in (0, 6, 12, 24, 36, 48):
             for rep in range(3):
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
+                area = float(n + (rep - 1) * 5)
                 rows.append({
                     "Metadata_Dataset": "ds1",
                     str(IMAGE.IMAGE_NAME): f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,
-                    "Size_Area": float(n + (rep - 1) * 5),
+                    "Size_Area": area,
+                    # Ideal disk colonies supply the normal-path radius column.
+                    "Size_RobustMeanRadius": math.sqrt(area / math.pi),
                 })
     df = pl.DataFrame(rows)
     write_master(cli_out, df)

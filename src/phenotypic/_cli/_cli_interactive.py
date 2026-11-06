@@ -137,7 +137,6 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("    │   ├── slurm_scripts/ (if using SLURM execution)")
     click.echo("    │   ├── processing_state.json")
     click.echo("    │   └── processing_events.log")
-    click.echo("    ├── processing_report.html")
     click.echo("    ├── master_measurements.parquet  (clean un-joined archive; Parquet only)")
     click.echo("    ├── measurements.csv  (metadata-joined mirror for GUI; refreshed on every run)")
     click.echo("    ├── pipeline.json.pht-pipe  (reproducibility spec — seeded from --pipeline, read by the analysis GUI)")

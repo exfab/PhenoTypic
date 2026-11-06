@@ -59,6 +59,8 @@ from phenotypic._gui._design import (
 from phenotypic._gui.analysis import _ids as ids
 from phenotypic._gui.analysis._layout import (
     build_section_stack,
+    missing_model_columns,
+    model_columns_provider,
     pipeline_header_children,
 )
 from phenotypic._gui.analysis._plot_controls import collect_plot_kwargs
@@ -104,20 +106,23 @@ _EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
         "groupby": [str(GENETIC.STRAIN)],
     },
 }
+# Growth fits default to the colony radius, not its area: an area rate scales
+# with colony size and can reach the linear models' rate bound (``_V_UPPER``).
+# LogGrowthModel has no bound and follows the same default for consistency.
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
     "LogGrowthModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
         "n_jobs": 1,
     },
     "LinearLagModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
     },
     "LinearCapAndLagModel": {
-        "on": str(SIZE.AREA),
+        "on": str(SIZE.ROBUST_MEAN_RADIUS),
         "groupby": [str(GENETIC.STRAIN)],
         "time_label": str(CULTURE.TIME),
     },
@@ -181,10 +186,11 @@ def register_callbacks(app: "dash.Dash") -> None:
         from phenotypic._gui.analysis._layout import _build_model_section
 
         model = recipe.pipeline.get_model()
+        model_columns = model_columns_provider(recipe.pipeline, _columns_provider)
         section = (
             _build_model_section(
                 model,
-                columns_provider=_columns_provider,
+                columns_provider=model_columns,
                 plot_prefs=plot_prefs,
                 mutations_disabled=mutations_disabled,
             )
@@ -196,7 +202,9 @@ def register_callbacks(app: "dash.Dash") -> None:
         return (
             section,
             _pipeline_summary(recipe),
-            mutations_disabled or model is None,
+            mutations_disabled
+            or model is None
+            or bool(missing_model_columns(model, model_columns)),
             type(model).__name__ if model is not None else "",
         )
 
@@ -921,6 +929,20 @@ def _run_inline(recipe: Any, output_root: "OutputRoot") -> Any:
             style={"color": OI_VERMILION_TEXT},
         )
     analysis_pipeline, recipe_revision = recipe_snapshot
+    from phenotypic._gui._schema_cache import MeasurementSchema
+
+    schema = MeasurementSchema.from_layout(layout)
+    missing = missing_model_columns(
+        analysis_pipeline.get_model(),
+        model_columns_provider(analysis_pipeline, schema.columns_for),
+    )
+    if missing:
+        return html.Span(
+            "Missing measurement columns: "
+            + ", ".join(missing)
+            + ". Choose available columns before running analysis.",
+            style={"color": OI_VERMILION_TEXT},
+        )
     source_fingerprint = paths_fingerprint(
         (measurements,),
         root=layout.deliverables_base,

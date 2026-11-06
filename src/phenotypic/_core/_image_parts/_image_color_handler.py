@@ -139,11 +139,14 @@ class ImageColorSpace(ImageVisualizationHandler):
         self._observer = source._observer
 
     def _restore_crop_of(self, source, key) -> None:
-        """Fill this empty image with ``source[key]`` and ``source``'s configuration.
+        """Fill this empty image with ``source[key]``, ``source``'s configuration
+        and a copy of its metadata.
 
         The pixels are copied, and restored as derived state rather than
         re-validated as user input, so a crop never refuses what its source
-        already holds (a gray layer padded outside ``[0, 1]``, say).
+        already holds (a gray layer padded outside ``[0, 1]``, say). The
+        metadata is copied last (``_adopt_metadata_of``), so the crop keeps every
+        key but its own UUID; the caller then sets the crop's image type.
         """
         gray_only = source.rgb.isempty()
         layer = source.gray if gray_only else source.rgb
@@ -154,6 +157,7 @@ class ImageColorSpace(ImageVisualizationHandler):
         if gray_only:
             self._gray_source_dtype = source._gray_source_dtype
         self._adopt_color_config(source)
+        self._adopt_metadata_of(source)
 
     def _set_from_class_instance(self, input_cls) -> None:
         """Copy data from another Image instance, including its colour configuration."""

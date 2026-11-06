@@ -1,3 +1,6 @@
+import logging
+from pathlib import Path
+
 import numpy as np
 import pytest
 from PIL import Image as PILImage
@@ -92,3 +95,25 @@ def test_store_probe_computes_one_already_stable_revision(
 
     assert revision.store_revision is not None
     assert calls == 1
+
+
+def test_probe_of_a_png_without_exif_logs_no_exifread_record(tmp_path, caplog):
+    """The probe reads EXIF inside ``quiet_missing_exif``, like ``imread``."""
+    source = tmp_path / "plate.png"
+    PILImage.new("RGB", (4, 4)).save(source)
+    caplog.set_level(logging.WARNING)
+
+    revision = probe_source(source, sandbox_root=tmp_path)
+
+    assert dict(revision.exif) == {}
+    assert [r for r in caplog.records if r.name == "exifread"] == []
+
+
+def test_probe_still_reads_exif_where_present(tmp_path):
+    fixture = Path(__file__).parent / "fixtures" / "with_datetimeoriginal.jpg"
+    source = tmp_path / fixture.name
+    source.write_bytes(fixture.read_bytes())
+
+    revision = probe_source(source, sandbox_root=tmp_path)
+
+    assert "EXIF DateTimeOriginal" in revision.exif

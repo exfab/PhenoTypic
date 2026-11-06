@@ -7,6 +7,7 @@ deterministic input dir and serialized pipeline.
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -46,6 +47,26 @@ def _write_synth_image(target_path: Path) -> None:
     grid_image = load_synth_yeast_plate()
     pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
     pil_img.save(target_path)
+
+
+_TERMINAL_STATUS_PREFIX = "Terminal status (written by the finalizer): "
+
+
+def read_migration_terminal_status(output: str) -> dict:
+    """Read a SLURM migration's verdict from the file its submission names.
+
+    0.21.0 removed ``--wait``, so the CLI no longer prints the verdict; it
+    prints where the finalizer writes it. The generated workers in these
+    tests run synchronously inside the patched submission, so the file exists
+    when the command returns.
+    """
+    (line,) = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(_TERMINAL_STATUS_PREFIX)
+    ]
+    path = Path(line[len(_TERMINAL_STATUS_PREFIX):])
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @pytest.fixture

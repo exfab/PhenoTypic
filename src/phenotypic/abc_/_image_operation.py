@@ -59,7 +59,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         ImageOperation (this class)
         ├── ImageEnhancer
-        │   └── Modifies ONLY image.detect_mat
+        │   └── Modifies ONLY image.detect_mat (writing it clears any
+        │       detected objects, so enhancers belong before the detector)
         │       ├── BlurGauss, EnhanceLocalContrast, EnhanceRankMedian, ...
         │       └── Use for: noise reduction, contrast, edge sharpening
         │
@@ -82,7 +83,8 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     - **ImageEnhancer:** You only modify ``image.detect_mat`` (detection matrix).
       Original ``image.rgb`` and ``image.gray`` are protected by integrity checks.
-      Typical use: preprocessing before detection.
+      Writing ``detect_mat`` clears any detected objects, so enhancers belong
+      before the detector. Typical use: preprocessing before detection.
 
     - **ObjectDetector:** You analyze image data and produce only ``image.objmask``
       (binary mask) and ``image.objmap`` (labeled object map). Input image data is
@@ -199,23 +201,17 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
     **Operation chaining and pipelines**
 
-    Operations are designed for method chaining:
+    Use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:
 
-    .. code-block:: python
-
-        result = (BlurGauss(sigma=2).apply(image)
-                 .apply_operation(OtsuDetector()))
-
-    Or use ``ImagePipeline`` for multi-step workflows with automatic benchmarking:
-
-    .. code-block:: python
-
-        pipeline = ImagePipeline()
-        pipeline.add(BlurGauss(sigma=2))
-        pipeline.add(OtsuDetector())
-        pipeline.add(GridFinder())
-
-        results = pipeline.operate([image1, image2, image3])
+    >>> from phenotypic import ImagePipeline
+    >>> from phenotypic.data import load_synth_yeast_plate
+    >>> from phenotypic.detect import OtsuDetector
+    >>> from phenotypic.enhance import BlurGauss
+    >>> image = load_synth_yeast_plate()
+    >>> pipeline = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
+    >>> result = pipeline.apply(image)
+    >>> result.num_objects > 0
+    True
 
     **Parallel execution support**
 
@@ -279,7 +275,9 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
 
         >>> from phenotypic.abc_ import ImageEnhancer
         >>> from phenotypic import Image
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>> from scipy.ndimage import gaussian_filter
+        >>> image = load_synth_yeast_plate()
         >>> class GaussianEnhancer(ImageEnhancer):
         ...     '''Custom enhancer applying Gaussian blur to detect_mat.'''
         ...
@@ -310,7 +308,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ...     '''Detector using local peak finding to locate colonies.'''
         ...
         ...     min_distance: int = 10  # Annotated class-level fields
-        ...     threshold_abs: int = 100
+        ...     threshold_abs: float = 0.5  # detect_mat is normalised to 0-1
         ...
         ...     def _operate(self, image: Image) -> Image:
         ...         '''Find peaks in detect_mat and create object mask/map.'''
@@ -331,54 +329,53 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ...         image.objmap[:] = labeled_map
         ...         return image
         >>> # Usage - automatic integrity validation in ImageDetector
-        >>> detector = PeakDetector(min_distance=15, threshold_abs=120)
+        >>> detector = PeakDetector(min_distance=15, threshold_abs=0.5)
         >>> detected = detector.apply(image)
-        >>> colonies = detected.objects
-        >>> print(f"Detected {len(colonies)} colonies")
+        >>> detected.num_objects > 0
+        True
 
         Understanding inplace parameter and memory efficiency:
 
         >>> from phenotypic.enhance import BlurGauss
-        >>> from phenotypic import Image
-        >>> image = Image.imread('colony_plate.jpg')
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> image = load_synth_yeast_plate()
         >>> enhancer = BlurGauss(sigma=2.0)
         >>> # Default: inplace=False (safe, creates copy)
         >>> enhanced = enhancer.apply(image)
-        >>> print(f"Same object? {id(image) == id(enhanced)}")  # False
+        >>> id(image) == id(enhanced)
+        False
         >>> # For memory efficiency with large images
         >>> result = enhancer.apply(image, inplace=True)
-        >>> print(f"Same object? {id(image) == id(result)}")  # True
-        # inplace=True is useful in pipelines with many large images
-        # to minimize memory overhead, but modifies the original
+        >>> id(image) == id(result)
+        True
+
+        ``inplace=True`` is useful in pipelines with many large images to
+        minimize memory overhead, but it modifies the original.
 
         Using operations in a processing pipeline:
 
-        >>> from phenotypic import Image, ImagePipeline
+        >>> from phenotypic import ImagePipeline
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.enhance import BlurGauss
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.grid import GridFinder
-        >>> # Load image
-        >>> image = Image.imread('colony_plate.jpg')
+        >>> image = load_synth_yeast_plate()
         >>> # Sequential chaining
         >>> enhanced = BlurGauss(sigma=2).apply(image)
         >>> detected = OtsuDetector().apply(enhanced)
-        >>> grid = GridFinder().apply(detected)
-        >>> # Or use ImagePipeline for batch processing
-        >>> pipeline = ImagePipeline()
-        >>> pipeline.add(BlurGauss(sigma=2))
-        >>> pipeline.add(OtsuDetector())
-        >>> pipeline.add(GridFinder())
-        >>> # Process multiple images with automatic parallelization
-        >>> images = [Image.imread(f) for f in image_files]
-        >>> results = pipeline.operate(images)
-        # Results are fully processed images
+        >>> # Or use ImagePipeline, which chains the same operations
+        >>> pipeline = ImagePipeline(ops=[BlurGauss(sigma=2), OtsuDetector()])
+        >>> processed = pipeline.apply(image)
+        >>> processed.num_objects == detected.num_objects
+        True
 
         How instance methods work with parallel execution:
 
         >>> from phenotypic.abc_ import ImageOperation
         >>> from phenotypic import Image
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> image = load_synth_yeast_plate()
         >>> class CustomThreshold(ImageOperation):
-        ...     threshold: int  # Annotated class-level fields
+        ...     threshold: float  # Annotated class-level fields (detect_mat is 0-1)
         ...     min_size: int = 5
         ...
         ...     def _operate(self, image: Image) -> Image:
@@ -387,14 +384,13 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
         ...         image.objmask[:] = binary
         ...         return image
         >>> # When apply() is called:
-        >>> op = CustomThreshold(threshold=100, min_size=10)
-        # apply() internally:
-        # 1. Calls _apply_to_single_image() with self._operate (bound method)
-        # 2. _apply_to_single_image calls operation(image)
-        # 3. The bound method includes self, so all parameters are available
+        >>> op = CustomThreshold(threshold=0.7, min_size=10)
         >>> result = op.apply(image)
-        # For parallel execution, the entire operation object (with all
-        # fields) is serialized via pydantic and sent to worker processes
+
+        ``apply()`` calls ``_apply_to_single_image()`` with the bound
+        ``self._operate``, so every parameter is available inside the
+        operation. For parallel execution, the entire operation object (with
+        all fields) is serialized via pydantic and sent to worker processes.
     """
 
     # Lazily-populated ipywidget UI handles used by ``LazyWidgetMixin``.

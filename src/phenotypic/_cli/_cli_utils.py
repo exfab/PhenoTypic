@@ -39,6 +39,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    cast,
 )
 
 import click
@@ -173,6 +174,55 @@ export POLARS_SKIP_CPU_CHECK=1"""
 
 # Minimum file count to justify tar subprocess overhead.
 _TAR_MIN_FILES = 8
+
+
+def read_study_yaml(study: Optional[Path]) -> Optional[str]:
+    """Read a ``--study`` file's text once, at submission.
+
+    The text, not the parsed YAML, is what travels: a SLURM run records it in
+    ``job_metadata.json`` and its finalizer parses it with
+    :func:`parse_study_yaml`, so a date or any other YAML type reaches
+    ``rembi.yaml`` exactly as it does on a local run. Best-effort, like the
+    parse: an unreadable file is logged and treated as absent.
+
+    Args:
+        study: The ``--study`` path, or ``None``.
+
+    Returns:
+        The file's text, or ``None``.
+    """
+    if study is None:
+        return None
+    try:
+        return Path(study).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        logger.warning("Failed to read --study file %s: %s", study, exc)
+        return None
+
+
+def parse_study_yaml(text: Optional[str], *, source: object) -> Optional[dict]:
+    """Parse ``--study`` text into REMBI Study-level fields, best-effort.
+
+    The one parse behind a local run and a SLURM finalizer. A malformed file
+    is logged and treated as absent, so the manifest still emits from the
+    mirror's own columns.
+
+    Args:
+        text: The study file's text, or ``None``.
+        source: What to name in the warning (the path, or the metadata file).
+
+    Returns:
+        The parsed fields, or ``None``.
+    """
+    if text is None:
+        return None
+    import yaml  # type: ignore[import-untyped]
+
+    try:
+        return cast(Optional[dict], yaml.safe_load(text))
+    except Exception as exc:
+        logger.warning("Failed to parse --study file %s: %s", source, exc)
+        return None
 
 
 def load_job_metadata(progress_dir: Path) -> Optional[Dict[str, Any]]:

@@ -2,13 +2,13 @@
 
 Run PhenoTypic batch processing on SLURM-managed clusters.
 
-## Automatic SLURM Detection
+## Choose Local or SLURM Execution
 
-When SLURM is available, the CLI automatically submits jobs to the scheduler.
-To force local execution instead:
+The CLI runs locally unless you provide `--slurm`. Merely having SLURM
+available does not submit a job. To run locally explicitly:
 
 ```bash
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --force-local
+uv run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --force-local
 ```
 
 ## SLURM Arguments
@@ -16,7 +16,7 @@ python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --for
 Pass SLURM parameters with repeated `--slurm` flags:
 
 ```bash
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ \
+uv run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ \
     --slurm time=240 \
     --slurm slurm_partition=gpu \
     --slurm mem_gb=16
@@ -34,13 +34,21 @@ storage that other nodes cannot see. The same checks run before a real
 submission, so a rejected profile stops the run before any job is queued. The
 dry-run preview also prints the `#SBATCH` lines the profile produces.
 
-## Wait for Completion
+## Monitor Completion
 
-By default, the CLI returns immediately after submitting SLURM jobs. To wait:
+Every SLURM run returns after submission and prints the commands to monitor
+its jobs. For example:
 
 ```bash
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ --wait
+uv run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ \
+    --slurm slurm_partition=compute
 ```
+
+The dependent finalizer publishes aggregated outputs and the completion marker.
+Successful submission is not successful processing: follow the printed scheduler
+commands and completion evidence before consuming those outputs. Migration
+submissions print the path of their finalizer's terminal-status file. The
+`--wait` option was removed in version 0.21.0.
 
 ## Continue on SLURM
 
@@ -48,5 +56,6 @@ Automatic continuation works the same way as local execution. Run the same
 command again:
 
 ```bash
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
+uv run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/ \
+    --slurm slurm_partition=compute
 ```

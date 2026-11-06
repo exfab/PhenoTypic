@@ -650,10 +650,13 @@ makes no progress, the remaining images become terminal failures and Stage 3
 continues for completed images. All dynamic job IDs are written to the run
 ledger, which cancellation uses after atomically deactivating the epoch.
 
-Without `--wait`, the command prints `PROCESSING SUBMITTED` and returns. The
-dependent finalizer alone publishes aggregate measurements, QC, analyses,
-dashboard, HTML report, README, and the atomic completion marker. With
-`--wait`, the CLI monitors that marker; Ctrl+C only detaches monitoring.
+The command prints `PROCESSING SUBMITTED`, writes the README, and returns
+after submission. The dependent finalizer alone publishes aggregate
+measurements, QC, analyses, the dashboard, and the atomic completion marker.
+Follow the printed monitoring commands and completion evidence to determine
+when those outputs are ready. The CLI no longer waits for the marker;
+version 0.21.0 removed `--wait`. The HTML processing report is available on
+demand after the run through `uv run python -m phenotypic.sdk_.generate_report <output>`.
 
 **Pre-staging gated weights.** For offline compute nodes, download checkpoints on
 the login node first and export `HF_HUB_OFFLINE=1` (and `hf auth login` for gated

@@ -350,9 +350,9 @@ def _column_widget(
     """Render a column-aware dropdown for plain ``ColumnRef`` / ``ColumnRefList``.
 
     Stale values (selected but absent from ``columns``) are surfaced via a
-    wrapper-level tooltip — multi widgets keep them selectable as
-    ``(missing) <name>`` entries; scalars clear the value (Dash's
-    ``dbc.Select`` does not render an option that isn't in ``options``).
+    wrapper-level tooltip and selectable ``<name> (missing)`` entries.
+    Keeping scalar values prevents form hydration from clearing a required
+    parameter and publishing a spurious recipe revision.
     """
     spec = p.column_ref
     assert spec is not None  # caller guarantees this
@@ -390,10 +390,13 @@ def _column_widget(
 
     scalar = current_value if isinstance(current_value, str) else None
     is_stale = bool(scalar) and scalar not in columns
+    options = _column_options(columns)
+    if is_stale:
+        options.append({"label": f"{scalar} (missing)", "value": scalar})
     widget = dbc.Select(
         id={"type": "param-column-scalar", **component_id},
-        options=_column_options(columns),
-        value=None if is_stale else scalar,
+        options=options,
+        value=scalar,
         placeholder="Pick a column…",
     )
     if is_stale:
