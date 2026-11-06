@@ -3,8 +3,7 @@
 A PhenoTypic CLI run writes its user-facing deliverables under
 ``<output>/deliverables/`` (``master_measurements.*``, the
 ``measurements.*`` mirror, ``analysis.*``, per-feature splits,
-``pipeline.json``, ``README.md``, ``dashboard.html``,
-``processing_report.html``). Per-image artifacts
+``pipeline.json``, ``README.md``, ``dashboard.html``). Per-image artifacts
 (``results/<ds>/...``), QC outputs (``qc/``), progress sidecars
 (``progress/``), and run state (``processing_state.json``) stay at the
 output root.

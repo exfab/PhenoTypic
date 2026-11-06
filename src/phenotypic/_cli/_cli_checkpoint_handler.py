@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -25,8 +24,6 @@ from phenotypic.sdk_ import (
     DashboardManifestKey,
     JobMetadataKey,
     checkpoint_lock_filename,
-    event_log_path,
-    processing_report_html_path,
     resolve_manifest_json_path,
     resolve_execution_mode,
     run_completion_marker_path,
@@ -371,8 +368,8 @@ def _run_finalize(
         logger.warning("Dashboard generation failed", exc_info=True)
 
     if epoch is not None:
-        with logged_step(logger, "finalize: publish report and README"):
-            _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
+        with logged_step(logger, "finalize: publish README"):
+            _publish_staged_readme(output_dir, job_metadata, epoch)
         from ._cli_completion import (
             _all_accepted_images_succeeded,
             publish_run_completion_evidence,
@@ -506,93 +503,37 @@ def _publish_run_completion_marker(
         return True
 
 
-def _publish_staged_report_and_readme(
+def _publish_staged_readme(
     output_dir: Path, job_metadata: dict, epoch: str
 ) -> None:
-    """Publish the report and README as part of the sole remote finalizer."""
+    """Publish the README as part of the sole remote finalizer.
+
+    .. versionchanged:: 0.21.0
+       No longer writes ``processing_report.html``; the report is generated
+       only on demand, with ``python -m phenotypic.sdk_.generate_report``.
+    """
     preload_custom_operation_modules()
 
     from phenotypic import ImagePipeline
 
     from ._cli_readme_generator import READMEGenerator
-    from ._cli_report_generator import HTMLReportGenerator
-    from ._cli_staged_orchestration import completed_inventory_images
-    from ._cli_types import (
-        Dataset,
-        DatasetResults,
-        ExecutionConfig,
-        ExecutionResults,
-        ImageFailure,
-    )
-    from ._cli_update_state import aggregate_state_from_events
+    from ._cli_types import Dataset, ExecutionConfig
 
     datasets_raw = job_metadata.get(JobMetadataKey.DATASETS, {}) or {}
-    inventory = {
-        name: list(raw.get("images", []))
-        for name, raw in datasets_raw.items()
-        if isinstance(raw, dict)
-    }
-    states = aggregate_state_from_events(
-        event_log_path(output_dir),
-        inventory=inventory,
-        generation=job_metadata.get(JobMetadataKey.PROCESSING_GENERATION),
-    )
-    dataset_results: dict[str, DatasetResults] = {}
-    datasets: list[Dataset] = []
-    for name, raw in datasets_raw.items():
-        images = list(raw.get("images", [])) if isinstance(raw, dict) else []
-        state = states.get(name)
-        completed = completed_inventory_images(output_dir, name, images)
-        event_failed = set() if state is None else state.failed
-        failed = (set(images) - completed) | event_failed
-        failed -= completed
-        errors = {} if state is None else state.errors
-        failures = [
-            ImageFailure(
-                dataset=name,
-                image_filename=image,
-                error_type="StageFailure",
-                error_message=errors.get(image, "Staged processing failed"),
-                traceback="",
-                timestamp=datetime.now(),
-            )
-            for image in sorted(failed)
-        ]
-        dataset_results[name] = DatasetResults(
+    datasets = [
+        Dataset(
             name=name,
-            total=len(images),
-            completed=len(completed),
-            failed=len(failed),
-            failures=failures,
+            images=[
+                Path(image)
+                for image in (
+                    raw.get("images", []) if isinstance(raw, dict) else []
+                )
+            ],
+            input_dir=Path("."),
+            output_dir=output_dir,
         )
-        datasets.append(
-            Dataset(
-                name=name,
-                images=[Path(image) for image in images],
-                input_dir=Path("."),
-                output_dir=output_dir,
-            )
-        )
-    start_raw = job_metadata.get(JobMetadataKey.START_TIME, "")
-    try:
-        start = datetime.fromisoformat(start_raw)
-    except (TypeError, ValueError):
-        start = datetime.now()
-    results = ExecutionResults(
-        datasets=dataset_results,
-        total_images=sum(result.total for result in dataset_results.values()),
-        total_completed=sum(
-            result.completed for result in dataset_results.values()
-        ),
-        total_failed=sum(result.failed for result in dataset_results.values()),
-        execution_mode="slurm",
-        start_time=start,
-        end_time=datetime.now(),
-        remote_finalized=True,
-    )
-    HTMLReportGenerator().generate_report(
-        results, processing_report_html_path(output_dir)
-    )
+        for name, raw in datasets_raw.items()
+    ]
     from ._cli_staged_orchestration import assert_active_epoch
 
     assert_active_epoch(output_dir, epoch)

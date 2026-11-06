@@ -636,7 +636,8 @@ RUN_LOG_DIRNAME: Final[str] = ".gui_log"
 #: the CLI decides whether an output is otherwise fresh.
 GUI_LOG_FILENAMES: Final[frozenset[str]] = frozenset({STDOUT_LOG})
 
-#: Top-level processing report HTML emitted by recompile mode.
+#: The processing report, written only on demand by
+#: ``python -m phenotypic.sdk_.generate_report`` (since 0.21.0).
 PROCESSING_REPORT_HTML: Final[str] = "processing_report.html"
 
 #: Legacy-named rolling aggregation state that the chunk writer rewrites as

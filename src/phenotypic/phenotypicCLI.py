@@ -168,7 +168,6 @@ from phenotypic._cli._cli_failure_tracker import (
     work_id_for_image,
 )
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
@@ -207,7 +206,6 @@ from phenotypic.sdk_ import (
     pipeline_json_path,
     pipeline_publication_lock,
     pipeline_publication_lock_path,
-    processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
     resolve_pipeline_config_path,
@@ -3648,8 +3646,8 @@ def phenotypic_cli(
             sys.exit(0 if results.total_failed == 0 else 1)
 
         # Process-only (apply-only) runs export image layers + a progress
-        # manifest only — no measurement aggregation, HTML report, README,
-        # or deliverables. The strategy already wrote the mirrored layers and
+        # manifest only — no measurement aggregation, README, or
+        # deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
             if not config.is_slurm_mode() and results.total_failed == 0:
@@ -3767,13 +3765,6 @@ def phenotypic_cli(
                     "(check logs for details)",
                     err=True,
                 )
-
-        # Generate HTML report
-        click.echo("Generating HTML report...")
-        report_gen = HTMLReportGenerator()
-        report_path = processing_report_html_path(output_dir)
-        report_gen.generate_report(results, report_path)
-        click.echo(f"✓ Report: {report_path}")
 
         # Generate README documentation
         click.echo("Generating README documentation...")

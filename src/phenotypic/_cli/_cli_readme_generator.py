@@ -109,7 +109,6 @@ output_folder/
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
 |   +-- plots/                         # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
-|   +-- processing_report.html        # HTML summary report
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results

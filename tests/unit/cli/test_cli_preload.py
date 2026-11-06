@@ -138,14 +138,6 @@ def test_staged_finalizer_imports_registration_before_deserialization(
 
     with (
         patch(
-            "phenotypic._cli._cli_update_state.aggregate_state_from_events",
-            return_value={},
-        ),
-        patch(
-            "phenotypic._cli._cli_report_generator."
-            "HTMLReportGenerator.generate_report"
-        ),
-        patch(
             "phenotypic._cli._cli_staged_orchestration.assert_active_epoch"
         ),
         patch(
@@ -156,7 +148,7 @@ def test_staged_finalizer_imports_registration_before_deserialization(
             side_effect=deserialize_after_registration,
         ),
     ):
-        checkpoint_handler._publish_staged_report_and_readme(
+        checkpoint_handler._publish_staged_readme(
             output_dir,
             job_metadata,
             "epoch-1",
