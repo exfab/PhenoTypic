@@ -33,6 +33,7 @@ from phenotypic.phenotypicCLI import phenotypic_cli  # noqa: E402
 from phenotypic.sdk_ import (  # noqa: E402
     JobMetadataKey,
     job_metadata_path,
+    master_measurements_parquet_path,
     processing_report_html_path,
     progress_dir,
     readme_md_path,
@@ -190,6 +191,8 @@ def test_a_process_slurm_run_returns_at_submission(
     assert "Layer to export: rgb" in result.output
     # Process runs build no dashboard, so the monitor lines offer none.
     assert "dashboard.html" not in result.output.split(_MONITOR_HEADER, 1)[1]
+    # ... and have no README.
+    assert not readme_md_path(output).exists()
     assert not processing_report_html_path(output).exists()
 
 
@@ -242,6 +245,44 @@ def _local_then_slurm_continuation(
     return CliRunner().invoke(
         phenotypic_cli, [*base, "--slurm", "slurm_partition=short", *slurm_flags]
     )
+
+
+def test_a_slurm_continuation_does_not_aggregate_at_submission(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    simple_pipeline_json: Path,
+    submissions: list[str],
+) -> None:
+    """Nothing is published until the finalizer runs (review I-a, finding 1).
+
+    On main, a continuation with verified images aggregated in-process at
+    submission and rewrote the master; a fresh run never did, so a fresh-run
+    test cannot see the difference.
+    """
+    output = tmp_path / "out"
+    master = master_measurements_parquet_path(output)
+
+    def _master_state() -> tuple[bytes, int]:
+        return master.read_bytes(), master.stat().st_mtime_ns
+
+    snapshots: list[tuple[bytes, int]] = []
+    real_invoke = CliRunner.invoke
+
+    def _snapshot_before_the_continuation(self, cli, args, *a, **k):
+        if "--slurm" in args:
+            snapshots.append(_master_state())
+        return real_invoke(self, cli, args, *a, **k)
+
+    with patch.object(CliRunner, "invoke", _snapshot_before_the_continuation):
+        result = _local_then_slurm_continuation(
+            simple_pipeline_json, synth_one_level_input, output
+        )
+
+    assert result.exit_code == 0, result.output
+    assert submissions == ["ordinary"]
+    assert "Continuing processing (1 images remaining)" in result.output
+    assert "Aggregating measurements" not in result.output
+    assert snapshots and _master_state() == snapshots[0]
 
 
 _STUDY = "Title: PROBE-STUDY-TITLE\nRelease date: 2026-11-05\n"
