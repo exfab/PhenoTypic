@@ -3662,6 +3662,49 @@ def _coalesced_reselection_edit(
     return None
 
 
+def _coalesced_new_pipeline_target(
+    triggered: Any, events: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """Return the Fill target batched with one New Pipeline click.
+
+    Args:
+        triggered: Dash's first triggered component ID.
+        events: Dash's complete triggered-property list.
+
+    Returns:
+        The parameter-port ID when the batch contains exactly these two
+        positive clicks, in either order; otherwise None. Other action
+        combinations keep their existing dispatch semantics.
+    """
+    if len(events) != 2:
+        return None
+    if triggered != ids.BTN_NEW_PIPELINE_NODE and not (
+        isinstance(triggered, dict) and triggered.get("type") == ids.LINEAR_PORT
+    ):
+        return None
+    target = None
+    new_pipeline = False
+    for event in events:
+        component, _, prop = str(event.get("prop_id", "")).rpartition(".")
+        if prop != "n_clicks" or not event.get("value"):
+            return None
+        if component == ids.BTN_NEW_PIPELINE_NODE:
+            new_pipeline = True
+            continue
+        try:
+            candidate = json.loads(component)
+        except (TypeError, ValueError):
+            return None
+        if not (
+            isinstance(candidate, dict)
+            and candidate.get("type") == ids.LINEAR_PORT
+            and candidate.get("kind") in {"parameter", "parameter_slot"}
+        ):
+            return None
+        target = candidate
+    return target if new_pipeline else None
+
+
 def _pipeline_revision(state_data: Dict[str, Any]) -> str:
     """Return a stable digest of pipeline semantics, excluding UI selection.
 
@@ -4333,6 +4376,9 @@ def register_callbacks(app: dash.Dash) -> None:
             _coalesced_reselection_edit(state_data, ctx.triggered_id, ctx.triggered)
             or ctx.triggered_id
         )
+        pipeline_target = _coalesced_new_pipeline_target(triggered, ctx.triggered)
+        if pipeline_target is not None:
+            triggered = ids.BTN_NEW_PIPELINE_NODE
         new_state_dict = state_data
 
         try:
@@ -4543,8 +4589,20 @@ def register_callbacks(app: dash.Dash) -> None:
                 # their own pattern ids above.
                 return _NOOP_FAN_IN
             elif triggered == ids.BTN_NEW_PIPELINE_NODE:
+                if pipeline_target is not None:
+                    # Apply the prerequisite target before inserting; choosing
+                    # only the New Pipeline trigger would use the old target.
+                    new_state_dict = _dispatch_state_update(
+                        new_state_dict,
+                        "target_select",
+                        {
+                            "kind": "target_select",
+                            "target": _linear_target_payload_from_id(pipeline_target),
+                            "open_menu": True,
+                        },
+                    )
                 new_state_dict = _dispatch_state_update(
-                    state_data,
+                    new_state_dict,
                     "linear_palette_add",
                     {
                         "kind": "linear_palette_add",
