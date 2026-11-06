@@ -3614,6 +3614,54 @@ def _browse_seed_from_source(
     return str(candidate)
 
 
+def _coalesced_reselection_edit(
+    state_data: Dict[str, Any], triggered: Any, events: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """Prefer an actual blur edit over a redundant selection in one Dash batch.
+
+    Dash can coalesce a node-title click and a subsequent parameter blur into
+    one invocation. Dispatching only its first trigger would discard the edit
+    when that click merely reselects the already-selected block. Blur widgets
+    read their value from State, so their concrete event can be dispatched
+    without changing selection or relying on the first event's value.
+
+    Args:
+        state_data: The current serialized builder state.
+        triggered: Dash's first triggered component ID.
+        events: Dash's complete triggered-property list.
+
+    Returns:
+        The matching blur-widget ID, or None when selection is not redundant
+        or no real blur edit of that block was included in the batch.
+    """
+    if not isinstance(triggered, dict):
+        return None
+    selected = state_data.get("selected_block_id")
+    if (
+        triggered.get("type") != ids.LINEAR_NODE_ACTION
+        or triggered.get("action") != "select"
+        or not selected
+        or triggered.get("block_id") != selected
+    ):
+        return None
+    for event in events:
+        component, _, prop = str(event.get("prop_id", "")).rpartition(".")
+        if prop != "n_blur" or not event.get("value"):
+            continue
+        try:
+            candidate = json.loads(component)
+        except (TypeError, ValueError):
+            continue
+        if (
+            isinstance(candidate, dict)
+            and candidate.get("prefix") == selected
+            and candidate.get("type")
+            in {"param-num", "param-str", "param-list", "param-tuple"}
+        ):
+            return candidate
+    return None
+
+
 def _pipeline_revision(state_data: Dict[str, Any]) -> str:
     """Return a stable digest of pipeline semantics, excluding UI selection.
 
@@ -4281,7 +4329,10 @@ def register_callbacks(app: dash.Dash) -> None:
         if state_data is None or ctx.triggered_id is None:
             return _NOOP_FAN_IN
 
-        triggered = ctx.triggered_id
+        triggered = (
+            _coalesced_reselection_edit(state_data, ctx.triggered_id, ctx.triggered)
+            or ctx.triggered_id
+        )
         new_state_dict = state_data
 
         try:
