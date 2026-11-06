@@ -527,9 +527,10 @@ persisting the returned ID.
 - Every worker checks the active epoch immediately before publishing the store,
   the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
-- Without `--wait`, staged submission returns `PROCESSING SUBMITTED` and remote
-  finalization owns aggregation, reports, README, and the completion marker.
-  With `--wait`, the CLI monitors that marker and never duplicates publication.
+- Staged submission returns `PROCESSING SUBMITTED`, like every SLURM run
+  (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
+  finalization owns aggregation, the dashboard and the completion marker.
+  Nothing writes `processing_report.html` automatically.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
 
@@ -618,12 +619,18 @@ Validate incompatible migration options before generating a plan or initializing
 lifecycle state. A SLURM `--dry-run` writes its manifest, config, scripts,
 statuses, lifecycle, and logs only below the external cache control root, never
 inside the scientific output tree. It submits the metadata preflight and
-throttled per-image validation chain; without `--wait`, report its durable job
-IDs, generation, and control references. With `--wait`, dry and non-dry attempts
-wait until the finalizer has closed the matching lifecycle, then validate that
-generation's typed terminal status. A failed or missing terminal authority is a
-Click error carrying the durable failure reason. Each rerun is a new
-generation/attempt, rather than reuse of a prior failed scheduler token.
+throttled per-image validation chain, and reports its durable job IDs,
+generation, control references, and the terminal status file its finalizer
+writes. That file is where a SLURM attempt's verdict is read: 0.21.0 removed
+`--wait`, which used to wait for the lifecycle to close and turn a failed
+terminal status into a Click error, so a submitted migration exits 0 whatever
+its jobs later do. **If the finalizer itself never finishes** (out of memory,
+time limit, node failure, or cancelled while pending), no terminal status file
+appears. Once no job of the attempt is queued, re-run `--mode migrate`:
+`reconcile_interrupted_migration_attempt` terminalizes the dead attempt as
+failed, writing its terminal status file, before it starts a new attempt.
+Each rerun is a new generation/attempt, rather than reuse of a prior failed
+scheduler token.
 
 Local mutation and the complete plan/initialize/submit critical section hold a
 shared-filesystem migration attempt lease. Recovery must acquire that lease
@@ -1088,7 +1095,8 @@ with a present column; written beside the feature split by
 `finalize_post_master_outputs`),
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
-`dashboard.html`, `processing_report.html`, `README.md`,
+`dashboard.html`, `README.md`, the on-demand `processing_report.html`
+(written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
 `pipeline.json.pht-pipe`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 pipeline config is **seeded** from the `--pipeline` bytes when a full or
 staged run starts (`_seed_pipeline_config`, only when no config -- canonical

@@ -85,7 +85,6 @@ def _config(out, pipe_path, resume=False):
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,
@@ -679,7 +678,6 @@ def test_cli_continues_finalizer_only_when_image_stages_are_complete(
                 start_time=now,
                 end_time=now,
                 submitted=True,
-                remote_managed=True,
             )
 
     def fake_strategy(config, output_manager):
@@ -701,6 +699,9 @@ def test_cli_continues_finalizer_only_when_image_stages_are_complete(
 
     assert resumed.exit_code == 0, resumed.output
     assert "Continuing staged GPU finalization" in resumed.output
+    # No image work was submitted, so the summary says what was (review I-a).
+    assert "Submitted: the finalizer only." in resumed.output
+    assert "image(s)" not in resumed.output.split("PROCESSING SUBMITTED", 1)[1]
     assert observed == {
         "finalizer_only": True,
         "phase": "stage3",

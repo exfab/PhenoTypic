@@ -44,6 +44,8 @@ from phenotypic.sdk_ import (
     resolve_processing_state_path,
 )
 
+from tests.integration.cli.conftest import read_migration_terminal_status
+
 #: The record fields that are stable across two migrations of one archive.
 #: Deliberately a projection, mirroring the full-run snapshot: a record also
 #: carries timestamps, which differ between any two runs and say nothing about
@@ -266,10 +268,10 @@ def _migrate_both_ways(
             str(slurm_tree),
             "--slurm",
             "slurm_partition=short",
-            "--wait",
         ],
     )
     assert slurm.exit_code == 0, slurm.output
+    assert read_migration_terminal_status(slurm.output)["status"] == "succeeded"
 
     return _provenance_snapshot(local_tree), _provenance_snapshot(slurm_tree)
 
