@@ -247,31 +247,21 @@ isolation before attributing it — most of them pass.
   controller before launching Stage-1 chunk 0. Each controller records the next job in
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
-  is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
-  the sole publisher of aggregated outputs and the completion marker. **P5 does not
-  change that.** The forward run's dependent finalizer becomes a `0-K` array whose
-  indices `0..K-1` aggregate measurement shards and whose index K is the reserved
-  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
-  still the sole publisher; it now has K helpers that publish nothing.
-  **With `--wait`, the aggregated outputs are written twice** and the sentence
-  above does not cover it: `AutonomousSLURMStrategy` never sets
-  `remote_managed` (only the staged path does, `_cli_staged_slurm.py:680,760`),
-  so the CLI falls through to `aggregate_master_csv`
-  (`phenotypicCLI.py:2977`) and aggregates **in the submitting process**, while
-  the dependent finalizer later aggregates again. The two are serialized by
-  `.aggregate_publication.lock` and read the same authorized sources, so they
-  write the same bytes — redundant, not divergent. **That last clause is a
-  property of one recent decision, not of the design**, and it was false
-  before `87f933cb`: the in-process path fans out at K = worker count while
-  the finalizer merges the scheduler's shards at its own K, and until
-  `shard_sources` became a *contiguous* split, merge order depended on K — so
-  two writers with the same lock and the same sources produced **different
-  bytes**. Reverting the decomposition to a strided assignment would silently
-  break this consumer, which is not named anywhere near it. **The completion-marker half
-  of the claim holds either way:** the main flow never publishes the run proof,
-  which only `_run_finalize` does. Note also that `--njobs` defaults to `-1`,
-  so that in-process aggregation runs the *local* fan-out at K = worker count,
-  not the scheduler's K.
+  is used. **Every SLURM run returns at submission** (0.21.0 removed `--wait`,
+  with no shim): the CLI writes the README, prints `PROCESSING SUBMITTED` (or
+  `PROCESS-ONLY SUBMITTED`) pointing at the strategy's "Monitor progress"
+  lines, and exits 0. It never aggregates in-process for a SLURM run, so the
+  dependent finalizer is the **sole** publisher of the aggregated outputs, the
+  dashboard and the completion marker. **P5 does not change that.** The forward
+  run's dependent finalizer becomes a `0-K` array whose indices `0..K-1`
+  aggregate measurement shards and whose index K is the reserved
+  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer
+  is still the sole publisher; it now has K helpers that publish nothing.
+  (Until 0.21.0, `--wait` also aggregated in the submitting process, so the
+  outputs were written twice; that case, and the paragraph that justified it,
+  are gone.) **No mode writes `processing_report.html` automatically**, local
+  included: `python -m phenotypic.sdk_.generate_report <output>` writes it on
+  demand.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
