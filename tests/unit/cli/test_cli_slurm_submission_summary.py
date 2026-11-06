@@ -295,6 +295,32 @@ def test_a_slurm_continuation_does_not_aggregate_at_submission(
 _STUDY = "Title: PROBE-STUDY-TITLE\nRelease date: 2026-11-05\n"
 
 
+def test_invalid_study_encoding_does_not_abort_submission(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    simple_pipeline_json: Path,
+    submissions: list[str],
+) -> None:
+    """Unreadable study text is absent rather than a submission-time crash."""
+    study = tmp_path / "study.yaml"
+    study.write_bytes(b"Title: caf\xe9\n")
+    output = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            *_slurm_args(simple_pipeline_json, synth_one_level_input, output),
+            "--study",
+            str(study),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert submissions == ["ordinary"]
+    metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
+    assert metadata[JobMetadataKey.STUDY_YAML] is None
+
+
 def test_a_slurm_submission_records_no_qc_and_the_study(
     tmp_path: Path,
     synth_one_level_input: Path,

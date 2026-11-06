@@ -195,7 +195,7 @@ def read_study_yaml(study: Optional[Path]) -> Optional[str]:
         return None
     try:
         return Path(study).read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         logger.warning("Failed to read --study file %s: %s", study, exc)
         return None
 

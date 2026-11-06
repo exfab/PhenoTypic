@@ -118,15 +118,16 @@ uv run python -m phenotypic \
   --mode migrate \
   --output /path/to/target \
   --slurm slurm_partition=short \
-  --slurm time=30 \
-  --wait
+  --slurm time=30
 ```
 
 Do not combine an explicit `--njobs` with `--slurm`; the scheduler owns array
-parallelism. Without `--wait`, the command returns after durable submission and
-prints the generation, control root, manifest, and finalizer script. With
-`--wait`, it reads the matching typed terminal report after the finalizer closes
-the lifecycle.
+parallelism. The command returns after durable submission and prints the
+generation, control root, manifest, finalizer script, and terminal-status path.
+The dependent finalizer writes that generation's success or failure verdict
+to the printed status file before closing the lifecycle. Inspect the status
+file and the scheduler logs to determine the outcome; exit code zero from the
+submitting command certifies submission only. Version 0.21.0 removed `--wait`.
 
 Full runs retain the metadata → image → seal → optional reclaim → finalizer
 chain. Direct stores and process trees use an indexed store array → provenance

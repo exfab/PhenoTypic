@@ -30,8 +30,8 @@ to ``_io_constants.py``, not here.
 
 These are bare *filenames*, not paths. The user-facing run artifacts
 (``master_measurements.*``, ``measurements.*``, ``measurements_by_feature/``,
-``analysis.*``, ``dashboard.html``, ``README.md``, ``pipeline.json``,
-and the on-demand ``processing_report.html``) now resolve
+``analysis.*``, ``dashboard.html``,
+``processing_report.html``, ``README.md``, ``pipeline.json``) now resolve
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
 backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.sdk_`). Join them via the
 ``phenotypic.sdk_`` path helpers (``deliverables_dir(output)``,
@@ -470,7 +470,7 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset(
 #
 # These are filenames/dirnames only. The user-facing artifacts
 # (master/measurements/analysis frames, the per-feature splits, the
-# on-demand HTML report, README, and pipeline.json) now resolve under
+# generated HTML reports, README, and pipeline.json) now resolve under
 # ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
 # phenotypic.sdk_ path helpers (deliverables_dir, master_measurements_parquet_path,
 # …). The per-image results dir stays at the output-dir root; QC resolves
