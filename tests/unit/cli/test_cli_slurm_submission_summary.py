@@ -400,6 +400,46 @@ def test_the_slurm_finalizer_applies_no_qc_and_the_study(
     assert "PROBE-STUDY-TITLE" in rembi
 
 
+def test_a_slurm_strategy_that_did_not_submit_is_refused(
+    tmp_path: Path,
+    synth_one_level_input: Path,
+    simple_pipeline_json: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The in-process publication is unreachable from SLURM, not merely unused."""
+    from datetime import datetime
+
+    from phenotypic._cli._cli_types import ExecutionResults
+
+    class _DidNotSubmit:
+        def execute(self, _datasets: list, _output_dir: Path) -> ExecutionResults:
+            now = datetime.now()
+            return ExecutionResults(
+                datasets={},
+                total_images=1,
+                total_completed=1,
+                total_failed=0,
+                execution_mode="slurm",
+                start_time=now,
+                end_time=now,
+            )
+
+    monkeypatch.setattr(
+        "phenotypic.phenotypicCLI.create_execution_strategy",
+        lambda _config, _manager: _DidNotSubmit(),
+    )
+    output = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        phenotypic_cli, _slurm_args(simple_pipeline_json, synth_one_level_input, output)
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "A SLURM strategy returned without submitting" in result.output
+    assert "Aggregating measurements" not in result.output
+    assert "PROCESSING COMPLETE" not in result.output
+
+
 @pytest.mark.parametrize(
     "mode_args",
     [

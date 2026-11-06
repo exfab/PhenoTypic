@@ -51,6 +51,8 @@ def test_gui_slurm_shaped_run_never_publishes_local_completion(
                     "total_images": 0,
                 },
             )
+            # Every SLURM strategy returns at submission (0.21.0); the CLI
+            # refuses one that does not, so the shape here is `submitted`.
             return ExecutionResults(
                 datasets={},
                 total_images=0,
@@ -59,6 +61,7 @@ def test_gui_slurm_shaped_run_never_publishes_local_completion(
                 execution_mode="slurm",
                 start_time=now,
                 end_time=now,
+                submitted=True,
             )
 
     def _injected_strategy(config, _output_manager):

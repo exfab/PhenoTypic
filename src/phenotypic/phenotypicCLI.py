@@ -3603,6 +3603,15 @@ def phenotypic_cli(
         # never only the filtered worklist.
         finalization_datasets = full_datasets if config.resume else datasets
 
+        # Every SLURM strategy returns `submitted=True`. One that did not would
+        # fall through to the in-process publication below -- the double
+        # write the finalizer exists to prevent -- so refuse rather than run it.
+        if config.is_slurm_mode() and not results.submitted:
+            raise RuntimeError(
+                "A SLURM strategy returned without submitting; refusing to "
+                "publish in-process, which belongs to the SLURM finalizer."
+            )
+
         if results.submitted:
             # Every SLURM run -- ordinary, staged or process -- returns here,
             # at submission (0.21.0 removed --wait). Its dependent finalizer
@@ -3625,6 +3634,12 @@ def phenotypic_cli(
                     "when the jobs finish."
                 ],
                 f"Results will be published under: {output_dir}",
+                status=(
+                    "Submitted: the finalizer only. Every image stage is "
+                    "already complete."
+                    if config.staged_finalizer_only
+                    else None
+                ),
             )
             sys.exit(0)
 
@@ -4608,6 +4623,8 @@ def _echo_submitted_summary(
     results: ExecutionResults,
     details: Sequence[str],
     destination: str,
+    *,
+    status: Optional[str] = None,
 ) -> None:
     """Print the summary of a SLURM run, which returns at submission.
 
@@ -4620,12 +4637,17 @@ def _echo_submitted_summary(
         results: The strategy's results; only ``total_images`` is read.
         details: Mode-specific lines printed after the status line.
         destination: The closing line naming where the outputs will appear.
+        status: Replaces the default "Submitted: N image(s)" line, for a
+            submission with no image work (a staged finalizer-only
+            continuation).
     """
     click.echo("\n" + "=" * 60)
     click.echo(title)
     click.echo("=" * 60)
     click.echo(
-        f"Submitted: {results.total_images} image(s). The jobs have not "
+        status
+        if status is not None
+        else f"Submitted: {results.total_images} image(s). The jobs have not "
         "finished, so nothing has been counted yet."
     )
     for line in details:
