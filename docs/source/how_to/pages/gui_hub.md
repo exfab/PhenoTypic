@@ -118,7 +118,7 @@ that path, not the full URL, as `--url-prefix`:
 
 ```bash
 uv run phenotypic-gui \
-  --root /rhome/ejaco020 \
+  --root /path/to/your/images \
   --host 0.0.0.0 \
   --port 30099 \
   --url-prefix /node/hz01/30099/

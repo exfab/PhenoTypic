@@ -37,12 +37,15 @@ Image Options
    Image class to use for loading. Case-insensitive. Default: ``GridImage``.
 
 ``--nrows N``
-   Number of grid rows (GridImage only). Overrides any pipeline-level preset;
-   when omitted, the pipeline preset is used, falling back to 8.
+   Number of grid rows (GridImage only). When omitted, the pipeline preset is
+   used, falling back to 8. ``--mode full`` refuses a value unlike a pipeline
+   that presets both ``nrows`` and ``ncols``, because ``measure()`` lays out
+   the preset grid and the two grids would disagree on every colony.
 
 ``--ncols N``
-   Number of grid columns (GridImage only). Overrides any pipeline-level preset;
-   when omitted, the pipeline preset is used, falling back to 12.
+   Number of grid columns (GridImage only). When omitted, the pipeline preset
+   is used, falling back to 12. Refused in ``--mode full`` when unlike a
+   pipeline that presets both, as for ``--nrows``.
 
 ``--bit-depth {8,16}``
    Force bit depth. Default: auto-detect.

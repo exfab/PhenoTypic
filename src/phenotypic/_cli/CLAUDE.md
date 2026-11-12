@@ -59,7 +59,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 
 **`phenotypic_cli` has a read-only half and a mutating half, in that order.**
 The read-only half parses and validates options, scans the inputs, runs the
-refusals that cannot be skipped (the GPU placement refusal, the refusal of a
+refusals that cannot be skipped (the GPU placement refusal, the grid-preset
+refusal, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
 `--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
 reference-metadata refusals in **Reference metadata** below), loads the pipeline,
@@ -91,6 +92,24 @@ Walking everything would refuse a `process` run over a measurer it never runs.
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## The grid-preset refusal (`_refuse_grid_preset_unlike_cli_grid`)
+
+In `--mode full`, `--nrows`/`--ncols` shape each `GridImage`
+(`resolve_grid_shape`), while a pipeline that presets **both** `nrows` and
+`ncols` and holds no `GridFinder` in `meas` makes `measure()` add
+`CenteredAutoGridFinder` with the *preset* shape. Two shapes mean two grids
+that disagree on colonies' `Grid_*` values, and `measure()` raises
+`MeasurementConflictError` for every image (before `887e2533e`, 2026-11-04,
+it silently dropped those colonies instead). So flags unlike such a preset are a `click.UsageError`
+beside the GPU placement refusal: un-skippable, above `--overwrite` and the
+`--dry-run` exit. A pipeline that fails to load is left to the validation.
+Not refused, because `measure()` adds no finder for them: a preset of only
+one of `nrows`/`ncols`, or none. Not covered, and reported per image by the
+failure tracker instead: an explicit grid finder in `meas` (then the preset
+lays out nothing, and the finder is what must match the image), and
+`--mode measure`, whose stores carry the grid the forward run recorded.
+Pinned, both halves, by `tests/unit/cli/test_cli_grid_preset_refusal.py`.
 
 ## Reference metadata (`_cli_reference.py`)
 
@@ -229,6 +248,28 @@ and runs three content-defined stages. The per-image stage cores live in
    Stage 3 re-promotes over it, so a retry would refine already-refined labels.
    Then apply post-ops + `measure(apply_post=False)`, re-promote the store, and
    consume the signal — **token first, then the raw array** (mandatory).
+
+**Stage 1 reads an input exactly as a single-pass run does.** Every forward
+reader builds its kwargs from the same two helpers in `_cli_utils.py`: the
+caller's `input_read_settings(bit_depth, detect_mode)`, then, inside the core
+that holds the pipeline, `image_read_kwargs(...)`, which adds a `GridImage`'s
+shape from `resolve_grid_shape` (flags, then the preset, then 8 x 12). The
+callers are `LocalParallelStrategy` (full and process), the single-pass SLURM
+worker (`_cli_process_single.py` `main`), `StagedGpuStrategy`, and the staged
+SLURM worker, which reads the four flags from `job_metadata.json`
+(`JobMetadataKey.NROWS`/`NCOLS`/`BIT_DEPTH`/`DETECT_MODE`, written by
+`_write_staged_job_metadata` before Controller 0 is submitted) rather than from
+its command line, and refuses to run when that file is missing or
+unreadable (a key an older submitter never wrote still reads as unset).
+Before `fe8863c81` (2026-11-04), Stage 1 applied no grid shape at all (every
+staged `GridImage` was 8 x 12) and the SLURM worker also dropped `--bit-depth`
+and `--detect-mode`. **Nothing fences a staged run resumed across that fix**:
+the work id carries the same flags before and after, so its Stage-1 stores and
+completed images are reused as they were read. A staged `GridImage` run whose
+grid is not 8 x 12, or a staged SLURM run given `--bit-depth` or a
+`--detect-mode` other than `gray`, must be re-run with `--restart` (or
+`--overwrite`). Pinned by
+`tests/unit/cli/test_staged_stage1_reads_like_single_pass.py`.
 
 ### Nested detectors: found tree-wide, cut at the top-level ancestor
 

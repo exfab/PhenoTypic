@@ -251,7 +251,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
 
         # Example pipeline: handle uneven illumination + noise
         # Step 1: Remove background gradients
-        result = SubtractRollingBall(width=50).apply(image)
+        result = SubtractRollingBall(radius=50).apply(image)
 
         # Step 2: Boost local contrast for faint colonies
         result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)
@@ -282,7 +282,7 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
         from phenotypic.detect import OtsuDetector
 
         pipeline = ImagePipeline()
-        pipeline.add(SubtractRollingBall(width=50))
+        pipeline.add(SubtractRollingBall(radius=50))
         pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))
         pipeline.add(BlurGauss(sigma=2))
         pipeline.add(OtsuDetector())
