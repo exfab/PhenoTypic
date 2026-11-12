@@ -91,6 +91,17 @@ def test_construction_loads_no_torch():
     assert result.returncode == 0, result.stderr
 
 
+def test_uses_no_deprecated_operation_names():
+    # A deprecated alias warns at import, attributed to the importing module.
+    code = "from phenotypic.prefab import BacterSamPipeline; BacterSamPipeline()"
+    result = subprocess.run(
+        [sys.executable, "-W", "error::DeprecationWarning:phenotypic.prefab._bactersam_pipeline",
+         "-c", code],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_sam2_reads_detect_mat():
     assert BacterSamPipeline().get_ops()["Detector"].input_layer == "detect_mat"
 

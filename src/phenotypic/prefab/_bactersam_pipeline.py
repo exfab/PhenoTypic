@@ -17,7 +17,7 @@ from phenotypic.refine import (
     KeepSectionLargest,
     RemoveBorderObjects,
     RemoveLowCircularity,
-    SmallObjectRemover,
+    RemoveSmallObjects,
 )
 
 
@@ -50,7 +50,7 @@ class BacterSamPipeline(PrefabPipeline):
            non-colony masks.
         6. ``BorderFilter`` -- RemoveBorderObjects: drop objects touching the
            cropped image edge.
-        7. ``SmallObjectFilter`` -- SmallObjectRemover: drop debris and dust.
+        7. ``SmallObjectFilter`` -- RemoveSmallObjects: drop debris and dust.
         8. ``GridLargest`` -- KeepSectionLargest: keep one colony per grid
            section.
 
@@ -179,7 +179,7 @@ class BacterSamPipeline(PrefabPipeline):
             ),
             "CircularityFilter": RemoveLowCircularity(cutoff=circularity_cutoff),
             "BorderFilter": RemoveBorderObjects(border_size=border_size),
-            "SmallObjectFilter": SmallObjectRemover(min_size=min_object_size),
+            "SmallObjectFilter": RemoveSmallObjects(min_size=min_object_size),
             "GridLargest": KeepSectionLargest(),
         }
         meas = {
