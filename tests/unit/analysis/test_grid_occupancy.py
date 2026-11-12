@@ -231,3 +231,86 @@ class TestInspect:
         chk = GridOccupancy(metadata=_layout(), groupby=[str(IMAGE.IMAGE_NAME)])
         with pytest.raises(RuntimeError, match="analyze"):
             chk.inspect()
+
+
+class TestCategoricalTableExport:
+    """Export only observed plate groups, including empty selections."""
+
+    @pytest.mark.parametrize("multiple_groupers", [False, True])
+    def test_unused_categories_do_not_create_table_rows(
+        self, multiple_groupers: bool
+    ) -> None:
+        image = str(IMAGE.IMAGE_NAME)
+        frame = _measurements("plate1.png", [1, 2, 3])
+        frame[image] = pd.Categorical(
+            frame[image], categories=["plate1.png", "unused.png"]
+        )
+        layout = _layout()
+        groupby = [image]
+        if multiple_groupers:
+            frame["Metadata_Batch"] = pd.Categorical(
+                ["batch1"] * len(frame), categories=["batch1", "unused_batch"]
+            )
+            layout["Metadata_Batch"] = "batch1"
+            groupby.append("Metadata_Batch")
+        check = GridOccupancy(metadata=layout, groupby=groupby)
+        original = frame.copy(deep=True)
+
+        analyzed = check.analyze(frame)
+        table = check.to_table()
+
+        assert len(analyzed) == len(frame)
+        assert table[image].tolist() == ["plate1.png"]
+        assert len(table) == len(check.summary()) == 1
+        assert table["QC_Occupancy_Filled"].tolist() == [3]
+        assert table["QC_Occupancy_Expected"].tolist() == [96]
+        assert table[check.flag_col()].tolist() == [True]
+        if multiple_groupers:
+            assert table["Metadata_Batch"].tolist() == ["batch1"]
+        pd.testing.assert_frame_equal(frame, original)
+
+    def test_empty_categorical_selection_exports_no_groups(self) -> None:
+        image = str(IMAGE.IMAGE_NAME)
+        frame = _measurements("plate1.png", [])
+        frame[image] = pd.Categorical(
+            frame[image], categories=["plate1.png", "unused.png"]
+        )
+        check = GridOccupancy(metadata=_layout(), groupby=[image])
+
+        check.analyze(frame)
+
+        assert check.to_table().empty
+        assert check.summary().empty
+
+
+@pytest.mark.parametrize("check_type", [ExpectedVsDetectedCount, GridOccupancy])
+@pytest.mark.parametrize("multiple_groupers", [False, True])
+def test_inspection_excludes_unused_categorical_groups(
+    check_type: type[ExpectedVsDetectedCount], multiple_groupers: bool
+) -> None:
+    """Both QC figures plot measured groups without unused category rows."""
+    image = str(IMAGE.IMAGE_NAME)
+    frame = _measurements("plate1.png", [1, 2, 3])
+    frame[image] = pd.Categorical(
+        frame[image], categories=["plate1.png", "unused.png"]
+    )
+    layout = _layout()
+    groupby = [image]
+    expected_label = "plate1.png"
+    if multiple_groupers:
+        frame["Metadata_Batch"] = pd.Categorical(
+            ["batch1"] * len(frame), categories=["batch1", "unused_batch"]
+        )
+        layout["Metadata_Batch"] = "batch1"
+        groupby.append("Metadata_Batch")
+        expected_label += " | batch1"
+    check = check_type(metadata=layout, groupby=groupby)
+    original = frame.copy(deep=True)
+
+    check.analyze(frame)
+    figure = check.inspect()
+
+    assert list(figure.data[-1].y) == [expected_label]
+    expected_traces = 2 if check_type is ExpectedVsDetectedCount else 1
+    assert len(figure.data) == expected_traces
+    pd.testing.assert_frame_equal(frame, original)

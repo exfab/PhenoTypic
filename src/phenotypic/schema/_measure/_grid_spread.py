@@ -1,6 +1,7 @@
 """Grid section spatial spread measurements."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import QualityInfo
 
 
@@ -17,11 +18,16 @@ class GRID_SPREAD(QualityInfo):
     def metric_family(cls):
         return "GridSpread"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX2
+
     OBJECT_SPREAD = Entry(
         "ObjectSpread",
-        "Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects' bounding-box centers (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.",
+        "Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects' centroids (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.",
     )
     OBJECT_COUNT = Entry(
         "ObjectCount",
         "Number of detected objects assigned to the same grid section as this object, the object itself included. Reported on every object of the section, so all objects in one section share the same value. 1 means the section holds a single object, for which ObjectSpread is 0; values above 1 flag multi-detections or fragmented growth in that section.",
+        unit=UNITS.UNITLESS,
     )

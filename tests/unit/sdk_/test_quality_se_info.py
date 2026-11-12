@@ -11,7 +11,8 @@ from phenotypic.schema import QUALITY_SE
 class TestMemberValues:
     def test_value_member(self) -> None:
         assert QUALITY_SE.VALUE.label == "Value"
-        assert QUALITY_SE.VALUE.desc.startswith("Raw SE")
+        assert QUALITY_SE.VALUE.desc.startswith("Standard error")
+        assert "stddev / sqrt(n)" in QUALITY_SE.VALUE.desc
 
     def test_mean_member(self) -> None:
         assert QUALITY_SE.MEAN.label == "Mean"

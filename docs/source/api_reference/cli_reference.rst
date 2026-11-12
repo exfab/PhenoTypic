@@ -37,12 +37,15 @@ Image Options
    Image class to use for loading. Case-insensitive. Default: ``GridImage``.
 
 ``--nrows N``
-   Number of grid rows (GridImage only). Overrides any pipeline-level preset;
-   when omitted, the pipeline preset is used, falling back to 8.
+   Number of grid rows (GridImage only). When omitted, the pipeline preset is
+   used, falling back to 8. ``--mode full`` refuses a value unlike a pipeline
+   that presets both ``nrows`` and ``ncols``, because ``measure()`` lays out
+   the preset grid and the two grids would disagree on every colony.
 
 ``--ncols N``
-   Number of grid columns (GridImage only). Overrides any pipeline-level preset;
-   when omitted, the pipeline preset is used, falling back to 12.
+   Number of grid columns (GridImage only). When omitted, the pipeline preset
+   is used, falling back to 12. Refused in ``--mode full`` when unlike a
+   pipeline that presets both, as for ``--nrows``.
 
 ``--bit-depth {8,16}``
    Force bit depth. Default: auto-detect.
@@ -144,12 +147,13 @@ SLURM Options
    keys ``mem_gb`` and ``time``. ``time`` is an **integer number of minutes**.
    The deprecated ``time_min`` key is auto-migrated to ``time``.
 
-``--wait``
-   Wait for SLURM jobs and their dependent finalizer to complete. For staged GPU
-   runs, success requires the finalizer completion marker. Without this flag,
-   the CLI prints ``PROCESSING SUBMITTED`` and returns without running local
-   aggregation or claiming completion. Ctrl+C detaches monitoring without
-   cancelling the active epoch.
+SLURM runs return after submission. The CLI prints a submission summary
+and monitoring information; the dependent finalizer publishes aggregated outputs
+and the completion marker. A submission exit code of zero does not certify
+that image processing has completed. Follow the printed scheduler commands
+and the run's completion evidence before starting work that consumes its outputs.
+Migration submissions print a terminal-status file whose verdict is written
+by their finalizer. The ``--wait`` option was removed in version 0.21.0.
 
 GPU Staging Options
 -------------------

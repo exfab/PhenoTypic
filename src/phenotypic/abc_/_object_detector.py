@@ -150,10 +150,12 @@ class ObjectDetector(ImageOperation, ABC):
            threshold = skimage.filters.threshold_otsu(enh)
            binary_mask = enh > threshold
 
-           # Remove small noise
-           binary_mask = skimage.morphology.remove_small_objects(binary_mask, min_size=20)
+           # Remove small noise: drop every component under 20 pixels
+           components, _ = ndimage.label(binary_mask)
+           sizes = np.bincount(components.ravel())
+           binary_mask &= sizes[components] >= 20
 
-           # Label connected components
+           # Label the surviving components
            labeled_map, num_objects = ndimage.label(binary_mask)
 
            # Set both outputs
@@ -168,8 +170,9 @@ class ObjectDetector(ImageOperation, ABC):
          mask topology (remove noise, bridge fragments, smooth boundaries).
        - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects
          touching image edges.
-       - **Remove small/large objects:** Use ``skimage.morphology.remove_small_objects()`` or
-         ``skimage.morphology.remove_large_objects()`` to filter by area.
+       - **Remove small/large objects:** Filter by area with a label-size mask, as in
+         step 4, or leave it to :class:`~phenotypic.refine.RemoveSmallObjects` or
+         :class:`~phenotypic.refine.RemoveByFeature` later in the pipeline.
        - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive
          labels.
 
@@ -179,14 +182,15 @@ class ObjectDetector(ImageOperation, ABC):
 
     - **scipy.ndimage.label():** Assigns unique integers to connected components in a binary
       mask. Returns (labeled_array, num_features). Specify ``structure`` for connectivity
-      (default 3x3 with all 8 neighbors; use ``generate_binary_structure(2, 1)`` for
-      4-connectivity).
+      (default: cross-shaped, i.e. 4-connectivity in 2-D; use
+      ``generate_binary_structure(2, 2)`` for 8-connectivity).
 
-    - **skimage.morphology.remove_small_objects():** Removes binary regions smaller than
-      min_size pixels. Helpful for filtering noise or spurious detections.
-
-    - **skimage.morphology.remove_large_objects():** Removes regions larger than a threshold.
-      Useful for excluding large artefacts or plate boundaries.
+    - **skimage.morphology.remove_small_objects():** Removes small connected regions.
+      scikit-image 0.26 renamed its threshold: ``min_size`` (removes regions *smaller
+      than* the value) is deprecated in favour of ``max_size`` (removes regions of that
+      size *or smaller*), so ``max_size=n - 1`` keeps the old ``min_size=n`` boundary.
+      Earlier releases accept only ``min_size``. The label-size mask in step 4 behaves
+      the same on every release.
 
     - **skimage.segmentation.clear_border():** Sets pixels on the image border to False,
       eliminating objects that touch the edge (common in arrayed imaging where wells at
@@ -221,7 +225,7 @@ class ObjectDetector(ImageOperation, ABC):
     Raw detections often need cleanup:
 
     - **Remove small noise:** Spurious single-pixel detections or tiny salt-and-pepper artifacts.
-      Use ObjectRefiner + remove_small_objects.
+      Use :class:`~phenotypic.refine.RemoveSmallObjects` (an ObjectRefiner).
 
     - **Clean borders:** Colonies at plate edges may be incomplete. Use ObjectRefiner or
       clear_border() in detector.

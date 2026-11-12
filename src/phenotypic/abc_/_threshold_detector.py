@@ -53,8 +53,8 @@ class ThresholdDetector(ObjectDetector, ABC):
       Automatic, global, works for balanced histograms.
     - [LiDetector](src/phenotypic/detect/_li_detector.py): Minimizes Kullback-Leibler divergence.
       Good for dark colonies on bright background.
-    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes object variance.
-      Excellent for sharply defined colonies.
+    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes the total
+      entropic correlation of the two classes (Yen's criterion).
     - [TriangleDetector](src/phenotypic/detect/_triangle_detector.py): Connects histogram
       extrema. Works well for non-overlapping bimodal distributions.
     - [IsodataDetector](src/phenotypic/detect/_isodata_detector.py): Iteratively refines based
@@ -209,30 +209,21 @@ class ThresholdDetector(ObjectDetector, ABC):
     Examples:
         Detect colonies using Otsu's automatic threshold:
 
-        >>> from phenotypic import Image
+        >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
-        >>> # Load a plate image
-        >>> plate = Image.imread("agar_plate.jpg")
-        >>> # Apply Otsu threshold detection
+        >>> plate = load_synth_yeast_plate()
         >>> detector = OtsuDetector(ignore_zeros=True, ignore_borders=True)
         >>> detected = detector.apply(plate)
-        >>> # Access results
         >>> mask = detected.objmask[:]  # Binary mask
         >>> objmap = detected.objmap[:]  # Labeled map
-        >>> num_colonies = objmap.max()
-        >>> print(f"Detected {num_colonies} colonies")
-        >>> # Iterate over colonies
-        >>> for colony in detected.objects:
-        ...     print(f"Colony {colony.label}: area={colony.area} px")
+        >>> int(objmap.max()) == detected.num_objects
+        True
 
         Compare different threshold strategies:
 
-        >>> from phenotypic import Image
         >>> from phenotypic.detect import (
         ...     OtsuDetector, LiDetector, YenDetector, TriangleDetector
         ... )
-        >>> plate = Image.imread("agar_plate.jpg")
-        >>> # Test multiple threshold strategies
         >>> detectors = {
         ...     "Otsu": OtsuDetector(),
         ...     "Li": LiDetector(),
@@ -240,52 +231,35 @@ class ThresholdDetector(ObjectDetector, ABC):
         ...     "Triangle": TriangleDetector(),
         ... }
         >>> for name, detector in detectors.items():
-        ...     result = detector.apply(plate)
-        ...     num = result.objmap[:].max()
-        ...     print(f"{name}: detected {num} colonies")
+        ...     print(f"{name}: {detector.apply(plate).num_objects} objects")
+        Otsu: 552 objects
+        Li: 543 objects
+        Yen: 500 objects
+        Triangle: 378 objects
 
         Build a pipeline with thresholding and refinement:
 
-        >>> from phenotypic import Image, ImagePipeline
-        >>> from phenotypic.enhance import ContrastEnhancer
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import RemoveSmallObjectsRefiner
-        >>> # Create pipeline
-        >>> pipeline = ImagePipeline()
-        >>> pipeline.add(ContrastEnhancer(factor=1.5))  # Boost contrast
-        >>> pipeline.add(OtsuDetector(ignore_zeros=True))  # Threshold
-        >>> pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup
-        >>> # Process image
-        >>> plate = Image.imread("agar_plate.jpg")
-        >>> result = pipeline.operate([plate])[0]
-        >>> print(f"Final colonies: {result.objmap[:].max()}")
+        >>> from phenotypic.refine import RemoveSmallObjects
+        >>> detected.num_objects  # Otsu alone leaves many small fragments
+        552
+        >>> cleaned = RemoveSmallObjects(min_size=50).apply(detected)
+        >>> cleaned.num_objects
+        96
 
-        Tuning threshold detection on your plate images:
+        Tuning threshold detection on your plate images: apply several
+        strategies to the same plate and keep the one whose count matches the
+        number of colonies you can see.
 
-        >>> from phenotypic import Image
-        >>> from phenotypic.detect import (
-        ...     OtsuDetector, YenDetector, TriangleDetector
-        ... )
-        >>> # Load a sample plate image
-        >>> plate = Image.imread("sample_plate.jpg")
-        >>> # Test different threshold strategies
         >>> strategies = {
         ...     "Otsu": OtsuDetector(ignore_zeros=True),
         ...     "Yen": YenDetector(ignore_zeros=True),
-        ...     "Triangle": TriangleDetector(ignore_zeros=True),
+        ...     "Triangle": TriangleDetector(),
         ... }
-        >>> best_detector = None
-        >>> best_count = 0
-        >>> for name, detector in strategies.items():
-        ...     result = detector.apply(plate)
-        ...     num_colonies = result.objmap[:].max()
-        ...     print(f"{name}: {num_colonies} colonies detected")
-        ...     # Choose detector that finds expected number of colonies
-        ...     if best_detector is None:
-        ...         best_detector = detector
-        ...         best_count = num_colonies
-        >>> # Use best detector for batch processing
-        >>> print(f"Selected: {type(best_detector).__name__}")
+        >>> for name, det in strategies.items():
+        ...     print(f"{name}: {det.apply(plate).num_objects} colonies detected")
+        Otsu: 552 colonies detected
+        Yen: 500 colonies detected
+        Triangle: 378 colonies detected
     """
 
     @abstractmethod

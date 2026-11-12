@@ -45,7 +45,7 @@ from phenotypic._cli._cli_staged_workers import (
 from phenotypic._cli._cli_stage2_token import detector_slot
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic.detect import CompositeDetector, ManualPointDetector
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.sdk_ import event_log_path, zarr_store_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
@@ -124,7 +124,6 @@ def _config(out, pipe_path, *, resume=False):
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,
@@ -181,7 +180,7 @@ def _run_process_export(tmp_path, pipe):
 def test_export_applies_post_detector_ops(tmp_path):
     """``--layer objmap`` exports the PIPELINE's objmap, not the raw output.
 
-    The pipeline is detector -> ``SmallObjectRemover(min_size=100)``. The
+    The pipeline is detector -> ``RemoveSmallObjects(min_size=100)``. The
     detector finds two objects; the refiner removes one. An export that writes
     the detector's raw array keeps both.
 
@@ -194,7 +193,7 @@ def test_export_applies_post_detector_ops(tmp_path):
     pipe = ImagePipeline(
         ops=[
             FakeGpuDetector(output_kind="instance", threshold=0.3),
-            SmallObjectRemover(min_size=100),
+            RemoveSmallObjects(min_size=100),
         ]
     )
     image_path, _out, exported = _run_process_export(tmp_path, pipe)
@@ -326,7 +325,7 @@ def test_the_store_is_byte_unchanged_by_the_export(tmp_path):
     pipe = ImagePipeline(
         ops=[
             FakeGpuDetector(output_kind="instance", threshold=0.3),
-            SmallObjectRemover(min_size=100),
+            RemoveSmallObjects(min_size=100),
         ]
     )
     pipe_path = _write_pipeline(out, pipe)
@@ -435,7 +434,7 @@ def test_bumping_the_semantics_revision_invalidates_an_existing_tree(tmp_path):
     pipe = ImagePipeline(
         ops=[
             FakeGpuDetector(output_kind="instance", threshold=0.3),
-            SmallObjectRemover(min_size=100),
+            RemoveSmallObjects(min_size=100),
         ]
     )
     pipe_path = _write_pipeline(out, pipe)

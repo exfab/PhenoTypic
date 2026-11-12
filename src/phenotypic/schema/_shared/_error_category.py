@@ -16,6 +16,7 @@ user-defined custom categories, registered at runtime (not enum members).
 from __future__ import annotations
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import QualityInfo
 
 
@@ -31,6 +32,10 @@ class ErrorCategory(QualityInfo):
     @classmethod
     def metric_family(cls) -> str:
         return "ErrorCategory"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.NOT_A_QUANTITY
 
     @classmethod
     def labels(cls) -> list[str]:

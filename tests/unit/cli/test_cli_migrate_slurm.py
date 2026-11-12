@@ -596,10 +596,10 @@ def test_dry_finalizer_terminalizes_and_closes_failed_generation(
     assert lifecycle["active"] is False
 
 
-def test_dry_finalizer_publishes_waitable_typed_terminal_authority(
+def test_dry_finalizer_publishes_readable_typed_terminal_authority(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Public ``--wait`` reads the same typed terminal shape for dry attempts."""
+    """A dry attempt's terminal file has the same typed shape as a real one."""
     from phenotypic._cli import _cli_migrate as migrate
     from phenotypic._cli import _cli_migrate_worker as worker
     from phenotypic.sdk_._hdf_to_zarr import MigrationReport

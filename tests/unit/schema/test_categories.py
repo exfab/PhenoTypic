@@ -222,37 +222,33 @@ def test_stdlib_guard_sees_nested_imports(source: str, flagged: bool) -> None:
 
 _STARTING_METRICS_HEADERS = {
     "Size_Area",
-    "Size_IntegratedIntensity",
-    "Size_Perimeter",
-    "Size_ConvexArea",
-    "Size_BboxArea",
-    "Size_MajorAxisLength",
-    "Size_MinorAxisLength",
-    "Size_MinFeretDiameter",
-    "Size_MaxFeretDiameter",
-    "Size_InscribedRadius",
-    "Size_MedianRadius",
-    "Size_MeanRadius",
     "Size_RobustMeanRadius",
-    "Size_MaxRadius",
+    "Shape_Circularity",
+    "Shape_Eccentricity",
+    "Intensity_MeanIntensity",
     "ColorLab_L*Medoid",
     "ColorLab_a*Medoid",
     "ColorLab_b*Medoid",
-    "Intensity_IntegratedIntensity",
 }
 
 
 def test_starting_metrics_membership_is_pinned() -> None:
+    # The docs' Start here list (design §8): Tier 1 and 2 columns only.
     members = CATEGORIES.STARTING_METRICS.members()
     assert {m.value for m in members} == _STARTING_METRICS_HEADERS
-    assert len(members) == 18
-    # schema.__all__ order, then member order; Task 8's Categories page
-    # renders in this order.
-    assert [m.value for m in members][:4] == [
+    assert len(members) == 8
+    assert {m.resolved_tier for m in members} <= {1, 2}
+    # schema.__all__ order, then member order; the Categories page and the
+    # Measurements table render in this order.
+    assert [m.value for m in members] == [
         "ColorLab_L*Medoid",
         "ColorLab_a*Medoid",
         "ColorLab_b*Medoid",
-        "Intensity_IntegratedIntensity",
+        "Intensity_MeanIntensity",
+        "Shape_Circularity",
+        "Shape_Eccentricity",
+        "Size_Area",
+        "Size_RobustMeanRadius",
     ]
 
 

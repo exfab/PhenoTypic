@@ -7,6 +7,7 @@ deterministic input dir and serialized pipeline.
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -37,8 +38,9 @@ from phenotypic.correction import CropImage
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+from tests._support.staged_job_metadata import write_staged_job_metadata
 
 
 def _write_synth_image(target_path: Path) -> None:
@@ -46,6 +48,26 @@ def _write_synth_image(target_path: Path) -> None:
     grid_image = load_synth_yeast_plate()
     pil_img = PILImage.fromarray(grid_image.rgb[:].astype("uint8"))
     pil_img.save(target_path)
+
+
+_TERMINAL_STATUS_PREFIX = "Terminal status (written by the finalizer): "
+
+
+def read_migration_terminal_status(output: str) -> dict:
+    """Read a SLURM migration's verdict from the file its submission names.
+
+    0.21.0 removed ``--wait``, so the CLI no longer prints the verdict; it
+    prints where the finalizer writes it. The generated workers in these
+    tests run synchronously inside the patched submission, so the file exists
+    when the command returns.
+    """
+    (line,) = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(_TERMINAL_STATUS_PREFIX)
+    ]
+    path = Path(line[len(_TERMINAL_STATUS_PREFIX):])
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @pytest.fixture
@@ -104,7 +126,7 @@ def simple_pipeline_json():
 class _FixedBlobDetector(GpuDetector):
     """Emit a fixed three-blob instance map, ignoring the pixels entirely.
 
-    Areas are 400, 400 and 25 px, so ``SmallObjectRemover(min_size=100)``
+    Areas are 400, 400 and 25 px, so ``RemoveSmallObjects(min_size=100)``
     removes label 3 and nothing else. Relabeling and background dropping are
     off so the emitted label VALUES survive to the store unchanged -- the
     post-refined test compares label sets, and a relabel would renumber them.
@@ -268,6 +290,8 @@ def _build_stage_harness(
     load_synth_yeast_plate().rgb.imsave(filepath=image_path)
     output_dir = tmp_path / "out"
     output_dir.mkdir(exist_ok=True)
+    # What the staged SLURM submitter leaves for Stage 1 (it refuses without).
+    write_staged_job_metadata(output_dir)
     pipeline = ImagePipeline(ops=ops, meas=[MeasureSize()])
     pipeline_path = tmp_path / "pipeline.json"
     pipeline_path.write_text(pipeline.to_json(), encoding="utf-8")
@@ -294,7 +318,7 @@ def staged_run_with_size_filter(tmp_path: Path) -> StagedStageHarness:
     """A post-op that removes exactly one of the detector's three blobs."""
     return _build_stage_harness(
         tmp_path,
-        [_FixedBlobDetector(), SmallObjectRemover(min_size=100)],
+        [_FixedBlobDetector(), RemoveSmallObjects(min_size=100)],
         work_id=None,
     )
 
@@ -307,7 +331,7 @@ def staged_run_with_provenance(tmp_path: Path) -> StagedStageHarness:
         {
             "pre-crop": CropImage(left=1, right=1, top=1, bottom=1),
             "gpu-detect": _FixedBlobDetector(),
-            "post-filter": SmallObjectRemover(min_size=100),
+            "post-filter": RemoveSmallObjects(min_size=100),
         },
         work_id=None,
     )

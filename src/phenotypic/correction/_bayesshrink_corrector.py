@@ -41,7 +41,7 @@ class BayesShrinkCorrector(NormalizedOutputMixin, _GATSupportMixin, ImageCorrect
         - :class:`DenoiseBlockMatch` when Poisson-Gaussian noise modelling with
           full BM3D collaborative filtering is preferred over wavelet
           thresholding.
-        - :class:`BayesShrinkEnhancer` when only the detection matrix should
+        - :class:`DenoiseBayesShrink` when only the detection matrix should
           be denoised and RGB and gray must remain untouched.
 
     Args:

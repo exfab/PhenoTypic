@@ -21,7 +21,7 @@ class RemoveByFeature(ObjectRefiner):
     :class:`~phenotypic.abc_.MeasureFeatures` subclass, pick one of the values
     it produces, and discard every object whose value is below ``min_value`` or
     above ``max_value``. This subsumes the purpose-built filters
-    (:class:`SmallObjectRemover` for area, :class:`RemoveLowCircularity` for
+    (:class:`RemoveSmallObjects` for area, :class:`RemoveLowCircularity` for
     shape) into a single configurable operation that works for *any* feature the
     measurement layer exposes.
 
@@ -41,7 +41,7 @@ class RemoveByFeature(ObjectRefiner):
           filter and the measurement column stay in lock-step.
 
     Consider Also:
-        - :class:`SmallObjectRemover` / :class:`RemoveLowCircularity` for the
+        - :class:`RemoveSmallObjects` / :class:`RemoveLowCircularity` for the
           common size/shape cases where a self-contained, single-parameter
           operation is clearer.
 

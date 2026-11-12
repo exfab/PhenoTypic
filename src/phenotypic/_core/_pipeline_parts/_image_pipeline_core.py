@@ -4,7 +4,7 @@ import importlib.util
 import logging
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple
+from typing import TYPE_CHECKING, Any, Callable, Union, Optional, NamedTuple, cast
 
 import numpy as np
 from pydantic import (
@@ -31,6 +31,7 @@ import sys
 
 from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
 from phenotypic.abc_._post_measurement import PostMeasurement
+from phenotypic._core._pipeline_parts._step_order_check import step_order_checked
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
 from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # Import the entry type from the qc._recipe *submodule* (not the package
@@ -41,6 +42,13 @@ from phenotypic.sdk_.mixin import LazyWidgetMixin
 from phenotypic.plotting._pipeline import PlotBinding, normalize_plot_bindings
 
 logger = logging.getLogger("ImagePipeline")
+
+#: The remedy for a measure() merge conflict that is not about the grid.
+_GENERIC_CONFLICT_ADVICE = (
+    "Each column must come from one measurement, or from several that agree "
+    "on every colony: remove one of the steps, or configure them so their "
+    "output columns differ."
+)
 
 
 def _normalize_operation_collection(
@@ -983,15 +991,22 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             reset (bool, optional): Whether to reset the image before applying the pipeline.
                 If None (default), uses the pipeline's reset setting from __init__.
                 If explicitly set to True or False, overrides the pipeline setting.
+
+        Warns:
+            DetectionClearedWarning: Once per call, before any step runs, when
+                an image enhancer comes after an object detector in the run
+                order of ``ops`` (nested pipelines included). The steps still
+                all run.
         """
-        effective_reset = reset if reset is not None else self._reset
-        img = image if inplace else image.copy()
         from phenotypic._core._provenance import provenance_application
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
-            if effective_reset:
-                img.reset()
-            self._run_operations(img)
+        with step_order_checked(self, stacklevel=2):
+            effective_reset = reset if reset is not None else self._reset
+            img = image if inplace else image.copy()
+            with provenance_application(img, pipeline=self._provenance_pipeline):
+                if effective_reset:
+                    img.reset()
+                self._run_operations(img)
         return img
 
     def apply_with_intermediates(
@@ -1112,7 +1127,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             else:
                 intermediates[key] = _detached_snapshot(current)
 
-        with provenance_application(img, pipeline=self._provenance_pipeline):
+        with step_order_checked(self, stacklevel=2), provenance_application(
+                img, pipeline=self._provenance_pipeline
+        ):
             owns_application = len(
                 img._metadata.provenance_journal["applications"]
             ) == application_count + 1
@@ -1131,6 +1148,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         the execution time of each measurement is recorded. When verbose mode is active, detailed
         logging of the measurement process is displayed. A progress bar is used to track progress
         if the tqdm library is available.
+
+        .. versionchanged:: 0.21.0
+           Raises :class:`~phenotypic.sdk_.exceptions_.MeasurementConflictError`
+           when two measurement tables give a colony different values for a
+           column they share. Earlier versions dropped those colonies
+           silently: a ``GridImage`` measured by a pipeline whose ``nrows``/``ncols``
+           preset laid out a different grid lost all or nearly all of them.
+           Agreeing tables give the same output as before, except that a
+           shared column holding NaN in both is no longer repeated under a
+           ``_merged`` suffix.
 
         Args:
             image (Image): The image object for which measurements are performed. It must support
@@ -1158,6 +1185,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Raises:
             Exception: An exception is raised if a measurement operation fails while being
                 applied to the image.
+            MeasurementConflictError: If two measurement tables give any colony
+                different values for a column they share. The usual cause is a
+                ``GridImage`` whose grid differs from the one the pipeline's
+                ``nrows``/``ncols`` preset (or an explicit grid finder) lays
+                out; give both the same grid, or leave ``nrows``/``ncols`` off
+                the pipeline. A ``ValueError`` subclass, from
+                :mod:`phenotypic.sdk_.exceptions_`.
         """
         # Reset measurement times and memory for new measure run if benchmarking
         if self._benchmark:
@@ -1269,7 +1303,16 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        df = self._merge_on_object_labels(measurements)
+        df = self._merge_on_object_labels(
+                measurements,
+                sources=[
+                    *meas_to_run,
+                    "image.grid.info()" if hasattr(image, "grid") else "image.objects.info()",
+                ],
+                advice=lambda columns: self._measurement_conflict_advice(
+                        image, meas_to_run, columns
+                ),
+        )
 
         # Metadata (and, downstream, external-joined metadata) belongs at the
         # front, ahead of the measurements; the info block stays last. Ordering
@@ -1316,7 +1359,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         Returns a copy of ``self._meas`` with one optional addition: when both
         ``self._nrows`` and ``self._ncols`` are set and no existing measurement
-        is an instance of :class:`GridFinder`, an ``AutoGridFinder`` configured
+        is an instance of :class:`GridFinder`, a ``CenteredAutoGridFinder`` configured
         with the preset is prepended so it runs before downstream grid-aware
         measurements. The persistent ``self._meas`` mapping is never mutated,
         which keeps repeat ``measure()`` calls idempotent and serialization
@@ -1379,12 +1422,98 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             pd.DataFrame: A DataFrame containing measurement data for the
             processed image.
         """
-        img = self.apply(image=image, inplace=inplace, reset=reset)
+        # Checked here as well as in ``apply`` so the warning points at the
+        # caller of ``apply_and_measure``; the inner ``apply`` then skips.
+        with step_order_checked(self, stacklevel=2):
+            img = self.apply(image=image, inplace=inplace, reset=reset)
         return self.measure(
                 image=img,
                 include_metadata=include_metadata,
                 apply_post=apply_post,
         )
+
+    def summary(self) -> pd.DataFrame:
+        """List the steps this pipeline runs, before any image is loaded.
+
+        One row per step, in run order: the ``ops`` chain, then the
+        measurers in the order :meth:`measure` runs them. Use it to check a
+        pipeline before a long run -- that the steps are in the intended order
+        (enhancement before detection), and that each parameter you meant to
+        change differs from its default. Nothing is applied and no image is
+        needed; the CLI's ``--dry-run`` prints this table.
+
+        When the pipeline's ``nrows`` and ``ncols`` are both set and ``meas``
+        holds no grid finder, :meth:`measure` adds a ``CenteredAutoGridFinder``
+        with that shape before the other measurers, and it is listed here as
+        ``meas:CenteredAutoGridFinder``. Its ``changed`` cell is empty when
+        the preset is 8 × 12, the finder's own default.
+
+        A pipeline nested in ``ops`` is expanded into its own steps, each
+        named by its path (``inner/BlurGauss``). Its ``meas`` are not listed,
+        because a nested pipeline's ``apply`` runs only its ``ops``. Any other
+        operation is one row, even one that holds operations (a
+        ``CompositeDetector``); those appear in its ``changed`` cell. So a
+        step inside a composite operation's own branches, such as
+        ``CompositeDetector/ops[0]/BlurGauss``, is not a row of its own: it
+        sits inside its composite's row, and a message naming that path
+        refers to that row.
+
+        Returns:
+            pd.DataFrame: One row per step, with columns:
+
+            - ``step``: the step's path in the pipeline. A list of operations
+              is keyed by class name; a measurer is ``meas:<key>``.
+            - ``slot``: ``ops`` or ``meas``.
+            - ``operation``: the class name.
+            - ``module``: the ``phenotypic`` subpackage, such as ``enhance``
+              or ``detect``.
+            - ``writes``: the image layers the step writes, decided by its
+              kind (an enhancer ``detect_mat``; a detector or refiner
+              ``objmask, objmap``; a corrector every layer), or ``table`` for
+              a measurer. Empty when the kind declares none. An enhancer's
+              write of ``detect_mat`` also clears any detected objects, so an
+              enhancer after a detector erases them; PhenoTypic warns when a
+              pipeline does that (``DetectionClearedWarning``).
+            - ``changed``: every parameter that differs from a
+              default-constructed instance of the same class, as
+              ``name=value``, comma-separated; empty when none does. A value
+              the class derives from its other parameters therefore shows only
+              when it differs from what the defaults derive. A class that
+              needs arguments to construct is compared with its declared
+              defaults instead.
+
+        Example:
+            >>> from phenotypic import ImagePipeline
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> from phenotypic.detect import OtsuDetector
+            >>> from phenotypic.enhance import BlurGauss
+            >>> from phenotypic.measure import MeasureSize
+            >>> from phenotypic.refine import RemoveSmallObjects
+            >>> pipeline = ImagePipeline(
+            ...     ops=[BlurGauss(sigma=3.0), OtsuDetector(), RemoveSmallObjects()],
+            ...     meas=[MeasureSize()],
+            ... )
+            >>> table = pipeline.summary()
+            >>> list(table["step"])
+            ['BlurGauss', 'OtsuDetector', 'RemoveSmallObjects', 'meas:MeasureSize']
+            >>> list(table["writes"])
+            ['detect_mat', 'objmask, objmap', 'objmask, objmap', 'table']
+            >>> list(table["changed"])
+            ['sigma=3.0', '', '', '']
+
+            Only ``sigma`` was changed from its default (2.0). The summary
+            reads the pipeline and does not alter it, so the same pipeline
+            then runs on a plate:
+
+            >>> plate = load_synth_yeast_plate()
+            >>> pipeline.apply(plate).num_objects > 0
+            True
+        """
+        from phenotypic._core._pipeline_parts._pipeline_summary import (
+            summarize_pipeline,
+        )
+
+        return summarize_pipeline(self)
 
     def benchmark_results(self) -> pd.DataFrame:
         """Return execution times and memory usage for operations and measurements.
@@ -1479,42 +1608,174 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return df
 
     @staticmethod
-    def _merge_on_object_labels(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
-        """
-        Merge multiple DataFrames only if share object labels
+    def _merge_on_object_labels(
+            dataframes_list: List[pd.DataFrame],
+            sources: Optional[List[str]] = None,
+            advice: Optional[Callable[[Tuple[str, ...]], str]] = None,
+    ) -> pd.DataFrame:
+        """Inner-join measurement tables on ``Object_Label``, keeping shared columns once.
+
+        A column present in more than one table (the ``Bbox_*`` geometry, the
+        ``Grid_*`` assignment) is kept from the first table that has it, after
+        checking that every colony both tables carry has the same value in
+        each: rows are aligned on ``Object_Label`` first, values are compared
+        exactly (the shared columns are computed by the same code from the same
+        object map, so no float tolerance is applied), and NaN in both tables
+        counts as the same value. A colony that only one table reports is
+        dropped by the inner join, as before.
 
         Args:
-            dataframes_list: List of pandas DataFrames to merge
+            dataframes_list: The tables to merge, in run order. A table indexed
+                by ``Object_Label`` is reset to carry it as a column.
+            sources: One name per table, used in the error message. Defaults to
+                ``table 1``, ``table 2``, ...
+            advice: Called with the conflicting columns to produce the remedy
+                appended to the error message. Defaults to a generic remedy.
 
         Returns:
-            Merged DataFrame containing only the data from DataFrames with matching index names
+            One row per colony present in every table: the first table's
+            columns, then each later table's columns that no earlier table had.
 
         Raises:
-            ValueError: If no DataFrames are provided or if no matching index names are found
+            ValueError: If no DataFrames are provided.
+            MeasurementConflictError: If two tables give any colony different
+                values for a shared column.
         """
         if not dataframes_list or not all(
                 [isinstance(x, pd.DataFrame) for x in dataframes_list]
         ):
             raise ValueError("No DataFrames provided")
+        if sources is None:
+            sources = [f"table {i + 1}" for i in range(len(dataframes_list))]
+
         new_df = dataframes_list[0]
         if new_df.index.name == OBJECT.LABEL:
             new_df = new_df.reset_index(drop=False)
+        owner = {column: sources[0] for column in new_df.columns}
 
-        if len(dataframes_list) > 1:
-            for df in dataframes_list[1:]:
-                if df.index.name == OBJECT.LABEL:
-                    df = df.reset_index(drop=False)
-
-                cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
-
-                for col_new_df in new_df.columns:
-                    if col_new_df != OBJECT.LABEL:  # skip the object label
-                        for col_other_df in df.columns:
-                            if col_new_df == col_other_df and np.all(
-                                    df[col_new_df] == df[col_other_df]
-                            ):
-                                cols_to_merge_on.append(col_other_df)
-
-                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=("", "_merged"))
+        for source, df in zip(sources[1:], dataframes_list[1:]):
+            if df.index.name == OBJECT.LABEL:
+                df = df.reset_index(drop=False)
+            shared = [
+                column
+                for column in new_df.columns
+                if column != OBJECT.LABEL and column in df.columns
+            ]
+            if shared:
+                ImagePipelineCore._refuse_conflicting_shared_columns(
+                        new_df, df, shared, owner, source, advice
+                )
+                df = df.drop(columns=shared)
+            new_df = new_df.merge(df, on=OBJECT.LABEL)
+            owner.update({column: source for column in df.columns if column not in owner})
 
         return new_df
+
+    @staticmethod
+    def _refuse_conflicting_shared_columns(
+            left: pd.DataFrame,
+            right: pd.DataFrame,
+            shared: List[Any],
+            owner: Dict[Any, str],
+            source: str,
+            advice: Optional[Callable[[Tuple[str, ...]], str]],
+    ) -> None:
+        """Raise ``MeasurementConflictError`` if *left* and *right* disagree on *shared*.
+
+        The two tables are aligned on ``Object_Label`` with an inner join, so
+        only colonies both carry are compared. Values are compared as Python
+        objects, which is exact for numbers and works for categoricals whose
+        category sets differ (two grid shapes give exactly that, and pandas
+        refuses ``==`` between such categoricals).
+        """
+        from phenotypic.sdk_.exceptions_ import MeasurementConflictError
+
+        aligned = left[[OBJECT.LABEL, *shared]].merge(
+                right[[OBJECT.LABEL, *shared]], on=OBJECT.LABEL
+        )
+        # merge() orders the result key, left columns, right columns, so the
+        # two sides are addressed by position rather than by suffixed name.
+        n_shared = len(shared)
+        differs_any = np.zeros(len(aligned), dtype=bool)
+        conflicting: List[Any] = []
+        for position, column in enumerate(shared):
+            left_values = aligned.iloc[:, 1 + position].astype(object).to_numpy()
+            right_values = aligned.iloc[:, 1 + n_shared + position].astype(object).to_numpy()
+            left_na = pd.isna(left_values)
+            right_na = pd.isna(right_values)
+            differs = left_na != right_na
+            both = ~left_na & ~right_na
+            differs[both] = left_values[both] != right_values[both]
+            if differs.any():
+                conflicting.append(column)
+                differs_any |= differs
+        if not conflicting:
+            return
+
+        columns = tuple(str(column) for column in conflicting)
+        earlier = list(dict.fromkeys(owner[column] for column in conflicting))
+        raise MeasurementConflictError(
+                columns=columns,
+                n_objects=int(differs_any.sum()),
+                n_compared=len(aligned),
+                sources=[*earlier, source],
+                advice=(
+                    advice(columns) if advice is not None else _GENERIC_CONFLICT_ADVICE
+                ),
+        )
+
+    def _measurement_conflict_advice(
+            self,
+            image: Image,
+            run_order: Dict[str, MeasureFeatures],
+            columns: Tuple[str, ...],
+    ) -> str:
+        """The remedy for a ``measure()`` merge conflict on *columns*.
+
+        Grid columns disagree when the image's grid and a grid finder the
+        pipeline runs lay out different grids, so the remedy names both shapes
+        and the default ``CenteredAutoGridFinder``. Any other column gets the
+        generic remedy.
+        """
+        from phenotypic.abc_ import GridFinder
+        from phenotypic.schema import GRID
+
+        if not hasattr(image, "grid") or not any(
+                GRID.owns_header(column) for column in columns
+        ):
+            return _GENERIC_CONFLICT_ADVICE
+        grid_image = cast("GridImage", image)  # has a grid: duck-typed above
+
+        image_grid = (
+            f"The image is a GridImage whose {type(grid_image.grid_finder).__name__} "
+            f"lays out {grid_image.nrows} rows x {grid_image.ncols} columns"
+        )
+        if not any(isinstance(step, GridFinder) for step in run_order.values()):
+            return _GENERIC_CONFLICT_ADVICE
+        explicit = [
+            (key, step) for key, step in self._meas.items()
+            if isinstance(step, GridFinder)
+        ]
+        if not explicit:  # the finder measure() added for the preset
+            return (
+                f"{image_grid}, but the pipeline's nrows={self._nrows}, "
+                f"ncols={self._ncols} preset makes measure() add "
+                f"CenteredAutoGridFinder(nrows={self._nrows}, "
+                f"ncols={self._ncols}). Give the image and the pipeline the "
+                f"same grid, the default CenteredAutoGridFinder with one "
+                f"shape: set the pipeline's nrows/ncols to {grid_image.nrows} and "
+                f"{grid_image.ncols}, or build the image with nrows={self._nrows}, "
+                f"ncols={self._ncols}, or leave nrows and ncols off the "
+                f"pipeline so measure() uses the image's own grid."
+            )
+        steps = ", ".join(
+                f"'{key}' ({type(step).__name__})" for key, step in explicit
+        )
+        return (
+            f"{image_grid}, but the pipeline's measurement step {steps} "
+            f"assigns colonies to a grid of its own. Give the image and the "
+            f"pipeline the same grid: use the default CenteredAutoGridFinder "
+            f"with nrows={grid_image.nrows}, ncols={grid_image.ncols} in both, or remove "
+            f"the grid finder from the pipeline's measurements so measure() "
+            f"uses the image's own grid."
+        )

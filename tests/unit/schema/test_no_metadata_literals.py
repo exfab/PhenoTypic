@@ -45,6 +45,10 @@ _ALLOWED = {
     # arbitrary-column doctest examples (demonstrate non-vocabulary columns)
     "abc_/_post_measurement.py": {"Metadata_Flag"},                # AddConstant(column="Metadata_Flag")
     "post/_merge_metadata.py": {"Metadata_Condition"},             # doctest "Metadata_Condition"
+    # the synthetic fitting-window series' condition column: a user label,
+    # no MetadataInfo member; and the FittingWindow doctest that groups by it
+    "data/_synthetic_window_series.py": {"Metadata_Condition"},
+    "analysis/qc/_fitting_window.py": {"Metadata_Condition"},
     # doctest: an external layout table's key and annotation columns
     "post/_join_metadata.py": {
         "Metadata_ImageName",

@@ -7,7 +7,7 @@ filtering, border exclusion, center deviation reduction, tophat-based brightenin
 oversized-object capping, residual-based outlier removal, skeletonization, thinning,
 and spatial merging of fragmented detections.
 
-Merging operations (MergeFragmentChains, NearestNeighborMerger, SmallToLargeMerger)
+Merging operations (MergeFragmentChains, MergeNearestNeighbors, MergeSmallToLarge)
 address fragmented colony detections from uneven illumination or heterogeneous pigmentation
 by merging nearby detections based on spatial proximity and size thresholds.
 """
@@ -17,9 +17,9 @@ from ._remove_border_objects import RemoveBorderObjects
 from ._keep_nearest_center import KeepNearestCenter
 from ._remove_low_circularity import RemoveLowCircularity
 from ._extract_colony_core import ExtractColonyCore
-from ._grid_alignment_refiner import GridAlignmentRefiner
+from ._grid_alignment_refiner import RefineGridAlignment
 from ._refine_by_sine_fit import RefineBySineFit
-from ._grid_oversized_object_remover import GridOversizedObjectRemover
+from ._grid_oversized_object_remover import RemoveOversizedGridObjects
 from ._manual_refine import ManualRefine
 from ._mask_closing import MaskClosing
 from ._mask_dilation import MaskDilation
@@ -28,11 +28,11 @@ from ._mask_fill import MaskFill
 from ._mask_gradient import MaskGradient
 from ._mask_opening import MaskOpening
 from ._reduce_multiple_grid_objects import ReduceSectionsByLine
-from ._nearest_neighbor_merger import NearestNeighborMerger
+from ._nearest_neighbor_merger import MergeNearestNeighbors
 from ._remove_grid_outliers import RemoveGridOutliers
 from ._skeletonize import Skeletonize
-from ._small_object_remover import SmallObjectRemover
-from ._small_to_large_merger import SmallToLargeMerger
+from ._small_object_remover import RemoveSmallObjects
+from ._small_to_large_merger import MergeSmallToLarge
 from ._thinning import Thinning
 from ._merge_fragment_chains import MergeFragmentChains
 from ._mask_white_tophat import MaskWhiteTophat
@@ -45,8 +45,8 @@ __all__ = [
     "RemoveBorderObjects",
     "KeepNearestCenter",
     "ExtractColonyCore",
-    "GridAlignmentRefiner",
-    "GridOversizedObjectRemover",
+    "RefineGridAlignment",
+    "RemoveOversizedGridObjects",
     "RemoveLowCircularity",
     "ManualRefine",
     "MaskClosing",
@@ -56,16 +56,40 @@ __all__ = [
     "MaskGradient",
     "MaskOpening",
     "ReduceSectionsByLine",
-    "NearestNeighborMerger",
+    "MergeNearestNeighbors",
     "RemoveGridOutliers",
     "SeparateObjects",
     "RefineBySineFit",
     "Skeletonize",
-    "SmallObjectRemover",
-    "SmallToLargeMerger",
+    "RemoveSmallObjects",
+    "MergeSmallToLarge",
     "Thinning",
     "MergeFragmentChains",
     "MaskWhiteTophat",
     "KeepSectionLargest",
     "RemoveByFeature",
 ]
+
+
+_LEGACY_OPERATION_NAMES = {
+    "GridOversizedObjectRemover": RemoveOversizedGridObjects,
+    "SmallObjectRemover": RemoveSmallObjects,
+    "NearestNeighborMerger": MergeNearestNeighbors,
+    "SmallToLargeMerger": MergeSmallToLarge,
+    "GridAlignmentRefiner": RefineGridAlignment,
+}
+
+
+def __getattr__(name: str):
+    """Resolve deprecated refine operation names without GUI duplicates."""
+    operation = _LEGACY_OPERATION_NAMES.get(name)
+    if operation is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import warnings
+
+    warnings.warn(
+        f"{name} is deprecated; use {operation.__name__} instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return operation

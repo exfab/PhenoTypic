@@ -764,42 +764,12 @@ def append_failure(
             logger.error("Failed to write failure record: %s", exc)
 
 
-def read_failures(progress_dir: Path) -> List[Dict[str, Any]]:
-    """
-    Read all failure records from ``failures.jsonl``.
-
-    Args:
-        progress_dir: Directory containing ``failures.jsonl``.
-
-    Returns:
-        List of failure record dicts, one per JSONL line.  Malformed lines
-        are skipped with a warning.
-    """
-    failures_path = progress_dir / FAILURES_JSONL
-    if not failures_path.exists():
-        return []
-
-    records: List[Dict[str, Any]] = []
-    with open(failures_path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                logger.warning(
-                    "Skipping malformed JSONL line %d in %s", line_num, failures_path
-                )
-    return records
-
-
 def categorize_failures(failures: List[Dict[str, Any]]) -> Dict[str, int]:
     """
     Group failures by ``error_type`` and return counts.
 
     Args:
-        failures: List of failure record dicts (as returned by :func:`read_failures`).
+        failures: Failure record dicts, one per ``failures.jsonl`` line.
 
     Returns:
         Mapping of error type to occurrence count, sorted descending by count.

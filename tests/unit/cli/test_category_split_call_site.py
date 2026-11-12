@@ -120,9 +120,14 @@ def test_category_split_runs_inside_the_publication_fence() -> None:
 def test_category_dir_is_referenced_only_by_split_master_by_category() -> None:
     references, definitions = _find("measurements_by_category_dir")
     assert definitions == ["sdk_/_io_constants.py:<module>"]
+    # The dry-run preview names the folder so users see where it will land; it
+    # only formats the path for display and never writes there, so it adds no
+    # second route to the folder (import + use, both inside the function).
     assert sorted(where for where, _, _ in references) == [
+        "_cli/_cli_interactive.py:_output_layout_entries",  # dry-run display import
+        "_cli/_cli_interactive.py:_output_layout_entries",  # dry-run display only
         f"{_OUTPUT_MANAGER}:<module>",  # import
-        f"{_OUTPUT_MANAGER}:split_master_by_category",  # the one use
+        f"{_OUTPUT_MANAGER}:split_master_by_category",  # the one write
         "sdk_/__init__.py:<module>",  # re-export import
         "sdk_/__init__.py:<module>",  # __all__ entry
     ]

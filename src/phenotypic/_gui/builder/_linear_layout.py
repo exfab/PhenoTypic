@@ -85,7 +85,7 @@ def _linear_card_width() -> int:
     Enumerates every registered :class:`ImageOperation` via the shared
     :func:`~phenotypic._gui._operation_registry.get_registry` singleton and
     sizes the card to render the longest class name (e.g.
-    ``GridOversizedObjectRemover``) without the title ellipsis kicking in.
+    ``RemoveOversizedGridObjects``) without the title ellipsis kicking in.
     Memoised: the first call freezes the width for the life of the server,
     so every card — present and future — renders at one uniform size.
 

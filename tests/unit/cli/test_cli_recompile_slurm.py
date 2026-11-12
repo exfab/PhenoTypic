@@ -112,9 +112,6 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
             return_value=submission,
         ) as mock_submit,
         patch("phenotypic._cli._dashboard.generate_dashboard") as mock_dashboard,
-        patch(
-            "phenotypic.phenotypicCLI._wait_for_recompile_finalizer_status"
-        ) as mock_wait,
     ):
         _handle_recompile_slurm(
             output_dir=output_dir,
@@ -123,7 +120,6 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
             overlay_alpha=0.4,
             checkpoint_interval=10,
             slurm_args={"slurm_partition": "compute"},
-            wait=False,
         )
 
     mock_limit.assert_called_once_with()
@@ -135,7 +131,6 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
         "slurm_partition": "compute"
     }
     mock_dashboard.assert_called_once_with(output_dir, execution_mode="slurm")
-    mock_wait.assert_not_called()
 
     assert generated_tasks[-1]["task_type"] == "finalize"
     assert generated_tasks[-1]["metadata_csv"] == str(metadata_csv)
@@ -160,74 +155,6 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
         / "task_manifest.json"
     )
     assert metadata["recompile"]["finalizer_task_index"] == len(generated_tasks) - 1
-
-
-def test_recompile_slurm_dispatcher_waits_for_finalizer(
-    tmp_path: Path,
-) -> None:
-    from phenotypic.phenotypicCLI import _handle_recompile_slurm
-
-    output_dir = tmp_path / "out"
-    _write_parquet(
-        output_dir / "results" / "plate_a" / "measurements" / "img1.parquet",
-        [1],
-    )
-    script = slurm_scripts_dir(output_dir) / "recompile" / "chunk0.sh"
-    finalizer_indices: list[int] = []
-
-    def _fake_generate(
-        tasks: list[dict[str, object]],
-        output_dir: Path,
-        slurm_args: dict[str, object],
-        array_limit: int,
-        attempt_id: str | None = None,
-    ) -> list[Path]:
-        assert slurm_args == {"slurm_partition": "compute"}
-        assert array_limit == 100
-        finalizer_indices.append(len(tasks) - 1)
-        manifest_path = (
-            progress_dir(output_dir)
-            / "recompile"
-            / "attempts"
-            / str(attempt_id)
-            / "task_manifest.json"
-        )
-        manifest_path.parent.mkdir(parents=True)
-        manifest_path.write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
-        return [script]
-
-    submission = SimpleNamespace(job_ids=["12345"], flat_scripts=[script])
-
-    with (
-        patch("phenotypic.phenotypicCLI.get_slurm_array_limit", return_value=100),
-        patch(
-            "phenotypic.phenotypicCLI.generate_recompile_slurm_scripts",
-            side_effect=_fake_generate,
-        ),
-        patch(
-            "phenotypic.phenotypicCLI.submit_slurm_script_chain",
-            return_value=submission,
-        ),
-        patch("phenotypic._cli._dashboard.generate_dashboard"),
-        patch(
-            "phenotypic.phenotypicCLI._wait_for_recompile_finalizer_status"
-        ) as mock_wait,
-    ):
-        _handle_recompile_slurm(
-            output_dir=output_dir,
-            metadata_csv=None,
-            include_dataset_column=True,
-            overlay_alpha=0.3,
-            checkpoint_interval=None,
-            slurm_args={"slurm_partition": "compute"},
-            wait=True,
-        )
-
-    assert mock_wait.call_count == 1
-    assert mock_wait.call_args.args == (output_dir, finalizer_indices[0])
-    assert mock_wait.call_args.kwargs["recompile_finalizer_status_path"].name == (
-        f"task_{finalizer_indices[0]}.json"
-    )
 
 
 def test_recompile_slurm_dispatcher_falls_back_to_local_when_no_scripts(
@@ -257,40 +184,12 @@ def test_recompile_slurm_dispatcher_falls_back_to_local_when_no_scripts(
             overlay_alpha=0.3,
             checkpoint_interval=0,
             slurm_args={"slurm_partition": "compute"},
-            wait=False,
         )
 
     mock_local.assert_called_once_with(
         output_dir, None, True, 0.3, -1, no_qc=False
     )
     mock_submit.assert_not_called()
-
-
-def test_wait_for_recompile_finalizer_status_completed_and_failed(
-    tmp_path: Path,
-) -> None:
-    from phenotypic.phenotypicCLI import _wait_for_recompile_finalizer_status
-
-    output_dir = tmp_path / "out"
-    status_dir = progress_dir(output_dir) / "recompile" / "status"
-    status_dir.mkdir(parents=True)
-    (status_dir / "task_3.json").write_text(
-        json.dumps({"status": "completed"}),
-        encoding="utf-8",
-    )
-
-    _wait_for_recompile_finalizer_status(
-        output_dir, 3, poll_interval=0.001, timeout=0.01
-    )
-
-    (status_dir / "task_3.json").write_text(
-        json.dumps({"status": "failed", "error": "finalize failed"}),
-        encoding="utf-8",
-    )
-    with pytest.raises(RuntimeError, match="finalize failed"):
-        _wait_for_recompile_finalizer_status(
-            output_dir, 3, poll_interval=0.001, timeout=0.01
-        )
 
 
 def test_generate_recompile_scripts_write_manifest_and_worker_arrays(

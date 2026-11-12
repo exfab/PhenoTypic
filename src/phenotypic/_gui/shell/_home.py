@@ -137,7 +137,7 @@ def _quick_links() -> html.Div:
                     html.Li(
                         html.A(
                             "Pipeline builder walkthrough",
-                            href="https://wheeldon-lab.github.io/PhenoTypic/",
+                            href="https://exfab.github.io/PhenoTypic/",
                             target="_blank",
                             rel="noopener",
                         )
@@ -145,7 +145,7 @@ def _quick_links() -> html.Div:
                     html.Li(
                         html.A(
                             "Results viewer cookbook",
-                            href="https://wheeldon-lab.github.io/PhenoTypic/",
+                            href="https://exfab.github.io/PhenoTypic/",
                             target="_blank",
                             rel="noopener",
                         )
@@ -153,7 +153,7 @@ def _quick_links() -> html.Div:
                     html.Li(
                         html.A(
                             "Running pipelines via the CLI",
-                            href="https://wheeldon-lab.github.io/PhenoTypic/",
+                            href="https://exfab.github.io/PhenoTypic/",
                             target="_blank",
                             rel="noopener",
                         )

@@ -469,6 +469,20 @@ class ImageDataManager:
         except ImportError:
             return False
 
+    def _adopt_metadata_of(self, source) -> None:
+        """Take a copy of ``source``'s protected, public and imported metadata.
+
+        This is what a copy and a slice share: the image name and type, the
+        bit depth, user keys such as ``Metadata_Strain``, and the imported
+        (EXIF/file) block that records how the plate was captured. The private
+        block (the UUID) is left alone, because the receiving image is a new
+        image; so is the provenance journal, which ``set_image`` and ``apply``
+        manage themselves.
+        """
+        self._metadata.protected = deepcopy(source._metadata.protected)
+        self._metadata.public = deepcopy(source._metadata.public)
+        self._metadata.imported = deepcopy(source._metadata.imported)
+
     def _set_from_class_instance(self, input_cls) -> None:
         """Copy data from another Image instance.
 
@@ -493,12 +507,7 @@ class ImageDataManager:
             else:
                 self._data.__dict__[key] = value
 
-        self._metadata.protected = deepcopy(input_cls._metadata.protected)
-        self._metadata.public = deepcopy(input_cls._metadata.public)
-        # Carry imported (EXIF/file) metadata forward so a copy or derived
-        # image retains its capture provenance. private (UUID) is intentionally
-        # left fresh — see ImageHandler.copy.
-        self._metadata.imported = deepcopy(input_cls._metadata.imported)
+        self._adopt_metadata_of(input_cls)
         self._metadata.provenance_journal = deepcopy(
             input_cls._metadata.provenance_journal
         )

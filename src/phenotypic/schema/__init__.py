@@ -29,6 +29,7 @@ from ._base._rembi import (
     header_to_module as header_to_module,
 )
 from ._base._categories import CATEGORIES, CategoryEntry
+from ._base._units import UNITS, ResolvedUnit, UnitEntry
 from ._base._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -78,6 +79,7 @@ from ._analysis._qc._quality_mad import QUALITY_MAD
 from ._analysis._qc._quality_occupancy import QUALITY_OCCUPANCY
 from ._analysis._qc._quality_se import QUALITY_SE
 from ._analysis._qc._quality_tukey import QUALITY_TUKEY
+from ._analysis._qc._quality_window import QUALITY_WINDOW
 from ._analysis._qc._quality_zmax import QUALITY_ZMAX
 from ._shared._radial_expansion import RADIAL_EXPANSION
 from ._measure._orientation_zones import (
@@ -94,6 +96,9 @@ __all__ = [
     "Entry",
     "CATEGORIES",
     "CategoryEntry",
+    "UNITS",
+    "UnitEntry",
+    "ResolvedUnit",
     "MeasurementInfo",
     "MetadataInfo",
     "parse_qualified_header",
@@ -136,6 +141,7 @@ __all__ = [
     "QUALITY_OCCUPANCY",
     "QUALITY_SE",
     "QUALITY_TUKEY",
+    "QUALITY_WINDOW",
     "QUALITY_ZMAX",
     "RADIAL_EXPANSION",
     "SHAPE",

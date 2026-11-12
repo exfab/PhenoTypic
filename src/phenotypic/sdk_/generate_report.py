@@ -1,9 +1,14 @@
 """
 Standalone HTML report generator tool.
 
-This script generates HTML processing reports from a PhenoTypic output directory.
-Useful for generating reports on-demand after processing completes or during
-long-running SLURM jobs.
+This script generates an HTML processing report from a PhenoTypic output
+directory, on demand: after processing completes, or during a long-running
+SLURM job. It writes ``deliverables/processing_report.html``.
+
+.. versionchanged:: 0.21.0
+   This command is now the only way to get the report. ``python -m
+   phenotypic`` no longer writes ``processing_report.html`` in any mode --
+   not in-process for a local run, and not from a SLURM finalizer.
 
 Usage::
 

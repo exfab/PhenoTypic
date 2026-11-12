@@ -22,7 +22,7 @@ class PLATE(MetadataInfo):
     BATCH = Entry("Batch", "Experimental batch grouping.")
     ARRAY_DENSITY = Entry(
             "ArrayDensity",
-            "Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).",
+            "Colony array density: the number of wells per plate (for example 96, 384, 1536).",
     )
     INCUBATOR_POSITION = Entry(
             "IncubatorPosition",

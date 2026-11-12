@@ -105,7 +105,6 @@ def _staged_config(
         n_jobs=1,
         slurm_args=cpu_profile,
         force_local=False,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,

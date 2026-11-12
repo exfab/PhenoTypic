@@ -35,7 +35,7 @@ class SubtractWhiteTophat(MorphologicalFiltering):
           bright structures rather than suppress them.
         - :class:`GrayOpening` for morphological smoothing that removes
           small bright features without explicit subtraction.
-        - :class:`RankMedianEnhancer` for impulsive noise removal via
+        - :class:`EnhanceRankMedian` for impulsive noise removal via
           median filtering when artifacts are single-pixel in scale.
 
     Args:

@@ -49,7 +49,7 @@ class RefineBySineFit(GridInferenceMixin, ObjectRefiner):
           loses periodicity signal.
 
     Consider Also:
-        - :class:`GridAlignmentRefiner` for faster grid estimation when
+        - :class:`RefineGridAlignment` for faster grid estimation when
           colony intensities are relatively uniform across the plate.
         - :class:`KeepSectionLargest` for a simpler largest-per-cell
           strategy on ``GridImage`` inputs where grid metadata is

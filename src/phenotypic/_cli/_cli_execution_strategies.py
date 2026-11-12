@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime
@@ -28,7 +27,6 @@ if TYPE_CHECKING:
 from ._cli_types import (
     Dataset,
     DatasetResults,
-    DatasetState,
     ExecutionConfig,
     ExecutionResults,
     ImageFailure,
@@ -36,6 +34,7 @@ from ._cli_types import (
 from phenotypic._core._provenance import pipeline_source_identity
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
+from ._cli_utils import input_read_settings
 from phenotypic.sdk_.slurm import get_slurm_array_limit
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_slurm_array_scripts import (
@@ -51,13 +50,11 @@ from ._cli_slurm_lifecycle import (
 from ._cli_update_state import (
     append_event,
     append_completion_event,
-    aggregate_state_from_events,
 )
 from ._cli_failure_tracker import (
     PerImageScientificError,
     append_failure,
     append_terminal_failure,
-    read_failures,
     work_id_for_image,
     work_identity_for_image,
 )
@@ -540,12 +537,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         work_identity: tuple[str, str] | None = None
 
         try:
-            # Prepare read kwargs.
-            read_kwargs: Dict[str, Any] = {}
-            if self.config.bit_depth:
-                read_kwargs["bit_depth"] = self.config.bit_depth
-            if self.config.detect_mode != "gray":
-                read_kwargs["detect_mode"] = self.config.detect_mode
+            read_kwargs = input_read_settings(
+                self.config.bit_depth, self.config.detect_mode
+            )
 
             # Process. One identity per image, before the apply: its reference
             # digest pins the context, and its work-id is what is published.
@@ -671,11 +665,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         append_event(event_log, dataset.name, image_path.name, "started")
         work_identity: tuple[str, str] | None = None
         try:
-            read_kwargs: Dict[str, Any] = {}
-            if self.config.bit_depth:
-                read_kwargs["bit_depth"] = self.config.bit_depth
-            if self.config.detect_mode != "gray":
-                read_kwargs["detect_mode"] = self.config.detect_mode
+            read_kwargs = input_read_settings(
+                self.config.bit_depth, self.config.detect_mode
+            )
 
             # Before the apply, never after it (review F1): a later invocation
             # may re-plan the image meanwhile, and the output must be published
@@ -941,15 +933,21 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         Execute processing on SLURM cluster using array jobs.
 
         Generates array job scripts with automatic chunking based on SLURM
-        limits, submits via direct sbatch with sequential dataset dependencies,
-        and optionally monitors progress.
+        limits, submits them through the drip-feed dispatcher chain with the
+        dependent terminal finalizer, prints how to follow the jobs, and
+        returns at submission.
+
+        .. versionchanged:: 0.21.0
+           Always returns at submission; ``--wait`` and its progress monitor
+           were removed.
 
         Args:
             datasets: List of datasets to process
             output_dir: Base output directory
 
         Returns:
-            Execution results (may be incomplete if jobs still running)
+            Zero-count results with ``submitted=True``: no image has been
+            counted, and the dependent finalizer publishes the run.
         """
         start_time = datetime.now()
         measure_only = bool(self.config.measure_only)
@@ -1118,6 +1116,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.PROCESSING_GENERATION: (
                 self.config.processing_generation
             ),
+            **finalizer_aggregation_options(self.config),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
         }
@@ -1252,27 +1251,10 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
                 f"[bold]{dashboard_html_path(output_dir)}[/bold]\n"
             )
 
-        # Wait if requested
-        if self.config.wait:
-            click.echo(
-                "\nMonitoring progress (Ctrl+C to detach, jobs continue)..."
-            )
-            final_results = self._monitor_progress(output_dir, datasets)
-        else:
-            click.echo("\nJobs submitted. Monitor progress with:")
-            click.echo(f"  Open: {dashboard_html_path(output_dir)}")
-            click.echo("  squeue -u $USER --array")
-            click.echo(f"  tail -f {event_log_path(output_dir)}")
-            final_results = None
+        echo_slurm_monitor_commands(
+            output_dir, dashboard=not self.config.process_only_layer
+        )
 
-        end_time = datetime.now()
-
-        # Return results (may be incomplete if not waiting)
-        if final_results:
-            return final_results
-
-        # Return partial results for non-wait mode
-        total_images = sum(len(d.images) for d in datasets)
         return ExecutionResults(
             datasets={},  # Unknown until jobs complete
             total_images=total_images,
@@ -1280,124 +1262,40 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             total_failed=0,
             execution_mode="slurm",
             start_time=start_time,
-            end_time=end_time,
+            end_time=datetime.now(),
+            submitted=True,
         )
 
-    def _monitor_progress(
-        self, output_dir: Path, datasets: List[Dataset]
-    ) -> ExecutionResults:
-        """
-        Monitor SLURM job progress with live updates.
 
-        Args:
-            output_dir: Base output directory
-            datasets: List of datasets being processed
+def echo_slurm_monitor_commands(output_dir: Path, *, dashboard: bool) -> None:
+    """Print how to follow a submitted SLURM run.
 
-        Returns:
-            Final execution results after all jobs complete
-        """
-        event_log = event_log_path(output_dir)
-        start_time = datetime.now()
+    Every SLURM strategy prints these right after submission, and the CLI's
+    submission summary points at them rather than repeating them.
 
-        total_images = sum(len(d.images) for d in datasets)
-        inventory = self.config.full_dataset_inventory or {
-            dataset.name: [image.name for image in dataset.images]
-            for dataset in datasets
-        }
-        last_completed = 0
+    Args:
+        output_dir: Run output root.
+        dashboard: Whether the run builds ``deliverables/dashboard.html`` at
+            submission. Process runs and staged runs do not.
+    """
+    click.echo("\nJobs submitted. Monitor progress with:")
+    if dashboard:
+        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+    click.echo("  squeue -u $USER --array")
+    click.echo(f"  tail -f {event_log_path(output_dir)}")
 
-        try:
-            while True:
-                # Aggregate latest events
-                datasets_state = aggregate_state_from_events(
-                    event_log,
-                    inventory=inventory,
-                    generation=self.config.processing_generation,
-                )
 
-                # Count completed and failed
-                total_completed = sum(
-                    len(ds.completed) for ds in datasets_state.values()
-                )
-                total_failed = sum(
-                    len(ds.failed) for ds in datasets_state.values()
-                )
-                remaining = total_images - total_completed - total_failed
+def finalizer_aggregation_options(config: ExecutionConfig) -> Dict[str, Any]:
+    """The ``job_metadata.json`` entries the SLURM finalizer aggregates with.
 
-                # Show progress update
-                if total_completed != last_completed:
-                    click.echo(
-                        f"Progress: {total_completed}/{total_images} completed, "
-                        f"{total_failed} failed, {remaining} remaining"
-                    )
-                    last_completed = total_completed
-
-                # Check if all done
-                if remaining == 0:
-                    click.echo("\n✓ All jobs complete!")
-                    break
-
-                # Wait before next check
-                time.sleep(10)
-
-        except KeyboardInterrupt:
-            click.echo(
-                "\n\nMonitoring stopped. Jobs continue running on SLURM."
-            )
-
-        # Build final results
-        end_time = datetime.now()
-        datasets_state = aggregate_state_from_events(
-            event_log,
-            inventory=inventory,
-            generation=self.config.processing_generation,
-        )
-
-        # Enrich with structured failure data from failures.jsonl
-        prog_dir = progress_dir(output_dir)
-        failure_records = read_failures(prog_dir)
-        failure_lookup: dict[tuple[str, str], dict] = {}
-        for rec in failure_records:
-            key = (rec.get("dataset", ""), rec.get("image", ""))
-            failure_lookup[key] = rec  # Last record wins (retries)
-
-        # Convert to DatasetResults
-        dataset_results = {}
-        for dataset in datasets:
-            ds_state = datasets_state.get(dataset.name, DatasetState())
-
-            failures = []
-            for img_name in ds_state.failed:
-                error_msg = ds_state.errors.get(img_name, "Unknown error")
-                rec = failure_lookup.get((dataset.name, img_name), {})
-                failures.append(
-                    ImageFailure(
-                        dataset=dataset.name,
-                        image_filename=img_name,
-                        error_type=rec.get("error_type", "Exception"),
-                        error_message=rec.get("error_message", error_msg),
-                        traceback=rec.get("traceback", ""),
-                        timestamp=datetime.now(),
-                    )
-                )
-
-            dataset_results[dataset.name] = DatasetResults(
-                name=dataset.name,
-                total=len(dataset.images),
-                completed=len(ds_state.completed),
-                failed=len(ds_state.failed),
-                failures=failures,
-            )
-
-        return ExecutionResults(
-            datasets=dataset_results,
-            total_images=total_images,
-            total_completed=sum(r.completed for r in dataset_results.values()),
-            total_failed=sum(r.failed for r in dataset_results.values()),
-            execution_mode="slurm",
-            start_time=start_time,
-            end_time=end_time,
-        )
+    Both SLURM writers (ordinary and staged) record them, so the finalizer's
+    one aggregation honours ``--no-qc`` and ``--study`` as a local run's
+    in-process aggregation does.
+    """
+    return {
+        JobMetadataKey.NO_QC: config.no_qc,
+        JobMetadataKey.STUDY_YAML: config.study_yaml,
+    }
 
 
 def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:

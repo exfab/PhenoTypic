@@ -15,6 +15,7 @@ from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
 from phenotypic.abc_ import ThresholdDetector
+from phenotypic.sdk_._skimage_compat import remove_objects_smaller_than
 from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
@@ -177,8 +178,8 @@ class WatershedDetector(ThresholdDetector):
         del threshold  # don't need this after obtaining binary mask
         self._log_memory_usage("threshold calculation and binary mask creation")
 
-        binary = morphology.remove_small_objects(
-                binary, min_size=self.min_size
+        binary = remove_objects_smaller_than(
+                binary, self.min_size
         )  # clean to reduce runtime
 
         # Ensure binary is contiguous for memory-efficient operations (only if needed)
@@ -243,7 +244,7 @@ class WatershedDetector(ThresholdDetector):
         del max_peaks, gradient, binary
         gc.collect()  # Force garbage collection after watershed to free memory
 
-        objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
+        objmap = remove_objects_smaller_than(objmap, self.min_size)
         image.objmap[:] = objmap
         if self.relabel:
             image.objmap.relabel(connectivity=self.connectivity)

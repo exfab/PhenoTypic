@@ -12,7 +12,7 @@ from ..sdk_.mixin import NormalizedOutputMixin, _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class VisuShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
+class DenoiseVisuShrink(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.
 
     Decomposes the image into wavelet subbands and zeros all coefficients
@@ -34,7 +34,7 @@ class VisuShrinkEnhancer(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser)
           over per-subband tuning.
 
     Consider Also:
-        - :class:`BayesShrinkEnhancer` for adaptive per-subband thresholding
+        - :class:`DenoiseBayesShrink` for adaptive per-subband thresholding
           that preserves more colony texture detail at variable noise levels.
         - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
           at higher computational cost.

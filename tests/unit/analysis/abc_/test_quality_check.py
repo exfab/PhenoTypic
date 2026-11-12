@@ -288,6 +288,56 @@ class TestSummary:
         assert summary.loc["all_pass.png", "qc_status"] == "pass"
 
 
+class TestCategoricalGroups:
+    """Only observed groups participate in QC and its downstream summaries."""
+
+    @pytest.mark.parametrize("multiple_groupers", [False, True])
+    def test_unused_categories_do_not_create_summary_or_member_groups(
+        self, multiple_groupers: bool
+    ):
+        frame = _frame_with_metrics([0.01, 0.20, 0.03, 0.30])
+        image = str(IMAGE.IMAGE_NAME)
+        groupby = [image]
+        if multiple_groupers:
+            groupby.append(str(GENETIC.STRAIN))
+        frame[image] = pd.Categorical(
+            frame[image], categories=["img_0.png", "img_1.png", "unused.png"]
+        )
+        if multiple_groupers:
+            strain = str(GENETIC.STRAIN)
+            frame[strain] = pd.Categorical(frame.pop("Metadata_Strain"))
+        check = DummyQC(on="Size_Area", groupby=groupby)
+        result = check.analyze(frame)
+
+        assert len(result) == len(frame)
+        summary = check.summary()
+        assert summary["qc_n_members"].sum() == len(frame)
+        assert "unused.png" not in summary[image].tolist()
+        members = check.group_members()
+        assert all(members.values())
+        assert sum(len(rows) for rows in members.values()) == len(frame)
+
+    @pytest.mark.parametrize("categorical", [False, True])
+    def test_empty_selection_has_an_empty_summary_and_no_members(self, categorical: bool):
+        frame = _frame_with_metrics([0.01, 0.20])
+        image = str(IMAGE.IMAGE_NAME)
+        if categorical:
+            frame[image] = pd.Categorical(frame[image])
+        check = DummyQC(on="Size_Area", groupby=[image])
+        check.analyze(frame.iloc[:0])
+
+        summary = check.summary()
+        assert summary.empty
+        assert list(summary.columns) == [
+            image,
+            "qc_n_members",
+            "qc_n_flagged",
+            "qc_worst_metric",
+            "qc_status",
+        ]
+        assert check.group_members() == {}
+
+
 class TestFlaggedKeys:
     """``flagged_keys()`` hand-off to GUI curation."""
 

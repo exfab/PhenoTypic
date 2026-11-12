@@ -1,6 +1,7 @@
 """Measurement info container for expected-vs-detected colony count QC."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -18,6 +19,15 @@ class QUALITY_COUNT(QualityInfo):
     def metric_family(cls) -> str:
         return "QC_Count"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
+
     DETECTED = Entry("Detected", "Detected colony count in the group.")
     EXPECTED = Entry("Expected", "Expected colony count from the metadata frame.")
-    DELTA = Entry("Delta", "Detected − Expected (signed; negative = missing).")
+    DELTA = Entry(
+        "Delta",
+        "Detected minus expected colony count in the group, so it is negative "
+        "when colonies are missing and positive when there are extra "
+        "detections. It is Detected − Expected.",
+    )

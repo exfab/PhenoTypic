@@ -27,10 +27,10 @@ _TIME = str(CULTURE.TIME)
 LossKind = Literal["linear", "soft_l1", "huber", "cauchy", "arctan"]
 """Scipy ``least_squares`` loss names supported by :class:`ModelFitter`.
 
-- ``"linear"`` — standard unweighted squared-residual loss (default).
+- ``"linear"`` — standard unweighted squared-residual loss.
 - ``"soft_l1"`` — smooth L1; mild downweighting of large residuals.
 - ``"huber"`` — quadratic near zero, linear past ``f_scale``; classic
-  robust loss.
+  robust loss (default).
 - ``"cauchy"`` — heavy-tailed; aggressively suppresses outliers.
 - ``"arctan"`` — saturates to a bounded contribution; most aggressive.
 

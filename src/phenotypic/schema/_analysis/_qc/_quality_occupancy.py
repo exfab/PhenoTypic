@@ -1,6 +1,7 @@
 """Measurement info container for the grid-occupancy QC check."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -19,6 +20,10 @@ class QUALITY_OCCUPANCY(QualityInfo):
     def metric_family(cls) -> str:
         return "QC_Occupancy"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
+
     FILLED = Entry(
         "Filled",
         "Distinct grid cells holding at least one colony (doublets count once).",
@@ -29,5 +34,6 @@ class QUALITY_OCCUPANCY(QualityInfo):
     )
     VACANT = Entry(
         "Vacant",
-        "Expected - Filled; empty/missing grid cells in the group.",
+        "Number of expected grid cells in the group that hold no colony. It "
+        "is Expected - Filled, floored at 0.",
     )

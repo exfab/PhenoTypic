@@ -122,7 +122,7 @@ def test_staged_provenance_original_and_retry_are_durable(
 
     run.run_stage3()
     completed = _journal(store)
-    expected_names = ["CropImage", "_FixedBlobDetector", "SmallObjectRemover"]
+    expected_names = ["CropImage", "_FixedBlobDetector", "RemoveSmallObjects"]
     expected_paths = [["pre-crop"], ["gpu-detect"], ["post-filter"]]
     assert completed["status"] == "complete"
     assert _application(completed)["retry_base_length"] == 1
@@ -244,7 +244,7 @@ def test_staged_drop_originals_uses_journal_only_checkpoint_and_omits_series(
     assert [entry["operation_name"] for entry in _application(completed)["operations"]] == [
         "CropImage",
         "_FixedBlobDetector",
-        "SmallObjectRemover",
+        "RemoveSmallObjects",
     ]
     assert Image.load_zarr(store)._original is None
     final_ome = json.loads(

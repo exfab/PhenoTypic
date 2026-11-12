@@ -30,7 +30,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
       GridImageInputError at runtime.
     - **Grid-aware refinement:** Access well positions, row/column boundaries, and grid metadata via
       image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).
-    - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)
+    - **Oversized colonies:** [RemoveOversizedGridObjects](src/phenotypic/refine/_grid_oversized_object_remover.py)
       removes objects spanning nearly entire well (merged colonies, segmentation spillover).
     - **Per-well largest:** [KeepSectionLargest](src/phenotypic/refine/_keep_section_largest.py) keeps
       only the largest object per grid cell (one colony per well).
@@ -74,7 +74,7 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
       globally regardless of position).
 
     - **GridObjectRefiner:** Use when refining detections on a GridImage where well structure matters.
-      Examples: removing objects larger than their grid cell (``GridOversizedObjectRemover``),
+      Examples: removing objects larger than their grid cell (``RemoveOversizedGridObjects``),
       per-well filtering, grid-aligned edge removal. The grid structure enables position-aware
       refinement that improves array phenotyping accuracy.
 
@@ -272,12 +272,12 @@ class GridObjectRefiner(ObjectRefiner, GridOperation, ABC):
 
         >>> from phenotypic import GridImage, ImagePipeline
         >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.refine import SmallObjectRemover, GridOversizedObjectRemover
+        >>> from phenotypic.refine import RemoveSmallObjects, RemoveOversizedGridObjects
         >>> # Create detection pipeline with mixed refinements
         >>> pipeline = ImagePipeline()
         >>> pipeline.add(OtsuDetector())                        # Detect colonies
-        >>> pipeline.add(SmallObjectRemover(min_size=100))      # Global size filter
-        >>> pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter
+        >>> pipeline.add(RemoveSmallObjects(min_size=100))      # Global size filter
+        >>> pipeline.add(RemoveOversizedGridObjects())          # Grid-aware filter
         >>> # Apply to gridded plate
         >>> image = GridImage.imread('plate.jpg', nrows=8, ncols=12)
         >>> results = pipeline.operate([image])

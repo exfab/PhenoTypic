@@ -34,7 +34,7 @@ class ReduceSectionsByLine(GridObjectRefiner):
           plus one or more satellite artefacts.
 
     Consider Also:
-        - :class:`GridAlignmentRefiner` for a faster dominant-object-per-cell
+        - :class:`RefineGridAlignment` for a faster dominant-object-per-cell
           approach that does not require iterative regression.
         - :class:`KeepSectionLargest` for a simpler strategy that keeps only
           the largest object per grid cell without position modeling.

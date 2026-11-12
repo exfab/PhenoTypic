@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import BaseOperation
 from ._image_pipeline_core import ImagePipelineCore
+from ._step_order_check import step_order_checked
 
 
 def _napari_layers_for(operation: BaseOperation) -> list[tuple[str, bool]] | None:
@@ -143,5 +144,6 @@ class NapariPipelineViewer(ImagePipelineCore):
                 accessor = getattr(current_img, accessor_name)
                 accessor.napari(viewer=viewer, layer_name=full_name)
 
-        self._run_operations(img, on_op_complete=_add_napari_layers)
+        with step_order_checked(self, stacklevel=2):
+            self._run_operations(img, on_op_complete=_add_napari_layers)
         return NapariPipelineResult(image=img, viewer=viewer)

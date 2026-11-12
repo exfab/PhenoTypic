@@ -1,4 +1,4 @@
-"""Tests for GridAlignmentRefiner — grid inference and mixin-direct tests.
+"""Tests for RefineGridAlignment — grid inference and mixin-direct tests.
 
 Basic refiner behavior (creation, inplace, edge cases, pipeline, labeling,
 selection mode) is tested in test_shared_refiner_behavior.py.
@@ -9,12 +9,12 @@ from __future__ import annotations
 import pytest
 import numpy as np
 from phenotypic.detect import RoundPeaksDetector
-from phenotypic.refine import GridAlignmentRefiner
+from phenotypic.refine import RefineGridAlignment
 from phenotypic.sdk_.mixin import GridInferenceMixin
 
 
 class TestGridAlignmentRefinerGridInference:
-    """Test grid inference capabilities of GridAlignmentRefiner."""
+    """Test grid inference capabilities of RefineGridAlignment."""
 
     def test_grid_inference_with_regular_image(self, synth_plate):
         """Test that grid inference works for regular Image without explicit dimensions."""
@@ -25,7 +25,7 @@ class TestGridAlignmentRefinerGridInference:
         detector = RoundPeaksDetector()
         detected = detector.apply(image)
 
-        refiner = GridAlignmentRefiner()
+        refiner = RefineGridAlignment()
         refined = refiner.apply(detected)
 
         assert refined.objmap[:].max() > 0
@@ -36,10 +36,10 @@ class TestGridAlignmentRefinerGridInference:
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)
 
-        refiner_no_smooth = GridAlignmentRefiner(smoothing_sigma=0.0)
+        refiner_no_smooth = RefineGridAlignment(smoothing_sigma=0.0)
         refined_no_smooth = refiner_no_smooth.apply(detected)
 
-        refiner_smooth = GridAlignmentRefiner(smoothing_sigma=2.0)
+        refiner_smooth = RefineGridAlignment(smoothing_sigma=2.0)
         refined_smooth = refiner_smooth.apply(detected.copy())
 
         assert refined_no_smooth.objmap[:].max() > 0
@@ -51,10 +51,10 @@ class TestGridAlignmentRefinerGridInference:
         detector = RoundPeaksDetector()
         detected = detector.apply(grid_image)
 
-        refiner_no_refine = GridAlignmentRefiner(edge_refinement=False)
+        refiner_no_refine = RefineGridAlignment(edge_refinement=False)
         refined_no_refine = refiner_no_refine.apply(detected)
 
-        refiner_refine = GridAlignmentRefiner(edge_refinement=True)
+        refiner_refine = RefineGridAlignment(edge_refinement=True)
         refined_refine = refiner_refine.apply(detected.copy())
 
         assert refined_no_refine.objmap[:].max() > 0

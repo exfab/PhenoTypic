@@ -24,7 +24,7 @@ from phenotypic._gui.analysis import _callbacks, _ids
 from phenotypic._gui.analysis._app import create_app
 from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.post import AppendString
-from phenotypic.schema import IMAGE
+from phenotypic.schema import EDGE_CORRECTION, IMAGE
 from tests._output_layout import build_complete_viewer_run, seed_output_dir
 
 
@@ -290,6 +290,142 @@ def test_model_rebuild_same_value_feedback_returns_no_update(
     assert feedback.status_code == 204
     assert save_calls == 1
     assert recipe.path.read_bytes() == before_feedback
+
+
+def test_missing_model_column_survives_render_and_feedback(tmp_path: Path) -> None:
+    """A missing radius stays selected and hydration is a semantic no-op."""
+    app = create_app(output_root=_seed_output(tmp_path))
+    selected = _post_value_mutation(
+        app, _ids.ANALYSIS_MODEL_DROPDOWN, "LinearLagModel"
+    )
+    trigger = _response_value(selected, _ids.ANALYSIS_PIPELINE_EVENT_STORE, "data")
+    rendered = _post_reconciliation(app, trigger)
+    section = _response_value(rendered, _ids.ANALYSIS_MODEL_SECTION, "children")
+
+    def find_on(value: Any) -> dict | None:
+        if isinstance(value, dict):
+            props = value.get("props", {})
+            component_id = props.get("id")
+            if isinstance(component_id, dict) and component_id.get("name") == "on":
+                return props
+            for child in value.values():
+                found = find_on(child)
+                if found is not None:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_on(child)
+                if found is not None:
+                    return found
+        return None
+
+    on = find_on(section)
+    assert on is not None
+    assert on["value"] == "Size_RobustMeanRadius"
+    assert {
+        "label": "Size_RobustMeanRadius (missing)",
+        "value": "Size_RobustMeanRadius",
+    } in on["options"]
+    assert _response_value(rendered, _ids.ANALYSIS_RUN_BUTTON, "disabled") is True
+    assert "Missing measurement columns" in json.dumps(section)
+    recipe = app.server.config[CFG_RECIPE_STATE]
+    before = recipe.path.read_bytes()
+    feedback = _post_pattern_param(
+        app,
+        kind="model",
+        name="on",
+        widget_type="param-column-scalar",
+        value=on["value"],
+    )
+    assert feedback.status_code == 204
+    assert recipe.path.read_bytes() == before
+
+
+def test_run_refuses_missing_model_column_before_analysis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A crafted Run request cannot fit or publish with an absent column."""
+    from phenotypic._cli import _cli_output_manager
+
+    pipeline = ImagePipeline(
+        model=LinearLagModel(
+            on="Size_RobustMeanRadius",
+            groupby=["Size_Area"],
+            time_label="Object_Label",
+        )
+    )
+    root = _seed_output(tmp_path, pipeline=pipeline)
+    app = create_app(output_root=root)
+
+    def refuse_emit(*args, **kwargs):
+        pytest.fail("analysis was called with a missing model column")
+
+    monkeypatch.setattr(_cli_output_manager, "_emit_analysis_outputs", refuse_emit)
+    result = _callbacks._run_inline(app.server.config[CFG_RECIPE_STATE], root)
+    assert "Size_RobustMeanRadius" in result.children
+    assert "Missing measurement columns" in result.children
+
+
+def test_model_accepts_declared_upstream_filter_column(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Edge-produced columns are available to the model without running filters."""
+    from phenotypic._cli import _cli_output_manager
+
+    edge = EdgeCorrector(
+        on="Size_Area", groupby=["Metadata_Dataset"], time_label="Object_Label"
+    )
+    corrected = edge.output_header(EDGE_CORRECTION.NEW_VAL, edge.on)
+    pipeline = ImagePipeline(
+        filters={"edge": edge},
+        model=LinearLagModel(
+            on=corrected, groupby=["Metadata_Dataset"], time_label="Object_Label"
+        ),
+    )
+
+    def refuse_filter(*args, **kwargs):
+        pytest.fail("rendering executed an analysis filter")
+
+    monkeypatch.setattr(EdgeCorrector, "analyze", refuse_filter)
+    root = _seed_output(tmp_path, pipeline=pipeline)
+    app = create_app(output_root=root)
+    edited = _post_pattern_param(
+        app, kind="model", name="n_jobs", widget_type="param-num", value=2
+    )
+    trigger = _response_value(edited, _ids.ANALYSIS_PIPELINE_EVENT_STORE, "data")
+    rendered = _post_reconciliation(app, trigger)
+    assert rendered.status_code == 200
+    assert _response_value(rendered, _ids.ANALYSIS_RUN_BUTTON, "disabled") is False
+    section = json.dumps(
+        _response_value(rendered, _ids.ANALYSIS_MODEL_SECTION, "children")
+    )
+    assert corrected in section
+    assert f"{corrected} (missing)" not in section
+    assert "Missing measurement columns" not in section
+
+    emitted = []
+    monkeypatch.setattr(
+        _cli_output_manager,
+        "_emit_analysis_outputs",
+        lambda *args, **kwargs: emitted.append(True),
+    )
+    _callbacks._run_inline(app.server.config[CFG_RECIPE_STATE], root)
+    assert emitted == [True]
+
+
+@pytest.mark.parametrize(
+    "source", ["images", "master_measurements", "reference_metadata"]
+)
+def test_declared_filter_outputs_do_not_change_other_column_sources(source: str) -> None:
+    """Filter headers augment only the post-applied measurement source."""
+    from phenotypic._gui.analysis._layout import model_columns_provider
+
+    pipeline = ImagePipeline(
+        filters={"edge": EdgeCorrector(on="Size_Area", groupby=["Metadata_Dataset"])}
+    )
+    provider = model_columns_provider(pipeline, lambda requested: [requested])
+    assert provider is not None
+    assert provider(source) == [source]
 
 
 def test_nan_parameter_feedback_returns_no_update_without_save(
@@ -658,7 +794,8 @@ def test_external_recipe_cas_reconciles_every_model_callback_output(
         name="external",
         model=LinearLagModel(
             on="Size_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["Metadata_Dataset"],
+            time_label="Object_Label",
         ),
     )
     external_json = external.to_json() or ""
@@ -765,7 +902,8 @@ def test_external_recipe_cas_reconciles_add_stack_and_control(
         },
         model=LinearLagModel(
             on="Size_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["Metadata_Dataset"],
+            time_label="Object_Label",
         ),
     )
     external_json = external.to_json() or ""

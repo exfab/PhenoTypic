@@ -15,7 +15,7 @@ import os
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import Dict, List, Mapping
 from uuid import uuid4
 
 from joblib import Parallel, delayed
@@ -73,6 +73,7 @@ from ._cli_staged_workers import (
 )
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 from ._cli_types import Dataset, DatasetResults, ExecutionResults
+from ._cli_utils import input_read_settings
 
 logger = logging.getLogger(__name__)
 
@@ -106,11 +107,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         event_log = event_log_path(output_dir)
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
-        read_kwargs: Dict[str, Any] = {}
-        if cfg.bit_depth:
-            read_kwargs["bit_depth"] = cfg.bit_depth
-        if cfg.detect_mode != "gray":
-            read_kwargs["detect_mode"] = cfg.detect_mode
+        read_kwargs = input_read_settings(cfg.bit_depth, cfg.detect_mode)
 
         def _measurement_table_path(ds_name: str, stem: str) -> Path:
             from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
@@ -219,6 +216,8 @@ class StagedGpuStrategy(ExecutionStrategy):
                         self.output_manager,
                         cfg.image_type,
                         read_kwargs,
+                        cli_nrows=cfg.nrows,
+                        cli_ncols=cfg.ncols,
                         work_id=work_id,
                         pipeline_path=cfg.pipeline_json,
                         pipeline_identity=getattr(
@@ -459,7 +458,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         after Stages 1-2; consumes the token and the raw array after export.
 
         The export means *the objmap your pipeline produces*. A pipeline
-        declaring ``MaskFill``/``SmallObjectRemover`` after its detector is
+        declaring ``MaskFill``/``RemoveSmallObjects`` after its detector is
         asking for those to shape the objmap, and for a **nested** detector the
         raw array is one *branch* of a composite, not the objmap at all. Both
         cases therefore run the same chain the enclosing operation would run in

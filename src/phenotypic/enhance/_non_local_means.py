@@ -12,7 +12,7 @@ from ..sdk_.mixin import _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
+class DenoiseNonLocalMeans(_GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` with non-local means patch-based filtering.
 
     Compares small patches across the entire image to identify structurally
@@ -38,7 +38,7 @@ class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
           at higher computational cost.
         - :class:`LocalEdgeDenoise` for faster edge-preserving denoising
           without whole-image patch search.
-        - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising that
+        - :class:`DenoiseBayesShrink` for adaptive wavelet denoising that
           applies spatially varying thresholds.
 
     Args:

@@ -1,4 +1,4 @@
-"""Shared tests for refiner behavior across GridAlignmentRefiner and RefineBySineFit.
+"""Shared tests for refiner behavior across RefineGridAlignment and RefineBySineFit.
 
 These tests verify common behavior that is identical for both refiners,
 avoiding duplication.
@@ -10,8 +10,8 @@ import pytest
 import numpy as np
 from phenotypic import Image, GridImage
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
-from phenotypic.refine import GridAlignmentRefiner, RefineBySineFit
-REFINERS = [GridAlignmentRefiner, RefineBySineFit]
+from phenotypic.refine import RefineGridAlignment, RefineBySineFit
+REFINERS = [RefineGridAlignment, RefineBySineFit]
 
 
 class TestRefinerBasicsShared:
@@ -195,14 +195,14 @@ class TestRefinerPipelineShared:
     @pytest.mark.parametrize("RefinerClass", REFINERS)
     def test_multiple_refiners_chained(self, RefinerClass, synth_plate_detected):
         """Test chaining multiple refinement operations."""
-        from phenotypic.refine import SmallObjectRemover
+        from phenotypic.refine import RemoveSmallObjects
 
         detected = synth_plate_detected.copy()
 
         refiner = RefinerClass()
         refined = refiner.apply(detected)
 
-        small_remover = SmallObjectRemover(min_size=100)
+        small_remover = RemoveSmallObjects(min_size=100)
         small_removed = small_remover.apply(refined)
 
         assert small_removed.objmap[:].max() >= 0

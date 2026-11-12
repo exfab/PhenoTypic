@@ -38,7 +38,6 @@ from phenotypic._cli._cli_update_state import (
 from phenotypic._cli._cli_failure_tracker import (
     append_failure,
     append_terminal_failure,
-    read_failures,
     categorize_failures,
 )
 from phenotypic._cli._dashboard._manifest_builder import (
@@ -304,6 +303,17 @@ class TestAggregateState:
 # Failure Tracker
 # ──────────────────────────────────────────────────────────────────────
 
+def _failure_records(progress_dir: Path) -> list[dict]:
+    """The ``failures.jsonl`` records ``append_failure`` wrote, in order."""
+    return [
+        json.loads(line)
+        for line in (progress_dir / "failures.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip()
+    ]
+
+
 class TestFailureTracker:
 
     def test_append_and_read(self, progress_dir):
@@ -315,7 +325,7 @@ class TestFailureTracker:
             error_message="bad shape",
             traceback="Traceback...\nValueError: bad shape",
         )
-        failures = read_failures(progress_dir)
+        failures = _failure_records(progress_dir)
         assert len(failures) == 1
         assert failures[0]["error_type"] == "ValueError"
         assert failures[0]["dataset"] == "plate1"
@@ -330,7 +340,7 @@ class TestFailureTracker:
                 error_type="RuntimeError" if i % 2 else "ValueError",
                 error_message=f"error {i}",
             )
-        failures = read_failures(progress_dir)
+        failures = _failure_records(progress_dir)
         assert len(failures) == 5
 
     def test_slurm_failure(self, progress_dir):
@@ -343,7 +353,7 @@ class TestFailureTracker:
             slurm_job_id="12345_99",
             failure_source="slurm",
         )
-        failures = read_failures(progress_dir)
+        failures = _failure_records(progress_dir)
         assert failures[0]["failure_source"] == "slurm"
         assert failures[0]["slurm_job_id"] == "12345_99"
 
@@ -363,22 +373,11 @@ class TestFailureTracker:
             error_type="TimeoutError", error_message="e",
         )
 
-        failures = read_failures(progress_dir)
+        failures = _failure_records(progress_dir)
         cats = categorize_failures(failures)
         assert cats["ValueError"] == 3
         assert cats["OUT_OF_MEMORY"] == 2
         assert cats["TimeoutError"] == 1
-
-    def test_read_empty(self, progress_dir):
-        assert read_failures(progress_dir) == []
-
-    def test_read_missing_dir(self, tmp_dir):
-        assert read_failures(tmp_dir / "nonexistent") == []
-
-    def test_malformed_lines_skipped(self, progress_dir):
-        failures_path = progress_dir / "failures.jsonl"
-        failures_path.write_text("not json\n{bad json\n")
-        assert read_failures(progress_dir) == []
 
 
 # ──────────────────────────────────────────────────────────────────────

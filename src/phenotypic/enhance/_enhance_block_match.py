@@ -35,12 +35,12 @@ class EnhanceBlockMatch(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
           via ``use_gat=True``.
 
     Consider Also:
-        - :class:`BayesShrinkEnhancer` for per-subband adaptive wavelet
+        - :class:`DenoiseBayesShrink` for per-subband adaptive wavelet
           denoising with lower computational cost when structured patterns
           are not the primary concern.
-        - :class:`NonLocalMeansDenoiser` for patch-based denoising at
+        - :class:`DenoiseNonLocalMeans` for patch-based denoising at
           moderately lower computational overhead.
-        - :class:`VisuShrinkEnhancer` when speed matters more than quality
+        - :class:`DenoiseVisuShrink` when speed matters more than quality
           and a universal wavelet threshold is acceptable.
         - :class:`MedianFilter` for isolated salt-and-pepper impulse noise
           rather than Gaussian or structured noise.

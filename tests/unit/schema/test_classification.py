@@ -159,13 +159,13 @@ def test_tier1_primary_enums():
 def test_quality_enums_resolve_quality():
     from phenotypic.schema import (
         QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
-        QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
-        GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD,
+        QUALITY_TUKEY, QUALITY_WINDOW, QUALITY_ZMAX, CURATION, ErrorCategory,
+        MODEL_METRICS, GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD,
     )
 
     for enum in (QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
-                 QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
-                 GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD):
+                 QUALITY_TUKEY, QUALITY_WINDOW, QUALITY_ZMAX, CURATION, ErrorCategory,
+                 MODEL_METRICS, GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD):
         assert all(m.resolved_kind == "quality" for m in enum), enum.__name__
 
 

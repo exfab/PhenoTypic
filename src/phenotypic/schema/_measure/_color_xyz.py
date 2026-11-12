@@ -1,6 +1,7 @@
 """Per-object summary statistics in the CIE XYZ color space."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DiscriminativeFeature
 
 
@@ -20,25 +21,49 @@ class ColorXYZ(DiscriminativeFeature):
     def metric_family(cls):
         return "ColorXYZ"
 
-    X_MINIMUM = Entry("CieXMin", "The minimum X value of the object in CIE XYZ color space")
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
+
+    X_MINIMUM = Entry(
+        "CieXMin",
+        "Lowest CIE 1931 X tristimulus value among the colony's pixels.",
+    )
     X_Q1 = Entry(
         "CieXQ1",
-        "The lower quartile (Q1) X value of the object in CIE XYZ color space",
+        "CIE 1931 X tristimulus value that about a quarter of the colony's "
+        "pixels are at or below. It is the 25th percentile, linearly "
+        "interpolated.",
     )
-    X_MEAN = Entry("CieXMean", "The mean X value of the object in CIE XYZ color space")
-    X_MEDIAN = Entry("CieXMedian", "The median X value of the object in CIE XYZ color space")
+    X_MEAN = Entry(
+        "CieXMean",
+        "Average CIE 1931 X tristimulus value of the colony's pixels.",
+    )
+    X_MEDIAN = Entry(
+        "CieXMedian",
+        "Median CIE 1931 X tristimulus value of the colony's pixels.",
+    )
     X_Q3 = Entry(
         "CieXQ3",
-        "The upper quartile (Q3) X value of the object in CIE XYZ color space",
+        "CIE 1931 X tristimulus value that about three quarters of the "
+        "colony's pixels are at or below. It is the 75th percentile, linearly "
+        "interpolated.",
     )
-    X_MAXIMUM = Entry("CieXMax", "The maximum X value of the object in CIE XYZ color space")
+    X_MAXIMUM = Entry(
+        "CieXMax",
+        "Highest CIE 1931 X tristimulus value among the colony's pixels.",
+    )
     X_STDDEV = Entry(
         "CieXStdDev",
-        "The standard deviation of the X value of the object in CIE XYZ color space",
+        "How much the CIE 1931 X tristimulus value varies across the colony's "
+        "pixels, as its population standard deviation.",
     )
     X_COEFF_VARIANCE = Entry(
         "CieXCoeffVar",
-        "The coefficient of variation of the X value of the object in CIE XYZ color space",
+        "How much the CIE 1931 X tristimulus value varies across the colony's "
+        "pixels relative to its mean, as the standard deviation divided by "
+        "the mean. The ratio is then multiplied by (1 + 1/n), where n is the "
+        "colony's pixel count.",
     )
 
     @classmethod
@@ -54,25 +79,50 @@ class ColorXYZ(DiscriminativeFeature):
             str(cls.X_COEFF_VARIANCE),
         ]
 
-    Y_MINIMUM = Entry("CieYMin", "The minimum Y value of the object in CIE XYZ color space")
+    Y_MINIMUM = Entry(
+        "CieYMin",
+        "Lowest CIE 1931 Y tristimulus value (relative luminance) among the "
+        "colony's pixels.",
+    )
     Y_Q1 = Entry(
         "CieYQ1",
-        "The lower quartile (Q1) Y value of the object in CIE XYZ color space",
+        "CIE 1931 Y tristimulus value (relative luminance) that about a "
+        "quarter of the colony's pixels are at or below. It is the 25th "
+        "percentile, linearly interpolated.",
     )
-    Y_MEAN = Entry("CieYMean", "The mean Y value of the object in CIE XYZ color space")
-    Y_MEDIAN = Entry("CieYMedian", "The median Y value of the object in CIE XYZ color space")
+    Y_MEAN = Entry(
+        "CieYMean",
+        "Average CIE 1931 Y tristimulus value (relative luminance) of the "
+        "colony's pixels.",
+    )
+    Y_MEDIAN = Entry(
+        "CieYMedian",
+        "Median CIE 1931 Y tristimulus value (relative luminance) of the "
+        "colony's pixels.",
+    )
     Y_Q3 = Entry(
         "CieYQ3",
-        "The upper quartile (Q3) Y value of the object in CIE XYZ color space",
+        "CIE 1931 Y tristimulus value (relative luminance) that about three "
+        "quarters of the colony's pixels are at or below. It is the 75th "
+        "percentile, linearly interpolated.",
     )
-    Y_MAXIMUM = Entry("CieYMax", "The maximum Y value of the object in CIE XYZ color space")
+    Y_MAXIMUM = Entry(
+        "CieYMax",
+        "Highest CIE 1931 Y tristimulus value (relative luminance) among the "
+        "colony's pixels.",
+    )
     Y_STDDEV = Entry(
         "CieYStdDev",
-        "The standard deviation of the Y value of the object in CIE XYZ color space",
+        "How much the CIE 1931 Y tristimulus value (relative luminance) "
+        "varies across the colony's pixels, as its population standard "
+        "deviation.",
     )
     Y_COEFF_VARIANCE = Entry(
         "CieYCoeffVar",
-        "The coefficient of variation of the Y value of the object in CIE XYZ color space",
+        "How much the CIE 1931 Y tristimulus value (relative luminance) "
+        "varies across the colony's pixels relative to its mean, as the "
+        "standard deviation divided by the mean. The ratio is then multiplied "
+        "by (1 + 1/n), where n is the colony's pixel count.",
     )
 
     @classmethod
@@ -88,25 +138,45 @@ class ColorXYZ(DiscriminativeFeature):
             str(cls.Y_COEFF_VARIANCE),
         ]
 
-    Z_MINIMUM = Entry("CieZMin", "The minimum Z value of the object in CIE XYZ color space")
+    Z_MINIMUM = Entry(
+        "CieZMin",
+        "Lowest CIE 1931 Z tristimulus value among the colony's pixels.",
+    )
     Z_Q1 = Entry(
         "CieZQ1",
-        "The lower quartile (Q1) Z value of the object in CIE XYZ color space",
+        "CIE 1931 Z tristimulus value that about a quarter of the colony's "
+        "pixels are at or below. It is the 25th percentile, linearly "
+        "interpolated.",
     )
-    Z_MEAN = Entry("CieZMean", "The mean Z value of the object in CIE XYZ color space")
-    Z_MEDIAN = Entry("CieZMedian", "The median Z value of the object in CIE XYZ color space")
+    Z_MEAN = Entry(
+        "CieZMean",
+        "Average CIE 1931 Z tristimulus value of the colony's pixels.",
+    )
+    Z_MEDIAN = Entry(
+        "CieZMedian",
+        "Median CIE 1931 Z tristimulus value of the colony's pixels.",
+    )
     Z_Q3 = Entry(
         "CieZQ3",
-        "The upper quartile (Q3) Z value of the object in CIE XYZ color space",
+        "CIE 1931 Z tristimulus value that about three quarters of the "
+        "colony's pixels are at or below. It is the 75th percentile, linearly "
+        "interpolated.",
     )
-    Z_MAXIMUM = Entry("CieZMax", "The maximum Z value of the object in CIE XYZ color space")
+    Z_MAXIMUM = Entry(
+        "CieZMax",
+        "Highest CIE 1931 Z tristimulus value among the colony's pixels.",
+    )
     Z_STDDEV = Entry(
         "CieZStdDev",
-        "The standard deviation of the Z value of the object in CIE XYZ color space",
+        "How much the CIE 1931 Z tristimulus value varies across the colony's "
+        "pixels, as its population standard deviation.",
     )
     Z_COEFF_VARIANCE = Entry(
         "CieZCoeffVar",
-        "The coefficient of variation of the Z value of the object in CIE XYZ color space",
+        "How much the CIE 1931 Z tristimulus value varies across the colony's "
+        "pixels relative to its mean, as the standard deviation divided by "
+        "the mean. The ratio is then multiplied by (1 + 1/n), where n is the "
+        "colony's pixel count.",
     )
 
     @classmethod

@@ -38,7 +38,7 @@ from phenotypic._cli._cli_staged_workers import (
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic.abc_ import GpuDetector
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.enhance import ImageInverter
+from phenotypic.enhance import InvertImage
 from phenotypic.measure import MeasureSize
 from phenotypic.sdk_ import zarr_store_path
 from phenotypic.sdk_.typing_ import GpuInputLayer
@@ -83,14 +83,14 @@ def _register_recording_detector(monkeypatch):
 
 
 def _shape_b_pipeline() -> ImagePipeline:
-    """A GpuDetector behind ``ImageInverter`` inside a nested branch pipeline.
+    """A GpuDetector behind ``InvertImage`` inside a nested branch pipeline.
 
     The nested pipeline is a ``"sequence"`` container, so ``_branch_prefix``
     contributes the operations preceding the detector *within it* -- which is
     precisely the prefix Stage 1 did not run.
     """
     branch = ImagePipeline(
-        ops={"invert": ImageInverter(), "gpu": RecordingGpuDetector()}
+        ops={"invert": InvertImage(), "gpu": RecordingGpuDetector()}
     )
     return ImagePipeline(ops={"branch": branch}, meas=[MeasureSize()])
 
@@ -165,7 +165,7 @@ def test_the_fixture_really_is_shape_b(staged):
     """Without a non-empty prefix every assertion below is vacuously true."""
     assert staged.plan.gpu_path == ("branch", "gpu")
     assert [type(op).__name__ for op in staged.plan.stage2_prefix] == [
-        "ImageInverter"
+        "InvertImage"
     ]
     # Stage 1 ran nothing: the store is the raw image, so the reference
     # computed in the tests below is comparable to it.
@@ -189,7 +189,7 @@ def test_the_detector_sees_the_branch_prefixed_array(staged):
         atol=1e-6,
         err_msg="premise broken: the Stage-1 store is not the raw image",
     )
-    ImageInverter().apply(reference, inplace=True)
+    InvertImage().apply(reference, inplace=True)
     expected = reference.detect_mat[:]
 
     stage2_detect_core(
@@ -269,7 +269,7 @@ def test_the_prefix_records_land_in_no_journal(staged):
     the store would silence that assertion without silencing this one.
     """
     before = _store_journal_operation_names(staged.store)
-    assert "ImageInverter" not in before
+    assert "InvertImage" not in before
 
     stage2_detect_core(
         staged.plan.gpu_detector,
@@ -321,7 +321,7 @@ def test_the_slurm_stage2_call_site_forwards_the_prefix(staged, monkeypatch):
         "the SLURM Stage-2 call site dropped stage2_prefix; it defaults to "
         "None, so shape B would detect on unprefixed pixels and report success"
     )
-    assert [type(op).__name__ for op in prefix] == ["ImageInverter"]
+    assert [type(op).__name__ for op in prefix] == ["InvertImage"]
     # The fence and the write gate must survive the new keyword.
     assert "active_check" in received[0]
     assert "commit_guard" in received[0]
@@ -344,7 +344,6 @@ def test_the_local_stage2_call_site_forwards_the_prefix(tmp_path, monkeypatch):
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.5,
         include_dataset_column=False,
@@ -367,4 +366,4 @@ def test_the_local_stage2_call_site_forwards_the_prefix(tmp_path, monkeypatch):
         "the local Stage-2 call site dropped stage2_prefix; it defaults to "
         "None, so shape B would detect on unprefixed pixels and report success"
     )
-    assert [type(op).__name__ for op in prefix] == ["ImageInverter"]
+    assert [type(op).__name__ for op in prefix] == ["InvertImage"]

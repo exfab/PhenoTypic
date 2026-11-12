@@ -357,6 +357,8 @@ class TestColumnWidgets:
         # The stale wrapper Div carries a `title` for the tooltip.
         assert getattr(w, "title", None)
         assert "MissingCol" in w.title
+        assert w.children.value == "MissingCol"
+        assert {"label": "MissingCol (missing)", "value": "MissingCol"} in w.children.options
 
     def test_columnref_or_none_renders_two_button_toggle(self):
         from phenotypic.sdk_ import ColumnRef

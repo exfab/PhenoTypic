@@ -25,7 +25,7 @@ class STUDY(MetadataInfo):
         "PrivateUntilDate", "Embargo date until which the study stays private.")
     KEYWORDS = Entry("Keywords", "Keywords describing the study.")
     AUTHOR = Entry("Author", "Study author(s); delimited string when multiple.")
-    LICENSE = Entry("License", "Data license (e.g. CC0, CC-BY-4.0).")
+    LICENSE = Entry("License", "Data license (for example CC0, CC-BY-4.0).")
     FUNDING = Entry("Funding", "Funding statement or grant reference(s).")
     PUBLICATIONS = Entry("Publications", "Associated publication(s) or DOI(s).")
     LINKS = Entry("Links", "Related links or external resource URLs.")

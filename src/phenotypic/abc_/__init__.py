@@ -53,7 +53,7 @@ from phenotypic.schema import MeasurementInfo  # noqa: E402
 from phenotypic.sdk_ import FootprintMixin  # noqa: E402
 from ._measure_features import MeasureFeatures  # noqa: E402
 from ._image_operation import ImageOperation  # noqa: E402
-from ._image_enhancer import ImageEnhancer  # noqa: E402
+from ._image_enhancer import DetectionClearedWarning, ImageEnhancer  # noqa: E402
 from ._image_denoiser import ImageDenoiser  # noqa: E402
 from ._enhance_markers import (  # noqa: E402
     FocusEdge,
@@ -83,6 +83,7 @@ __all__ = [
     "MeasureFeatures",
     "ImageOperation",
     "ImageEnhancer",
+    "DetectionClearedWarning",
     "ImageDenoiser",
     "FocusEdge",
     "FocusBlob",

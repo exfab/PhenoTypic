@@ -45,7 +45,7 @@ class SeparateObjects(ObjectRefiner):
           lightly touching colonies without watershed.
         - :class:`MaskErosion` when uniform inward shrinking is enough to
           break weak contact between adjacent colony masks.
-        - :class:`GridAlignmentRefiner` when off-grid placement artefacts
+        - :class:`RefineGridAlignment` when off-grid placement artefacts
           are the primary concern rather than merged regions.
 
     Args:

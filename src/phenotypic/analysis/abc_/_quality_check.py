@@ -14,6 +14,15 @@ from phenotypic.schema import EXPERIMENT, IMAGE, OBJECT, QUALITY_CHECK, Measurem
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
 
+#: What a check's JSON dump writes for a parameter that held a runtime-only
+#: value, such as an in-memory layout DataFrame, which JSON cannot carry. A
+#: check refuses it when it is rebuilt from that dump, and
+#: :class:`~phenotypic.sdk_._qc_recipe.QcRecipeEntry` logs a warning when it
+#: writes one. A placeholder rather than ``None``, because ``None`` can be a
+#: valid configuration of its own (``ExpectedVsDetectedCount`` reads it as "no
+#: layout").
+IN_MEMORY_PARAM = "<in-memory>"
+
 
 class QualityCheck(SetAnalyzer, ABC):
     """Detect quality-control issues in measurement frames.
@@ -167,7 +176,7 @@ class QualityCheck(SetAnalyzer, ABC):
 
         Args:
             group: A single group as produced by
-                ``data.groupby(self.groupby, dropna=False)``.
+                ``data.groupby(self.groupby, dropna=False, observed=True)``.
 
         Returns:
             The group frame (typically a copy) augmented with the
@@ -178,7 +187,7 @@ class QualityCheck(SetAnalyzer, ABC):
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
         """Run the check on every group and return the augmented frame.
 
-        Iterates over ``data.groupby(self.groupby, dropna=False)``,
+        Iterates over ``data.groupby(self.groupby, dropna=False, observed=True)``,
         delegates per-group computation to :meth:`_compute`, and adds
         three generic columns derived from the metric:
 
@@ -193,7 +202,8 @@ class QualityCheck(SetAnalyzer, ABC):
         A ``NaN`` metric always yields ``Status="pass"`` and
         ``Flag=False``.
 
-        Rows are never dropped. The augmented frame is stored on
+        Unused categorical levels do not create groups. Missing group keys
+        are retained, and rows are never dropped. The augmented frame is stored on
         :attr:`_latest_measurements` and returned.
 
         Args:
@@ -222,7 +232,7 @@ class QualityCheck(SetAnalyzer, ABC):
         status_col = self.status_col()
 
         pieces: list[pd.DataFrame] = []
-        for _, group in data.groupby(self.groupby, dropna=False):
+        for _, group in data.groupby(self.groupby, dropna=False, observed=True):
             pieces.append(self._compute(group))
 
         if pieces:
@@ -273,6 +283,13 @@ class QualityCheck(SetAnalyzer, ABC):
         inv_rank = {v: k for k, v in rank.items()}
 
         df = self._latest_measurements
+        if df.empty:
+            return df[list(self.groupby)].copy().assign(
+                qc_n_members=pd.Series(dtype="int64"),
+                qc_n_flagged=pd.Series(dtype="int64"),
+                qc_worst_metric=pd.Series(dtype=float),
+                qc_status=pd.Series(dtype=object),
+            )
         metric_col = self.metric_col()
         flag_col = self.flag_col()
         status_col = self.status_col()
@@ -289,7 +306,7 @@ class QualityCheck(SetAnalyzer, ABC):
                 "qc_status": inv_rank[worst],
             })
 
-        grouped = df.groupby(self.groupby, dropna=False)
+        grouped = df.groupby(self.groupby, dropna=False, observed=True)
         summary = grouped.apply(_summarize, include_groups=False).reset_index()
         return summary
 
@@ -328,7 +345,7 @@ class QualityCheck(SetAnalyzer, ABC):
         """Map each group key to its member rows for worklists/galleries.
 
         Walks the most recent analyzed frame and, for every group key
-        produced by ``data.groupby(self.groupby, dropna=False)``, collects
+        produced by ``data.groupby(self.groupby, dropna=False, observed=True)``, collects
         the rows that belong to it as ``(Metadata_ImageName, Object_Label,
         member_value)`` tuples, where ``member_value`` is the row's
         ``self.on`` value (the column the check operates on). The mapping
@@ -351,7 +368,7 @@ class QualityCheck(SetAnalyzer, ABC):
             return {}
 
         members: dict[tuple, list[tuple[str, int, Any]]] = {}
-        for key, group in df.groupby(self.groupby, dropna=False):
+        for key, group in df.groupby(self.groupby, dropna=False, observed=True):
             key_tuple = key if isinstance(key, tuple) else (key,)
             image_files = group[image_name_col].tolist()
             labels = group[label_col].tolist()
