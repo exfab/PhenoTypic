@@ -767,13 +767,14 @@ class TestPrefabRoundTrip:
 
     Backwards-compat sanity: a prefab built from real op classes (not
     test fixtures) must round-trip cleanly through the builder state
-    representation.  Of the seven prefabs in :mod:`phenotypic.prefab`,
+    representation.  Of the eight prefabs in :mod:`phenotypic.prefab`,
     only :class:`~phenotypic.prefab.FilamentousFungiPipeline` exercises
     op-typed parameters (its ``inoculum_detector`` slot accepts an
-    ``ObjectDetector | ImagePipeline``); the other six (``HeavyOtsu``,
+    ``ObjectDetector | ImagePipeline``); the other seven (``HeavyOtsu``,
     ``HeavyWatershed``, ``HeavyRoundPeaks``, ``RoundPeaks``,
-    ``GridSection``, ``SpImager``) are linear chains of scalar-param
-    ops and trivially round-trip.
+    ``GridSection``, ``SpImager``, ``BacterSam``) are linear chains of scalar-param
+    ops and trivially round-trip -- except ``BacterSam``, whose ``Sam2`` the builder
+    does not register (see its xfail).
 
     A naive "byte-identical" assertion against the prefab's
     ``to_json()`` does NOT hold: ``from_pipeline`` normalizes
@@ -836,6 +837,18 @@ class TestPrefabRoundTrip:
                 "HeavyOtsuPipeline",
                 "HeavyWatershedPipeline",
                 "RoundPeaksPipeline",
+                pytest.param(
+                    "BacterSamPipeline",
+                    marks=pytest.mark.xfail(
+                        raises=KeyError,
+                        strict=True,
+                        reason=(
+                            "the builder's OperationRegistry scans phenotypic.detect, "
+                            "not phenotypic.detect.nn, so no GpuDetector (Sam2) is "
+                            "registered and loading this prefab in the builder fails"
+                        ),
+                    ),
+                ),
             ],
     )
     def test_scalar_param_prefab_round_trips_byte_identical(
