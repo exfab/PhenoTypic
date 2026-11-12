@@ -277,7 +277,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
             str(QUALITY_OCCUPANCY.VACANT),
         ]
         first = (
-            df.groupby(self.groupby, dropna=False)[
+            df.groupby(self.groupby, dropna=False, observed=True)[
                 [c for c in occ_cols if c in df.columns]
             ]
             .first()
