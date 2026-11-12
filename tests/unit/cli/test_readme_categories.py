@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 from phenotypic import ImagePipeline
 from phenotypic._cli._cli_readme_generator import READMEGenerator
-from phenotypic.measure import MeasureShape, MeasureSize
-from phenotypic.schema import CATEGORIES, SHAPE, SIZE
+from phenotypic.measure import MeasureSize, MeasureTexture
+from phenotypic.schema import CATEGORIES, SIZE, TEXTURE
 from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY, DIR_MEASUREMENTS_BY_FEATURE
 
 
@@ -34,7 +34,7 @@ def test_categorized_table_gains_a_categories_column() -> None:
 
 
 def test_uncategorized_table_has_no_categories_column() -> None:
-    table = _generator()._generate_measurement_table(SHAPE)
+    table = _generator()._generate_measurement_table(TEXTURE)
     assert "Categories" not in table
 
 
@@ -49,7 +49,7 @@ def test_categories_section_lists_present_columns_only() -> None:
 
 
 def test_categories_section_is_empty_without_categorized_measurers() -> None:
-    assert _generator(MeasureShape())._generate_categories_section() == ""
+    assert _generator(MeasureTexture())._generate_categories_section() == ""
 
 
 def test_generate_includes_the_categories_section(tmp_path) -> None:

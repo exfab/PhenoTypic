@@ -797,8 +797,8 @@ _CATEGORIES_INTRO = """\
 Every measurement column begins with its metric family: ``Size_Area`` belongs to
 the **Size** family, which says only which schema the column comes from. A
 **category** is a separate, curated grouping that cuts across families: one
-category can gather size, intensity and colour columns that three different
-schemas produce, and one column can belong to several categories.
+category can gather size, shape, intensity and colour columns that four
+different schemas produce, and one column can belong to several categories.
 
 A category tells you where to look first, not how far to trust a single value;
 that is the job of the Type badge (see :doc:`../tier_system`).

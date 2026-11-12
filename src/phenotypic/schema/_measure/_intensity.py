@@ -32,16 +32,31 @@ class INTENSITY(DirectPhenotype):
     INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
         "The sum of the object's pixels",
-        categories=CATEGORIES.STARTING_METRICS,
         unit=UNITS.INTENSITY_PX2,
     )
-    DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
-                          "intensity of the object")
-    CONVEX_DENSITY = Entry("ConvexDensity", "The ratio of the objects intensity to the max "
-                                       "possible intensity of the object's convex hull")
+    DENSITY = Entry(
+        "Density",
+        "The object's integrated intensity divided by its area in pixels: the "
+        "mean grayscale value of its pixels, equal to MeanIntensity.",
+    )
+    CONVEX_DENSITY = Entry(
+        "ConvexDensity",
+        "The object's integrated intensity divided by the area of its convex "
+        "hull, so indentations and gaps in the colony lower it relative to "
+        "Density. The hull passes through pixel centers, so its area is smaller "
+        "than the pixel count: slightly for a convex colony, where this value "
+        "can slightly exceed Density, and substantially for an object of only a "
+        "few pixels (a 2 x 2 pixel object has a hull area of 1, so this value is "
+        "four times Density). It is NaN for a single pixel or a one-pixel-wide "
+        "line, which has no hull.",
+    )
     MINIMUM_INTENSITY = Entry("MinimumIntensity", "The minimum intensity of the object")
     MAXIMUM_INTENSITY = Entry("MaximumIntensity", "The maximum intensity of the object")
-    MEAN_INTENSITY = Entry("MeanIntensity", "The mean intensity of the object")
+    MEAN_INTENSITY = Entry(
+        "MeanIntensity",
+        "The mean intensity of the object",
+        categories=CATEGORIES.STARTING_METRICS,
+    )
     MEDIAN_INTENSITY = Entry("MedianIntensity", "The median intensity of the object")
     STANDARD_DEVIATION_INTENSITY = Entry(
         "StandardDeviationIntensity",

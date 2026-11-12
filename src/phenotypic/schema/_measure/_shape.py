@@ -5,6 +5,7 @@ from .._base._change_notes import (
     SIZE_SHAPE_SPLIT_NOTE,
     append_change_note,
 )
+from .._base._categories import CATEGORIES
 from .._base._measurement_info import Entry
 from .._base._units import UNITS
 from .._base._tiers import PrimaryMeasure
@@ -38,11 +39,20 @@ class SHAPE(PrimaryMeasure):
 
     CIRCULARITY = Entry(
         "Circularity",
-        r"Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values < 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.",
+        "How closely the colony's outline approximates a circle. Calculated as "
+        r":math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. On pixel colonies "
+        "the value depends on size: round colonies of 30 px radius or more read "
+        "about 0.90 to 0.94, and very small colonies (under about 10 px) can read "
+        "well above 1, up to about 1.15 at 5 px and higher below that. Values "
+        "fall as the outline becomes more irregular, so compare colonies of "
+        "similar size.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     ECCENTRICITY = Entry(
         "Eccentricity",
-        "Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.",
+        "Colony elongation, from 0 (a circle) to 1 (highly elongated), from the "
+        "ellipse with the same second moments.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     SOLIDITY = Entry(
         "Solidity",
@@ -54,7 +64,13 @@ class SHAPE(PrimaryMeasure):
     )
     COMPACTNESS = Entry(
         "Compactness",
-        r"Calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. Inverse of circularity (ranges from 1 for perfect circles to higher values for irregular shapes). Measures colony shape complexity - compact, circular colonies have values near 1, while irregular or filamentous colonies have much higher values.",
+        "How far the colony's outline departs from a circle: the inverse of "
+        r"Circularity, calculated as :math:`\frac{\text{Perimeter}^2}{4\pi*\text{Area}}`. "
+        "On pixel colonies the value depends on size: round colonies of 30 px "
+        "radius or more read about 1.06 to 1.11, and very small colonies (under "
+        "about 10 px) can read well below 1, down to about 0.86 at 5 px and "
+        "lower below that. Values rise as the outline becomes more irregular or "
+        "filamentous, so compare colonies of similar size.",
     )
     ORIENTATION = Entry(
         "Orientation",
