@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Radial expansion measurements for filamentous fungal colonies.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span>
 
 
@@ -589,6 +590,13 @@
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;RadialExpansion&quot;</span></div>
+
+
+<div class="viewcode-block" id="RADIAL_EXPANSION.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.RADIAL_EXPANSION.html#phenotypic.schema.RADIAL_EXPANSION.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span></div>
 
 
     <span class="n">ROBUST_MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
@@ -612,6 +620,7 @@
         <span class="s2">&quot;NumBranches&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Number of skeleton branches extending from the core boundary to &quot;</span>
         <span class="s2">&quot;peripheral tips. Higher counts indicate denser branching morphology.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAX_BRANCH_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxBranchLength&quot;</span><span class="p">,</span>
@@ -627,6 +636,7 @@
         <span class="s2">&quot;RunnerDetected&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Boolean flag (0 or 1) indicating whether an outlier runner branch &quot;</span>
         <span class="s2">&quot;was detected for this colony.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">NOT_A_QUANTITY</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreRadius&quot;</span><span class="p">,</span>

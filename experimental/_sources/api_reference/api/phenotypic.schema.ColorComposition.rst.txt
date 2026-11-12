@@ -19,6 +19,7 @@ phenotypic.schema.ColorComposition
       ~ColorComposition.tier
       ~ColorComposition.kind
       ~ColorComposition.metric_family
+      ~ColorComposition.default_unit
       ~ColorComposition.rembi_module
       ~ColorComposition.change_note
       ~ColorComposition.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.ColorComposition
       ~ColorComposition.METRIC_FAMILY
       ~ColorComposition.resolved_kind
       ~ColorComposition.resolved_tier
+      ~ColorComposition.unit
       ~ColorComposition.resolved_rembi_module
       ~ColorComposition.use_label
       ~ColorComposition.use_badge
@@ -111,6 +113,7 @@ phenotypic.schema.ColorComposition
       ~ColorComposition.image
       ~ColorComposition.pair
       ~ColorComposition.tier_override
+      ~ColorComposition.unit_override
       ~ColorComposition.derivation_type
       ~ColorComposition.derives_from
       ~ColorComposition.rembi_module_override

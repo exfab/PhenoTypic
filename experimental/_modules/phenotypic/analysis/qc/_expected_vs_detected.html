@@ -567,9 +567,18 @@
 <span></span><span class="sd">&quot;&quot;&quot;Expected-vs-detected colony count quality check.</span>
 
 <span class="sd">Compares the detected colony count per group in a measurement frame against</span>
-<span class="sd">the expected count derived from a separately-provided metadata frame</span>
-<span class="sd">(usually the plate&#39;s layout CSV). Surfaces groups where colonies are</span>
-<span class="sd">missing or over-detected.</span>
+<span class="sd">the expected count. That expectation comes from one of two places:</span>
+
+<span class="sd">* a separately-provided ``metadata`` layout frame (usually the plate&#39;s layout</span>
+<span class="sd">  CSV); or</span>
+<span class="sd">* **the frame being analyzed**, when ``metadata`` is left unset. The CLI joins</span>
+<span class="sd">  ``--metadata`` as the *left* frame, so a metadata row that matched no</span>
+<span class="sd">  measured object survives as a phantom and the joined table is a complete</span>
+<span class="sd">  list of expected positions. :func:`~phenotypic.analysis.qc._expected_positions.expected_positions`</span>
+<span class="sd">  is the shared helper that says whether it really is one; when it cannot, this</span>
+<span class="sd">  check refuses rather than reporting expected == detected.</span>
+
+<span class="sd">Surfaces groups where colonies are missing or over-detected.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -586,18 +595,27 @@
     <span class="n">field_validator</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">IN_MEMORY_PARAM</span><span class="p">,</span> <span class="n">QualityCheck</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotQc</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ColumnRef</span><span class="p">,</span>
+    <span class="n">ColumnRefList</span><span class="p">,</span>
     <span class="n">ensure_metadata_prefix</span><span class="p">,</span>
     <span class="n">is_metadata_header</span><span class="p">,</span>
     <span class="n">metadata_member_for_header</span><span class="p">,</span>
     <span class="n">metadata_member_for_label</span><span class="p">,</span>
     <span class="n">normalize_metadata_columns</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">MetadataInfo</span><span class="p">,</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_COUNT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MeasurementInfo</span><span class="p">,</span>
+    <span class="n">METADATA_MATCH</span><span class="p">,</span>
+    <span class="n">MetadataInfo</span><span class="p">,</span>
+    <span class="n">OBJECT</span><span class="p">,</span>
+    <span class="n">QUALITY_COUNT</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">schema</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._expected_positions</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_POSITION_BY</span><span class="p">,</span> <span class="n">expected_positions</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
@@ -611,9 +629,10 @@
 <span class="c1">#</span>
 <span class="c1"># Only a path string is JSON-native, so that is the form that round-trips</span>
 <span class="c1"># through ``model_dump`` / ``pipeline.json``: ``_serialize_metadata``</span>
-<span class="c1"># emits the path when ``metadata`` is a string and ``None`` when it is an</span>
-<span class="c1"># in-memory frame (which therefore cannot be rebuilt from JSON — configure</span>
-<span class="c1"># the check from a path whenever it must round-trip). A raw</span>
+<span class="c1"># emits the path when ``metadata`` is a string, ``None`` when it is unset (the</span>
+<span class="c1"># no-layout mode), and the ``&quot;&lt;in-memory&gt;&quot;`` placeholder when it is an</span>
+<span class="c1"># in-memory frame (which a reload refuses — configure the check from a path</span>
+<span class="c1"># whenever it must round-trip). A raw</span>
 <span class="c1"># ``pandas.DataFrame`` has no JSON schema, so the object branch attaches a</span>
 <span class="c1"># placeholder so ``model_json_schema()`` succeeds.</span>
 <span class="n">_MetadataField</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
@@ -640,6 +659,23 @@
 
 
 <span class="n">_EXTERNAL_QUALIFIED_HEADER</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_refuse_in_memory_layout</span><span class="p">(</span><span class="n">cls_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="ne">ValueError</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The error a check raises when rebuilt from an in-memory layout&#39;s dump.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cls_name: The check&#39;s class name, for the message.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The error to raise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cls_name</span><span class="si">}</span><span class="s2"> was saved with an in-memory layout DataFrame, which has no &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;source path to round-trip (its JSON form is </span><span class="si">{</span><span class="n">IN_MEMORY_PARAM</span><span class="si">!r}</span><span class="s2">), so &quot;</span>
+        <span class="s2">&quot;it cannot be rebuilt. Configure it from a .csv/.parquet metadata path &quot;</span>
+        <span class="s2">&quot;so the layout survives a reload.&quot;</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_known_nonmetadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -821,25 +857,52 @@
 <span class="sd">    frame; otherwise :class:`KeyError` is raised at ``__init__`` so the</span>
 <span class="sd">    failure surfaces before ``analyze`` runs.</span>
 
+<span class="sd">    **Leaving ``metadata`` unset derives the expectation from the analyzed</span>
+<span class="sd">    frame instead.** Expected positions are the distinct ``position_by``</span>
+<span class="sd">    tuples in the frame — which, on the CLI&#39;s ``--metadata`` left join,</span>
+<span class="sd">    includes the phantom rows for colonies that were never detected. Two</span>
+<span class="sd">    objects in one well therefore count **once** toward expected and twice</span>
+<span class="sd">    toward detected, which is the divergence this check exists to show. This</span>
+<span class="sd">    is what makes the check usable on a delivered ``measurements.csv`` alone,</span>
+<span class="sd">    with no layout file. The derivation is only sound when one metadata row</span>
+<span class="sd">    means one position on one image, so</span>
+<span class="sd">    :func:`~phenotypic.analysis.qc._expected_positions.expected_positions`</span>
+<span class="sd">    guards it: a frame that is not a metadata left join (no</span>
+<span class="sd">    ``QC_MetadataOnly`` column), or that carries a row with no position, makes</span>
+<span class="sd">    ``analyze`` refuse with a pointer to ``metadata=``. It never quietly</span>
+<span class="sd">    reports expected == detected for those. One case the guards cannot see:</span>
+<span class="sd">    metadata at a coarser grain (one row per image) in which every image had a</span>
+<span class="sd">    detection leaves no phantom to give it away, and then every detected</span>
+<span class="sd">    position reads as expected. Pass a layout when the metadata was not one row</span>
+<span class="sd">    per position.</span>
+
 <span class="sd">    **Serialization:** only a path is JSON-native, so the path is the form</span>
 <span class="sd">    that round-trips. When ``metadata`` is a path, ``model_dump`` /</span>
 <span class="sd">    ``pipeline.json`` persist that path string under the same ``metadata``</span>
-<span class="sd">    key and a reloaded instance re-reads the file. When ``metadata`` is an</span>
-<span class="sd">    in-memory DataFrame there is no source path to persist — the JSON form</span>
-<span class="sd">    is ``None`` and the check cannot be rebuilt from JSON alone (it fails</span>
-<span class="sd">    to instantiate with a clear error, surfaced as a skip-with-warning by</span>
-<span class="sd">    the lazy QC instantiation path). Configure QC checks from a metadata</span>
-<span class="sd">    *path* whenever the pipeline is meant to round-trip.</span>
+<span class="sd">    key and a reloaded instance re-reads the file. When ``metadata`` is unset</span>
+<span class="sd">    the JSON form is ``None``, and a reload is the same derive-mode check.</span>
+<span class="sd">    When ``metadata`` is an in-memory DataFrame there is no source path to</span>
+<span class="sd">    persist: the JSON form is the placeholder ``&quot;&lt;in-memory&gt;&quot;``, and a reload</span>
+<span class="sd">    **refuses** it with a clear error (surfaced as a skip-with-warning by the</span>
+<span class="sd">    lazy QC instantiation path) rather than coming back as a different,</span>
+<span class="sd">    derive-mode check. Writing such a QC entry also logs a warning that names</span>
+<span class="sd">    the parameter. Configure QC checks from a metadata *path* whenever the</span>
+<span class="sd">    pipeline is meant to round-trip.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        metadata: Layout whose row count per ``groupby`` key is the</span>
 <span class="sd">            expected colony count. Either an in-memory DataFrame or a path</span>
 <span class="sd">            (``Path``/``str``) to a ``.csv``/``.parquet`` file. The path</span>
 <span class="sd">            form is what serializes and round-trips through JSON; an</span>
-<span class="sd">            in-memory frame is runtime-only.</span>
+<span class="sd">            in-memory frame is runtime-only. **Unset** (the default) means</span>
+<span class="sd">            &quot;derive the expected positions from the analyzed frame&quot;.</span>
 <span class="sd">        groupby: Columns that define a comparison unit. Must be present</span>
 <span class="sd">            in both the metadata frame and the measurement frame passed</span>
 <span class="sd">            to :meth:`analyze`.</span>
+<span class="sd">        position_by: Columns whose distinct tuples are one expected colony</span>
+<span class="sd">            position, used only when ``metadata`` is unset. Defaults to</span>
+<span class="sd">            :data:`~phenotypic.analysis.qc._expected_positions.DEFAULT_POSITION_BY`</span>
+<span class="sd">            — which image, and which grid cell on it.</span>
 <span class="sd">        on: Measurement column the check operates on. Defaults to</span>
 <span class="sd">            ``&quot;Object_Label&quot;`` since &quot;detected&quot; means &quot;a measurement row</span>
 <span class="sd">            exists&quot;.</span>
@@ -854,11 +917,12 @@
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: If ``metadata`` is a path that does not exist.</span>
 <span class="sd">        KeyError: If any column in ``groupby`` is absent from the</span>
-<span class="sd">            resolved metadata frame.</span>
-<span class="sd">        ValueError: If ``metadata`` is a path with an unsupported suffix,</span>
-<span class="sd">            or if it is ``None`` — i.e. reconstructing from JSON that was</span>
-<span class="sd">            built from an in-memory frame, which has no source path to</span>
-<span class="sd">            persist.</span>
+<span class="sd">            resolved metadata frame, or (at :meth:`analyze`, with</span>
+<span class="sd">            ``metadata`` unset) if a ``position_by`` column is absent from</span>
+<span class="sd">            the analyzed frame.</span>
+<span class="sd">        ValueError: If ``metadata`` is a path with an unsupported suffix;</span>
+<span class="sd">            or, at :meth:`analyze` with ``metadata`` unset, if the frame is</span>
+<span class="sd">            not a metadata left join or carries a row with a blank position.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        unmatched_groups: List of group-key tuples that appeared in the</span>
@@ -910,6 +974,25 @@
 <span class="sd">        &gt;&gt;&gt; _ = chk.analyze(measurements)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; chk.unmatched_groups  # doctest: +SKIP</span>
 <span class="sd">        [(&#39;plate2.png&#39;,)]</span>
+
+<span class="sd">        No layout — a delivered ``measurements.csv`` on its own. The CLI&#39;s</span>
+<span class="sd">        metadata join left one phantom row (no ``Object_Label``,</span>
+<span class="sd">        ``QC_MetadataOnly`` true) for the position on ``plate1.png`` where</span>
+<span class="sd">        no colony was found, so the frame itself says four colonies were</span>
+<span class="sd">        expected there and three were detected:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import GRID, METADATA_MATCH, OBJECT</span>
+<span class="sd">        &gt;&gt;&gt; table = pd.DataFrame({</span>
+<span class="sd">        ...     image_name: [&quot;plate1.png&quot;] * 4 + [&quot;plate2.png&quot;] * 4,</span>
+<span class="sd">        ...     str(GRID.ROW_NUM): [1, 1, 2, 2] * 2,</span>
+<span class="sd">        ...     str(GRID.COL_NUM): [1, 2, 1, 2] * 2,</span>
+<span class="sd">        ...     str(OBJECT.LABEL): [1, 2, 3, None, 1, 2, 3, 4],</span>
+<span class="sd">        ...     str(METADATA_MATCH.METADATA_ONLY): [False] * 3 + [True] + [False] * 4,</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(groupby=[image_name])</span>
+<span class="sd">        &gt;&gt;&gt; per_plate = chk.analyze(table).groupby(image_name).first()</span>
+<span class="sd">        &gt;&gt;&gt; per_plate[[&quot;QC_Count_Detected&quot;, &quot;QC_Count_Expected&quot;]].to_dict(&quot;index&quot;)</span>
+<span class="sd">        {&#39;plate1.png&#39;: {&#39;QC_Count_Detected&#39;: 3, &#39;QC_Count_Expected&#39;: 4}, &#39;plate2.png&#39;: {&#39;QC_Count_Detected&#39;: 4, &#39;QC_Count_Expected&#39;: 4}}</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
@@ -929,8 +1012,13 @@
     <span class="c1"># round-trips through JSON (see ``_serialize_metadata``). NOTE:</span>
     <span class="c1"># reassigning ``metadata`` post-construction does not re-resolve</span>
     <span class="c1"># ``_metadata``/``_expected_counts`` (``model_post_init`` runs once);</span>
-    <span class="c1"># construct a new instance to change the layout.</span>
-    <span class="n">metadata</span><span class="p">:</span> <span class="n">_MetadataField</span>
+    <span class="c1"># construct a new instance to change the layout. Unset means derive</span>
+    <span class="c1"># mode: the expectation comes from the analyzed frame.</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">_MetadataField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Used only in derive mode; ``None`` falls through to the shared helper&#39;s</span>
+    <span class="c1"># default (image name plus grid cell).</span>
+    <span class="n">position_by</span><span class="p">:</span> <span class="n">ColumnRefList</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="n">_metadata</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
     <span class="n">_expected_counts</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
@@ -941,12 +1029,22 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the layout namespace rule to every configured grouping key.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
 
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;position_by&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_layout_position_references</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the same layout namespace rule ``groupby`` gets.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">_normalize_layout_column_reference</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_metadata</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize the raw ``metadata`` input to a frame or a path string.</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize the raw ``metadata`` input to a frame, a path string or ``None``.</span>
 
 <span class="sd">        Keeps the value in its caller-supplied form — a frame stays a</span>
 <span class="sd">        frame, a path becomes a plain ``str`` — so ``self.metadata`` echoes</span>
@@ -954,43 +1052,45 @@
 <span class="sd">        *not* read here; resolution into the working frame happens in</span>
 <span class="sd">        :meth:`model_post_init`.</span>
 
+<span class="sd">        ``None`` is accepted and means &quot;derive expected positions from the</span>
+<span class="sd">        analyzed frame&quot;; it is that configuration&#39;s own serialized form. A</span>
+<span class="sd">        JSON dump of an *in-memory-frame* check writes the placeholder</span>
+<span class="sd">        ``&quot;&lt;in-memory&gt;&quot;`` instead, and that is refused here, so such a check</span>
+<span class="sd">        fails to rebuild as it always did instead of silently reloading in</span>
+<span class="sd">        derive mode.</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            value: An in-memory DataFrame, a path (``Path`` or ``str``) to</span>
-<span class="sd">                a ``.csv``/``.parquet`` layout file, or ``None`` — the</span>
-<span class="sd">                sentinel a JSON dump of an in-memory-frame check emits,</span>
-<span class="sd">                which cannot be rebuilt.</span>
+<span class="sd">                a ``.csv``/``.parquet`` layout file, or ``None``.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The DataFrame unchanged, or the path coerced to ``str``.</span>
+<span class="sd">            ``None`` unchanged, the DataFrame unchanged, or the path coerced</span>
+<span class="sd">            to ``str``.</span>
 
 <span class="sd">        Raises:</span>
-<span class="sd">            ValueError: If ``value`` is ``None`` — i.e. the check was</span>
-<span class="sd">                serialized from an in-memory frame (which has no source</span>
-<span class="sd">                path) and cannot be reconstructed from JSON. Configure it</span>
-<span class="sd">                from a ``.csv``/``.parquet`` path so the source round-trips.</span>
+<span class="sd">            ValueError: If ``value`` is the in-memory placeholder — the check</span>
+<span class="sd">                was serialized from an in-memory frame and cannot be rebuilt.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires &#39;metadata&#39; as a layout DataFrame &quot;</span>
-                <span class="s2">&quot;or a .csv/.parquet path. Got None — a check serialized &quot;</span>
-                <span class="s2">&quot;from an in-memory DataFrame has no source path to &quot;</span>
-                <span class="s2">&quot;round-trip; configure it from a metadata file path so it &quot;</span>
-                <span class="s2">&quot;can be rebuilt from JSON.&quot;</span>
-            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">==</span> <span class="n">IN_MEMORY_PARAM</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">_refuse_in_memory_layout</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">value</span>
 
     <span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_serialize_metadata</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">Any</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize ``metadata`` as its source *path*, never the frame.</span>
 
 <span class="sd">        A path string is JSON-native and round-trips; an in-memory frame is</span>
-<span class="sd">        not, so the JSON form is ``None`` (a reload then fails fast in</span>
-<span class="sd">        :meth:`_normalize_metadata` with a clear error). In Python mode the</span>
-<span class="sd">        frame passes through unchanged.</span>
+<span class="sd">        not, so its JSON form is the placeholder ``&quot;&lt;in-memory&gt;&quot;`` (a reload</span>
+<span class="sd">        then fails fast in :meth:`_normalize_metadata` with a clear error). It</span>
+<span class="sd">        is not ``None``, because ``None`` is the no-layout configuration and a</span>
+<span class="sd">        reload would accept it as one. In Python mode the frame passes through</span>
+<span class="sd">        unchanged.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            value: The stored ``metadata`` value (a frame or a path str).</span>
@@ -998,13 +1098,14 @@
 <span class="sd">                or ``&quot;python&quot;``.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            The path string when ``metadata`` is a path; otherwise the</span>
-<span class="sd">            frame in Python mode, or ``None`` in JSON mode.</span>
+<span class="sd">            ``None`` when ``metadata`` is unset; the path string when it is a</span>
+<span class="sd">            path; otherwise the frame in Python mode, or the in-memory</span>
+<span class="sd">            placeholder in JSON mode.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">value</span>
         <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;json&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">IN_MEMORY_PARAM</span>
         <span class="k">return</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="ExpectedVsDetectedCount.model_post_init">
@@ -1016,6 +1117,10 @@
 <span class="sd">        ``self.metadata`` (a frame or a path) into the working frame on the</span>
 <span class="sd">        private ``_metadata`` slot, verifies every ``groupby`` column is</span>
 <span class="sd">        present, and caches the per-key expected colony counts.</span>
+
+<span class="sd">        With ``metadata`` unset there is nothing to resolve here: the</span>
+<span class="sd">        expectation comes from the frame :meth:`analyze` is handed, which does</span>
+<span class="sd">        not exist yet. The equivalent guards run there instead.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            __context: Pydantic post-init context (unused).</span>
@@ -1029,6 +1134,10 @@
 <span class="sd">                resolved metadata frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_expected_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int64&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span><span class="o">.</span><span class="n">columns</span>
@@ -1184,23 +1293,85 @@
         <span class="n">row</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_column_references</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Every measurement column this check addresses by name.</span>
+
+<span class="sd">        The join normalizer only resolves a bare layout-style spelling when it</span>
+<span class="sd">        supplies one of the check&#39;s configured keys, so the position columns</span>
+<span class="sd">        have to be in that set in derive mode. With a layout supplied the set</span>
+<span class="sd">        is ``groupby`` exactly, as it always was.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">references</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">references</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position_by</span> <span class="ow">or</span> <span class="n">DEFAULT_POSITION_BY</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">references</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_expected_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the frame&#39;s expected colony positions, or refuse.</span>
+
+<span class="sd">        A blank position (``ValueError``) and a missing position column</span>
+<span class="sd">        (``KeyError``) propagate from the shared helper with their own</span>
+<span class="sd">        messages. A frame with no metadata-only flag column — not a CLI left</span>
+<span class="sd">        join — comes back as ``None`` and becomes the refusal below, because a</span>
+<span class="sd">        frame with no phantoms would make expected equal detected and pass</span>
+<span class="sd">        every group silently.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            frame: The normalized measurement frame being analyzed.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            One row per distinct ``position_by`` tuple.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the frame cannot supply expected positions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">positions</span> <span class="o">=</span> <span class="n">expected_positions</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_by</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">positions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> cannot derive expected colony &quot;</span>
+                <span class="s2">&quot;positions from this frame: it carries no &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">METADATA_MATCH</span><span class="o">.</span><span class="n">METADATA_ONLY</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> column, so it is not &quot;</span>
+                <span class="s2">&quot;a metadata left join, every expected position would be one &quot;</span>
+                <span class="s2">&quot;that was found, and every group would pass. Pass &quot;</span>
+                <span class="s2">&quot;`metadata=` a layout frame or .csv/.parquet path, or run &quot;</span>
+                <span class="s2">&quot;through the CLI with per-position `--metadata`.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">positions</span>
+
 <div class="viewcode-block" id="ExpectedVsDetectedCount.analyze">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.ExpectedVsDetectedCount.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset :attr:`unmatched_groups` and run the base ``analyze``.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset state, resolve the expectation, and run the base ``analyze``.</span>
 
 <span class="sd">        Re-running the check on a different measurement frame must not</span>
 <span class="sd">        carry over unmatched groups from a previous run, so the list is</span>
 <span class="sd">        cleared before delegating to the base class.</span>
+
+<span class="sd">        With ``metadata`` unset the per-key expected counts are computed here</span>
+<span class="sd">        rather than in ``model_post_init``: they are a property of the frame,</span>
+<span class="sd">        not of the configuration, so they cannot exist before there is a</span>
+<span class="sd">        frame.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            data: Measurement frame to evaluate.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            The augmented frame from :meth:`QualityCheck.analyze`.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``metadata`` is unset and the frame cannot supply</span>
+<span class="sd">                expected positions.</span>
+<span class="sd">            KeyError: If ``metadata`` is unset and a ``position_by`` column</span>
+<span class="sd">                is absent from the frame.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">_normalize_measurement_join_columns</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">))</span></div>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">_normalize_measurement_join_columns</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_column_references</span><span class="p">())</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_expected_positions</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_expected_counts</span> <span class="o">=</span> <span class="n">positions</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ExpectedVsDetectedCount.inspect">
@@ -1245,7 +1416,7 @@
         <span class="n">expected_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">EXPECTED</span><span class="p">)</span>
 
         <span class="n">per_group</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="o">.</span><span class="n">agg</span><span class="p">({</span>
                 <span class="n">delta_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
                 <span class="n">detected_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>

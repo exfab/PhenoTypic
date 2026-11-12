@@ -599,26 +599,54 @@
 
 <span class="sd">           \mu_{\max} = \frac{K r}{4}</span>
 
-<span class="sd">        :math:`\mu_{\max}`: maximum specific growth rate</span>
+<span class="sd">        :math:`\mu_{\max}`: maximum absolute growth rate, the slope of the curve</span>
+<span class="sd">            where :math:`N_t = K/2` (the maximum specific growth rate is :math:`r`)</span>
 
 
 <span class="sd">    Loss Function:</span>
 
-<span class="sd">        To solve for the parameters, we use the following loss function with the</span>
-<span class="sd">        SciPy linear least-squares solver:</span>
+<span class="sd">        The parameters minimize the cost of SciPy&#39;s nonlinear least-squares</span>
+<span class="sd">        solver, :func:`scipy.optimize.least_squares` with ``method=&quot;trf&quot;``, over</span>
+<span class="sd">        the residual vector :meth:`_loss_func` returns. That vector holds the</span>
+<span class="sd">        :math:`n` data residuals and three penalty residuals:</span>
 
 <span class="sd">        .. math::</span>
 
-<span class="sd">           J(K, N_0, r) =</span>
-<span class="sd">           \frac{1}{n}\sum_{i=1}^{n}</span>
-<span class="sd">           \frac{1}{2}\left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2</span>
-<span class="sd">           + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)</span>
-<span class="sd">           + \beta \frac{\lvert K - \max(N_t) \rvert}{N_t}</span>
+<span class="sd">           z = \left(N_t^{(1)} - f_{K,N_0,r}(t^{(1)}),\ \dots,\;</span>
+<span class="sd">                N_t^{(n)} - f_{K,N_0,r}(t^{(n)}),\;</span>
+<span class="sd">                \sqrt{\lambda}\,\frac{rK}{4},\ \sqrt{\lambda}\,N_0,\;</span>
+<span class="sd">                \sqrt{\beta}\,\frac{\lvert K - N_{n} \rvert}{N_{n} + \varepsilon}\right)</span>
 
-<span class="sd">        :math:`\lambda`: regularization term for growth rate and initial population size</span>
+<span class="sd">        and the cost is</span>
 
-<span class="sd">        :math:`\beta`: penalty term for deviations in carrying capacity relative to</span>
-<span class="sd">            the largest measurement</span>
+<span class="sd">        .. math::</span>
+
+<span class="sd">           F(r, K, N_0) = \frac{1}{2} \sum_{j} C^2\,</span>
+<span class="sd">           \rho\!\left(\frac{z_j^2}{C^2}\right)</span>
+
+<span class="sd">        where :math:`C` is ``f_scale`` (default 1.0) and :math:`\rho` is the</span>
+<span class="sd">        ``loss`` (default ``&quot;huber&quot;``: :math:`\rho(s) = s` for :math:`s \le 1`</span>
+<span class="sd">        and :math:`2\sqrt{s} - 1` above). The robust loss applies to the</span>
+<span class="sd">        penalty residuals as well as the data. With ``loss=&quot;linear&quot;``,</span>
+<span class="sd">        :math:`\rho(s) = s` and the cost is a sum, not a mean, with a squared</span>
+<span class="sd">        :math:`\beta` term:</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           F = \frac{1}{2}\left[\sum_{i=1}^{n}</span>
+<span class="sd">           \left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2</span>
+<span class="sd">           + \lambda\left(\left(\frac{rK}{4}\right)^2 + N_0^2\right)</span>
+<span class="sd">           + \beta\left(\frac{K - N_{n}}{N_{n} + \varepsilon}\right)^2\right]</span>
+
+<span class="sd">        :math:`\lambda`: regularization weight on the maximum growth rate</span>
+<span class="sd">            :math:`rK/4` and on :math:`N_0`</span>
+
+<span class="sd">        :math:`\beta`: weight of the penalty on the distance of :math:`K` from</span>
+<span class="sd">            :math:`N_{n}`, the measurement at the last time point (the first row</span>
+<span class="sd">            at the latest time), relative to :math:`N_{n}`</span>
+
+<span class="sd">        :math:`\varepsilon`: :math:`10^{-8}` times the median positive</span>
+<span class="sd">            measurement (or :math:`10^{-8}`), which keeps the division finite</span>
 
 <span class="sd">    Output column naming:</span>
 <span class="sd">        ``analyze`` emits metric-qualified columns</span>
@@ -629,9 +657,11 @@
 <span class="sd">        ``self.on`` with a recognized metric-family prefix stripped.</span>
 
 <span class="sd">    Attributes:</span>
-<span class="sd">        lam (float): The penalty factor applied to growth rates.</span>
-<span class="sd">        beta (float): The maximum penalty factor applied to the carrying</span>
-<span class="sd">            capacity.</span>
+<span class="sd">        lam (float): Regularization weight on the maximum growth rate</span>
+<span class="sd">            r·K/4 and on N0; larger values pull both toward 0.</span>
+<span class="sd">        beta (float): Weight of the penalty on the distance of the fitted</span>
+<span class="sd">            carrying capacity K from the value measured at the last time</span>
+<span class="sd">            point, relative to that value.</span>
 <span class="sd">        Kmax_label (str | None): The column name for the maximum carrying capacity</span>
 <span class="sd">            values, if provided.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -671,20 +701,26 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_loss_func</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>  <span class="c1"># type: ignore[override]</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Regularized residuals for :func:`scipy.optimize.least_squares`.</span>
 
+<span class="sd">        Returns the vector</span>
+
 <span class="sd">        .. math::</span>
 
-<span class="sd">           J(K, N_0, r) =</span>
-<span class="sd">           \frac{1}{n}\sum_{i=1}^{n}</span>
-<span class="sd">           \left(f_{K,N_0,r}(t^{(i)}) - N_t^{(i)}\right)^2</span>
-<span class="sd">           + \lambda\left(\left(\frac{dN}{dt}\right)^2 + N_0^2\right)</span>
-<span class="sd">           + \beta \frac{\lvert K - N_{n} \rvert}{N_{n}}</span>
+<span class="sd">           z = \left(N_t^{(i)} - f_{K,N_0,r}(t^{(i)})\ \text{for each } i,\;</span>
+<span class="sd">                \sqrt{\lambda}\,\frac{rK}{4},\ \sqrt{\lambda}\,N_0,\;</span>
+<span class="sd">                \sqrt{\beta}\,\frac{\lvert K - N_{n} \rvert}{N_{n} + \varepsilon}\right)</span>
+
+<span class="sd">        with :math:`N_{n}` the measurement at the last time point. The solver</span>
+<span class="sd">        minimizes :math:`\frac{1}{2} \sum_j C^2 \rho(z_j^2 / C^2)` over it (see</span>
+<span class="sd">        the class docstring), which for ``loss=&quot;linear&quot;`` is</span>
+<span class="sd">        :math:`\frac{1}{2} \sum_j z_j^2`.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            params: ``[r, K, N0]`` — candidate parameter vector.</span>
 <span class="sd">            t: Time points for the observations.</span>
 <span class="sd">            y: Observed population sizes (list, ndarray, or pandas Series).</span>
 <span class="sd">            lam: Regularization weight for ``dN/dt`` and ``N0``.</span>
-<span class="sd">            beta: Scaling factor for the ``K`` vs. observed-max penalty.</span>
+<span class="sd">            beta: Scaling factor for the penalty on ``K`` versus the value</span>
+<span class="sd">                measured at the last time point.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Flat residual vector consumed by</span>

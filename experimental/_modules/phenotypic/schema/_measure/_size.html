@@ -576,6 +576,7 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
 
 
@@ -600,6 +601,13 @@
         <span class="k">return</span> <span class="s2">&quot;Size&quot;</span></div>
 
 
+<div class="viewcode-block" id="SIZE.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SIZE.html#phenotypic.schema.SIZE.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span></div>
+
+
 <div class="viewcode-block" id="SIZE.change_note">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SIZE.html#phenotypic.schema.SIZE.change_note">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -609,7 +617,7 @@
 
     <span class="n">AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Area&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Total number of pixels the colony occupies.&quot;</span><span class="p">,</span>
         <span class="n">bio_desc</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">&quot;Projected 2D footprint of the colony in pixels — a common proxy &quot;</span>
             <span class="s2">&quot;for colony size and overall growth in arrayed plate assays. With &quot;</span>
@@ -619,47 +627,43 @@
         <span class="p">),</span>
         <span class="n">image</span><span class="o">=</span><span class="s2">&quot;shape/area.png&quot;</span><span class="p">,</span>
         <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;The sum of the object&#39;s grayscale pixels. Calculated as &quot;</span>
-        <span class="sa">r</span><span class="s2">&quot;:math:`\sum{\text{pixel values}} \times \text</span><span class="si">{area}</span><span class="s2">`.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+        <span class="s2">&quot;The sum of the object&#39;s grayscale pixel values.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">INTENSITY_PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">PERIMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Perimeter&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Total length of the colony&#39;s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+        <span class="s2">&quot;Total length of the colony&#39;s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies. &quot;</span>
+        <span class="s2">&quot;Pixel perimeters read slightly high for round colonies (about 5</span><span class="si">% a</span><span class="s2">t radii above 80 px).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">CONVEX_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ConvexArea&quot;</span><span class="p">,</span>
         <span class="s1">&#39;Area of the smallest convex polygon that completely contains the colony, computed from the convex hull of its pixel centers. Represents the colony</span><span class="se">\&#39;</span><span class="s1">s &quot;filled-in&quot; appearance if all indentations and holes were removed. Because the hull passes through pixel centers it is slightly smaller than the pixel count of a convex colony. Useful for detecting colony spreading patterns or invasive growth characteristics.&#39;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">BBOX_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;BboxArea&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAJOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MajorAxisLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MINOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MinorAxisLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MIN_FERET_DIAMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MinFeretDiameter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAX_FERET_DIAMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxFeretDiameter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">INSCRIBED_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InscribedRadius&quot;</span><span class="p">,</span>
@@ -671,7 +675,6 @@
         <span class="s2">&quot;length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it &quot;</span>
         <span class="s2">&quot;unchanged. Use MaxRadius for overall extent. The image border counts as an &quot;</span>
         <span class="s2">&quot;edge.&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MedianRadius&quot;</span><span class="p">,</span>
@@ -688,7 +691,6 @@
         <span class="s2">&quot;radius; for an ideal 100 x 20 pixel rectangle it is 14.1 pixels. This is &quot;</span>
         <span class="s2">&quot;not the value the retired Shape_MedianRadius carried (a median distance to &quot;</span>
         <span class="s2">&quot;the nearest edge, now Shape_MedianBoundaryDist).&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MeanRadius&quot;</span><span class="p">,</span>
@@ -699,7 +701,6 @@
         <span class="s2">&quot;angular width; use RobustMeanRadius for the compact body. This is not the &quot;</span>
         <span class="s2">&quot;value the retired Shape_MeanRadius carried (a mean distance to the nearest &quot;</span>
         <span class="s2">&quot;edge, now Shape_MeanBoundaryDist).&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ROBUST_MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RobustMeanRadius&quot;</span><span class="p">,</span>
@@ -720,7 +721,6 @@
         <span class="s2">&quot;is 50.9 pixels. A MaxRadius far above RobustMeanRadius indicates a &quot;</span>
         <span class="s2">&quot;protrusion, spur, or runner. This is not the value the retired &quot;</span>
         <span class="s2">&quot;Shape_MaxRadius carried (the inscribed radius, now Size_InscribedRadius).&quot;</span><span class="p">,</span>
-        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 

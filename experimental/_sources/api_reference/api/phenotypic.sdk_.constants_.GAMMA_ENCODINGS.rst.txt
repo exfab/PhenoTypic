@@ -19,6 +19,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.metric_family
       ~GAMMA_ENCODINGS.kind
       ~GAMMA_ENCODINGS.tier
+      ~GAMMA_ENCODINGS.default_unit
       ~GAMMA_ENCODINGS.rembi_module
       ~GAMMA_ENCODINGS.change_note
       ~GAMMA_ENCODINGS.header_scheme
@@ -88,6 +89,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.METRIC_FAMILY
       ~GAMMA_ENCODINGS.resolved_kind
       ~GAMMA_ENCODINGS.resolved_tier
+      ~GAMMA_ENCODINGS.unit
       ~GAMMA_ENCODINGS.resolved_rembi_module
       ~GAMMA_ENCODINGS.use_label
       ~GAMMA_ENCODINGS.use_badge
@@ -100,6 +102,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.image
       ~GAMMA_ENCODINGS.pair
       ~GAMMA_ENCODINGS.tier_override
+      ~GAMMA_ENCODINGS.unit_override
       ~GAMMA_ENCODINGS.derivation_type
       ~GAMMA_ENCODINGS.derives_from
       ~GAMMA_ENCODINGS.rembi_module_override

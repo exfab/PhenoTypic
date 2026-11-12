@@ -1,0 +1,6 @@
+phenotypic.abc\_.DetectionClearedWarning
+========================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoexception:: DetectionClearedWarning

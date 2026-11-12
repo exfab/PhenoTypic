@@ -698,7 +698,7 @@
 <span class="sd">        from phenotypic import ImagePipeline</span>
 <span class="sd">        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import CannyDetector  # Different detector</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill</span>
+<span class="sd">        from phenotypic.refine import RemoveSmallObjects, MaskFill</span>
 <span class="sd">        from phenotypic.measure import MeasureShape, MeasureSize, MeasureColor</span>
 
 <span class="sd">        # Custom pipeline for your specific use case</span>
@@ -706,7 +706,7 @@
 <span class="sd">        custom.add(BlurGauss(sigma=3))</span>
 <span class="sd">        custom.add(EnhanceLocalContrast())</span>
 <span class="sd">        custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
-<span class="sd">        custom.add(SmallObjectRemover(min_size=100))</span>
+<span class="sd">        custom.add(RemoveSmallObjects(min_size=100))</span>
 <span class="sd">        custom.add(MaskFill())</span>
 <span class="sd">        custom.add(MeasureSize())</span>
 <span class="sd">        custom.add(MeasureShape())</span>
@@ -726,13 +726,13 @@
 
 <span class="sd">        from phenotypic import ImagePipeline</span>
 <span class="sd">        from phenotypic.prefab import HeavyOtsuPipeline, RoundPeaksPipeline</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        from phenotypic.measure import MeasureIntensity</span>
 
 <span class="sd">        # Combine different detection strategies with shared refinement</span>
 <span class="sd">        pipeline = ImagePipeline()</span>
 <span class="sd">        pipeline.add(HeavyOtsuPipeline())  # First detection attempt</span>
-<span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))  # Noise removal</span>
+<span class="sd">        pipeline.add(RemoveSmallObjects(min_size=100))  # Noise removal</span>
 <span class="sd">        pipeline.add(MeasureIntensity())  # Measurement</span>
 
 <span class="sd">        # Apply to image</span>
@@ -764,7 +764,7 @@
 <span class="sd">        from phenotypic.abc_ import PrefabPipeline</span>
 <span class="sd">        from phenotypic.enhance import BlurGauss, EnhanceLocalContrast</span>
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        from phenotypic.measure import MeasureShape, MeasureSize</span>
 
 <span class="sd">        class MyCustomPrefabPipeline(PrefabPipeline):</span>
@@ -777,7 +777,7 @@
 <span class="sd">                    BlurGauss(sigma=param2),</span>
 <span class="sd">                    EnhanceLocalContrast(),</span>
 <span class="sd">                    OtsuDetector(),</span>
-<span class="sd">                    SmallObjectRemover(min_size=param1),</span>
+<span class="sd">                    RemoveSmallObjects(min_size=param1),</span>
 <span class="sd">                ]</span>
 <span class="sd">                meas = [MeasureSize(), MeasureShape()]</span>
 <span class="sd">                super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,</span>
@@ -857,7 +857,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, ImagePipeline</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.prefab import HeavyOtsuPipeline</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import CannyDetector</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
 <span class="sd">        &gt;&gt;&gt; # Option 1: Use pre-built validated pipeline</span>
 <span class="sd">        &gt;&gt;&gt; prefab = HeavyOtsuPipeline()</span>
@@ -867,7 +867,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; custom.add(BlurGauss(sigma=2))</span>
 <span class="sd">        &gt;&gt;&gt; custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))</span>
-<span class="sd">        &gt;&gt;&gt; custom.add(SmallObjectRemover(min_size=100))</span>
+<span class="sd">        &gt;&gt;&gt; custom.add(RemoveSmallObjects(min_size=100))</span>
 <span class="sd">        &gt;&gt;&gt; result2 = custom.apply(image)</span>
 <span class="sd">        &gt;&gt;&gt; # Compare results</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;Prefab: {len(result1.objects)}, Custom: {len(result2.objects)}&quot;)</span>

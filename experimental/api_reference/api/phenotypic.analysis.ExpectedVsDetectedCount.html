@@ -64,7 +64,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.analysis.ExpectedVsDetectedCount.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.analysis.GridOccupancy" href="phenotypic.analysis.GridOccupancy.html" />
+    <link rel="next" title="phenotypic.analysis.FittingWindow" href="phenotypic.analysis.FittingWindow.html" />
     <link rel="prev" title="phenotypic.analysis.ErrorCutoffFinder" href="phenotypic.analysis.ErrorCutoffFinder.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -584,6 +584,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionClearedWarning.html">phenotypic.abc_.DetectionClearedWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -596,6 +597,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.FittingWindow.html">phenotypic.analysis.FittingWindow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
@@ -607,6 +609,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GrowthRateAtBoundWarning.html">phenotypic.analysis.GrowthRateAtBoundWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -633,6 +636,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_filamentous_plate.html">phenotypic.data.make_synthetic_filamentous_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_window_series.html">phenotypic.data.make_synthetic_window_series</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
@@ -672,7 +676,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseBayesShrink.html">phenotypic.enhance.DenoiseBayesShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LocalEdgeDenoise.html">phenotypic.enhance.LocalEdgeDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceBlockMatch.html">phenotypic.enhance.EnhanceBlockMatch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
@@ -688,24 +692,24 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ImageInverter.html">phenotypic.enhance.ImageInverter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.InvertImage.html">phenotypic.enhance.InvertImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeLaplace.html">phenotypic.enhance.FocusEdgeLaplace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMeijering.html">phenotypic.enhance.FocusEdgeMeijering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusBlobLoG.html">phenotypic.enhance.FocusBlobLoG</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseNonLocalMeans.html">phenotypic.enhance.DenoiseNonLocalMeans</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceRankMedian.html">phenotypic.enhance.EnhanceRankMedian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.VisuShrinkEnhancer.html">phenotypic.enhance.VisuShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseVisuShrink.html">phenotypic.enhance.DenoiseVisuShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html">phenotypic.enhance.WhiteTophatEnhance</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractWhiteTophat.html">phenotypic.enhance.SubtractWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SetDetectMode.html">phenotypic.enhance.SetDetectMode</a></li>
@@ -749,8 +753,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveBorderObjects.html">phenotypic.refine.RemoveBorderObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.KeepNearestCenter.html">phenotypic.refine.KeepNearestCenter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineGridAlignment.html">phenotypic.refine.RefineGridAlignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveOversizedGridObjects.html">phenotypic.refine.RemoveOversizedGridObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
@@ -760,13 +764,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskGradient.html">phenotypic.refine.MaskGradient</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpening.html">phenotypic.refine.MaskOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ReduceSectionsByLine.html">phenotypic.refine.ReduceSectionsByLine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.NearestNeighborMerger.html">phenotypic.refine.NearestNeighborMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeNearestNeighbors.html">phenotypic.refine.MergeNearestNeighbors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveGridOutliers.html">phenotypic.refine.RemoveGridOutliers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SeparateObjects.html">phenotypic.refine.SeparateObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineBySineFit.html">phenotypic.refine.RefineBySineFit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Skeletonize.html">phenotypic.refine.Skeletonize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallToLargeMerger.html">phenotypic.refine.SmallToLargeMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveSmallObjects.html">phenotypic.refine.RemoveSmallObjects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeSmallToLarge.html">phenotypic.refine.MergeSmallToLarge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Thinning.html">phenotypic.refine.Thinning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeFragmentChains.html">phenotypic.refine.MergeFragmentChains</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
@@ -781,6 +785,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UNITS.html">phenotypic.schema.UNITS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UnitEntry.html">phenotypic.schema.UnitEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html">phenotypic.schema.ResolvedUnit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -820,6 +827,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_WINDOW.html">phenotypic.schema.QUALITY_WINDOW</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
@@ -1081,6 +1089,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidShapeError.html">phenotypic.sdk_.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MeasurementConflictError.html">phenotypic.sdk_.exceptions_.MeasurementConflictError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html">phenotypic.sdk_.exceptions_.MetadataKeySpacesError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeyValueError.html">phenotypic.sdk_.exceptions_.MetadataKeyValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html">phenotypic.sdk_.exceptions_.MetadataValueNonScalarError</a></li>
@@ -1283,7 +1292,7 @@
 <h1>phenotypic.analysis.ExpectedVsDetectedCount<a class="headerlink" href="#phenotypic-analysis-expectedvsdetectedcount" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Object_Label',</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'first',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Annotated[~pandas.core.frame.DataFrame</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">~pydantic.json_schema.WithJsonSchema(json_schema={'oneOf':</span> <span class="pre">[{'type':</span> <span class="pre">'string',</span> <span class="pre">'description':</span> <span class="pre">'Path</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">.csv/.parquet</span> <span class="pre">layout</span> <span class="pre">file</span> <span class="pre">(the</span> <span class="pre">form</span> <span class="pre">that</span> <span class="pre">round-trips</span> <span class="pre">through</span> <span class="pre">JSON).'},</span> <span class="pre">{'type':</span> <span class="pre">'object',</span> <span class="pre">'description':</span> <span class="pre">'In-memory</span> <span class="pre">pandas</span> <span class="pre">DataFrame</span> <span class="pre">layout</span> <span class="pre">(runtime-only;</span> <span class="pre">not</span> <span class="pre">JSON-serializable).'}]},</span> <span class="pre">mode=None)]</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.analysis.</span></span><span class="sig-name descname"><span class="pre">ExpectedVsDetectedCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">on:</span> <span class="pre">~typing.Annotated[str,</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">=</span> <span class="pre">'Object_Label',</span> <span class="pre">groupby:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')],</span> <span class="pre">agg_func:</span> <span class="pre">~typing.Callable</span> <span class="pre">|</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">list</span> <span class="pre">|</span> <span class="pre">dict</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">'first',</span> <span class="pre">n_jobs:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">1,</span> <span class="pre">warn_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05,</span> <span class="pre">fail_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1,</span> <span class="pre">unmatched_groups:</span> <span class="pre">list</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">metadata:</span> <span class="pre">~typing.Annotated[~pandas.core.frame.DataFrame</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">~pydantic.json_schema.WithJsonSchema(json_schema={'oneOf':</span> <span class="pre">[{'type':</span> <span class="pre">'string',</span> <span class="pre">'description':</span> <span class="pre">'Path</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">.csv/.parquet</span> <span class="pre">layout</span> <span class="pre">file</span> <span class="pre">(the</span> <span class="pre">form</span> <span class="pre">that</span> <span class="pre">round-trips</span> <span class="pre">through</span> <span class="pre">JSON).'},</span> <span class="pre">{'type':</span> <span class="pre">'object',</span> <span class="pre">'description':</span> <span class="pre">'In-memory</span> <span class="pre">pandas</span> <span class="pre">DataFrame</span> <span class="pre">layout</span> <span class="pre">(runtime-only;</span> <span class="pre">not</span> <span class="pre">JSON-serializable).'}]},</span> <span class="pre">mode=None)]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">position_by:</span> <span class="pre">~typing.Annotated[list[str],</span> <span class="pre">_ColumnRefMarker('measurements')]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QualityCheck</span></code>, <a class="reference internal" href="../core/visualization_plotting.html#phenotypic.abc_.plotting.PlotQc" title="phenotypic.abc_.plotting._lifecycle.PlotQc"><code class="xref py py-class docutils literal notranslate"><span class="pre">PlotQc</span></code></a></p>
 <p>Flag groups whose detected colony count diverges from metadata.</p>
 <blockquote>
@@ -1317,24 +1326,50 @@ frame is read once at construction time onto the private <code class="docutils l
 slot. Every column named in <code class="docutils literal notranslate"><span class="pre">groupby</span></code> must be present in the resolved
 frame; otherwise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">KeyError</span></code></a> is raised at <code class="docutils literal notranslate"><span class="pre">__init__</span></code> so the
 failure surfaces before <code class="docutils literal notranslate"><span class="pre">analyze</span></code> runs.</p>
+<p><strong>Leaving ``metadata`` unset derives the expectation from the analyzed
+frame instead.</strong> Expected positions are the distinct <code class="docutils literal notranslate"><span class="pre">position_by</span></code>
+tuples in the frame — which, on the CLI’s <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> left join,
+includes the phantom rows for colonies that were never detected. Two
+objects in one well therefore count <strong>once</strong> toward expected and twice
+toward detected, which is the divergence this check exists to show. This
+is what makes the check usable on a delivered <code class="docutils literal notranslate"><span class="pre">measurements.csv</span></code> alone,
+with no layout file. The derivation is only sound when one metadata row
+means one position on one image, so
+<code class="xref py py-func docutils literal notranslate"><span class="pre">expected_positions()</span></code>
+guards it: a frame that is not a metadata left join (no
+<code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> column), or that carries a row with no position, makes
+<code class="docutils literal notranslate"><span class="pre">analyze</span></code> refuse with a pointer to <code class="docutils literal notranslate"><span class="pre">metadata=</span></code>. It never quietly
+reports expected == detected for those. One case the guards cannot see:
+metadata at a coarser grain (one row per image) in which every image had a
+detection leaves no phantom to give it away, and then every detected
+position reads as expected. Pass a layout when the metadata was not one row
+per position.</p>
 <p><strong>Serialization:</strong> only a path is JSON-native, so the path is the form
 that round-trips. When <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path, <code class="docutils literal notranslate"><span class="pre">model_dump</span></code> /
 <code class="docutils literal notranslate"><span class="pre">pipeline.json</span></code> persist that path string under the same <code class="docutils literal notranslate"><span class="pre">metadata</span></code>
-key and a reloaded instance re-reads the file. When <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is an
-in-memory DataFrame there is no source path to persist — the JSON form
-is <code class="docutils literal notranslate"><span class="pre">None</span></code> and the check cannot be rebuilt from JSON alone (it fails
-to instantiate with a clear error, surfaced as a skip-with-warning by
-the lazy QC instantiation path). Configure QC checks from a metadata
-<em>path</em> whenever the pipeline is meant to round-trip.</p>
+key and a reloaded instance re-reads the file. When <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is unset
+the JSON form is <code class="docutils literal notranslate"><span class="pre">None</span></code>, and a reload is the same derive-mode check.
+When <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is an in-memory DataFrame there is no source path to
+persist: the JSON form is the placeholder <code class="docutils literal notranslate"><span class="pre">&quot;&lt;in-memory&gt;&quot;</span></code>, and a reload
+<strong>refuses</strong> it with a clear error (surfaced as a skip-with-warning by the
+lazy QC instantiation path) rather than coming back as a different,
+derive-mode check. Writing such a QC entry also logs a warning that names
+the parameter. Configure QC checks from a metadata <em>path</em> whenever the
+pipeline is meant to round-trip.</p>
 <dl>
 <dt>Args:</dt><dd><dl class="simple">
 <dt>metadata: Layout whose row count per <code class="docutils literal notranslate"><span class="pre">groupby</span></code> key is the</dt><dd><p>expected colony count. Either an in-memory DataFrame or a path
 (<code class="docutils literal notranslate"><span class="pre">Path</span></code>/<code class="docutils literal notranslate"><span class="pre">str</span></code>) to a <code class="docutils literal notranslate"><span class="pre">.csv</span></code>/<code class="docutils literal notranslate"><span class="pre">.parquet</span></code> file. The path
 form is what serializes and round-trips through JSON; an
-in-memory frame is runtime-only.</p>
+in-memory frame is runtime-only. <strong>Unset</strong> (the default) means
+“derive the expected positions from the analyzed frame”.</p>
 </dd>
 <dt>groupby: Columns that define a comparison unit. Must be present</dt><dd><p>in both the metadata frame and the measurement frame passed
 to <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a>.</p>
+</dd>
+<dt>position_by: Columns whose distinct tuples are one expected colony</dt><dd><p>position, used only when <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is unset. Defaults to
+<code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_POSITION_BY</span></code>
+— which image, and which grid cell on it.</p>
 </dd>
 <dt>on: Measurement column the check operates on. Defaults to</dt><dd><p><code class="docutils literal notranslate"><span class="pre">&quot;Object_Label&quot;</span></code> since “detected” means “a measurement row
 exists”.</p>
@@ -1351,12 +1386,13 @@ exists”.</p>
 <dt>Raises:</dt><dd><p>FileNotFoundError: If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path that does not exist.
 KeyError: If any column in <code class="docutils literal notranslate"><span class="pre">groupby</span></code> is absent from the</p>
 <blockquote>
-<div><p>resolved metadata frame.</p>
+<div><p>resolved metadata frame, or (at <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a>, with
+<code class="docutils literal notranslate"><span class="pre">metadata</span></code> unset) if a <code class="docutils literal notranslate"><span class="pre">position_by</span></code> column is absent from
+the analyzed frame.</p>
 </div></blockquote>
 <dl class="simple">
-<dt>ValueError: If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path with an unsupported suffix,</dt><dd><p>or if it is <code class="docutils literal notranslate"><span class="pre">None</span></code> — i.e. reconstructing from JSON that was
-built from an in-memory frame, which has no source path to
-persist.</p>
+<dt>ValueError: If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is a path with an unsupported suffix;</dt><dd><p>or, at <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">metadata</span></code> unset, if the frame is
+not a metadata left join or carries a row with a blank position.</p>
 </dd>
 </dl>
 </dd>
@@ -1411,6 +1447,25 @@ the metric is infinite and the key is recorded:</p>
 <span class="go">[(&#39;plate2.png&#39;,)]</span>
 </pre></div>
 </div>
+<p>No layout — a delivered <code class="docutils literal notranslate"><span class="pre">measurements.csv</span></code> on its own. The CLI’s
+metadata join left one phantom row (no <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code>,
+<code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> true) for the position on <code class="docutils literal notranslate"><span class="pre">plate1.png</span></code> where
+no colony was found, so the frame itself says four colonies were
+expected there and three were detected:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">METADATA_MATCH</span><span class="p">,</span> <span class="n">OBJECT</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="n">image_name</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;plate2.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">):</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">):</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">):</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="nb">str</span><span class="p">(</span><span class="n">METADATA_MATCH</span><span class="o">.</span><span class="n">METADATA_ONLY</span><span class="p">):</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">[</span><span class="kc">True</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">(</span><span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="n">image_name</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">per_plate</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">table</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">image_name</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">per_plate</span><span class="p">[[</span><span class="s2">&quot;QC_Count_Detected&quot;</span><span class="p">,</span> <span class="s2">&quot;QC_Count_Expected&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="s2">&quot;index&quot;</span><span class="p">)</span>
+<span class="go">{&#39;plate1.png&#39;: {&#39;QC_Count_Detected&#39;: 3, &#39;QC_Count_Expected&#39;: 4}, &#39;plate2.png&#39;: {&#39;QC_Count_Detected&#39;: 4, &#39;QC_Count_Expected&#39;: 4}}</span>
+</pre></div>
+</div>
 </dd>
 </dl>
 </div></blockquote>
@@ -1428,7 +1483,7 @@ the metric is infinite and the key is recorded:</p>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Metric</span></code></p></td>
-<td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
+<td><p>Headline metric, a dimensionless ratio, fraction or score (for example MAD / |median|); the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Count_Status</span></code></p></td>
@@ -1456,7 +1511,7 @@ the metric is infinite and the key is recorded:</p>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Delta</span></code></p></td>
-<td><p>Detected − Expected (signed; negative = missing).</p></td>
+<td><p>Detected minus expected colony count in the group, so it is negative when colonies are missing and positive when there are extra detections. It is Detected − Expected.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../measurements_ref/tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
@@ -1469,7 +1524,7 @@ the metric is infinite and the key is recorded:</p>
 <td><p>Create a new model by parsing and validating input data from keyword arguments.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">analyze</span></code></a></p></td>
-<td><p>Reset <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a> and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p></td>
+<td><p>Reset state, resolve the expectation, and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.construct" title="phenotypic.analysis.ExpectedVsDetectedCount.construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">construct</span></code></a></p></td>
 <td><p></p></td>
@@ -1546,46 +1601,49 @@ the metric is infinite and the key is recorded:</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_header_placeholders" title="phenotypic.analysis.ExpectedVsDetectedCount.output_header_placeholders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header_placeholders</span></code></a></p></td>
 <td><p>Define <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code>, which only the abstract base's headers contain.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_file" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_unit" title="phenotypic.analysis.ExpectedVsDetectedCount.output_unit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_unit</span></code></a></p></td>
+<td><p>Return the unit of the column <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_file" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_obj" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_obj" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_raw" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_raw" title="phenotypic.analysis.ExpectedVsDetectedCount.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.report" title="phenotypic.analysis.ExpectedVsDetectedCount.report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">report</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.report" title="phenotypic.analysis.ExpectedVsDetectedCount.report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">report</span></code></a></p></td>
 <td><p>Return the complete expected-count report.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.results" title="phenotypic.analysis.ExpectedVsDetectedCount.results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.results" title="phenotypic.analysis.ExpectedVsDetectedCount.results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results</span></code></a></p></td>
 <td><p>Return the augmented frame stored by the most recent analyze().</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.schema" title="phenotypic.analysis.ExpectedVsDetectedCount.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.schema" title="phenotypic.analysis.ExpectedVsDetectedCount.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.schema_json" title="phenotypic.analysis.ExpectedVsDetectedCount.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.schema_json" title="phenotypic.analysis.ExpectedVsDetectedCount.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.show" title="phenotypic.analysis.ExpectedVsDetectedCount.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.show" title="phenotypic.analysis.ExpectedVsDetectedCount.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a></p></td>
 <td><p>QualityCheck plots are Plotly-only through <code class="docutils literal notranslate"><span class="pre">PlotQc.inspect</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.status_col" title="phenotypic.analysis.ExpectedVsDetectedCount.status_col"><code class="xref py py-obj docutils literal notranslate"><span class="pre">status_col</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.status_col" title="phenotypic.analysis.ExpectedVsDetectedCount.status_col"><code class="xref py py-obj docutils literal notranslate"><span class="pre">status_col</span></code></a></p></td>
 <td><p>Return the status column name for this check.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.summary" title="phenotypic.analysis.ExpectedVsDetectedCount.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.summary" title="phenotypic.analysis.ExpectedVsDetectedCount.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a></p></td>
 <td><p>Return a one-row-per-group summary of the most recent analyze.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.table_spec" title="phenotypic.analysis.ExpectedVsDetectedCount.table_spec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">table_spec</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.table_spec" title="phenotypic.analysis.ExpectedVsDetectedCount.table_spec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">table_spec</span></code></a></p></td>
 <td><p>Return the catalog descriptor for this analyzed check.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.to_table" title="phenotypic.analysis.ExpectedVsDetectedCount.to_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_table</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.to_table" title="phenotypic.analysis.ExpectedVsDetectedCount.to_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_table</span></code></a></p></td>
 <td><p>Return the module's self-describing frame to persist to DuckDB.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.update_forward_refs" title="phenotypic.analysis.ExpectedVsDetectedCount.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.update_forward_refs" title="phenotypic.analysis.ExpectedVsDetectedCount.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.validate" title="phenotypic.analysis.ExpectedVsDetectedCount.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.validate" title="phenotypic.analysis.ExpectedVsDetectedCount.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1633,13 +1691,16 @@ the metric is infinite and the key is recorded:</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.metadata" title="phenotypic.analysis.ExpectedVsDetectedCount.metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.position_by" title="phenotypic.analysis.ExpectedVsDetectedCount.position_by"><code class="xref py py-obj docutils literal notranslate"><span class="pre">position_by</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.groupby" title="phenotypic.analysis.ExpectedVsDetectedCount.groupby"><code class="xref py py-obj docutils literal notranslate"><span class="pre">groupby</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.n_jobs" title="phenotypic.analysis.ExpectedVsDetectedCount.n_jobs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_jobs</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.groupby" title="phenotypic.analysis.ExpectedVsDetectedCount.groupby"><code class="xref py py-obj docutils literal notranslate"><span class="pre">groupby</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.n_jobs" title="phenotypic.analysis.ExpectedVsDetectedCount.n_jobs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_jobs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1655,7 +1716,8 @@ the metric is infinite and the key is recorded:</p>
 <li><p><strong>warn_threshold</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a>)</p></li>
 <li><p><strong>fail_threshold</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a>)</p></li>
 <li><p><strong>unmatched_groups</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a>)</p></li>
-<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><em>Annotated</em></a><em>[</em><em>DataFrame</em><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>WithJsonSchema</em><em>(</em><em>json_schema={'oneOf':</em><em> [</em><em>{'type': 'string'</em><em>, </em><em>'description': 'Path to a .csv/.parquet layout file</em><em> (</em><em>the form that round-trips through JSON</em><em>)</em><em>.'}</em><em>, </em><em>{'type': 'object'</em><em>, </em><em>'description': 'In-memory pandas DataFrame layout</em><em> (</em><em>runtime-only; not JSON-serializable</em><em>)</em><em>.'}</em><em>]</em><em>}</em><em>, </em><em>mode=None</em><em>)</em><em>]</em>)</p></li>
+<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><em>Annotated</em></a><em>[</em><em>DataFrame</em><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><em>WithJsonSchema</em><em>(</em><em>json_schema={'oneOf':</em><em> [</em><em>{'type': 'string'</em><em>, </em><em>'description': 'Path to a .csv/.parquet layout file</em><em> (</em><em>the form that round-trips through JSON</em><em>)</em><em>.'}</em><em>, </em><em>{'type': 'object'</em><em>, </em><em>'description': 'In-memory pandas DataFrame layout</em><em> (</em><em>runtime-only; not JSON-serializable</em><em>)</em><em>.'}</em><em>]</em><em>}</em><em>, </em><em>mode=None</em><em>)</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>position_by</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>]</em><em>, </em><em>_ColumnRefMarker</em><em>(</em><em>'measurements'</em><em>)</em><em>] </em><em>| </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -1686,7 +1748,12 @@ the metric is infinite and the key is recorded:</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.metadata">
-<span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_MetadataField</span></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.metadata" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">_MetadataField</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.metadata" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.position_by">
+<span class="sig-name descname"><span class="pre">position_by</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ColumnRefList</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.position_by" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1697,6 +1764,9 @@ the metric is infinite and the key is recorded:</p>
 <code class="docutils literal notranslate"><span class="pre">self.metadata</span></code> (a frame or a path) into the working frame on the
 private <code class="docutils literal notranslate"><span class="pre">_metadata</span></code> slot, verifies every <code class="docutils literal notranslate"><span class="pre">groupby</span></code> column is
 present, and caches the per-key expected colony counts.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">metadata</span></code> unset there is nothing to resolve here: the
+expectation comes from the frame <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> is handed, which does
+not exist yet. The equivalent guards run there instead.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1723,10 +1793,14 @@ present, and caches the per-key expected colony counts.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.analyze">
 <span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/analysis/qc/_expected_vs_detected.html#ExpectedVsDetectedCount.analyze"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="Link to this definition">#</a></dt>
-<dd><p>Reset <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups" title="phenotypic.analysis.ExpectedVsDetectedCount.unmatched_groups"><code class="xref py py-attr docutils literal notranslate"><span class="pre">unmatched_groups</span></code></a> and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p>
+<dd><p>Reset state, resolve the expectation, and run the base <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p>
 <p>Re-running the check on a different measurement frame must not
 carry over unmatched groups from a previous run, so the list is
 cleared before delegating to the base class.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">metadata</span></code> unset the per-key expected counts are computed here
+rather than in <code class="docutils literal notranslate"><span class="pre">model_post_init</span></code>: they are a property of the frame,
+not of the configuration, so they cannot exist before there is a
+frame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)"><em>pandas.DataFrame</em></a>) – Measurement frame to evaluate.</p>
@@ -1734,8 +1808,16 @@ cleared before delegating to the base class.</p>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The augmented frame from <code class="xref py py-meth docutils literal notranslate"><span class="pre">QualityCheck.analyze()</span></code>.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)">pandas.DataFrame</a></p>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is unset and the frame cannot supply
+    expected positions.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#KeyError" title="(in Python v3.15)"><strong>KeyError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">metadata</span></code> is unset and a <code class="docutils literal notranslate"><span class="pre">position_by</span></code> column
+    is absent from the frame.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.1)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2108,7 +2190,7 @@ for rows where <code class="docutils literal notranslate"><span class="pre">Flag
 <span class="sig-name descname"><span class="pre">group_members</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.group_members" title="Link to this definition">#</a></dt>
 <dd><p>Map each group key to its member rows for worklists/galleries.</p>
 <p>Walks the most recent analyzed frame and, for every group key
-produced by <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False)</span></code>, collects
+produced by <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False,</span> <span class="pre">observed=True)</span></code>, collects
 the rows that belong to it as <code class="docutils literal notranslate"><span class="pre">(Metadata_ImageName,</span> <span class="pre">Object_Label,</span>
 <span class="pre">member_value)</span></code> tuples, where <code class="docutils literal notranslate"><span class="pre">member_value</span></code> is the row’s
 <code class="docutils literal notranslate"><span class="pre">self.on</span></code> value (the column the check operates on). The mapping
@@ -2353,7 +2435,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'agg_func':</span> <span class="pre">FieldInfo(annotation=Union[Callable,</span> <span class="pre">str,</span> <span class="pre">list,</span> <span class="pre">dict,</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default='first'),</span> <span class="pre">'fail_threshold':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.1,</span> <span class="pre">description='Normalized</span> <span class="pre">count</span> <span class="pre">divergence</span> <span class="pre">at</span> <span class="pre">which</span> <span class="pre">``Status``</span> <span class="pre">becomes</span> <span class="pre">``&quot;fail&quot;``</span> <span class="pre">and</span> <span class="pre">``Flag=True``.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``0.10``.'),</span> <span class="pre">'groupby':</span> <span class="pre">FieldInfo(annotation=list[str],</span> <span class="pre">required=True,</span> <span class="pre">description='Columns</span> <span class="pre">that</span> <span class="pre">define</span> <span class="pre">a</span> <span class="pre">comparison</span> <span class="pre">unit.</span> <span class="pre">Must</span> <span class="pre">be</span> <span class="pre">present</span> <span class="pre">in</span> <span class="pre">both</span> <span class="pre">the</span> <span class="pre">metadata</span> <span class="pre">frame</span> <span class="pre">and</span> <span class="pre">the</span> <span class="pre">measurement</span> <span class="pre">frame</span> <span class="pre">passed',</span> <span class="pre">metadata=[_ColumnRefMarker('measurements')]),</span> <span class="pre">'metadata':</span> <span class="pre">FieldInfo(annotation=Union[DataFrame,</span> <span class="pre">str],</span> <span class="pre">required=True,</span> <span class="pre">description='Layout</span> <span class="pre">whose</span> <span class="pre">row</span> <span class="pre">count</span> <span class="pre">per</span> <span class="pre">``groupby``</span> <span class="pre">key</span> <span class="pre">is</span> <span class="pre">the</span> <span class="pre">expected</span> <span class="pre">colony</span> <span class="pre">count.</span> <span class="pre">Either</span> <span class="pre">an</span> <span class="pre">in-memory</span> <span class="pre">DataFrame</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">path</span> <span class="pre">(``Path``/``str``)</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">``.csv``/``.parquet``</span> <span class="pre">file.</span> <span class="pre">The</span> <span class="pre">path</span> <span class="pre">form</span> <span class="pre">is</span> <span class="pre">what</span> <span class="pre">serializes</span> <span class="pre">and</span> <span class="pre">round-trips</span> <span class="pre">through</span> <span class="pre">JSON;</span> <span class="pre">an</span> <span class="pre">in-memory</span> <span class="pre">frame</span> <span class="pre">is</span> <span class="pre">runtime-only.',</span> <span class="pre">metadata=[WithJsonSchema(json_schema={'oneOf':</span> <span class="pre">[{'type':</span> <span class="pre">'string',</span> <span class="pre">'description':</span> <span class="pre">'Path</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">.csv/.parquet</span> <span class="pre">layout</span> <span class="pre">file</span> <span class="pre">(the</span> <span class="pre">form</span> <span class="pre">that</span> <span class="pre">round-trips</span> <span class="pre">through</span> <span class="pre">JSON).'},</span> <span class="pre">{'type':</span> <span class="pre">'object',</span> <span class="pre">'description':</span> <span class="pre">'In-memory</span> <span class="pre">pandas</span> <span class="pre">DataFrame</span> <span class="pre">layout</span> <span class="pre">(runtime-only;</span> <span class="pre">not</span> <span class="pre">JSON-serializable).'}]},</span> <span class="pre">mode=None)]),</span> <span class="pre">'n_jobs':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=1,</span> <span class="pre">alias_priority=2,</span> <span class="pre">validation_alias=AliasChoices(choices=['n_jobs',</span> <span class="pre">'num_workers']),</span> <span class="pre">description='Worker</span> <span class="pre">count.</span> <span class="pre">Currently</span> <span class="pre">unused</span> <span class="pre">by</span> <span class="pre">the</span> <span class="pre">base</span> <span class="pre">``analyze``</span> <span class="pre">loop;</span> <span class="pre">kept</span> <span class="pre">on</span> <span class="pre">the</span> <span class="pre">signature</span> <span class="pre">for</span> <span class="pre">parity</span> <span class="pre">with</span> <span class="pre">:class:`SetAnalyzer`.'),</span> <span class="pre">'on':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=False,</span> <span class="pre">default='Object_Label',</span> <span class="pre">description='Measurement</span> <span class="pre">column</span> <span class="pre">the</span> <span class="pre">check</span> <span class="pre">operates</span> <span class="pre">on.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``&quot;Object_Label&quot;``</span> <span class="pre">since</span> <span class="pre">&quot;detected&quot;</span> <span class="pre">means</span> <span class="pre">&quot;a</span> <span class="pre">measurement</span> <span class="pre">row</span> <span class="pre">exists&quot;.',</span> <span class="pre">metadata=[_ColumnRefMarker('measurements')]),</span> <span class="pre">'unmatched_groups':</span> <span class="pre">FieldInfo(annotation=list,</span> <span class="pre">required=False,</span> <span class="pre">default_factory=list,</span> <span class="pre">description='Groups</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">check</span> <span class="pre">could</span> <span class="pre">not</span> <span class="pre">evaluate</span> <span class="pre">(for</span> <span class="pre">example,</span> <span class="pre">expected</span> <span class="pre">counts</span> <span class="pre">whose</span> <span class="pre">group</span> <span class="pre">key</span> <span class="pre">never</span> <span class="pre">appeared</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">data).</span> <span class="pre">Populated</span> <span class="pre">by</span> <span class="pre">subclasses</span> <span class="pre">that</span> <span class="pre">need</span> <span class="pre">to</span> <span class="pre">report</span> <span class="pre">missing</span> <span class="pre">combinations;</span> <span class="pre">empty</span> <span class="pre">by</span> <span class="pre">default.'),</span> <span class="pre">'warn_threshold':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.05,</span> <span class="pre">description='Normalized</span> <span class="pre">count</span> <span class="pre">divergence</span> <span class="pre">at</span> <span class="pre">which</span> <span class="pre">``Status``</span> <span class="pre">becomes</span> <span class="pre">``&quot;warn&quot;``.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``0.05``.')}</span></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'agg_func':</span> <span class="pre">FieldInfo(annotation=Union[Callable,</span> <span class="pre">str,</span> <span class="pre">list,</span> <span class="pre">dict,</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default='first'),</span> <span class="pre">'fail_threshold':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.1,</span> <span class="pre">description='Normalized</span> <span class="pre">count</span> <span class="pre">divergence</span> <span class="pre">at</span> <span class="pre">which</span> <span class="pre">``Status``</span> <span class="pre">becomes</span> <span class="pre">``&quot;fail&quot;``</span> <span class="pre">and</span> <span class="pre">``Flag=True``.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``0.10``.'),</span> <span class="pre">'groupby':</span> <span class="pre">FieldInfo(annotation=list[str],</span> <span class="pre">required=True,</span> <span class="pre">description='Columns</span> <span class="pre">that</span> <span class="pre">define</span> <span class="pre">a</span> <span class="pre">comparison</span> <span class="pre">unit.</span> <span class="pre">Must</span> <span class="pre">be</span> <span class="pre">present</span> <span class="pre">in</span> <span class="pre">both</span> <span class="pre">the</span> <span class="pre">metadata</span> <span class="pre">frame</span> <span class="pre">and</span> <span class="pre">the</span> <span class="pre">measurement</span> <span class="pre">frame</span> <span class="pre">passed',</span> <span class="pre">metadata=[_ColumnRefMarker('measurements')]),</span> <span class="pre">'metadata':</span> <span class="pre">FieldInfo(annotation=Union[Annotated[Union[DataFrame,</span> <span class="pre">str],</span> <span class="pre">WithJsonSchema],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None,</span> <span class="pre">description='Layout</span> <span class="pre">whose</span> <span class="pre">row</span> <span class="pre">count</span> <span class="pre">per</span> <span class="pre">``groupby``</span> <span class="pre">key</span> <span class="pre">is</span> <span class="pre">the</span> <span class="pre">expected</span> <span class="pre">colony</span> <span class="pre">count.</span> <span class="pre">Either</span> <span class="pre">an</span> <span class="pre">in-memory</span> <span class="pre">DataFrame</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">path</span> <span class="pre">(``Path``/``str``)</span> <span class="pre">to</span> <span class="pre">a</span> <span class="pre">``.csv``/``.parquet``</span> <span class="pre">file.</span> <span class="pre">The</span> <span class="pre">path</span> <span class="pre">form</span> <span class="pre">is</span> <span class="pre">what</span> <span class="pre">serializes</span> <span class="pre">and</span> <span class="pre">round-trips</span> <span class="pre">through</span> <span class="pre">JSON;</span> <span class="pre">an</span> <span class="pre">in-memory</span> <span class="pre">frame</span> <span class="pre">is</span> <span class="pre">runtime-only.</span> <span class="pre">**Unset**</span> <span class="pre">(the</span> <span class="pre">default)</span> <span class="pre">means</span> <span class="pre">&quot;derive</span> <span class="pre">the</span> <span class="pre">expected</span> <span class="pre">positions</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">analyzed</span> <span class="pre">frame&quot;.'),</span> <span class="pre">'n_jobs':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=1,</span> <span class="pre">alias_priority=2,</span> <span class="pre">validation_alias=AliasChoices(choices=['n_jobs',</span> <span class="pre">'num_workers']),</span> <span class="pre">description='Worker</span> <span class="pre">count.</span> <span class="pre">Currently</span> <span class="pre">unused</span> <span class="pre">by</span> <span class="pre">the</span> <span class="pre">base</span> <span class="pre">``analyze``</span> <span class="pre">loop;</span> <span class="pre">kept</span> <span class="pre">on</span> <span class="pre">the</span> <span class="pre">signature</span> <span class="pre">for</span> <span class="pre">parity</span> <span class="pre">with</span> <span class="pre">:class:`SetAnalyzer`.'),</span> <span class="pre">'on':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=False,</span> <span class="pre">default='Object_Label',</span> <span class="pre">description='Measurement</span> <span class="pre">column</span> <span class="pre">the</span> <span class="pre">check</span> <span class="pre">operates</span> <span class="pre">on.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``&quot;Object_Label&quot;``</span> <span class="pre">since</span> <span class="pre">&quot;detected&quot;</span> <span class="pre">means</span> <span class="pre">&quot;a</span> <span class="pre">measurement</span> <span class="pre">row</span> <span class="pre">exists&quot;.',</span> <span class="pre">metadata=[_ColumnRefMarker('measurements')]),</span> <span class="pre">'position_by':</span> <span class="pre">FieldInfo(annotation=Union[Annotated[list[str],</span> <span class="pre">_ColumnRefMarker],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None,</span> <span class="pre">description='Columns</span> <span class="pre">whose</span> <span class="pre">distinct</span> <span class="pre">tuples</span> <span class="pre">are</span> <span class="pre">one</span> <span class="pre">expected</span> <span class="pre">colony</span> <span class="pre">position,</span> <span class="pre">used</span> <span class="pre">only</span> <span class="pre">when</span> <span class="pre">``metadata``</span> <span class="pre">is</span> <span class="pre">unset.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">:data:`~phenotypic.analysis.qc._expected_positions.DEFAULT_POSITION_BY`</span> <span class="pre">—</span> <span class="pre">which</span> <span class="pre">image,</span> <span class="pre">and</span> <span class="pre">which</span> <span class="pre">grid</span> <span class="pre">cell</span> <span class="pre">on</span> <span class="pre">it.'),</span> <span class="pre">'unmatched_groups':</span> <span class="pre">FieldInfo(annotation=list,</span> <span class="pre">required=False,</span> <span class="pre">default_factory=list,</span> <span class="pre">description='Groups</span> <span class="pre">that</span> <span class="pre">the</span> <span class="pre">check</span> <span class="pre">could</span> <span class="pre">not</span> <span class="pre">evaluate</span> <span class="pre">(for</span> <span class="pre">example,</span> <span class="pre">expected</span> <span class="pre">counts</span> <span class="pre">whose</span> <span class="pre">group</span> <span class="pre">key</span> <span class="pre">never</span> <span class="pre">appeared</span> <span class="pre">in</span> <span class="pre">the</span> <span class="pre">data).</span> <span class="pre">Populated</span> <span class="pre">by</span> <span class="pre">subclasses</span> <span class="pre">that</span> <span class="pre">need</span> <span class="pre">to</span> <span class="pre">report</span> <span class="pre">missing</span> <span class="pre">combinations;</span> <span class="pre">empty</span> <span class="pre">by</span> <span class="pre">default.'),</span> <span class="pre">'warn_threshold':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.05,</span> <span class="pre">description='Normalized</span> <span class="pre">count</span> <span class="pre">divergence</span> <span class="pre">at</span> <span class="pre">which</span> <span class="pre">``Status``</span> <span class="pre">becomes</span> <span class="pre">``&quot;warn&quot;``.</span> <span class="pre">Defaults</span> <span class="pre">to</span> <span class="pre">``0.05``.')}</span></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2576,6 +2658,54 @@ no <code class="docutils literal notranslate"><span class="pre">name</span></cod
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.15)">dict</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)">str</a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)">str</a>]</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.output_unit">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html#phenotypic.schema.ResolvedUnit" title="phenotypic.schema._base._units.ResolvedUnit"><span class="pre">ResolvedUnit</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_unit" title="Link to this definition">#</a></dt>
+<dd><p>Return the unit of the column <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze" title="phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The one default every table producer shares, next to
+<a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_header" title="phenotypic.analysis.ExpectedVsDetectedCount.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a>; no analyzer overrides it. A static unit
+(<code class="docutils literal notranslate"><span class="pre">LINEAR_LAG_MODEL.lam</span></code> is <code class="docutils literal notranslate"><span class="pre">time</span></code>) resolves to itself and ignores
+<em>on</em>. An input-dependent unit (a fitted rate, a model metric, a QC
+statistic, an edge-corrected value) resolves against the unit of the
+column it was computed on, so a rate fitted on a radius converts with
+<code class="docutils literal notranslate"><span class="pre">px_per_mm</span> <span class="pre">**</span> <span class="pre">1</span></code> and one fitted on an area with <code class="docutils literal notranslate"><span class="pre">px_per_mm</span> <span class="pre">**</span> <span class="pre">2</span></code>.</p>
+<p>Unlike <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_header" title="phenotypic.analysis.ExpectedVsDetectedCount.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a>, which ignores <em>on</em> for most producers,
+this needs <em>on</em> for every input-dependent member. That includes the
+quality checks’ Median, MAD, SE and fence columns (<code class="docutils literal notranslate"><span class="pre">QUALITY_MAD</span></code>,
+<code class="docutils literal notranslate"><span class="pre">QUALITY_ZMAX</span></code>, <code class="docutils literal notranslate"><span class="pre">QUALITY_SE</span></code>, <code class="docutils literal notranslate"><span class="pre">QUALITY_TUKEY</span></code>), whose headers
+never embed the analyzed column: pass the check’s own <code class="docutils literal notranslate"><span class="pre">on</span></code>
+(<code class="docutils literal notranslate"><span class="pre">check.on</span></code>), or the call raises.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of a schema this analyzer declares.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>) – The analyzed column, as passed to the analyzer’s <code class="docutils literal notranslate"><span class="pre">on</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The concrete unit, with its <code class="docutils literal notranslate"><span class="pre">length_power</span></code> filled in.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – <em>member</em> has no unit; or its unit depends on <em>on</em> and
+    <em>on</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, not a known measurement header, or a column
+    with no unit of its own (a label, metadata, a model output or
+    an edge-corrected value), named in the message.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html#phenotypic.schema.ResolvedUnit" title="phenotypic.schema._base._units.ResolvedUnit"><em>ResolvedUnit</em></a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearLagModel</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_LAG_MODEL</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">LinearLagModel</span><span class="o">.</span><span class="n">output_unit</span><span class="p">(</span><span class="n">LINEAR_LAG_MODEL</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;Size_RobustMeanRadius&quot;</span><span class="p">)</span>
+<span class="go">ResolvedUnit(symbol=&#39;px/time&#39;, length_power=1)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py method">
@@ -2857,6 +2987,7 @@ augmented frame projected to group-key + member-key + <code class="docutils lite
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.on"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.on</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.agg_func"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.agg_func</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.metadata"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.metadata</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.position_by"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.position_by</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_post_init"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.model_post_init()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.analyze"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.analyze()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.inspect"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.inspect()</span></code></a></li>
@@ -2902,6 +3033,7 @@ augmented frame projected to group-key + member-key + <code class="docutils lite
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.model_validate_strings"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.model_validate_strings()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_header"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.output_header()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_header_placeholders"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.output_header_placeholders()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.output_unit"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.output_unit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_file"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.parse_file()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_obj"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.parse_obj()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ExpectedVsDetectedCount.parse_raw"><code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount.parse_raw()</span></code></a></li>

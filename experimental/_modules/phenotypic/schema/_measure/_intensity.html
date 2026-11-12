@@ -572,6 +572,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._change_notes</span><span class="w"> </span><span class="kn">import</span> <span class="n">SINGLE_CHANNEL_PRODUCED_NOTE</span><span class="p">,</span> <span class="n">append_change_note</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
 
 
@@ -594,6 +595,13 @@
         <span class="k">return</span> <span class="s2">&quot;Intensity&quot;</span></div>
 
 
+<div class="viewcode-block" id="INTENSITY.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.INTENSITY.html#phenotypic.schema.INTENSITY.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">INTENSITY</span></div>
+
+
 <div class="viewcode-block" id="INTENSITY.change_note">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.INTENSITY.html#phenotypic.schema.INTENSITY.change_note">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -603,36 +611,77 @@
 
     <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of the grayscale values of all the colony&#39;s pixels, so it grows with &quot;</span>
+        <span class="s2">&quot;both the colony&#39;s area and how bright its pixels are.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">INTENSITY_PX2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Density&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The colony&#39;s integrated intensity divided by its area in pixels: the &quot;</span>
+        <span class="s2">&quot;mean grayscale value of its pixels, equal to MeanIntensity.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The colony&#39;s integrated intensity divided by the area of its convex &quot;</span>
+        <span class="s2">&quot;hull, so indentations and gaps in the colony lower it relative to &quot;</span>
+        <span class="s2">&quot;Density. The hull passes through pixel centers, so its area is &quot;</span>
+        <span class="s2">&quot;smaller than the pixel count: slightly for a convex colony, where &quot;</span>
+        <span class="s2">&quot;this value can slightly exceed Density, and substantially for an &quot;</span>
+        <span class="s2">&quot;object of only a few pixels (a 2 x 2 pixel object has a hull area of &quot;</span>
+        <span class="s2">&quot;1, so this value is four times Density). It is NaN for a single &quot;</span>
+        <span class="s2">&quot;pixel or a one-pixel-wide line, which has no hull.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MINIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MinimumIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Lowest grayscale value among the colony&#39;s pixels.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAXIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MaximumIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Highest grayscale value among the colony&#39;s pixels.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MEAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MeanIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Average grayscale value of the colony&#39;s pixels, on the gray layer&#39;s &quot;</span>
+        <span class="s2">&quot;scale from 0 for black to 1 for the brightest value the image&#39;s &quot;</span>
+        <span class="s2">&quot;pixels can hold. For an RGB scan the gray layer is its luminance, so &quot;</span>
+        <span class="s2">&quot;1 is white; for a single-channel scan 1 is the 8- or 16-bit &quot;</span>
+        <span class="s2">&quot;maximum.&quot;</span><span class="p">,</span>
         <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the object&#39;s intensity to the max possible &quot;</span>
-                          <span class="s2">&quot;intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the objects intensity to the max &quot;</span>
-                                       <span class="s2">&quot;possible intensity of the object&#39;s convex hull&quot;</span><span class="p">)</span>
-    <span class="n">MINIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinimumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MAXIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaximumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MEAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MeanIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MEDIAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MedianIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The median intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MEDIAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MedianIntensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Middle grayscale value of the colony&#39;s pixels: half of them are at or &quot;</span>
+        <span class="s2">&quot;below it, so a few very bright or very dark pixels move it less than &quot;</span>
+        <span class="s2">&quot;they move the mean.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">STANDARD_DEVIATION_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;StandardDeviationIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The standard deviation of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the grayscale values of the colony&#39;s pixels vary around their &quot;</span>
+        <span class="s2">&quot;mean, as their standard deviation. It is the population standard &quot;</span>
+        <span class="s2">&quot;deviation, dividing by the pixel count n.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">COEFFICIENT_VARIANCE_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoefficientVarianceIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the colony&#39;s grayscale values vary relative to their mean, as &quot;</span>
+        <span class="s2">&quot;the standard deviation divided by the mean. The ratio is then &quot;</span>
+        <span class="s2">&quot;multiplied by (1 + 1/n), where n is the colony&#39;s pixel count.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Q1_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LowerQuartileIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The lower quartile intensity of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Grayscale value that about a quarter of the colony&#39;s pixels are at or &quot;</span>
+        <span class="s2">&quot;below. It is the 25th percentile, linearly interpolated.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Q3_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;UpperQuartileIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The upper quartile intensity of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Grayscale value that about three quarters of the colony&#39;s pixels are &quot;</span>
+        <span class="s2">&quot;at or below. It is the 75th percentile, linearly interpolated.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">IQR_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InterquartileRangeIntensity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The interquartile range of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Spread of the middle half of the colony&#39;s grayscale values, from the &quot;</span>
+        <span class="s2">&quot;lower to the upper quartile. It is UpperQuartileIntensity minus &quot;</span>
+        <span class="s2">&quot;LowerQuartileIntensity.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 

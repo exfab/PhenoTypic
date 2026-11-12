@@ -575,16 +575,23 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic.json_schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SkipJsonSchema</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">normalize_measurement_metadata_columns</span><span class="p">,</span>
     <span class="n">normalize_metadata_column_reference</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">IN_MEMORY_PARAM</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ExpectedVsDetectedCount</span><span class="p">,</span>
+    <span class="n">_MetadataField</span><span class="p">,</span>
+    <span class="n">_refuse_in_memory_layout</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">QUALITY_OCCUPANCY</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 
@@ -605,6 +612,12 @@
 <span class="sd">    re-reads on load), and the per-key expected-count precompute. The</span>
 <span class="sd">    expected cell count for a group is the number of metadata rows for that</span>
 <span class="sd">    ``groupby`` key (one row per expected pin position).</span>
+
+<span class="sd">    **A layout is required.** The parent&#39;s no-layout mode (``metadata``</span>
+<span class="sd">    unset, expectation derived from the analyzed frame) is not inherited:</span>
+<span class="sd">    ``metadata`` is a required field here, and ``None`` is refused. So is the</span>
+<span class="sd">    parent&#39;s ``position_by``, which only that mode reads: it is left out of</span>
+<span class="sd">    this check&#39;s schema and refused if passed.</span>
 
 <span class="sd">    Where the parent counts ``len(group)`` (raw detections, doublets</span>
 <span class="sd">    included), this check counts ``group[cell_label].nunique()`` distinct</span>
@@ -657,8 +670,9 @@
 <span class="sd">        FileNotFoundError: (inherited) If ``metadata`` is a path that does</span>
 <span class="sd">            not exist.</span>
 <span class="sd">        ValueError: (inherited) If ``metadata`` is a path with an</span>
-<span class="sd">            unsupported suffix, or if it is ``None`` (a check serialized</span>
-<span class="sd">            from an in-memory frame, which cannot round-trip).</span>
+<span class="sd">            unsupported suffix; if it is ``None`` (no layout); or if it is the</span>
+<span class="sd">            placeholder a check serialized from an in-memory frame writes,</span>
+<span class="sd">            which cannot round-trip. Also if ``position_by`` is given.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Basic — 96-cell metadata vs. a measurement frame with 92 colonies</span>
@@ -697,6 +711,52 @@
     <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
     <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span>
     <span class="n">cell_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span>
+    <span class="c1"># Required, unlike the parent&#39;s: occupancy has no no-layout mode.</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">_MetadataField</span>
+    <span class="c1"># The parent&#39;s no-layout-mode parameter. Kept out of the schema and the</span>
+    <span class="c1"># dump, and refused if given, so it can never be passed and ignored.</span>
+    <span class="n">position_by</span><span class="p">:</span> <span class="n">SkipJsonSchema</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_metadata</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Refuse a missing layout; otherwise normalize as the parent does.</span>
+
+<span class="sd">        Overrides the parent&#39;s validator of the same name, which accepts</span>
+<span class="sd">        ``None`` as its no-layout mode.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``value`` is ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> requires &#39;metadata&#39; as a layout DataFrame &quot;</span>
+                <span class="s2">&quot;or a .csv/.parquet path. Got None — no layout was given; &quot;</span>
+                <span class="s2">&quot;occupancy has no mode that derives one from the frame.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">==</span> <span class="n">IN_MEMORY_PARAM</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">_refuse_in_memory_layout</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;position_by&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_refuse_position_by</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Refuse the parent&#39;s no-layout-mode ``position_by``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``position_by`` is given at all.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> takes no position_by: it counts filled cells &quot;</span>
+                <span class="s2">&quot;against a layout, and position_by only applies to &quot;</span>
+                <span class="s2">&quot;ExpectedVsDetectedCount without a layout&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;cell_label&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -790,7 +850,7 @@
             <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">VACANT</span><span class="p">),</span>
         <span class="p">]</span>
         <span class="n">first</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span>
                 <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">occ_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
             <span class="p">]</span>
             <span class="o">.</span><span class="n">first</span><span class="p">()</span>
@@ -844,7 +904,7 @@
         <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
         <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
         <span class="n">per</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="n">metric_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="n">status_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">})</span>
             <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
         <span class="p">)</span>

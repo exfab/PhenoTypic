@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_ZMAX
       ~QUALITY_ZMAX.kind
       ~QUALITY_ZMAX.metric_family
       ~QUALITY_ZMAX.tier
+      ~QUALITY_ZMAX.default_unit
       ~QUALITY_ZMAX.rembi_module
       ~QUALITY_ZMAX.change_note
       ~QUALITY_ZMAX.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_ZMAX
       ~QUALITY_ZMAX.METRIC_FAMILY
       ~QUALITY_ZMAX.resolved_kind
       ~QUALITY_ZMAX.resolved_tier
+      ~QUALITY_ZMAX.unit
       ~QUALITY_ZMAX.resolved_rembi_module
       ~QUALITY_ZMAX.use_label
       ~QUALITY_ZMAX.use_badge
@@ -101,6 +103,7 @@ phenotypic.schema.QUALITY\_ZMAX
       ~QUALITY_ZMAX.image
       ~QUALITY_ZMAX.pair
       ~QUALITY_ZMAX.tier_override
+      ~QUALITY_ZMAX.unit_override
       ~QUALITY_ZMAX.derivation_type
       ~QUALITY_ZMAX.derives_from
       ~QUALITY_ZMAX.rembi_module_override

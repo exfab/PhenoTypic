@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._grid_oversized_object_remover</span></li>
   </ul>
 </nav>
@@ -578,9 +581,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span>
 
 
-<div class="viewcode-block" id="GridOversizedObjectRemover">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.GridOversizedObjectRemover.html#phenotypic.refine.GridOversizedObjectRemover">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GridOversizedObjectRemover</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
+<div class="viewcode-block" id="RemoveOversizedGridObjects">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.RemoveOversizedGridObjects.html#phenotypic.refine.RemoveOversizedGridObjects">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RemoveOversizedGridObjects</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Discard objects whose bounding box equals or exceeds the maximum grid cell span.</span>
 
 <span class="sd">    Measures each detected object&#39;s bounding-box width and height and removes</span>
@@ -603,9 +606,9 @@
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`KeepSectionLargest` when keeping the single largest valid</span>
 <span class="sd">          object per cell is preferable to removing oversized candidates.</span>
-<span class="sd">        - :class:`GridAlignmentRefiner` for full grid-aware dominant-object</span>
+<span class="sd">        - :class:`RefineGridAlignment` for full grid-aware dominant-object</span>
 <span class="sd">          selection with configurable strategies.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when the problem is undersized debris</span>
+<span class="sd">        - :class:`RemoveSmallObjects` when the problem is undersized debris</span>
 <span class="sd">          rather than oversized merged detections.</span>
 
 <span class="sd">    Returns:</span>

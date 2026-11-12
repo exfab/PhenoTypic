@@ -20,6 +20,7 @@ phenotypic.schema.IMAGE
       ~IMAGE.header_set
       ~IMAGE.kind
       ~IMAGE.tier
+      ~IMAGE.default_unit
       ~IMAGE.rembi_module
       ~IMAGE.change_note
       ~IMAGE.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.IMAGE
       ~IMAGE.METRIC_FAMILY
       ~IMAGE.resolved_kind
       ~IMAGE.resolved_tier
+      ~IMAGE.unit
       ~IMAGE.resolved_rembi_module
       ~IMAGE.use_label
       ~IMAGE.use_badge
@@ -107,6 +109,7 @@ phenotypic.schema.IMAGE
       ~IMAGE.image
       ~IMAGE.pair
       ~IMAGE.tier_override
+      ~IMAGE.unit_override
       ~IMAGE.derivation_type
       ~IMAGE.derives_from
       ~IMAGE.rembi_module_override

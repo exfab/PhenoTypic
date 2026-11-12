@@ -20,6 +20,7 @@ phenotypic.schema.GENETIC
       ~GENETIC.header_set
       ~GENETIC.kind
       ~GENETIC.tier
+      ~GENETIC.default_unit
       ~GENETIC.rembi_module
       ~GENETIC.change_note
       ~GENETIC.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.GENETIC
       ~GENETIC.METRIC_FAMILY
       ~GENETIC.resolved_kind
       ~GENETIC.resolved_tier
+      ~GENETIC.unit
       ~GENETIC.resolved_rembi_module
       ~GENETIC.use_label
       ~GENETIC.use_badge
@@ -108,6 +110,7 @@ phenotypic.schema.GENETIC
       ~GENETIC.image
       ~GENETIC.pair
       ~GENETIC.tier_override
+      ~GENETIC.unit_override
       ~GENETIC.derivation_type
       ~GENETIC.derives_from
       ~GENETIC.rembi_module_override

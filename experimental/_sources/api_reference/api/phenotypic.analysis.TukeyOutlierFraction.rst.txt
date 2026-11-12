@@ -40,6 +40,7 @@ phenotypic.analysis.TukeyOutlierFraction
       ~TukeyOutlierFraction.model_validate_strings
       ~TukeyOutlierFraction.output_header
       ~TukeyOutlierFraction.output_header_placeholders
+      ~TukeyOutlierFraction.output_unit
       ~TukeyOutlierFraction.parse_file
       ~TukeyOutlierFraction.parse_obj
       ~TukeyOutlierFraction.parse_raw

@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Per-object summary statistics in CIE chromaticity xy coordinates.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscriminativeFeature</span>
 
 
@@ -594,19 +595,58 @@
         <span class="k">return</span> <span class="s2">&quot;Colorxy&quot;</span></div>
 
 
-    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="Colorxy.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.Colorxy.html#phenotypic.schema.Colorxy.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span></div>
+
+
+    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xMin&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Lowest CIE x chromaticity coordinate among the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xQ1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CIE x chromaticity coordinate that about a quarter of the colony&#39;s &quot;</span>
+        <span class="s2">&quot;pixels are at or below. It is the 25th percentile, linearly &quot;</span>
+        <span class="s2">&quot;interpolated. Each pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xMean&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Average CIE x chromaticity coordinate of the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xMedian&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median CIE x chromaticity coordinate of the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xQ3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CIE x chromaticity coordinate that about three quarters of the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels are at or below. It is the 75th percentile, linearly &quot;</span>
+        <span class="s2">&quot;interpolated. Each pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;xMax&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Highest CIE x chromaticity coordinate among the colony&#39;s pixels. &quot;</span>
+        <span class="s2">&quot;Each pixel&#39;s x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">x_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;xStdDev&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The standard deviation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the CIE x chromaticity coordinate varies across the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels, as its population standard deviation. Each pixel&#39;s &quot;</span>
+        <span class="s2">&quot;x is X / (X + Y + Z).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">x_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;xCoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the CIE x chromaticity coordinate varies across the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels relative to its mean, as the standard deviation &quot;</span>
+        <span class="s2">&quot;divided by the mean. The ratio is then multiplied by (1 + 1/n), &quot;</span>
+        <span class="s2">&quot;where n is the colony&#39;s pixel count. Each pixel&#39;s x is X / (X + Y + &quot;</span>
+        <span class="s2">&quot;Z).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
 <div class="viewcode-block" id="Colorxy.x_headers">
@@ -625,19 +665,51 @@
         <span class="p">]</span></div>
 
 
-    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yMin&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Lowest CIE y chromaticity coordinate among the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yQ1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CIE y chromaticity coordinate that about a quarter of the colony&#39;s &quot;</span>
+        <span class="s2">&quot;pixels are at or below. It is the 25th percentile, linearly &quot;</span>
+        <span class="s2">&quot;interpolated. Each pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yMean&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Average CIE y chromaticity coordinate of the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yMedian&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Median CIE y chromaticity coordinate of the colony&#39;s pixels. Each &quot;</span>
+        <span class="s2">&quot;pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yQ3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CIE y chromaticity coordinate that about three quarters of the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels are at or below. It is the 75th percentile, linearly &quot;</span>
+        <span class="s2">&quot;interpolated. Each pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;yMax&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Highest CIE y chromaticity coordinate among the colony&#39;s pixels. &quot;</span>
+        <span class="s2">&quot;Each pixel&#39;s y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">y_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;yStdDev&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The standard deviation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the CIE y chromaticity coordinate varies across the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels, as its population standard deviation. Each pixel&#39;s &quot;</span>
+        <span class="s2">&quot;y is Y / (X + Y + Z).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;yCoeffVar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The coefficient of variation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How much the CIE y chromaticity coordinate varies across the &quot;</span>
+        <span class="s2">&quot;colony&#39;s pixels relative to its mean, as the standard deviation &quot;</span>
+        <span class="s2">&quot;divided by the mean. The ratio is then multiplied by (1 + 1/n), &quot;</span>
+        <span class="s2">&quot;where n is the colony&#39;s pixel count. Each pixel&#39;s y is Y / (X + Y + &quot;</span>
+        <span class="s2">&quot;Z).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
 <div class="viewcode-block" id="Colorxy.y_headers">

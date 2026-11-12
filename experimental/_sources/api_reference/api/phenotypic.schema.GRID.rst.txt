@@ -19,6 +19,7 @@ phenotypic.schema.GRID
       ~GRID.kind
       ~GRID.metric_family
       ~GRID.tier
+      ~GRID.default_unit
       ~GRID.rembi_module
       ~GRID.change_note
       ~GRID.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.GRID
       ~GRID.METRIC_FAMILY
       ~GRID.resolved_kind
       ~GRID.resolved_tier
+      ~GRID.unit
       ~GRID.resolved_rembi_module
       ~GRID.use_label
       ~GRID.use_badge
@@ -106,6 +108,7 @@ phenotypic.schema.GRID
       ~GRID.image
       ~GRID.pair
       ~GRID.tier_override
+      ~GRID.unit_override
       ~GRID.derivation_type
       ~GRID.derives_from
       ~GRID.rembi_module_override

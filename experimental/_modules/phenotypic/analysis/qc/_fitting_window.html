@@ -1,0 +1,1507 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.qc._fitting_window &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sidebar-resize.css?v=bc74e319" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=88e4c0c0"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/qc/_fitting_window';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script src="../../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/analysis/qc/_fitting_window.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.21.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.qc._fitting_window</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.qc._fitting_window</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The fitting-window quality check — Rule D, wired to a measurement frame.</span>
+
+<span class="sd">The algorithm lives in :mod:`._fitting_window_rule`, a numpy-only transcription</span>
+<span class="sd">of a polars reference with its own golden fixture. This module is the</span>
+<span class="sd">*pipeline* half: it turns a measurement frame into one mean-CV series per</span>
+<span class="sd">condition, judges each against one pooled bar, and reports the verdict per</span>
+<span class="sd">condition.</span>
+
+<span class="sd">Nothing here spells a measurement or metadata column. ``on``, ``groupby``,</span>
+<span class="sd">``replicate_by`` and ``time_col`` are all user parameters, and the only columns</span>
+<span class="sd">the module names for itself are the ``QC_Window_*`` headers it emits (asked of</span>
+<span class="sd">:class:`~phenotypic.schema.QUALITY_WINDOW`). A source-guard test pins that.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotOutput</span><span class="p">,</span> <span class="n">PlotPage</span><span class="p">,</span> <span class="n">PlotQc</span><span class="p">,</span> <span class="n">canonical_group_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">normalize_measurement_metadata_columns</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_reference</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_references</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_WINDOW</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._expected_positions</span><span class="w"> </span><span class="kn">import</span> <span class="n">numeric_order_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._fitting_window_rule</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ABRUPT_K</span><span class="p">,</span>
+    <span class="n">EDGE_FRAMES</span><span class="p">,</span>
+    <span class="n">MIN_BAR_OVER_NOISE</span><span class="p">,</span>
+    <span class="n">MIN_REPLICATES</span><span class="p">,</span>
+    <span class="n">MIN_SERIES_FRAMES</span><span class="p">,</span>
+    <span class="n">NEAR_MIN_TOLERANCE</span><span class="p">,</span>
+    <span class="n">PERSIST</span><span class="p">,</span>
+    <span class="n">ROUGH_K</span><span class="p">,</span>
+    <span class="n">ROUGH_LAG</span><span class="p">,</span>
+    <span class="n">ROUGH_ROLL</span><span class="p">,</span>
+    <span class="n">ROUGH_SPAN</span><span class="p">,</span>
+    <span class="n">SMOOTH</span><span class="p">,</span>
+    <span class="n">MeanCvSeries</span><span class="p">,</span>
+    <span class="n">RuleDResult</span><span class="p">,</span>
+    <span class="n">WindowOutcome</span><span class="p">,</span>
+    <span class="n">abrupt_bar</span><span class="p">,</span>
+    <span class="n">derivatives</span><span class="p">,</span>
+    <span class="n">mean_cv_series</span><span class="p">,</span>
+    <span class="n">rule_d</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>  <span class="c1"># pragma: no cover - typing only</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;FittingWindow&quot;</span><span class="p">]</span>
+
+<span class="c1">#: CV band edges the figure draws, which are also this check&#39;s default</span>
+<span class="c1">#: ``warn_threshold``/``fail_threshold`` — so the status and the figure agree by</span>
+<span class="c1">#: construction rather than by coincidence.</span>
+<span class="n">_CV_BAND_EDGES</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.30</span><span class="p">)</span>
+
+<span class="c1">#: Characters a condition slug may not carry (it names a figure file).</span>
+<span class="n">_UNSAFE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[^A-Za-z0-9.]+&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_condition_slug</span><span class="p">(</span><span class="n">groupby</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">values</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the stable page key for one condition.</span>
+
+<span class="sd">    The readable part is the condition&#39;s values, sanitized and joined with</span>
+<span class="sd">    ``_``; the suffix is six hex digits of a hash over the *typed* values, so</span>
+<span class="sd">    two conditions whose values sanitize alike (``&quot;a b&quot;`` and ``&quot;a-b&quot;``), or</span>
+<span class="sd">    differ only in type (``1`` and ``&quot;1&quot;``), still get different keys. The key</span>
+<span class="sd">    depends on this condition alone, never on which others are present.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        groupby: The condition column names.</span>
+<span class="sd">        values: This condition&#39;s values, in ``groupby`` order.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A filesystem-safe name, e.g. ``&quot;Condition.A-3f9a1c&quot;``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``groupby`` and ``values`` differ in length.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; slug = _condition_slug([&quot;condition&quot;], [&quot;Condition A&quot;])</span>
+<span class="sd">        &gt;&gt;&gt; slug.startswith(&quot;Condition-A-&quot;)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; slug == _condition_slug([&quot;condition&quot;], [&quot;Condition A&quot;])</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; _condition_slug([&quot;plate&quot;], [1]) == _condition_slug([&quot;plate&quot;], [&quot;1&quot;])</span>
+<span class="sd">        False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">groupby</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;groupby has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">groupby</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns but </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="si">}</span><span class="s2"> values were given&quot;</span>
+        <span class="p">)</span>
+    <span class="n">readable</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="n">_UNSAFE</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;-.&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;na&quot;</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span>
+    <span class="p">)</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="n">canonical_group_key</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">groupby</span><span class="p">,</span> <span class="n">values</span><span class="p">)))</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">6</span><span class="p">]</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">readable</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_plain_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a hashable, slug-safe Python scalar for one condition value.</span>
+
+<span class="sd">    numpy scalars become Python scalars, and every flavour of missing (``NaN``,</span>
+<span class="sd">    ``None``, ``pd.NA``, ``NaT``) becomes ``None``. Both matter: the condition</span>
+<span class="sd">    key is a dict key, and ``NaN != NaN`` would make a null condition</span>
+<span class="sd">    unreachable.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: One ``groupby`` value, as read off a group&#39;s first row.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A plain Python scalar, or ``None`` for any missing value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;item&quot;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>  <span class="c1"># pragma: no cover - defensive</span>
+            <span class="k">pass</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">value</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>  <span class="c1"># pragma: no cover - never a scalar key</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_PendingCondition</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One condition&#39;s inputs, held between the series pass and the bar.&quot;&quot;&quot;</span>
+
+    <span class="n">values</span><span class="p">:</span> <span class="nb">tuple</span>
+    <span class="n">series</span><span class="p">:</span> <span class="n">MeanCvSeries</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_ConditionOutcome</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Everything the check knows about one condition after ``analyze``.</span>
+
+<span class="sd">    Held on a ``PrivateAttr`` because :meth:`QualityCheck.analyze` hands</span>
+<span class="sd">    ``_compute`` one group at a time and the bar those results rest on is</span>
+<span class="sd">    pooled over all of them.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: The ``groupby`` values, missing values normalized to ``None``.</span>
+    <span class="n">values</span><span class="p">:</span> <span class="nb">tuple</span>
+    <span class="c1">#: The condition&#39;s stable key — the name of its figure page.</span>
+    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="c1">#: Counted frames, their mean replicate CV, and the groups behind each.</span>
+    <span class="n">series</span><span class="p">:</span> <span class="n">MeanCvSeries</span>
+    <span class="c1">#: Rule D&#39;s verdict, against the run-wide pooled bar.</span>
+    <span class="n">result</span><span class="p">:</span> <span class="n">RuleDResult</span>
+    <span class="c1">#: The centred rolling-mean trend, aligned with ``series.frames``.</span>
+    <span class="n">trend</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+
+<div class="viewcode-block" id="FittingWindow">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.FittingWindow.html#phenotypic.analysis.FittingWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FittingWindow</span><span class="p">(</span><span class="n">QualityCheck</span><span class="p">,</span> <span class="n">PlotQc</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Propose the frames over which a condition&#39;s replicates agree well enough to fit.</span>
+
+<span class="sd">    For each ``groupby`` combination — one **condition** — the check builds the</span>
+<span class="sd">    per-frame mean replicate coefficient of variation of ``on``, then asks Rule D</span>
+<span class="sd">    where that curve is flat and low: the span a growth model can be fitted over</span>
+<span class="sd">    without the fit being driven by replicate disagreement. A window is the run</span>
+<span class="sd">    of frames where replicates agree, not &quot;where it is growing&quot;. A condition it</span>
+<span class="sd">    can answer for is graded by the mean CV inside that span; a condition it</span>
+<span class="sd">    cannot is failed, and ``QC_Window_Outcome`` says why.</span>
+
+<span class="sd">    **The bar is pooled over the whole run, and that is deliberate.** Rule D</span>
+<span class="sd">    judges every condition against **one** absolute abrupt-change threshold,</span>
+<span class="sd">    computed from every condition&#39;s curvature at once, because a per-condition</span>
+<span class="sd">    threshold is exactly the unequal treatment the rule exists to remove. Three</span>
+<span class="sd">    consequences a reader should know:</span>
+
+<span class="sd">    * ``QC_Window_Bar`` is a run-level constant — the same value on every row of</span>
+<span class="sd">      every condition.</span>
+<span class="sd">    * **Adding or removing a condition can move another condition&#39;s window.**</span>
+<span class="sd">      The verdict is about a condition *within this run*, not an intrinsic</span>
+<span class="sd">      property of it.</span>
+<span class="sd">    * **A condition analyzed alone is never too noisy, at the defaults.** With</span>
+<span class="sd">      one series in the pool, the bar is that series&#39; quiet level plus</span>
+<span class="sd">      ``abrupt_k`` of its own noise units, and ``abrupt_k`` (10) exceeds</span>
+<span class="sd">      ``min_bar_over_noise`` (3). So ``too_noisy`` means &quot;too noisy *next to the</span>
+<span class="sd">      other conditions in this run*&quot;. A condition alone can still go without a</span>
+<span class="sd">      window for the other reasons (too few frames, or its best agreement in</span>
+<span class="sd">      its last frames), but never for noise. Setting ``abrupt_k`` below</span>
+<span class="sd">      ``min_bar_over_noise`` removes that guarantee.</span>
+
+<span class="sd">    ``QualityCheck.analyze`` hands ``_compute`` one group, so the bar cannot be</span>
+<span class="sd">    computed there; :meth:`analyze` is overridden to compute every series, the</span>
+<span class="sd">    pooled bar and every Rule D result once, before delegating upward.</span>
+
+<span class="sd">    **What a window is good for.** Fitting a growth model only inside the</span>
+<span class="sd">    window gives a trustworthy **rate** ``v``, because the frames where</span>
+<span class="sd">    replicates disagree are left out. It does **not** give a trustworthy lag or</span>
+<span class="sd">    starting size: a window usually opens after the lag, so a windowed fit has</span>
+<span class="sd">    no frames that constrain ``lambda`` or ``s0``. **Take lag and starting size</span>
+<span class="sd">    from a fit over all frames**, and the rate from the windowed fit.</span>
+
+<span class="sd">    **The time axis is a frame index, not elapsed hours.** Images of different</span>
+<span class="sd">    plates never share an hour value, so hours cannot line plates up across a</span>
+<span class="sd">    condition; :class:`~phenotypic.post.AddFrameIndex` numbers each plate&#39;s</span>
+<span class="sd">    images in capture order, 1-based. Rule D compares frames with each other and</span>
+<span class="sd">    never with an absolute number, so shifting the axis by one shifts every</span>
+<span class="sd">    reported window by exactly one and changes no outcome. A window is</span>
+<span class="sd">    therefore a span of frame indices: to fit on hours, filter the table on the</span>
+<span class="sd">    frame index first, then fit with the hours column as the time axis (see the</span>
+<span class="sd">    example). Rule D needs at least 14 counted frames at the default settings.</span>
+
+<span class="sd">    **The metric.** Mean measured CV over the proposed window when there is one,</span>
+<span class="sd">    ``+inf`` when there is not — so the base class&#39;s ``metric &gt;=</span>
+<span class="sd">    fail_threshold`` fails every windowless condition with no override of its</span>
+<span class="sd">    status logic. Windowless conditions therefore tie on ``+inf`` and are not</span>
+<span class="sd">    ordered among themselves; ``QC_Window_BestCV`` (the series minimum) is</span>
+<span class="sd">    carried so a reader can still see how close each came. Using that minimum</span>
+<span class="sd">    *as* the metric would pass a condition Rule D rejected as too noisy, on one</span>
+<span class="sd">    good frame.</span>
+
+<span class="sd">    **Diagnostic only.** ``supports_object_curation`` is ``False``: the verdict</span>
+<span class="sd">    is about a condition, so ``QC_Window_Flag`` never offers colonies for</span>
+<span class="sd">    removal, and :meth:`to_table` collapses to one row per condition rather than</span>
+<span class="sd">    writing one identical row per colony into ``qc.duckdb``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        on: **The input metric column** — the measurement whose replicate CV is</span>
+<span class="sd">            tracked. Required, inherited; nothing about this check is specific</span>
+<span class="sd">            to one column.</span>
+<span class="sd">        groupby: **The condition columns.** One group is one condition.</span>
+<span class="sd">            Required, inherited.</span>
+<span class="sd">        replicate_by: Columns defining one replicate group (for example, a</span>
+<span class="sd">            plate or a strain). A group counts at a frame only when it has at</span>
+<span class="sd">            least ``min_replicates`` detected colonies *and* a mean ``on`` above</span>
+<span class="sd">            the floor.</span>
+<span class="sd">        time_col: The per-image frame index that lines plates up across a</span>
+<span class="sd">            condition. Must hold whole numbers.</span>
+<span class="sd">        min_replicates: Detected colonies a replicate group needs at a frame to</span>
+<span class="sd">            be counted into that frame&#39;s mean CV.</span>
+<span class="sd">        smooth: Trend window, in frames, for the centred rolling mean.</span>
+<span class="sd">        abrupt_k: How far above the pooled quiet curvature level an acceleration</span>
+<span class="sd">            must go to count as abrupt.</span>
+<span class="sd">        persist: Frames an excursion must persist to count as an event.</span>
+<span class="sd">        rough_roll: Window of the roughness rolling mean.</span>
+<span class="sd">        rough_k: Multiple of a condition&#39;s own recent roughness that ends a</span>
+<span class="sd">            window.</span>
+<span class="sd">        rough_lag: How far back the trailing roughness baseline starts.</span>
+<span class="sd">        rough_span: How wide that trailing baseline window is.</span>
+<span class="sd">        near_min_tolerance: How close to its own minimum the smoothed CV must</span>
+<span class="sd">            come for a frame to belong to the minimum&#39;s basin, where the window</span>
+<span class="sd">            opens.</span>
+<span class="sd">        min_bar_over_noise: Multiples of a condition&#39;s own curvature noise the</span>
+<span class="sd">            pooled bar must exceed for the test to discriminate at all. Below</span>
+<span class="sd">            it the rule abstains.</span>
+<span class="sd">        edge_frames: Frames at each end excluded from evaluation.</span>
+<span class="sd">        min_series_frames: Shortest series the rule will assess. A plain</span>
+<span class="sd">            integer, deliberately not re-derived from ``smooth`` and</span>
+<span class="sd">            ``edge_frames`` — in the reference it comes from a different,</span>
+<span class="sd">            narrower smoother, and re-deriving it here would reject series the</span>
+<span class="sd">            reference accepts.</span>
+<span class="sd">        warn_threshold: Window mean CV at which ``Status`` becomes ``&quot;warn&quot;``.</span>
+<span class="sd">        fail_threshold: Window mean CV at which ``Status`` becomes ``&quot;fail&quot;``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyError: From :meth:`analyze`, if ``on``, ``time_col`` or any</span>
+<span class="sd">            ``groupby``/``replicate_by`` column is absent from the frame.</span>
+<span class="sd">        ValueError: From :meth:`analyze`, if ``time_col`` holds a value that is</span>
+<span class="sd">            not a whole number. At construction, if ``replicate_by`` is empty or</span>
+<span class="sd">            the thresholds are ordered against the metric&#39;s bad direction</span>
+<span class="sd">            (surfaced by pydantic as a ``ValidationError``).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        A labelled synthetic series: four conditions of three replicate plates,</span>
+<span class="sd">        thirty images six hours apart (see</span>
+<span class="sd">        :func:`~phenotypic.data.make_synthetic_window_series`). Number each</span>
+<span class="sd">        plate&#39;s images, then judge every condition in one run:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import LinearLagModel</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import FittingWindow</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import make_synthetic_window_series</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.post import AddFrameIndex</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import CULTURE, SAMPLE, SIZE</span>
+<span class="sd">        &gt;&gt;&gt; condition, replicate = &quot;Metadata_Condition&quot;, str(SAMPLE.BIO_REPLICATE)</span>
+<span class="sd">        &gt;&gt;&gt; frame, hours = str(CULTURE.FRAME_INDEX), str(CULTURE.TIME)</span>
+<span class="sd">        &gt;&gt;&gt; radius = str(SIZE.ROBUST_MEAN_RADIUS)</span>
+<span class="sd">        &gt;&gt;&gt; table = AddFrameIndex(plate_by=[&quot;PlateID&quot;]).apply(</span>
+<span class="sd">        ...     make_synthetic_window_series()</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; window = FittingWindow(</span>
+<span class="sd">        ...     on=radius, groupby=[condition], replicate_by=[replicate], time_col=frame</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; _ = window.analyze(table)</span>
+<span class="sd">        &gt;&gt;&gt; verdict = window.to_table().set_index(condition)</span>
+<span class="sd">        &gt;&gt;&gt; for name, row in verdict.iterrows():</span>
+<span class="sd">        ...     print(name, row[&quot;QC_Window_Outcome&quot;],</span>
+<span class="sd">        ...           row[&quot;QC_Window_Start&quot;], row[&quot;QC_Window_End&quot;])</span>
+<span class="sd">        Condition A found 9 26</span>
+<span class="sd">        Condition B found 19 26</span>
+<span class="sd">        Condition C found 9 17</span>
+<span class="sd">        Condition D too_noisy &lt;NA&gt; &lt;NA&gt;</span>
+
+<span class="sd">        A and B grow identically; B&#39;s replicates take longer to agree, so its</span>
+<span class="sd">        window opens later. D gets no window in this run, and says why:</span>
+
+<span class="sd">        &gt;&gt;&gt; verdict.loc[&quot;Condition D&quot;, &quot;QC_Window_Reason&quot;]</span>
+<span class="sd">        &quot;bar is 1.1x this curve&#39;s own noise (&lt;3): not assessable&quot;</span>
+
+<span class="sd">        The handoff to a growth fit is a pandas filter on the **frame index**,</span>
+<span class="sd">        then a fit on **hours**. The windowed fit gives the rate (the series</span>
+<span class="sd">        was built with 0.25 px/h):</span>
+
+<span class="sd">        &gt;&gt;&gt; a = table[table[condition] == &quot;Condition A&quot;]</span>
+<span class="sd">        &gt;&gt;&gt; start = verdict.loc[&quot;Condition A&quot;, &quot;QC_Window_Start&quot;]</span>
+<span class="sd">        &gt;&gt;&gt; end = verdict.loc[&quot;Condition A&quot;, &quot;QC_Window_End&quot;]</span>
+<span class="sd">        &gt;&gt;&gt; in_window = a[a[frame].between(start, end)]</span>
+<span class="sd">        &gt;&gt;&gt; fit = LinearLagModel(on=radius, groupby=[replicate], time_label=hours)</span>
+<span class="sd">        &gt;&gt;&gt; windowed = fit.analyze(in_window)</span>
+<span class="sd">        &gt;&gt;&gt; windowed[&quot;LinearLagModel_RobustMeanRadius_v&quot;].round(2).tolist()</span>
+<span class="sd">        [0.25, 0.25, 0.25]</span>
+
+<span class="sd">        Lag and starting size come from a fit over **all** frames (the series</span>
+<span class="sd">        was built with a 30 h lag and an 8 px start):</span>
+
+<span class="sd">        &gt;&gt;&gt; full = fit.analyze(a)</span>
+<span class="sd">        &gt;&gt;&gt; full[&quot;LinearLagModel_RobustMeanRadius_lambda&quot;].round().tolist()</span>
+<span class="sd">        [30.0, 30.0, 30.0]</span>
+<span class="sd">        &gt;&gt;&gt; full[&quot;LinearLagModel_RobustMeanRadius_s0&quot;].round().tolist()</span>
+<span class="sd">        [8.0, 8.0, 8.0]</span>
+
+<span class="sd">        The windowed fit&#39;s own lag and starting size are not those. Its window</span>
+<span class="sd">        opens after the lag, so no frame in it constrains either, and the values</span>
+<span class="sd">        it reports are not even reproducible: the optimizer lands on different</span>
+<span class="sd">        ones on different machines. Here the lag comes out 6 to 15 h too long</span>
+<span class="sd">        and the start 1.5 to 4 px too large, on every replicate:</span>
+
+<span class="sd">        &gt;&gt;&gt; lag = &quot;LinearLagModel_RobustMeanRadius_lambda&quot;</span>
+<span class="sd">        &gt;&gt;&gt; s0 = &quot;LinearLagModel_RobustMeanRadius_s0&quot;</span>
+<span class="sd">        &gt;&gt;&gt; lag_error = windowed[lag] - full[lag]</span>
+<span class="sd">        &gt;&gt;&gt; start_error = windowed[s0] - full[s0]</span>
+<span class="sd">        &gt;&gt;&gt; bool(lag_error.between(4, 20).all()), bool(start_error.between(1, 5).all())</span>
+<span class="sd">        (True, True)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Window&quot;</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">QUALITY_WINDOW</span>
+    <span class="c1">#: A verdict about a condition, not about a colony.</span>
+    <span class="n">supports_object_curation</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="c1">#: No per-object key: there is nothing here to curate.</span>
+    <span class="n">member_key_cols</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="c1"># The figure&#39;s own CV band edges, so the status and the figure grade a</span>
+    <span class="c1"># condition identically.</span>
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_CV_BAND_EDGES</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">_CV_BAND_EDGES</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">replicate_by</span><span class="p">:</span> <span class="n">ColumnRefList</span>
+    <span class="n">time_col</span><span class="p">:</span> <span class="n">ColumnRef</span>
+
+    <span class="n">min_replicates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">MIN_REPLICATES</span>
+    <span class="n">smooth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">SMOOTH</span>
+    <span class="n">abrupt_k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">ABRUPT_K</span>
+    <span class="n">persist</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">PERSIST</span>
+    <span class="n">rough_roll</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ROUGH_ROLL</span>
+    <span class="n">rough_k</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">ROUGH_K</span>
+    <span class="n">rough_lag</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ROUGH_LAG</span>
+    <span class="n">rough_span</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ROUGH_SPAN</span>
+    <span class="n">near_min_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">NEAR_MIN_TOLERANCE</span>
+    <span class="n">min_bar_over_noise</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">MIN_BAR_OVER_NOISE</span>
+    <span class="n">edge_frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">EDGE_FRAMES</span>
+    <span class="n">min_series_frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">MIN_SERIES_FRAMES</span>
+
+    <span class="c1">#: The run-wide pooled abrupt-change bar. NaN until :meth:`analyze` runs.</span>
+    <span class="n">_bar</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">))</span>
+    <span class="c1">#: Per-condition state, keyed by the normalized ``groupby`` value tuple.</span>
+    <span class="n">_conditions</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;replicate_by&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_replicate_by</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve known metadata references; leave anything else alone.</span>
+
+<span class="sd">        The same normalization ``on`` and ``groupby`` get, so a bare label or a</span>
+<span class="sd">        historical per-topic header resolves while a non-metadata axis (a</span>
+<span class="sd">        computed frame index, say) survives untouched.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">normalize_metadata_column_references</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;time_col&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_time_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a known metadata reference for the frame-index column.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;time_col must be a string column reference&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">normalize_metadata_column_reference</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_replicate_by_is_populated</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;FittingWindow&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject an empty ``replicate_by``.</span>
+
+<span class="sd">        A CV needs replicates. With no grouping columns every colony in a</span>
+<span class="sd">        condition would be one &quot;group&quot;, and the check would silently measure</span>
+<span class="sd">        spread across the whole condition instead of within replicate sets.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``replicate_by`` names no columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;replicate_by must name at least one column&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">time_label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The frame-index column, under the name the base class asks for.</span>
+
+<span class="sd">        ``QualityCheck.table_spec`` records a check&#39;s time axis by reading</span>
+<span class="sd">        ``time_label``, which is what the other time-course checks call the</span>
+<span class="sd">        parameter. This check names it ``time_col``, so without this alias</span>
+<span class="sd">        every ``FittingWindow`` row in the ``qc_modules`` catalog would record</span>
+<span class="sd">        a null ``time_col`` for a check whose whole subject is a time series.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_col</span>
+
+    <span class="c1"># --- analysis ---------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="FittingWindow.analyze">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.FittingWindow.html#phenotypic.analysis.FittingWindow.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build every condition&#39;s series, pool the bar once, then delegate upward.</span>
+
+<span class="sd">        The order is forced by the algorithm, not by taste. Rule D tests every</span>
+<span class="sd">        condition against **one** bar pooled over all of them, and</span>
+<span class="sd">        :meth:`QualityCheck.analyze` hands ``_compute`` a single group — so the</span>
+<span class="sd">        bar has to exist before the first group is computed. This method makes</span>
+<span class="sd">        three passes:</span>
+
+<span class="sd">        1. per condition, the mean-CV series;</span>
+<span class="sd">        2. once, :func:`abrupt_bar` over **every** series;</span>
+<span class="sd">        3. per condition, :func:`rule_d` against that bar.</span>
+
+<span class="sd">        The results are stashed on a private attribute and ``_compute`` only</span>
+<span class="sd">        looks its own condition up. A per-condition bar would type-check, run,</span>
+<span class="sd">        and silently reclassify conditions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: The measurement frame. On the CLI path the post-applied,</span>
+<span class="sd">                metadata-joined mirror.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The augmented frame from :meth:`QualityCheck.analyze`. Its</span>
+<span class="sd">            ``time_col`` is the caller&#39;s own column, unchanged: a frame index</span>
+<span class="sd">            stored as text is read as numbers for the series, and comes back</span>
+<span class="sd">            as text.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            KeyError: If ``on``, ``time_col`` or any ``groupby`` /</span>
+<span class="sd">                ``replicate_by`` column is absent.</span>
+<span class="sd">            ValueError: If ``time_col`` holds a value that is not a whole</span>
+<span class="sd">                number.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">normalize_measurement_metadata_columns</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">column</span>
+            <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing required columns for FittingWindow: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Coerce the time axis once, at the entrance, rather than at each of</span>
+        <span class="c1"># the places that order by it: the pre-aggregation sort inside</span>
+        <span class="c1"># :func:`mean_cv_series` and that function&#39;s per-frame ``groupby``,</span>
+        <span class="c1"># whose order *is* the series axis Rule D&#39;s rolling windows run over.</span>
+        <span class="c1"># A ``time_col`` stored as text sorts frame 10 between 1 and 2, which</span>
+        <span class="c1"># scrambles the series and every window bound read off it while every</span>
+        <span class="c1"># published number still looks plausible. The coerced copy feeds the</span>
+        <span class="c1"># series only: the frame handed back keeps the caller&#39;s own column.</span>
+        <span class="n">series_input</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">ordered_time</span> <span class="o">=</span> <span class="n">numeric_order_key</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">ordered_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">]:</span>
+            <span class="n">series_input</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">:</span> <span class="n">ordered_time</span><span class="p">})</span>
+
+        <span class="n">pending</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">_PendingCondition</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">pool</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">series_input</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_condition_values</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+            <span class="n">series</span> <span class="o">=</span> <span class="n">mean_cv_series</span><span class="p">(</span>
+                <span class="n">group</span><span class="p">,</span>
+                <span class="n">on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span>
+                <span class="n">replicate_by</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">replicate_by</span><span class="p">),</span>
+                <span class="n">time_col</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">,</span>
+                <span class="n">min_replicates</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_replicates</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">pending</span><span class="p">[</span><span class="n">values</span><span class="p">]</span> <span class="o">=</span> <span class="n">_PendingCondition</span><span class="p">(</span><span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">series</span><span class="o">=</span><span class="n">series</span><span class="p">)</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span> <span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">))</span>
+
+        <span class="n">bar</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">abrupt_bar</span><span class="p">(</span>
+                <span class="n">pool</span><span class="p">,</span>
+                <span class="n">min_series_frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_series_frames</span><span class="p">,</span>
+                <span class="n">abrupt_k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">abrupt_k</span><span class="p">,</span>
+                <span class="n">smooth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smooth</span><span class="p">,</span>
+                <span class="n">rough_roll</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_roll</span><span class="p">,</span>
+                <span class="n">edge_frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_frames</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">conditions</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="n">_ConditionOutcome</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">values</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">pending</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">rule_d</span><span class="p">(</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">,</span>
+                <span class="n">bar</span><span class="p">,</span>
+                <span class="n">smooth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smooth</span><span class="p">,</span>
+                <span class="n">persist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">persist</span><span class="p">,</span>
+                <span class="n">rough_roll</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_roll</span><span class="p">,</span>
+                <span class="n">rough_k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_k</span><span class="p">,</span>
+                <span class="n">rough_lag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_lag</span><span class="p">,</span>
+                <span class="n">rough_span</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_span</span><span class="p">,</span>
+                <span class="n">near_min_tolerance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">near_min_tolerance</span><span class="p">,</span>
+                <span class="n">min_bar_over_noise</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_bar_over_noise</span><span class="p">,</span>
+                <span class="n">edge_frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_frames</span><span class="p">,</span>
+                <span class="n">min_series_frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_series_frames</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">conditions</span><span class="p">[</span><span class="n">values</span><span class="p">]</span> <span class="o">=</span> <span class="n">_ConditionOutcome</span><span class="p">(</span>
+                <span class="n">values</span><span class="o">=</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">slug</span><span class="o">=</span><span class="n">_condition_slug</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">)),</span>
+                <span class="n">series</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">series</span><span class="p">,</span>
+                <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
+                <span class="n">trend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_trend</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">series</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ``_compute`` reads both during ``super().analyze``, so they have to be</span>
+        <span class="c1"># on the instance before the call — but a failure inside it (the metric</span>
+        <span class="c1"># coercion, the concat) must not leave run N&#39;s verdicts beside run</span>
+        <span class="c1"># N-1&#39;s frame. Staged, and rolled back if the call does not return.</span>
+        <span class="n">previous</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_bar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span> <span class="o">=</span> <span class="n">bar</span><span class="p">,</span> <span class="n">conditions</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span> <span class="o">=</span> <span class="n">previous</span>
+            <span class="k">raise</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Broadcast this condition&#39;s stashed verdict across its rows.</span>
+
+<span class="sd">        Looks the condition up rather than computing anything: the series, the</span>
+<span class="sd">        pooled bar and Rule D&#39;s answer were all settled in :meth:`analyze`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group as produced by</span>
+<span class="sd">                ``data.groupby(self.groupby, dropna=False, observed=True)``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group frame (a copy) with the metric and every</span>
+<span class="sd">            ``QC_Window_*`` extra column appended.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">_ConditionOutcome</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_condition_values</span><span class="p">(</span><span class="n">group</span><span class="p">)]</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">result</span>
+        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">window</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">window</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">series</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">series</span>
+
+        <span class="n">out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">OUTCOME</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">outcome</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">START</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;Int64&quot;</span>
+        <span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">END</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">end</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;Int64&quot;</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">REASON</span><span class="p">)]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">detail</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">BEST_CV</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_best_cv</span><span class="p">(</span><span class="n">series</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">BAR</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bar</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">N_GROUPS</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_groups</span><span class="p">(</span><span class="n">series</span><span class="p">)]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;Int64&quot;</span>
+        <span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_WINDOW</span><span class="o">.</span><span class="n">N_FRAMES_COUNTED</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span><span class="p">))</span>
+        <span class="n">out</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metric</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="FittingWindow.to_table">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.FittingWindow.html#phenotypic.analysis.FittingWindow.to_table">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return one row per condition — the grain this check&#39;s verdict has.</span>
+
+<span class="sd">        The inherited :meth:`QualityCheck.to_table` is member-level, which for a</span>
+<span class="sd">        per-condition verdict would write one identical row per colony into</span>
+<span class="sd">        ``qc.duckdb`` and make ``summary()``&#39;s ``n_members`` a colony count.</span>
+<span class="sd">        This collapses to the condition grain the same way</span>
+<span class="sd">        :meth:`GridOccupancy.to_table` does: the constant ``QC_Window_*``</span>
+<span class="sd">        extras, merged with the metric and status from :meth:`summary`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``[*groupby, QC_Window_Outcome, _Start, _End, _Reason, _BestCV,</span>
+<span class="sd">            _Bar, _NGroups, _NFramesCounted, QC_Window_Metric,</span>
+<span class="sd">            QC_Window_Status, QC_Window_Flag]``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span>
+                <span class="o">*</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">member</span><span class="p">)</span> <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">QUALITY_WINDOW</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">(),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">(),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">(),</span>
+            <span class="p">])</span>
+        <span class="n">extras</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">QUALITY_WINDOW</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">member</span><span class="p">)</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="n">extras</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">first</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;qc_worst_metric&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">(),</span>
+                <span class="s2">&quot;qc_status&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">(),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">first</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">summary</span><span class="p">[[</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()]],</span>
+            <span class="n">on</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">),</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Every row of a condition carries the same metric, so the group-level</span>
+        <span class="c1"># status is the row-level one; the flag follows it, as it does on the</span>
+        <span class="c1"># base class.</span>
+        <span class="n">merged</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()]</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()]</span> <span class="o">==</span> <span class="s2">&quot;fail&quot;</span>
+        <span class="k">return</span> <span class="n">merged</span></div>
+
+
+    <span class="c1"># --- the figure -------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="FittingWindow.inspect">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.FittingWindow.html#phenotypic.analysis.FittingWindow.inspect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return one page per condition: measured mean CV, trend, bands, window.</span>
+
+<span class="sd">        Measured mean CV dashed, the smoothed trend solid, the three CV bands</span>
+<span class="sd">        shaded, the proposed window banded, and the outcome in the title</span>
+<span class="sd">        whenever there is no window (which is the only case where the title has</span>
+<span class="sd">        something to add).</span>
+
+<span class="sd">        Pages are keyed by a stable per-condition slug, so a figure file and a</span>
+<span class="sd">        condition always name each other.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subject: Ignored — the check reads its own analyzed state.</span>
+<span class="sd">            for_save: Accepted for the plotting contract; the geometry is the</span>
+<span class="sd">                same either way.</span>
+<span class="sd">            **kwargs: ``height`` overrides the per-page figure height.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`PlotOutput` with one :class:`PlotPage` per condition, in</span>
+<span class="sd">            slug order.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If :meth:`analyze` has not run.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="k">del</span> <span class="n">subject</span><span class="p">,</span> <span class="n">for_save</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;call analyze() first&quot;</span><span class="p">)</span>
+
+        <span class="n">height</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="mi">420</span><span class="p">)</span>
+        <span class="n">pages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">PlotPage</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_conditions</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">slug</span><span class="p">):</span>
+            <span class="n">pages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">PlotPage</span><span class="p">(</span>
+                    <span class="n">key</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_condition_label</span><span class="p">(</span><span class="n">state</span><span class="p">),</span>
+                    <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                        <span class="n">column</span><span class="p">:</span> <span class="n">_metadata_scalar</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+                    <span class="p">},</span>
+                    <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_condition_figure</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">plotly_go</span><span class="o">=</span><span class="n">go</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">pages</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="FittingWindow.report">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.FittingWindow.html#phenotypic.analysis.FittingWindow.report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the complete per-condition report (every page).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_condition_figure</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">_ConditionOutcome</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">plotly_go</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw one condition&#39;s mean-CV chart.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            state: The condition to draw.</span>
+<span class="sd">            plotly_go: ``plotly.graph_objects``, imported by the caller so the</span>
+<span class="sd">                lazy-import contract is visible at one place.</span>
+<span class="sd">            height: Figure height in pixels.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The figure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warn</span><span class="p">,</span> <span class="n">fail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span>
+        <span class="n">figure</span> <span class="o">=</span> <span class="n">plotly_go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">,</span> <span class="n">colour</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">warn</span><span class="p">,</span> <span class="s2">&quot;rgba(0, 158, 115, 0.10)&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">warn</span><span class="p">,</span> <span class="n">fail</span><span class="p">,</span> <span class="s2">&quot;rgba(230, 159, 0, 0.10)&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">fail</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">fail</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="s2">&quot;rgba(213, 94, 0, 0.10)&quot;</span><span class="p">),</span>
+        <span class="p">):</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">add_hrect</span><span class="p">(</span>
+                <span class="n">y0</span><span class="o">=</span><span class="n">lower</span><span class="p">,</span> <span class="n">y1</span><span class="o">=</span><span class="n">upper</span><span class="p">,</span> <span class="n">line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">fillcolor</span><span class="o">=</span><span class="n">colour</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;below&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">window</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">window</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">add_vrect</span><span class="p">(</span>
+                <span class="n">x0</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+                <span class="n">x1</span><span class="o">=</span><span class="n">end</span><span class="p">,</span>
+                <span class="n">line_width</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">fillcolor</span><span class="o">=</span><span class="s2">&quot;rgba(0, 54, 96, 0.12)&quot;</span><span class="p">,</span>
+                <span class="n">layer</span><span class="o">=</span><span class="s2">&quot;below&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">figure</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">plotly_go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">frames</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;measured&quot;</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dash&quot;</span><span class="p">:</span> <span class="s2">&quot;dash&quot;</span><span class="p">,</span> <span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#56B4E9&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">figure</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">plotly_go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">frames</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">trend</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#003660&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_condition_label</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">state</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">window</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> — no window (</span><span class="si">{</span><span class="n">state</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">outcome</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="n">figure</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;mean replicate CV of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">figure</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_condition_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">_ConditionOutcome</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a readable name for one condition.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- internals --------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_condition_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return one group&#39;s ``groupby`` values as a normalized tuple key.</span>
+
+<span class="sd">        **Read column-wise, never row-wise.** ``group.iloc[0]`` returns a Series</span>
+<span class="sd">        with the common dtype of *every* column in the frame, so on an</span>
+<span class="sd">        all-numeric frame an integer condition value ``7`` comes back as</span>
+<span class="sd">        ``7.0`` — and :func:`_condition_slug` hashes ``int`` and ``float``</span>
+<span class="sd">        distinctly, so the page key would depend on which other columns the</span>
+<span class="sd">        frame happens to carry. ``group[column].iloc[0]`` keeps each value in</span>
+<span class="sd">        its own column&#39;s dtype.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">_plain_value</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">series</span><span class="p">:</span> <span class="n">MeanCvSeries</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the centred rolling-mean trend aligned with ``series.frames``.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">derivatives</span><span class="p">(</span>
+            <span class="n">series</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
+            <span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">,</span>
+            <span class="n">smooth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smooth</span><span class="p">,</span>
+            <span class="n">rough_roll</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rough_roll</span><span class="p">,</span>
+            <span class="n">edge_frames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">edge_frames</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">smooth_v</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_metric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">_ConditionOutcome</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the condition&#39;s metric: window mean CV, or ``+inf``.</span>
+
+<span class="sd">        ``+inf`` rather than a fallback value is what makes a windowless</span>
+<span class="sd">        condition fail through the base class&#39;s own comparison, with no</span>
+<span class="sd">        override of its status logic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">result</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">outcome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">WindowOutcome</span><span class="o">.</span><span class="n">FOUND</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">window</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">window</span>
+        <span class="n">frames</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">frames</span>
+        <span class="n">inside</span> <span class="o">=</span> <span class="p">(</span><span class="n">frames</span> <span class="o">&gt;=</span> <span class="n">start</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">frames</span> <span class="o">&lt;=</span> <span class="n">end</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="n">inside</span><span class="o">.</span><span class="n">any</span><span class="p">()):</span>  <span class="c1"># pragma: no cover - a found window has frames</span>
+            <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">[</span><span class="n">inside</span><span class="p">]))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_best_cv</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">MeanCvSeries</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the series minimum, or NaN when no frame counted.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">mean_cv</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_n_groups</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="n">MeanCvSeries</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the median replicate-group count, or ``None`` when empty.</span>
+
+<span class="sd">        Rounded to the nearest integer, halves to even — Python&#39;s own ``round``</span>
+<span class="sd">        rule, and the one the ``NGroups`` schema entry states. Truncating</span>
+<span class="sd">        instead reported 3 for counted-group counts of ``[3, 4]``, which</span>
+<span class="sd">        understates the sample size the verdict rests on.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">n_counted</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">n_counted</span><span class="p">))))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_metadata_scalar</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coerce a condition value to something a :class:`PlotPage` may carry.&quot;&quot;&quot;</span>
+    <span class="n">plain</span> <span class="o">=</span> <span class="n">_plain_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">plain</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plain</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">plain</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">plain</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

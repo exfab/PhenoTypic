@@ -1140,25 +1140,29 @@
 <span class="sd">        standard least-squares linear regression to fit the line: y = m*x + b.</span>
 
 <span class="sd">        For row-wise analysis (axis=0), the function groups colonies by their row</span>
-<span class="sd">        index and fits a line to the relationship between column position and column</span>
-<span class="sd">        coordinate. For column-wise analysis (axis=1), it groups by column index and</span>
-<span class="sd">        fits a line to the relationship between row position and row coordinate.</span>
+<span class="sd">        index and regresses the centers&#39; row coordinate (CenterRR) on their column</span>
+<span class="sd">        coordinate (CenterCC). For column-wise analysis (axis=1), it groups by column</span>
+<span class="sd">        index and regresses the column coordinate on the row coordinate. Both</span>
+<span class="sd">        coordinates are in pixels, so the slope is dimensionless.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            axis (int): Axis along which to compute alignment:</span>
 
-<span class="sd">                - 0: Row-wise alignment. For each row, measures how colony centers</span>
-<span class="sd">                  vary along the column (CC) axis as a function of their grid column</span>
-<span class="sd">                  position. Slope indicates pixels of drift per grid column.</span>
-<span class="sd">                - 1: Column-wise alignment. For each column, measures how colony</span>
-<span class="sd">                  centers vary along the row (RR) axis as a function of their grid</span>
-<span class="sd">                  row position. Slope indicates pixels of drift per grid row.</span>
+<span class="sd">                - 0: Row-wise alignment. For each row, measures how the colony</span>
+<span class="sd">                  centers&#39; row coordinate (RR, vertical) changes as their column</span>
+<span class="sd">                  coordinate (CC, horizontal) grows. Slope is pixels of vertical</span>
+<span class="sd">                  drift per pixel along the row, a dimensionless tilt.</span>
+<span class="sd">                - 1: Column-wise alignment. For each column, measures how the</span>
+<span class="sd">                  colony centers&#39; column coordinate (CC) changes as their row</span>
+<span class="sd">                  coordinate (RR) grows. Slope is pixels of horizontal drift per</span>
+<span class="sd">                  pixel down the column, a dimensionless tilt.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            tuple[np.ndarray, np.ndarray]: A tuple containing:</span>
 <span class="sd">                - m_slope (np.ndarray[float]): Slopes for each row or column. Length</span>
-<span class="sd">                  is nrows if axis=0, ncols if axis=1. Values represent pixels of</span>
-<span class="sd">                  drift per grid position unit. NaN indicates no colonies in that</span>
+<span class="sd">                  is nrows if axis=0, ncols if axis=1. Values are dimensionless</span>
+<span class="sd">                  (pixels of drift per pixel travelled, the tangent of the tilt</span>
+<span class="sd">                  angle). NaN indicates no colonies in that</span>
 <span class="sd">                  row/column, 0 indicates single colony with no drift measurable.</span>
 <span class="sd">                - b_intercept (np.ndarray): Y-intercepts for each row/column, rounded</span>
 <span class="sd">                  to nearest integer. NaN indicates no colonies in that row/column.</span>
@@ -1170,14 +1174,14 @@
 <span class="sd">        Examples:</span>
 <span class="sd">            Analyze colony alignment across grid axes:</span>
 
-<span class="sd">            &gt;&gt;&gt; # Check row alignment (horizontal drift of colonies across each row)</span>
+<span class="sd">            &gt;&gt;&gt; # Check row alignment (vertical drift of colonies along each row)</span>
 <span class="sd">            &gt;&gt;&gt; row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)</span>
-<span class="sd">            &gt;&gt;&gt; print(f&quot;Row alignment slopes (pixels/column): {row_slopes}&quot;)</span>
-<span class="sd">            &gt;&gt;&gt; # Check column alignment (vertical drift of colonies across each column)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Row alignment slopes (dimensionless): {row_slopes}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Check column alignment (horizontal drift of colonies down each column)</span>
 <span class="sd">            &gt;&gt;&gt; col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)</span>
-<span class="sd">            &gt;&gt;&gt; print(f&quot;Column alignment slopes (pixels/row): {col_slopes}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Column alignment slopes (dimensionless): {col_slopes}&quot;)</span>
 <span class="sd">            &gt;&gt;&gt; # Identify rows with significant drift indicating pinning issues</span>
-<span class="sd">            &gt;&gt;&gt; drift_threshold = 0.05  # pixels per grid position</span>
+<span class="sd">            &gt;&gt;&gt; drift_threshold = 0.05  # px of drift per px travelled (~2.9 degrees)</span>
 <span class="sd">            &gt;&gt;&gt; problematic_rows = np.where(np.abs(row_slopes) &gt; drift_threshold)[0]</span>
 <span class="sd">            &gt;&gt;&gt; print(f&quot;Rows with significant drift: {problematic_rows}&quot;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>

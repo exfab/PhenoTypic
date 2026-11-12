@@ -62,6 +62,7 @@ phenotypic.abc\_.PrefabPipeline
       ~PrefabPipeline.set_plots
       ~PrefabPipeline.set_post
       ~PrefabPipeline.set_qc
+      ~PrefabPipeline.summary
       ~PrefabPipeline.to_json
       ~PrefabPipeline.update_forward_refs
       ~PrefabPipeline.validate

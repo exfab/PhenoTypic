@@ -38,6 +38,7 @@ phenotypic.measure.MeasureIntensity
       ~MeasureIntensity.model_validate_strings
       ~MeasureIntensity.output_header
       ~MeasureIntensity.output_header_placeholders
+      ~MeasureIntensity.output_unit
       ~MeasureIntensity.parse_file
       ~MeasureIntensity.parse_obj
       ~MeasureIntensity.parse_raw

@@ -763,10 +763,10 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_plate_72hr</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.grid import CenteredAutoGridFinder</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.schema import GRID</span>
 <span class="sd">        &gt;&gt;&gt; plate = load_plate_72hr(mode=&quot;GridImage&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; image = SmallObjectRemover().apply(OtsuDetector().apply(plate))</span>
+<span class="sd">        &gt;&gt;&gt; image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))</span>
 <span class="sd">        &gt;&gt;&gt; grid_finder = CenteredAutoGridFinder(nrows=8, ncols=12)</span>
 <span class="sd">        &gt;&gt;&gt; grid_df = grid_finder.measure(image)</span>
 <span class="sd">        &gt;&gt;&gt; # One row per colony, with its well assignment</span>
@@ -824,10 +824,10 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_plate_72hr</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.grid import CenteredAutoGridFinder</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.schema import GRID</span>
 <span class="sd">        &gt;&gt;&gt; plate = load_plate_72hr(mode=&quot;GridImage&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; image = SmallObjectRemover().apply(OtsuDetector().apply(plate))</span>
+<span class="sd">        &gt;&gt;&gt; image = RemoveSmallObjects().apply(OtsuDetector().apply(plate))</span>
 <span class="sd">        &gt;&gt;&gt; grid_df = CenteredAutoGridFinder(nrows=8, ncols=12).measure(image)</span>
 <span class="sd">        &gt;&gt;&gt; # Select the colony in one well</span>
 <span class="sd">        &gt;&gt;&gt; section_5 = grid_df[grid_df[str(GRID.ROW_MAJOR_IDX)] == 5]</span>

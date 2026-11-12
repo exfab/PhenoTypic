@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -754,43 +755,47 @@ trusted; the <a class="reference internal" href="tier_system.html"><span class="
 <td><p>Quality control</p></td>
 <td><p>Flag groups whose detected colony count diverges from metadata.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="qc/GridOccupancy.html"><span class="doc">GridOccupancy</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="qc/FittingWindow.html"><span class="doc">FittingWindow</span></a></p></td>
+<td><p>Quality control</p></td>
+<td><p>Propose the frames over which a condition’s replicates agree well enough to fit.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="qc/GridOccupancy.html"><span class="doc">GridOccupancy</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag groups whose grid occupancy (filled cells / expected) is low.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="qc/ICC.html"><span class="doc">ICC</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="qc/ICC.html"><span class="doc">ICC</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag <code class="docutils literal notranslate"><span class="pre">groupby</span></code> groups whose replicates have low ICC(2,1) agreement.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="qc/MaxModifiedZScore.html"><span class="doc">MaxModifiedZScore</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="qc/MaxModifiedZScore.html"><span class="doc">MaxModifiedZScore</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins whose worst member is a robust outlier.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="qc/RelativeMAD.html"><span class="doc">RelativeMAD</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="qc/RelativeMAD.html"><span class="doc">RelativeMAD</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with poor robust agreement across replicates.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="qc/ReplicateAgreement.html"><span class="doc">ReplicateAgreement</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="qc/ReplicateAgreement.html"><span class="doc">ReplicateAgreement</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with poor agreement across replicates.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="qc/TukeyOutlierFraction.html"><span class="doc">TukeyOutlierFraction</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="qc/TukeyOutlierFraction.html"><span class="doc">TukeyOutlierFraction</span></a></p></td>
 <td><p>Quality control</p></td>
 <td><p>Flag <code class="docutils literal notranslate"><span class="pre">(group,</span> <span class="pre">time)</span></code> bins with a high fraction of Tukey outliers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="models/LinearCapAndLagModel.html"><span class="doc">LinearCapAndLagModel</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="models/LinearCapAndLagModel.html"><span class="doc">LinearCapAndLagModel</span></a></p></td>
 <td><p>Growth models</p></td>
 <td><p>Linear-softplus growth fitter with a softplus saturation ceiling.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="models/LinearLagModel.html"><span class="doc">LinearLagModel</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="models/LinearLagModel.html"><span class="doc">LinearLagModel</span></a></p></td>
 <td><p>Growth models</p></td>
 <td><p>Linear-with-softplus lag-phase growth fitter (no saturation).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="models/LogGrowthModel.html"><span class="doc">LogGrowthModel</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="models/LogGrowthModel.html"><span class="doc">LogGrowthModel</span></a></p></td>
 <td><p>Growth models</p></td>
 <td><p>Logistic-growth model fitter with regularized least-squares objective.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="correction/EdgeCorrector.html"><span class="doc">EdgeCorrector</span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="correction/EdgeCorrector.html"><span class="doc">EdgeCorrector</span></a></p></td>
 <td><p>Plate correction</p></td>
 <td><p>Analyzer for detecting and correcting edge effects in arrayed colony growth.</p></td>
 </tr>

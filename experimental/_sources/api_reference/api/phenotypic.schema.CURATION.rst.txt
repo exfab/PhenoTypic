@@ -19,6 +19,7 @@ phenotypic.schema.CURATION
       ~CURATION.kind
       ~CURATION.metric_family
       ~CURATION.tier
+      ~CURATION.default_unit
       ~CURATION.rembi_module
       ~CURATION.change_note
       ~CURATION.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.CURATION
       ~CURATION.METRIC_FAMILY
       ~CURATION.resolved_kind
       ~CURATION.resolved_tier
+      ~CURATION.unit
       ~CURATION.resolved_rembi_module
       ~CURATION.use_label
       ~CURATION.use_badge
@@ -99,6 +101,7 @@ phenotypic.schema.CURATION
       ~CURATION.image
       ~CURATION.pair
       ~CURATION.tier_override
+      ~CURATION.unit_override
       ~CURATION.derivation_type
       ~CURATION.derives_from
       ~CURATION.rembi_module_override

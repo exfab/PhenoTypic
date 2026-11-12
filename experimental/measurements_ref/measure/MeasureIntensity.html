@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -657,62 +658,62 @@ finished, which were segmented and measured on raw integer counts.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_IntegratedIntensity</span></code></p></td>
-<td><p>The sum of the object’s pixels</p></td>
+<td><p>Sum of the grayscale values of all the colony’s pixels, so it grows with both the colony’s area and how bright its pixels are.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-outline-info sd-text-info reference internal" href="../categories/index.html#measurement-category-startingmetrics"><span class="std std-ref">Starting Metrics</span></a></p></td>
+<td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_Density</span></code></p></td>
-<td><p>The ratio of the object’s intensity to the max possible intensity of the object</p></td>
+<td><p>The colony’s integrated intensity divided by its area in pixels: the mean grayscale value of its pixels, equal to MeanIntensity.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_ConvexDensity</span></code></p></td>
-<td><p>The ratio of the objects intensity to the max possible intensity of the object’s convex hull</p></td>
+<td><p>The colony’s integrated intensity divided by the area of its convex hull, so indentations and gaps in the colony lower it relative to Density. The hull passes through pixel centers, so its area is smaller than the pixel count: slightly for a convex colony, where this value can slightly exceed Density, and substantially for an object of only a few pixels (a 2 x 2 pixel object has a hull area of 1, so this value is four times Density). It is NaN for a single pixel or a one-pixel-wide line, which has no hull.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_MinimumIntensity</span></code></p></td>
-<td><p>The minimum intensity of the object</p></td>
+<td><p>Lowest grayscale value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_MaximumIntensity</span></code></p></td>
-<td><p>The maximum intensity of the object</p></td>
+<td><p>Highest grayscale value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_MeanIntensity</span></code></p></td>
-<td><p>The mean intensity of the object</p></td>
+<td><p>Average grayscale value of the colony’s pixels, on the gray layer’s scale from 0 for black to 1 for the brightest value the image’s pixels can hold. For an RGB scan the gray layer is its luminance, so 1 is white; for a single-channel scan 1 is the 8- or 16-bit maximum.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-<td></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-outline-info sd-text-info reference internal" href="../categories/index.html#measurement-category-startingmetrics"><span class="std std-ref">Starting Metrics</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_MedianIntensity</span></code></p></td>
-<td><p>The median intensity of the object</p></td>
+<td><p>Middle grayscale value of the colony’s pixels: half of them are at or below it, so a few very bright or very dark pixels move it less than they move the mean.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_StandardDeviationIntensity</span></code></p></td>
-<td><p>The standard deviation of the object</p></td>
+<td><p>How much the grayscale values of the colony’s pixels vary around their mean, as their standard deviation. It is the population standard deviation, dividing by the pixel count n.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_CoefficientVarianceIntensity</span></code></p></td>
-<td><p>The coefficient of variation of the object</p></td>
+<td><p>How much the colony’s grayscale values vary relative to their mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_LowerQuartileIntensity</span></code></p></td>
-<td><p>The lower quartile intensity of the object</p></td>
+<td><p>Grayscale value that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_UpperQuartileIntensity</span></code></p></td>
-<td><p>The upper quartile intensity of the object</p></td>
+<td><p>Grayscale value that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_InterquartileRangeIntensity</span></code></p></td>
-<td><p>The interquartile range of the object</p></td>
+<td><p>Spread of the middle half of the colony’s grayscale values, from the lower to the upper quartile. It is UpperQuartileIntensity minus LowerQuartileIntensity.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 <td></td>
 </tr>

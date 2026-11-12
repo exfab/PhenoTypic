@@ -1,0 +1,1116 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.abc_._linear_softplus_base &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sidebar-resize.css?v=bc74e319" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=88e4c0c0"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/abc_/_linear_softplus_base';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script src="../../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/analysis/abc_/_linear_softplus_base.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.21.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.abc_._linear_softplus_base</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.abc_._linear_softplus_base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Shared base class for linear-softplus growth fitters.</span>
+
+<span class="sd">Holds the σ-resolution, inoculum-prior, and aggregation-broadcasting</span>
+<span class="sd">machinery used by both :class:`LinearLagModel` (single softplus, no</span>
+<span class="sd">saturation ceiling) and :class:`LinearCapAndLagModel` (with a softplus</span>
+<span class="sd">saturation ceiling). Subclasses provide their own ``model_func``</span>
+<span class="sd">geometry, parameter unpacking, and (in LinearCapAndLagModel) per-group mode</span>
+<span class="sd">dispatch — everything else lives here.</span>
+
+<span class="sd">Class-level constants ``_V_UPPER`` and ``_STDERR_FLOOR_QUANTILE`` are</span>
+<span class="sd">intentionally not user-tunable kwargs on either subclass; they are</span>
+<span class="sd">power-user knobs that move on subclass override.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._helper._inoculum_prior</span><span class="w"> </span><span class="kn">import</span> <span class="n">_InoculumPrior</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._model_fitter</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelFitter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">normalize_measurement_metadata_columns</span><span class="p">,</span>
+    <span class="n">normalize_metadata_column_reference</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">_DEFAULT_BETA</span> <span class="o">=</span> <span class="mf">10.0</span>
+<span class="sd">&quot;&quot;&quot;Module-level default for the saturation transition sharpness ``β``.</span>
+
+<span class="sd">Used as the seed for fitted-β optimization in :class:`LinearCapAndLagModel`</span>
+<span class="sd">and as the fallback when the prediction row carries ``NaN`` for the</span>
+<span class="sd">``beta`` field.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">_RATE_BOUND_RTOL</span> <span class="o">=</span> <span class="mf">1e-6</span>
+<span class="sd">&quot;&quot;&quot;Relative tolerance for &quot;``v`` sits at its upper bound&quot;.</span>
+
+<span class="sd">The trust-region optimizer returns a bound-pinned parameter a few ULPs</span>
+<span class="sd">inside the bound (``49.99999999999999`` for a bound of 50), so equality</span>
+<span class="sd">would miss it.&quot;&quot;&quot;</span>
+
+<span class="n">_RATE_BOUND_MAX_NAMED_GROUPS</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="sd">&quot;&quot;&quot;How many affected groups :class:`GrowthRateAtBoundWarning` names.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="GrowthRateAtBoundWarning">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GrowthRateAtBoundWarning.html#phenotypic.analysis.GrowthRateAtBoundWarning">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GrowthRateAtBoundWarning</span><span class="p">(</span><span class="ne">UserWarning</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A fitted growth rate sits at the optimizer&#39;s upper bound.</span>
+
+<span class="sd">    :class:`~phenotypic.analysis.LinearLagModel` and</span>
+<span class="sd">    :class:`~phenotypic.analysis.LinearCapAndLagModel` bound the post-lag</span>
+<span class="sd">    growth rate ``v`` at 50 units of ``on`` per unit of time. A fit that</span>
+<span class="sd">    returns ``v`` at that bound did not find the rate; it hit the ceiling,</span>
+<span class="sd">    and the true rate is probably higher. Area columns reach it easily,</span>
+<span class="sd">    because area grows with the square of radius.</span>
+
+<span class="sd">    The warning is emitted once per ``analyze`` call, from the calling</span>
+<span class="sd">    process (so ``n_jobs &gt; 1`` still shows it). It names the model, the</span>
+<span class="sd">    number of affected groups and up to five of their keys. It never</span>
+<span class="sd">    changes the fitted values. To fix the cause, fit a radius column such</span>
+<span class="sd">    as ``Size_RobustMeanRadius``, or check that the time column is in the</span>
+<span class="sd">    units you expect (time in days rather than hours multiplies the rate</span>
+<span class="sd">    by 24). It is not raised for ``alpha``, the lag-transition sharpness,</span>
+<span class="sd">    which sits at its own bound whenever the growth onset is sharp.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        A synthetic area series growing at 120 px per hour hits the bound:</span>
+
+<span class="sd">        &gt;&gt;&gt; import warnings</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import GrowthRateAtBoundWarning, LinearLagModel</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import CULTURE, GENETIC</span>
+<span class="sd">        &gt;&gt;&gt; strain, time = str(GENETIC.STRAIN), str(CULTURE.TIME)</span>
+<span class="sd">        &gt;&gt;&gt; t = np.arange(0.0, 115.0, 6.0)</span>
+<span class="sd">        &gt;&gt;&gt; area = 500.0 + 120.0 * np.logaddexp(0.0, t - 24.0)</span>
+<span class="sd">        &gt;&gt;&gt; noise = 1 + 0.005 * np.random.default_rng(0).standard_normal(3 * t.size)</span>
+<span class="sd">        &gt;&gt;&gt; df = pd.DataFrame({</span>
+<span class="sd">        ...     strain: &quot;SYN-01&quot;,</span>
+<span class="sd">        ...     time: np.tile(t, 3),</span>
+<span class="sd">        ...     &quot;Size_Area&quot;: np.tile(area, 3) * noise,</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; model = LinearLagModel(on=&quot;Size_Area&quot;, groupby=[strain])</span>
+<span class="sd">        &gt;&gt;&gt; with warnings.catch_warnings(record=True) as caught:</span>
+<span class="sd">        ...     warnings.simplefilter(&quot;always&quot;)</span>
+<span class="sd">        ...     fit = model.analyze(df)</span>
+<span class="sd">        &gt;&gt;&gt; any(w.category is GrowthRateAtBoundWarning for w in caught)</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_LinearSoftplusBase</span><span class="p">(</span><span class="n">ModelFitter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shared infrastructure for :class:`LinearLagModel` / :class:`LinearCapAndLagModel`.</span>
+
+<span class="sd">    Subclasses must implement ``model_func``, ``_initial_guess``,</span>
+<span class="sd">    ``_bounds``, ``_unpack_params``, ``_predict_kwargs``, and</span>
+<span class="sd">    ``_hover_fields`` (i.e. everything that depends on whether a</span>
+<span class="sd">    saturation ceiling is part of the model). Everything related to</span>
+<span class="sd">    σ resolution, the s0 prior, and pre-aggregation broadcasting is</span>
+<span class="sd">    inherited from this base.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_V_UPPER</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">50.0</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Upper bound on ``v`` in the optimizer.</span>
+
+<span class="sd">    Subclass override if the units of ``on`` make the default 50/[time]</span>
+<span class="sd">    too tight; tuning this from a kwarg is intentionally not exposed.&quot;&quot;&quot;</span>
+
+    <span class="n">_STDERR_FLOOR_QUANTILE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lower bound on per-timepoint σ as a quantile of the group&#39;s σ.</span>
+
+<span class="sd">    Sub-quantile σ entries are lifted to the q-th percentile of the</span>
+<span class="sd">    group&#39;s finite, positive σ values. With the default ``0.25`` and</span>
+<span class="sd">    a typical empirical σ distribution (where σ_max is within ~4× of</span>
+<span class="sd">    σ_median), this caps the 1/σ² weight ratio between the softest</span>
+<span class="sd">    and stiffest points around 16×. On heavily-skewed σ inputs the</span>
+<span class="sd">    post-floor ratio is larger but still orders of magnitude below</span>
+<span class="sd">    the unfloored ratio. Set to ``None`` on a subclass to disable the</span>
+<span class="sd">    floor and recover raw inverse-variance weighting.&quot;&quot;&quot;</span>
+
+    <span class="n">stderr_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># ``s0_prior`` accepts bool / float / int / str / None. It is typed</span>
+    <span class="c1"># ``Any`` (not a union) so pydantic stores the value verbatim without</span>
+    <span class="c1"># coercion or rejection — type-dispatch and validation are the job of</span>
+    <span class="c1"># ``_InoculumPrior.__init__`` below, which raises ``TypeError`` for</span>
+    <span class="c1"># unsupported types and ``ValueError`` for non-positive scalars.</span>
+    <span class="n">s0_prior</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">s0_prior_cv</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">s0_prior_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">s0_prior_groupby</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">_prior</span><span class="p">:</span> <span class="n">_InoculumPrior</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">()</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;s0_prior&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_s0_prior_reference</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize metadata-backed prior columns without coercing scalar modes.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">normalize_metadata_column_reference</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the inoculum-prior helper from the resolved fields.</span>
+
+<span class="sd">        Runs after pydantic has validated every field. Constructing</span>
+<span class="sd">        :class:`_InoculumPrior` here preserves the original</span>
+<span class="sd">        ``__init__``-time validation: it raises ``TypeError`` for an</span>
+<span class="sd">        unsupported ``s0_prior`` type and ``ValueError`` for a</span>
+<span class="sd">        non-positive scalar, a mutually-exclusive σ pair, or an empty</span>
+<span class="sd">        ``s0_prior_groupby`` list.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span> <span class="o">=</span> <span class="n">_InoculumPrior</span><span class="p">(</span>
+                <span class="n">s0_prior</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0_prior</span><span class="p">,</span>
+                <span class="n">s0_prior_cv</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0_prior_cv</span><span class="p">,</span>
+                <span class="n">s0_prior_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0_prior_sigma</span><span class="p">,</span>
+                <span class="n">s0_prior_groupby</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0_prior_groupby</span><span class="p">,</span>
+                <span class="n">on_column</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Shared model math — the linear+lag softplus term used by both</span>
+    <span class="c1"># subclasses. LinearCapAndLagModel wraps this with a saturation ceiling</span>
+    <span class="c1"># in its own ``model_func``.</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_lag_softplus</span><span class="p">(</span>
+            <span class="n">t</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">v</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">lam</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Linear-with-softplus-lag growth, no saturation.</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">            s(t) = \frac{v}{\alpha}\, \ln\!\bigl(1 + e^{\alpha(t-\lambda)}\bigr) + s_0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">t_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="c1"># ``logaddexp`` is the numerically stable form of log(1 + exp(x)).</span>
+        <span class="k">return</span> <span class="n">v</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">logaddexp</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">t_arr</span> <span class="o">-</span> <span class="n">lam</span><span class="p">))</span> <span class="o">/</span> <span class="n">alpha</span> <span class="o">+</span> <span class="n">s0</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Loss function — handles 4-or-5 param vectors and the s0 prior.</span>
+    <span class="c1"># The 5-param case is only used by LinearCapAndLagModel&#39;s fitted_beta mode.</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_loss_func</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">params</span><span class="p">,</span>
+            <span class="n">t</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">y_stderr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">smax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">s0_prior_mean</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">s0_prior_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">_</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Weighted residuals with optional inoculum prior on ``s0``.</span>
+
+<span class="sd">        Residuals are the measurement-vs-model differences, optionally</span>
+<span class="sd">        divided by per-timepoint ``y_stderr``. When ``s0_prior_mean`` and</span>
+<span class="sd">        ``s0_prior_sigma`` are supplied (resolved per-group by</span>
+<span class="sd">        :meth:`_extra_loss_kwargs` on the subclass), a virtual residual</span>
+<span class="sd">        ``(s0 - s0_prior_mean) / s0_prior_sigma`` is appended to</span>
+<span class="sd">        implement the MAP-equivalent Gaussian prior on ``s0``.</span>
+
+<span class="sd">        The optimizer vector is 4 or 5 elements depending on the</span>
+<span class="sd">        per-group mode chosen by the subclass. In the 5-element case</span>
+<span class="sd">        (LinearCapAndLagModel fitted-beta) the 5th entry is ``beta`` and</span>
+<span class="sd">        overrides the kwarg. In the 4-element case the kwargs carry</span>
+<span class="sd">        ``smax`` and ``beta``, with ``smax=None`` indicating the</span>
+<span class="sd">        no-saturation path used by :class:`LinearLagModel`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">v</span><span class="p">,</span> <span class="n">s0</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+            <span class="n">beta_eff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v</span><span class="p">,</span> <span class="n">s0</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+            <span class="n">beta_eff</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span> <span class="k">if</span> <span class="n">beta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_DEFAULT_BETA</span>
+
+        <span class="k">if</span> <span class="n">smax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lag_softplus</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span> <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span> <span class="n">lam</span><span class="o">=</span><span class="n">lam</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_func</span><span class="p">(</span>
+                    <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                    <span class="n">v</span><span class="o">=</span><span class="n">v</span><span class="p">,</span>
+                    <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
+                    <span class="n">lam</span><span class="o">=</span><span class="n">lam</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                    <span class="n">smax</span><span class="o">=</span><span class="n">smax</span><span class="p">,</span>
+                    <span class="n">beta</span><span class="o">=</span><span class="n">beta_eff</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y_stderr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">residuals</span> <span class="o">=</span> <span class="n">residuals</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y_stderr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">s0_prior_mean</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">s0_prior_sigma</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prior_residual</span> <span class="o">=</span> <span class="p">(</span><span class="n">s0</span> <span class="o">-</span> <span class="n">s0_prior_mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">s0_prior_sigma</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">residuals</span><span class="p">,</span> <span class="p">[</span><span class="n">prior_residual</span><span class="p">]])</span>
+        <span class="k">return</span> <span class="n">residuals</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Per-group helpers — σ resolution and prior stat lookup.</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inoc_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve the ``s0`` prior ``(µ, σ)`` for one group, or ``None``.</span>
+
+<span class="sd">        Thin delegate to :meth:`_InoculumPrior.stats_for`; kept as a</span>
+<span class="sd">        method on the base so subclasses&#39; ``_initial_guess`` / ``_bounds``</span>
+<span class="sd">        and tests that probe via ``m._inoc_stats(group)`` continue to</span>
+<span class="sd">        work unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">stats_for</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_y_stderr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a per-timepoint ``y_stderr`` vector aligned with group rows.</span>
+
+<span class="sd">        Priority order:</span>
+<span class="sd">          1. User-supplied ``stderr_label`` column (no pool fallback —</span>
+<span class="sd">             the user has opted into their own σ semantics).</span>
+<span class="sd">          2. Auto-derived replicate-SE column ``f&quot;{on}_stderr&quot;``. NaN /</span>
+<span class="sd">             zero σ entries (n=1 timepoints, or coincidentally-identical</span>
+<span class="sd">             replicates) are filled with the broadcast pooled point-level</span>
+<span class="sd">             std ``f&quot;{on}_std_pool&quot;``. When the pool is itself NaN</span>
+<span class="sd">             (fully-singleton fit group), the auto-σ path degrades to</span>
+<span class="sd">             the ε-fill behavior used by the user-supplied branch.</span>
+<span class="sd">          3. No weights (return ``None``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pool_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_stderr&quot;</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_stderr&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">pool_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_std_pool&quot;</span>
+            <span class="k">if</span> <span class="n">pool_col</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">pool_series</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">pool_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">pool_series</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                    <span class="n">cand</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">pool_series</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">cand</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cand</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">pool_value</span> <span class="o">=</span> <span class="n">cand</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># When no positive σ exist AND no pool-std is available (noise-</span>
+        <span class="c1"># free synthetic fixtures where replicates agree and SEM is 0,</span>
+        <span class="c1"># or fully-singleton-replicate fit groups where SEM is NaN),</span>
+        <span class="c1"># skip the weighting pathway entirely. Faking σ with an ε-fill</span>
+        <span class="c1"># would rescale residuals by ~1/ε and break the conditioning of</span>
+        <span class="c1"># robust losses (huber, soft_l1, etc.) whose ``f_scale`` threshold</span>
+        <span class="c1"># is interpreted in residual units.</span>
+        <span class="n">positive</span> <span class="o">=</span> <span class="n">raw</span><span class="p">[(</span><span class="n">raw</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">raw</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">positive</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">pool_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Fill NaN / zero σ entries. When auto-deriving σ and the fit</span>
+        <span class="c1"># group has at least one multi-replicate timepoint, use the</span>
+        <span class="c1"># broadcast pooled point-level std — this gives n=1 rows σ ≈</span>
+        <span class="c1"># typical point noise, so their 1/σ² weight is commensurate</span>
+        <span class="c1"># with (rather than dominating) the SEM-weighted multi-replicate</span>
+        <span class="c1"># rows. Fall back to the original ε-scaled fill on the user-</span>
+        <span class="c1"># supplied ``stderr_label`` path or when no pool is available.</span>
+        <span class="k">if</span> <span class="n">pool_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fill</span> <span class="o">=</span> <span class="n">pool_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-8</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">positive</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="n">eps</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">eps</span><span class="p">):</span>
+                <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-8</span>
+            <span class="n">fill</span> <span class="o">=</span> <span class="n">eps</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">raw</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">raw</span><span class="p">),</span> <span class="n">raw</span><span class="p">,</span> <span class="n">fill</span><span class="p">)</span>
+
+        <span class="c1"># Optional quantile floor: neutralizes coincidentally-tiny σ</span>
+        <span class="c1"># that would otherwise dominate the 1/σ² weighting. Floor is</span>
+        <span class="c1"># computed from finite, &gt;0 entries only so pool-/ε-filled</span>
+        <span class="c1"># positions do not skew it; they still get lifted to the floor</span>
+        <span class="c1"># via np.maximum.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_STDERR_FLOOR_QUANTILE</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">positive</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">floor</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">positive</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_STDERR_FLOOR_QUANTILE</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">floor</span><span class="p">)</span> <span class="ow">and</span> <span class="n">floor</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">floor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sigma</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Aggregation hooks — pre-broadcast the SEM and prior-mean columns.</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extra_agg_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Carry per-timepoint stderr and per-group prior-mean columns.</span>
+
+<span class="sd">        - ``stderr_label`` or the auto-computed ``f&quot;{on}_stderr&quot;`` goes</span>
+<span class="sd">          through with a mean aggregation so the weighted loss can</span>
+<span class="sd">          read one SE per timepoint.</span>
+<span class="sd">        - The prior helper contributes its own entries (see</span>
+<span class="sd">          :meth:`_InoculumPrior.extra_agg_columns`) — a single</span>
+<span class="sd">          broadcast ``_group_mean`` column when the prior is</span>
+<span class="sd">          column-configured, empty otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">extras</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">extras</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">extras</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_stderr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span>
+            <span class="c1"># Pool column is constant within each fit group — &quot;first&quot;</span>
+            <span class="c1"># carries the broadcast value through the per-timepoint</span>
+            <span class="c1"># aggregation without change.</span>
+            <span class="n">extras</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_std_pool&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;first&quot;</span>
+        <span class="n">extras</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">extra_agg_columns</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">extras</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extra_loss_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-group kwargs forwarded to :meth:`_loss_func`.</span>
+
+<span class="sd">        Base implementation only attaches ``y_stderr`` and the s0 prior</span>
+<span class="sd">        stats. Subclasses that need ``smax`` / ``beta`` per-group</span>
+<span class="sd">        (i.e. :class:`LinearCapAndLagModel`) must override this and call</span>
+<span class="sd">        ``super()._extra_loss_kwargs(group)`` to pick up the σ + prior</span>
+<span class="sd">        entries first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kw</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">y_stderr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_y_stderr</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">y_stderr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kw</span><span class="p">[</span><span class="s2">&quot;y_stderr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_stderr</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inoc_stats</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stats</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kw</span><span class="p">[</span><span class="s2">&quot;s0_prior_mean&quot;</span><span class="p">],</span> <span class="n">kw</span><span class="p">[</span><span class="s2">&quot;s0_prior_sigma&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">stats</span>
+        <span class="k">return</span> <span class="n">kw</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pre-broadcast helper columns, then delegate to the base pipeline.</span>
+
+<span class="sd">        - When ``stderr_label`` is ``None``, a replicate-SEM column</span>
+<span class="sd">          derived via ``groupby.transform(&quot;sem&quot;)`` so the weighted</span>
+<span class="sd">          loss can downweight noisy timepoints automatically, plus a</span>
+<span class="sd">          per-fit-group pooled point-level std column</span>
+<span class="sd">          (``f&quot;{on}_std_pool&quot;``) computed as the median of per-</span>
+<span class="sd">          timepoint stds across the group&#39;s n≥2 timepoints. The pool</span>
+<span class="sd">          gives :meth:`_resolve_y_stderr` a principled fallback σ for</span>
+<span class="sd">          n=1 timepoints (σ ≈ typical point noise) instead of the</span>
+<span class="sd">          vanishingly-small ε fill. Fit groups with zero multi-</span>
+<span class="sd">          replicate timepoints produce NaN here and inherit the</span>
+<span class="sd">          unweighted-residual fallback.</span>
+<span class="sd">        - When the inoculum prior is column-based, a per-group median</span>
+<span class="sd">          of ``inoc_size_label`` at the earliest observed timepoint is</span>
+<span class="sd">          broadcast into a ``f&quot;{label}_group_mean&quot;`` column — the</span>
+<span class="sd">          source of ``µ`` for the Gaussian prior on ``s0``</span>
+<span class="sd">          (:class:`_InoculumPrior`).</span>
+
+<span class="sd">        Each helper is constant within its effective group, so the</span>
+<span class="sd">        base-class dict-style aggregation carries it through as a flat</span>
+<span class="sd">        column without MultiIndex juggling.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the inoculum prior is configured with an</span>
+<span class="sd">                ``inoc_groupby`` that is not a subset of ``self.groupby``,</span>
+<span class="sd">                or references columns absent from ``data``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">normalize_measurement_metadata_columns</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">is_configured</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+
+        <span class="n">needs_copy</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">needs_broadcast</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">needs_copy</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stderr_label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">se_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_stderr&quot;</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">se_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+            <span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s2">&quot;sem&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Pooled point-level std, broadcast per fit group. Used by</span>
+            <span class="c1"># ``_resolve_y_stderr`` as the σ fallback for n=1 timepoints.</span>
+            <span class="c1"># Fully-singleton fit groups yield NaN here → the resolver</span>
+            <span class="c1"># returns ``None`` and the fit runs unweighted (preserving</span>
+            <span class="c1"># the existing singleton-fallback behavior).</span>
+            <span class="n">std_pool_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">}</span><span class="s2">_std_pool&quot;</span>
+            <span class="n">std_pt</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+            <span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">std_pool_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">std_pt</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s2">&quot;median&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">)</span>
+
+        <span class="n">scores</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="c1"># Checked here, in the calling process, rather than per group in</span>
+        <span class="c1"># ``_unpack_params``: with ``n_jobs &gt; 1`` the per-group fit runs in</span>
+        <span class="c1"># a joblib worker whose warnings never reach the caller, and a</span>
+        <span class="c1"># per-group warning would repeat once per group (K0-05).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_if_rate_at_bound</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">scores</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_if_rate_at_bound</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Emit one :class:`GrowthRateAtBoundWarning` if any fitted ``v`` is pinned.</span>
+
+<span class="sd">        Reads the member-keyed ``_latest_fit_internal`` frame written by</span>
+<span class="sd">        :meth:`ModelFitter.analyze`. Only ``v`` is checked: ``alpha``</span>
+<span class="sd">        reaches its own bound on any sharp onset and is not a sign of a</span>
+<span class="sd">        wrong rate. Groups whose fit failed (``NaN``) never count.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_fit_internal</span>
+        <span class="c1"># ``_measurement_infoclass`` is typed ``ClassVar[type]``; the enum of</span>
+        <span class="c1"># both subclasses declares a ``v`` member.</span>
+        <span class="n">v_member</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_measurement_infoclass</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fit</span><span class="o">.</span><span class="n">empty</span> <span class="ow">or</span> <span class="n">v_member</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fit</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">fit</span><span class="p">[</span><span class="n">v_member</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+        <span class="n">at_bound</span> <span class="o">=</span> <span class="n">fit</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">v</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_V_UPPER</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">_RATE_BOUND_RTOL</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">at_bound</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;/&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">])</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">at_bound</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">_RATE_BOUND_MAX_NAMED_GROUPS</span><span class="p">)</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+        <span class="p">]</span>
+        <span class="n">more</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">at_bound</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+        <span class="n">named</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;, and </span><span class="si">{</span><span class="n">more</span><span class="si">}</span><span class="s2"> more&quot;</span> <span class="k">if</span> <span class="n">more</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: the fitted growth rate v sits at its &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;upper bound of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_V_UPPER</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">at_bound</span><span class="p">)</span><span class="si">}</span><span class="s2"> of &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span><span class="si">}</span><span class="s2"> groups (</span><span class="si">{</span><span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">named</span><span class="si">}</span><span class="s2">). &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;The true rate of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="si">!r}</span><span class="s2"> is probably higher than the &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;value returned. Fit a radius column such as &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;&#39;Size_RobustMeanRadius&#39;, which grows far more slowly than &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;area, or check the units of the time column &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="si">!r}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                <span class="n">GrowthRateAtBoundWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

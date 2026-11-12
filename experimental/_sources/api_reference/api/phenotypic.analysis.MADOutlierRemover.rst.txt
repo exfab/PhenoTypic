@@ -36,6 +36,7 @@ phenotypic.analysis.MADOutlierRemover
       ~MADOutlierRemover.model_validate_strings
       ~MADOutlierRemover.output_header
       ~MADOutlierRemover.output_header_placeholders
+      ~MADOutlierRemover.output_unit
       ~MADOutlierRemover.parse_file
       ~MADOutlierRemover.parse_obj
       ~MADOutlierRemover.parse_raw

@@ -1,0 +1,63 @@
+phenotypic.refine.RemoveOversizedGridObjects
+============================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveOversizedGridObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveOversizedGridObjects.__init__
+      ~RemoveOversizedGridObjects.apply
+      ~RemoveOversizedGridObjects.construct
+      ~RemoveOversizedGridObjects.copy
+      ~RemoveOversizedGridObjects.dict
+      ~RemoveOversizedGridObjects.from_json
+      ~RemoveOversizedGridObjects.from_orm
+      ~RemoveOversizedGridObjects.json
+      ~RemoveOversizedGridObjects.model_construct
+      ~RemoveOversizedGridObjects.model_copy
+      ~RemoveOversizedGridObjects.model_dump
+      ~RemoveOversizedGridObjects.model_dump_json
+      ~RemoveOversizedGridObjects.model_json_schema
+      ~RemoveOversizedGridObjects.model_parametrized_name
+      ~RemoveOversizedGridObjects.model_post_init
+      ~RemoveOversizedGridObjects.model_rebuild
+      ~RemoveOversizedGridObjects.model_validate
+      ~RemoveOversizedGridObjects.model_validate_json
+      ~RemoveOversizedGridObjects.model_validate_strings
+      ~RemoveOversizedGridObjects.parse_file
+      ~RemoveOversizedGridObjects.parse_obj
+      ~RemoveOversizedGridObjects.parse_raw
+      ~RemoveOversizedGridObjects.preflight_requirements
+      ~RemoveOversizedGridObjects.schema
+      ~RemoveOversizedGridObjects.schema_json
+      ~RemoveOversizedGridObjects.to_json
+      ~RemoveOversizedGridObjects.update_forward_refs
+      ~RemoveOversizedGridObjects.validate
+      ~RemoveOversizedGridObjects.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveOversizedGridObjects.model_computed_fields
+      ~RemoveOversizedGridObjects.model_config
+      ~RemoveOversizedGridObjects.model_extra
+      ~RemoveOversizedGridObjects.model_fields
+      ~RemoveOversizedGridObjects.model_fields_set
+   
+   

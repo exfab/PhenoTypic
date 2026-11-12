@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._small_object_remover</span></li>
   </ul>
 </nav>
@@ -576,9 +579,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="SmallObjectRemover">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.SmallObjectRemover.html#phenotypic.refine.SmallObjectRemover">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SmallObjectRemover</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
+<div class="viewcode-block" id="RemoveSmallObjects">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.RemoveSmallObjects.html#phenotypic.refine.RemoveSmallObjects">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RemoveSmallObjects</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove detected objects below a minimum pixel area from the detection mask.</span>
 
 <span class="sd">    Eliminates dust particles, condensation specks, agar debris, and</span>
@@ -603,7 +606,7 @@
 <span class="sd">          image edges regardless of their size.</span>
 <span class="sd">        - :class:`RemoveLowCircularity` for discarding non-circular artefacts</span>
 <span class="sd">          regardless of area.</span>
-<span class="sd">        - :class:`SmallToLargeMerger` when small fragments should be</span>
+<span class="sd">        - :class:`MergeSmallToLarge` when small fragments should be</span>
 <span class="sd">          absorbed into a nearby large colony rather than discarded.</span>
 
 <span class="sd">    Args:</span>

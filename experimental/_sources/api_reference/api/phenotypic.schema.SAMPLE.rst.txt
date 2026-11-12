@@ -20,6 +20,7 @@ phenotypic.schema.SAMPLE
       ~SAMPLE.header_set
       ~SAMPLE.kind
       ~SAMPLE.tier
+      ~SAMPLE.default_unit
       ~SAMPLE.rembi_module
       ~SAMPLE.change_note
       ~SAMPLE.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.SAMPLE
       ~SAMPLE.METRIC_FAMILY
       ~SAMPLE.resolved_kind
       ~SAMPLE.resolved_tier
+      ~SAMPLE.unit
       ~SAMPLE.resolved_rembi_module
       ~SAMPLE.use_label
       ~SAMPLE.use_badge
@@ -109,6 +111,7 @@ phenotypic.schema.SAMPLE
       ~SAMPLE.image
       ~SAMPLE.pair
       ~SAMPLE.tier_override
+      ~SAMPLE.unit_override
       ~SAMPLE.derivation_type
       ~SAMPLE.derives_from
       ~SAMPLE.rembi_module_override

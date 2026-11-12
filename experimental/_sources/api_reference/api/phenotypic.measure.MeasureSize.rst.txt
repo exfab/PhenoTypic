@@ -38,6 +38,7 @@ phenotypic.measure.MeasureSize
       ~MeasureSize.model_validate_strings
       ~MeasureSize.output_header
       ~MeasureSize.output_header_placeholders
+      ~MeasureSize.output_unit
       ~MeasureSize.parse_file
       ~MeasureSize.parse_obj
       ~MeasureSize.parse_raw

@@ -1,0 +1,74 @@
+phenotypic.enhance.DenoiseBayesShrink
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: DenoiseBayesShrink
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DenoiseBayesShrink.__init__
+      ~DenoiseBayesShrink.apply
+      ~DenoiseBayesShrink.construct
+      ~DenoiseBayesShrink.copy
+      ~DenoiseBayesShrink.dict
+      ~DenoiseBayesShrink.from_json
+      ~DenoiseBayesShrink.from_orm
+      ~DenoiseBayesShrink.json
+      ~DenoiseBayesShrink.model_construct
+      ~DenoiseBayesShrink.model_copy
+      ~DenoiseBayesShrink.model_dump
+      ~DenoiseBayesShrink.model_dump_json
+      ~DenoiseBayesShrink.model_json_schema
+      ~DenoiseBayesShrink.model_parametrized_name
+      ~DenoiseBayesShrink.model_post_init
+      ~DenoiseBayesShrink.model_rebuild
+      ~DenoiseBayesShrink.model_validate
+      ~DenoiseBayesShrink.model_validate_json
+      ~DenoiseBayesShrink.model_validate_strings
+      ~DenoiseBayesShrink.parse_file
+      ~DenoiseBayesShrink.parse_obj
+      ~DenoiseBayesShrink.parse_raw
+      ~DenoiseBayesShrink.preflight_requirements
+      ~DenoiseBayesShrink.schema
+      ~DenoiseBayesShrink.schema_json
+      ~DenoiseBayesShrink.to_json
+      ~DenoiseBayesShrink.update_forward_refs
+      ~DenoiseBayesShrink.validate
+      ~DenoiseBayesShrink.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DenoiseBayesShrink.model_computed_fields
+      ~DenoiseBayesShrink.model_config
+      ~DenoiseBayesShrink.model_extra
+      ~DenoiseBayesShrink.model_fields
+      ~DenoiseBayesShrink.model_fields_set
+      ~DenoiseBayesShrink.sigma
+      ~DenoiseBayesShrink.wavelet
+      ~DenoiseBayesShrink.mode
+      ~DenoiseBayesShrink.wavelet_levels
+      ~DenoiseBayesShrink.rescale_sigma
+      ~DenoiseBayesShrink.norm
+      ~DenoiseBayesShrink.use_gat
+      ~DenoiseBayesShrink.gat_gain
+      ~DenoiseBayesShrink.gat_mu
+      ~DenoiseBayesShrink.gat_read_sigma
+      ~DenoiseBayesShrink.gat_scale_factor
+   
+   

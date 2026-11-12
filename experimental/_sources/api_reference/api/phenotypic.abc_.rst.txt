@@ -64,6 +64,13 @@
 
    
    
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      DetectionClearedWarning
+   
    
 
 

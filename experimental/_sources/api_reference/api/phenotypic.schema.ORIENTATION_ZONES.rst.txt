@@ -19,6 +19,7 @@ phenotypic.schema.ORIENTATION\_ZONES
       ~ORIENTATION_ZONES.kind
       ~ORIENTATION_ZONES.metric_family
       ~ORIENTATION_ZONES.tier
+      ~ORIENTATION_ZONES.default_unit
       ~ORIENTATION_ZONES.rembi_module
       ~ORIENTATION_ZONES.change_note
       ~ORIENTATION_ZONES.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.ORIENTATION\_ZONES
       ~ORIENTATION_ZONES.METRIC_FAMILY
       ~ORIENTATION_ZONES.resolved_kind
       ~ORIENTATION_ZONES.resolved_tier
+      ~ORIENTATION_ZONES.unit
       ~ORIENTATION_ZONES.resolved_rembi_module
       ~ORIENTATION_ZONES.use_label
       ~ORIENTATION_ZONES.use_badge
@@ -178,6 +180,7 @@ phenotypic.schema.ORIENTATION\_ZONES
       ~ORIENTATION_ZONES.image
       ~ORIENTATION_ZONES.pair
       ~ORIENTATION_ZONES.tier_override
+      ~ORIENTATION_ZONES.unit_override
       ~ORIENTATION_ZONES.derivation_type
       ~ORIENTATION_ZONES.derives_from
       ~ORIENTATION_ZONES.rembi_module_override

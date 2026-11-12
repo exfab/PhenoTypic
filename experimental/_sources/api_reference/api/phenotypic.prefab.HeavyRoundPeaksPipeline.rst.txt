@@ -62,6 +62,7 @@ phenotypic.prefab.HeavyRoundPeaksPipeline
       ~HeavyRoundPeaksPipeline.set_plots
       ~HeavyRoundPeaksPipeline.set_post
       ~HeavyRoundPeaksPipeline.set_qc
+      ~HeavyRoundPeaksPipeline.summary
       ~HeavyRoundPeaksPipeline.to_json
       ~HeavyRoundPeaksPipeline.update_forward_refs
       ~HeavyRoundPeaksPipeline.validate

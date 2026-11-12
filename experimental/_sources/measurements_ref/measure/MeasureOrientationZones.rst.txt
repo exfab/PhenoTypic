@@ -102,7 +102,7 @@ Written only when ``include_diagnostics=True``.
      - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianMagnitude-Mask-Overall``
-     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.
+     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianMagnitude-Mask-Dense``
      - Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order.
@@ -111,7 +111,7 @@ Written only when ``include_diagnostics=True``.
      - Median absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationAbsoluteArea-Mask-Overall``
-     - Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
+     - Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary through the configured SparseZone outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationAbsoluteArea-Mask-Dense``
      - Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary to dense_end, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
@@ -120,7 +120,7 @@ Written only when ``include_diagnostics=True``.
      - Trapezoidal area under absolute cumulative rotation within supported runs from dense_end through the configured SparseZone outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationTotalVariation-Mask-Overall``
-     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
+     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary through the configured SparseZone outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationTotalVariation-Mask-Dense``
      - Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary to dense_end, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.

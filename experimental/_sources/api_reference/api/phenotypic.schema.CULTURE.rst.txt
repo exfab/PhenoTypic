@@ -20,6 +20,7 @@ phenotypic.schema.CULTURE
       ~CULTURE.header_set
       ~CULTURE.kind
       ~CULTURE.tier
+      ~CULTURE.default_unit
       ~CULTURE.rembi_module
       ~CULTURE.change_note
       ~CULTURE.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.CULTURE
       ~CULTURE.METRIC_FAMILY
       ~CULTURE.resolved_kind
       ~CULTURE.resolved_tier
+      ~CULTURE.unit
       ~CULTURE.resolved_rembi_module
       ~CULTURE.use_label
       ~CULTURE.use_badge
@@ -108,6 +110,7 @@ phenotypic.schema.CULTURE
       ~CULTURE.image
       ~CULTURE.pair
       ~CULTURE.tier_override
+      ~CULTURE.unit_override
       ~CULTURE.derivation_type
       ~CULTURE.derives_from
       ~CULTURE.rembi_module_override

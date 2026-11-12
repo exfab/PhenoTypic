@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="ICC" href="ICC.html" />
-    <link rel="prev" title="ExpectedVsDetectedCount" href="ExpectedVsDetectedCount.html" />
+    <link rel="prev" title="FittingWindow" href="FittingWindow.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.21.0" />
@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -646,7 +647,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Vacant</span></code></p></td>
-<td><p>Expected - Filled; empty/missing grid cells in the group.</p></td>
+<td><p>Number of expected grid cells in the group that hold no colony. It is Expected - Filled, floored at 0.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
@@ -670,7 +671,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Metric</span></code></p></td>
-<td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
+<td><p>Headline metric, a dimensionless ratio, fraction or score (for example MAD / |median|); the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Occupancy_Status</span></code></p></td>

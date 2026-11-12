@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._remove_by_feature</span></li>
   </ul>
 </nav>
@@ -589,7 +592,7 @@
 <span class="sd">    :class:`~phenotypic.abc_.MeasureFeatures` subclass, pick one of the values</span>
 <span class="sd">    it produces, and discard every object whose value is below ``min_value`` or</span>
 <span class="sd">    above ``max_value``. This subsumes the purpose-built filters</span>
-<span class="sd">    (:class:`SmallObjectRemover` for area, :class:`RemoveLowCircularity` for</span>
+<span class="sd">    (:class:`RemoveSmallObjects` for area, :class:`RemoveLowCircularity` for</span>
 <span class="sd">    shape) into a single configurable operation that works for *any* feature the</span>
 <span class="sd">    measurement layer exposes.</span>
 
@@ -609,7 +612,7 @@
 <span class="sd">          filter and the measurement column stay in lock-step.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallObjectRemover` / :class:`RemoveLowCircularity` for the</span>
+<span class="sd">        - :class:`RemoveSmallObjects` / :class:`RemoveLowCircularity` for the</span>
 <span class="sd">          common size/shape cases where a self-contained, single-parameter</span>
 <span class="sd">          operation is clearer.</span>
 

@@ -3584,6 +3584,13 @@
     <span class="n">IMAGE_TYPE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_type&quot;</span>
     <span class="n">NROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nrows&quot;</span>
     <span class="n">NCOLS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ncols&quot;</span>
+    <span class="c1">#: ``--bit-depth`` and ``--detect-mode`` of a staged SLURM run. With</span>
+    <span class="c1">#: ``NROWS``/``NCOLS`` they are what the staged SLURM Stage-1 worker reads</span>
+    <span class="c1">#: each input with (``_cli_staged_slurm_worker``), so it reads it as a</span>
+    <span class="c1">#: single-pass run does. Absent from metadata written before they were</span>
+    <span class="c1">#: recorded, which reads as unset.</span>
+    <span class="n">BIT_DEPTH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;bit_depth&quot;</span>
+    <span class="n">DETECT_MODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;detect_mode&quot;</span>
     <span class="c1">#: The initial CLI call of a measure-mode SLURM invocation (figures spec</span>
     <span class="c1">#: §1a): its UTC date (the figure-folder ``{date}``), UTC timestamp and</span>
     <span class="c1">#: pid. Measure mode keeps no processing state, so its workers read these</span>

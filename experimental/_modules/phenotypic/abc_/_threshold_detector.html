@@ -810,10 +810,10 @@
 
 <span class="sd">        Build a pipeline with thresholding and refinement:</span>
 
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjects</span>
 <span class="sd">        &gt;&gt;&gt; detected.num_objects  # Otsu alone leaves many small fragments</span>
 <span class="sd">        552</span>
-<span class="sd">        &gt;&gt;&gt; cleaned = SmallObjectRemover(min_size=50).apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; cleaned = RemoveSmallObjects(min_size=50).apply(detected)</span>
 <span class="sd">        &gt;&gt;&gt; cleaned.num_objects</span>
 <span class="sd">        96</span>
 

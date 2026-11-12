@@ -43,6 +43,7 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.model_validate_strings
       ~ExpectedVsDetectedCount.output_header
       ~ExpectedVsDetectedCount.output_header_placeholders
+      ~ExpectedVsDetectedCount.output_unit
       ~ExpectedVsDetectedCount.parse_file
       ~ExpectedVsDetectedCount.parse_obj
       ~ExpectedVsDetectedCount.parse_raw
@@ -79,6 +80,7 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.on
       ~ExpectedVsDetectedCount.agg_func
       ~ExpectedVsDetectedCount.metadata
+      ~ExpectedVsDetectedCount.position_by
       ~ExpectedVsDetectedCount.unmatched_groups
       ~ExpectedVsDetectedCount.groupby
       ~ExpectedVsDetectedCount.n_jobs

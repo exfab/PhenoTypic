@@ -1,0 +1,74 @@
+phenotypic.enhance.DenoiseVisuShrink
+====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: DenoiseVisuShrink
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DenoiseVisuShrink.__init__
+      ~DenoiseVisuShrink.apply
+      ~DenoiseVisuShrink.construct
+      ~DenoiseVisuShrink.copy
+      ~DenoiseVisuShrink.dict
+      ~DenoiseVisuShrink.from_json
+      ~DenoiseVisuShrink.from_orm
+      ~DenoiseVisuShrink.json
+      ~DenoiseVisuShrink.model_construct
+      ~DenoiseVisuShrink.model_copy
+      ~DenoiseVisuShrink.model_dump
+      ~DenoiseVisuShrink.model_dump_json
+      ~DenoiseVisuShrink.model_json_schema
+      ~DenoiseVisuShrink.model_parametrized_name
+      ~DenoiseVisuShrink.model_post_init
+      ~DenoiseVisuShrink.model_rebuild
+      ~DenoiseVisuShrink.model_validate
+      ~DenoiseVisuShrink.model_validate_json
+      ~DenoiseVisuShrink.model_validate_strings
+      ~DenoiseVisuShrink.parse_file
+      ~DenoiseVisuShrink.parse_obj
+      ~DenoiseVisuShrink.parse_raw
+      ~DenoiseVisuShrink.preflight_requirements
+      ~DenoiseVisuShrink.schema
+      ~DenoiseVisuShrink.schema_json
+      ~DenoiseVisuShrink.to_json
+      ~DenoiseVisuShrink.update_forward_refs
+      ~DenoiseVisuShrink.validate
+      ~DenoiseVisuShrink.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DenoiseVisuShrink.model_computed_fields
+      ~DenoiseVisuShrink.model_config
+      ~DenoiseVisuShrink.model_extra
+      ~DenoiseVisuShrink.model_fields
+      ~DenoiseVisuShrink.model_fields_set
+      ~DenoiseVisuShrink.sigma
+      ~DenoiseVisuShrink.wavelet
+      ~DenoiseVisuShrink.mode
+      ~DenoiseVisuShrink.wavelet_levels
+      ~DenoiseVisuShrink.rescale_sigma
+      ~DenoiseVisuShrink.norm
+      ~DenoiseVisuShrink.use_gat
+      ~DenoiseVisuShrink.gat_gain
+      ~DenoiseVisuShrink.gat_mu
+      ~DenoiseVisuShrink.gat_read_sigma
+      ~DenoiseVisuShrink.gat_scale_factor
+   
+   

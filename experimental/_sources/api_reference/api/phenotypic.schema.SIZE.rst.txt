@@ -19,6 +19,7 @@ phenotypic.schema.SIZE
       ~SIZE.tier
       ~SIZE.kind
       ~SIZE.metric_family
+      ~SIZE.default_unit
       ~SIZE.rembi_module
       ~SIZE.change_note
       ~SIZE.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.SIZE
       ~SIZE.METRIC_FAMILY
       ~SIZE.resolved_kind
       ~SIZE.resolved_tier
+      ~SIZE.unit
       ~SIZE.resolved_rembi_module
       ~SIZE.use_label
       ~SIZE.use_badge
@@ -112,6 +114,7 @@ phenotypic.schema.SIZE
       ~SIZE.image
       ~SIZE.pair
       ~SIZE.tier_override
+      ~SIZE.unit_override
       ~SIZE.derivation_type
       ~SIZE.derives_from
       ~SIZE.rembi_module_override

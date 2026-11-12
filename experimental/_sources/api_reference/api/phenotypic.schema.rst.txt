@@ -34,6 +34,9 @@
       Entry
       CATEGORIES
       CategoryEntry
+      UNITS
+      UnitEntry
+      ResolvedUnit
       MeasurementInfo
       MetadataInfo
       REMBI_MODULE
@@ -73,6 +76,7 @@
       QUALITY_OCCUPANCY
       QUALITY_SE
       QUALITY_TUKEY
+      QUALITY_WINDOW
       QUALITY_ZMAX
       RADIAL_EXPANSION
       SHAPE

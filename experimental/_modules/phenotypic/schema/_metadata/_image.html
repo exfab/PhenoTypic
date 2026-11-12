@@ -595,13 +595,41 @@
         <span class="k">return</span> <span class="n">REMBI_MODULE</span><span class="o">.</span><span class="n">IMAGE_DATA</span></div>
 
 
-    <span class="n">UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;UUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The unique identifier of the image.&quot;</span><span class="p">)</span>
-    <span class="n">IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the image.&quot;</span><span class="p">)</span>
-    <span class="n">PARENT_IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ParentImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the parent image.&quot;</span><span class="p">)</span>
-    <span class="n">PARENT_UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ParentUUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The UUID of the parent image.&quot;</span><span class="p">)</span>
-    <span class="n">IMFORMAT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageFormat&quot;</span><span class="p">,</span> <span class="s2">&quot;The format of the image.&quot;</span><span class="p">)</span>
-    <span class="n">IMAGE_TYPE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageType&quot;</span><span class="p">,</span> <span class="s2">&quot;The type of the image.&quot;</span><span class="p">)</span>
-    <span class="n">BIT_DEPTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;BitDepth&quot;</span><span class="p">,</span> <span class="s2">&quot;The bit depth of the image.&quot;</span><span class="p">)</span>
+    <span class="n">UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;UUID&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Random identifier (a version-4 UUID) that PhenoTypic generates for &quot;</span>
+        <span class="s2">&quot;each image object.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ImageName&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Name of the image, which is the file name without its extension when &quot;</span>
+        <span class="s2">&quot;the image is read from a file.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PARENT_IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ParentImageName&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the name of the image this image was derived from; &quot;</span>
+        <span class="s2">&quot;PhenoTypic does not set it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PARENT_UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ParentUUID&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the UUID of the image this image was derived from; &quot;</span>
+        <span class="s2">&quot;PhenoTypic does not set it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">IMFORMAT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ImageFormat&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the format of the image; PhenoTypic does not set it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">IMAGE_TYPE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ImageType&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Kind of image the row was measured from: Image, GridImage, Crop, &quot;</span>
+        <span class="s2">&quot;Object or GridSection.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">BIT_DEPTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;BitDepth&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Bit depth of the image&#39;s source pixel data, 8 or 16, either given &quot;</span>
+        <span class="s2">&quot;when the image is loaded or inferred from the pixel data (16 for a &quot;</span>
+        <span class="s2">&quot;float array).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">SUFFIX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;FileSuffix&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The file suffix of the original file the image was imported from&quot;</span><span class="p">,</span>

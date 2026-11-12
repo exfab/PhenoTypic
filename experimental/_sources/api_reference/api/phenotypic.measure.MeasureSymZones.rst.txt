@@ -41,6 +41,7 @@ phenotypic.measure.MeasureSymZones
       ~MeasureSymZones.model_validate_strings
       ~MeasureSymZones.output_header
       ~MeasureSymZones.output_header_placeholders
+      ~MeasureSymZones.output_unit
       ~MeasureSymZones.parse_file
       ~MeasureSymZones.parse_obj
       ~MeasureSymZones.parse_raw

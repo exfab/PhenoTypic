@@ -1,0 +1,6 @@
+phenotypic.data.make\_synthetic\_window\_series
+===============================================
+
+.. currentmodule:: phenotypic.data
+
+.. autofunction:: make_synthetic_window_series

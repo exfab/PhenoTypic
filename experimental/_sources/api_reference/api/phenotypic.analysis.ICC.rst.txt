@@ -40,6 +40,7 @@ phenotypic.analysis.ICC
       ~ICC.model_validate_strings
       ~ICC.output_header
       ~ICC.output_header_placeholders
+      ~ICC.output_unit
       ~ICC.parse_file
       ~ICC.parse_obj
       ~ICC.parse_raw

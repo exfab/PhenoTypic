@@ -62,6 +62,7 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.set_plots
       ~SpImagerPipeline.set_post
       ~SpImagerPipeline.set_qc
+      ~SpImagerPipeline.summary
       ~SpImagerPipeline.to_json
       ~SpImagerPipeline.update_forward_refs
       ~SpImagerPipeline.validate

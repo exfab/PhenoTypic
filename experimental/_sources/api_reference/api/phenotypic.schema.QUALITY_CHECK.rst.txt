@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.kind
       ~QUALITY_CHECK.metric_family
       ~QUALITY_CHECK.tier
+      ~QUALITY_CHECK.default_unit
       ~QUALITY_CHECK.rembi_module
       ~QUALITY_CHECK.change_note
       ~QUALITY_CHECK.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.METRIC_FAMILY
       ~QUALITY_CHECK.resolved_kind
       ~QUALITY_CHECK.resolved_tier
+      ~QUALITY_CHECK.unit
       ~QUALITY_CHECK.resolved_rembi_module
       ~QUALITY_CHECK.use_label
       ~QUALITY_CHECK.use_badge
@@ -102,6 +104,7 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.image
       ~QUALITY_CHECK.pair
       ~QUALITY_CHECK.tier_override
+      ~QUALITY_CHECK.unit_override
       ~QUALITY_CHECK.derivation_type
       ~QUALITY_CHECK.derives_from
       ~QUALITY_CHECK.rembi_module_override

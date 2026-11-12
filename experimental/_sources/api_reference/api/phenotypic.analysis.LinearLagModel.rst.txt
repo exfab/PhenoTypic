@@ -40,6 +40,7 @@ phenotypic.analysis.LinearLagModel
       ~LinearLagModel.model_validate_strings
       ~LinearLagModel.output_header
       ~LinearLagModel.output_header_placeholders
+      ~LinearLagModel.output_unit
       ~LinearLagModel.parse_file
       ~LinearLagModel.parse_obj
       ~LinearLagModel.parse_raw

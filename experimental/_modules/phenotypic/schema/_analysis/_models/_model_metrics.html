@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Generic fit-quality metrics shared by all ModelFitter subclasses.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
@@ -591,6 +592,13 @@
         <span class="k">return</span> <span class="s2">&quot;ModelMetrics&quot;</span></div>
 
 
+<div class="viewcode-block" id="MODEL_METRICS.default_unit">
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.schema.MODEL_METRICS.html#phenotypic.schema.MODEL_METRICS.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">OF_INPUT</span></div>
+
+
 <div class="viewcode-block" id="MODEL_METRICS.header_scheme">
 <a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.schema.MODEL_METRICS.html#phenotypic.schema.MODEL_METRICS.header_scheme">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -599,15 +607,55 @@
 
 
     <span class="c1"># fit-quality metrics</span>
-    <span class="n">MAE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MAE&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean absolute error&quot;</span><span class="p">)</span>
-    <span class="n">MSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MSE&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean squared error&quot;</span><span class="p">)</span>
-    <span class="n">RMSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RMSE&quot;</span><span class="p">,</span> <span class="s2">&quot;The root mean squared error&quot;</span><span class="p">)</span>
-    <span class="n">R2</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;R2&quot;</span><span class="p">,</span> <span class="s2">&quot;The coefficient of determination&quot;</span><span class="p">)</span>
+    <span class="n">MAE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MAE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean absolute difference between the fitted curve and the data &quot;</span>
+        <span class="s2">&quot;points it was fitted to.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MSE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Mean squared difference between the fitted curve and the data points &quot;</span>
+        <span class="s2">&quot;it was fitted to.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">OF_INPUT_SQUARED</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RMSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RMSE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Typical distance between the fitted curve and the data points it was &quot;</span>
+        <span class="s2">&quot;fitted to, as the square root of the mean squared difference.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">R2</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;R2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Share of the variation in the fitted data points that the curve &quot;</span>
+        <span class="s2">&quot;explains: 1 is a perfect fit, and 0 or below is no better than the &quot;</span>
+        <span class="s2">&quot;points&#39; mean. It is the coefficient of determination, and NaN for a &quot;</span>
+        <span class="s2">&quot;group with two or fewer points.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># fit diagnostics</span>
-    <span class="n">NUM_SAMPLES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumSamples&quot;</span><span class="p">,</span> <span class="s2">&quot;The number of samples used for model fitting&quot;</span><span class="p">)</span>
-    <span class="n">LOSS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;OptimizerLoss&quot;</span><span class="p">,</span> <span class="s2">&quot;The loss of model fitting&quot;</span><span class="p">)</span>
-    <span class="n">STATUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;OptimizerStatus&quot;</span><span class="p">,</span> <span class="s2">&quot;The output of the optimizer status&quot;</span><span class="p">)</span></div>
+    <span class="n">NUM_SAMPLES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;NumSamples&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Number of data points the model was fitted to, after any points the &quot;</span>
+        <span class="s2">&quot;fitter drops (such as post-saturation time points).&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># SEM-weighted (analysis/abc_/_linear_softplus_base.py:362), so its units</span>
+    <span class="c1"># vary by group and no conversion is ever valid: never OF_INPUT_SQUARED.</span>
+    <span class="n">LOSS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OptimizerLoss&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Final value of the cost that the fitting optimizer minimized. It is &quot;</span>
+        <span class="s2">&quot;the cost of scipy&#39;s least_squares: half the sum of the robust loss ρ &quot;</span>
+        <span class="s2">&quot;applied to each squared residual, including any weighting or &quot;</span>
+        <span class="s2">&quot;regularization terms the model adds.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">NOT_A_QUANTITY</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">STATUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OptimizerStatus&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Integer code from scipy&#39;s least_squares saying why the fit stopped: &quot;</span>
+        <span class="s2">&quot;0 when it reached the evaluation limit and 1 to 4 when a convergence &quot;</span>
+        <span class="s2">&quot;tolerance was met. It is NaN when the fit failed.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">NOT_A_QUANTITY</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 </pre></div>
 

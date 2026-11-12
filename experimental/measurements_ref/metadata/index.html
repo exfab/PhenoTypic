@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -637,15 +638,15 @@ label is recognized as that tag, and any other column is kept as
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code></p></td>
-<td><p>The name of the image.</p></td>
+<td><p>Name of the image, which is the file name without its extension when the image is read from a file.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageType</span></code></p></td>
-<td><p>The type of the image.</p></td>
+<td><p>Kind of image the row was measured from: Image, GridImage, Crop, Object or GridSection.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_BitDepth</span></code></p></td>
-<td><p>The bit depth of the image.</p></td>
+<td><p>Bit depth of the image’s source pixel data, 8 or 16, either given when the image is loaded or inferred from the pixel data (16 for a float array).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_FileSuffix</span></code></p></td>
@@ -668,11 +669,11 @@ label is recognized as that tag, and any other column is kept as
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Organism</span></code></p></td>
-<td><p>Species or organism name (e.g. Saccharomyces cerevisiae).</p></td>
+<td><p>Species or organism name (for example Saccharomyces cerevisiae).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Strain</span></code></p></td>
-<td><p>Strain name or identifier (e.g. BY4741).</p></td>
+<td><p>Strain name or identifier (for example BY4741).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Genotype</span></code></p></td>
@@ -692,15 +693,15 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SelectionMarker</span></code></p></td>
-<td><p>Selectable marker gene (e.g. URA3, KanMX).</p></td>
+<td><p>Selectable marker gene (for example URA3, KanMX).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_MatingType</span></code></p></td>
-<td><p>Mating type for yeast (e.g. MATa, MATalpha).</p></td>
+<td><p>Mating type for yeast (for example MATa, MATalpha).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Ploidy</span></code></p></td>
-<td><p>Ploidy of the organism (e.g. haploid, diploid).</p></td>
+<td><p>Ploidy of the organism (for example haploid, diploid).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
@@ -739,7 +740,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_LibraryID</span></code></p></td>
-<td><p>Source library or collection identifier (e.g. a deletion collection).</p></td>
+<td><p>Source library or collection identifier (for example a deletion collection).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SourcePlate</span></code></p></td>
@@ -747,7 +748,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SourceWell</span></code></p></td>
-<td><p>Well position on the source plate (e.g. A1). This can potentially be distinct from <cite>Grid</cite> values when using irregular or sparse grid parameters.</p></td>
+<td><p>Well position on the source plate (for example A1). This can potentially be distinct from <cite>Grid</cite> values when using irregular or sparse grid parameters.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Barcode</span></code></p></td>
@@ -755,7 +756,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Control</span></code></p></td>
-<td><p>Control designation (e.g. positive, negative, blank).</p></td>
+<td><p>Control designation (for example positive, negative, blank).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
@@ -782,7 +783,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ArrayDensity</span></code></p></td>
-<td><p>Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).</p></td>
+<td><p>Colony array density: the number of wells per plate (for example 96, 384, 1536).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_IncubatorPosition</span></code></p></td>
@@ -809,11 +810,11 @@ label is recognized as that tag, and any other column is kept as
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Media</span></code></p></td>
-<td><p>Growth medium name (e.g. YPD, SC, LB).</p></td>
+<td><p>Growth medium name (for example YPD, SC, LB).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_CarbonSource</span></code></p></td>
-<td><p>Primary carbon source (e.g. glucose, galactose).</p></td>
+<td><p>Primary carbon source (for example glucose, galactose).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_NitrogenSource</span></code></p></td>
@@ -833,7 +834,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Inducer</span></code></p></td>
-<td><p>Inducing agent (e.g. galactose, IPTG, doxycycline).</p></td>
+<td><p>Inducing agent (for example galactose, IPTG, doxycycline).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Treatment</span></code></p></td>
@@ -853,11 +854,11 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Stress</span></code></p></td>
-<td><p>Applied stress condition (e.g. heat, osmotic, oxidative).</p></td>
+<td><p>Applied stress condition (for example heat, osmotic, oxidative).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Salinity</span></code></p></td>
-<td><p>Salt Salinity</p></td>
+<td><p>Salt concentration (salinity) of the growth medium.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
@@ -880,11 +881,11 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_TimeUnit</span></code></p></td>
-<td><p>Unit for the Time value (e.g. hours, days).</p></td>
+<td><p>Unit for the Time value (for example hours, days).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Timepoint</span></code></p></td>
-<td><p>Human-readable label for a discrete timepoint in a time series (e.g. ‘24h’, ‘stationary’); may be non-numeric. For the integer capture ordinal, use FrameIndex.</p></td>
+<td><p>Human-readable label for a discrete timepoint in a time series (for example ‘24h’, ‘stationary’); may be non-numeric. For the integer capture ordinal, use FrameIndex.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_FrameIndex</span></code></p></td>
@@ -908,7 +909,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Atmosphere</span></code></p></td>
-<td><p>Atmospheric condition (e.g. aerobic, anaerobic).</p></td>
+<td><p>Atmospheric condition (for example aerobic, anaerobic).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
@@ -982,7 +983,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_License</span></code></p></td>
-<td><p>Data license (e.g. CC0, CC-BY-4.0).</p></td>
+<td><p>Data license (for example CC0, CC-BY-4.0).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Funding</span></code></p></td>
@@ -1029,7 +1030,7 @@ label is recognized as that tag, and any other column is kept as
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Resolution</span></code></p></td>
-<td><p>Image resolution (e.g. DPI or pixels per mm).</p></td>
+<td><p>Image resolution in pixels per mm (px_per_mm), the value that converts the length and area columns from pixels (for example 40). Record pixels per mm here; a value in DPI converts as px_per_mm = DPI / 25.4.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ExposureTime</span></code></p></td>

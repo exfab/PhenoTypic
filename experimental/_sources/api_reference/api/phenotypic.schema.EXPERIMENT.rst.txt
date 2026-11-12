@@ -20,6 +20,7 @@ phenotypic.schema.EXPERIMENT
       ~EXPERIMENT.header_set
       ~EXPERIMENT.kind
       ~EXPERIMENT.tier
+      ~EXPERIMENT.default_unit
       ~EXPERIMENT.rembi_module
       ~EXPERIMENT.change_note
       ~EXPERIMENT.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.EXPERIMENT
       ~EXPERIMENT.METRIC_FAMILY
       ~EXPERIMENT.resolved_kind
       ~EXPERIMENT.resolved_tier
+      ~EXPERIMENT.unit
       ~EXPERIMENT.resolved_rembi_module
       ~EXPERIMENT.use_label
       ~EXPERIMENT.use_badge
@@ -104,6 +106,7 @@ phenotypic.schema.EXPERIMENT
       ~EXPERIMENT.image
       ~EXPERIMENT.pair
       ~EXPERIMENT.tier_override
+      ~EXPERIMENT.unit_override
       ~EXPERIMENT.derivation_type
       ~EXPERIMENT.derives_from
       ~EXPERIMENT.rembi_module_override

@@ -21,7 +21,7 @@
       :template: class.rst
       :nosignatures:
    
-      BayesShrinkEnhancer
+      DenoiseBayesShrink
       LocalEdgeDenoise
       EnhanceBlockMatch
       EnhanceLocalContrast
@@ -37,24 +37,24 @@
       GrayOpening
       FocusEdgeHessian
       FlattenIllumination
-      ImageInverter
+      InvertImage
       FocusEdgeLaplace
       MedianFilter
       FocusEdgeMeijering
       FocusBlobLoG
-      NonLocalMeansDenoiser
+      DenoiseNonLocalMeans
       SubtractOpening
       FocusEdgePhase
       FocusEdgeMonogenicPhase
       FocusEdgeTwoKPhase
       FocusEdgeColorPhase
-      RankMedianEnhancer
+      EnhanceRankMedian
       SubtractRollingBall
       SubtractPolySurface
       FocusEdgeSato
       FocusEdgeSobel
       SharpenEdgeGauss
-      VisuShrinkEnhancer
+      DenoiseVisuShrink
       WhiteTophatEnhance
       SubtractWhiteTophat
       SetDetectMode

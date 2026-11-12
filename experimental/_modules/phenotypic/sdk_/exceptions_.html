@@ -987,6 +987,58 @@
 
 
 
+<span class="c1"># Measurement exceptions</span>
+<div class="viewcode-block" id="MeasurementConflictError">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.MeasurementConflictError.html#phenotypic.sdk_.exceptions_.MeasurementConflictError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasurementConflictError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Two measurement tables give the same colonies different values for a column.</span>
+
+<span class="sd">    ``ImagePipeline.measure()`` joins every measurer&#39;s table on</span>
+<span class="sd">    ``Object_Label``. Some columns come from more than one table: the</span>
+<span class="sd">    ``Bbox_*`` geometry (``MeasureBounds``, any ``GridFinder`` and the image&#39;s</span>
+<span class="sd">    info block) and the ``Grid_*`` assignment (a ``GridFinder`` and a</span>
+<span class="sd">    ``GridImage``&#39;s info block). Such a column is kept once, and only when</span>
+<span class="sd">    every colony has the same value in both tables (NaN in both counts as the</span>
+<span class="sd">    same). When they disagree there is no correct value to keep, so the merge</span>
+<span class="sd">    raises this instead of dropping the colonies or picking a side.</span>
+
+<span class="sd">    The usual cause is two grids: a ``GridImage`` laid out with one</span>
+<span class="sd">    ``nrows``/``ncols`` measured by a pipeline whose ``nrows``/``ncols`` preset</span>
+<span class="sd">    (or explicit grid finder) uses another.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        columns: The shared columns whose values differ, in table order.</span>
+<span class="sd">        n_objects: How many colonies differ in at least one of ``columns``.</span>
+<span class="sd">        n_compared: How many colonies both tables carry.</span>
+<span class="sd">        sources: The names of the tables that disagree: the earlier ones that</span>
+<span class="sd">            supplied the columns, then the one being merged in.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">columns</span><span class="p">,</span>
+            <span class="n">n_objects</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">n_compared</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">sources</span><span class="p">,</span>
+            <span class="n">advice</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_objects</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_objects</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_compared</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_compared</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sources</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sources</span><span class="p">)</span>
+        <span class="o">*</span><span class="n">earlier</span><span class="p">,</span> <span class="n">incoming</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">&#39;&quot;</span> <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sources</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;measure() cannot merge the measurement tables: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39; and &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">earlier</span><span class="p">)</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">incoming</span><span class="si">}</span><span class="s2"> give &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_objects</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_compared</span><span class="si">}</span><span class="s2"> colonies different &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;values for </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">. Keeping either value &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;would mislabel those colonies, and dropping them would lose &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;them, so nothing was merged. </span><span class="si">{</span><span class="n">advice</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
 <span class="c1"># Grid exceptions</span>
 <div class="viewcode-block" id="GridImageInputError">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.GridImageInputError.html#phenotypic.sdk_.exceptions_.GridImageInputError">[docs]</a>

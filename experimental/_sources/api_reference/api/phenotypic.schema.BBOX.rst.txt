@@ -19,6 +19,7 @@ phenotypic.schema.BBOX
       ~BBOX.kind
       ~BBOX.metric_family
       ~BBOX.tier
+      ~BBOX.default_unit
       ~BBOX.rembi_module
       ~BBOX.change_note
       ~BBOX.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.BBOX
       ~BBOX.METRIC_FAMILY
       ~BBOX.resolved_kind
       ~BBOX.resolved_tier
+      ~BBOX.unit
       ~BBOX.resolved_rembi_module
       ~BBOX.use_label
       ~BBOX.use_badge
@@ -108,6 +110,7 @@ phenotypic.schema.BBOX
       ~BBOX.image
       ~BBOX.pair
       ~BBOX.tier_override
+      ~BBOX.unit_override
       ~BBOX.derivation_type
       ~BBOX.derives_from
       ~BBOX.rembi_module_override

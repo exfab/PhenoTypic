@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_MAD
       ~QUALITY_MAD.kind
       ~QUALITY_MAD.metric_family
       ~QUALITY_MAD.tier
+      ~QUALITY_MAD.default_unit
       ~QUALITY_MAD.rembi_module
       ~QUALITY_MAD.change_note
       ~QUALITY_MAD.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_MAD
       ~QUALITY_MAD.METRIC_FAMILY
       ~QUALITY_MAD.resolved_kind
       ~QUALITY_MAD.resolved_tier
+      ~QUALITY_MAD.unit
       ~QUALITY_MAD.resolved_rembi_module
       ~QUALITY_MAD.use_label
       ~QUALITY_MAD.use_badge
@@ -101,6 +103,7 @@ phenotypic.schema.QUALITY\_MAD
       ~QUALITY_MAD.image
       ~QUALITY_MAD.pair
       ~QUALITY_MAD.tier_override
+      ~QUALITY_MAD.unit_override
       ~QUALITY_MAD.derivation_type
       ~QUALITY_MAD.derives_from
       ~QUALITY_MAD.rembi_module_override

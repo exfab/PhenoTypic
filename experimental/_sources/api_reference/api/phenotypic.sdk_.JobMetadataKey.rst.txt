@@ -26,9 +26,11 @@ phenotypic.sdk\_.JobMetadataKey
 
    .. autosummary::
    
+      ~JobMetadataKey.BIT_DEPTH
       ~JobMetadataKey.CHUNK_JOB_IDS
       ~JobMetadataKey.CHUNK_SCRIPTS
       ~JobMetadataKey.DATASETS
+      ~JobMetadataKey.DETECT_MODE
       ~JobMetadataKey.EXECUTION_MODE
       ~JobMetadataKey.FIGURES_RUN_DATE
       ~JobMetadataKey.GUI_RECORD_GENERATION

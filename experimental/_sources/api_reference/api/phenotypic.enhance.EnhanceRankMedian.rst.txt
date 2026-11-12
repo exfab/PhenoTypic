@@ -1,0 +1,67 @@
+phenotypic.enhance.EnhanceRankMedian
+====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: EnhanceRankMedian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EnhanceRankMedian.__init__
+      ~EnhanceRankMedian.apply
+      ~EnhanceRankMedian.construct
+      ~EnhanceRankMedian.copy
+      ~EnhanceRankMedian.dict
+      ~EnhanceRankMedian.from_json
+      ~EnhanceRankMedian.from_orm
+      ~EnhanceRankMedian.json
+      ~EnhanceRankMedian.model_construct
+      ~EnhanceRankMedian.model_copy
+      ~EnhanceRankMedian.model_dump
+      ~EnhanceRankMedian.model_dump_json
+      ~EnhanceRankMedian.model_json_schema
+      ~EnhanceRankMedian.model_parametrized_name
+      ~EnhanceRankMedian.model_post_init
+      ~EnhanceRankMedian.model_rebuild
+      ~EnhanceRankMedian.model_validate
+      ~EnhanceRankMedian.model_validate_json
+      ~EnhanceRankMedian.model_validate_strings
+      ~EnhanceRankMedian.parse_file
+      ~EnhanceRankMedian.parse_obj
+      ~EnhanceRankMedian.parse_raw
+      ~EnhanceRankMedian.preflight_requirements
+      ~EnhanceRankMedian.schema
+      ~EnhanceRankMedian.schema_json
+      ~EnhanceRankMedian.to_json
+      ~EnhanceRankMedian.update_forward_refs
+      ~EnhanceRankMedian.validate
+      ~EnhanceRankMedian.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EnhanceRankMedian.model_computed_fields
+      ~EnhanceRankMedian.model_config
+      ~EnhanceRankMedian.model_extra
+      ~EnhanceRankMedian.model_fields
+      ~EnhanceRankMedian.model_fields_set
+      ~EnhanceRankMedian.shape
+      ~EnhanceRankMedian.width
+      ~EnhanceRankMedian.shift_x
+      ~EnhanceRankMedian.shift_y
+   
+   

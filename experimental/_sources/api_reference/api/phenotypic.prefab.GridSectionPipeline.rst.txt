@@ -62,6 +62,7 @@ phenotypic.prefab.GridSectionPipeline
       ~GridSectionPipeline.set_plots
       ~GridSectionPipeline.set_post
       ~GridSectionPipeline.set_qc
+      ~GridSectionPipeline.summary
       ~GridSectionPipeline.to_json
       ~GridSectionPipeline.update_forward_refs
       ~GridSectionPipeline.validate

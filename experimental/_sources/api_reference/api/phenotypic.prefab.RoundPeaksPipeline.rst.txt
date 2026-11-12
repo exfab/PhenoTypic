@@ -62,6 +62,7 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.set_plots
       ~RoundPeaksPipeline.set_post
       ~RoundPeaksPipeline.set_qc
+      ~RoundPeaksPipeline.summary
       ~RoundPeaksPipeline.to_json
       ~RoundPeaksPipeline.update_forward_refs
       ~RoundPeaksPipeline.validate

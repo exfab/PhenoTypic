@@ -66,6 +66,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.metric_family
       ~MeasurementInfo.kind
       ~MeasurementInfo.tier
+      ~MeasurementInfo.default_unit
       ~MeasurementInfo.rembi_module
       ~MeasurementInfo.change_note
       ~MeasurementInfo.header_scheme
@@ -88,6 +89,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.METRIC_FAMILY
       ~MeasurementInfo.resolved_kind
       ~MeasurementInfo.resolved_tier
+      ~MeasurementInfo.unit
       ~MeasurementInfo.resolved_rembi_module
       ~MeasurementInfo.use_label
       ~MeasurementInfo.use_badge
@@ -98,6 +100,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.image
       ~MeasurementInfo.pair
       ~MeasurementInfo.tier_override
+      ~MeasurementInfo.unit_override
       ~MeasurementInfo.derivation_type
       ~MeasurementInfo.derives_from
       ~MeasurementInfo.rembi_module_override

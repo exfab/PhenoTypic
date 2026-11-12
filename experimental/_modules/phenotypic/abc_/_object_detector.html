@@ -742,7 +742,7 @@
 <span class="sd">       - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects</span>
 <span class="sd">         touching image edges.</span>
 <span class="sd">       - **Remove small/large objects:** Filter by area with a label-size mask, as in</span>
-<span class="sd">         step 4, or leave it to :class:`~phenotypic.refine.SmallObjectRemover` or</span>
+<span class="sd">         step 4, or leave it to :class:`~phenotypic.refine.RemoveSmallObjects` or</span>
 <span class="sd">         :class:`~phenotypic.refine.RemoveByFeature` later in the pipeline.</span>
 <span class="sd">       - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive</span>
 <span class="sd">         labels.</span>
@@ -796,7 +796,7 @@
 <span class="sd">    Raw detections often need cleanup:</span>
 
 <span class="sd">    - **Remove small noise:** Spurious single-pixel detections or tiny salt-and-pepper artifacts.</span>
-<span class="sd">      Use :class:`~phenotypic.refine.SmallObjectRemover` (an ObjectRefiner).</span>
+<span class="sd">      Use :class:`~phenotypic.refine.RemoveSmallObjects` (an ObjectRefiner).</span>
 
 <span class="sd">    - **Clean borders:** Colonies at plate edges may be incomplete. Use ObjectRefiner or</span>
 <span class="sd">      clear_border() in detector.</span>

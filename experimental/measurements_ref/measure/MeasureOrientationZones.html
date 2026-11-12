@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -739,7 +740,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationMedianMagnitude-Mask-Overall</span></code></p></td>
-<td><p>Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.</p></td>
+<td><p>Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationMedianMagnitude-Mask-Dense</span></code></p></td>
@@ -751,7 +752,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationAbsoluteArea-Mask-Overall</span></code></p></td>
-<td><p>Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.</p></td>
+<td><p>Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary through the configured SparseZone outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationAbsoluteArea-Mask-Dense</span></code></p></td>
@@ -763,7 +764,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationTotalVariation-Mask-Overall</span></code></p></td>
-<td><p>Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.</p></td>
+<td><p>Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary through the configured SparseZone outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OrientZones_OutwardRotationTotalVariation-Mask-Dense</span></code></p></td>

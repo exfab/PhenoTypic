@@ -948,8 +948,10 @@ rather than an error:</p>
 <section id="loading-the-images">
 <h3>Loading the images<a class="headerlink" href="#loading-the-images" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">--image-type</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">GridImage</span></code>, which imposes an arrayed layout. Use
-<code class="docutils literal notranslate"><span class="pre">--nrows</span></code> / <code class="docutils literal notranslate"><span class="pre">--ncols</span></code> to override the pipeline’s grid preset (the fallback is
-8 × 12); pass <code class="docutils literal notranslate"><span class="pre">--image-type</span> <span class="pre">Image</span></code> for non-arrayed plates.</p>
+<code class="docutils literal notranslate"><span class="pre">--nrows</span></code> / <code class="docutils literal notranslate"><span class="pre">--ncols</span></code> to set the grid (without them the pipeline’s grid preset
+is used, and the fallback is 8 × 12); a full run refuses flags unlike a
+pipeline that presets both <code class="docutils literal notranslate"><span class="pre">nrows</span></code> and <code class="docutils literal notranslate"><span class="pre">ncols</span></code>. Pass <code class="docutils literal notranslate"><span class="pre">--image-type</span> <span class="pre">Image</span></code> for
+non-arrayed plates.</p>
 <p><code class="docutils literal notranslate"><span class="pre">--detect-mode</span></code> selects the channel the detector thresholds. It defaults to
 <code class="docutils literal notranslate"><span class="pre">gray</span></code>, but colony contrast often lives elsewhere — <code class="docutils literal notranslate"><span class="pre">LabA</span></code> separates
 red-pigmented colonies from agar far better than luminance does. The full set is

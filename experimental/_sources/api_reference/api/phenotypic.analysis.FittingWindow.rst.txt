@@ -1,0 +1,101 @@
+phenotypic.analysis.FittingWindow
+=================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: FittingWindow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FittingWindow.__init__
+      ~FittingWindow.analyze
+      ~FittingWindow.construct
+      ~FittingWindow.copy
+      ~FittingWindow.dict
+      ~FittingWindow.figures
+      ~FittingWindow.flag_col
+      ~FittingWindow.flagged_keys
+      ~FittingWindow.from_orm
+      ~FittingWindow.group_members
+      ~FittingWindow.inspect
+      ~FittingWindow.iter_figures
+      ~FittingWindow.json
+      ~FittingWindow.metric_col
+      ~FittingWindow.model_construct
+      ~FittingWindow.model_copy
+      ~FittingWindow.model_dump
+      ~FittingWindow.model_dump_json
+      ~FittingWindow.model_json_schema
+      ~FittingWindow.model_parametrized_name
+      ~FittingWindow.model_post_init
+      ~FittingWindow.model_rebuild
+      ~FittingWindow.model_validate
+      ~FittingWindow.model_validate_json
+      ~FittingWindow.model_validate_strings
+      ~FittingWindow.output_header
+      ~FittingWindow.output_header_placeholders
+      ~FittingWindow.output_unit
+      ~FittingWindow.parse_file
+      ~FittingWindow.parse_obj
+      ~FittingWindow.parse_raw
+      ~FittingWindow.report
+      ~FittingWindow.results
+      ~FittingWindow.schema
+      ~FittingWindow.schema_json
+      ~FittingWindow.show
+      ~FittingWindow.status_col
+      ~FittingWindow.summary
+      ~FittingWindow.table_spec
+      ~FittingWindow.to_table
+      ~FittingWindow.update_forward_refs
+      ~FittingWindow.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FittingWindow.member_key_cols
+      ~FittingWindow.model_computed_fields
+      ~FittingWindow.model_config
+      ~FittingWindow.model_extra
+      ~FittingWindow.model_fields
+      ~FittingWindow.model_fields_set
+      ~FittingWindow.name
+      ~FittingWindow.supports_object_curation
+      ~FittingWindow.time_label
+      ~FittingWindow.warn_threshold
+      ~FittingWindow.fail_threshold
+      ~FittingWindow.replicate_by
+      ~FittingWindow.time_col
+      ~FittingWindow.min_replicates
+      ~FittingWindow.smooth
+      ~FittingWindow.abrupt_k
+      ~FittingWindow.persist
+      ~FittingWindow.rough_roll
+      ~FittingWindow.rough_k
+      ~FittingWindow.rough_lag
+      ~FittingWindow.rough_span
+      ~FittingWindow.near_min_tolerance
+      ~FittingWindow.min_bar_over_noise
+      ~FittingWindow.edge_frames
+      ~FittingWindow.min_series_frames
+      ~FittingWindow.unmatched_groups
+      ~FittingWindow.on
+      ~FittingWindow.groupby
+      ~FittingWindow.agg_func
+      ~FittingWindow.n_jobs
+   
+   

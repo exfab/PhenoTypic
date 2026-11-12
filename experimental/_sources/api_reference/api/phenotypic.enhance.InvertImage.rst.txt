@@ -1,0 +1,63 @@
+phenotypic.enhance.InvertImage
+==============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: InvertImage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~InvertImage.__init__
+      ~InvertImage.apply
+      ~InvertImage.construct
+      ~InvertImage.copy
+      ~InvertImage.dict
+      ~InvertImage.from_json
+      ~InvertImage.from_orm
+      ~InvertImage.json
+      ~InvertImage.model_construct
+      ~InvertImage.model_copy
+      ~InvertImage.model_dump
+      ~InvertImage.model_dump_json
+      ~InvertImage.model_json_schema
+      ~InvertImage.model_parametrized_name
+      ~InvertImage.model_post_init
+      ~InvertImage.model_rebuild
+      ~InvertImage.model_validate
+      ~InvertImage.model_validate_json
+      ~InvertImage.model_validate_strings
+      ~InvertImage.parse_file
+      ~InvertImage.parse_obj
+      ~InvertImage.parse_raw
+      ~InvertImage.preflight_requirements
+      ~InvertImage.schema
+      ~InvertImage.schema_json
+      ~InvertImage.to_json
+      ~InvertImage.update_forward_refs
+      ~InvertImage.validate
+      ~InvertImage.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InvertImage.model_computed_fields
+      ~InvertImage.model_config
+      ~InvertImage.model_extra
+      ~InvertImage.model_fields
+      ~InvertImage.model_fields_set
+   
+   

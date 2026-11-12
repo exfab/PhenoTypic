@@ -19,6 +19,7 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.kind
       ~GRID_SPREAD.metric_family
       ~GRID_SPREAD.tier
+      ~GRID_SPREAD.default_unit
       ~GRID_SPREAD.rembi_module
       ~GRID_SPREAD.change_note
       ~GRID_SPREAD.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.METRIC_FAMILY
       ~GRID_SPREAD.resolved_kind
       ~GRID_SPREAD.resolved_tier
+      ~GRID_SPREAD.unit
       ~GRID_SPREAD.resolved_rembi_module
       ~GRID_SPREAD.use_label
       ~GRID_SPREAD.use_badge
@@ -100,6 +102,7 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.image
       ~GRID_SPREAD.pair
       ~GRID_SPREAD.tier_override
+      ~GRID_SPREAD.unit_override
       ~GRID_SPREAD.derivation_type
       ~GRID_SPREAD.derives_from
       ~GRID_SPREAD.rembi_module_override

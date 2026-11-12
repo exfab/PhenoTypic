@@ -38,6 +38,7 @@ phenotypic.measure.MeasureBounds
       ~MeasureBounds.model_validate_strings
       ~MeasureBounds.output_header
       ~MeasureBounds.output_header_placeholders
+      ~MeasureBounds.output_unit
       ~MeasureBounds.parse_file
       ~MeasureBounds.parse_obj
       ~MeasureBounds.parse_raw

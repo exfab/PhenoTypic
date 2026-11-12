@@ -19,6 +19,7 @@ phenotypic.schema.ErrorCategory
       ~ErrorCategory.kind
       ~ErrorCategory.metric_family
       ~ErrorCategory.tier
+      ~ErrorCategory.default_unit
       ~ErrorCategory.rembi_module
       ~ErrorCategory.change_note
       ~ErrorCategory.header_scheme
@@ -90,6 +91,7 @@ phenotypic.schema.ErrorCategory
       ~ErrorCategory.METRIC_FAMILY
       ~ErrorCategory.resolved_kind
       ~ErrorCategory.resolved_tier
+      ~ErrorCategory.unit
       ~ErrorCategory.resolved_rembi_module
       ~ErrorCategory.use_label
       ~ErrorCategory.use_badge
@@ -106,6 +108,7 @@ phenotypic.schema.ErrorCategory
       ~ErrorCategory.image
       ~ErrorCategory.pair
       ~ErrorCategory.tier_override
+      ~ErrorCategory.unit_override
       ~ErrorCategory.derivation_type
       ~ErrorCategory.derives_from
       ~ErrorCategory.rembi_module_override

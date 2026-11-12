@@ -62,6 +62,7 @@ phenotypic.prefab.FilamentousFungiPipeline
       ~FilamentousFungiPipeline.set_plots
       ~FilamentousFungiPipeline.set_post
       ~FilamentousFungiPipeline.set_qc
+      ~FilamentousFungiPipeline.summary
       ~FilamentousFungiPipeline.to_json
       ~FilamentousFungiPipeline.update_forward_refs
       ~FilamentousFungiPipeline.validate

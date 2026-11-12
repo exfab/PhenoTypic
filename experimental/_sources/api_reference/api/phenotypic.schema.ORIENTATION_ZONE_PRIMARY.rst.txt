@@ -19,6 +19,7 @@ phenotypic.schema.ORIENTATION\_ZONE\_PRIMARY
       ~ORIENTATION_ZONE_PRIMARY.tier
       ~ORIENTATION_ZONE_PRIMARY.kind
       ~ORIENTATION_ZONE_PRIMARY.metric_family
+      ~ORIENTATION_ZONE_PRIMARY.default_unit
       ~ORIENTATION_ZONE_PRIMARY.rembi_module
       ~ORIENTATION_ZONE_PRIMARY.change_note
       ~ORIENTATION_ZONE_PRIMARY.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.ORIENTATION\_ZONE\_PRIMARY
       ~ORIENTATION_ZONE_PRIMARY.METRIC_FAMILY
       ~ORIENTATION_ZONE_PRIMARY.resolved_kind
       ~ORIENTATION_ZONE_PRIMARY.resolved_tier
+      ~ORIENTATION_ZONE_PRIMARY.unit
       ~ORIENTATION_ZONE_PRIMARY.resolved_rembi_module
       ~ORIENTATION_ZONE_PRIMARY.use_label
       ~ORIENTATION_ZONE_PRIMARY.use_badge
@@ -110,6 +112,7 @@ phenotypic.schema.ORIENTATION\_ZONE\_PRIMARY
       ~ORIENTATION_ZONE_PRIMARY.image
       ~ORIENTATION_ZONE_PRIMARY.pair
       ~ORIENTATION_ZONE_PRIMARY.tier_override
+      ~ORIENTATION_ZONE_PRIMARY.unit_override
       ~ORIENTATION_ZONE_PRIMARY.derivation_type
       ~ORIENTATION_ZONE_PRIMARY.derives_from
       ~ORIENTATION_ZONE_PRIMARY.rembi_module_override

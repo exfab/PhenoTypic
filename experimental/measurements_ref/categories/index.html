@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -623,8 +624,8 @@
 <p id="measurement-categories">Every measurement column begins with its metric family: <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code> belongs to
 the <strong>Size</strong> family, which says only which schema the column comes from. A
 <strong>category</strong> is a separate, curated grouping that cuts across families: one
-category can gather size, intensity and colour columns that three different
-schemas produce, and one column can belong to several categories.</p>
+category can gather size, shape, intensity and colour columns that four
+different schemas produce, and one column can belong to several categories.</p>
 <p>A category tells you where to look first, not how far to trust a single value;
 that is the job of the Type badge (see <a class="reference internal" href="../tier_system.html"><span class="doc">Tier System</span></a>).</p>
 <p>Every run that measures objects writes one spreadsheet per category that has at
@@ -632,7 +633,7 @@ least one column in the run, under <code class="docutils literal notranslate"><s
 metadata and position columns plus that category’s columns.</p>
 <section id="starting-metrics">
 <span id="measurement-category-startingmetrics"></span><h2>Starting Metrics<a class="headerlink" href="#starting-metrics" title="Link to this heading">#</a></h2>
-<p>Core per-colony magnitudes to examine first: the size measurements, integrated grayscale intensity, and the CIELAB medoid colour.</p>
+<p>Per-colony values to examine first: area and robust mean radius, circularity and eccentricity, mean grayscale intensity, and the CIELAB medoid colour.</p>
 <p>Written to <code class="docutils literal notranslate"><span class="pre">deliverables/measurements_by_category/StartingMetrics.csv</span></code> (and <code class="docutils literal notranslate"><span class="pre">.parquet</span></code>).</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
@@ -654,63 +655,23 @@ metadata and position columns plus that category’s columns.</p>
 <td><p><a class="reference internal" href="../measure/MeasureColor.html#measurement-info-colorlab"><span class="std std-ref">ColorLab</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_IntegratedIntensity</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Intensity_MeanIntensity</span></code></p></td>
 <td><p><a class="reference internal" href="../measure/MeasureIntensity.html#measurement-info-intensity"><span class="std std-ref">Intensity</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_Circularity</span></code></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureShape.html#measurement-info-shape"><span class="std std-ref">Shape</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_Eccentricity</span></code></p></td>
+<td><p><a class="reference internal" href="../measure/MeasureShape.html#measurement-info-shape"><span class="std std-ref">Shape</span></a></p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_Area</span></code></p></td>
 <td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_IntegratedIntensity</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_Perimeter</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_ConvexArea</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_BboxArea</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MajorAxisLength</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MinorAxisLength</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MinFeretDiameter</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MaxFeretDiameter</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_InscribedRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MedianRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MeanRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Size_RobustMeanRadius</span></code></p></td>
-<td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
-<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_MaxRadius</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Size_RobustMeanRadius</span></code></p></td>
 <td><p><a class="reference internal" href="../measure/MeasureSize.html#measurement-info-size"><span class="std std-ref">Size</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
 </tr>

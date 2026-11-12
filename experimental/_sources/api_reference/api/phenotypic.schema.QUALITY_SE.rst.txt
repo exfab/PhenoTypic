@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_SE
       ~QUALITY_SE.kind
       ~QUALITY_SE.metric_family
       ~QUALITY_SE.tier
+      ~QUALITY_SE.default_unit
       ~QUALITY_SE.rembi_module
       ~QUALITY_SE.change_note
       ~QUALITY_SE.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_SE
       ~QUALITY_SE.METRIC_FAMILY
       ~QUALITY_SE.resolved_kind
       ~QUALITY_SE.resolved_tier
+      ~QUALITY_SE.unit
       ~QUALITY_SE.resolved_rembi_module
       ~QUALITY_SE.use_label
       ~QUALITY_SE.use_badge
@@ -102,6 +104,7 @@ phenotypic.schema.QUALITY\_SE
       ~QUALITY_SE.image
       ~QUALITY_SE.pair
       ~QUALITY_SE.tier_override
+      ~QUALITY_SE.unit_override
       ~QUALITY_SE.derivation_type
       ~QUALITY_SE.derives_from
       ~QUALITY_SE.rembi_module_override

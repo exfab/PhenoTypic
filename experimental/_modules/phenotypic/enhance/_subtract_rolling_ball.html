@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../enhance.html" class="nav-link">phenotypic.enhance</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._subtract_rolling_ball</span></li>
   </ul>
 </nav>
@@ -571,10 +574,14 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">rolling_ball</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.restoration</span><span class="w"> </span><span class="kn">import</span> <span class="n">ellipsoid_kernel</span><span class="p">,</span> <span class="n">rolling_ball</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtraction</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
+
+<span class="c1">#: How many intensity steps the ball&#39;s height axis counts across</span>
+<span class="c1">#: ``detect_mat``&#39;s ``[0, 1]`` range: the 8-bit grey levels.</span>
+<span class="n">_INTENSITY_LEVELS</span> <span class="o">=</span> <span class="mi">255</span>
 
 
 <div class="viewcode-block" id="SubtractRollingBall">
@@ -582,11 +589,22 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">SubtractRollingBall</span><span class="p">(</span><span class="n">BackgroundSubtraction</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove background from ``detect_mat`` with ImageJ-style rolling-ball subtraction.</span>
 
-<span class="sd">    Models the background as the surface traced by rolling a parabolic ball</span>
-<span class="sd">    under the image intensity landscape, then subtracts it. Removes slow</span>
-<span class="sd">    illumination gradients and agar shading while preserving colony</span>
-<span class="sd">    structures, and handles non-Gaussian intensity ramps better than</span>
-<span class="sd">    Gaussian-based subtraction.</span>
+<span class="sd">    Models the background as the surface traced by rolling a ball under the</span>
+<span class="sd">    image intensity landscape, then subtracts it. Removes slow illumination</span>
+<span class="sd">    gradients and agar shading while preserving colony structures, and</span>
+<span class="sd">    handles non-Gaussian intensity ramps better than Gaussian-based</span>
+<span class="sd">    subtraction.</span>
+
+<span class="sd">    The ball is ``radius`` pixels wide and ``radius`` grey levels tall, with</span>
+<span class="sd">    ``detect_mat``&#39;s ``[0, 1]`` range counted as 255 grey levels: the result</span>
+<span class="sd">    is exactly that of rolling a ``radius``-pixel ball over the image scaled</span>
+<span class="sd">    to 8-bit values. scikit-image&#39;s gallery likewise scales the ellipsoid by</span>
+<span class="sd">    ``/255`` for ``[0, 1]`` images; its example doubles the intensity axis</span>
+<span class="sd">    (``2 * radius / 255``), while ``radius / 255`` is the one that reproduces</span>
+<span class="sd">    ``ball_kernel(radius)`` exactly on 8-bit values.</span>
+<span class="sd">    Rolled on the ``[0, 1]`` values directly, a ball ``radius`` units tall</span>
+<span class="sd">    falls away by a colony&#39;s whole height within a few pixels of its apex,</span>
+<span class="sd">    so it fits inside every colony and subtracts it.</span>
 
 <span class="sd">    For algorithm details, see :doc:`/explanation/what_enhancement_does`.</span>
 
@@ -607,7 +625,7 @@
 <span class="sd">        - :class:`WhiteTophatEnhance` for isolating small bright</span>
 <span class="sd">          structures rather than producing a corrected background-free</span>
 <span class="sd">          image.</span>
-<span class="sd">        - :class:`ImageInverter` before this operation when colonies are</span>
+<span class="sd">        - :class:`InvertImage` before this operation when colonies are</span>
 <span class="sd">          dark on bright agar and should be made bright explicitly.</span>
 
 <span class="sd">    Args:</span>
@@ -616,8 +634,10 @@
 <span class="sd">            the background estimate. Typical range: 50--200. A reasonable</span>
 <span class="sd">            starting point is a value larger than the widest colony on the</span>
 <span class="sd">            plate. Default: 100.</span>
-<span class="sd">        kernel: Optional custom ball or paraboloid array overriding the</span>
-<span class="sd">            default parabolic shape. When provided, ``radius`` is ignored.</span>
+<span class="sd">        kernel: Optional custom kernel overriding the default ball, as for</span>
+<span class="sd">            :func:`skimage.restoration.rolling_ball`: an array of surface</span>
+<span class="sd">            heights in ``detect_mat`` units (``[0, 1]``), ``inf`` outside the</span>
+<span class="sd">            footprint. When provided, ``radius`` is ignored.</span>
 <span class="sd">            Default: ``None``.</span>
 <span class="sd">        nansafe: Treat NaN-valued pixels as missing data during background</span>
 <span class="sd">            estimation, preventing NaN propagation in masked or padded</span>
@@ -632,6 +652,18 @@
 <span class="sd">        visual walkthrough of background subtraction on plate images.</span>
 <span class="sd">        :doc:`/explanation/what_enhancement_does` for background on</span>
 <span class="sd">        rolling-ball and other illumination correction strategies.</span>
+
+<span class="sd">    .. versionchanged:: 0.21.0</span>
+<span class="sd">       The default ball is ``radius`` grey levels tall, counting</span>
+<span class="sd">       ``detect_mat``&#39;s ``[0, 1]`` as 255 levels. It was ``radius`` whole</span>
+<span class="sd">       intensity ranges tall, so it fitted inside every colony and subtracted</span>
+<span class="sd">       it: on the bundled 72 h plate a colony&#39;s height above background fell</span>
+<span class="sd">       to 0.000 at ``radius=100``. The output now keeps colonies, so it</span>
+<span class="sd">       differs throughout from earlier versions&#39;, and a threshold tuned on the</span>
+<span class="sd">       old output needs re-tuning. A custom ``kernel`` is used as before. A</span>
+<span class="sd">       run started before 0.21.0 must be re-run with ``--restart`` or</span>
+<span class="sd">       ``--overwrite``, not resumed: resuming reuses the images it already</span>
+<span class="sd">       finished, enhanced the old way.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># TODO: review bound (unverified vs literature)</span>
@@ -639,11 +671,22 @@
     <span class="n">kernel</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">nansafe</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ball</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The default kernel: ``radius`` px wide, ``radius`` grey levels tall.</span>
+
+<span class="sd">        An ellipsoid with spatial semi-axes ``radius`` and intensity semi-axis</span>
+<span class="sd">        ``radius / 255``, which equals ``ball_kernel(radius)`` applied to the</span>
+<span class="sd">        image multiplied by 255, without allocating that scaled copy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ellipsoid_kernel</span><span class="p">(</span>
+                <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">/</span> <span class="n">_INTENSITY_LEVELS</span><span class="p">,</span>
+        <span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">):</span>
         <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span> <span class="o">-</span> <span class="n">rolling_ball</span><span class="p">(</span>
                 <span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span>
-                <span class="n">radius</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span>
-                <span class="n">kernel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ball</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span>
                 <span class="n">nansafe</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nansafe</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>

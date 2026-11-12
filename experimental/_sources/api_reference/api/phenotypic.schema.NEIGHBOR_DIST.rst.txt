@@ -19,6 +19,7 @@ phenotypic.schema.NEIGHBOR\_DIST
       ~NEIGHBOR_DIST.kind
       ~NEIGHBOR_DIST.metric_family
       ~NEIGHBOR_DIST.tier
+      ~NEIGHBOR_DIST.default_unit
       ~NEIGHBOR_DIST.rembi_module
       ~NEIGHBOR_DIST.change_note
       ~NEIGHBOR_DIST.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.NEIGHBOR\_DIST
       ~NEIGHBOR_DIST.METRIC_FAMILY
       ~NEIGHBOR_DIST.resolved_kind
       ~NEIGHBOR_DIST.resolved_tier
+      ~NEIGHBOR_DIST.unit
       ~NEIGHBOR_DIST.resolved_rembi_module
       ~NEIGHBOR_DIST.use_label
       ~NEIGHBOR_DIST.use_badge
@@ -109,6 +111,7 @@ phenotypic.schema.NEIGHBOR\_DIST
       ~NEIGHBOR_DIST.image
       ~NEIGHBOR_DIST.pair
       ~NEIGHBOR_DIST.tier_override
+      ~NEIGHBOR_DIST.unit_override
       ~NEIGHBOR_DIST.derivation_type
       ~NEIGHBOR_DIST.derives_from
       ~NEIGHBOR_DIST.rembi_module_override

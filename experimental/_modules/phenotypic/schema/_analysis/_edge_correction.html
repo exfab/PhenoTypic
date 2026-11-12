@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for edge correction analysis results.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DerivedMeasure</span>
 
 
@@ -589,10 +590,30 @@
         <span class="k">return</span> <span class="s2">&quot;EdgeCorrection&quot;</span></div>
 
 
-    <span class="n">CORRECTED_CAP</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Cap&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity for the target measurement&quot;</span><span class="p">,</span>
-                          <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;normalization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
-    <span class="n">NEW_VAL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NewVal&quot;</span><span class="p">,</span> <span class="s2">&quot;The new value of the target measurement&quot;</span><span class="p">,</span>
-                    <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;normalization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span></div>
+<div class="viewcode-block" id="EDGE_CORRECTION.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.EDGE_CORRECTION.html#phenotypic.schema.EDGE_CORRECTION.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">OF_INPUT</span></div>
+
+
+    <span class="n">CORRECTED_CAP</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Cap&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Ceiling applied to the measurement in this group: the mean of the &quot;</span>
+        <span class="s2">&quot;top_n largest values among fully surrounded (interior) colonies at &quot;</span>
+        <span class="s2">&quot;the last time point. When the group is not corrected it is the &quot;</span>
+        <span class="s2">&quot;group&#39;s maximum, so nothing is clipped.&quot;</span><span class="p">,</span>
+        <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;normalization&quot;</span><span class="p">,</span>
+        <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">NEW_VAL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;NewVal&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The measurement after edge correction: each value in the group &quot;</span>
+        <span class="s2">&quot;clipped to between 0 and Cap, or the original value when the group &quot;</span>
+        <span class="s2">&quot;is not corrected.&quot;</span><span class="p">,</span>
+        <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;normalization&quot;</span><span class="p">,</span>
+        <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
 
 </pre></div>
 

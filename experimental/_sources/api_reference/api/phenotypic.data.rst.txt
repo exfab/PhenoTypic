@@ -20,6 +20,7 @@
       make_synthetic_colony
       make_synthetic_plate
       make_synthetic_filamentous_plate
+      make_synthetic_window_series
       load_plate_12hr
       load_plate_72hr
       load_early_colony

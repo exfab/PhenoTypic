@@ -588,7 +588,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationFailedError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_measure_integrity</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">ResolvedUnit</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">catch_warnings_decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
@@ -936,6 +936,49 @@
 <span class="sd">            for, with an example. Empty when every header is fixed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{}</span></div>
+
+
+<div class="viewcode-block" id="MeasureFeatures.output_unit">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.output_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_unit</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the unit of the column :meth:`measure` writes for *member*.</span>
+
+<span class="sd">        The one default every table producer shares, next to</span>
+<span class="sd">        :meth:`output_header`; no operation overrides it. A static unit</span>
+<span class="sd">        (``SIZE.AREA`` is ``px²``) resolves to itself, and an input-dependent</span>
+<span class="sd">        one resolves against the unit of column *on*. See</span>
+<span class="sd">        :meth:`phenotypic.analysis.abc_.SetAnalyzer.output_unit`.</span>
+
+<span class="sd">        *on* means more here than in :meth:`output_header`, which ignores it</span>
+<span class="sd">        for most producers. Every measurement operation&#39;s members are static</span>
+<span class="sd">        today, so *on* is never needed for one; but on a quality check the</span>
+<span class="sd">        Median, MAD, SE and fence columns (``QUALITY_MAD``, ``QUALITY_ZMAX``,</span>
+<span class="sd">        ``QUALITY_SE``, ``QUALITY_TUKEY``) are in the unit of the check&#39;s</span>
+<span class="sd">        ``on`` column, and resolving them without it raises.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            member: A member of a schema this operation declares.</span>
+<span class="sd">            on: The analyzed column, for a member whose unit depends on it.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The concrete unit, with its ``length_power`` filled in.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: *member* has no unit, or its unit depends on *on* and</span>
+<span class="sd">                the unit of *on* is unknown.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureSize</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.schema import SIZE</span>
+<span class="sd">            &gt;&gt;&gt; MeasureSize.output_unit(SIZE.AREA)</span>
+<span class="sd">            ResolvedUnit(symbol=&#39;px²&#39;, length_power=2)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._measurement_outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_output_unit</span>
+
+        <span class="k">return</span> <span class="n">resolve_output_unit</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MeasureFeatures.get_measurement_infoclasses">

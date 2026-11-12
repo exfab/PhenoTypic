@@ -38,6 +38,7 @@ phenotypic.measure.MeasureGridLinRegStats
       ~MeasureGridLinRegStats.model_validate_strings
       ~MeasureGridLinRegStats.output_header
       ~MeasureGridLinRegStats.output_header_placeholders
+      ~MeasureGridLinRegStats.output_unit
       ~MeasureGridLinRegStats.parse_file
       ~MeasureGridLinRegStats.parse_obj
       ~MeasureGridLinRegStats.parse_raw

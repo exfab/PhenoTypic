@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._manual_refine</span></li>
   </ul>
 </nav>
@@ -595,7 +598,7 @@
 <span class="sd">    Unlike :class:`ManualPointDetector`, which *produces* an ``objmap`` from</span>
 <span class="sd">    scratch at picked coordinates, this refiner *filters* the output of an</span>
 <span class="sd">    earlier detector. It is the manual-curation counterpart to automated</span>
-<span class="sd">    refiners such as :class:`SmallObjectRemover` or</span>
+<span class="sd">    refiners such as :class:`RemoveSmallObjects` or</span>
 <span class="sd">    :class:`RemoveLowCircularity`, and is suitable for ground-truth</span>
 <span class="sd">    curation, interactive review, and correcting systematic detector misses</span>
 <span class="sd">    on a handful of colonies. For where refinement sits in a pipeline see</span>
@@ -617,7 +620,7 @@
 <span class="sd">          one.</span>
 <span class="sd">        * :class:`RemoveBorderObjects` for automated exclusion of objects</span>
 <span class="sd">          touching the image border (no manual step required).</span>
-<span class="sd">        * :class:`SmallObjectRemover` for size-based filtering when</span>
+<span class="sd">        * :class:`RemoveSmallObjects` for size-based filtering when</span>
 <span class="sd">          artefacts are systematically smaller than true colonies.</span>
 
 <span class="sd">    Args:</span>

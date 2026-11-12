@@ -19,6 +19,7 @@ phenotypic.schema.ColorHSV
       ~ColorHSV.tier
       ~ColorHSV.kind
       ~ColorHSV.metric_family
+      ~ColorHSV.default_unit
       ~ColorHSV.rembi_module
       ~ColorHSV.change_note
       ~ColorHSV.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.ColorHSV
       ~ColorHSV.METRIC_FAMILY
       ~ColorHSV.resolved_kind
       ~ColorHSV.resolved_tier
+      ~ColorHSV.unit
       ~ColorHSV.resolved_rembi_module
       ~ColorHSV.use_label
       ~ColorHSV.use_badge
@@ -103,6 +105,7 @@ phenotypic.schema.ColorHSV
       ~ColorHSV.image
       ~ColorHSV.pair
       ~ColorHSV.tier_override
+      ~ColorHSV.unit_override
       ~ColorHSV.derivation_type
       ~ColorHSV.derives_from
       ~ColorHSV.rembi_module_override

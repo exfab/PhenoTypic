@@ -33,6 +33,7 @@ Measurements
    :caption: Quality control
 
    qc/ExpectedVsDetectedCount
+   qc/FittingWindow
    qc/GridOccupancy
    qc/ICC
    qc/MaxModifiedZScore
@@ -157,6 +158,9 @@ Operations
    * - :doc:`ExpectedVsDetectedCount <qc/ExpectedVsDetectedCount>`
      - Quality control
      - Flag groups whose detected colony count diverges from metadata.
+   * - :doc:`FittingWindow <qc/FittingWindow>`
+     - Quality control
+     - Propose the frames over which a condition's replicates agree well enough to fit.
    * - :doc:`GridOccupancy <qc/GridOccupancy>`
      - Quality control
      - Flag groups whose grid occupancy (filled cells / expected) is low.

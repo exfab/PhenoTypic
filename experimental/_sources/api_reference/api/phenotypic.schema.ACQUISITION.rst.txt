@@ -20,6 +20,7 @@ phenotypic.schema.ACQUISITION
       ~ACQUISITION.header_set
       ~ACQUISITION.kind
       ~ACQUISITION.tier
+      ~ACQUISITION.default_unit
       ~ACQUISITION.rembi_module
       ~ACQUISITION.change_note
       ~ACQUISITION.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.ACQUISITION
       ~ACQUISITION.METRIC_FAMILY
       ~ACQUISITION.resolved_kind
       ~ACQUISITION.resolved_tier
+      ~ACQUISITION.unit
       ~ACQUISITION.resolved_rembi_module
       ~ACQUISITION.use_label
       ~ACQUISITION.use_badge
@@ -104,6 +106,7 @@ phenotypic.schema.ACQUISITION
       ~ACQUISITION.image
       ~ACQUISITION.pair
       ~ACQUISITION.tier_override
+      ~ACQUISITION.unit_override
       ~ACQUISITION.derivation_type
       ~ACQUISITION.derives_from
       ~ACQUISITION.rembi_module_override

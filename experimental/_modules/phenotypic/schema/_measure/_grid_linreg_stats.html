@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Grid linear regression statistics and residual errors.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
@@ -592,9 +593,17 @@
         <span class="k">return</span> <span class="s2">&quot;GridLinReg&quot;</span></div>
 
 
+<div class="viewcode-block" id="GRID_LINREG_STATS.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GRID_LINREG_STATS.html#phenotypic.schema.GRID_LINREG_STATS.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span></div>
+
+
     <span class="n">ROW_LINREG_M</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowM&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ROW_LINREG_B</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowB&quot;</span><span class="p">,</span>
@@ -603,6 +612,7 @@
     <span class="n">COL_LINREG_M</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColM&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">COL_LINREG_B</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColB&quot;</span><span class="p">,</span>

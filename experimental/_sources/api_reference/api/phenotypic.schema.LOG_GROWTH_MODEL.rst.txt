@@ -19,6 +19,7 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       ~LOG_GROWTH_MODEL.kind
       ~LOG_GROWTH_MODEL.metric_family
       ~LOG_GROWTH_MODEL.tier
+      ~LOG_GROWTH_MODEL.default_unit
       ~LOG_GROWTH_MODEL.rembi_module
       ~LOG_GROWTH_MODEL.change_note
       ~LOG_GROWTH_MODEL.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       ~LOG_GROWTH_MODEL.METRIC_FAMILY
       ~LOG_GROWTH_MODEL.resolved_kind
       ~LOG_GROWTH_MODEL.resolved_tier
+      ~LOG_GROWTH_MODEL.unit
       ~LOG_GROWTH_MODEL.resolved_rembi_module
       ~LOG_GROWTH_MODEL.use_label
       ~LOG_GROWTH_MODEL.use_badge
@@ -105,6 +107,7 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       ~LOG_GROWTH_MODEL.image
       ~LOG_GROWTH_MODEL.pair
       ~LOG_GROWTH_MODEL.tier_override
+      ~LOG_GROWTH_MODEL.unit_override
       ~LOG_GROWTH_MODEL.derivation_type
       ~LOG_GROWTH_MODEL.derives_from
       ~LOG_GROWTH_MODEL.rembi_module_override

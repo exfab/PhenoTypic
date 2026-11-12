@@ -36,6 +36,7 @@ phenotypic.analysis.TukeyOutlierRemover
       ~TukeyOutlierRemover.model_validate_strings
       ~TukeyOutlierRemover.output_header
       ~TukeyOutlierRemover.output_header_placeholders
+      ~TukeyOutlierRemover.output_unit
       ~TukeyOutlierRemover.parse_file
       ~TukeyOutlierRemover.parse_obj
       ~TukeyOutlierRemover.parse_raw

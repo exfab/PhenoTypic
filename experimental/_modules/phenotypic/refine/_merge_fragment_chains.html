@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._merge_fragment_chains</span></li>
   </ul>
 </nav>
@@ -607,10 +610,10 @@
 <span class="sd">          fragmented colony edges.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallToLargeMerger` when only small fragments should</span>
+<span class="sd">        - :class:`MergeSmallToLarge` when only small fragments should</span>
 <span class="sd">          absorb into large anchor colonies while distinct large colonies</span>
 <span class="sd">          remain separate.</span>
-<span class="sd">        - :class:`NearestNeighborMerger` for size-selective nearest-neighbor</span>
+<span class="sd">        - :class:`MergeNearestNeighbors` for size-selective nearest-neighbor</span>
 <span class="sd">          merging without transitive closure, preserving large colonies as</span>
 <span class="sd">          independent anchors.</span>
 <span class="sd">        - :class:`MaskClosing` for morphological closing that bridges small</span>

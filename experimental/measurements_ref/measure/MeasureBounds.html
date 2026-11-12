@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -639,7 +640,7 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_CenterRR</span></code></p></td>
-<td><p>The row coordinate of the center of the bounding box.</p></td>
+<td><p>Row coordinate of the colony’s centroid, the mean position of its pixels (skimage <code class="docutils literal notranslate"><span class="pre">centroid</span></code>).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MinRR</span></code></p></td>
@@ -647,11 +648,11 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MaxRR</span></code></p></td>
-<td><p>The largest row coordinate of the bounding box.</p></td>
+<td><p>The largest row coordinate of the bounding box. It is one past the colony’s last pixel row (exclusive, as in Python slicing), so rows MinRR to MaxRR - 1 hold the colony and <code class="docutils literal notranslate"><span class="pre">image[MinRR:MaxRR]</span></code> covers it.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_CenterCC</span></code></p></td>
-<td><p>The column coordinate of the center of the bounding box.</p></td>
+<td><p>Column coordinate of the colony’s centroid, the mean position of its pixels (skimage <code class="docutils literal notranslate"><span class="pre">centroid</span></code>).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MinCC</span></code></p></td>
@@ -659,7 +660,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MaxCC</span></code></p></td>
-<td><p>The largest column coordinate of the bounding box.</p></td>
+<td><p>The largest column coordinate of the bounding box. It is one past the colony’s last pixel column (exclusive, as in Python slicing), so columns MinCC to MaxCC - 1 hold the colony and <code class="docutils literal notranslate"><span class="pre">image[:,</span> <span class="pre">MinCC:MaxCC]</span></code> covers it.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_IntensityWeightedCenterRR</span></code></p></td>
@@ -671,11 +672,11 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_DistWeightedCenterRR</span></code></p></td>
-<td><p>Row coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
+<td><p>Row coordinate of the colony’s distance-weighted centroid: the mean position of its pixels, each weighted by its distance to the colony’s edge. It is Σ dt·row / Σ dt over the Euclidean distance transform dt, and the plain centroid for a colony whose every pixel has a pixel of another colony among its eight neighbors (those pixels are zeroed before the transform, so its weights sum to 0). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_DistWeightedCenterCC</span></code></p></td>
-<td><p>Column coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
+<td><p>Column coordinate of the colony’s distance-weighted centroid: the mean position of its pixels, each weighted by its distance to the colony’s edge. It is Σ dt·col / Σ dt over the Euclidean distance transform dt, and the plain centroid for a colony whose every pixel has a pixel of another colony among its eight neighbors (those pixels are zeroed before the transform, so its weights sum to 0). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>

@@ -577,20 +577,25 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span><span class="p">,</span> <span class="n">UNITS</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">ResolvedUnit</span>
 
 
 <span class="n">MeasurementFrame</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_TableProducer</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the registry needs from a producer class: its header emitter.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;What the registry needs from a producer class: its header and unit.&quot;&quot;&quot;</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">output_header</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">output_header_placeholders</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span> <span class="o">...</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_unit</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span><span class="p">:</span> <span class="o">...</span>
 
 
 <div class="viewcode-block" id="MeasurementProducer">
@@ -638,6 +643,31 @@
 <span class="sd">            The emitted header.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">producer</span><span class="o">.</span><span class="n">output_header</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MeasurementProducer.output_unit">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.MeasurementProducer.html#phenotypic.util.MeasurementProducer.output_unit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_unit</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the unit of the column the producer writes for *member*.</span>
+
+<span class="sd">        Delegates to the producer class&#39;s ``output_unit``; every producer</span>
+<span class="sd">        inherits the one default, :func:`resolve_output_unit`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            member: A member of one of this producer&#39;s schemas.</span>
+<span class="sd">            on: The analyzed column. Needed only for a member whose unit is</span>
+<span class="sd">                input-dependent (``UNITS.OF_INPUT`` and its kin).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The concrete unit, with its ``length_power`` filled in.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: *member* has no unit, or its unit depends on *on* and</span>
+<span class="sd">                the unit of *on* is unknown.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">producer</span><span class="o">.</span><span class="n">output_unit</span><span class="p">(</span><span class="n">member</span><span class="p">,</span> <span class="n">on</span><span class="p">)</span></div>
 </div>
 
 
@@ -1002,6 +1032,82 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve *column* to its member&#39;s ``desc`` across all schemes, or None.&quot;&quot;&quot;</span>
     <span class="n">member</span> <span class="o">=</span> <span class="n">_member_for_column</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">member</span><span class="o">.</span><span class="n">desc</span> <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">unit_of_column</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the static unit of a measurement column, or ``None``.</span>
+
+<span class="sd">    The column is decoded to its public schema member in any header scheme</span>
+<span class="sd">    (``Texture_Contrast-deg000-scale05`` is ``TEXTURE.CONTRAST``). A column</span>
+<span class="sd">    that is not a known header has no unit here, and neither has a known</span>
+<span class="sd">    header whose unit is not static: metadata, and the outputs whose own unit</span>
+<span class="sd">    is input-dependent (a fitted rate such as ``v``, ``RMSE``, a QC median).</span>
+<span class="sd">    A statically tagged output keeps its unit: the fitted lag ``lam`` is</span>
+<span class="sd">    ``time`` and ``alpha`` is ``1/time``, whatever column was fitted.</span>
+<span class="sd">    Edge-corrected headers (``EdgeCorrection_NewVal-&lt;column&gt;``) also return</span>
+<span class="sd">    ``None``; they are not resolved recursively through the column they embed</span>
+<span class="sd">    (K0-17). A label or status column returns its static ``NOT_A_QUANTITY``</span>
+<span class="sd">    unit, whose ``length_power`` is ``None``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        column: An output column header, such as ``&quot;Size_Area&quot;``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The member&#39;s static unit, resolved, or ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="n">_member_for_column</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">member</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">unit</span> <span class="o">=</span> <span class="n">member</span><span class="o">.</span><span class="n">unit</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">UNITS</span><span class="p">)</span> <span class="ow">or</span> <span class="n">unit</span><span class="o">.</span><span class="n">is_input_dependent</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">unit</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_output_unit</span><span class="p">(</span>
+    <span class="n">member</span><span class="p">:</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve *member*&#39;s unit, against the unit of column *on* when it needs one.</span>
+
+<span class="sd">    The single resolver behind every producer&#39;s default ``output_unit``</span>
+<span class="sd">    (``MeasureFeatures`` and ``SetAnalyzer``); no producer overrides it. A</span>
+<span class="sd">    static unit resolves to itself and ignores *on*. An input-dependent unit</span>
+<span class="sd">    (``OF_INPUT``, ``OF_INPUT_SQUARED``, ``OF_INPUT_PER_TIME``, ``PER_INPUT``)</span>
+<span class="sd">    resolves against :func:`unit_of_column` of *on*: ``v`` fitted on</span>
+<span class="sd">    ``Size_RobustMeanRadius`` is ``px/time``, length power 1. It never guesses</span>
+<span class="sd">    a unit for a column it does not know.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        member: The schema member whose column&#39;s unit is wanted.</span>
+<span class="sd">        on: The analyzed column, for an input-dependent unit.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The concrete unit, with its ``length_power`` filled in.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: *member* has no unit; or its unit is input-dependent and</span>
+<span class="sd">            *on* is ``None``, unknown, or has no length power of its own (a</span>
+<span class="sd">            label, metadata, or a column itself in the unit of its input).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">unit</span> <span class="o">=</span> <span class="n">member</span><span class="o">.</span><span class="n">unit</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">member</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">member</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">UNITS</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">member</span><span class="si">!s}</span><span class="s2">) has no unit&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">unit</span><span class="o">.</span><span class="n">is_input_dependent</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">unit</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">on</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> is in UNITS.</span><span class="si">{</span><span class="n">unit</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, the unit of the column it was &quot;</span>
+            <span class="s2">&quot;computed on; pass on=&lt;that column&gt; to resolve it&quot;</span>
+        <span class="p">)</span>
+    <span class="n">input_unit</span> <span class="o">=</span> <span class="n">unit_of_column</span><span class="p">(</span><span class="n">on</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">input_unit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_unit</span><span class="o">.</span><span class="n">length_power</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;cannot resolve the unit of </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: column </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">on</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> has no unit &quot;</span>
+            <span class="s2">&quot;of its own (it is not a known measurement header, or it is a &quot;</span>
+            <span class="s2">&quot;label, metadata, or itself in the unit of its input)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">unit</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">input_unit</span><span class="p">)</span>
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;generate_output_key&quot;</span><span class="p">,</span> <span class="s2">&quot;split_measurements&quot;</span><span class="p">,</span> <span class="s2">&quot;split_measurements_by_category&quot;</span><span class="p">]</span>

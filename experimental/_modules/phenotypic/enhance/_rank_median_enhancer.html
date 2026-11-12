@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../enhance.html" class="nav-link">phenotypic.enhance</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._rank_median_enhancer</span></li>
   </ul>
 </nav>
@@ -579,9 +582,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="RankMedianEnhancer">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.RankMedianEnhancer.html#phenotypic.enhance.RankMedianEnhancer">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">RankMedianEnhancer</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
+<div class="viewcode-block" id="EnhanceRankMedian">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.EnhanceRankMedian.html#phenotypic.enhance.EnhanceRankMedian">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnhanceRankMedian</span><span class="p">(</span><span class="n">Smoothing</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Suppress impulsive noise in ``detect_mat`` with rank-based median filtering.</span>
 
 <span class="sd">    Applies a local median using rank filters with a configurable structuring</span>
@@ -603,7 +606,7 @@
 <span class="sd">        - :class:`LocalEdgeDenoise` for edge-preserving smoothing of</span>
 <span class="sd">          Gaussian noise without the uint8 conversion required by rank</span>
 <span class="sd">          filters.</span>
-<span class="sd">        - :class:`NonLocalMeansDenoiser` for patch-based denoising that</span>
+<span class="sd">        - :class:`DenoiseNonLocalMeans` for patch-based denoising that</span>
 <span class="sd">          preserves fine colony texture better on noisy plates.</span>
 <span class="sd">        - :class:`GrayOpening` for morphological artifact removal that</span>
 <span class="sd">          does not require uint8 quantization.</span>

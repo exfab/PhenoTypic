@@ -659,8 +659,8 @@ workflow. Each is tuned for a specific imaging scenario.</p>
 with uniform backgrounds.</p>
 <p><strong>Pipeline steps:</strong>
 BlurGauss → EnhanceLocalContrast → MedianFilter → FocusEdgeSobel → OtsuDetector →
-MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
-GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner</p>
+MaskOpening → RemoveBorderObjects → RemoveSmallObjects → MaskFill →
+RemoveOversizedGridObjects → ReduceSectionsByLine → GridAligner</p>
 <p><strong>Measurements:</strong> MeasureSize, MeasureShape, MeasureColor, MeasureTexture,
 MeasureIntensity</p>
 <p><strong>When to choose:</strong> This is the default starting point. Try it first;

@@ -574,7 +574,9 @@
     <span class="n">SIZE_SHAPE_SPLIT_NOTE</span><span class="p">,</span>
     <span class="n">append_change_note</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrimaryMeasure</span>
 
 
@@ -597,6 +599,13 @@
         <span class="k">return</span> <span class="s2">&quot;Shape&quot;</span></div>
 
 
+<div class="viewcode-block" id="SHAPE.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SHAPE.html#phenotypic.schema.SHAPE.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span></div>
+
+
 <div class="viewcode-block" id="SHAPE.change_note">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.SHAPE.html#phenotypic.schema.SHAPE.change_note">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -613,11 +622,20 @@
 
     <span class="n">CIRCULARITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Circularity&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;Calculated as :math:`\frac{4\pi*\text</span><span class="si">{Area}</span><span class="s2">}{\text</span><span class="si">{Perimeter}</span><span class="s2">^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values &lt; 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How closely the colony&#39;s outline approximates a circle. Calculated &quot;</span>
+        <span class="s2">&quot;as :math:`</span><span class="se">\\</span><span class="s2">frac{4</span><span class="se">\\</span><span class="s2">pi*</span><span class="se">\\</span><span class="s2">text</span><span class="si">{Area}</span><span class="s2">}{</span><span class="se">\\</span><span class="s2">text</span><span class="si">{Perimeter}</span><span class="s2">^2}`. An ideal &quot;</span>
+        <span class="s2">&quot;circle gives exactly 1. On pixel colonies the value depends on size: &quot;</span>
+        <span class="s2">&quot;round colonies of 30 px radius or more read about 0.90 to 0.94, and &quot;</span>
+        <span class="s2">&quot;very small colonies (under about 10 px) can read well above 1, up &quot;</span>
+        <span class="s2">&quot;to about 1.15 at 5 px and higher below that. Values fall as the &quot;</span>
+        <span class="s2">&quot;outline becomes more irregular, so compare colonies of similar size.&quot;</span><span class="p">,</span>
+        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ECCENTRICITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Eccentricity&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Measure of colony elongation, ranging from 0 (perfect circle) to 1 (highly elongated). Values near 0 indicate compact, radially symmetric growth typical of healthy bacterial colonies, while higher values may suggest directional growth, motility, or environmental gradients on the agar surface.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Colony elongation, from 0 (a circle) to 1 (highly elongated), from the &quot;</span>
+        <span class="s2">&quot;ellipse with the same second moments.&quot;</span><span class="p">,</span>
+        <span class="n">categories</span><span class="o">=</span><span class="n">CATEGORIES</span><span class="o">.</span><span class="n">STARTING_METRICS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SOLIDITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Solidity&quot;</span><span class="p">,</span>
@@ -629,11 +647,26 @@
     <span class="p">)</span>
     <span class="n">COMPACTNESS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Compactness&quot;</span><span class="p">,</span>
-        <span class="sa">r</span><span class="s2">&quot;Calculated as :math:`\frac{\text</span><span class="si">{Perimeter}</span><span class="s2">^2}{4\pi*\text</span><span class="si">{Area}</span><span class="s2">}`. Inverse of circularity (ranges from 1 for perfect circles to higher values for irregular shapes). Measures colony shape complexity - compact, circular colonies have values near 1, while irregular or filamentous colonies have much higher values.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How far the colony&#39;s outline departs from a circle, as the inverse &quot;</span>
+        <span class="s2">&quot;of Circularity. Calculated as &quot;</span>
+        <span class="s2">&quot;:math:`</span><span class="se">\\</span><span class="s2">frac{</span><span class="se">\\</span><span class="s2">text</span><span class="si">{Perimeter}</span><span class="s2">^2}{4</span><span class="se">\\</span><span class="s2">pi*</span><span class="se">\\</span><span class="s2">text</span><span class="si">{Area}</span><span class="s2">}`. An ideal circle &quot;</span>
+        <span class="s2">&quot;gives exactly 1. On pixel colonies the value depends on size: round &quot;</span>
+        <span class="s2">&quot;colonies of 30 px radius or more read about 1.06 to 1.11, and very &quot;</span>
+        <span class="s2">&quot;small colonies (under about 10 px) can read well below 1, down to &quot;</span>
+        <span class="s2">&quot;about 0.86 at 5 px and lower below that. Values rise as the outline &quot;</span>
+        <span class="s2">&quot;becomes more irregular or filamentous, so compare colonies of &quot;</span>
+        <span class="s2">&quot;similar size.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ORIENTATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Orientation&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Angle (in radians) between the colony&#39;s major axis and the horizontal axis. Measures colony alignment and growth directionality. Random orientations are typical for most bacterial colonies, while consistent orientations may indicate environmental gradients or mechanical stresses during plating.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Angle, in radians from −π/2 to π/2, between the colony&#39;s major axis &quot;</span>
+        <span class="s2">&quot;and the image&#39;s vertical (row) axis: 0 for a colony elongated top to &quot;</span>
+        <span class="s2">&quot;bottom and about ±π/2 for one elongated left to right. Measures &quot;</span>
+        <span class="s2">&quot;colony alignment and growth directionality. Random orientations are &quot;</span>
+        <span class="s2">&quot;typical for most bacterial colonies, while consistent orientations &quot;</span>
+        <span class="s2">&quot;may indicate environmental gradients or mechanical stresses during &quot;</span>
+        <span class="s2">&quot;plating.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">RADIAN</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEAN_BOUNDARY_DIST</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MeanBoundaryDist&quot;</span><span class="p">,</span>
@@ -644,6 +677,7 @@
         <span class="s2">&quot;compact body (runners, a hyphal fringe) pull that ratio below 1/3; a &quot;</span>
         <span class="s2">&quot;uniformly thin, elongated colony raises it toward 1/2. The image border &quot;</span>
         <span class="s2">&quot;counts as an edge.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEDIAN_BOUNDARY_DIST</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MedianBoundaryDist&quot;</span><span class="p">,</span>
@@ -654,6 +688,7 @@
         <span class="s2">&quot;raggedness than MeanBoundaryDist. See Size_RobustMeanRadius and &quot;</span>
         <span class="s2">&quot;Size_MaxRadius for the colony&#39;s radial extent. The image border &quot;</span>
         <span class="s2">&quot;counts as an edge.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 

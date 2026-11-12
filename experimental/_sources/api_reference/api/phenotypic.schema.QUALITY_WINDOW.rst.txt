@@ -1,0 +1,117 @@
+phenotypic.schema.QUALITY\_WINDOW
+=================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: QUALITY_WINDOW
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QUALITY_WINDOW.kind
+      ~QUALITY_WINDOW.metric_family
+      ~QUALITY_WINDOW.tier
+      ~QUALITY_WINDOW.default_unit
+      ~QUALITY_WINDOW.rembi_module
+      ~QUALITY_WINDOW.change_note
+      ~QUALITY_WINDOW.header_scheme
+      ~QUALITY_WINDOW.member_for_header
+      ~QUALITY_WINDOW.owns_header
+      ~QUALITY_WINDOW.get_labels
+      ~QUALITY_WINDOW.get_headers
+      ~QUALITY_WINDOW.rst_table
+      ~QUALITY_WINDOW.append_rst_to_doc
+      ~QUALITY_WINDOW.encode
+      ~QUALITY_WINDOW.replace
+      ~QUALITY_WINDOW.split
+      ~QUALITY_WINDOW.rsplit
+      ~QUALITY_WINDOW.join
+      ~QUALITY_WINDOW.capitalize
+      ~QUALITY_WINDOW.casefold
+      ~QUALITY_WINDOW.title
+      ~QUALITY_WINDOW.center
+      ~QUALITY_WINDOW.count
+      ~QUALITY_WINDOW.expandtabs
+      ~QUALITY_WINDOW.find
+      ~QUALITY_WINDOW.partition
+      ~QUALITY_WINDOW.index
+      ~QUALITY_WINDOW.ljust
+      ~QUALITY_WINDOW.lower
+      ~QUALITY_WINDOW.lstrip
+      ~QUALITY_WINDOW.rfind
+      ~QUALITY_WINDOW.rindex
+      ~QUALITY_WINDOW.rjust
+      ~QUALITY_WINDOW.rstrip
+      ~QUALITY_WINDOW.rpartition
+      ~QUALITY_WINDOW.splitlines
+      ~QUALITY_WINDOW.strip
+      ~QUALITY_WINDOW.swapcase
+      ~QUALITY_WINDOW.translate
+      ~QUALITY_WINDOW.upper
+      ~QUALITY_WINDOW.startswith
+      ~QUALITY_WINDOW.endswith
+      ~QUALITY_WINDOW.removeprefix
+      ~QUALITY_WINDOW.removesuffix
+      ~QUALITY_WINDOW.isascii
+      ~QUALITY_WINDOW.islower
+      ~QUALITY_WINDOW.isupper
+      ~QUALITY_WINDOW.istitle
+      ~QUALITY_WINDOW.isspace
+      ~QUALITY_WINDOW.isdecimal
+      ~QUALITY_WINDOW.isdigit
+      ~QUALITY_WINDOW.isnumeric
+      ~QUALITY_WINDOW.isalpha
+      ~QUALITY_WINDOW.isalnum
+      ~QUALITY_WINDOW.isidentifier
+      ~QUALITY_WINDOW.isprintable
+      ~QUALITY_WINDOW.zfill
+      ~QUALITY_WINDOW.format
+      ~QUALITY_WINDOW.format_map
+      ~QUALITY_WINDOW.maketrans
+      ~QUALITY_WINDOW.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QUALITY_WINDOW.METRIC_FAMILY
+      ~QUALITY_WINDOW.resolved_kind
+      ~QUALITY_WINDOW.resolved_tier
+      ~QUALITY_WINDOW.unit
+      ~QUALITY_WINDOW.resolved_rembi_module
+      ~QUALITY_WINDOW.use_label
+      ~QUALITY_WINDOW.use_badge
+      ~QUALITY_WINDOW.category_badges
+      ~QUALITY_WINDOW.OUTCOME
+      ~QUALITY_WINDOW.START
+      ~QUALITY_WINDOW.END
+      ~QUALITY_WINDOW.REASON
+      ~QUALITY_WINDOW.BEST_CV
+      ~QUALITY_WINDOW.BAR
+      ~QUALITY_WINDOW.N_GROUPS
+      ~QUALITY_WINDOW.N_FRAMES_COUNTED
+      ~QUALITY_WINDOW.label
+      ~QUALITY_WINDOW.desc
+      ~QUALITY_WINDOW.bio_desc
+      ~QUALITY_WINDOW.image
+      ~QUALITY_WINDOW.pair
+      ~QUALITY_WINDOW.tier_override
+      ~QUALITY_WINDOW.unit_override
+      ~QUALITY_WINDOW.derivation_type
+      ~QUALITY_WINDOW.derives_from
+      ~QUALITY_WINDOW.rembi_module_override
+      ~QUALITY_WINDOW.categories
+   
+   

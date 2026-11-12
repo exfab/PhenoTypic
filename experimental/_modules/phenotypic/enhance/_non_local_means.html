@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../enhance.html" class="nav-link">phenotypic.enhance</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._non_local_means</span></li>
   </ul>
 </nav>
@@ -578,9 +581,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="NonLocalMeansDenoiser">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.NonLocalMeansDenoiser.html#phenotypic.enhance.NonLocalMeansDenoiser">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NonLocalMeansDenoiser</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
+<div class="viewcode-block" id="DenoiseNonLocalMeans">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.DenoiseNonLocalMeans.html#phenotypic.enhance.DenoiseNonLocalMeans">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DenoiseNonLocalMeans</span><span class="p">(</span><span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with non-local means patch-based filtering.</span>
 
 <span class="sd">    Compares small patches across the entire image to identify structurally</span>
@@ -606,7 +609,7 @@
 <span class="sd">          at higher computational cost.</span>
 <span class="sd">        - :class:`LocalEdgeDenoise` for faster edge-preserving denoising</span>
 <span class="sd">          without whole-image patch search.</span>
-<span class="sd">        - :class:`BayesShrinkEnhancer` for adaptive wavelet denoising that</span>
+<span class="sd">        - :class:`DenoiseBayesShrink` for adaptive wavelet denoising that</span>
 <span class="sd">          applies spatially varying thresholds.</span>
 
 <span class="sd">    Args:</span>

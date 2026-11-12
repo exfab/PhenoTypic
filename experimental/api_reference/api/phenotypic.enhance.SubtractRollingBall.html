@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="phenotypic.enhance.SubtractPolySurface" href="phenotypic.enhance.SubtractPolySurface.html" />
-    <link rel="prev" title="phenotypic.enhance.RankMedianEnhancer" href="phenotypic.enhance.RankMedianEnhancer.html" />
+    <link rel="prev" title="phenotypic.enhance.EnhanceRankMedian" href="phenotypic.enhance.EnhanceRankMedian.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.21.0" />
@@ -584,6 +584,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionClearedWarning.html">phenotypic.abc_.DetectionClearedWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -596,6 +597,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.FittingWindow.html">phenotypic.analysis.FittingWindow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
@@ -607,6 +609,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GrowthRateAtBoundWarning.html">phenotypic.analysis.GrowthRateAtBoundWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -633,6 +636,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_filamentous_plate.html">phenotypic.data.make_synthetic_filamentous_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_window_series.html">phenotypic.data.make_synthetic_window_series</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
@@ -672,7 +676,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseBayesShrink.html">phenotypic.enhance.DenoiseBayesShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LocalEdgeDenoise.html">phenotypic.enhance.LocalEdgeDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceBlockMatch.html">phenotypic.enhance.EnhanceBlockMatch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
@@ -688,24 +692,24 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ImageInverter.html">phenotypic.enhance.ImageInverter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.InvertImage.html">phenotypic.enhance.InvertImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeLaplace.html">phenotypic.enhance.FocusEdgeLaplace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMeijering.html">phenotypic.enhance.FocusEdgeMeijering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusBlobLoG.html">phenotypic.enhance.FocusBlobLoG</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseNonLocalMeans.html">phenotypic.enhance.DenoiseNonLocalMeans</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceRankMedian.html">phenotypic.enhance.EnhanceRankMedian</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.enhance.SubtractRollingBall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.VisuShrinkEnhancer.html">phenotypic.enhance.VisuShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseVisuShrink.html">phenotypic.enhance.DenoiseVisuShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html">phenotypic.enhance.WhiteTophatEnhance</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractWhiteTophat.html">phenotypic.enhance.SubtractWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SetDetectMode.html">phenotypic.enhance.SetDetectMode</a></li>
@@ -749,8 +753,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveBorderObjects.html">phenotypic.refine.RemoveBorderObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.KeepNearestCenter.html">phenotypic.refine.KeepNearestCenter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineGridAlignment.html">phenotypic.refine.RefineGridAlignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveOversizedGridObjects.html">phenotypic.refine.RemoveOversizedGridObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
@@ -760,13 +764,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskGradient.html">phenotypic.refine.MaskGradient</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpening.html">phenotypic.refine.MaskOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ReduceSectionsByLine.html">phenotypic.refine.ReduceSectionsByLine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.NearestNeighborMerger.html">phenotypic.refine.NearestNeighborMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeNearestNeighbors.html">phenotypic.refine.MergeNearestNeighbors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveGridOutliers.html">phenotypic.refine.RemoveGridOutliers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SeparateObjects.html">phenotypic.refine.SeparateObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineBySineFit.html">phenotypic.refine.RefineBySineFit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Skeletonize.html">phenotypic.refine.Skeletonize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallToLargeMerger.html">phenotypic.refine.SmallToLargeMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveSmallObjects.html">phenotypic.refine.RemoveSmallObjects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeSmallToLarge.html">phenotypic.refine.MergeSmallToLarge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Thinning.html">phenotypic.refine.Thinning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeFragmentChains.html">phenotypic.refine.MergeFragmentChains</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
@@ -781,6 +785,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UNITS.html">phenotypic.schema.UNITS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UnitEntry.html">phenotypic.schema.UnitEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html">phenotypic.schema.ResolvedUnit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -820,6 +827,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_WINDOW.html">phenotypic.schema.QUALITY_WINDOW</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
@@ -1081,6 +1089,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidShapeError.html">phenotypic.sdk_.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MeasurementConflictError.html">phenotypic.sdk_.exceptions_.MeasurementConflictError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html">phenotypic.sdk_.exceptions_.MetadataKeySpacesError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeyValueError.html">phenotypic.sdk_.exceptions_.MetadataKeyValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html">phenotypic.sdk_.exceptions_.MetadataValueNonScalarError</a></li>
@@ -1286,11 +1295,21 @@
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.enhance.</span></span><span class="sig-name descname"><span class="pre">SubtractRollingBall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.tune.TuneSpec.html#phenotypic.tune.TuneSpec" title="phenotypic.tune.TuneSpec"><span class="pre">TuneSpec</span></a><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">low</span></span><span class="o"><span class="pre">=</span></span><span class="m"><span class="pre">50</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">high</span></span><span class="o"><span class="pre">=</span></span><span class="m"><span class="pre">200</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">categories</span></span><span class="o"><span class="pre">=</span></span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">tunable</span></span><span class="o"><span class="pre">=</span></span><span class="k"><span class="pre">True</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">WithJsonSchema(json_schema={'type':</span> <span class="pre">'array',</span> <span class="pre">'items':</span> <span class="pre">{}},</span> <span class="pre">mode=None)]</span> <span class="pre">|</span> <span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nansafe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/enhance/_subtract_rolling_ball.html#SubtractRollingBall"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.enhance.SubtractRollingBall" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.BackgroundSubtraction.html#phenotypic.abc_.BackgroundSubtraction" title="phenotypic.abc_._enhance_markers._background_subtraction.BackgroundSubtraction"><code class="xref py py-class docutils literal notranslate"><span class="pre">BackgroundSubtraction</span></code></a></p>
 <p>Remove background from <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> with ImageJ-style rolling-ball subtraction.</p>
-<p>Models the background as the surface traced by rolling a parabolic ball
-under the image intensity landscape, then subtracts it. Removes slow
-illumination gradients and agar shading while preserving colony
-structures, and handles non-Gaussian intensity ramps better than
-Gaussian-based subtraction.</p>
+<p>Models the background as the surface traced by rolling a ball under the
+image intensity landscape, then subtracts it. Removes slow illumination
+gradients and agar shading while preserving colony structures, and
+handles non-Gaussian intensity ramps better than Gaussian-based
+subtraction.</p>
+<p>The ball is <code class="docutils literal notranslate"><span class="pre">radius</span></code> pixels wide and <code class="docutils literal notranslate"><span class="pre">radius</span></code> grey levels tall, with
+<code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>’s <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> range counted as 255 grey levels: the result
+is exactly that of rolling a <code class="docutils literal notranslate"><span class="pre">radius</span></code>-pixel ball over the image scaled
+to 8-bit values. scikit-image’s gallery likewise scales the ellipsoid by
+<code class="docutils literal notranslate"><span class="pre">/255</span></code> for <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> images; its example doubles the intensity axis
+(<code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">radius</span> <span class="pre">/</span> <span class="pre">255</span></code>), while <code class="docutils literal notranslate"><span class="pre">radius</span> <span class="pre">/</span> <span class="pre">255</span></code> is the one that reproduces
+<code class="docutils literal notranslate"><span class="pre">ball_kernel(radius)</span></code> exactly on 8-bit values.
+Rolled on the <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> values directly, a ball <code class="docutils literal notranslate"><span class="pre">radius</span></code> units tall
+falls away by a colony’s whole height within a few pixels of its apex,
+so it fits inside every colony and subtracts it.</p>
 <p>For algorithm details, see <a class="reference internal" href="../../explanation/what_enhancement_does.html"><span class="doc">What Enhancement Actually Does</span></a>.</p>
 <dl class="simple">
 <dt>Best For:</dt><dd><ul class="simple">
@@ -1311,7 +1330,7 @@ background removal in high-throughput pipelines.</p></li>
 <li><p><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html#phenotypic.enhance.WhiteTophatEnhance" title="phenotypic.enhance.WhiteTophatEnhance"><code class="xref py py-class docutils literal notranslate"><span class="pre">WhiteTophatEnhance</span></code></a> for isolating small bright
 structures rather than producing a corrected background-free
 image.</p></li>
-<li><p><a class="reference internal" href="phenotypic.enhance.ImageInverter.html#phenotypic.enhance.ImageInverter" title="phenotypic.enhance.ImageInverter"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageInverter</span></code></a> before this operation when colonies are
+<li><p><a class="reference internal" href="phenotypic.enhance.InvertImage.html#phenotypic.enhance.InvertImage" title="phenotypic.enhance.InvertImage"><code class="xref py py-class docutils literal notranslate"><span class="pre">InvertImage</span></code></a> before this operation when colonies are
 dark on bright agar and should be made bright explicitly.</p></li>
 </ul>
 </dd>
@@ -1324,8 +1343,10 @@ colony diameter so that colony pixels do not contribute to
 the background estimate. Typical range: 50–200. A reasonable
 starting point is a value larger than the widest colony on the
 plate. Default: 100.</p></li>
-<li><p><strong>kernel</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._coerce_to_ndarray</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._ndarray_to_list</em><em>, </em><em>return_type=list</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>WithJsonSchema</em><em>(</em><em>json_schema={'type': 'array'</em><em>, </em><em>'items': {}}</em><em>, </em><em>mode=None</em><em>)</em><em>] </em><em>| </em><em>None</em>) – Optional custom ball or paraboloid array overriding the
-default parabolic shape. When provided, <code class="docutils literal notranslate"><span class="pre">radius</span></code> is ignored.
+<li><p><strong>kernel</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._coerce_to_ndarray</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._ndarray_to_list</em><em>, </em><em>return_type=list</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>WithJsonSchema</em><em>(</em><em>json_schema={'type': 'array'</em><em>, </em><em>'items': {}}</em><em>, </em><em>mode=None</em><em>)</em><em>] </em><em>| </em><em>None</em>) – Optional custom kernel overriding the default ball, as for
+<a class="reference external" href="https://scikit-image.org/docs/stable/api/skimage.restoration.html#skimage.restoration.rolling_ball" title="(in skimage v0.26.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">skimage.restoration.rolling_ball()</span></code></a>: an array of surface
+heights in <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> units (<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>), <code class="docutils literal notranslate"><span class="pre">inf</span></code> outside the
+footprint. When provided, <code class="docutils literal notranslate"><span class="pre">radius</span></code> is ignored.
 Default: <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 <li><p><strong>nansafe</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><em>bool</em></a>) – Treat NaN-valued pixels as missing data during background
 estimation, preventing NaN propagation in masked or padded
@@ -1346,6 +1367,18 @@ images. Default: <code class="docutils literal notranslate"><span class="pre">Fa
 visual walkthrough of background subtraction on plate images.
 <a class="reference internal" href="../../explanation/what_enhancement_does.html"><span class="doc">What Enhancement Actually Does</span></a> for background on
 rolling-ball and other illumination correction strategies.</p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.21.0: </span>The default ball is <code class="docutils literal notranslate"><span class="pre">radius</span></code> grey levels tall, counting
+<code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>’s <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> as 255 levels. It was <code class="docutils literal notranslate"><span class="pre">radius</span></code> whole
+intensity ranges tall, so it fitted inside every colony and subtracted
+it: on the bundled 72 h plate a colony’s height above background fell
+to 0.000 at <code class="docutils literal notranslate"><span class="pre">radius=100</span></code>. The output now keeps colonies, so it
+differs throughout from earlier versions’, and a threshold tuned on the
+old output needs re-tuning. A custom <code class="docutils literal notranslate"><span class="pre">kernel</span></code> is used as before. A
+run started before 0.21.0 must be re-run with <code class="docutils literal notranslate"><span class="pre">--restart</span></code> or
+<code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, not resumed: resuming reuses the images it already
+finished, enhanced the old way.</p>
 </div>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1995,7 +2028,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.enhance.SubtractRollingBall.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'kernel':</span> <span class="pre">FieldInfo(annotation=Union[Annotated[ndarray,</span> <span class="pre">BeforeValidator,</span> <span class="pre">PlainSerializer,</span> <span class="pre">WithJsonSchema],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None,</span> <span class="pre">description='Optional</span> <span class="pre">custom</span> <span class="pre">ball</span> <span class="pre">or</span> <span class="pre">paraboloid</span> <span class="pre">array</span> <span class="pre">overriding</span> <span class="pre">the</span> <span class="pre">default</span> <span class="pre">parabolic</span> <span class="pre">shape.</span> <span class="pre">When</span> <span class="pre">provided,</span> <span class="pre">``radius``</span> <span class="pre">is</span> <span class="pre">ignored.'),</span> <span class="pre">'nansafe':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Treat</span> <span class="pre">NaN-valued</span> <span class="pre">pixels</span> <span class="pre">as</span> <span class="pre">missing</span> <span class="pre">data</span> <span class="pre">during</span> <span class="pre">background</span> <span class="pre">estimation,</span> <span class="pre">preventing</span> <span class="pre">NaN</span> <span class="pre">propagation</span> <span class="pre">in</span> <span class="pre">masked</span> <span class="pre">or</span> <span class="pre">padded</span> <span class="pre">images.</span> <span class="pre">Default:</span> <span class="pre">``False``.'),</span> <span class="pre">'radius':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=100,</span> <span class="pre">description='Rolling-ball</span> <span class="pre">radius</span> <span class="pre">in</span> <span class="pre">pixels.</span> <span class="pre">Must</span> <span class="pre">exceed</span> <span class="pre">the</span> <span class="pre">largest</span> <span class="pre">colony</span> <span class="pre">diameter</span> <span class="pre">so</span> <span class="pre">that</span> <span class="pre">colony</span> <span class="pre">pixels</span> <span class="pre">do</span> <span class="pre">not</span> <span class="pre">contribute</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">background</span> <span class="pre">estimate.</span> <span class="pre">Typical</span> <span class="pre">range:</span> <span class="pre">50--200.</span> <span class="pre">A</span> <span class="pre">reasonable</span> <span class="pre">starting</span> <span class="pre">point</span> <span class="pre">is</span> <span class="pre">a</span> <span class="pre">value</span> <span class="pre">larger</span> <span class="pre">than</span> <span class="pre">the</span> <span class="pre">widest</span> <span class="pre">colony</span> <span class="pre">on</span> <span class="pre">the</span> <span class="pre">plate.</span> <span class="pre">Default:</span> <span class="pre">100.',</span> <span class="pre">metadata=[TuneSpec(low=50,</span> <span class="pre">high=200,</span> <span class="pre">step=None,</span> <span class="pre">log=True,</span> <span class="pre">categories=None,</span> <span class="pre">tunable=True)])}</span></em><a class="headerlink" href="#phenotypic.enhance.SubtractRollingBall.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'kernel':</span> <span class="pre">FieldInfo(annotation=Union[Annotated[ndarray,</span> <span class="pre">BeforeValidator,</span> <span class="pre">PlainSerializer,</span> <span class="pre">WithJsonSchema],</span> <span class="pre">NoneType],</span> <span class="pre">required=False,</span> <span class="pre">default=None,</span> <span class="pre">description='Optional</span> <span class="pre">custom</span> <span class="pre">kernel</span> <span class="pre">overriding</span> <span class="pre">the</span> <span class="pre">default</span> <span class="pre">ball,</span> <span class="pre">as</span> <span class="pre">for</span> <span class="pre">:func:`skimage.restoration.rolling_ball`:</span> <span class="pre">an</span> <span class="pre">array</span> <span class="pre">of</span> <span class="pre">surface</span> <span class="pre">heights</span> <span class="pre">in</span> <span class="pre">``detect_mat``</span> <span class="pre">units</span> <span class="pre">(``[0,</span> <span class="pre">1]``),</span> <span class="pre">``inf``</span> <span class="pre">outside</span> <span class="pre">the</span> <span class="pre">footprint.</span> <span class="pre">When</span> <span class="pre">provided,</span> <span class="pre">``radius``</span> <span class="pre">is</span> <span class="pre">ignored.'),</span> <span class="pre">'nansafe':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False,</span> <span class="pre">description='Treat</span> <span class="pre">NaN-valued</span> <span class="pre">pixels</span> <span class="pre">as</span> <span class="pre">missing</span> <span class="pre">data</span> <span class="pre">during</span> <span class="pre">background</span> <span class="pre">estimation,</span> <span class="pre">preventing</span> <span class="pre">NaN</span> <span class="pre">propagation</span> <span class="pre">in</span> <span class="pre">masked</span> <span class="pre">or</span> <span class="pre">padded</span> <span class="pre">images.</span> <span class="pre">Default:</span> <span class="pre">``False``.'),</span> <span class="pre">'radius':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=100,</span> <span class="pre">description='Rolling-ball</span> <span class="pre">radius</span> <span class="pre">in</span> <span class="pre">pixels.</span> <span class="pre">Must</span> <span class="pre">exceed</span> <span class="pre">the</span> <span class="pre">largest</span> <span class="pre">colony</span> <span class="pre">diameter</span> <span class="pre">so</span> <span class="pre">that</span> <span class="pre">colony</span> <span class="pre">pixels</span> <span class="pre">do</span> <span class="pre">not</span> <span class="pre">contribute</span> <span class="pre">to</span> <span class="pre">the</span> <span class="pre">background</span> <span class="pre">estimate.</span> <span class="pre">Typical</span> <span class="pre">range:</span> <span class="pre">50--200.</span> <span class="pre">A</span> <span class="pre">reasonable</span> <span class="pre">starting</span> <span class="pre">point</span> <span class="pre">is</span> <span class="pre">a</span> <span class="pre">value</span> <span class="pre">larger</span> <span class="pre">than</span> <span class="pre">the</span> <span class="pre">widest</span> <span class="pre">colony</span> <span class="pre">on</span> <span class="pre">the</span> <span class="pre">plate.</span> <span class="pre">Default:</span> <span class="pre">100.',</span> <span class="pre">metadata=[TuneSpec(low=50,</span> <span class="pre">high=200,</span> <span class="pre">step=None,</span> <span class="pre">log=True,</span> <span class="pre">categories=None,</span> <span class="pre">tunable=True)])}</span></em><a class="headerlink" href="#phenotypic.enhance.SubtractRollingBall.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">

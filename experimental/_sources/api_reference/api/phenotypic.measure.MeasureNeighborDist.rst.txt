@@ -38,6 +38,7 @@ phenotypic.measure.MeasureNeighborDist
       ~MeasureNeighborDist.model_validate_strings
       ~MeasureNeighborDist.output_header
       ~MeasureNeighborDist.output_header_placeholders
+      ~MeasureNeighborDist.output_unit
       ~MeasureNeighborDist.parse_file
       ~MeasureNeighborDist.parse_obj
       ~MeasureNeighborDist.parse_raw

@@ -1,0 +1,64 @@
+phenotypic.refine.RemoveSmallObjects
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveSmallObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveSmallObjects.__init__
+      ~RemoveSmallObjects.apply
+      ~RemoveSmallObjects.construct
+      ~RemoveSmallObjects.copy
+      ~RemoveSmallObjects.dict
+      ~RemoveSmallObjects.from_json
+      ~RemoveSmallObjects.from_orm
+      ~RemoveSmallObjects.json
+      ~RemoveSmallObjects.model_construct
+      ~RemoveSmallObjects.model_copy
+      ~RemoveSmallObjects.model_dump
+      ~RemoveSmallObjects.model_dump_json
+      ~RemoveSmallObjects.model_json_schema
+      ~RemoveSmallObjects.model_parametrized_name
+      ~RemoveSmallObjects.model_post_init
+      ~RemoveSmallObjects.model_rebuild
+      ~RemoveSmallObjects.model_validate
+      ~RemoveSmallObjects.model_validate_json
+      ~RemoveSmallObjects.model_validate_strings
+      ~RemoveSmallObjects.parse_file
+      ~RemoveSmallObjects.parse_obj
+      ~RemoveSmallObjects.parse_raw
+      ~RemoveSmallObjects.preflight_requirements
+      ~RemoveSmallObjects.schema
+      ~RemoveSmallObjects.schema_json
+      ~RemoveSmallObjects.to_json
+      ~RemoveSmallObjects.update_forward_refs
+      ~RemoveSmallObjects.validate
+      ~RemoveSmallObjects.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveSmallObjects.model_computed_fields
+      ~RemoveSmallObjects.model_config
+      ~RemoveSmallObjects.model_extra
+      ~RemoveSmallObjects.model_fields
+      ~RemoveSmallObjects.model_fields_set
+      ~RemoveSmallObjects.min_size
+   
+   

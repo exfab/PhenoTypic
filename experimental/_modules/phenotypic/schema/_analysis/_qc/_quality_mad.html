@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for replicate-agreement MAD QC.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
@@ -593,9 +594,16 @@
         <span class="k">return</span> <span class="s2">&quot;QC_MAD&quot;</span></div>
 
 
+<div class="viewcode-block" id="QUALITY_MAD.default_unit">
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.schema.QUALITY_MAD.html#phenotypic.schema.QUALITY_MAD.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">OF_INPUT</span></div>
+
+
     <span class="n">MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Median&quot;</span><span class="p">,</span> <span class="s2">&quot;Group median of the measurement.&quot;</span><span class="p">)</span>
     <span class="n">MAD</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MAD&quot;</span><span class="p">,</span> <span class="s2">&quot;Median absolute deviation (raw, before normalization).&quot;</span><span class="p">)</span>
-    <span class="n">NUM_MEMBERS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumMembers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members contributing to the statistic.&quot;</span><span class="p">)</span></div>
+    <span class="n">NUM_MEMBERS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumMembers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members contributing to the statistic.&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">)</span></div>
 
 </pre></div>
 

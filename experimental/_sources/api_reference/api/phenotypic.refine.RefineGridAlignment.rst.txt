@@ -1,0 +1,69 @@
+phenotypic.refine.RefineGridAlignment
+=====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RefineGridAlignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RefineGridAlignment.__init__
+      ~RefineGridAlignment.apply
+      ~RefineGridAlignment.construct
+      ~RefineGridAlignment.copy
+      ~RefineGridAlignment.dict
+      ~RefineGridAlignment.from_json
+      ~RefineGridAlignment.from_orm
+      ~RefineGridAlignment.json
+      ~RefineGridAlignment.model_construct
+      ~RefineGridAlignment.model_copy
+      ~RefineGridAlignment.model_dump
+      ~RefineGridAlignment.model_dump_json
+      ~RefineGridAlignment.model_json_schema
+      ~RefineGridAlignment.model_parametrized_name
+      ~RefineGridAlignment.model_post_init
+      ~RefineGridAlignment.model_rebuild
+      ~RefineGridAlignment.model_validate
+      ~RefineGridAlignment.model_validate_json
+      ~RefineGridAlignment.model_validate_strings
+      ~RefineGridAlignment.parse_file
+      ~RefineGridAlignment.parse_obj
+      ~RefineGridAlignment.parse_raw
+      ~RefineGridAlignment.preflight_requirements
+      ~RefineGridAlignment.schema
+      ~RefineGridAlignment.schema_json
+      ~RefineGridAlignment.to_json
+      ~RefineGridAlignment.update_forward_refs
+      ~RefineGridAlignment.validate
+      ~RefineGridAlignment.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RefineGridAlignment.model_computed_fields
+      ~RefineGridAlignment.model_config
+      ~RefineGridAlignment.model_extra
+      ~RefineGridAlignment.model_fields
+      ~RefineGridAlignment.model_fields_set
+      ~RefineGridAlignment.smoothing_sigma
+      ~RefineGridAlignment.min_peak_distance
+      ~RefineGridAlignment.peak_prominence
+      ~RefineGridAlignment.edge_refinement
+      ~RefineGridAlignment.selection_mode
+      ~RefineGridAlignment.split_merged
+   
+   

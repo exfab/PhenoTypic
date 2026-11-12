@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._remove_border_objects</span></li>
   </ul>
 </nav>
@@ -571,7 +574,10 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
 
@@ -599,20 +605,22 @@
 <span class="sd">          between frames, intermittently clipping the same edge colonies.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`SmallObjectRemover` when the target artefacts are small</span>
+<span class="sd">        - :class:`RemoveSmallObjects` when the target artefacts are small</span>
 <span class="sd">          noise fragments scattered across the plate, not limited to the</span>
 <span class="sd">          border region.</span>
-<span class="sd">        - :class:`GridOversizedObjectRemover` when the problem is objects</span>
+<span class="sd">        - :class:`RemoveOversizedGridObjects` when the problem is objects</span>
 <span class="sd">          that span multiple grid sections rather than partial border</span>
 <span class="sd">          colonies.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        border_size: Width of the exclusion band along each image edge.</span>
-<span class="sd">            ``None`` defaults to 1% of the smaller image dimension.</span>
-<span class="sd">            A float in ``(0, 1)`` is interpreted as a fraction of the</span>
-<span class="sd">            smaller image dimension. An integer or float ``&gt;= 1`` is</span>
-<span class="sd">            treated as an absolute pixel count. Typical range: 1--30 px.</span>
-<span class="sd">            Default: 1.</span>
+<span class="sd">        border_size: Width of the exclusion band along each image edge, in</span>
+<span class="sd">            pixels: an object is removed when any of its pixels lies within</span>
+<span class="sd">            this many pixels of an edge, so ``1`` removes the objects that</span>
+<span class="sd">            touch the edge. ``None`` uses 1% of the smaller image dimension</span>
+<span class="sd">            (height or width). A float in ``(0, 1)`` is a fraction of that</span>
+<span class="sd">            dimension. A fractional or ``None`` band is at least 1 px wide; an</span>
+<span class="sd">            integer or a float ``&gt;= 1`` is a pixel count (truncated), and</span>
+<span class="sd">            ``0`` removes nothing. Typical range: 1--30 px. Default: 1.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Image: Input image with ``objmap`` and ``objmask`` updated to</span>
@@ -620,39 +628,69 @@
 <span class="sd">        ``rgb``, ``gray``, and ``detect_mat`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        TypeError: If ``border_size`` is not an integer, float, or ``None``.</span>
+<span class="sd">        pydantic.ValidationError: If ``border_size`` is negative, NaN or</span>
+<span class="sd">            infinite.</span>
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :doc:`/how_to/notebooks/refine_noisy_boundaries` for a walkthrough</span>
 <span class="sd">        of border and edge refinement on real plate images.</span>
 <span class="sd">        :doc:`/explanation/refinement_strategies` for choosing the right</span>
 <span class="sd">        refinement sequence.</span>
+
+<span class="sd">    .. versionchanged:: 0.21.0</span>
+<span class="sd">       The band now has its full width on the top and left edges too. It was</span>
+<span class="sd">       one pixel short there, so at the default ``border_size=1`` objects</span>
+<span class="sd">       touching the top or left edge were kept. ``None`` (which raised) and a</span>
+<span class="sd">       fraction on an RGB image (which removed every object) now work as</span>
+<span class="sd">       documented, ``0`` removes nothing (it removed every object), and a</span>
+<span class="sd">       negative or non-finite value is refused. The prefab pipelines built on</span>
+<span class="sd">       this operation change with it, among them ``HeavyOtsuPipeline`` and</span>
+<span class="sd">       ``HeavyRoundPeaksPipeline`` at their default ``border_remover_size=1``.</span>
+<span class="sd">       A run started before 0.21.0 must be re-run with ``--restart`` or</span>
+<span class="sd">       ``--overwrite``, not resumed: resuming reuses the images it already</span>
+<span class="sd">       finished, refined the old way.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">border_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">1</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">edge_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">border_size</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">float</span> <span class="ow">and</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
-            <span class="n">edge_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">border_size</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
-            <span class="n">edge_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-                    <span class="s2">&quot;Invalid edge size. Should be int, float, or None to use default edge size.&quot;</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;border_size&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reject_unusable_border</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;border_size must be a finite number &gt;= 0, or None, got </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_band_width</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The band width in pixels for an image of *height* x *width*.</span>
+
+<span class="sd">        Fractions are taken of the smaller *spatial* dimension: the object</span>
+<span class="sd">        map&#39;s, never ``image.shape``, which on an RGB image also counts the</span>
+<span class="sd">        three colour channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fraction</span> <span class="o">=</span> <span class="mf">0.01</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">border_size</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="mf">0.0</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="n">fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">border_size</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">border_size</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span> <span class="o">*</span> <span class="n">fraction</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">obj_map</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
-        <span class="n">edges</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">obj_map</span><span class="p">[:</span> <span class="n">edge_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-            <span class="n">obj_map</span><span class="p">[</span><span class="o">-</span><span class="n">edge_size</span><span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-            <span class="n">obj_map</span><span class="p">[:,</span> <span class="p">:</span> <span class="n">edge_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-            <span class="n">obj_map</span><span class="p">[:,</span> <span class="o">-</span><span class="n">edge_size</span><span class="p">:]</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-        <span class="p">]</span>
-        <span class="n">edge_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">edges</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">edge_labels</span><span class="p">:</span>
-            <span class="n">obj_map</span><span class="p">[</span><span class="n">obj_map</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">band</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_band_width</span><span class="p">(</span><span class="o">*</span><span class="n">obj_map</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">band</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">image</span>
+
+        <span class="n">in_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">obj_map</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">in_band</span><span class="p">[:</span><span class="n">band</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">in_band</span><span class="p">[</span><span class="o">-</span><span class="n">band</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">in_band</span><span class="p">[:,</span> <span class="p">:</span><span class="n">band</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">in_band</span><span class="p">[:,</span> <span class="o">-</span><span class="n">band</span><span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">edge_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">obj_map</span><span class="p">[</span><span class="n">in_band</span><span class="p">])</span>
+        <span class="n">edge_labels</span> <span class="o">=</span> <span class="n">edge_labels</span><span class="p">[</span><span class="n">edge_labels</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">obj_map</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">obj_map</span><span class="p">,</span> <span class="n">edge_labels</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="n">image</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="n">obj_map</span>
         <span class="k">return</span> <span class="n">image</span></div>

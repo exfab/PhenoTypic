@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._nearest_neighbor_merger</span></li>
   </ul>
 </nav>
@@ -581,9 +584,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="NearestNeighborMerger">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.NearestNeighborMerger.html#phenotypic.refine.NearestNeighborMerger">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NearestNeighborMerger</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
+<div class="viewcode-block" id="MergeNearestNeighbors">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.MergeNearestNeighbors.html#phenotypic.refine.MergeNearestNeighbors">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MergeNearestNeighbors</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Absorb small colony fragments into their nearest neighboring detection.</span>
 
 <span class="sd">    For each object whose area is below ``min_size``, finds the single</span>
@@ -607,7 +610,7 @@
 <span class="sd">        - :class:`MergeFragmentChains` when transitive closure is needed</span>
 <span class="sd">          so that chains of nearby fragments (A near B near C) merge into</span>
 <span class="sd">          one detection even if the endpoints are far apart.</span>
-<span class="sd">        - :class:`SmallToLargeMerger` when small fragments should</span>
+<span class="sd">        - :class:`MergeSmallToLarge` when small fragments should</span>
 <span class="sd">          specifically merge into the largest nearby colony rather than</span>
 <span class="sd">          the geometrically closest one.</span>
 <span class="sd">        - :class:`MaskClosing` for morphological bridging of narrow gaps</span>

@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -639,7 +640,7 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpread_ObjectSpread</span></code></p></td>
-<td><p>Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects’ bounding-box centers (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.</p></td>
+<td><p>Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects’ centroids (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpread_ObjectCount</span></code></p></td>

@@ -19,6 +19,7 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.tier
       ~TEXTURE.kind
       ~TEXTURE.metric_family
+      ~TEXTURE.default_unit
       ~TEXTURE.rembi_module
       ~TEXTURE.change_note
       ~TEXTURE.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.METRIC_FAMILY
       ~TEXTURE.resolved_kind
       ~TEXTURE.resolved_tier
+      ~TEXTURE.unit
       ~TEXTURE.resolved_rembi_module
       ~TEXTURE.use_label
       ~TEXTURE.use_badge
@@ -112,6 +114,7 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.image
       ~TEXTURE.pair
       ~TEXTURE.tier_override
+      ~TEXTURE.unit_override
       ~TEXTURE.derivation_type
       ~TEXTURE.derives_from
       ~TEXTURE.rembi_module_override

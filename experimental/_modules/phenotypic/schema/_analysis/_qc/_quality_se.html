@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for replicate-agreement standard-error QC.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
@@ -592,10 +593,29 @@
         <span class="k">return</span> <span class="s2">&quot;QC_SE&quot;</span></div>
 
 
-    <span class="n">VALUE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Value&quot;</span><span class="p">,</span> <span class="s2">&quot;Raw SE = stddev / sqrt(n) across replicates.&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="QUALITY_SE.default_unit">
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.schema.QUALITY_SE.html#phenotypic.schema.QUALITY_SE.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">OF_INPUT</span></div>
+
+
+    <span class="n">VALUE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Value&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Standard error of the replicates&#39; mean at this group and time point, &quot;</span>
+        <span class="s2">&quot;before it is divided by the mean. It is the raw SE, stddev / &quot;</span>
+        <span class="s2">&quot;sqrt(n), with the sample standard deviation (dividing by n - 1).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Mean&quot;</span><span class="p">,</span> <span class="s2">&quot;Mean across replicates at this (group, time).&quot;</span><span class="p">)</span>
-    <span class="n">CV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CV&quot;</span><span class="p">,</span> <span class="s2">&quot;Coefficient of variation, stddev / |mean|.&quot;</span><span class="p">)</span>
-    <span class="n">NUM_REPLICATES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumReplicates&quot;</span><span class="p">,</span> <span class="s2">&quot;Replicate count contributing to the SE.&quot;</span><span class="p">)</span></div>
+    <span class="n">CV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;CV&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Coefficient of variation of the replicates at this group and time &quot;</span>
+        <span class="s2">&quot;point: their standard deviation divided by the absolute value of &quot;</span>
+        <span class="s2">&quot;their mean. It is stddev / |mean|, and NaN when the mean is within &quot;</span>
+        <span class="s2">&quot;eps of 0.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">NUM_REPLICATES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumReplicates&quot;</span><span class="p">,</span> <span class="s2">&quot;Replicate count contributing to the SE.&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">)</span></div>
 
 </pre></div>
 

@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -638,11 +639,11 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_LowerFence</span></code></p></td>
-<td><p>Lower Tukey fence, Q1 - k*IQR.</p></td>
+<td><p>Lowest value a member can have without counting as an outlier, set from the quartiles of the group at this time point. It is the lower Tukey fence, Q1 - k*IQR.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_UpperFence</span></code></p></td>
-<td><p>Upper Tukey fence, Q3 + k*IQR.</p></td>
+<td><p>Highest value a member can have without counting as an outlier, set from the quartiles of the group at this time point. It is the upper Tukey fence, Q3 + k*IQR.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_NumOutliers</span></code></p></td>
@@ -674,7 +675,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_Metric</span></code></p></td>
-<td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
+<td><p>Headline metric, a dimensionless ratio, fraction or score (for example MAD / |median|); the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_Tukey_Status</span></code></p></td>

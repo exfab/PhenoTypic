@@ -19,6 +19,7 @@ phenotypic.schema.MODEL\_METRICS
       ~MODEL_METRICS.kind
       ~MODEL_METRICS.metric_family
       ~MODEL_METRICS.tier
+      ~MODEL_METRICS.default_unit
       ~MODEL_METRICS.rembi_module
       ~MODEL_METRICS.change_note
       ~MODEL_METRICS.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.MODEL\_METRICS
       ~MODEL_METRICS.METRIC_FAMILY
       ~MODEL_METRICS.resolved_kind
       ~MODEL_METRICS.resolved_tier
+      ~MODEL_METRICS.unit
       ~MODEL_METRICS.resolved_rembi_module
       ~MODEL_METRICS.use_label
       ~MODEL_METRICS.use_badge
@@ -105,6 +107,7 @@ phenotypic.schema.MODEL\_METRICS
       ~MODEL_METRICS.image
       ~MODEL_METRICS.pair
       ~MODEL_METRICS.tier_override
+      ~MODEL_METRICS.unit_override
       ~MODEL_METRICS.derivation_type
       ~MODEL_METRICS.derives_from
       ~MODEL_METRICS.rembi_module_override

@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Grid section spatial spread measurements.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
@@ -591,13 +592,21 @@
         <span class="k">return</span> <span class="s2">&quot;GridSpread&quot;</span></div>
 
 
+<div class="viewcode-block" id="GRID_SPREAD.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GRID_SPREAD.html#phenotypic.schema.GRID_SPREAD.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">PX2</span></div>
+
+
     <span class="n">OBJECT_SPREAD</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ObjectSpread&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects&#39; bounding-box centers (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section, computed from the objects&#39; centroids (Bbox_CenterRR, Bbox_CenterCC). Reported in squared pixels on every object of the section, so all objects in one section share the same value; 0 when the section holds a single object. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OBJECT_COUNT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ObjectCount&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Number of detected objects assigned to the same grid section as this object, the object itself included. Reported on every object of the section, so all objects in one section share the same value. 1 means the section holds a single object, for which ObjectSpread is 0; values above 1 flag multi-detections or fragmented growth in that section.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

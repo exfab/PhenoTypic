@@ -23,13 +23,13 @@ Parameters and usage: :py:class:`ReplicateAgreement <phenotypic.analysis.Replica
      - Description
      - Type
    * - ``QC_SE_Value``
-     - Raw SE = stddev / sqrt(n) across replicates.
+     - Standard error of the replicates' mean at this group and time point, before it is divided by the mean. It is the raw SE, stddev / sqrt(n), with the sample standard deviation (dividing by n - 1).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_Mean``
      - Mean across replicates at this (group, time).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_CV``
-     - Coefficient of variation, stddev / \|mean\|.
+     - Coefficient of variation of the replicates at this group and time point: their standard deviation divided by the absolute value of their mean. It is stddev / \|mean\|, and NaN when the mean is within eps of 0.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_NumReplicates``
      - Replicate count contributing to the SE.
@@ -51,7 +51,7 @@ Every quality check writes these columns; see :ref:`measurement-shared-columns`.
      - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_Metric``
-     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - Headline metric, a dimensionless ratio, fraction or score (for example MAD / \|median\|); the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_Status``
      - Categorical: pass \| warn \| fail.

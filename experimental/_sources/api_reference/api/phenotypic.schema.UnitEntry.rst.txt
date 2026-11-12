@@ -1,0 +1,36 @@
+phenotypic.schema.UnitEntry
+===========================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: UnitEntry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~UnitEntry.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UnitEntry.key
+      ~UnitEntry.symbol
+      ~UnitEntry.desc
+      ~UnitEntry.length_power
+      ~UnitEntry.input_power
+      ~UnitEntry.per_time
+   
+   

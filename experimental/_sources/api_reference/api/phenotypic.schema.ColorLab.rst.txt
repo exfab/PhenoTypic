@@ -19,6 +19,7 @@ phenotypic.schema.ColorLab
       ~ColorLab.tier
       ~ColorLab.kind
       ~ColorLab.metric_family
+      ~ColorLab.default_unit
       ~ColorLab.rembi_module
       ~ColorLab.change_note
       ~ColorLab.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.ColorLab
       ~ColorLab.METRIC_FAMILY
       ~ColorLab.resolved_kind
       ~ColorLab.resolved_tier
+      ~ColorLab.unit
       ~ColorLab.resolved_rembi_module
       ~ColorLab.use_label
       ~ColorLab.use_badge
@@ -110,6 +112,7 @@ phenotypic.schema.ColorLab
       ~ColorLab.image
       ~ColorLab.pair
       ~ColorLab.tier_override
+      ~ColorLab.unit_override
       ~ColorLab.derivation_type
       ~ColorLab.derives_from
       ~ColorLab.rembi_module_override

@@ -19,6 +19,7 @@ phenotypic.schema.EDGE\_CORRECTION
       ~EDGE_CORRECTION.kind
       ~EDGE_CORRECTION.metric_family
       ~EDGE_CORRECTION.tier
+      ~EDGE_CORRECTION.default_unit
       ~EDGE_CORRECTION.rembi_module
       ~EDGE_CORRECTION.change_note
       ~EDGE_CORRECTION.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.EDGE\_CORRECTION
       ~EDGE_CORRECTION.METRIC_FAMILY
       ~EDGE_CORRECTION.resolved_kind
       ~EDGE_CORRECTION.resolved_tier
+      ~EDGE_CORRECTION.unit
       ~EDGE_CORRECTION.resolved_rembi_module
       ~EDGE_CORRECTION.use_label
       ~EDGE_CORRECTION.use_badge
@@ -100,6 +102,7 @@ phenotypic.schema.EDGE\_CORRECTION
       ~EDGE_CORRECTION.image
       ~EDGE_CORRECTION.pair
       ~EDGE_CORRECTION.tier_override
+      ~EDGE_CORRECTION.unit_override
       ~EDGE_CORRECTION.derivation_type
       ~EDGE_CORRECTION.derives_from
       ~EDGE_CORRECTION.rembi_module_override

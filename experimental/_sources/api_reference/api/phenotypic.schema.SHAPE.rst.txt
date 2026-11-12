@@ -19,6 +19,7 @@ phenotypic.schema.SHAPE
       ~SHAPE.kind
       ~SHAPE.metric_family
       ~SHAPE.tier
+      ~SHAPE.default_unit
       ~SHAPE.rembi_module
       ~SHAPE.change_note
       ~SHAPE.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.SHAPE
       ~SHAPE.METRIC_FAMILY
       ~SHAPE.resolved_kind
       ~SHAPE.resolved_tier
+      ~SHAPE.unit
       ~SHAPE.resolved_rembi_module
       ~SHAPE.use_label
       ~SHAPE.use_badge
@@ -106,6 +108,7 @@ phenotypic.schema.SHAPE
       ~SHAPE.image
       ~SHAPE.pair
       ~SHAPE.tier_override
+      ~SHAPE.unit_override
       ~SHAPE.derivation_type
       ~SHAPE.derives_from
       ~SHAPE.rembi_module_override

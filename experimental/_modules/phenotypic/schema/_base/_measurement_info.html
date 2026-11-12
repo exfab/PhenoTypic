@@ -581,6 +581,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._categories</span><span class="w"> </span><span class="kn">import</span> <span class="n">CATEGORIES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
@@ -698,6 +699,8 @@
 <span class="sd">        categories: Curated categories (CATEGORIES members) this measurement</span>
 <span class="sd">            belongs to. A bare member or an iterable of members (a mapping is</span>
 <span class="sd">            refused); normalized to a frozenset.</span>
+<span class="sd">        unit: This member&#39;s unit (a UNITS member), overriding the class</span>
+<span class="sd">            :meth:`MeasurementInfo.default_unit`; ``None`` to take the default.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
@@ -710,6 +713,7 @@
     <span class="n">derives_from</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">rembi_module</span><span class="p">:</span> <span class="s2">&quot;REMBI_MODULE | None&quot;</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">categories</span><span class="p">:</span> <span class="s2">&quot;CATEGORIES | Iterable[CATEGORIES]&quot;</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">()</span>
+    <span class="n">unit</span><span class="p">:</span> <span class="n">UNITS</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span><span class="p">:</span>
@@ -731,7 +735,13 @@
             <span class="kn">from</span><span class="w"> </span><span class="nn">._rembi</span><span class="w"> </span><span class="kn">import</span> <span class="n">REMBI_MODULE</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rembi_module</span><span class="p">,</span> <span class="n">REMBI_MODULE</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Entry.rembi_module must be a REMBI_MODULE or None&quot;</span><span class="p">)</span>
-        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;categories&quot;</span><span class="p">,</span> <span class="n">_normalize_categories</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">))</span></div>
+        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;categories&quot;</span><span class="p">,</span> <span class="n">_normalize_categories</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">))</span>
+        <span class="c1"># isinstance, never equality: UNITS is a str enum, so &quot;px&quot; == UNITS.PX.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="p">,</span> <span class="n">UNITS</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Entry.unit takes a UNITS member or None, not </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="si">!r}</span><span class="s2">. &quot;</span>
+                <span class="s2">&quot;Use UNITS.&lt;NAME&gt;.&quot;</span>
+            <span class="p">)</span></div>
 
 
 
@@ -929,6 +939,26 @@
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">klass</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> defines </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">, which was removed: </span><span class="si">{</span><span class="n">advice</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_refuse_unit_override</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Refuse a subclass that defines ``unit``, the per-member unit property.</span>
+
+<span class="sd">    A ``unit()`` classmethod written by analogy with ``tier()`` would shadow</span>
+<span class="sd">    the property, so ``member.unit`` would return a bound method instead of a</span>
+<span class="sd">    ``UNITS`` member (K0-01). Any attribute of that name is refused, a member</span>
+<span class="sd">    included. The scan stops at ``MeasurementInfo``, which owns the property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">klass</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">klass</span> <span class="ow">is</span> <span class="n">MeasurementInfo</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="s2">&quot;unit&quot;</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">klass</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">klass</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> defines &#39;unit&#39;, which is reserved for the &quot;</span>
+                <span class="s2">&quot;per-member unit property. Declare the class default with a &quot;</span>
+                <span class="s2">&quot;default_unit() classmethod, and an exception with &quot;</span>
+                <span class="s2">&quot;Entry(..., unit=UNITS.&lt;NAME&gt;).&quot;</span>
+            <span class="p">)</span>
+
+
 <div class="viewcode-block" id="MeasurementInfo">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasurementInfo</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
@@ -956,6 +986,9 @@
 <span class="sd">    [MeasureShape](src/phenotypic/measure/_measure_shape.py), [MeasureColor](src/phenotypic/measure/_measure_color.py), etc.)</span>
 <span class="sd">    to define column names in output DataFrames. Each measurement class defines its own enum</span>
 <span class="sd">    and uses the enum values as DataFrame column headers.</span>
+
+<span class="sd">    Every member also carries a unit, documented on the</span>
+<span class="sd">    :attr:`~phenotypic.schema.MeasurementInfo.unit` property.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        label (str): The short label for the measurement (without metric family prefix). Set</span>
@@ -1035,6 +1068,7 @@
     <span class="n">image</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">pair</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
     <span class="n">tier_override</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">unit_override</span><span class="p">:</span> <span class="n">UNITS</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">derivation_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">derives_from</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">rembi_module_override</span><span class="p">:</span> <span class="s2">&quot;REMBI_MODULE | None&quot;</span>
@@ -1064,6 +1098,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">_refuse_legacy_category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+        <span class="n">_refuse_unit_override</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
 
 <div class="viewcode-block" id="MeasurementInfo.kind">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.kind">[docs]</a>
@@ -1078,6 +1113,19 @@
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">tier</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Trust tier (1/2/3) for primary measurements, or None.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="MeasurementInfo.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Class-default unit for this enum&#39;s members, or None until declared.</span>
+
+<span class="sd">        Named ``default_unit``, not ``unit``: a classmethod would shadow the</span>
+<span class="sd">        per-member :attr:`unit` property. An ``Entry(unit=...)`` override takes</span>
+<span class="sd">        precedence over this default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
@@ -1178,6 +1226,7 @@
         <span class="n">obj</span><span class="o">.</span><span class="n">image</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">image</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">pair</span> <span class="o">=</span> <span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">desc</span><span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">tier_override</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">tier</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">unit_override</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">unit</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">derivation_type</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">derivation_type</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">derives_from</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">derives_from</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">rembi_module_override</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">rembi_module</span>
@@ -1208,6 +1257,18 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">resolved_tier</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The trust tier (1/2/3) for this member, or None for non-primary.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">_classify</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This member&#39;s unit, from its ``Entry(unit=...)`` override or else the class default.</span>
+
+<span class="sd">        ``None`` means the member&#39;s unit has not been reviewed. An</span>
+<span class="sd">        input-dependent unit (``UNITS.OF_INPUT`` and the like) must be resolved</span>
+<span class="sd">        against the input column before converting.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_override</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">unit_override</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">default_unit</span><span class="p">()</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">resolved_rembi_module</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;REMBI_MODULE&quot;</span><span class="p">:</span>

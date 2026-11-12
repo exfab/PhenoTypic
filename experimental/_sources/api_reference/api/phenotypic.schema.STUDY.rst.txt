@@ -20,6 +20,7 @@ phenotypic.schema.STUDY
       ~STUDY.header_set
       ~STUDY.kind
       ~STUDY.tier
+      ~STUDY.default_unit
       ~STUDY.rembi_module
       ~STUDY.change_note
       ~STUDY.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.STUDY
       ~STUDY.METRIC_FAMILY
       ~STUDY.resolved_kind
       ~STUDY.resolved_tier
+      ~STUDY.unit
       ~STUDY.resolved_rembi_module
       ~STUDY.use_label
       ~STUDY.use_badge
@@ -109,6 +111,7 @@ phenotypic.schema.STUDY
       ~STUDY.image
       ~STUDY.pair
       ~STUDY.tier_override
+      ~STUDY.unit_override
       ~STUDY.derivation_type
       ~STUDY.derives_from
       ~STUDY.rembi_module_override

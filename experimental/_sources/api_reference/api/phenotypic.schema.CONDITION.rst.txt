@@ -20,6 +20,7 @@ phenotypic.schema.CONDITION
       ~CONDITION.header_set
       ~CONDITION.kind
       ~CONDITION.tier
+      ~CONDITION.default_unit
       ~CONDITION.rembi_module
       ~CONDITION.change_note
       ~CONDITION.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.CONDITION
       ~CONDITION.METRIC_FAMILY
       ~CONDITION.resolved_kind
       ~CONDITION.resolved_tier
+      ~CONDITION.unit
       ~CONDITION.resolved_rembi_module
       ~CONDITION.use_label
       ~CONDITION.use_badge
@@ -112,6 +114,7 @@ phenotypic.schema.CONDITION
       ~CONDITION.image
       ~CONDITION.pair
       ~CONDITION.tier_override
+      ~CONDITION.unit_override
       ~CONDITION.derivation_type
       ~CONDITION.derives_from
       ~CONDITION.rembi_module_override

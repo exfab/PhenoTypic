@@ -39,6 +39,7 @@ phenotypic.sdk\_.exceptions\_
       InvalidMaskScalarValueError
       InvalidMaskValueError
       InvalidShapeError
+      MeasurementConflictError
       MetadataKeySpacesError
       MetadataKeyValueError
       MetadataValueNonScalarError

@@ -19,6 +19,7 @@ phenotypic.schema.Colorxy
       ~Colorxy.tier
       ~Colorxy.kind
       ~Colorxy.metric_family
+      ~Colorxy.default_unit
       ~Colorxy.rembi_module
       ~Colorxy.change_note
       ~Colorxy.header_scheme
@@ -90,6 +91,7 @@ phenotypic.schema.Colorxy
       ~Colorxy.METRIC_FAMILY
       ~Colorxy.resolved_kind
       ~Colorxy.resolved_tier
+      ~Colorxy.unit
       ~Colorxy.resolved_rembi_module
       ~Colorxy.use_label
       ~Colorxy.use_badge
@@ -116,6 +118,7 @@ phenotypic.schema.Colorxy
       ~Colorxy.image
       ~Colorxy.pair
       ~Colorxy.tier_override
+      ~Colorxy.unit_override
       ~Colorxy.derivation_type
       ~Colorxy.derives_from
       ~Colorxy.rembi_module_override

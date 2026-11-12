@@ -19,6 +19,7 @@ phenotypic.schema.RADIAL\_EXPANSION
       ~RADIAL_EXPANSION.tier
       ~RADIAL_EXPANSION.kind
       ~RADIAL_EXPANSION.metric_family
+      ~RADIAL_EXPANSION.default_unit
       ~RADIAL_EXPANSION.rembi_module
       ~RADIAL_EXPANSION.change_note
       ~RADIAL_EXPANSION.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.RADIAL\_EXPANSION
       ~RADIAL_EXPANSION.METRIC_FAMILY
       ~RADIAL_EXPANSION.resolved_kind
       ~RADIAL_EXPANSION.resolved_tier
+      ~RADIAL_EXPANSION.unit
       ~RADIAL_EXPANSION.resolved_rembi_module
       ~RADIAL_EXPANSION.use_label
       ~RADIAL_EXPANSION.use_badge
@@ -106,6 +108,7 @@ phenotypic.schema.RADIAL\_EXPANSION
       ~RADIAL_EXPANSION.image
       ~RADIAL_EXPANSION.pair
       ~RADIAL_EXPANSION.tier_override
+      ~RADIAL_EXPANSION.unit_override
       ~RADIAL_EXPANSION.derivation_type
       ~RADIAL_EXPANSION.derives_from
       ~RADIAL_EXPANSION.rembi_module_override

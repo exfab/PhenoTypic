@@ -41,16 +41,16 @@ Written on rows from a ``GridImage`` only.
      - Description
      - Type
    * - ``Grid_RowNum``
-     - The row idx of the object
+     - Zero-based row number, from 0 at the top, of the grid cell that holds the colony's centroid (the mean position of its pixels). A colony whose centroid lies outside the grid is assigned to the nearest edge row.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColNum``
-     - The column idx of the object
+     - Zero-based column number, from 0 at the left, of the grid cell that holds the colony's centroid (the mean position of its pixels). A colony whose centroid lies outside the grid is assigned to the nearest edge column.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_RowMajorIdx``
-     - The row-major index of the object. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.
+     - Zero-based number of the colony's grid cell, counted left to right along each row and then down the rows. It is RowNum × (number of grid columns) + ColNum. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColMajorIdx``
-     - The col-major index of the object in an array. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.
+     - Zero-based number of the colony's grid cell, counted top to bottom down each column and then across the columns. It is ColNum × (number of grid rows) + RowNum. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
 
 With a metadata file
@@ -71,7 +71,7 @@ Written only when a run is given ``--metadata``. True on a row that comes from t
      - Description
      - Type
    * - ``QC_MetadataOnly``
-     - True when the row came from a --metadata CSV key that matched no measured object; every measurement/info column on the row is null.
+     - True on a row that comes only from the metadata file: a listed well (or other metadata row) where no colony was detected. Its measurement cells are empty, not zero, and both an empty well and a colony that detection missed produce such a row. It is False on every row that carries a measured colony.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
 
 On every quality check table
@@ -95,7 +95,7 @@ On every quality check table
      - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_<name>_Metric``
-     - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - Headline metric, a dimensionless ratio, fraction or score (for example MAD / \|median\|); the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_<name>_Status``
      - Categorical: pass \| warn \| fail.
@@ -119,25 +119,25 @@ On every growth model table
      - Description
      - Type
    * - ``ModelMetrics_<metric>_MAE``
-     - The mean absolute error
+     - Mean absolute difference between the fitted curve and the data points it was fitted to.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_MSE``
-     - The mean squared error
+     - Mean squared difference between the fitted curve and the data points it was fitted to.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_RMSE``
-     - The root mean squared error
+     - Typical distance between the fitted curve and the data points it was fitted to, as the square root of the mean squared difference.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_R2``
-     - The coefficient of determination
+     - Share of the variation in the fitted data points that the curve explains: 1 is a perfect fit, and 0 or below is no better than the points' mean. It is the coefficient of determination, and NaN for a group with two or fewer points.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_NumSamples``
-     - The number of samples used for model fitting
+     - Number of data points the model was fitted to, after any points the fitter drops (such as post-saturation time points).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_OptimizerLoss``
-     - The loss of model fitting
+     - Final value of the cost that the fitting optimizer minimized. It is the cost of scipy's least_squares: half the sum of the robust loss ρ applied to each squared residual, including any weighting or regularization terms the model adds.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_OptimizerStatus``
-     - The output of the optimizer status
+     - Integer code from scipy's least_squares saying why the fit stopped: 0 when it reached the evaluation limit and 1 to 4 when a convergence tolerance was met. It is NaN when the fit failed.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
 
 After curation

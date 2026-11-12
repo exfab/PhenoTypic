@@ -1,0 +1,6 @@
+phenotypic.analysis.GrowthRateAtBoundWarning
+============================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoexception:: GrowthRateAtBoundWarning

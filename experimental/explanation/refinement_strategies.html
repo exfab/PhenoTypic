@@ -623,7 +623,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 </tr>
 <tr class="row-odd"><td><p>Small fragments</p></td>
 <td><p>Noise, agar texture</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">SmallObjectRemover</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RemoveSmallObjects</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Holes in masks</p></td>
 <td><p>Uneven colony interior intensity</p></td>
@@ -639,7 +639,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 </tr>
 <tr class="row-odd"><td><p>One colony fragmented</p></td>
 <td><p>Threshold too high</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">NearestNeighborMerger</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskClosing</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MergeNearestNeighbors</span></code>, <code class="docutils literal notranslate"><span class="pre">MaskClosing</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Multiple detections per well</p></td>
 <td><p>Over-segmentation in grid plates</p></td>
@@ -647,7 +647,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 </tr>
 <tr class="row-odd"><td><p>Oversized objects</p></td>
 <td><p>Merged colonies spanning wells</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">GridOversizedObjectRemover</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RemoveOversizedGridObjects</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -658,7 +658,7 @@ artifacts. Refiners clean up these artifacts without re-running detection.</p>
 <p>The recommended refinement sequence:</p>
 <ol class="arabic simple">
 <li><p><strong>RemoveBorderObjects</strong> — remove partial edge colonies first</p></li>
-<li><p><strong>SmallObjectRemover</strong> — remove noise fragments</p></li>
+<li><p><strong>RemoveSmallObjects</strong> — remove noise fragments</p></li>
 <li><p><strong>MaskOpening</strong> — smooth boundaries and break thin bridges</p></li>
 <li><p><strong>MaskFill</strong> — fill interior holes</p></li>
 <li><p><strong>Grid-specific refiners</strong> — align, reduce multiples, remove oversized</p></li>
@@ -688,7 +688,7 @@ produce more aggressive changes.</p>
 for <code class="docutils literal notranslate"><span class="pre">GridImage</span></code>:</p>
 <ul class="simple">
 <li><p><strong>GridAligner</strong> — rotates the image to align the grid</p></li>
-<li><p><strong>GridOversizedObjectRemover</strong> — removes objects larger than expected
+<li><p><strong>RemoveOversizedGridObjects</strong> — removes objects larger than expected
 for a single well</p></li>
 <li><p><strong>ReduceSectionsByLine</strong> — when multiple objects are in one grid
 section, keeps only the most prominent</p></li>

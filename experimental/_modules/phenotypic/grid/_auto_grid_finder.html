@@ -613,13 +613,17 @@
 <span class="sd">    centers using a deterministic robust-fit algorithm.</span>
 
 <span class="sd">    Unlike histogram or optimizer-based approaches, this class fits a regular</span>
-<span class="sd">    grid model directly to the per-object distance-transform maximum centers</span>
-<span class="sd">    (deepest interior point of each object&#39;s mask). These centers are</span>
-<span class="sd">    anchored in the dense colony body and are unaffected by thin filamentous</span>
-<span class="sd">    extensions (e.g., fungal hyphae) that would otherwise pull</span>
-<span class="sd">    intensity-weighted centroids off-body and bias the grid fit. Outlier</span>
-<span class="sd">    rejection further protects against atypical objects pulling boundaries</span>
-<span class="sd">    away from the true positions.</span>
+<span class="sd">    grid model directly to the per-object distance-weighted centroids</span>
+<span class="sd">    (``Bbox_DistWeightedCenterRR`` / ``Bbox_DistWeightedCenterCC``: the mean</span>
+<span class="sd">    pixel position, each pixel weighted by its distance to the object&#39;s</span>
+<span class="sd">    edge). These centers are anchored in the dense colony body and are little</span>
+<span class="sd">    moved by thin filamentous extensions (e.g., fungal hyphae), which carry</span>
+<span class="sd">    little distance weight but would otherwise pull intensity-weighted</span>
+<span class="sd">    centroids off-body and bias the grid fit. Once the edges are fit, each</span>
+<span class="sd">    object is assigned to the cell holding its plain centroid</span>
+<span class="sd">    (``Bbox_CenterRR`` / ``Bbox_CenterCC``). Outlier rejection further</span>
+<span class="sd">    protects against atypical objects pulling boundaries away from the true</span>
+<span class="sd">    positions.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        nrows: Number of rows in the grid (default 8 for 96-well plates).</span>

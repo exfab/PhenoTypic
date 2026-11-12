@@ -1,0 +1,104 @@
+phenotypic.schema.UNITS
+=======================
+
+.. currentmodule:: phenotypic.schema
+
+.. autoclass:: UNITS
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~UNITS.encode
+      ~UNITS.replace
+      ~UNITS.split
+      ~UNITS.rsplit
+      ~UNITS.join
+      ~UNITS.capitalize
+      ~UNITS.casefold
+      ~UNITS.title
+      ~UNITS.center
+      ~UNITS.count
+      ~UNITS.expandtabs
+      ~UNITS.find
+      ~UNITS.partition
+      ~UNITS.index
+      ~UNITS.ljust
+      ~UNITS.lower
+      ~UNITS.lstrip
+      ~UNITS.rfind
+      ~UNITS.rindex
+      ~UNITS.rjust
+      ~UNITS.rstrip
+      ~UNITS.rpartition
+      ~UNITS.splitlines
+      ~UNITS.strip
+      ~UNITS.swapcase
+      ~UNITS.translate
+      ~UNITS.upper
+      ~UNITS.startswith
+      ~UNITS.endswith
+      ~UNITS.removeprefix
+      ~UNITS.removesuffix
+      ~UNITS.isascii
+      ~UNITS.islower
+      ~UNITS.isupper
+      ~UNITS.istitle
+      ~UNITS.isspace
+      ~UNITS.isdecimal
+      ~UNITS.isdigit
+      ~UNITS.isnumeric
+      ~UNITS.isalpha
+      ~UNITS.isalnum
+      ~UNITS.isidentifier
+      ~UNITS.isprintable
+      ~UNITS.zfill
+      ~UNITS.format
+      ~UNITS.format_map
+      ~UNITS.maketrans
+      ~UNITS.resolve
+      ~UNITS.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UNITS.is_input_dependent
+      ~UNITS.length_power
+      ~UNITS.PX
+      ~UNITS.PX2
+      ~UNITS.INTENSITY
+      ~UNITS.INTENSITY_PX2
+      ~UNITS.RADIAN
+      ~UNITS.DEGREE
+      ~UNITS.CIELAB
+      ~UNITS.CIELAB2
+      ~UNITS.TURN
+      ~UNITS.DEGREE_PER_PX
+      ~UNITS.DEGREE_PER_PX2
+      ~UNITS.UNITLESS
+      ~UNITS.TIME
+      ~UNITS.PER_TIME
+      ~UNITS.FRAME
+      ~UNITS.NOT_A_QUANTITY
+      ~UNITS.OF_INPUT
+      ~UNITS.OF_INPUT_SQUARED
+      ~UNITS.OF_INPUT_PER_TIME
+      ~UNITS.PER_INPUT
+      ~UNITS.symbol
+      ~UNITS.desc
+      ~UNITS.input_power
+      ~UNITS.per_time
+   
+   

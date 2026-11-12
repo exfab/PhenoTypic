@@ -25,8 +25,8 @@
       RemoveBorderObjects
       KeepNearestCenter
       ExtractColonyCore
-      GridAlignmentRefiner
-      GridOversizedObjectRemover
+      RefineGridAlignment
+      RemoveOversizedGridObjects
       RemoveLowCircularity
       ManualRefine
       MaskClosing
@@ -36,13 +36,13 @@
       MaskGradient
       MaskOpening
       ReduceSectionsByLine
-      NearestNeighborMerger
+      MergeNearestNeighbors
       RemoveGridOutliers
       SeparateObjects
       RefineBySineFit
       Skeletonize
-      SmallObjectRemover
-      SmallToLargeMerger
+      RemoveSmallObjects
+      MergeSmallToLarge
       Thinning
       MergeFragmentChains
       MaskWhiteTophat

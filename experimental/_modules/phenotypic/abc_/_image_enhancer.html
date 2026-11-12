@@ -568,6 +568,7 @@
                   
   <h1>Source code for phenotypic.abc_._image_enhancer</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">overload</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
@@ -579,6 +580,59 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_operation_integrity</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootprintMixin</span>
+
+
+<div class="viewcode-block" id="DetectionClearedWarning">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.DetectionClearedWarning.html#phenotypic.abc_.DetectionClearedWarning">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DetectionClearedWarning</span><span class="p">(</span><span class="ne">UserWarning</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A pipeline runs an image enhancer after its last object detector.</span>
+
+<span class="sd">    Enhancers write ``detect_mat``, and writing ``detect_mat`` resets the</span>
+<span class="sd">    object map. So an enhancer that runs after the last detector silently</span>
+<span class="sd">    erases every colony that detector found, and whatever follows (a refiner,</span>
+<span class="sd">    a measurement) sees an empty plate.</span>
+
+<span class="sd">    The pipeline run methods (``apply``, ``apply_and_measure``,</span>
+<span class="sd">    ``apply_with_intermediates`` and ``apply_napari``) check the order of the</span>
+<span class="sd">    pipeline&#39;s ``ops`` once per call, before any step runs, with nested</span>
+<span class="sd">    pipelines included in run order. A pipeline inside an operation, such as</span>
+<span class="sd">    a ``CompositeDetector`` branch, is checked in its own run order. The</span>
+<span class="sd">    warning names the enhancer and the detector before it.</span>
+
+<span class="sd">    These are not warned about:</span>
+
+<span class="sd">    - an enhancer that a later detector follows, since that detector</span>
+<span class="sd">      re-detects (detect, align with ``GridAligner``, enhance, detect again</span>
+<span class="sd">      loses nothing);</span>
+<span class="sd">    - the ``meas``, ``post``, ``filters`` and ``model`` slots;</span>
+<span class="sd">    - a bare ``enhancer.apply(image)``. An image may legitimately carry</span>
+<span class="sd">      objects before enhancement: ``load_synth_yeast_plate()`` ships with its</span>
+<span class="sd">      colonies already in the object map.</span>
+
+<span class="sd">    A ``GridApply`` whose ``image_op`` is a detector counts as a detector.</span>
+
+<span class="sd">    The warning never changes a result: the pipeline still runs every step.</span>
+<span class="sd">    The fix is to put enhancers before the detector.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        Blurring after detection erases the colonies Otsu found:</span>
+
+<span class="sd">        &gt;&gt;&gt; import warnings</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import DetectionClearedWarning</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline(ops=[OtsuDetector(), BlurGauss(sigma=2.0)])</span>
+<span class="sd">        &gt;&gt;&gt; with warnings.catch_warnings(record=True) as caught:</span>
+<span class="sd">        ...     warnings.simplefilter(&quot;always&quot;)</span>
+<span class="sd">        ...     result = pipeline.apply(load_synth_yeast_plate())</span>
+<span class="sd">        &gt;&gt;&gt; any(w.category is DetectionClearedWarning for w in caught)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; result.num_objects</span>
+<span class="sd">        0</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
 
 
 <div class="viewcode-block" id="ImageEnhancer">
@@ -608,10 +662,11 @@
 <span class="sd">    **What is ImageEnhancer?**</span>
 
 <span class="sd">    ImageEnhancer operates on the principle of **non-destructive preprocessing**: all modifications</span>
-<span class="sd">    are applied to `image.detect_mat` (a working copy of grayscale), while original image components</span>
-<span class="sd">    (`image.rgb`, `image.gray`, `image.objmask`, `image.objmap`) remain protected and unchanged.</span>
-<span class="sd">    This allows you to experiment with multiple enhancement chains without affecting raw data or</span>
-<span class="sd">    detection results.</span>
+<span class="sd">    are applied to `image.detect_mat` (a working copy of grayscale), while the original image</span>
+<span class="sd">    components (`image.rgb`, `image.gray`) remain protected and unchanged. This allows you to</span>
+<span class="sd">    experiment with multiple enhancement chains without affecting raw data. Writing `detect_mat`</span>
+<span class="sd">    does reset the object map, so an enhancer run after a detector erases its colonies; an</span>
+<span class="sd">    ``ImagePipeline`` that orders its steps that way emits :class:`DetectionClearedWarning`.</span>
 
 <span class="sd">    **Role in the Detection Pipeline**</span>
 
@@ -770,7 +825,7 @@
 
 <span class="sd">        # Example pipeline: handle uneven illumination + noise</span>
 <span class="sd">        # Step 1: Remove background gradients</span>
-<span class="sd">        result = SubtractRollingBall(width=50).apply(image)</span>
+<span class="sd">        result = SubtractRollingBall(radius=50).apply(image)</span>
 
 <span class="sd">        # Step 2: Boost local contrast for faint colonies</span>
 <span class="sd">        result = EnhanceLocalContrast(kernel_size=50, clip_limit=0.02).apply(result)</span>
@@ -801,7 +856,7 @@
 <span class="sd">        from phenotypic.detect import OtsuDetector</span>
 
 <span class="sd">        pipeline = ImagePipeline()</span>
-<span class="sd">        pipeline.add(SubtractRollingBall(width=50))</span>
+<span class="sd">        pipeline.add(SubtractRollingBall(radius=50))</span>
 <span class="sd">        pipeline.add(EnhanceLocalContrast(kernel_size=50, clip_limit=0.02))</span>
 <span class="sd">        pipeline.add(BlurGauss(sigma=2))</span>
 <span class="sd">        pipeline.add(OtsuDetector())</span>
@@ -818,8 +873,8 @@
 
 <span class="sd">    Methods:</span>
 <span class="sd">        apply(image, inplace=False): Applies the enhancement to an image. Returns a modified</span>
-<span class="sd">            Image with enhanced `detect_mat` but unchanged RGB/gray/objects. Handles copy/inplace</span>
-<span class="sd">            logic and validates data integrity.</span>
+<span class="sd">            Image with enhanced `detect_mat` but unchanged RGB/gray, and an empty object map.</span>
+<span class="sd">            Handles copy/inplace logic and validates data integrity.</span>
 <span class="sd">        _operate(self, image): Abstract instance method implemented by subclasses.</span>
 <span class="sd">            Performs the actual enhancement algorithm. Access parameters via ``self.param_name``.</span>
 <span class="sd">        _make_footprint(shape, width): Static utility that creates a binary morphological</span>

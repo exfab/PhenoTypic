@@ -584,6 +584,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionClearedWarning.html">phenotypic.abc_.DetectionClearedWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -596,6 +597,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.FittingWindow.html">phenotypic.analysis.FittingWindow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
@@ -607,6 +609,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GrowthRateAtBoundWarning.html">phenotypic.analysis.GrowthRateAtBoundWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -633,6 +636,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_filamentous_plate.html">phenotypic.data.make_synthetic_filamentous_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_window_series.html">phenotypic.data.make_synthetic_window_series</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
@@ -672,7 +676,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseBayesShrink.html">phenotypic.enhance.DenoiseBayesShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LocalEdgeDenoise.html">phenotypic.enhance.LocalEdgeDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceBlockMatch.html">phenotypic.enhance.EnhanceBlockMatch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
@@ -688,24 +692,24 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ImageInverter.html">phenotypic.enhance.ImageInverter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.InvertImage.html">phenotypic.enhance.InvertImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeLaplace.html">phenotypic.enhance.FocusEdgeLaplace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMeijering.html">phenotypic.enhance.FocusEdgeMeijering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusBlobLoG.html">phenotypic.enhance.FocusBlobLoG</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseNonLocalMeans.html">phenotypic.enhance.DenoiseNonLocalMeans</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceRankMedian.html">phenotypic.enhance.EnhanceRankMedian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.VisuShrinkEnhancer.html">phenotypic.enhance.VisuShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseVisuShrink.html">phenotypic.enhance.DenoiseVisuShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html">phenotypic.enhance.WhiteTophatEnhance</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractWhiteTophat.html">phenotypic.enhance.SubtractWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SetDetectMode.html">phenotypic.enhance.SetDetectMode</a></li>
@@ -749,8 +753,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveBorderObjects.html">phenotypic.refine.RemoveBorderObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.KeepNearestCenter.html">phenotypic.refine.KeepNearestCenter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineGridAlignment.html">phenotypic.refine.RefineGridAlignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveOversizedGridObjects.html">phenotypic.refine.RemoveOversizedGridObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
@@ -760,13 +764,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskGradient.html">phenotypic.refine.MaskGradient</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpening.html">phenotypic.refine.MaskOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ReduceSectionsByLine.html">phenotypic.refine.ReduceSectionsByLine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.NearestNeighborMerger.html">phenotypic.refine.NearestNeighborMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeNearestNeighbors.html">phenotypic.refine.MergeNearestNeighbors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveGridOutliers.html">phenotypic.refine.RemoveGridOutliers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SeparateObjects.html">phenotypic.refine.SeparateObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineBySineFit.html">phenotypic.refine.RefineBySineFit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Skeletonize.html">phenotypic.refine.Skeletonize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallToLargeMerger.html">phenotypic.refine.SmallToLargeMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveSmallObjects.html">phenotypic.refine.RemoveSmallObjects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeSmallToLarge.html">phenotypic.refine.MergeSmallToLarge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Thinning.html">phenotypic.refine.Thinning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeFragmentChains.html">phenotypic.refine.MergeFragmentChains</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
@@ -781,6 +785,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UNITS.html">phenotypic.schema.UNITS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UnitEntry.html">phenotypic.schema.UnitEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html">phenotypic.schema.ResolvedUnit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -820,6 +827,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_WINDOW.html">phenotypic.schema.QUALITY_WINDOW</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
@@ -1081,6 +1089,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidShapeError.html">phenotypic.sdk_.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MeasurementConflictError.html">phenotypic.sdk_.exceptions_.MeasurementConflictError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html">phenotypic.sdk_.exceptions_.MetadataKeySpacesError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeyValueError.html">phenotypic.sdk_.exceptions_.MetadataKeyValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html">phenotypic.sdk_.exceptions_.MetadataValueNonScalarError</a></li>
@@ -1460,31 +1469,34 @@ Outliers</em>. ASQC Quality Press.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.output_header_placeholders" title="phenotypic.analysis.MADOutlierRemover.output_header_placeholders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_header_placeholders</span></code></a></p></td>
 <td><p>Define the placeholders in this analyzer's <a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.output_header" title="phenotypic.analysis.MADOutlierRemover.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a> patterns.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_file" title="phenotypic.analysis.MADOutlierRemover.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.output_unit" title="phenotypic.analysis.MADOutlierRemover.output_unit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_unit</span></code></a></p></td>
+<td><p>Return the unit of the column <a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.analyze" title="phenotypic.analysis.MADOutlierRemover.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_file" title="phenotypic.analysis.MADOutlierRemover.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_obj" title="phenotypic.analysis.MADOutlierRemover.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_obj" title="phenotypic.analysis.MADOutlierRemover.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_raw" title="phenotypic.analysis.MADOutlierRemover.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.parse_raw" title="phenotypic.analysis.MADOutlierRemover.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.results" title="phenotypic.analysis.MADOutlierRemover.results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.results" title="phenotypic.analysis.MADOutlierRemover.results"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results</span></code></a></p></td>
 <td><p>Return the filtered results (outliers removed).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.schema" title="phenotypic.analysis.MADOutlierRemover.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.schema" title="phenotypic.analysis.MADOutlierRemover.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.schema_json" title="phenotypic.analysis.MADOutlierRemover.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.schema_json" title="phenotypic.analysis.MADOutlierRemover.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.show" title="phenotypic.analysis.MADOutlierRemover.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.show" title="phenotypic.analysis.MADOutlierRemover.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a></p></td>
 <td><p>Visualize outlier detection results.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.update_forward_refs" title="phenotypic.analysis.MADOutlierRemover.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.update_forward_refs" title="phenotypic.analysis.MADOutlierRemover.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.validate" title="phenotypic.analysis.MADOutlierRemover.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.validate" title="phenotypic.analysis.MADOutlierRemover.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -2416,6 +2428,54 @@ stands for, with an example. Empty when every header is fixed.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.MADOutlierRemover.output_unit">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">output_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">member</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><span class="pre">MeasurementInfo</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html#phenotypic.schema.ResolvedUnit" title="phenotypic.schema._base._units.ResolvedUnit"><span class="pre">ResolvedUnit</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.MADOutlierRemover.output_unit" title="Link to this definition">#</a></dt>
+<dd><p>Return the unit of the column <a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.analyze" title="phenotypic.analysis.MADOutlierRemover.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> writes for <em>member</em>.</p>
+<p>The one default every table producer shares, next to
+<a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.output_header" title="phenotypic.analysis.MADOutlierRemover.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a>; no analyzer overrides it. A static unit
+(<code class="docutils literal notranslate"><span class="pre">LINEAR_LAG_MODEL.lam</span></code> is <code class="docutils literal notranslate"><span class="pre">time</span></code>) resolves to itself and ignores
+<em>on</em>. An input-dependent unit (a fitted rate, a model metric, a QC
+statistic, an edge-corrected value) resolves against the unit of the
+column it was computed on, so a rate fitted on a radius converts with
+<code class="docutils literal notranslate"><span class="pre">px_per_mm</span> <span class="pre">**</span> <span class="pre">1</span></code> and one fitted on an area with <code class="docutils literal notranslate"><span class="pre">px_per_mm</span> <span class="pre">**</span> <span class="pre">2</span></code>.</p>
+<p>Unlike <a class="reference internal" href="#phenotypic.analysis.MADOutlierRemover.output_header" title="phenotypic.analysis.MADOutlierRemover.output_header"><code class="xref py py-meth docutils literal notranslate"><span class="pre">output_header()</span></code></a>, which ignores <em>on</em> for most producers,
+this needs <em>on</em> for every input-dependent member. That includes the
+quality checks’ Median, MAD, SE and fence columns (<code class="docutils literal notranslate"><span class="pre">QUALITY_MAD</span></code>,
+<code class="docutils literal notranslate"><span class="pre">QUALITY_ZMAX</span></code>, <code class="docutils literal notranslate"><span class="pre">QUALITY_SE</span></code>, <code class="docutils literal notranslate"><span class="pre">QUALITY_TUKEY</span></code>), whose headers
+never embed the analyzed column: pass the check’s own <code class="docutils literal notranslate"><span class="pre">on</span></code>
+(<code class="docutils literal notranslate"><span class="pre">check.on</span></code>), or the call raises.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>member</strong> (<a class="reference internal" href="phenotypic.schema.MeasurementInfo.html#phenotypic.schema.MeasurementInfo" title="phenotypic.schema._base._measurement_info.MeasurementInfo"><em>MeasurementInfo</em></a>) – A member of a schema this analyzer declares.</p></li>
+<li><p><strong>on</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>) – The analyzed column, as passed to the analyzer’s <code class="docutils literal notranslate"><span class="pre">on</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The concrete unit, with its <code class="docutils literal notranslate"><span class="pre">length_power</span></code> filled in.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – <em>member</em> has no unit; or its unit depends on <em>on</em> and
+    <em>on</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, not a known measurement header, or a column
+    with no unit of its own (a label, metadata, a model output or
+    an edge-corrected value), named in the message.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html#phenotypic.schema.ResolvedUnit" title="phenotypic.schema._base._units.ResolvedUnit"><em>ResolvedUnit</em></a></p>
+</dd>
+</dl>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearLagModel</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_LAG_MODEL</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">LinearLagModel</span><span class="o">.</span><span class="n">output_unit</span><span class="p">(</span><span class="n">LINEAR_LAG_MODEL</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;Size_RobustMeanRadius&quot;</span><span class="p">)</span>
+<span class="go">ResolvedUnit(symbol=&#39;px/time&#39;, length_power=1)</span>
+</pre></div>
+</div>
+</div>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.MADOutlierRemover.parse_file">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">parse_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'utf8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proto</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DeprecatedParseProtocol</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_pickle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.15)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="headerlink" href="#phenotypic.analysis.MADOutlierRemover.parse_file" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -2611,6 +2671,7 @@ stands for, with an example. Empty when every header is fixed.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.model_validate_strings"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.model_validate_strings()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.output_header"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.output_header()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.output_header_placeholders"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.output_header_placeholders()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.output_unit"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.output_unit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.parse_file"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.parse_file()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.parse_obj"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.parse_obj()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.MADOutlierRemover.parse_raw"><code class="docutils literal notranslate"><span class="pre">MADOutlierRemover.parse_raw()</span></code></a></li>

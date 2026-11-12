@@ -31,25 +31,25 @@ Some column names depend on how you run the operation. They are shown as pattern
      - Description
      - Type
    * - ``LogGrowthModel_<metric>_r``
-     - The intrinsic growth rate
+     - Intrinsic growth rate r of the fitted logistic curve: its growth rate relative to its current value while it is still far below the carrying capacity K. The curve is N(t) = K / (1 + ((K − N0) / N0)·e^(−r·t)).
      - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
    * - ``LogGrowthModel_<metric>_K``
-     - The carrying capacity
+     - Carrying capacity K of the fitted logistic curve: the value the curve levels off at. It is bounded above by Kmax.
      - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
    * - ``LogGrowthModel_<metric>_N0``
-     - The initial number of the colony size metric being fitted
+     - Value of the fitted logistic curve at time 0. It is bounded between 0 and the group's smallest measured value (1 if that value is not positive).
      - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
    * - ``LogGrowthModel_<metric>_lambda``
-     - The regularization factor applied to the max specific growth rate and initial population size
+     - Regularization weight λ that penalizes a large maximum growth rate (µmax = K·r/4) and a large initial value N0 during fitting.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``LogGrowthModel_<metric>_beta``
-     - The penalty factor applied to relative difference of the carrying capacity from the largest measurement
+     - Penalty weight β on how far the fitted carrying capacity K lies from the value measured at the last time point, relative to that value.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``LogGrowthModel_<metric>_µmax``
-     - The growth rate of the colony calculated as (K*r)/4
+     - Maximum growth rate of the fitted logistic curve: its slope where the curve reaches half the carrying capacity K. It is calculated as (K*r)/4.
      - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
    * - ``LogGrowthModel_<metric>_Kmax``
-     - The upper bound of the carrying capacity for model fitting
+     - Upper bound placed on the carrying capacity K during fitting: the largest value of the fitted measurement in the group, or of the Kmax_label column when one is set. When that column has no value for the group, it is the largest measured value plus 1.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
 
 :doc:`MODEL_METRICS </api_reference/api/phenotypic.schema.MODEL_METRICS>`
@@ -65,23 +65,23 @@ Every growth model writes these columns; see :ref:`measurement-shared-columns`.
      - Description
      - Type
    * - ``ModelMetrics_<metric>_MAE``
-     - The mean absolute error
+     - Mean absolute difference between the fitted curve and the data points it was fitted to.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_MSE``
-     - The mean squared error
+     - Mean squared difference between the fitted curve and the data points it was fitted to.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_RMSE``
-     - The root mean squared error
+     - Typical distance between the fitted curve and the data points it was fitted to, as the square root of the mean squared difference.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_R2``
-     - The coefficient of determination
+     - Share of the variation in the fitted data points that the curve explains: 1 is a perfect fit, and 0 or below is no better than the points' mean. It is the coefficient of determination, and NaN for a group with two or fewer points.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_NumSamples``
-     - The number of samples used for model fitting
+     - Number of data points the model was fitted to, after any points the fitter drops (such as post-saturation time points).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_OptimizerLoss``
-     - The loss of model fitting
+     - Final value of the cost that the fitting optimizer minimized. It is the cost of scipy's least_squares: half the sum of the robust loss ρ applied to each squared residual, including any weighting or regularization terms the model adds.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ModelMetrics_<metric>_OptimizerStatus``
-     - The output of the optimizer status
+     - Integer code from scipy's least_squares saying why the fit stopped: 0 when it reached the evaluation limit and 1 to 4 when a convergence tolerance was met. It is NaN when the fit failed.
      - :bdg-ref-secondary:`Quality <measurement-classification>`

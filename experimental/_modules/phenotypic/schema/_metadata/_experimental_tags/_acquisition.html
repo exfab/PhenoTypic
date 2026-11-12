@@ -598,7 +598,13 @@
         <span class="s2">&quot;Experimenter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Person who acquired the image or ran the experiment.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RESOLUTION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Resolution&quot;</span><span class="p">,</span> <span class="s2">&quot;Image resolution (e.g. DPI or pixels per mm).&quot;</span><span class="p">)</span>
+    <span class="n">RESOLUTION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;Resolution&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Image resolution in pixels per mm (px_per_mm), the value that &quot;</span>
+        <span class="s2">&quot;converts the length and area columns from pixels (for example 40). &quot;</span>
+        <span class="s2">&quot;Record pixels per mm here; a value in DPI converts as px_per_mm = &quot;</span>
+        <span class="s2">&quot;DPI / 25.4.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">EXPOSURE_TIME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ExposureTime&quot;</span><span class="p">,</span> <span class="s2">&quot;Camera exposure time.&quot;</span><span class="p">)</span></div>
 
 </pre></div>

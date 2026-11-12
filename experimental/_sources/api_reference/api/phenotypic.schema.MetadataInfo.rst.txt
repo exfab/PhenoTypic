@@ -19,6 +19,7 @@ phenotypic.schema.MetadataInfo
       ~MetadataInfo.kind
       ~MetadataInfo.metric_family
       ~MetadataInfo.tier
+      ~MetadataInfo.default_unit
       ~MetadataInfo.rembi_module
       ~MetadataInfo.change_note
       ~MetadataInfo.header_scheme
@@ -89,6 +90,7 @@ phenotypic.schema.MetadataInfo
       ~MetadataInfo.METRIC_FAMILY
       ~MetadataInfo.resolved_kind
       ~MetadataInfo.resolved_tier
+      ~MetadataInfo.unit
       ~MetadataInfo.resolved_rembi_module
       ~MetadataInfo.use_label
       ~MetadataInfo.use_badge
@@ -99,6 +101,7 @@ phenotypic.schema.MetadataInfo
       ~MetadataInfo.image
       ~MetadataInfo.pair
       ~MetadataInfo.tier_override
+      ~MetadataInfo.unit_override
       ~MetadataInfo.derivation_type
       ~MetadataInfo.derives_from
       ~MetadataInfo.rembi_module_override

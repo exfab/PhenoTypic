@@ -1,0 +1,70 @@
+.. _measurement-op-fittingwindow:
+
+FittingWindow
+=============
+
+Propose the frames over which a condition's replicates agree well enough to fit.
+
+Parameters and usage: :py:class:`FittingWindow <phenotypic.analysis.FittingWindow>`.
+
+- **Written to:** the frame ``analyze()`` returns; a CLI run stores it as one table in ``deliverables/qc/qc.duckdb``
+- **Columns:** 11
+
+.. _measurement-info-quality-window:
+
+:doc:`QUALITY_WINDOW </api_reference/api/phenotypic.schema.QUALITY_WINDOW>`
+---------------------------------------------------------------------------
+
+.. list-table:: Metric family: **QC_Window**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_Window_Outcome``
+     - Which exit produced this condition's result, as a closed set of strings. ``found`` — a window was proposed, and ``Start``/``End`` give it. ``too_few_frames`` — the condition has fewer frames with a defined mean CV than the shortest series the rule will assess, so there was nothing to read (``NFramesCounted`` says how few; zero means no replicate group ever reached the minimum replicate count). ``too_few_evaluable_frames`` — the series is long enough, but fewer than four of its interior frames yield a finite curvature once the excluded end margins are removed. ``too_noisy`` — the run-wide abrupt-change bar sits inside this condition's own curvature noise, so the test could not tell an event from jitter, and the rule abstains rather than guessing (``Bar`` and ``NGroups`` are the context). The bar is pooled over the run's conditions, so a condition analyzed alone never gets this outcome at the default settings. ``no_smoothed_value`` — the smoothed trend is undefined at every frame. ``abrupt_event_at_start`` — the window would be empty: the last frame it could end at is at or before the frame it would open at. The name is the reference's; in practice this is reached when the condition's best agreement comes in its last evaluable frames, so no event can follow the start. Only ``found`` can pass; every other value fails.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_Start``
+     - First frame of the proposed window, as a value of the check's frame-index column, inclusive. Null unless ``Outcome`` is ``found``.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_End``
+     - Last frame of the proposed window, as a value of the check's frame-index column, inclusive. Null unless ``Outcome`` is ``found``.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_Reason``
+     - The rule's own sentence describing why no window was proposed, kept verbatim (e.g. ``only 6 frames``, ``bar is 1.1x this curve's own noise (<3): not assessable``). Empty when ``Outcome`` is ``found``. ``Outcome`` is the machine-readable form; this is the human-readable one, and it is never parsed.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_BestCV``
+     - Smallest per-frame mean replicate CV anywhere in the condition's series — how close a condition with no window came to agreeing. Carried because every windowless condition shares the same failing metric and so cannot be ranked by it; null when no frame counted.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_Bar``
+     - The abrupt-change threshold on curvature, in CV units per frame squared. **One run-level value, identical on every row of every condition**: it is pooled over all conditions in the run by design, so that each is judged against the same absolute standard. A consequence worth knowing: adding or removing a condition can move another condition's window. Null when no condition contributed a finite curvature.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_NGroups``
+     - Median number of replicate groups standing behind each counted frame's mean CV — the sample size the condition's verdict rests on. Rounded to the nearest whole group, halves to even, so counted-group counts of 3 and 4 report 4. Null when no frame counted.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_NFramesCounted``
+     - Frames at which at least one replicate group reached the minimum replicate count and had a usable mean, so a mean CV is defined. Frames with no defined mean CV are absent from the series, not zero.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+
+:doc:`QUALITY_CHECK </api_reference/api/phenotypic.schema.QUALITY_CHECK>`
+-------------------------------------------------------------------------
+
+Every quality check writes these columns; see :ref:`measurement-shared-columns`.
+
+.. list-table:: Metric family: **QC**
+   :header-rows: 1
+   :class: phenotypic-measurement-table
+
+   * - Column
+     - Description
+     - Type
+   * - ``QC_Window_Flag``
+     - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_Metric``
+     - Headline metric, a dimensionless ratio, fraction or score (for example MAD / \|median\|); the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``QC_Window_Status``
+     - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

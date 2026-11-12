@@ -19,6 +19,7 @@ phenotypic.schema.OBJECT
       ~OBJECT.kind
       ~OBJECT.metric_family
       ~OBJECT.tier
+      ~OBJECT.default_unit
       ~OBJECT.rembi_module
       ~OBJECT.change_note
       ~OBJECT.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.OBJECT
       ~OBJECT.METRIC_FAMILY
       ~OBJECT.resolved_kind
       ~OBJECT.resolved_tier
+      ~OBJECT.unit
       ~OBJECT.resolved_rembi_module
       ~OBJECT.use_label
       ~OBJECT.use_badge
@@ -99,6 +101,7 @@ phenotypic.schema.OBJECT
       ~OBJECT.image
       ~OBJECT.pair
       ~OBJECT.tier_override
+      ~OBJECT.unit_override
       ~OBJECT.derivation_type
       ~OBJECT.derives_from
       ~OBJECT.rembi_module_override

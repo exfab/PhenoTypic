@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -644,11 +645,11 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EdgeCorrection_Cap-&lt;column&gt;</span></code></p></td>
-<td><p>The carrying capacity for the target measurement</p></td>
+<td><p>Ceiling applied to the measurement in this group: the mean of the top_n largest values among fully surrounded (interior) colonies at the last time point. When the group is not corrected it is the group’s maximum, so nothing is clipped.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">EdgeCorrection_NewVal-&lt;column&gt;</span></code></p></td>
-<td><p>The new value of the target measurement</p></td>
+<td><p>The measurement after edge correction: each value in the group clipped to between 0 and Cap, or the original value when the group is not corrected.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-info sd-bg-text-info reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Derived</span></a></p></td>
 </tr>
 </tbody>

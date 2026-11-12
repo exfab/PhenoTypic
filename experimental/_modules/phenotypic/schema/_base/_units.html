@@ -1,0 +1,1001 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.schema._base._units &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=5be6c258" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sidebar-resize.css?v=bc74e319" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=88e4c0c0"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/schema/_base/_units';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script src="../../../../_static/sidebar-resize.js?v=94bb1ac8"></script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/schema/_base/_units.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.21.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    <li class="nav-item">
+      <a class="nav-link nav-internal" href="../../../../measurements_ref/index.html">
+        Measurements
+      </a>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../schema.html" class="nav-link">phenotypic.schema</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.schema._base._units</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.schema._base._units</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The closed list of measurement units, with the data needed to convert them.</span>
+
+<span class="sd">Every non-metadata measurement column carries exactly one :class:`UNITS`</span>
+<span class="sd">member. Output tables stay in pixels; a unit records how a column scales with</span>
+<span class="sd">image resolution, so a reader with a pixels-per-mm value can convert it::</span>
+
+<span class="sd">    df[SIZE.AREA] / px_per_mm ** SIZE.AREA.unit.length_power</span>
+
+<span class="sd">``length_power`` is the power of length in the unit: 1 for ``px``, 2 for</span>
+<span class="sd">``px²``, 0 for anything that does not change with image scale, and ``None``</span>
+<span class="sd">for a value that is not a quantity at all (a label, a string, a status).</span>
+
+<span class="sd">Some columns have no unit of their own: a fitted growth rate is in the unit of</span>
+<span class="sd">the column it was fitted on, per unit of time. Those members are tagged with an</span>
+<span class="sd">**input-dependent** unit (``OF_INPUT``, ``OF_INPUT_SQUARED``,</span>
+<span class="sd">``OF_INPUT_PER_TIME``, ``PER_INPUT``), and the producer&#39;s ``output_unit(member, on)`` resolves</span>
+<span class="sd">the tag against the fitted column with :meth:`UNITS.resolve`. Reading</span>
+<span class="sd">``length_power`` on an unresolved input-dependent unit raises ``TypeError``,</span>
+<span class="sd">so ``px_per_mm ** None`` can never happen silently. Their ``symbol`` is a</span>
+<span class="sd">readable placeholder (``input unit/time``), never ``&quot;&quot;``, so nothing renders a</span>
+<span class="sd">fitted rate as unitless.</span>
+
+<span class="sd">To add a unit, add one :class:`UnitEntry` line to :class:`UNITS`.</span>
+
+<span class="sd">This module imports only the standard library, keeping ``phenotypic.schema``</span>
+<span class="sd">import-light.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">KW_ONLY</span><span class="p">,</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">unique</span>
+
+<span class="n">_KEY_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^[a-z][a-z0-9_]*$&quot;</span><span class="p">)</span>
+<span class="c1">#: A symbol containing any of these is compound, so a power wraps it in</span>
+<span class="c1">#: parentheses (&quot;(1/time)²&quot;); a bare symbol takes the power directly (&quot;px²&quot;).</span>
+<span class="n">_COMPOUND_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[\s/·()⁰¹²³⁴⁵⁶⁷⁸⁹]&quot;</span><span class="p">)</span>
+<span class="n">_SUPERSCRIPT</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s2">&quot;0123456789&quot;</span><span class="p">,</span> <span class="s2">&quot;⁰¹²³⁴⁵⁶⁷⁸⁹&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_int</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether *value* is an int and not a bool (``True ** 2`` is a trap).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ResolvedUnit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.ResolvedUnit.html#phenotypic.schema.ResolvedUnit">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResolvedUnit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A concrete unit: what a column&#39;s values are actually in.</span>
+
+<span class="sd">    Returned by :meth:`UNITS.resolve` and by a producer&#39;s</span>
+<span class="sd">    ``output_unit(member, on)``. Unlike a :class:`UNITS` member it is never</span>
+<span class="sd">    input-dependent, so ``length_power`` is always safe to read.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        symbol: Display symbol, e.g. ``&quot;px/time&quot;``; ``&quot;&quot;`` for a unitless value.</span>
+<span class="sd">        length_power: Power of length in the unit (``px_per_mm ** length_power``</span>
+<span class="sd">            converts it), or ``None`` when the value is not a quantity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">length_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ResolvedUnit.symbol must be a string, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">length_power</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ResolvedUnit.length_power must be an int or None, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">length_power</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="UnitEntry">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.UnitEntry.html#phenotypic.schema.UnitEntry">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UnitEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Declarative value for a :class:`UNITS` member.</span>
+
+<span class="sd">    A static unit has ``input_power == 0``. An input-dependent unit has a</span>
+<span class="sd">    non-zero ``input_power`` (negative for a reciprocal, as ``PER_INPUT``) and</span>
+<span class="sd">    ``length_power=None``: its length power comes from the input column when it</span>
+<span class="sd">    is resolved. The powers are keyword-only, so two</span>
+<span class="sd">    adjacent ints can never be swapped positionally.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: Unique lower-case key, the member&#39;s enum value (e.g. ``&quot;px2&quot;``).</span>
+<span class="sd">            Two members with equal values would alias, so it must be unique.</span>
+<span class="sd">        symbol: Display symbol (e.g. ``&quot;px²&quot;``); ``&quot;&quot;`` for a unitless value or</span>
+<span class="sd">            a non-quantity. An input-dependent unit carries a readable</span>
+<span class="sd">            placeholder (``&quot;input unit/time&quot;``), never ``&quot;&quot;``, so a renderer</span>
+<span class="sd">            cannot show a fitted rate as unitless; resolve it for the real one.</span>
+<span class="sd">        desc: Technical description of what the unit measures.</span>
+<span class="sd">        length_power: Power of length in the unit, or ``None`` for a value that</span>
+<span class="sd">            is not a quantity or a unit that depends on its input.</span>
+<span class="sd">        input_power: Power of the input column&#39;s unit; 0 for a static unit,</span>
+<span class="sd">            -1 for its reciprocal.</span>
+<span class="sd">        per_time: Whether the unit is per unit of the fitted time column.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">desc</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">_</span><span class="p">:</span> <span class="n">KW_ONLY</span>
+    <span class="n">length_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">input_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">per_time</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.key must be a string, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_KEY_RE</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.key must be a lower-case token, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.symbol must be a string, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.desc must be a string, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">desc</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">desc</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;UnitEntry.desc must be a non-empty string&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_is_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">length_power</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;UnitEntry.length_power must be an int or None, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">length_power</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_power</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.input_power must be an int, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">input_power</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">per_time</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UnitEntry.per_time must be a bool, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">per_time</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_power</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">length_power</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;UnitEntry </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> depends on its input, so its length power &quot;</span>
+                <span class="s2">&quot;comes from the input; declare it with length_power=None&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has_top_level</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chars</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether *symbol* has any of *chars* outside parentheses.</span>
+
+<span class="sd">    ``rad/px`` has a top-level ``/``; ``(rad/px)²`` does not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">symbol</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">char</span> <span class="o">==</span> <span class="s2">&quot;(&quot;</span><span class="p">:</span>
+            <span class="n">depth</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">char</span> <span class="o">==</span> <span class="s2">&quot;)&quot;</span><span class="p">:</span>
+            <span class="n">depth</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">depth</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">chars</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolved_symbol</span><span class="p">(</span><span class="n">input_symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">power</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">per_time</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Symbol of *input_symbol* raised to *power*, then per time when asked.</span>
+
+<span class="sd">    A unitless input stays ``&quot;&quot;`` under any power, and per time reads</span>
+<span class="sd">    ``&quot;1/time&quot;`` rather than ``&quot;/time&quot;``. A negative power is a reciprocal:</span>
+<span class="sd">    ``px`` to the -1 is ``1/px``, and a product or quotient is wrapped first</span>
+<span class="sd">    (``1/(rad/px)``). A symbol that already has a solidus is wrapped before</span>
+<span class="sd">    ``/time`` is appended, so ``rad/px`` per time reads ``(rad/px)/time``: two</span>
+<span class="sd">    solidi without parentheses are ambiguous.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">symbol</span> <span class="o">=</span> <span class="n">input_symbol</span>
+    <span class="k">if</span> <span class="n">symbol</span> <span class="ow">and</span> <span class="n">power</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">magnitude</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">magnitude</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">_COMPOUND_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span> <span class="k">else</span> <span class="n">symbol</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">magnitude</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">_SUPERSCRIPT</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">power</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;1/(</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">)&quot;</span> <span class="k">if</span> <span class="n">_has_top_level</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="s2">&quot;/· &quot;</span><span class="p">)</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;1/</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">per_time</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">symbol</span><span class="p">:</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="s2">&quot;1/time&quot;</span>
+        <span class="k">elif</span> <span class="n">_has_top_level</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="s2">&quot;/&quot;</span><span class="p">):</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">)/time&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">symbol</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">/time&quot;</span>
+    <span class="k">return</span> <span class="n">symbol</span>
+
+
+<div class="viewcode-block" id="UNITS">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.UNITS.html#phenotypic.schema.UNITS">[docs]</a>
+<span class="nd">@unique</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UNITS</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The closed list of measurement units.</span>
+
+<span class="sd">    Each member&#39;s value is its lower-case key. Members expose ``symbol``,</span>
+<span class="sd">    ``desc``, ``length_power``, ``input_power``, ``per_time``,</span>
+<span class="sd">    ``is_input_dependent`` and :meth:`resolve`. ``length_power`` raises</span>
+<span class="sd">    ``TypeError`` on an input-dependent member; resolve it first.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import UNITS, ResolvedUnit</span>
+<span class="sd">        &gt;&gt;&gt; UNITS.PX2.length_power</span>
+<span class="sd">        2</span>
+<span class="sd">        &gt;&gt;&gt; UNITS.OF_INPUT_PER_TIME.resolve(ResolvedUnit(&quot;px&quot;, 1))</span>
+<span class="sd">        ResolvedUnit(symbol=&#39;px/time&#39;, length_power=1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">desc</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">input_power</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">per_time</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">_length_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">entry</span><span class="p">:</span> <span class="n">UnitEntry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">UnitEntry</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;UNITS members must be declared as UnitEntry(...); got </span><span class="si">{</span><span class="n">entry</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">_value_</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">key</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">symbol</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">symbol</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">desc</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">desc</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">_length_power</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">length_power</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">input_power</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">input_power</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">per_time</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">per_time</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value_</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_input_dependent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the unit is the input column&#39;s unit to some power.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_power</span> <span class="o">!=</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">length_power</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Power of length in the unit, or ``None`` for a non-quantity.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            TypeError: The unit depends on the input column; resolve it with</span>
+<span class="sd">                the producer&#39;s ``output_unit(member, on)`` first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_input_dependent</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;UNITS.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> depends on the input column; resolve it with &quot;</span>
+                <span class="s2">&quot;the producer&#39;s output_unit(member, on)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_length_power</span>
+
+<div class="viewcode-block" id="UNITS.resolve">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.UNITS.html#phenotypic.schema.UNITS.resolve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_unit</span><span class="p">:</span> <span class="n">ResolvedUnit</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedUnit</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The concrete unit, given the unit of the column the producer ran on.</span>
+
+<span class="sd">        A static unit ignores *input_unit* and resolves to itself. An</span>
+<span class="sd">        input-dependent unit raises the input to ``input_power`` and divides by</span>
+<span class="sd">        time when ``per_time`` is set: ``OF_INPUT_PER_TIME`` on ``px²`` is</span>
+<span class="sd">        ``px²/time`` with length power 2.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_unit: Unit of the input column, or ``None`` when unknown.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: The unit depends on its input, and *input_unit* is</span>
+<span class="sd">                ``None`` or is not a quantity (``length_power is None``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_input_dependent</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ResolvedUnit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_length_power</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">input_unit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_unit</span><span class="o">.</span><span class="n">length_power</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;UNITS.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is in the unit of its input column, and that &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;unit is unknown (got </span><span class="si">{</span><span class="n">input_unit</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ResolvedUnit</span><span class="p">(</span>
+            <span class="n">_resolved_symbol</span><span class="p">(</span><span class="n">input_unit</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_power</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">per_time</span><span class="p">),</span>
+            <span class="n">input_unit</span><span class="o">.</span><span class="n">length_power</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_power</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="n">PX</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span><span class="s2">&quot;px&quot;</span><span class="p">,</span> <span class="s2">&quot;px&quot;</span><span class="p">,</span> <span class="s2">&quot;Length in pixels.&quot;</span><span class="p">,</span> <span class="n">length_power</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">PX2</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span><span class="s2">&quot;px2&quot;</span><span class="p">,</span> <span class="s2">&quot;px²&quot;</span><span class="p">,</span> <span class="s2">&quot;Area in square pixels, a pixel count.&quot;</span><span class="p">,</span> <span class="n">length_power</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">INTENSITY</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;intensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;intensity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Grayscale pixel intensity, on the scale of the image&#39;s gray layer.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">INTENSITY_PX2</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;intensity_px2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;intensity·px²&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Grayscale intensity summed over an object&#39;s pixels, so it grows with &quot;</span>
+        <span class="s2">&quot;the object&#39;s area.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">RADIAN</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span><span class="s2">&quot;radian&quot;</span><span class="p">,</span> <span class="s2">&quot;rad&quot;</span><span class="p">,</span> <span class="s2">&quot;Angle in radians.&quot;</span><span class="p">)</span>
+    <span class="n">DEGREE</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="s2">&quot;°&quot;</span><span class="p">,</span> <span class="s2">&quot;Angle in degrees.&quot;</span><span class="p">)</span>
+    <span class="n">CIELAB</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;cielab&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CIELAB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;A CIELAB colour coordinate (L*, a* or b*), or a colour difference (ΔE) &quot;</span>
+        <span class="s2">&quot;between two colours, in CIELAB units.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CIELAB2</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;cielab2&quot;</span><span class="p">,</span> <span class="s2">&quot;CIELAB²&quot;</span><span class="p">,</span> <span class="s2">&quot;A squared CIELAB coordinate, such as a variance of L*, a* and b*.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">TURN</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span><span class="s2">&quot;turn&quot;</span><span class="p">,</span> <span class="s2">&quot;turn&quot;</span><span class="p">,</span> <span class="s2">&quot;Angle as a fraction of a full turn, in [0, 1).&quot;</span><span class="p">)</span>
+    <span class="n">DEGREE_PER_PX</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;degree_per_px&quot;</span><span class="p">,</span> <span class="s2">&quot;°/px&quot;</span><span class="p">,</span> <span class="s2">&quot;Angle change in degrees per pixel of distance.&quot;</span><span class="p">,</span> <span class="n">length_power</span><span class="o">=-</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="n">DEGREE_PER_PX2</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;degree_per_px2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;°/px²&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Change of a degrees-per-pixel rate per pixel of distance.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">UNITLESS</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;unitless&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;Dimensionless: a ratio, fraction, count, index or score.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">TIME</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;The unit of the time column a model was fitted against, such as hours.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">PER_TIME</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;per_time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;1/time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Per unit of the time column a model was fitted against, such as per hour.&quot;</span><span class="p">,</span>
+        <span class="n">per_time</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">FRAME</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;frame&quot;</span><span class="p">,</span> <span class="s2">&quot;frame&quot;</span><span class="p">,</span> <span class="s2">&quot;A position or count in an image series, in frames (images).&quot;</span>
+    <span class="p">)</span>
+    <span class="n">NOT_A_QUANTITY</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;not_a_quantity&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Not a quantity: a label, identifier, flag, string or status, or a &quot;</span>
+        <span class="s2">&quot;number with no physical unit that must never be converted, such as &quot;</span>
+        <span class="s2">&quot;an optimizer cost. Nothing to convert.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OF_INPUT</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;of_input&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;input unit&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The unit of the column the producer ran on.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OF_INPUT_SQUARED</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;of_input_squared&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;(input unit)²&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The square of the unit of the column the producer ran on, as for a &quot;</span>
+        <span class="s2">&quot;mean squared error.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_power</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OF_INPUT_PER_TIME</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;of_input_per_time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;input unit/time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The unit of the column the producer ran on, per unit of time, as for a &quot;</span>
+        <span class="s2">&quot;fitted growth rate.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">per_time</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">PER_INPUT</span> <span class="o">=</span> <span class="n">UnitEntry</span><span class="p">(</span>
+        <span class="s2">&quot;per_input&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;1/(input unit)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The reciprocal of the unit of the column the producer ran on, as for a &quot;</span>
+        <span class="s2">&quot;sharpness parameter that multiplies a difference of input values.&quot;</span><span class="p">,</span>
+        <span class="n">length_power</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_power</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

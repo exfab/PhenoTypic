@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -640,52 +641,52 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_L*GeoMedian</span></code></p></td>
-<td><p>L* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Lightness (CIE L*, from 0 for black to 100 for white) of the colony’s geometric-median color: the L*a*b* point with the smallest total distance (ΔE76) to the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_a*GeoMedian</span></code></p></td>
-<td><p>a* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Green-red coordinate (CIE a*: negative is green, positive is red) of the colony’s geometric-median color: the L*a*b* point with the smallest total distance (ΔE76) to the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_b*GeoMedian</span></code></p></td>
-<td><p>b* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Blue-yellow coordinate (CIE b*: negative is blue, positive is yellow) of the colony’s geometric-median color: the L*a*b* point with the smallest total distance (ΔE76) to the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_L*Medoid</span></code></p></td>
-<td><p>L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
+<td><p>Lightness (CIE L*, from 0 for black to 100 for white) of the colony’s medoid color: the colony pixel with the smallest total ΔE2000 color difference to all the colony’s pixels. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-outline-info sd-text-info reference internal" href="../categories/index.html#measurement-category-startingmetrics"><span class="std std-ref">Starting Metrics</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_a*Medoid</span></code></p></td>
-<td><p>a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
+<td><p>Green-red coordinate (CIE a*: negative is green, positive is red) of the colony’s medoid color: the colony pixel with the smallest total ΔE2000 color difference to all the colony’s pixels. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-outline-info sd-text-info reference internal" href="../categories/index.html#measurement-category-startingmetrics"><span class="std std-ref">Starting Metrics</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_b*Medoid</span></code></p></td>
-<td><p>b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
+<td><p>Blue-yellow coordinate (CIE b*: negative is blue, positive is yellow) of the colony’s medoid color: the colony pixel with the smallest total ΔE2000 color difference to all the colony’s pixels. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <code class="docutils literal notranslate"><span class="pre">*GeoMedian</span></code> columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-outline-info sd-text-info reference internal" href="../categories/index.html#measurement-category-startingmetrics"><span class="std std-ref">Starting Metrics</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_DeltaE2000MedianFromMedoid</span></code></p></td>
-<td><p>Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)</p></td>
+<td><p>Median color difference (ΔE2000) between the colony’s pixels and its medoid color (robust perceptual MAD).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_DeltaE2000MeanFromMedoid</span></code></p></td>
-<td><p>Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)</p></td>
+<td><p>Mean color difference (ΔE2000) between the colony’s pixels and its medoid color (color-uniformity standard).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_DeltaE2000P95FromMedoid</span></code></p></td>
-<td><p>95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)</p></td>
+<td><p>95th percentile of the color difference (ΔE2000) between the colony’s pixels and its medoid color (worst-case / sectoring flag).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_LabTotalVariance</span></code></p></td>
-<td><p>Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)</p></td>
+<td><p>How spread out the colony’s pixel colors are around their average color, as the sum of the variances of L*, a* and b*. It is the trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 <td></td>
 </tr>
@@ -710,19 +711,19 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HueRobustMean</span></code></p></td>
-<td><p>Hue of the cone-embedded geometric-median robust center (circular-correct)</p></td>
+<td><p>Hue of the colony’s robust center color, as a fraction of a full turn around the color wheel. It is the hue of the cone-embedded geometric-median robust center (circular-correct): the geometric median of the pixels at (S·V·cos 2πH, S·V·sin 2πH, V), which handles the wrap-around of hue at red.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_SaturationRobustMean</span></code></p></td>
-<td><p>Saturation of the cone-embedded geometric-median robust center</p></td>
+<td><p>Saturation of the colony’s robust center color, from 0 for gray to 1 for a fully saturated color. It is the saturation of the cone-embedded geometric-median robust center.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_ValueRobustMean</span></code></p></td>
-<td><p>Value (brightness) of the cone-embedded geometric-median robust center</p></td>
+<td><p>Brightness (HSV value, from 0 to 1) of the colony’s robust center color. It is the value of the cone-embedded geometric-median robust center.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorHSV_HSVConeVariance</span></code></p></td>
-<td><p>Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)</p></td>
+<td><p>How spread out the colony’s pixel colors are in the HSV cone, as the sum of the variances of the three cone coordinates. It is the trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 </tbody>
@@ -742,99 +743,99 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMin</span></code></p></td>
-<td><p>The minimum X value of the object in CIE XYZ color space</p></td>
+<td><p>Lowest CIE 1931 X tristimulus value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) X value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 X tristimulus value that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMean</span></code></p></td>
-<td><p>The mean X value of the object in CIE XYZ color space</p></td>
+<td><p>Average CIE 1931 X tristimulus value of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMedian</span></code></p></td>
-<td><p>The median X value of the object in CIE XYZ color space</p></td>
+<td><p>Median CIE 1931 X tristimulus value of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) X value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 X tristimulus value that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMax</span></code></p></td>
-<td><p>The maximum X value of the object in CIE XYZ color space</p></td>
+<td><p>Highest CIE 1931 X tristimulus value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXStdDev</span></code></p></td>
-<td><p>The standard deviation of the X value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 X tristimulus value varies across the colony’s pixels, as its population standard deviation.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the X value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 X tristimulus value varies across the colony’s pixels relative to its mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMin</span></code></p></td>
-<td><p>The minimum Y value of the object in CIE XYZ color space</p></td>
+<td><p>Lowest CIE 1931 Y tristimulus value (relative luminance) among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) Y value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 Y tristimulus value (relative luminance) that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMean</span></code></p></td>
-<td><p>The mean Y value of the object in CIE XYZ color space</p></td>
+<td><p>Average CIE 1931 Y tristimulus value (relative luminance) of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMedian</span></code></p></td>
-<td><p>The median Y value of the object in CIE XYZ color space</p></td>
+<td><p>Median CIE 1931 Y tristimulus value (relative luminance) of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) Y value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 Y tristimulus value (relative luminance) that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMax</span></code></p></td>
-<td><p>The maximum Y value of the object in CIE XYZ color space</p></td>
+<td><p>Highest CIE 1931 Y tristimulus value (relative luminance) among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYStdDev</span></code></p></td>
-<td><p>The standard deviation of the Y value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 Y tristimulus value (relative luminance) varies across the colony’s pixels, as its population standard deviation.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the Y value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 Y tristimulus value (relative luminance) varies across the colony’s pixels relative to its mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMin</span></code></p></td>
-<td><p>The minimum Z value of the object in CIE XYZ color space</p></td>
+<td><p>Lowest CIE 1931 Z tristimulus value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) Z value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 Z tristimulus value that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMean</span></code></p></td>
-<td><p>The mean Z value of the object in CIE XYZ color space</p></td>
+<td><p>Average CIE 1931 Z tristimulus value of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMedian</span></code></p></td>
-<td><p>The median Z value of the object in CIE XYZ color space</p></td>
+<td><p>Median CIE 1931 Z tristimulus value of the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) Z value of the object in CIE XYZ color space</p></td>
+<td><p>CIE 1931 Z tristimulus value that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMax</span></code></p></td>
-<td><p>The maximum Z value of the object in CIE XYZ color space</p></td>
+<td><p>Highest CIE 1931 Z tristimulus value among the colony’s pixels.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZStdDev</span></code></p></td>
-<td><p>The standard deviation of the Z value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 Z tristimulus value varies across the colony’s pixels, as its population standard deviation.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the Z value of the object in CIE XYZ color space</p></td>
+<td><p>How much the CIE 1931 Z tristimulus value varies across the colony’s pixels relative to its mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
@@ -854,67 +855,67 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMin</span></code></p></td>
-<td><p>The minimum chromaticity x coordinate of the object</p></td>
+<td><p>Lowest CIE x chromaticity coordinate among the colony’s pixels. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) chromaticity x coordinate of the object</p></td>
+<td><p>CIE x chromaticity coordinate that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMean</span></code></p></td>
-<td><p>The mean chromaticity x coordinate of the object</p></td>
+<td><p>Average CIE x chromaticity coordinate of the colony’s pixels. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMedian</span></code></p></td>
-<td><p>The median chromaticity x coordinate of the object</p></td>
+<td><p>Median CIE x chromaticity coordinate of the colony’s pixels. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) chromaticity x coordinate of the object</p></td>
+<td><p>CIE x chromaticity coordinate that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMax</span></code></p></td>
-<td><p>The maximum chromaticity x coordinate of the object</p></td>
+<td><p>Highest CIE x chromaticity coordinate among the colony’s pixels. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xStdDev</span></code></p></td>
-<td><p>The standard deviation of the chromaticity x coordinate of the object</p></td>
+<td><p>How much the CIE x chromaticity coordinate varies across the colony’s pixels, as its population standard deviation. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the chromaticity x coordinate of the object</p></td>
+<td><p>How much the CIE x chromaticity coordinate varies across the colony’s pixels relative to its mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count. Each pixel’s x is X / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMin</span></code></p></td>
-<td><p>The minimum chromaticity y coordinate of the object</p></td>
+<td><p>Lowest CIE y chromaticity coordinate among the colony’s pixels. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yQ1</span></code></p></td>
-<td><p>The lower quartile (Q1) chromaticity y coordinate of the object</p></td>
+<td><p>CIE y chromaticity coordinate that about a quarter of the colony’s pixels are at or below. It is the 25th percentile, linearly interpolated. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMean</span></code></p></td>
-<td><p>The mean chromaticity y coordinate of the object</p></td>
+<td><p>Average CIE y chromaticity coordinate of the colony’s pixels. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMedian</span></code></p></td>
-<td><p>The median chromaticity y coordinate of the object</p></td>
+<td><p>Median CIE y chromaticity coordinate of the colony’s pixels. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yQ3</span></code></p></td>
-<td><p>The upper quartile (Q3) chromaticity y coordinate of the object</p></td>
+<td><p>CIE y chromaticity coordinate that about three quarters of the colony’s pixels are at or below. It is the 75th percentile, linearly interpolated. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMax</span></code></p></td>
-<td><p>The maximum chromaticity y coordinate of the object</p></td>
+<td><p>Highest CIE y chromaticity coordinate among the colony’s pixels. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yStdDev</span></code></p></td>
-<td><p>The standard deviation of the chromaticity y coordinate of the object</p></td>
+<td><p>How much the CIE y chromaticity coordinate varies across the colony’s pixels, as its population standard deviation. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yCoeffVar</span></code></p></td>
-<td><p>The coefficient of variation of the chromaticity y coordinate of the object</p></td>
+<td><p>How much the CIE y chromaticity coordinate varies across the colony’s pixels relative to its mean, as the standard deviation divided by the mean. The ratio is then multiplied by (1 + 1/n), where n is the colony’s pixel count. Each pixel’s y is Y / (X + Y + Z).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../tier_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>

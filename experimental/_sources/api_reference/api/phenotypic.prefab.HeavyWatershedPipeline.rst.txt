@@ -62,6 +62,7 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.set_plots
       ~HeavyWatershedPipeline.set_post
       ~HeavyWatershedPipeline.set_qc
+      ~HeavyWatershedPipeline.summary
       ~HeavyWatershedPipeline.to_json
       ~HeavyWatershedPipeline.update_forward_refs
       ~HeavyWatershedPipeline.validate

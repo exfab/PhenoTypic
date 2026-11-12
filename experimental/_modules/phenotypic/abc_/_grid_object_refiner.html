@@ -601,7 +601,7 @@
 <span class="sd">      GridImageInputError at runtime.</span>
 <span class="sd">    - **Grid-aware refinement:** Access well positions, row/column boundaries, and grid metadata via</span>
 <span class="sd">      image.grid to make position-aware decisions (e.g., filter colonies oversized for their well).</span>
-<span class="sd">    - **Oversized colonies:** [GridOversizedObjectRemover](src/phenotypic/refine/_grid_oversized_object_remover.py)</span>
+<span class="sd">    - **Oversized colonies:** [RemoveOversizedGridObjects](src/phenotypic/refine/_grid_oversized_object_remover.py)</span>
 <span class="sd">      removes objects spanning nearly entire well (merged colonies, segmentation spillover).</span>
 <span class="sd">    - **Per-well largest:** [KeepSectionLargest](src/phenotypic/refine/_keep_section_largest.py) keeps</span>
 <span class="sd">      only the largest object per grid cell (one colony per well).</span>
@@ -645,7 +645,7 @@
 <span class="sd">      globally regardless of position).</span>
 
 <span class="sd">    - **GridObjectRefiner:** Use when refining detections on a GridImage where well structure matters.</span>
-<span class="sd">      Examples: removing objects larger than their grid cell (``GridOversizedObjectRemover``),</span>
+<span class="sd">      Examples: removing objects larger than their grid cell (``RemoveOversizedGridObjects``),</span>
 <span class="sd">      per-well filtering, grid-aligned edge removal. The grid structure enables position-aware</span>
 <span class="sd">      refinement that improves array phenotyping accuracy.</span>
 
@@ -843,12 +843,12 @@
 
 <span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, ImagePipeline</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
-<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import SmallObjectRemover, GridOversizedObjectRemover</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjects, RemoveOversizedGridObjects</span>
 <span class="sd">        &gt;&gt;&gt; # Create detection pipeline with mixed refinements</span>
 <span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector())                        # Detect colonies</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))      # Global size filter</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(GridOversizedObjectRemover())          # Grid-aware filter</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjects(min_size=100))      # Global size filter</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveOversizedGridObjects())          # Grid-aware filter</span>
 <span class="sd">        &gt;&gt;&gt; # Apply to gridded plate</span>
 <span class="sd">        &gt;&gt;&gt; image = GridImage.imread(&#39;plate.jpg&#39;, nrows=8, ncols=12)</span>
 <span class="sd">        &gt;&gt;&gt; results = pipeline.operate([image])</span>

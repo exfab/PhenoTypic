@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_TUKEY
       ~QUALITY_TUKEY.kind
       ~QUALITY_TUKEY.metric_family
       ~QUALITY_TUKEY.tier
+      ~QUALITY_TUKEY.default_unit
       ~QUALITY_TUKEY.rembi_module
       ~QUALITY_TUKEY.change_note
       ~QUALITY_TUKEY.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_TUKEY
       ~QUALITY_TUKEY.METRIC_FAMILY
       ~QUALITY_TUKEY.resolved_kind
       ~QUALITY_TUKEY.resolved_tier
+      ~QUALITY_TUKEY.unit
       ~QUALITY_TUKEY.resolved_rembi_module
       ~QUALITY_TUKEY.use_label
       ~QUALITY_TUKEY.use_badge
@@ -102,6 +104,7 @@ phenotypic.schema.QUALITY\_TUKEY
       ~QUALITY_TUKEY.image
       ~QUALITY_TUKEY.pair
       ~QUALITY_TUKEY.tier_override
+      ~QUALITY_TUKEY.unit_override
       ~QUALITY_TUKEY.derivation_type
       ~QUALITY_TUKEY.derives_from
       ~QUALITY_TUKEY.rembi_module_override

@@ -542,6 +542,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quality control</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../qc/ExpectedVsDetectedCount.html">ExpectedVsDetectedCount</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../qc/FittingWindow.html">FittingWindow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/GridOccupancy.html">GridOccupancy</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/ICC.html">ICC</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../qc/MaxModifiedZScore.html">MaxModifiedZScore</a></li>
@@ -656,19 +657,19 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code></p></td>
-<td><p>The row idx of the object</p></td>
+<td><p>Zero-based row number, from 0 at the top, of the grid cell that holds the colony’s centroid (the mean position of its pixels). A colony whose centroid lies outside the grid is assigned to the nearest edge row.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code></p></td>
-<td><p>The column idx of the object</p></td>
+<td><p>Zero-based column number, from 0 at the left, of the grid cell that holds the colony’s centroid (the mean position of its pixels). A colony whose centroid lies outside the grid is assigned to the nearest edge column.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowMajorIdx</span></code></p></td>
-<td><p>The row-major index of the object. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.</p></td>
+<td><p>Zero-based number of the colony’s grid cell, counted left to right along each row and then down the rows. It is RowNum × (number of grid columns) + ColNum. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColMajorIdx</span></code></p></td>
-<td><p>The col-major index of the object in an array. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.</p></td>
+<td><p>Zero-based number of the colony’s grid cell, counted top to bottom down each column and then across the columns. It is ColNum × (number of grid rows) + RowNum. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
@@ -691,7 +692,7 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code></p></td>
-<td><p>True when the row came from a –metadata CSV key that matched no measured object; every measurement/info column on the row is null.</p></td>
+<td><p>True on a row that comes only from the metadata file: a listed well (or other metadata row) where no colony was detected. Its measurement cells are empty, not zero, and both an empty well and a colony that detection missed produce such a row. It is False on every row that carries a measured colony.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
@@ -718,7 +719,7 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Metric</span></code></p></td>
-<td><p>Headline metric in the check’s own units; the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
+<td><p>Headline metric, a dimensionless ratio, fraction or score (for example MAD / |median|); the bad direction is set by the check’s _HIGHER_IS_BAD flag. Drives Status.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_Status</span></code></p></td>
@@ -745,31 +746,31 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_MAE</span></code></p></td>
-<td><p>The mean absolute error</p></td>
+<td><p>Mean absolute difference between the fitted curve and the data points it was fitted to.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_MSE</span></code></p></td>
-<td><p>The mean squared error</p></td>
+<td><p>Mean squared difference between the fitted curve and the data points it was fitted to.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_RMSE</span></code></p></td>
-<td><p>The root mean squared error</p></td>
+<td><p>Typical distance between the fitted curve and the data points it was fitted to, as the square root of the mean squared difference.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_R2</span></code></p></td>
-<td><p>The coefficient of determination</p></td>
+<td><p>Share of the variation in the fitted data points that the curve explains: 1 is a perfect fit, and 0 or below is no better than the points’ mean. It is the coefficient of determination, and NaN for a group with two or fewer points.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_NumSamples</span></code></p></td>
-<td><p>The number of samples used for model fitting</p></td>
+<td><p>Number of data points the model was fitted to, after any points the fitter drops (such as post-saturation time points).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_OptimizerLoss</span></code></p></td>
-<td><p>The loss of model fitting</p></td>
+<td><p>Final value of the cost that the fitting optimizer minimized. It is the cost of scipy’s least_squares: half the sum of the robust loss ρ applied to each squared residual, including any weighting or regularization terms the model adds.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ModelMetrics_&lt;metric&gt;_OptimizerStatus</span></code></p></td>
-<td><p>The output of the optimizer status</p></td>
+<td><p>Integer code from scipy’s least_squares saying why the fit stopped: 0 when it reached the evaluation limit and 1 to 4 when a convergence tolerance was met. It is NaN when the fit failed.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../tier_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>

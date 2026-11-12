@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_COUNT
       ~QUALITY_COUNT.kind
       ~QUALITY_COUNT.metric_family
       ~QUALITY_COUNT.tier
+      ~QUALITY_COUNT.default_unit
       ~QUALITY_COUNT.rembi_module
       ~QUALITY_COUNT.change_note
       ~QUALITY_COUNT.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_COUNT
       ~QUALITY_COUNT.METRIC_FAMILY
       ~QUALITY_COUNT.resolved_kind
       ~QUALITY_COUNT.resolved_tier
+      ~QUALITY_COUNT.unit
       ~QUALITY_COUNT.resolved_rembi_module
       ~QUALITY_COUNT.use_label
       ~QUALITY_COUNT.use_badge
@@ -101,6 +103,7 @@ phenotypic.schema.QUALITY\_COUNT
       ~QUALITY_COUNT.image
       ~QUALITY_COUNT.pair
       ~QUALITY_COUNT.tier_override
+      ~QUALITY_COUNT.unit_override
       ~QUALITY_COUNT.derivation_type
       ~QUALITY_COUNT.derives_from
       ~QUALITY_COUNT.rembi_module_override

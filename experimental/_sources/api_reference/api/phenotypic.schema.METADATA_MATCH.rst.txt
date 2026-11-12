@@ -19,6 +19,7 @@ phenotypic.schema.METADATA\_MATCH
       ~METADATA_MATCH.kind
       ~METADATA_MATCH.metric_family
       ~METADATA_MATCH.tier
+      ~METADATA_MATCH.default_unit
       ~METADATA_MATCH.rembi_module
       ~METADATA_MATCH.change_note
       ~METADATA_MATCH.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.METADATA\_MATCH
       ~METADATA_MATCH.METRIC_FAMILY
       ~METADATA_MATCH.resolved_kind
       ~METADATA_MATCH.resolved_tier
+      ~METADATA_MATCH.unit
       ~METADATA_MATCH.resolved_rembi_module
       ~METADATA_MATCH.use_label
       ~METADATA_MATCH.use_badge
@@ -99,6 +101,7 @@ phenotypic.schema.METADATA\_MATCH
       ~METADATA_MATCH.image
       ~METADATA_MATCH.pair
       ~METADATA_MATCH.tier_override
+      ~METADATA_MATCH.unit_override
       ~METADATA_MATCH.derivation_type
       ~METADATA_MATCH.derives_from
       ~METADATA_MATCH.rembi_module_override

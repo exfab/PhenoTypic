@@ -62,6 +62,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.set_plots
       ~HeavyOtsuPipeline.set_post
       ~HeavyOtsuPipeline.set_qc
+      ~HeavyOtsuPipeline.summary
       ~HeavyOtsuPipeline.to_json
       ~HeavyOtsuPipeline.update_forward_refs
       ~HeavyOtsuPipeline.validate

@@ -586,6 +586,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span><span class="p">,</span> <span class="n">QualityInfo</span>
 
 
@@ -599,6 +600,13 @@
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">metric_family</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
+
+
+<div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span></div>
 
 
     <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
@@ -663,6 +671,7 @@
         <span class="s2">&quot;pixel; positive is clockwise and negative is counterclockwise while &quot;</span>
         <span class="s2">&quot;moving outward in image coordinates. NaN means the run is shorter than &quot;</span>
         <span class="s2">&quot;the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RATE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRate-Mask-Dense&quot;</span><span class="p">,</span>
@@ -671,6 +680,7 @@
         <span class="s2">&quot;to dense_end. Reported in signed degrees per pixel; positive is clockwise &quot;</span>
         <span class="s2">&quot;and negative is counterclockwise while moving outward in image &quot;</span>
         <span class="s2">&quot;coordinates. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RATE_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRate-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -681,6 +691,7 @@
         <span class="s2">&quot;image coordinates. NaN means the run is shorter than the configured &quot;</span>
         <span class="s2">&quot;minimum. The slope is unchanged by cumulative rotation carried into &quot;</span>
         <span class="s2">&quot;Sparse.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_CONSISTENCY_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationConsistency-Mask-Overall&quot;</span><span class="p">,</span>
@@ -690,6 +701,7 @@
         <span class="s2">&quot;in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, &quot;</span>
         <span class="s2">&quot;plateaus, or no ordered trend. Direction is carried by the rotation &quot;</span>
         <span class="s2">&quot;rate. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_CONSISTENCY_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationConsistency-Mask-Dense&quot;</span><span class="p">,</span>
@@ -699,6 +711,7 @@
         <span class="s2">&quot;monotonic and values near 0 indicate reversals, plateaus, or no ordered &quot;</span>
         <span class="s2">&quot;trend. Direction is carried by the rotation rate. NaN means the run is &quot;</span>
         <span class="s2">&quot;shorter than the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_CONSISTENCY_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationConsistency-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -709,6 +722,7 @@
         <span class="s2">&quot;ordered trend. Direction is carried by the rotation rate, and the rank &quot;</span>
         <span class="s2">&quot;association is unchanged by rotation carried into Sparse. NaN means the &quot;</span>
         <span class="s2">&quot;run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
@@ -732,6 +746,13 @@
         <span class="k">return</span> <span class="s2">&quot;OrientZones&quot;</span></div>
 
 
+<div class="viewcode-block" id="ORIENTATION_ZONE_DIAGNOSTIC.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html#phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span></div>
+
+
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from the &quot;</span>
@@ -739,6 +760,7 @@
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This raw &quot;</span>
         <span class="s2">&quot;maximum is outlier-sensitive and should be compared with the primary &quot;</span>
         <span class="s2">&quot;sustained peak.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Dense&quot;</span><span class="p">,</span>
@@ -747,6 +769,7 @@
         <span class="s2">&quot;nonnegative with no fixed upper bound. This raw maximum is &quot;</span>
         <span class="s2">&quot;outlier-sensitive and should be compared with the primary sustained &quot;</span>
         <span class="s2">&quot;peak.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -756,6 +779,7 @@
         <span class="s2">&quot;outlier-sensitive. Cumulative rotation is not rebased at dense_end, so &quot;</span>
         <span class="s2">&quot;this Sparse magnitude may include rotation accumulated while the profile &quot;</span>
         <span class="s2">&quot;was in Dense.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P90_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Overall&quot;</span><span class="p">,</span>
@@ -763,6 +787,7 @@
         <span class="s2">&quot;over supported rings from the CoreZone boundary through the &quot;</span>
         <span class="s2">&quot;configured SparseZone outer boundary. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. This validation comparator ignores radial order.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P90_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Dense&quot;</span><span class="p">,</span>
@@ -770,6 +795,7 @@
         <span class="s2">&quot;over supported rings from the CoreZone boundary to dense_end. &quot;</span>
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
         <span class="s2">&quot;validation comparator ignores radial order.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P90_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -779,6 +805,7 @@
         <span class="s2">&quot;comparator ignores radial order. Cumulative rotation is not rebased at &quot;</span>
         <span class="s2">&quot;dense_end, so this Sparse magnitude may include rotation accumulated &quot;</span>
         <span class="s2">&quot;while the profile was in Dense.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P95_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Overall&quot;</span><span class="p">,</span>
@@ -787,6 +814,7 @@
         <span class="s2">&quot;configured SparseZone outer boundary. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. With few supported rings it remains close to the raw &quot;</span>
         <span class="s2">&quot;maximum and is not the primary robust metric.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P95_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Dense&quot;</span><span class="p">,</span>
@@ -794,6 +822,7 @@
         <span class="s2">&quot;over supported rings from the CoreZone boundary to dense_end. &quot;</span>
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. With few &quot;</span>
         <span class="s2">&quot;supported rings it remains close to the raw maximum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P95_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -803,14 +832,16 @@
         <span class="s2">&quot;Cumulative rotation is not rebased at dense_end, so this Sparse &quot;</span>
         <span class="s2">&quot;magnitude may include rotation accumulated while the profile was in &quot;</span>
         <span class="s2">&quot;Dense.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
-        <span class="s2">&quot;rings from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;rings from the CoreZone boundary through the configured SparseZone &quot;</span>
         <span class="s2">&quot;outer boundary. Reported in degrees, nonnegative with no fixed upper &quot;</span>
         <span class="s2">&quot;bound. This validation comparator describes typical magnitude but &quot;</span>
         <span class="s2">&quot;ignores radial order and localized outer turns.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Dense&quot;</span><span class="p">,</span>
@@ -818,6 +849,7 @@
         <span class="s2">&quot;rings from the CoreZone boundary to dense_end. Reported in &quot;</span>
         <span class="s2">&quot;degrees, nonnegative with no fixed upper bound. This validation &quot;</span>
         <span class="s2">&quot;comparator describes typical magnitude but ignores radial order.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -826,14 +858,16 @@
         <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. Cumulative rotation &quot;</span>
         <span class="s2">&quot;is not rebased at dense_end, so this Sparse magnitude may include &quot;</span>
         <span class="s2">&quot;rotation accumulated while the profile was in Dense.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
-        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone &quot;</span>
         <span class="s2">&quot;outer boundary, divided by their total supported radial span. Reported &quot;</span>
         <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. It describes &quot;</span>
         <span class="s2">&quot;radially persistent rotation but can remain high after one early step.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Dense&quot;</span><span class="p">,</span>
@@ -842,6 +876,7 @@
         <span class="s2">&quot;total supported radial span. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. It describes radially persistent rotation but can &quot;</span>
         <span class="s2">&quot;remain high after one early step.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -851,14 +886,16 @@
         <span class="s2">&quot;no fixed upper bound. Cumulative rotation is not rebased at dense_end, &quot;</span>
         <span class="s2">&quot;so this Sparse magnitude may include rotation accumulated while the &quot;</span>
         <span class="s2">&quot;profile was in Dense.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
-        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone &quot;</span>
         <span class="s2">&quot;outer boundary, without bridging gaps. Reported in degrees, nonnegative &quot;</span>
         <span class="s2">&quot;with no fixed upper bound. It is sensitive to oscillation, profile &quot;</span>
         <span class="s2">&quot;length, and noise and is diagnostic only.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Dense&quot;</span><span class="p">,</span>
@@ -867,6 +904,7 @@
         <span class="s2">&quot;gaps. Reported in degrees, nonnegative with no fixed upper bound. It is &quot;</span>
         <span class="s2">&quot;sensitive to oscillation, profile length, and noise and is diagnostic &quot;</span>
         <span class="s2">&quot;only.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -875,6 +913,7 @@
         <span class="s2">&quot;bridging gaps. Reported in degrees, nonnegative with no fixed upper &quot;</span>
         <span class="s2">&quot;bound. It is sensitive to oscillation, profile length, and noise and is &quot;</span>
         <span class="s2">&quot;diagnostic only.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Overall&quot;</span><span class="p">,</span>
@@ -884,6 +923,7 @@
         <span class="s2">&quot;detected outer boundary. Reported in signed degrees per pixel squared. &quot;</span>
         <span class="s2">&quot;This is a spatial rate gradient, not temporal acceleration, and is NaN &quot;</span>
         <span class="s2">&quot;unless the run meets both the configured minimum and eight rings.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Dense&quot;</span><span class="p">,</span>
@@ -893,6 +933,7 @@
         <span class="s2">&quot;in signed degrees per pixel squared. This is a spatial rate gradient, &quot;</span>
         <span class="s2">&quot;not temporal acceleration, and is NaN unless the run meets both the &quot;</span>
         <span class="s2">&quot;configured minimum and eight rings.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RATE_GRADIENT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -902,6 +943,7 @@
         <span class="s2">&quot;Reported in signed degrees per pixel squared. This is a spatial rate &quot;</span>
         <span class="s2">&quot;gradient, not temporal acceleration, and is NaN for runs shorter than &quot;</span>
         <span class="s2">&quot;the larger of eight rings and the configured minimum.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX2</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RING_SUPPORT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRingSupport-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1024,6 +1066,7 @@
         <span class="s2">&quot;tile pixels in the canonical Overall annulus (core_end .. sparse_end), in &quot;</span>
         <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
         <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">TURNING_RADIAL_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Radial-Dense&quot;</span><span class="p">,</span>
@@ -1031,6 +1074,7 @@
         <span class="s2">&quot;tile pixels in the dense ring (core_end .. dense_end radii) region, in &quot;</span>
         <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
         <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">TURNING_RADIAL_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Radial-Sparse&quot;</span><span class="p">,</span>
@@ -1038,6 +1082,7 @@
         <span class="s2">&quot;tile pixels in the sparse ring (dense_end .. sparse_end radii) region, in &quot;</span>
         <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
         <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1045,6 +1090,7 @@
         <span class="s2">&quot;detected-object pixels in the canonical Overall annulus (core_end .. sparse_end) &quot;</span>
         <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
         <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">TURNING_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Mask-Dense&quot;</span><span class="p">,</span>
@@ -1052,6 +1098,7 @@
         <span class="s2">&quot;detected-object pixels in the dense ring (core_end .. dense_end radii) &quot;</span>
         <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
         <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">TURNING_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -1059,6 +1106,7 @@
         <span class="s2">&quot;detected-object pixels in the sparse ring (dense_end .. sparse_end radii) &quot;</span>
         <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
         <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">COHERENCE_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Coherence-Radial-Overall&quot;</span><span class="p">,</span>
@@ -1114,6 +1162,7 @@
         <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
         <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
         <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">RADIAL_TILT_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RadialTilt-Mask-Dense&quot;</span><span class="p">,</span>
@@ -1127,6 +1176,7 @@
         <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
         <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
         <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">RADIAL_TILT_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RadialTilt-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -1140,6 +1190,7 @@
         <span class="s2">&quot;unchanged. A support-threshold crossing can add a newly reliable sector and &quot;</span>
         <span class="s2">&quot;change the estimate; mixed orientations within one sector remain &quot;</span>
         <span class="s2">&quot;pixel-weighted.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardTurning-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1150,6 +1201,7 @@
         <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
         <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
         <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_TURNING_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardTurning-Mask-Dense&quot;</span><span class="p">,</span>
@@ -1160,6 +1212,7 @@
         <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
         <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
         <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_TURNING_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardTurning-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -1170,6 +1223,7 @@
         <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
         <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
         <span class="s2">&quot;curvature measure, not parent-to-daughter branch tracking.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE_PER_PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">RADIAL_SECTOR_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RadialSectorSupport-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1206,6 +1260,7 @@
         <span class="s2">&quot;CoreZone. Each reliable ring-sector comparison contributes equally, so &quot;</span>
         <span class="s2">&quot;multiplying same-orientation branch evidence within an already reliable cell &quot;</span>
         <span class="s2">&quot;does not change its contribution.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">LONG_RANGE_ROTATION_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LongRangeRotation-Mask-Dense&quot;</span><span class="p">,</span>
@@ -1217,6 +1272,7 @@
         <span class="s2">&quot;bands begin outside the operational CoreZone. Each reliable ring-sector &quot;</span>
         <span class="s2">&quot;comparison contributes equally, so multiplying same-orientation branch &quot;</span>
         <span class="s2">&quot;evidence within an already reliable cell does not change its contribution.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">LONG_RANGE_ROTATION_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LongRangeRotation-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -1229,6 +1285,7 @@
         <span class="s2">&quot;ring-sector comparison contributes equally, so multiplying same-orientation &quot;</span>
         <span class="s2">&quot;branch evidence within an already reliable cell does not change its &quot;</span>
         <span class="s2">&quot;contribution.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SignedLongRangeRotation-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1238,6 +1295,7 @@
         <span class="s2">&quot;and negative means counterclockwise while moving outward in image &quot;</span>
         <span class="s2">&quot;coordinates. Opposing reliable ring-sector changes cancel in this &quot;</span>
         <span class="s2">&quot;directional summary; inspect the absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SignedLongRangeRotation-Mask-Dense&quot;</span><span class="p">,</span>
@@ -1247,6 +1305,7 @@
         <span class="s2">&quot;counterclockwise while moving outward in image coordinates. Opposing &quot;</span>
         <span class="s2">&quot;reliable ring-sector changes cancel in this directional summary; inspect the &quot;</span>
         <span class="s2">&quot;absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SignedLongRangeRotation-Mask-Sparse&quot;</span><span class="p">,</span>
@@ -1256,6 +1315,7 @@
         <span class="s2">&quot;counterclockwise while moving outward in image coordinates. Opposing &quot;</span>
         <span class="s2">&quot;reliable ring-sector changes cancel in this directional summary; inspect the &quot;</span>
         <span class="s2">&quot;absolute metric and support alongside it.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LongRangeRotationSupport-Mask-Overall&quot;</span><span class="p">,</span>
@@ -1286,6 +1346,7 @@
         <span class="s2">&quot;in [0, 90]. Only 10-degree sectors reliable in both zones contribute, and &quot;</span>
         <span class="s2">&quot;each paired sector receives equal weight. This measures accumulated &quot;</span>
         <span class="s2">&quot;zone-to-zone rotation without detecting individual branches.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_DENSE_TO_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SignedLongRangeRotation-Mask-DenseToSparse&quot;</span><span class="p">,</span>
@@ -1293,6 +1354,7 @@
         <span class="s2">&quot;sectors, in degrees in [-90, 90]. Positive means clockwise and negative &quot;</span>
         <span class="s2">&quot;means counterclockwise radial-relative rotation while moving outward in &quot;</span>
         <span class="s2">&quot;image coordinates. Opposing sector rotations cancel.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">DEGREE</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_DENSE_TO_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LongRangeRotationSupport-Mask-DenseToSparse&quot;</span><span class="p">,</span>
@@ -1307,25 +1369,30 @@
         <span class="s2">&quot;two-change Method B, 2 is collapsed one-change Method B, and 4 is &quot;</span>
         <span class="s2">&quot;canonical failure with missing zone measurements. This is a &quot;</span>
         <span class="s2">&quot;dimensionless categorical code.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">NOT_A_QUANTITY</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">CORE_ZONE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreZoneEndRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer radius in pixels of the operational CoreZone, which includes &quot;</span>
         <span class="s2">&quot;the inoculum and any inner region without resolvable branch orientation.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">DENSE_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DenseRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer radius in pixels of the Method B DenseZone. It equals &quot;</span>
         <span class="s2">&quot;CoreZoneEndRadius for a collapsed one-change solution.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTER_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OuterRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Exact outer measurement radius in pixels selected by &quot;</span>
         <span class="s2">&quot;outer_zone_percentile.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">FULL_EXTENT_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;FullExtentRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Maximum target-mask radius in pixels before percentile clipping.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTER_ZONE_PERCENTILE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OuterZonePercentile&quot;</span><span class="p">,</span>

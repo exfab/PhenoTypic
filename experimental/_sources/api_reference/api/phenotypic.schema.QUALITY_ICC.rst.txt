@@ -19,6 +19,7 @@ phenotypic.schema.QUALITY\_ICC
       ~QUALITY_ICC.kind
       ~QUALITY_ICC.metric_family
       ~QUALITY_ICC.tier
+      ~QUALITY_ICC.default_unit
       ~QUALITY_ICC.rembi_module
       ~QUALITY_ICC.change_note
       ~QUALITY_ICC.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.QUALITY\_ICC
       ~QUALITY_ICC.METRIC_FAMILY
       ~QUALITY_ICC.resolved_kind
       ~QUALITY_ICC.resolved_tier
+      ~QUALITY_ICC.unit
       ~QUALITY_ICC.resolved_rembi_module
       ~QUALITY_ICC.use_label
       ~QUALITY_ICC.use_badge
@@ -101,6 +103,7 @@ phenotypic.schema.QUALITY\_ICC
       ~QUALITY_ICC.image
       ~QUALITY_ICC.pair
       ~QUALITY_ICC.tier_override
+      ~QUALITY_ICC.unit_override
       ~QUALITY_ICC.derivation_type
       ~QUALITY_ICC.derives_from
       ~QUALITY_ICC.rembi_module_override

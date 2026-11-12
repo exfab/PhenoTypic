@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Bounding-box and centroid coordinate measurements.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
 
 
@@ -591,12 +592,42 @@
         <span class="k">return</span> <span class="s2">&quot;Bbox&quot;</span></div>
 
 
-    <span class="n">CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CenterRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The row coordinate of the center of the bounding box.&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="BBOX.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.BBOX.html#phenotypic.schema.BBOX.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span></div>
+
+
+    <span class="n">CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;CenterRR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Row coordinate of the colony&#39;s centroid, the mean position of its &quot;</span>
+        <span class="s2">&quot;pixels (skimage ``centroid``).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">MIN_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The smallest row coordinate of the bounding box.&quot;</span><span class="p">)</span>
-    <span class="n">MAX_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaxRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The largest row coordinate of the bounding box.&quot;</span><span class="p">)</span>
-    <span class="n">CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CenterCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The column coordinate of the center of the bounding box.&quot;</span><span class="p">)</span>
-    <span class="n">MIN_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The smallest column coordinate of the bounding box.&quot;</span><span class="p">)</span>
-    <span class="n">MAX_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaxCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The largest column coordinate of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">MAX_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MaxRR&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The largest row coordinate of the bounding box. It is one past the &quot;</span>
+        <span class="s2">&quot;colony&#39;s last pixel row (exclusive, as in Python slicing), so rows &quot;</span>
+        <span class="s2">&quot;MinRR to MaxRR - 1 hold the colony and ``image[MinRR:MaxRR]`` covers &quot;</span>
+        <span class="s2">&quot;it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;CenterCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Column coordinate of the colony&#39;s centroid, the mean position of its &quot;</span>
+        <span class="s2">&quot;pixels (skimage ``centroid``).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MIN_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MinCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The smallest column coordinate of the bounding box.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MAX_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;MaxCC&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;The largest column coordinate of the bounding box. It is one past &quot;</span>
+        <span class="s2">&quot;the colony&#39;s last pixel column (exclusive, as in Python slicing), so &quot;</span>
+        <span class="s2">&quot;columns MinCC to MaxCC - 1 hold the colony and ``image[:, &quot;</span>
+        <span class="s2">&quot;MinCC:MaxCC]`` covers it.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">INTENSITY_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntensityWeightedCenterRR&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The intensity-weighted center row coordinate of the object &quot;</span>
@@ -609,17 +640,25 @@
     <span class="p">)</span>
     <span class="n">DIST_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DistWeightedCenterRR&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Row coordinate of the per-object Euclidean-distance-transform &quot;</span>
-        <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>
-        <span class="s2">&quot;filamentous extensions that pull intensity-weighted centroids &quot;</span>
-        <span class="s2">&quot;off-body.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Row coordinate of the colony&#39;s distance-weighted centroid: the mean &quot;</span>
+        <span class="s2">&quot;position of its pixels, each weighted by its distance to the &quot;</span>
+        <span class="s2">&quot;colony&#39;s edge. It is Σ dt·row / Σ dt over the Euclidean distance &quot;</span>
+        <span class="s2">&quot;transform dt, and the plain centroid for a colony whose every pixel &quot;</span>
+        <span class="s2">&quot;has a pixel of another colony among its eight neighbors (those &quot;</span>
+        <span class="s2">&quot;pixels are zeroed before the transform, so its weights sum to 0). &quot;</span>
+        <span class="s2">&quot;Robust to thin filamentous extensions that pull intensity-weighted &quot;</span>
+        <span class="s2">&quot;centroids off-body.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">DIST_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DistWeightedCenterCC&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Column coordinate of the per-object Euclidean-distance-transform &quot;</span>
-        <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>
-        <span class="s2">&quot;filamentous extensions that pull intensity-weighted centroids &quot;</span>
-        <span class="s2">&quot;off-body.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Column coordinate of the colony&#39;s distance-weighted centroid: the &quot;</span>
+        <span class="s2">&quot;mean position of its pixels, each weighted by its distance to the &quot;</span>
+        <span class="s2">&quot;colony&#39;s edge. It is Σ dt·col / Σ dt over the Euclidean distance &quot;</span>
+        <span class="s2">&quot;transform dt, and the plain centroid for a colony whose every pixel &quot;</span>
+        <span class="s2">&quot;has a pixel of another colony among its eight neighbors (those &quot;</span>
+        <span class="s2">&quot;pixels are zeroed before the transform, so its weights sum to 0). &quot;</span>
+        <span class="s2">&quot;Robust to thin filamentous extensions that pull intensity-weighted &quot;</span>
+        <span class="s2">&quot;centroids off-body.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

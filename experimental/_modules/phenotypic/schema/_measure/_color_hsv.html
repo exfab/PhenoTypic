@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Per-object robust summary in the HSV color space (cone-embedded).&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span>
 
 
@@ -591,10 +592,42 @@
         <span class="k">return</span> <span class="s2">&quot;ColorHSV&quot;</span></div>
 
 
-    <span class="n">HUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;HueRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Hue of the cone-embedded geometric-median robust center (circular-correct)&quot;</span><span class="p">)</span>
-    <span class="n">SATURATION_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;SaturationRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Saturation of the cone-embedded geometric-median robust center&quot;</span><span class="p">)</span>
-    <span class="n">VALUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ValueRobustMean&quot;</span><span class="p">,</span> <span class="s2">&quot;Value (brightness) of the cone-embedded geometric-median robust center&quot;</span><span class="p">)</span>
-    <span class="n">HSV_CONE_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;HSVConeVariance&quot;</span><span class="p">,</span> <span class="s2">&quot;Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="ColorHSV.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.ColorHSV.html#phenotypic.schema.ColorHSV.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">UNITLESS</span></div>
+
+
+    <span class="n">HUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;HueRobustMean&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Hue of the colony&#39;s robust center color, as a fraction of a full &quot;</span>
+        <span class="s2">&quot;turn around the color wheel. It is the hue of the cone-embedded &quot;</span>
+        <span class="s2">&quot;geometric-median robust center (circular-correct): the geometric &quot;</span>
+        <span class="s2">&quot;median of the pixels at (S·V·cos 2πH, S·V·sin 2πH, V), which handles &quot;</span>
+        <span class="s2">&quot;the wrap-around of hue at red.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">TURN</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">SATURATION_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;SaturationRobustMean&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Saturation of the colony&#39;s robust center color, from 0 for gray to 1 &quot;</span>
+        <span class="s2">&quot;for a fully saturated color. It is the saturation of the &quot;</span>
+        <span class="s2">&quot;cone-embedded geometric-median robust center.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">VALUE_ROBUST_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ValueRobustMean&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Brightness (HSV value, from 0 to 1) of the colony&#39;s robust center &quot;</span>
+        <span class="s2">&quot;color. It is the value of the cone-embedded geometric-median robust &quot;</span>
+        <span class="s2">&quot;center.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">HSV_CONE_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;HSVConeVariance&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;How spread out the colony&#39;s pixel colors are in the HSV cone, as the &quot;</span>
+        <span class="s2">&quot;sum of the variances of the three cone coordinates. It is the trace &quot;</span>
+        <span class="s2">&quot;of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); &quot;</span>
+        <span class="s2">&quot;spread about the arithmetic mean of the cone coordinates (NOT about &quot;</span>
+        <span class="s2">&quot;the reported RobustMean center).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
 <div class="viewcode-block" id="ColorHSV.robust_headers">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.ColorHSV.html#phenotypic.schema.ColorHSV.robust_headers">[docs]</a>

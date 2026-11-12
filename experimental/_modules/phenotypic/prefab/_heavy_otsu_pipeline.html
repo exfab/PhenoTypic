@@ -577,10 +577,10 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.correction</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridAligner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReduceSectionsByLine</span><span class="p">,</span> <span class="n">GridOversizedObjectRemover</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReduceSectionsByLine</span><span class="p">,</span> <span class="n">RemoveOversizedGridObjects</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">RemoveBorderObjects</span><span class="p">,</span>
-    <span class="n">SmallObjectRemover</span><span class="p">,</span>
+    <span class="n">RemoveSmallObjects</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskFill</span><span class="p">,</span> <span class="n">MaskOpening</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -609,9 +609,9 @@
 <span class="sd">        5. OtsuDetector — threshold-based detection</span>
 <span class="sd">        6. MaskOpening — smooth mask boundaries</span>
 <span class="sd">        7. RemoveBorderObjects — remove partial edge colonies</span>
-<span class="sd">        8. SmallObjectRemover — remove noise fragments</span>
+<span class="sd">        8. RemoveSmallObjects — remove noise fragments</span>
 <span class="sd">        9. MaskFill — fill interior holes</span>
-<span class="sd">        10. GridOversizedObjectRemover — remove merged multi-well objects</span>
+<span class="sd">        10. RemoveOversizedGridObjects — remove merged multi-well objects</span>
 <span class="sd">        11. ReduceSectionsByLine — keep one colony per well</span>
 <span class="sd">        12. GridAligner — straighten the grid</span>
 
@@ -690,9 +690,9 @@
             <span class="p">),</span>
             <span class="n">MaskOpening</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">mask_opener_footprint</span><span class="p">),</span>
             <span class="n">border_remover</span><span class="p">,</span>
-            <span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
+            <span class="n">RemoveSmallObjects</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
             <span class="n">MaskFill</span><span class="p">(),</span>
-            <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
+            <span class="n">RemoveOversizedGridObjects</span><span class="p">(),</span>
             <span class="n">min_residual_reducer</span><span class="p">,</span>
             <span class="n">GridAligner</span><span class="p">(),</span>
             <span class="n">OtsuDetector</span><span class="p">(</span>
@@ -700,8 +700,8 @@
             <span class="p">),</span>
             <span class="n">MaskOpening</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
             <span class="n">border_remover</span><span class="p">,</span>
-            <span class="n">SmallObjectRemover</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
-            <span class="n">GridOversizedObjectRemover</span><span class="p">(),</span>
+            <span class="n">RemoveSmallObjects</span><span class="p">(</span><span class="n">min_size</span><span class="o">=</span><span class="n">small_object_min_size</span><span class="p">),</span>
+            <span class="n">RemoveOversizedGridObjects</span><span class="p">(),</span>
             <span class="n">min_residual_reducer</span><span class="p">,</span>
             <span class="n">MaskFill</span><span class="p">(),</span>
         <span class="p">]</span>

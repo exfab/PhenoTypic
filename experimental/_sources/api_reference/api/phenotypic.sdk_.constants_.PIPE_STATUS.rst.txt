@@ -19,6 +19,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.metric_family
       ~PIPE_STATUS.kind
       ~PIPE_STATUS.tier
+      ~PIPE_STATUS.default_unit
       ~PIPE_STATUS.rembi_module
       ~PIPE_STATUS.change_note
       ~PIPE_STATUS.header_scheme
@@ -88,6 +89,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.METRIC_FAMILY
       ~PIPE_STATUS.resolved_kind
       ~PIPE_STATUS.resolved_tier
+      ~PIPE_STATUS.unit
       ~PIPE_STATUS.resolved_rembi_module
       ~PIPE_STATUS.use_label
       ~PIPE_STATUS.use_badge
@@ -100,6 +102,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.image
       ~PIPE_STATUS.pair
       ~PIPE_STATUS.tier_override
+      ~PIPE_STATUS.unit_override
       ~PIPE_STATUS.derivation_type
       ~PIPE_STATUS.derives_from
       ~PIPE_STATUS.rembi_module_override

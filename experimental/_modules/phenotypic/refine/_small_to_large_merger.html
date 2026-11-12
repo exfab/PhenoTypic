@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../refine.html" class="nav-link">phenotypic.refine</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.refine._small_to_large_merger</span></li>
   </ul>
 </nav>
@@ -581,9 +584,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="SmallToLargeMerger">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.SmallToLargeMerger.html#phenotypic.refine.SmallToLargeMerger">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SmallToLargeMerger</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
+<div class="viewcode-block" id="MergeSmallToLarge">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.refine.MergeSmallToLarge.html#phenotypic.refine.MergeSmallToLarge">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MergeSmallToLarge</span><span class="p">(</span><span class="n">ObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge small colony fragments into their nearest large colony using size-partitioned merging.</span>
 
 <span class="sd">    Partitions detected objects into small fragments (below ``size_threshold``)</span>
@@ -609,9 +612,9 @@
 <span class="sd">    Consider Also:</span>
 <span class="sd">        - :class:`MergeFragmentChains` when large-to-large merging is also</span>
 <span class="sd">          needed, not only small-to-large absorption.</span>
-<span class="sd">        - :class:`NearestNeighborMerger` for nearest-neighbor merging</span>
+<span class="sd">        - :class:`MergeNearestNeighbors` for nearest-neighbor merging</span>
 <span class="sd">          without any size-based partitioning.</span>
-<span class="sd">        - :class:`SmallObjectRemover` when small fragments should be</span>
+<span class="sd">        - :class:`RemoveSmallObjects` when small fragments should be</span>
 <span class="sd">          discarded entirely rather than absorbed into a parent colony.</span>
 
 <span class="sd">    Args:</span>

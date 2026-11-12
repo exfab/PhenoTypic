@@ -570,6 +570,7 @@
 <span></span><span class="sd">&quot;&quot;&quot;Constants for grid structure in the PhenoTypic module.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._base._units</span><span class="w"> </span><span class="kn">import</span> <span class="n">UNITS</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._base._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
 
 
@@ -585,34 +586,71 @@
         <span class="k">return</span> <span class="s2">&quot;Grid&quot;</span></div>
 
 
-    <span class="n">ROW_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RowNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The row idx of the object&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="GRID.default_unit">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.schema.GRID.html#phenotypic.schema.GRID.default_unit">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_unit</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UNITS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UNITS</span><span class="o">.</span><span class="n">NOT_A_QUANTITY</span></div>
+
+
+    <span class="n">ROW_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RowNum&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Zero-based row number, from 0 at the top, of the grid cell that &quot;</span>
+        <span class="s2">&quot;holds the colony&#39;s centroid (the mean position of its pixels). A &quot;</span>
+        <span class="s2">&quot;colony whose centroid lies outside the grid is assigned to the &quot;</span>
+        <span class="s2">&quot;nearest edge row.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">ROW_INTERVAL_START</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowIntervalStart&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The start of the row interval of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the pixel row where the colony&#39;s grid row starts; no &quot;</span>
+        <span class="s2">&quot;PhenoTypic operation writes this column.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">ROW_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RowIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the row interval of the object&quot;</span><span class="p">)</span>
+    <span class="n">ROW_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;RowIntervalEnd&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the pixel row where the colony&#39;s grid row ends; no &quot;</span>
+        <span class="s2">&quot;PhenoTypic operation writes this column.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
+    <span class="p">)</span>
 
-    <span class="n">COL_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ColNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The column idx of the object&quot;</span><span class="p">)</span>
+    <span class="n">COL_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ColNum&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Zero-based column number, from 0 at the left, of the grid cell that &quot;</span>
+        <span class="s2">&quot;holds the colony&#39;s centroid (the mean position of its pixels). A &quot;</span>
+        <span class="s2">&quot;colony whose centroid lies outside the grid is assigned to the &quot;</span>
+        <span class="s2">&quot;nearest edge column.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">COL_INTERVAL_START</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColIntervalStart&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The start of the column interval of the object&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the pixel column where the colony&#39;s grid column starts; &quot;</span>
+        <span class="s2">&quot;no PhenoTypic operation writes this column.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">COL_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ColIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the column interval of the object&quot;</span><span class="p">)</span>
+    <span class="n">COL_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ColIntervalEnd&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Reserved for the pixel column where the colony&#39;s grid column ends; &quot;</span>
+        <span class="s2">&quot;no PhenoTypic operation writes this column.&quot;</span><span class="p">,</span>
+        <span class="n">unit</span><span class="o">=</span><span class="n">UNITS</span><span class="o">.</span><span class="n">PX</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">ROW_MAJOR_IDX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowMajorIdx&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The row-major index of the object. Row major is the standard in most&quot;</span>
-        <span class="s2">&quot; programming and data science array libraries. Used for indexing into&quot;</span>
-        <span class="s2">&quot; 2D arrays.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Zero-based number of the colony&#39;s grid cell, counted left to right &quot;</span>
+        <span class="s2">&quot;along each row and then down the rows. It is RowNum × (number of &quot;</span>
+        <span class="s2">&quot;grid columns) + ColNum. Row major is the standard in most &quot;</span>
+        <span class="s2">&quot;programming and data science array libraries. Used for indexing into &quot;</span>
+        <span class="s2">&quot;2D arrays.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">COL_MAJOR_IDX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColMajorIdx&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;The col-major index of the object in an array. Lab automation logic uses&quot;</span>
-        <span class="s2">&quot; column-major (column-wise) indexing for well plate operations because&quot;</span>
-        <span class="s2">&quot; 96-well plates are physically arranged with 8 rows&quot;</span>
-        <span class="s2">&quot; (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly&quot;</span>
-        <span class="s2">&quot; to how multichannel pipettes operate.&quot;</span>
+        <span class="s2">&quot;Zero-based number of the colony&#39;s grid cell, counted top to bottom &quot;</span>
+        <span class="s2">&quot;down each column and then across the columns. It is ColNum × (number &quot;</span>
+        <span class="s2">&quot;of grid rows) + RowNum. Lab automation logic uses column-major &quot;</span>
+        <span class="s2">&quot;(column-wise) indexing for well plate operations because 96-well &quot;</span>
+        <span class="s2">&quot;plates are physically arranged with 8 rows (labeled A-H) and 12 &quot;</span>
+        <span class="s2">&quot;columns (numbered 1-12), and this layout maps directly to how &quot;</span>
+        <span class="s2">&quot;multichannel pipettes operate.&quot;</span>
     <span class="p">)</span></div>
 
 </pre></div>

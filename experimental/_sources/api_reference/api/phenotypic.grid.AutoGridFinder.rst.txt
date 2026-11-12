@@ -40,6 +40,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.model_validate_strings
       ~AutoGridFinder.output_header
       ~AutoGridFinder.output_header_placeholders
+      ~AutoGridFinder.output_unit
       ~AutoGridFinder.parse_file
       ~AutoGridFinder.parse_obj
       ~AutoGridFinder.parse_raw

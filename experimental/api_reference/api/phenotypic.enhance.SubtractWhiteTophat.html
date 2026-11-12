@@ -584,6 +584,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionClearedWarning.html">phenotypic.abc_.DetectionClearedWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.analysis.html">phenotypic.analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -596,6 +597,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.FittingWindow.html">phenotypic.analysis.FittingWindow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
@@ -607,6 +609,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ReplicateAgreement.html">phenotypic.analysis.ReplicateAgreement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierFraction.html">phenotypic.analysis.TukeyOutlierFraction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.TukeyOutlierRemover.html">phenotypic.analysis.TukeyOutlierRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GrowthRateAtBoundWarning.html">phenotypic.analysis.GrowthRateAtBoundWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -633,6 +636,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html">phenotypic.data.make_synthetic_colony</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html">phenotypic.data.make_synthetic_plate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_filamentous_plate.html">phenotypic.data.make_synthetic_filamentous_plate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.make_synthetic_window_series.html">phenotypic.data.make_synthetic_window_series</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_12hr.html">phenotypic.data.load_plate_12hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_plate_72hr.html">phenotypic.data.load_plate_72hr</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_early_colony.html">phenotypic.data.load_early_colony</a></li>
@@ -672,7 +676,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.enhance.html">phenotypic.enhance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.BayesShrinkEnhancer.html">phenotypic.enhance.BayesShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseBayesShrink.html">phenotypic.enhance.DenoiseBayesShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.LocalEdgeDenoise.html">phenotypic.enhance.LocalEdgeDenoise</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceBlockMatch.html">phenotypic.enhance.EnhanceBlockMatch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceLocalContrast.html">phenotypic.enhance.EnhanceLocalContrast</a></li>
@@ -688,24 +692,24 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.GrayOpening.html">phenotypic.enhance.GrayOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeHessian.html">phenotypic.enhance.FocusEdgeHessian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FlattenIllumination.html">phenotypic.enhance.FlattenIllumination</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.ImageInverter.html">phenotypic.enhance.ImageInverter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.InvertImage.html">phenotypic.enhance.InvertImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeLaplace.html">phenotypic.enhance.FocusEdgeLaplace</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.MedianFilter.html">phenotypic.enhance.MedianFilter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMeijering.html">phenotypic.enhance.FocusEdgeMeijering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusBlobLoG.html">phenotypic.enhance.FocusBlobLoG</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.NonLocalMeansDenoiser.html">phenotypic.enhance.NonLocalMeansDenoiser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseNonLocalMeans.html">phenotypic.enhance.DenoiseNonLocalMeans</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractOpening.html">phenotypic.enhance.SubtractOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgePhase.html">phenotypic.enhance.FocusEdgePhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeMonogenicPhase.html">phenotypic.enhance.FocusEdgeMonogenicPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeTwoKPhase.html">phenotypic.enhance.FocusEdgeTwoKPhase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeColorPhase.html">phenotypic.enhance.FocusEdgeColorPhase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html">phenotypic.enhance.RankMedianEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.EnhanceRankMedian.html">phenotypic.enhance.EnhanceRankMedian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractRollingBall.html">phenotypic.enhance.SubtractRollingBall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SubtractPolySurface.html">phenotypic.enhance.SubtractPolySurface</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSato.html">phenotypic.enhance.FocusEdgeSato</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.FocusEdgeSobel.html">phenotypic.enhance.FocusEdgeSobel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SharpenEdgeGauss.html">phenotypic.enhance.SharpenEdgeGauss</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.VisuShrinkEnhancer.html">phenotypic.enhance.VisuShrinkEnhancer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.DenoiseVisuShrink.html">phenotypic.enhance.DenoiseVisuShrink</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.WhiteTophatEnhance.html">phenotypic.enhance.WhiteTophatEnhance</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.enhance.SubtractWhiteTophat</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.enhance.SetDetectMode.html">phenotypic.enhance.SetDetectMode</a></li>
@@ -749,8 +753,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveBorderObjects.html">phenotypic.refine.RemoveBorderObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.KeepNearestCenter.html">phenotypic.refine.KeepNearestCenter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ExtractColonyCore.html">phenotypic.refine.ExtractColonyCore</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridAlignmentRefiner.html">phenotypic.refine.GridAlignmentRefiner</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.GridOversizedObjectRemover.html">phenotypic.refine.GridOversizedObjectRemover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineGridAlignment.html">phenotypic.refine.RefineGridAlignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveOversizedGridObjects.html">phenotypic.refine.RemoveOversizedGridObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveLowCircularity.html">phenotypic.refine.RemoveLowCircularity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ManualRefine.html">phenotypic.refine.ManualRefine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskClosing.html">phenotypic.refine.MaskClosing</a></li>
@@ -760,13 +764,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskGradient.html">phenotypic.refine.MaskGradient</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskOpening.html">phenotypic.refine.MaskOpening</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.ReduceSectionsByLine.html">phenotypic.refine.ReduceSectionsByLine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.NearestNeighborMerger.html">phenotypic.refine.NearestNeighborMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeNearestNeighbors.html">phenotypic.refine.MergeNearestNeighbors</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveGridOutliers.html">phenotypic.refine.RemoveGridOutliers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SeparateObjects.html">phenotypic.refine.SeparateObjects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RefineBySineFit.html">phenotypic.refine.RefineBySineFit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Skeletonize.html">phenotypic.refine.Skeletonize</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallObjectRemover.html">phenotypic.refine.SmallObjectRemover</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.SmallToLargeMerger.html">phenotypic.refine.SmallToLargeMerger</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.RemoveSmallObjects.html">phenotypic.refine.RemoveSmallObjects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeSmallToLarge.html">phenotypic.refine.MergeSmallToLarge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.Thinning.html">phenotypic.refine.Thinning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MergeFragmentChains.html">phenotypic.refine.MergeFragmentChains</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.refine.MaskWhiteTophat.html">phenotypic.refine.MaskWhiteTophat</a></li>
@@ -781,6 +785,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.Entry.html">phenotypic.schema.Entry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CATEGORIES.html">phenotypic.schema.CATEGORIES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.CategoryEntry.html">phenotypic.schema.CategoryEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UNITS.html">phenotypic.schema.UNITS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.UnitEntry.html">phenotypic.schema.UnitEntry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.ResolvedUnit.html">phenotypic.schema.ResolvedUnit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MeasurementInfo.html">phenotypic.schema.MeasurementInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.MetadataInfo.html">phenotypic.schema.MetadataInfo</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html">phenotypic.schema.REMBI_MODULE</a></li>
@@ -820,6 +827,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_OCCUPANCY.html">phenotypic.schema.QUALITY_OCCUPANCY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_SE.html">phenotypic.schema.QUALITY_SE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_TUKEY.html">phenotypic.schema.QUALITY_TUKEY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_WINDOW.html">phenotypic.schema.QUALITY_WINDOW</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.QUALITY_ZMAX.html">phenotypic.schema.QUALITY_ZMAX</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html">phenotypic.schema.RADIAL_EXPANSION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.schema.SHAPE.html">phenotypic.schema.SHAPE</a></li>
@@ -1081,6 +1089,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskValueError.html">phenotypic.sdk_.exceptions_.InvalidMaskValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidShapeError.html">phenotypic.sdk_.exceptions_.InvalidShapeError</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MeasurementConflictError.html">phenotypic.sdk_.exceptions_.MeasurementConflictError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html">phenotypic.sdk_.exceptions_.MetadataKeySpacesError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeyValueError.html">phenotypic.sdk_.exceptions_.MetadataKeyValueError</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html">phenotypic.sdk_.exceptions_.MetadataValueNonScalarError</a></li>
@@ -1306,7 +1315,7 @@ downstream segmentation.</p></li>
 bright structures rather than suppress them.</p></li>
 <li><p><a class="reference internal" href="phenotypic.enhance.GrayOpening.html#phenotypic.enhance.GrayOpening" title="phenotypic.enhance.GrayOpening"><code class="xref py py-class docutils literal notranslate"><span class="pre">GrayOpening</span></code></a> for morphological smoothing that removes
 small bright features without explicit subtraction.</p></li>
-<li><p><a class="reference internal" href="phenotypic.enhance.RankMedianEnhancer.html#phenotypic.enhance.RankMedianEnhancer" title="phenotypic.enhance.RankMedianEnhancer"><code class="xref py py-class docutils literal notranslate"><span class="pre">RankMedianEnhancer</span></code></a> for impulsive noise removal via
+<li><p><a class="reference internal" href="phenotypic.enhance.EnhanceRankMedian.html#phenotypic.enhance.EnhanceRankMedian" title="phenotypic.enhance.EnhanceRankMedian"><code class="xref py py-class docutils literal notranslate"><span class="pre">EnhanceRankMedian</span></code></a> for impulsive noise removal via
 median filtering when artifacts are single-pixel in scale.</p></li>
 </ul>
 </dd>

@@ -19,6 +19,7 @@ phenotypic.schema.GRID\_LINREG\_STATS
       ~GRID_LINREG_STATS.kind
       ~GRID_LINREG_STATS.metric_family
       ~GRID_LINREG_STATS.tier
+      ~GRID_LINREG_STATS.default_unit
       ~GRID_LINREG_STATS.rembi_module
       ~GRID_LINREG_STATS.change_note
       ~GRID_LINREG_STATS.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.GRID\_LINREG\_STATS
       ~GRID_LINREG_STATS.METRIC_FAMILY
       ~GRID_LINREG_STATS.resolved_kind
       ~GRID_LINREG_STATS.resolved_tier
+      ~GRID_LINREG_STATS.unit
       ~GRID_LINREG_STATS.resolved_rembi_module
       ~GRID_LINREG_STATS.use_label
       ~GRID_LINREG_STATS.use_badge
@@ -105,6 +107,7 @@ phenotypic.schema.GRID\_LINREG\_STATS
       ~GRID_LINREG_STATS.image
       ~GRID_LINREG_STATS.pair
       ~GRID_LINREG_STATS.tier_override
+      ~GRID_LINREG_STATS.unit_override
       ~GRID_LINREG_STATS.derivation_type
       ~GRID_LINREG_STATS.derives_from
       ~GRID_LINREG_STATS.rembi_module_override

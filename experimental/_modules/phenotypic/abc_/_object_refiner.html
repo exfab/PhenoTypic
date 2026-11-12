@@ -601,13 +601,13 @@
 <span class="sd">    - **ObjectRefiner vs ObjectDetector:** Refiners work on existing masks (objmask/objmap), detectors create</span>
 <span class="sd">      masks from image data. Refiners are for cleanup, detectors are for initial analysis.</span>
 <span class="sd">    - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions</span>
-<span class="sd">      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).</span>
+<span class="sd">      (too large). Example: [RemoveSmallObjects](src/phenotypic/refine/_small_object_remover.py).</span>
 <span class="sd">    - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:</span>
 <span class="sd">      [MaskDilation](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).</span>
 <span class="sd">    - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.</span>
 <span class="sd">    - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.</span>
 <span class="sd">    - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:</span>
-<span class="sd">      [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py).</span>
+<span class="sd">      [MergeNearestNeighbors](src/phenotypic/refine/_nearest_neighbor_merger.py).</span>
 <span class="sd">    - **When to chain:** Combine multiple refiners in ImagePipeline (remove small noise before filling holes,</span>
 <span class="sd">      filter shapes before morphological operations) for clearer, divide-and-conquer approach.</span>
 
@@ -702,7 +702,7 @@
 
 <span class="sd">    Common ObjectRefiner implementations address specific issues:</span>
 
-<span class="sd">    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py) removes</span>
+<span class="sd">    - **Size filtering:** [RemoveSmallObjects](src/phenotypic/refine/_small_object_remover.py) removes</span>
 <span class="sd">      objects below/above thresholds. Targets: spurious noise, dust, agar artifacts, oversized regions.</span>
 
 <span class="sd">    - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity, high</span>
@@ -718,7 +718,7 @@
 <span class="sd">    - **Border removal:** Remove or exclude objects touching image/well boundaries.</span>
 <span class="sd">      Targets: incomplete colonies in arrayed formats.</span>
 
-<span class="sd">    - **Merging/splitting:** [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py)</span>
+<span class="sd">    - **Merging/splitting:** [MergeNearestNeighbors](src/phenotypic/refine/_nearest_neighbor_merger.py)</span>
 <span class="sd">      combines nearby objects via dilation and relabeling. Targets: fragmented colonies, nearby regions.</span>
 
 <span class="sd">    **Integrity Validation: Protection of Core Data**</span>
@@ -898,11 +898,11 @@
 <span class="sd">    .. code-block:: python</span>
 
 <span class="sd">        from phenotypic import Image, ImagePipeline</span>
-<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
+<span class="sd">        from phenotypic.refine import RemoveSmallObjects, MaskFill, RemoveLowCircularity</span>
 
 <span class="sd">        # Build a refinement pipeline</span>
 <span class="sd">        pipeline = ImagePipeline()</span>
-<span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise</span>
+<span class="sd">        pipeline.add(RemoveSmallObjects(min_size=100))          # Remove dust/noise</span>
 <span class="sd">        pipeline.add(MaskFill())                                 # Fill holes in colonies</span>
 <span class="sd">        pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove elongated artifacts</span>
 
@@ -1146,7 +1146,7 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import BlurGauss</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.refine import (</span>
-<span class="sd">        ...     SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
+<span class="sd">        ...     RemoveSmallObjects, MaskFill, RemoveLowCircularity</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
 <span class="sd">        &gt;&gt;&gt; # Build complete processing pipeline with enhancement, detection, and refinement</span>
@@ -1156,7 +1156,7 @@
 <span class="sd">        &gt;&gt;&gt; # Detection</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector())</span>
 <span class="sd">        &gt;&gt;&gt; # Refinement (chain multiple cleanup operations)</span>
-<span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjects(min_size=100))          # Remove dust</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(MaskFill())                                 # Fill internal holes</span>
 <span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove merged/irregular</span>
 <span class="sd">        &gt;&gt;&gt; # Measurement</span>

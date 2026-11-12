@@ -19,6 +19,7 @@ phenotypic.schema.INTENSITY
       ~INTENSITY.tier
       ~INTENSITY.kind
       ~INTENSITY.metric_family
+      ~INTENSITY.default_unit
       ~INTENSITY.rembi_module
       ~INTENSITY.change_note
       ~INTENSITY.header_scheme
@@ -88,6 +89,7 @@ phenotypic.schema.INTENSITY
       ~INTENSITY.METRIC_FAMILY
       ~INTENSITY.resolved_kind
       ~INTENSITY.resolved_tier
+      ~INTENSITY.unit
       ~INTENSITY.resolved_rembi_module
       ~INTENSITY.use_label
       ~INTENSITY.use_badge
@@ -110,6 +112,7 @@ phenotypic.schema.INTENSITY
       ~INTENSITY.image
       ~INTENSITY.pair
       ~INTENSITY.tier_override
+      ~INTENSITY.unit_override
       ~INTENSITY.derivation_type
       ~INTENSITY.derives_from
       ~INTENSITY.rembi_module_override

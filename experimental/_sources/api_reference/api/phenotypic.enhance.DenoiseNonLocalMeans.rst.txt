@@ -1,0 +1,73 @@
+phenotypic.enhance.DenoiseNonLocalMeans
+=======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: DenoiseNonLocalMeans
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DenoiseNonLocalMeans.__init__
+      ~DenoiseNonLocalMeans.apply
+      ~DenoiseNonLocalMeans.construct
+      ~DenoiseNonLocalMeans.copy
+      ~DenoiseNonLocalMeans.dict
+      ~DenoiseNonLocalMeans.from_json
+      ~DenoiseNonLocalMeans.from_orm
+      ~DenoiseNonLocalMeans.json
+      ~DenoiseNonLocalMeans.model_construct
+      ~DenoiseNonLocalMeans.model_copy
+      ~DenoiseNonLocalMeans.model_dump
+      ~DenoiseNonLocalMeans.model_dump_json
+      ~DenoiseNonLocalMeans.model_json_schema
+      ~DenoiseNonLocalMeans.model_parametrized_name
+      ~DenoiseNonLocalMeans.model_post_init
+      ~DenoiseNonLocalMeans.model_rebuild
+      ~DenoiseNonLocalMeans.model_validate
+      ~DenoiseNonLocalMeans.model_validate_json
+      ~DenoiseNonLocalMeans.model_validate_strings
+      ~DenoiseNonLocalMeans.parse_file
+      ~DenoiseNonLocalMeans.parse_obj
+      ~DenoiseNonLocalMeans.parse_raw
+      ~DenoiseNonLocalMeans.preflight_requirements
+      ~DenoiseNonLocalMeans.schema
+      ~DenoiseNonLocalMeans.schema_json
+      ~DenoiseNonLocalMeans.to_json
+      ~DenoiseNonLocalMeans.update_forward_refs
+      ~DenoiseNonLocalMeans.validate
+      ~DenoiseNonLocalMeans.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DenoiseNonLocalMeans.model_computed_fields
+      ~DenoiseNonLocalMeans.model_config
+      ~DenoiseNonLocalMeans.model_extra
+      ~DenoiseNonLocalMeans.model_fields
+      ~DenoiseNonLocalMeans.model_fields_set
+      ~DenoiseNonLocalMeans.patch_size
+      ~DenoiseNonLocalMeans.search_dist
+      ~DenoiseNonLocalMeans.h
+      ~DenoiseNonLocalMeans.fast_mode
+      ~DenoiseNonLocalMeans.sigma
+      ~DenoiseNonLocalMeans.use_gat
+      ~DenoiseNonLocalMeans.gat_gain
+      ~DenoiseNonLocalMeans.gat_mu
+      ~DenoiseNonLocalMeans.gat_read_sigma
+      ~DenoiseNonLocalMeans.gat_scale_factor
+   
+   

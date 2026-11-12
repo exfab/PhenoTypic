@@ -546,6 +546,9 @@
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
+    
+    <li class="breadcrumb-item"><a href="../enhance.html" class="nav-link">phenotypic.enhance</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.enhance._visushrink_enhancer</span></li>
   </ul>
 </nav>
@@ -578,9 +581,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 
-<div class="viewcode-block" id="VisuShrinkEnhancer">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.VisuShrinkEnhancer.html#phenotypic.enhance.VisuShrinkEnhancer">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">VisuShrinkEnhancer</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
+<div class="viewcode-block" id="DenoiseVisuShrink">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.DenoiseVisuShrink.html#phenotypic.enhance.DenoiseVisuShrink">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DenoiseVisuShrink</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">_GATSupportMixin</span><span class="p">,</span> <span class="n">ImageDenoiser</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.</span>
 
 <span class="sd">    Decomposes the image into wavelet subbands and zeros all coefficients</span>
@@ -602,7 +605,7 @@
 <span class="sd">          over per-subband tuning.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`BayesShrinkEnhancer` for adaptive per-subband thresholding</span>
+<span class="sd">        - :class:`DenoiseBayesShrink` for adaptive per-subband thresholding</span>
 <span class="sd">          that preserves more colony texture detail at variable noise levels.</span>
 <span class="sd">        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal</span>
 <span class="sd">          at higher computational cost.</span>
