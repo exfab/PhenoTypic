@@ -38,9 +38,9 @@ class RemoveGridOutliers(GridObjectRefiner):
     Consider Also:
         - :class:`ReduceSectionsByLine` when the goal is reducing each cell
           to one detection rather than pruning outliers within lines.
-        - :class:`GridAlignmentRefiner` for full grid-aware filtering using
+        - :class:`RefineGridAlignment` for full grid-aware filtering using
           dominant-object-per-cell selection without variance-based gating.
-        - :class:`GridOversizedObjectRemover` when the problem is objects
+        - :class:`RemoveOversizedGridObjects` when the problem is objects
           spanning multiple grid sections rather than positional outliers.
 
     Args:

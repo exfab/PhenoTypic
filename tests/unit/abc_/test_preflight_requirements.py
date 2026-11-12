@@ -24,7 +24,7 @@ GRID_CLASSES = (
     ("phenotypic.detect", "ManualGridPointDetector"),
     ("phenotypic.correction", "GridAligner"),
     ("phenotypic.grid", "GridApply"),
-    ("phenotypic.refine", "GridOversizedObjectRemover"),
+    ("phenotypic.refine", "RemoveOversizedGridObjects"),
     ("phenotypic.refine", "KeepSectionLargest"),
     ("phenotypic.refine._merge_within_section", "MergeWithinSection"),
     ("phenotypic.refine", "ReduceSectionsByLine"),
@@ -41,7 +41,7 @@ GRID_TOLERANT_CLASSES = (
     ("phenotypic.detect", "RoundPeaksDetector"),
     ("phenotypic.detect", "SinePeakDetector"),
     ("phenotypic.refine", "RefineBySineFit"),
-    ("phenotypic.refine", "GridAlignmentRefiner"),
+    ("phenotypic.refine", "RefineGridAlignment"),
     ("phenotypic.detect", "InoculumDetector"),
 )
 

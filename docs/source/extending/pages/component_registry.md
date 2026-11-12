@@ -49,6 +49,6 @@ reference to another pipeline slot or an inline plot model.
 
 - Operation class names should be descriptive and end with their type:
   `BlurGauss` (enhancer), `OtsuDetector` (detector),
-  `SmallObjectRemover` (refiner)
+  `RemoveSmallObjects` (refiner)
 - Avoid generic names like `MyOperation` — the class name appears in
   pipeline JSON files and should be self-documenting

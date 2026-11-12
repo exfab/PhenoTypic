@@ -20,7 +20,7 @@ from phenotypic.sdk_.funcs_ import validate_operation_integrity
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
-class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
+class RefineGridAlignment(GridInferenceMixin, ObjectRefiner):
     """Enforce grid structure by retaining the dominant object per grid cell.
 
     Infers or reads grid geometry from the image, partitions the detection
@@ -117,9 +117,9 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
         else:
             objmask = image.objmask[:]
             # Use inherited mixin methods (call via class since _operate is static)
-            nrows, ncols = GridAlignmentRefiner._infer_grid_shape(objmask)
+            nrows, ncols = RefineGridAlignment._infer_grid_shape(objmask)
 
-            row_edges = GridAlignmentRefiner._estimate_edges(
+            row_edges = RefineGridAlignment._estimate_edges(
                     objmask,
                     axis=0,
                     n_bins=nrows,
@@ -127,7 +127,7 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
                     min_peak_distance=self.min_peak_distance,
                     peak_prominence=self.peak_prominence,
             )
-            col_edges = GridAlignmentRefiner._estimate_edges(
+            col_edges = RefineGridAlignment._estimate_edges(
                     objmask,
                     axis=1,
                     n_bins=ncols,
@@ -137,9 +137,9 @@ class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
             )
 
             if self.edge_refinement:
-                row_edges = GridAlignmentRefiner._refine_edges(objmask, row_edges,
+                row_edges = RefineGridAlignment._refine_edges(objmask, row_edges,
                                                                axis=0)
-                col_edges = GridAlignmentRefiner._refine_edges(objmask, col_edges,
+                col_edges = RefineGridAlignment._refine_edges(objmask, col_edges,
                                                                axis=1)
 
         # Clip and unique edges

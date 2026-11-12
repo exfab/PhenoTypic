@@ -1488,14 +1488,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             >>> from phenotypic.detect import OtsuDetector
             >>> from phenotypic.enhance import BlurGauss
             >>> from phenotypic.measure import MeasureSize
-            >>> from phenotypic.refine import SmallObjectRemover
+            >>> from phenotypic.refine import RemoveSmallObjects
             >>> pipeline = ImagePipeline(
-            ...     ops=[BlurGauss(sigma=3.0), OtsuDetector(), SmallObjectRemover()],
+            ...     ops=[BlurGauss(sigma=3.0), OtsuDetector(), RemoveSmallObjects()],
             ...     meas=[MeasureSize()],
             ... )
             >>> table = pipeline.summary()
             >>> list(table["step"])
-            ['BlurGauss', 'OtsuDetector', 'SmallObjectRemover', 'meas:MeasureSize']
+            ['BlurGauss', 'OtsuDetector', 'RemoveSmallObjects', 'meas:MeasureSize']
             >>> list(table["writes"])
             ['detect_mat', 'objmask, objmap', 'objmask, objmap', 'table']
             >>> list(table["changed"])

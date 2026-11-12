@@ -39,7 +39,7 @@ class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
         - :class:`MaskOpening` for general morphological opening that
           removes thin protrusions and breaks bridges without the tophat
           detection step.
-        - :class:`SmallObjectRemover` when small artefacts are fully
+        - :class:`RemoveSmallObjects` when small artefacts are fully
           disconnected objects better targeted by an area threshold.
         - :class:`ExtractColonyCore` for intensity-based core extraction
           when diffuse halos rather than thin bridges are the primary

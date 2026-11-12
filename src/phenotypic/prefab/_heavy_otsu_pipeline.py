@@ -11,10 +11,10 @@ from phenotypic.enhance import (
 )
 from phenotypic.detect import OtsuDetector
 from phenotypic.correction import GridAligner
-from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
+from phenotypic.refine import ReduceSectionsByLine, RemoveOversizedGridObjects
 from phenotypic.refine import (
     RemoveBorderObjects,
-    SmallObjectRemover,
+    RemoveSmallObjects,
 )
 from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
@@ -41,9 +41,9 @@ class HeavyOtsuPipeline(PrefabPipeline):
         5. OtsuDetector — threshold-based detection
         6. MaskOpening — smooth mask boundaries
         7. RemoveBorderObjects — remove partial edge colonies
-        8. SmallObjectRemover — remove noise fragments
+        8. RemoveSmallObjects — remove noise fragments
         9. MaskFill — fill interior holes
-        10. GridOversizedObjectRemover — remove merged multi-well objects
+        10. RemoveOversizedGridObjects — remove merged multi-well objects
         11. ReduceSectionsByLine — keep one colony per well
         12. GridAligner — straighten the grid
 
@@ -120,9 +120,9 @@ class HeavyOtsuPipeline(PrefabPipeline):
             ),
             MaskOpening(shape=mask_opener_footprint),
             border_remover,
-            SmallObjectRemover(min_size=small_object_min_size),
+            RemoveSmallObjects(min_size=small_object_min_size),
             MaskFill(),
-            GridOversizedObjectRemover(),
+            RemoveOversizedGridObjects(),
             min_residual_reducer,
             GridAligner(),
             OtsuDetector(
@@ -130,8 +130,8 @@ class HeavyOtsuPipeline(PrefabPipeline):
             ),
             MaskOpening(shape=None),
             border_remover,
-            SmallObjectRemover(min_size=small_object_min_size),
-            GridOversizedObjectRemover(),
+            RemoveSmallObjects(min_size=small_object_min_size),
+            RemoveOversizedGridObjects(),
             min_residual_reducer,
             MaskFill(),
         ]

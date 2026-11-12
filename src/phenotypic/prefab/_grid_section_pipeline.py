@@ -7,7 +7,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.grid import GridApply
 from phenotypic.refine import (
     RemoveBorderObjects,
-    SmallObjectRemover,
+    RemoveSmallObjects,
     RemoveLowCircularity,
     ReduceSectionsByLine,
     RemoveGridOutliers,
@@ -33,7 +33,7 @@ class GridSectionPipeline(PrefabPipeline):
     Steps:
         1. BlurGauss + EnhanceLocalContrast — global preprocessing
         2. OtsuDetector — initial global detection
-        3. RemoveBorderObjects, SmallObjectRemover — cleanup
+        3. RemoveBorderObjects, RemoveSmallObjects — cleanup
         4. GridAligner — straighten the grid
         5. GridApply — apply per-section sub-pipeline
         6. ReduceSectionsByLine — final grid refinement
@@ -152,7 +152,7 @@ class GridSectionPipeline(PrefabPipeline):
                     border_size=border_remover_size),
             "low circularity remover"         : RemoveLowCircularity(
                     cutoff=circularity_cutoff),
-            "small object remover"            : SmallObjectRemover(
+            "small object remover"            : RemoveSmallObjects(
                     min_size=small_object_min_size),
             "Reduce by section residual error": ReduceSectionsByLine(),
             "outlier removal"                 : RemoveGridOutliers(
@@ -186,7 +186,7 @@ class GridSectionPipeline(PrefabPipeline):
                     ),
                     reset_enh_matrix=grid_apply_reset_enh_matrix,
             ),
-            "small object remover 2"          : SmallObjectRemover(
+            "small object remover 2"          : RemoveSmallObjects(
                     min_size=small_object_min_size_2
             ),
             "grid_reduction"                  : ReduceSectionsByLine(),

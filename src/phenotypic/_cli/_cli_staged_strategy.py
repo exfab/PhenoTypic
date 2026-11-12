@@ -458,7 +458,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         after Stages 1-2; consumes the token and the raw array after export.
 
         The export means *the objmap your pipeline produces*. A pipeline
-        declaring ``MaskFill``/``SmallObjectRemover`` after its detector is
+        declaring ``MaskFill``/``RemoveSmallObjects`` after its detector is
         asking for those to shape the objmap, and for a **nested** detector the
         raw array is one *branch* of a composite, not the objmap at all. Both
         cases therefore run the same chain the enclosing operation would run in

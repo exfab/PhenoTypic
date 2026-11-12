@@ -54,7 +54,7 @@ class SubtractRollingBall(BackgroundSubtraction):
         - :class:`WhiteTophatEnhance` for isolating small bright
           structures rather than producing a corrected background-free
           image.
-        - :class:`ImageInverter` before this operation when colonies are
+        - :class:`InvertImage` before this operation when colonies are
           dark on bright agar and should be made bright explicitly.
 
     Args:

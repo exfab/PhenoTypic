@@ -41,7 +41,7 @@ class RemoveLowCircularity(ObjectRefiner):
           non-circular detection is reliably spurious.
 
     Consider Also:
-        - :class:`SmallObjectRemover` when artefacts are better
+        - :class:`RemoveSmallObjects` when artefacts are better
           distinguished by area than by shape, or when colony morphology
           is legitimately non-circular.
         - :class:`RemoveBorderObjects` when irregular detections cluster

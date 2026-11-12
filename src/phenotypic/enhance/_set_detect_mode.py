@@ -29,7 +29,7 @@ class SetDetectMode(ImageOperation):
           different channel for a later detection stage.
 
     Consider Also:
-        - :class:`ImageInverter` when the issue is inverted intensity
+        - :class:`InvertImage` when the issue is inverted intensity
           polarity rather than channel selection.
 
     Args:

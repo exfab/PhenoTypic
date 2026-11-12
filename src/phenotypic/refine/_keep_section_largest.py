@@ -33,7 +33,7 @@ class KeepSectionLargest(GridObjectRefiner):
           parameter-free reduction to one object per position.
 
     Consider Also:
-        - :class:`GridAlignmentRefiner` for grid-aware selection with
+        - :class:`RefineGridAlignment` for grid-aware selection with
           configurable strategies (dominant, centered, regularized) and
           optional grid inference for plain ``Image`` inputs.
         - :class:`KeepNearestCenter` when the most spatially centered object

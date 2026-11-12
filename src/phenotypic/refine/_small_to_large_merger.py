@@ -15,7 +15,7 @@ from ..abc_ import ObjectRefiner
 from ..sdk_.typing_ import TuneSpec
 
 
-class SmallToLargeMerger(ObjectRefiner):
+class MergeSmallToLarge(ObjectRefiner):
     """Merge small colony fragments into their nearest large colony using size-partitioned merging.
 
     Partitions detected objects into small fragments (below ``size_threshold``)
@@ -41,9 +41,9 @@ class SmallToLargeMerger(ObjectRefiner):
     Consider Also:
         - :class:`MergeFragmentChains` when large-to-large merging is also
           needed, not only small-to-large absorption.
-        - :class:`NearestNeighborMerger` for nearest-neighbor merging
+        - :class:`MergeNearestNeighbors` for nearest-neighbor merging
           without any size-based partitioning.
-        - :class:`SmallObjectRemover` when small fragments should be
+        - :class:`RemoveSmallObjects` when small fragments should be
           discarded entirely rather than absorbed into a parent colony.
 
     Args:

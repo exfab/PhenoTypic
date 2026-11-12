@@ -17,19 +17,19 @@ from phenotypic.detect import CompositeDetector, FilamentousFungiDetector, OtsuD
 from phenotypic.enhance import BlurGauss, SetDetectMode
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureShape, MeasureSize
-from phenotypic.refine import SmallObjectRemover
+from phenotypic.refine import RemoveSmallObjects
 
 COLUMNS = ["step", "slot", "operation", "module", "writes", "changed"]
 
 
 def test_summary_lists_steps_and_layers():
     p = ImagePipeline(
-        ops=[BlurGauss(sigma=3.0), OtsuDetector(), SmallObjectRemover()],
+        ops=[BlurGauss(sigma=3.0), OtsuDetector(), RemoveSmallObjects()],
         meas=[MeasureSize()],
     )
     s = p.summary()
     assert list(s.columns) == COLUMNS
-    assert list(s["operation"]) == ["BlurGauss", "OtsuDetector", "SmallObjectRemover", "MeasureSize"]
+    assert list(s["operation"]) == ["BlurGauss", "OtsuDetector", "RemoveSmallObjects", "MeasureSize"]
     assert list(s["slot"]) == ["ops", "ops", "ops", "meas"]
     assert list(s["module"]) == ["enhance", "detect", "refine", "measure"]
     assert list(s["writes"]) == ["detect_mat", "objmask, objmap", "objmask, objmap", "table"]

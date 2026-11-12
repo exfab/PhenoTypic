@@ -34,7 +34,7 @@ class LocalEdgeDenoise(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
         - Low-quality captures where colony morphology must be preserved.
 
     Consider Also:
-        - :class:`NonLocalMeansDenoiser` when repetitive agar texture warrants
+        - :class:`DenoiseNonLocalMeans` when repetitive agar texture warrants
           whole-image patch search for stronger denoising.
         - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
           at higher computational cost.

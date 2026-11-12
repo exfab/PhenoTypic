@@ -12,7 +12,7 @@ from phenotypic.data import load_colony
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
-from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
+from phenotypic.refine import RemoveSmallObjects, RemoveBorderObjects
 from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 
@@ -64,7 +64,7 @@ class TestBasicSerialization:
         """Test serialization with multiple operations."""
         pipe = ImagePipeline(
                 ops=[BlurGauss(sigma=2), OtsuDetector(),
-                     SmallObjectRemover(min_size=50)]
+                     RemoveSmallObjects(min_size=50)]
         )
         json_str = pipe.to_json()
 
@@ -72,7 +72,7 @@ class TestBasicSerialization:
         assert len(config["pipe_cfgs"]) == 3
         assert "BlurGauss" in config["pipe_cfgs"]
         assert "OtsuDetector" in config["pipe_cfgs"]
-        assert "SmallObjectRemover" in config["pipe_cfgs"]
+        assert "RemoveSmallObjects" in config["pipe_cfgs"]
 
     def test_multiple_measurements_serialization(self):
         """Test serialization with multiple measurements."""
@@ -107,7 +107,7 @@ class TestParameterSerialization:
                 ops=[
                     BlurGauss(sigma=3),
                     OtsuDetector(),
-                    SmallObjectRemover(min_size=100),
+                    RemoveSmallObjects(min_size=100),
                 ],
                 meas=[MeasureShape()],
         )
@@ -188,7 +188,7 @@ class TestRoundtripFunctionality:
                 ops=[
                     BlurGauss(sigma=2),
                     OtsuDetector(ignore_zeros=True),
-                    SmallObjectRemover(min_size=25),
+                    RemoveSmallObjects(min_size=25),
                     RemoveBorderObjects(border_size=10),
                 ],
                 meas=[MeasureShape(), MeasureIntensity(), MeasureColor()],
@@ -315,7 +315,7 @@ class TestEdgeCases:
 
     def test_ops_only_pipeline(self):
         """Test pipeline with only operations, no measurements."""
-        pipe = ImagePipeline(ops=[OtsuDetector(), SmallObjectRemover(min_size=50)])
+        pipe = ImagePipeline(ops=[OtsuDetector(), RemoveSmallObjects(min_size=50)])
         json_str = pipe.to_json()
 
         loaded_pipe = ImagePipeline.from_json(json_str)
@@ -478,8 +478,8 @@ class TestPreMigrationBackwardCompat:
                     "class" : "OtsuDetector",
                     "params": {"ignore_zeros": True, "ignore_borders": False},
                 },
-                "SmallObjectRemover": {
-                    "class" : "SmallObjectRemover",
+                "RemoveSmallObjects": {
+                    "class" : "RemoveSmallObjects",
                     "params": {"min_size": 40},
                 },
             },
@@ -497,7 +497,7 @@ class TestPreMigrationBackwardCompat:
                     "OtsuDetector": OtsuDetector(
                         ignore_zeros=True, ignore_borders=False
                     ),
-                    "SmallObjectRemover": SmallObjectRemover(min_size=40),
+                    "RemoveSmallObjects": RemoveSmallObjects(min_size=40),
                 },
                 meas=[MeasureShape()],
                 name="legacy_pipeline",
@@ -519,8 +519,8 @@ class TestPreMigrationBackwardCompat:
         assert loaded_otsu.ignore_zeros is True
         assert loaded_otsu.ignore_borders is False
 
-        loaded_remover = loaded._ops["SmallObjectRemover"]
-        assert isinstance(loaded_remover, SmallObjectRemover)
+        loaded_remover = loaded._ops["RemoveSmallObjects"]
+        assert isinstance(loaded_remover, RemoveSmallObjects)
         assert loaded_remover.min_size == 40
 
         assert isinstance(loaded._meas["MeasureShape"], MeasureShape)
@@ -823,7 +823,7 @@ class TestPipelineAsOperationSerialization:
         """Test pipeline containing both regular operations and nested pipelines."""
         inner = ImagePipeline(ops=[OtsuDetector()])
         outer = ImagePipeline(
-                ops=[BlurGauss(sigma=2), inner, SmallObjectRemover(min_size=50)]
+                ops=[BlurGauss(sigma=2), inner, RemoveSmallObjects(min_size=50)]
         )
 
         loaded = ImagePipeline.from_json(outer.to_json())
@@ -831,7 +831,7 @@ class TestPipelineAsOperationSerialization:
         assert len(ops) == 3
         assert isinstance(ops[0], BlurGauss)
         assert isinstance(ops[1], ImagePipeline)
-        assert isinstance(ops[2], SmallObjectRemover)
+        assert isinstance(ops[2], RemoveSmallObjects)
 
     def test_inner_pipeline_name_and_desc_preserved(self):
         """Test that inner pipeline name and desc are preserved."""

@@ -37,7 +37,7 @@ class MaskOpening(ObjectRefiner, FootprintMixin):
     Consider Also:
         - :class:`MaskClosing` when the goal is filling small holes or
           bridging gaps within a colony mask rather than severing connections.
-        - :class:`SmallObjectRemover` when small artefacts are fully
+        - :class:`RemoveSmallObjects` when small artefacts are fully
           disconnected objects best removed by area threshold.
         - :class:`SeparateObjects` when touching colonies share a large
           overlapping region and watershed-based separation is needed.

@@ -17,6 +17,18 @@ _LEGACY_CLASS_ALIASES: Final[dict[str, tuple[str, str]]] = {
     # Preserve pipelines serialized before GaussianBlur adopted the
     # noun-first public name used by the other Gaussian operations.
     "GaussianBlur": ("phenotypic.enhance", "BlurGauss"),
+    # Preserve pipelines written before the enhance and refine operations
+    # adopted verb-first public names.
+    "ImageInverter": ("phenotypic.enhance", "InvertImage"),
+    "NonLocalMeansDenoiser": ("phenotypic.enhance", "DenoiseNonLocalMeans"),
+    "RankMedianEnhancer": ("phenotypic.enhance", "EnhanceRankMedian"),
+    "BayesShrinkEnhancer": ("phenotypic.enhance", "DenoiseBayesShrink"),
+    "VisuShrinkEnhancer": ("phenotypic.enhance", "DenoiseVisuShrink"),
+    "GridOversizedObjectRemover": ("phenotypic.refine", "RemoveOversizedGridObjects"),
+    "SmallObjectRemover": ("phenotypic.refine", "RemoveSmallObjects"),
+    "NearestNeighborMerger": ("phenotypic.refine", "MergeNearestNeighbors"),
+    "SmallToLargeMerger": ("phenotypic.refine", "MergeSmallToLarge"),
+    "GridAlignmentRefiner": ("phenotypic.refine", "RefineGridAlignment"),
 }
 
 

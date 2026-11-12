@@ -8,20 +8,20 @@ artifacts. Refiners clean up these artifacts without re-running detection.
 | Artifact                     | Cause                            | Refiner                                |
 |------------------------------|----------------------------------|----------------------------------------|
 | Border objects               | Partial colonies at image edges  | `RemoveBorderObjects`                  |
-| Small fragments              | Noise, agar texture              | `SmallObjectRemover`                   |
+| Small fragments              | Noise, agar texture              | `RemoveSmallObjects`                   |
 | Holes in masks               | Uneven colony interior intensity | `MaskFill`                             |
 | Jagged edges                 | Threshold quantization           | `MaskOpening`, `MaskClosing`           |
 | Touching colonies merged     | Threshold too low                | `SeparateObjects`                      |
-| One colony fragmented        | Threshold too high               | `NearestNeighborMerger`, `MaskClosing` |
+| One colony fragmented        | Threshold too high               | `MergeNearestNeighbors`, `MaskClosing` |
 | Multiple detections per well | Over-segmentation in grid plates | `ReduceSectionsByLine`                 |
-| Oversized objects            | Merged colonies spanning wells   | `GridOversizedObjectRemover`           |
+| Oversized objects            | Merged colonies spanning wells   | `RemoveOversizedGridObjects`           |
 
 ## Refinement Order
 
 The recommended refinement sequence:
 
 1. **RemoveBorderObjects** — remove partial edge colonies first
-2. **SmallObjectRemover** — remove noise fragments
+2. **RemoveSmallObjects** — remove noise fragments
 3. **MaskOpening** — smooth boundaries and break thin bridges
 4. **MaskFill** — fill interior holes
 5. **Grid-specific refiners** — align, reduce multiples, remove oversized
@@ -51,7 +51,7 @@ These refiners use grid position information and are only available
 for `GridImage`:
 
 - **GridAligner** — rotates the image to align the grid
-- **GridOversizedObjectRemover** — removes objects larger than expected
+- **RemoveOversizedGridObjects** — removes objects larger than expected
   for a single well
 - **ReduceSectionsByLine** — when multiple objects are in one grid
   section, keeps only the most prominent

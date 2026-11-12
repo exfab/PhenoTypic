@@ -17,7 +17,7 @@ from phenotypic.refine import (
     RemoveBorderObjects,
     MaskFill,
     RemoveLowCircularity,
-    GridOversizedObjectRemover,
+    RemoveOversizedGridObjects,
     ReduceSectionsByLine,
 )
 
@@ -37,7 +37,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         4. WatershedDetector — region-growing segmentation
         5. RemoveBorderObjects — remove partial edge colonies
         6. RemoveLowCircularity — remove low-circularity artifacts
-        7. GridOversizedObjectRemover — remove merged multi-well objects
+        7. RemoveOversizedGridObjects — remove merged multi-well objects
         8. ReduceSectionsByLine — keep one colony per well
         9. GridAligner — straighten the grid
         10. MaskFill — fill interior holes
@@ -134,12 +134,12 @@ class HeavyWatershedPipeline(PrefabPipeline):
             MedianFilter(),
             watershed_detector,
             border_remover,
-            GridOversizedObjectRemover(),
+            RemoveOversizedGridObjects(),
             RemoveLowCircularity(cutoff=circularity_cutoff),
             min_residual_reducer,
             GridAligner(),
             watershed_detector,
-            GridOversizedObjectRemover(),
+            RemoveOversizedGridObjects(),
             min_residual_reducer,
             border_remover,
             RemoveLowCircularity(cutoff=circularity_cutoff),

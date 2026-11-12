@@ -171,7 +171,7 @@ class ObjectDetector(ImageOperation, ABC):
        - **Clear borders:** Use ``skimage.segmentation.clear_border()`` to remove objects
          touching image edges.
        - **Remove small/large objects:** Filter by area with a label-size mask, as in
-         step 4, or leave it to :class:`~phenotypic.refine.SmallObjectRemover` or
+         step 4, or leave it to :class:`~phenotypic.refine.RemoveSmallObjects` or
          :class:`~phenotypic.refine.RemoveByFeature` later in the pipeline.
        - **Relabel:** Call ``image.objmap.relabel(connectivity=...)`` to ensure consecutive
          labels.
@@ -225,7 +225,7 @@ class ObjectDetector(ImageOperation, ABC):
     Raw detections often need cleanup:
 
     - **Remove small noise:** Spurious single-pixel detections or tiny salt-and-pepper artifacts.
-      Use :class:`~phenotypic.refine.SmallObjectRemover` (an ObjectRefiner).
+      Use :class:`~phenotypic.refine.RemoveSmallObjects` (an ObjectRefiner).
 
     - **Clean borders:** Colonies at plate edges may be incomplete. Use ObjectRefiner or
       clear_border() in detector.

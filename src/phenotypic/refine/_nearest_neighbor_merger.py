@@ -15,7 +15,7 @@ from ..abc_ import ObjectRefiner
 from ..sdk_.typing_ import TuneSpec
 
 
-class NearestNeighborMerger(ObjectRefiner):
+class MergeNearestNeighbors(ObjectRefiner):
     """Absorb small colony fragments into their nearest neighboring detection.
 
     For each object whose area is below ``min_size``, finds the single
@@ -39,7 +39,7 @@ class NearestNeighborMerger(ObjectRefiner):
         - :class:`MergeFragmentChains` when transitive closure is needed
           so that chains of nearby fragments (A near B near C) merge into
           one detection even if the endpoints are far apart.
-        - :class:`SmallToLargeMerger` when small fragments should
+        - :class:`MergeSmallToLarge` when small fragments should
           specifically merge into the largest nearby colony rather than
           the geometrically closest one.
         - :class:`MaskClosing` for morphological bridging of narrow gaps
