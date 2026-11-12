@@ -1,0 +1,251 @@
+<title>BacterSamPipeline Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; a wrapping op-chain diagram that shows upstream (assumed done) vs this prefab, then reference tables. Accent borrows the Gram-stain pair: crystal violet for the pipeline, safranin for what is excluded. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1c2230;
+  --muted: #5d6577;
+  --line: #d9dde6;
+  --violet: #5a3ea6;
+  --violet-soft: #ece7f8;
+  --safranin: #b0305a;
+  --safranin-soft: #f9e6ec;
+  --ok: #2f7d4f;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151c; --surface: #1a1f29; --fg: #e4e7ee; --muted: #9aa2b4; --line: #2c3342;
+    --violet: #b6a1f0; --violet-soft: #2a2442; --safranin: #f08aa8; --safranin-soft: #3a1f2a; --ok: #7fcf9c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151c; --surface: #1a1f29; --fg: #e4e7ee; --muted: #9aa2b4; --line: #2c3342;
+  --violet: #b6a1f0; --violet-soft: #2a2442; --safranin: #f08aa8; --safranin-soft: #3a1f2a; --ok: #7fcf9c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+}
+main { max-width: 860px; margin: 0 auto; display: grid; gap: 48px; }
+section { display: grid; gap: 16px; min-width: 0; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 700; }
+h2 { font-size: 1.5rem; font-weight: 700; }
+h3 { font-size: 1.05rem; font-weight: 500; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+code { background: var(--violet-soft); padding: 0.05em 0.35em; border-radius: 4px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.1rem; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.85rem; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 600; }
+
+/* op chain */
+.chain { display: grid; gap: 12px; }
+.lane { display: grid; gap: 10px; padding: 16px; border-radius: 10px; min-width: 0; }
+.lane.upstream { border: 1.5px dashed var(--safranin); background: var(--safranin-soft); }
+.lane.prefab { border: 1.5px solid var(--violet); background: var(--surface); }
+.lane-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; }
+.lane-head h3 { color: var(--fg); }
+.lane.upstream .lane-head span { color: var(--safranin); font-weight: 600; font-size: 0.85rem; }
+.lane.prefab .lane-head span { color: var(--violet); font-weight: 600; font-size: 0.85rem; }
+.ops { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.op { display: grid; gap: 1px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); font-size: 0.82rem; }
+.op .k { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); }
+.op .c { font-weight: 600; }
+.op.gpu { border-color: var(--violet); background: var(--violet-soft); }
+.op.x { text-decoration: line-through; text-decoration-color: var(--safranin); opacity: 0.85; }
+.arrow { color: var(--muted); font-family: var(--font-mono); }
+.handoff { font-size: 0.85rem; color: var(--muted); padding-left: 4px; }
+.handoff b { color: var(--fg); font-family: var(--font-mono); font-weight: 400; font-size: 0.8rem; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+td .def { color: var(--muted); }
+td.num { font-family: var(--font-mono); white-space: nowrap; }
+
+/* decisions & tasks */
+.decisions { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.decisions li { display: grid; grid-template-columns: 3.2rem 1fr; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.decisions .id { font-family: var(--font-mono); font-weight: 600; color: var(--violet); }
+.decisions li > div { min-width: 0; display: grid; gap: 4px; }
+.decisions b { font-weight: 600; }
+.tasks { display: grid; gap: 14px; counter-reset: t; }
+.task { display: grid; gap: 8px; padding: 16px; border-left: 3px solid var(--violet); background: var(--surface); border-radius: 0 8px 8px 0; min-width: 0; }
+.task h3 { display: flex; gap: 10px; align-items: baseline; }
+.task h3 .n { font-family: var(--font-mono); color: var(--violet); font-size: 0.9rem; }
+.task ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+.task li { max-width: 70ch; }
+.files { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; }
+pre { margin: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.55; }
+.focus { display: grid; gap: 8px; margin: 0; padding-left: 1.2rem; }
+.note { font-size: 0.88rem; color: var(--muted); }
+a { color: var(--violet); }
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+@media (max-width: 520px) {
+  .decisions li { grid-template-columns: 1fr; gap: 4px; }
+}
+</style>
+
+<main>
+  <header style="display:grid;gap:14px">
+    <div class="eyebrow">Implementation plan · 2026-11-05</div>
+    <h1>BacterSamPipeline</h1>
+    <p class="lede">A new prefab in <code>phenotypic.prefab</code> that reproduces the detection and measurement pipeline of the latest bacterial growth-curve run, with colour correction and denoising left to an upstream step.</p>
+    <div class="meta">
+      <span>Source: the reference bacterial run</span>
+      <span>Branch <b>feat/bactersam-prefab</b> off <b>main@251e364fa</b></span>
+      <span>3 tasks</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The run already skips colour and denoise</h2>
+    <p>The run's pipeline has no colour-correction or denoising op. Its input stores came from a separate <code>--mode process</code> run, whose provenance journal records those three ops. So nothing is removed from the run. The prefab's docstring states that its input must already be corrected and denoised, and names the ops that do it.</p>
+    <div class="chain" role="img" aria-label="Upstream ops ColorCorrector, CalibrateColorRpcc, ColorDenoise, assumed done; then BacterSamPipeline: Crop, Blur, RemoveBG, SAM2 detector, three filters, keep largest per grid section, then measurements.">
+      <div class="lane upstream">
+        <div class="lane-head"><h3>Upstream, assumed done</h3><span>not in the prefab</span></div>
+        <div class="ops">
+          <div class="op x"><span class="k">process run</span><span class="c">ColorCorrector</span></div><span class="arrow">→</span>
+          <div class="op x"><span class="k">process run</span><span class="c">CalibrateColorRpcc</span></div><span class="arrow">→</span>
+          <div class="op x"><span class="k">process run</span><span class="c">ColorDenoise</span></div>
+        </div>
+      </div>
+      <div class="handoff">hands over a corrected RGB OME-Zarr tree · <b>--input</b></div>
+      <div class="lane prefab">
+        <div class="lane-head"><h3>BacterSamPipeline</h3><span>8 ops · 9 measurers · 8 × 12 grid</span></div>
+        <div class="ops">
+          <div class="op"><span class="k">Crop</span><span class="c">CropImage</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">Blur</span><span class="c">BlurGauss</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">RemoveBG</span><span class="c">SubtractGaussian</span></div><span class="arrow">→</span>
+          <div class="op gpu"><span class="k">Detector · GPU</span><span class="c">Sam2</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">CircularityFilter</span><span class="c">RemoveLowCircularity</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">BorderFilter</span><span class="c">RemoveBorderObjects</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">SmallObjectFilter</span><span class="c">SmallObjectRemover</span></div><span class="arrow">→</span>
+          <div class="op"><span class="k">GridLargest</span><span class="c">KeepSectionLargest</span></div>
+        </div>
+        <div class="ops">
+          <span class="eyebrow">measure</span>
+          <div class="op"><span class="c">NeighborDist</span></div>
+          <div class="op"><span class="c">Shape</span></div>
+          <div class="op"><span class="c">Size</span></div>
+          <div class="op"><span class="c">Intensity</span></div>
+          <div class="op"><span class="c">Color</span></div>
+          <div class="op"><span class="c">Texture ×4</span><span class="k">scale 10 · 20 · 30 · 40 px</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">The op and measurer keys stay exactly as in the run (<code>Crop</code>, <code>Blur</code>, <code>MeasureTexture_1</code>, …). That way the prefab's serialized config can be compared against the run's JSON key for key.</p>
+  </section>
+
+  <section>
+    <h2>Run values that become defaults</h2>
+    <p>These parameters differ from the op's own default in the run. They become the prefab's defaults, and each one is a keyword argument. Every other field keeps the op's default. That includes SAM2's <code>tiny</code> model, 32 points per side and one crop layer.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Op</th><th>Field</th><th>Run value</th><th>Op default</th><th>Prefab kwarg</th></tr></thead>
+        <tbody>
+          <tr><td>Crop</td><td class="num">left / right / top / bottom</td><td class="num">450 / 480 / 430 / 450 px</td><td class="def">none</td><td class="num">crop_left … crop_bottom</td></tr>
+          <tr><td>Blur</td><td class="num">sigma</td><td class="num">5.0</td><td class="def num">2.0</td><td class="num">blur_sigma</td></tr>
+          <tr><td>RemoveBG</td><td class="num">sigma</td><td class="num">800.0</td><td class="def num">50.0</td><td class="num">background_sigma</td></tr>
+          <tr><td>Detector</td><td class="num">input_layer</td><td class="num">detect_mat</td><td class="def num">rgb</td><td class="def">fixed (D5)</td></tr>
+          <tr><td>CircularityFilter</td><td class="num">cutoff</td><td class="num">0.5</td><td class="def num">0.785</td><td class="num">circularity_cutoff</td></tr>
+          <tr><td>BorderFilter</td><td class="num">border_size</td><td class="num">20 px</td><td class="def num">1</td><td class="num">border_size</td></tr>
+          <tr><td>SmallObjectFilter</td><td class="num">min_size</td><td class="num">600 px²</td><td class="def num">64</td><td class="num">min_object_size</td></tr>
+          <tr><td>MeasureTexture ×4</td><td class="num">scale</td><td class="num">[10], [20], [30], [40]</td><td class="def num">[5]</td><td class="num">texture_scales</td></tr>
+          <tr><td>Pipeline</td><td class="num">nrows × ncols</td><td class="num">8 × 12</td><td class="def">none</td><td class="num">nrows, ncols</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">The table comes from loading the run's <code>pipeline.json.pht-pipe</code> on <code>main</code> and diffing it against each op's defaults. The SAM2 knobs exposed as kwargs (<code>sam_model_size</code>, <code>sam_points_per_side</code>, IoU and stability thresholds, <code>sam_min_mask_region_area</code>, <code>sam_crop_n_layers</code>, <code>sam_device</code>) all default to SAM2's own values.</p>
+  </section>
+
+  <section>
+    <h2>Decisions</h2>
+    <ul class="decisions">
+      <li><span class="id">D1</span><div><b>Drop the run's plot.</b><p>The colony-over-time plot is bound to this experiment's own metadata columns, such as strain, salinity, pH and replicate. A prefab can't assume those columns exist, so <code>plots=[]</code>.</p></div></li>
+      <li><span class="id">D2</span><div><b>Keep four texture measurers, one per scale.</b><p>A single <code>MeasureTexture(scale=[10,20,30,40])</code> gives the same columns, but writes one file instead of four in <code>measurements_by_feature/</code>. Then it would no longer match the run.</p></div></li>
+      <li><span class="id">D3</span><div><b>Crop defaults stay the run's values.</b><p>They depend on the imager. The docstring says so.</p></div></li>
+      <li><span class="id">D4</span><div><b>8 × 12 grid by default</b>, exposed as <code>nrows</code> / <code>ncols</code>.</div></li>
+      <li><span class="id">D5</span><div><b>SAM2 always reads <code>detect_mat</code>.</b><p>The blur and background subtraction exist only to shape what SAM2 sees. A switch to <code>rgb</code> would quietly make both of them do nothing for detection, so it isn't a kwarg.</p></div></li>
+      <li><span class="id">D6</span><div><b>No colour or denoise op anywhere in the op tree</b>, pinned by a test. The docstring points to <code>--mode process --layer rgb</code> with <code>ColorCorrector</code> / <code>CalibrateColorRpcc</code> and <code>ColorDenoise</code>.</div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tasks</h2>
+    <div class="tasks">
+      <div class="task">
+        <h3><span class="n">1</span>Prefab class, export and tests</h3>
+        <div class="files">prefab/_bactersam_pipeline.py · prefab/__init__.py · tests/unit/prefab/test_bactersam_pipeline.py · fixtures/bactersam_reference_pipeline.json</div>
+        <ul>
+          <li>Golden test: the default prefab's <code>pipe_cfgs</code>, <code>meas</code>, <code>nrows</code> and <code>ncols</code> equal the run's JSON. Both sides go through the current schema first, so a field added since 0.20.0 doesn't count as a difference.</li>
+          <li>The fixture keeps only the op configs. It has no plot, no experiment name and no metadata columns.</li>
+          <li>Tests: no colour or denoise ops in the tree, construction loads no torch, SAM2 reads <code>detect_mat</code>, one texture measurer per scale, each kwarg reaches its op, staging cuts at <code>("Detector",)</code>, preflight requires a GridImage and RGB, and a JSON round trip keeps the class.</li>
+          <li>The docstring has an <b>Input assumptions</b> paragraph, plus Steps, Best For and Consider Also, as <code>docstring_style.md</code> asks.</li>
+        </ul>
+      </div>
+      <div class="task">
+        <h3><span class="n">2</span>Builder round trip and docs</h3>
+        <div class="files">tests/gui/builder/test_state_roundtrip.py · explanation/prefab_pipelines_guide.md · abc_/_prefab_pipeline.py</div>
+        <ul>
+          <li>Add the prefab to the byte-identical builder round-trip test. If a SAM2 field breaks the round trip, report it as a SAM2 bug and don't work around it in the prefab.</li>
+          <li>Add a row to the prefab guide's table and a section with the input assumptions, and list the prefab in the PrefabPipeline docstring.</li>
+        </ul>
+      </div>
+      <div class="task">
+        <h3><span class="n">3</span>Verification</h3>
+        <ul>
+          <li>One Slurm job on <code>short</code> runs the tests this change can affect: prefab, serialization smoke, startup and deferred imports, preflight, builder round trip and pipeline split. Then mypy on the new file.</li>
+          <li>Recommended: a GPU smoke run of the prefab through the CLI on 4 real input stores, written to a scratch tree. It compares each image's object count and <code>Size_Area</code> per label against the run, and reports which GPU it ran on.</li>
+          <li>One reviewer reads the whole branch. Nothing is pushed without asking.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Proposed signature</h2>
+    <pre>BacterSamPipeline(
+    *,
+    crop_left=450, crop_right=480, crop_top=430, crop_bottom=450,
+    blur_sigma=5.0,
+    background_sigma=800.0,
+    sam_model_size="tiny", sam_points_per_side=32,
+    sam_pred_iou_thresh=0.7, sam_stability_score_thresh=0.92,
+    sam_min_mask_region_area=100, sam_crop_n_layers=1, sam_device="auto",
+    circularity_cutoff=0.5, border_size=20, min_object_size=600,
+    texture_scales=(10, 20, 30, 40),
+    nrows=8, ncols=12,
+    benchmark=False, verbose=False,
+)</pre>
+  </section>
+
+  <section>
+    <h2>What could still go wrong</h2>
+    <ol class="focus">
+      <li>Running on a plain <code>Image</code>. <code>KeepSectionLargest</code> needs a grid, so preflight should refuse the run before any image is processed.</li>
+      <li>Grayscale input. <code>MeasureColor</code> reads RGB, so preflight should say RGB is required.</li>
+      <li>CLI staging. SAM2 sits at the top level and nothing is in a CPU-only slot, so the split must cut at <code>Detector</code>.</li>
+      <li>JSON round trip. <code>from_json</code> must return a <code>BacterSamPipeline</code> with the same config.</li>
+      <li>Kwargs that never reach their op. Each one is checked against its target field.</li>
+    </ol>
+  </section>
+</main>

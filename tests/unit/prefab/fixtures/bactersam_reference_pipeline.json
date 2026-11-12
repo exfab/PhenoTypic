@@ -1,0 +1,167 @@
+{
+  "version": "0.20.0",
+  "name": "BacterSamPipeline-reference",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "Crop": {
+      "class": "CropImage",
+      "params": {
+        "left": 450,
+        "right": 480,
+        "top": 430,
+        "bottom": 450
+      }
+    },
+    "Blur": {
+      "class": "BlurGauss",
+      "params": {
+        "sigma": 5.0,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0
+      }
+    },
+    "RemoveBG": {
+      "class": "SubtractGaussian",
+      "params": {
+        "sigma": 800.0,
+        "mode": "reflect",
+        "cval": 0.0,
+        "truncate": 4.0,
+        "preserve_range": true,
+        "n_iter": 1
+      }
+    },
+    "Detector": {
+      "class": "Sam2",
+      "params": {
+        "input_layer": "detect_mat",
+        "input_scaling": "image_max",
+        "supports_batching": false,
+        "output_kind": "instance",
+        "drop_frame_background": true,
+        "split_disconnected_labels": true,
+        "connectivity": 2,
+        "model_size": "tiny",
+        "points_per_side": 32,
+        "points_per_batch": 8,
+        "pred_iou_thresh": 0.7,
+        "stability_score_thresh": 0.92,
+        "min_mask_region_area": 100,
+        "crop_nms_thresh": 0.7,
+        "crop_overlap_ratio": 0.3413333333333333,
+        "crop_n_points_downscale_factor": 1,
+        "box_nms_thresh": 0.7,
+        "crop_n_layers": 1,
+        "device": "auto",
+        "checkpoint": null,
+        "config": null
+      }
+    },
+    "CircularityFilter": {
+      "class": "RemoveLowCircularity",
+      "params": {
+        "cutoff": 0.5
+      }
+    },
+    "BorderFilter": {
+      "class": "RemoveBorderObjects",
+      "params": {
+        "border_size": 20
+      }
+    },
+    "SmallObjectFilter": {
+      "class": "SmallObjectRemover",
+      "params": {
+        "min_size": 600
+      }
+    },
+    "GridLargest": {
+      "class": "KeepSectionLargest",
+      "params": {}
+    }
+  },
+  "meas": {
+    "MeasureNeighborDist": {
+      "class": "MeasureNeighborDist",
+      "params": {}
+    },
+    "MeasureShape": {
+      "class": "MeasureShape",
+      "params": {}
+    },
+    "MeasureSize": {
+      "class": "MeasureSize",
+      "params": {
+        "angular_bins": 360,
+        "trim_proportion": 0.2,
+        "plateau_tolerance": 0.01
+      }
+    },
+    "MeasureIntensity": {
+      "class": "MeasureIntensity",
+      "params": {}
+    },
+    "MeasureColor": {
+      "class": "MeasureColor",
+      "params": {
+        "include_XYZ": false,
+        "include_xy": false,
+        "geomedian_max_iter": 50,
+        "geomedian_tol": 0.0001,
+        "medoid_candidates": 256
+      }
+    },
+    "MeasureTexture": {
+      "class": "MeasureTexture",
+      "params": {
+        "scale": [
+          10
+        ],
+        "quant_lvl": 32,
+        "enhance": false,
+        "warn": false
+      }
+    },
+    "MeasureTexture_1": {
+      "class": "MeasureTexture",
+      "params": {
+        "scale": [
+          20
+        ],
+        "quant_lvl": 32,
+        "enhance": false,
+        "warn": false
+      }
+    },
+    "MeasureTexture_2": {
+      "class": "MeasureTexture",
+      "params": {
+        "scale": [
+          30
+        ],
+        "quant_lvl": 32,
+        "enhance": false,
+        "warn": false
+      }
+    },
+    "MeasureTexture_3": {
+      "class": "MeasureTexture",
+      "params": {
+        "scale": [
+          40
+        ],
+        "quant_lvl": 32,
+        "enhance": false,
+        "warn": false
+      }
+    }
+  },
+  "post": {},
+  "filters": {},
+  "model": null,
+  "plots": [],
+  "nrows": 8,
+  "ncols": 12
+}

@@ -1,9 +1,10 @@
-"""Sample and synthetic agar plate images for fungal colony testing.
+"""Sample and synthetic agar plate images for microbial colony testing.
 
 Provides loaders and generators for representative plate scenes used in demos,
 benchmarks, and tests: synthetic single colonies, synthetic full plates, time-course
-captures at 12–72 hours, early low-contrast crops, and smear-plate examples. Utilities
-return arrays or ready-to-use `Image`/`GridImage` objects for rapid pipeline trials.
+captures at 12–72 hours, early low-contrast crops, smear-plate examples, and a
+color-corrected bacterial plate. Utilities return arrays or ready-to-use
+`Image`/`GridImage` objects for rapid pipeline trials.
 """
 
 from ._sample_image_data import *
@@ -25,4 +26,5 @@ __all__ = [
     "load_fungi_plate",
     "load_yeast_plate_full",
     "load_fungi_plate_full",
+    "load_bacteria_plate_full",
 ]
