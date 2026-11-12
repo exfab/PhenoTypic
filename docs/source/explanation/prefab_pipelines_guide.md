@@ -71,7 +71,7 @@ OME-Zarr tree to this pipeline as `--input`.
 
 **Pipeline steps:**
 CropImage → BlurGauss → SubtractGaussian → Sam2 → RemoveLowCircularity →
-RemoveBorderObjects → SmallObjectRemover → KeepSectionLargest
+RemoveBorderObjects → RemoveSmallObjects → KeepSectionLargest
 
 **Measurements:** MeasureNeighborDist, MeasureShape, MeasureSize,
 MeasureIntensity, MeasureColor, and MeasureTexture at 10, 20, 30 and 40 px
