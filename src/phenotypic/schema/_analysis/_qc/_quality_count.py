@@ -25,4 +25,9 @@ class QUALITY_COUNT(QualityInfo):
 
     DETECTED = Entry("Detected", "Detected colony count in the group.")
     EXPECTED = Entry("Expected", "Expected colony count from the metadata frame.")
-    DELTA = Entry("Delta", "Detected − Expected (signed; negative = missing).")
+    DELTA = Entry(
+        "Delta",
+        "Detected minus expected colony count in the group, so it is negative "
+        "when colonies are missing and positive when there are extra "
+        "detections. It is Detected − Expected.",
+    )

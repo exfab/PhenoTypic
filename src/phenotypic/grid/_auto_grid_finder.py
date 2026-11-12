@@ -45,13 +45,17 @@ class AutoGridFinder(GridFinder):
     centers using a deterministic robust-fit algorithm.
 
     Unlike histogram or optimizer-based approaches, this class fits a regular
-    grid model directly to the per-object distance-transform maximum centers
-    (deepest interior point of each object's mask). These centers are
-    anchored in the dense colony body and are unaffected by thin filamentous
-    extensions (e.g., fungal hyphae) that would otherwise pull
-    intensity-weighted centroids off-body and bias the grid fit. Outlier
-    rejection further protects against atypical objects pulling boundaries
-    away from the true positions.
+    grid model directly to the per-object distance-weighted centroids
+    (``Bbox_DistWeightedCenterRR`` / ``Bbox_DistWeightedCenterCC``: the mean
+    pixel position, each pixel weighted by its distance to the object's
+    edge). These centers are anchored in the dense colony body and are little
+    moved by thin filamentous extensions (e.g., fungal hyphae), which carry
+    little distance weight but would otherwise pull intensity-weighted
+    centroids off-body and bias the grid fit. Once the edges are fit, each
+    object is assigned to the cell holding its plain centroid
+    (``Bbox_CenterRR`` / ``Bbox_CenterCC``). Outlier rejection further
+    protects against atypical objects pulling boundaries away from the true
+    positions.
 
     Args:
         nrows: Number of rows in the grid (default 8 for 96-well plates).
