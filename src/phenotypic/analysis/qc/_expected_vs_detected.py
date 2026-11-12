@@ -840,7 +840,7 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         expected_col = str(QUALITY_COUNT.EXPECTED)
 
         per_group = (
-            df.groupby(self.groupby, dropna=False)
+            df.groupby(self.groupby, dropna=False, observed=True)
             .agg({
                 delta_col: "first",
                 detected_col: "first",

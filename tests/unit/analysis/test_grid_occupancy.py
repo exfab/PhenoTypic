@@ -281,3 +281,36 @@ class TestCategoricalTableExport:
 
         assert check.to_table().empty
         assert check.summary().empty
+
+
+@pytest.mark.parametrize("check_type", [ExpectedVsDetectedCount, GridOccupancy])
+@pytest.mark.parametrize("multiple_groupers", [False, True])
+def test_inspection_excludes_unused_categorical_groups(
+    check_type: type[ExpectedVsDetectedCount], multiple_groupers: bool
+) -> None:
+    """Both QC figures plot measured groups without unused category rows."""
+    image = str(IMAGE.IMAGE_NAME)
+    frame = _measurements("plate1.png", [1, 2, 3])
+    frame[image] = pd.Categorical(
+        frame[image], categories=["plate1.png", "unused.png"]
+    )
+    layout = _layout()
+    groupby = [image]
+    expected_label = "plate1.png"
+    if multiple_groupers:
+        frame["Metadata_Batch"] = pd.Categorical(
+            ["batch1"] * len(frame), categories=["batch1", "unused_batch"]
+        )
+        layout["Metadata_Batch"] = "batch1"
+        groupby.append("Metadata_Batch")
+        expected_label += " | batch1"
+    check = check_type(metadata=layout, groupby=groupby)
+    original = frame.copy(deep=True)
+
+    check.analyze(frame)
+    figure = check.inspect()
+
+    assert list(figure.data[-1].y) == [expected_label]
+    expected_traces = 2 if check_type is ExpectedVsDetectedCount else 1
+    assert len(figure.data) == expected_traces
+    pd.testing.assert_frame_equal(frame, original)

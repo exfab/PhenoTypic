@@ -328,7 +328,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
         metric_col = self.metric_col()
         status_col = self.status_col()
         per = (
-            df.groupby(self.groupby, dropna=False)
+            df.groupby(self.groupby, dropna=False, observed=True)
             .agg({metric_col: "first", status_col: "first"})
             .reset_index()
         )
