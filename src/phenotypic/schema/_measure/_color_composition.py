@@ -1,6 +1,7 @@
 """Measurement info for perceptual color composition using 11-color model."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DiscriminativeFeature
 
 
@@ -16,6 +17,10 @@ class ColorComposition(DiscriminativeFeature):
     @classmethod
     def metric_family(cls):
         return "ColorComposition"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     # Define the 11 color categories with descriptions
     BLACK_PCT = Entry("BlackPct", "Percentage of pixels classified as black (Value < 20)")

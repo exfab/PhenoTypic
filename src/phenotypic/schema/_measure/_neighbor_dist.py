@@ -1,6 +1,7 @@
 """Measurement info for spatial information for grid pinned colonies."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import QualityInfo
 
 
@@ -22,30 +23,34 @@ class NEIGHBOR_DIST(QualityInfo):
     def metric_family(cls) -> str:
         return "NeighborDist"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
+
     LEFT_NEIGHBOR_OBJ_LABEL = Entry("LeftNeighborObjLabel",
                                     ("The object label of the left"
-                                     " neighbor colony"))
+                                     " neighbor colony"), unit=UNITS.NOT_A_QUANTITY)
     LEFT_DISTANCE = Entry("LeftDistance",
                           ("The minimum pixel-to-pixel distance to the left"
                            " neighbor colony, computed via a Euclidean"
                            " distance transform of object pixel masks"))
 
     RIGHT_NEIGHBOR_OBJ_LABEL = Entry("RightNeighborObjLabel", ("The object label of"
-                                                               " the right neighbor colony"))
+                                                               " the right neighbor colony"), unit=UNITS.NOT_A_QUANTITY)
     RIGHT_DISTANCE = Entry(
             "RightDistance",
             "The minimum pixel-to-pixel distance to the right neighbor colony, computed"
             " via a Euclidean distance transform of object pixel masks"
     )
     ABOVE_NEIGHBOR_OBJ_LABEL = Entry("AboveNeighborObjLabel", ("The object label of"
-                                                               " the above neighbor colony"))
+                                                               " the above neighbor colony"), unit=UNITS.NOT_A_QUANTITY)
     ABOVE_DISTANCE = Entry(
             "AboveDistance",
             "The minimum pixel-to-pixel distance to the above neighbor colony, computed"
             " via a Euclidean distance transform of object pixel masks"
     )
     UNDER_NEIGHBOR_OBJ_LABEL = Entry("UnderNeighborObjLabel",
-                                     "The object label of the under neighbor colony")
+                                     "The object label of the under neighbor colony", unit=UNITS.NOT_A_QUANTITY)
     UNDER_DISTANCE = Entry(
             "UnderDistance",
             "The minimum pixel-to-pixel distance to the under neighbor colony, computed"
@@ -57,7 +62,8 @@ class NEIGHBOR_DIST(QualityInfo):
             " by minimum pixel-to-pixel distance between object masks. On a"
             " GridImage only objects assigned to a grid cell are considered;"
             " on a plain Image every object is. NaN when fewer than two"
-            " eligible objects exist. Ties resolve to the smaller label."
+            " eligible objects exist. Ties resolve to the smaller label.",
+            unit=UNITS.NOT_A_QUANTITY
     )
     NEAREST_DISTANCE = Entry(
             "NearestDistance",
@@ -73,5 +79,6 @@ class NEIGHBOR_DIST(QualityInfo):
             " offset dc between the two cells: 0 = same cell (dr = dc = 0);"
             " 1 = edge-adjacent cell (dr + dc = 1); 2 = diagonal cell"
             " (dr = dc = 1); 3 = any cell further away. NaN on a plain Image"
-            " (no grid) or when there is no nearest object."
+            " (no grid) or when there is no nearest object.",
+            unit=UNITS.NOT_A_QUANTITY
     )

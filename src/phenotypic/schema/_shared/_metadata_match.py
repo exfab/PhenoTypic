@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import QualityInfo
 
 
@@ -17,6 +18,10 @@ class METADATA_MATCH(QualityInfo):
     @classmethod
     def metric_family(cls) -> str:
         return "QC"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.NOT_A_QUANTITY
 
     METADATA_ONLY = Entry(
         "MetadataOnly",

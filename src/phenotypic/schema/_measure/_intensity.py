@@ -3,6 +3,7 @@
 from .._base._categories import CATEGORIES
 from .._base._change_notes import SINGLE_CHANNEL_PRODUCED_NOTE, append_change_note
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DirectPhenotype
 
 
@@ -21,6 +22,10 @@ class INTENSITY(DirectPhenotype):
         return "Intensity"
 
     @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.INTENSITY
+
+    @classmethod
     def change_note(cls) -> str:
         return SINGLE_CHANNEL_PRODUCED_NOTE
 
@@ -28,6 +33,7 @@ class INTENSITY(DirectPhenotype):
         "IntegratedIntensity",
         "The sum of the object's pixels",
         categories=CATEGORIES.STARTING_METRICS,
+        unit=UNITS.INTENSITY_PX2,
     )
     DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
                           "intensity of the object")
@@ -44,6 +50,7 @@ class INTENSITY(DirectPhenotype):
     COEFFICIENT_VARIANCE_INTENSITY = Entry(
         "CoefficientVarianceIntensity",
         "The coefficient of variation of the object",
+        unit=UNITS.UNITLESS,
     )
     Q1_INTENSITY = Entry(
         "LowerQuartileIntensity",

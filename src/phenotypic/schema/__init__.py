@@ -29,6 +29,7 @@ from ._base._rembi import (
     header_to_module as header_to_module,
 )
 from ._base._categories import CATEGORIES, CategoryEntry
+from ._base._units import UNITS, ResolvedUnit, UnitEntry
 from ._base._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -94,6 +95,9 @@ __all__ = [
     "Entry",
     "CATEGORIES",
     "CategoryEntry",
+    "UNITS",
+    "UnitEntry",
+    "ResolvedUnit",
     "MeasurementInfo",
     "MetadataInfo",
     "parse_qualified_header",

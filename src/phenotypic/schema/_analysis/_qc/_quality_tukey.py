@@ -1,6 +1,7 @@
 """Measurement info container for replicate-agreement Tukey-fence QC."""
 
 from ..._base._measurement_info import Entry
+from ..._base._units import UNITS
 from ..._base._tiers import QualityInfo
 
 
@@ -19,7 +20,11 @@ class QUALITY_TUKEY(QualityInfo):
     def metric_family(cls) -> str:
         return "QC_Tukey"
 
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.OF_INPUT
+
     LOWER_FENCE = Entry("LowerFence", "Lower Tukey fence, Q1 - k*IQR.")
     UPPER_FENCE = Entry("UpperFence", "Upper Tukey fence, Q3 + k*IQR.")
-    NUM_OUTLIERS = Entry("NumOutliers", "Members falling outside the fences.")
-    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.")
+    NUM_OUTLIERS = Entry("NumOutliers", "Members falling outside the fences.", unit=UNITS.UNITLESS)
+    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.", unit=UNITS.UNITLESS)

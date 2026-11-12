@@ -1,6 +1,7 @@
 """Radial expansion, symmetry, and orientation-zone measurements."""
 
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DescriptiveTrait
 
 
@@ -19,6 +20,10 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
     @classmethod
     def metric_family(cls) -> str:
         return "SymZones"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
 
     CORE_RADIUS = Entry(
         "CoreRadius",
@@ -71,14 +76,17 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
     CORE_AREA = Entry(
         "CoreArea",
         "Pixel-squared area of CoreZone using the concentric CoreEndRadius circle.",
+        unit=UNITS.PX2,
     )
     DENSE_AREA = Entry(
         "DenseArea",
         "Pixel-squared area of DenseZone between CoreEndRadius and "
         "DenseEndRadius. It is zero for a collapsed canonical solution.",
+        unit=UNITS.PX2,
     )
     SPARSE_AREA = Entry(
         "SparseArea",
         "Pixel-squared area of SparseZone between DenseEndRadius and "
         "SparseEndRadius.",
+        unit=UNITS.PX2,
     )

@@ -564,25 +564,29 @@ class GridAccessor:
         standard least-squares linear regression to fit the line: y = m*x + b.
 
         For row-wise analysis (axis=0), the function groups colonies by their row
-        index and fits a line to the relationship between column position and column
-        coordinate. For column-wise analysis (axis=1), it groups by column index and
-        fits a line to the relationship between row position and row coordinate.
+        index and regresses the centers' row coordinate (CenterRR) on their column
+        coordinate (CenterCC). For column-wise analysis (axis=1), it groups by column
+        index and regresses the column coordinate on the row coordinate. Both
+        coordinates are in pixels, so the slope is dimensionless.
 
         Args:
             axis (int): Axis along which to compute alignment:
 
-                - 0: Row-wise alignment. For each row, measures how colony centers
-                  vary along the column (CC) axis as a function of their grid column
-                  position. Slope indicates pixels of drift per grid column.
-                - 1: Column-wise alignment. For each column, measures how colony
-                  centers vary along the row (RR) axis as a function of their grid
-                  row position. Slope indicates pixels of drift per grid row.
+                - 0: Row-wise alignment. For each row, measures how the colony
+                  centers' row coordinate (RR, vertical) changes as their column
+                  coordinate (CC, horizontal) grows. Slope is pixels of vertical
+                  drift per pixel along the row, a dimensionless tilt.
+                - 1: Column-wise alignment. For each column, measures how the
+                  colony centers' column coordinate (CC) changes as their row
+                  coordinate (RR) grows. Slope is pixels of horizontal drift per
+                  pixel down the column, a dimensionless tilt.
 
         Returns:
             tuple[np.ndarray, np.ndarray]: A tuple containing:
                 - m_slope (np.ndarray[float]): Slopes for each row or column. Length
-                  is nrows if axis=0, ncols if axis=1. Values represent pixels of
-                  drift per grid position unit. NaN indicates no colonies in that
+                  is nrows if axis=0, ncols if axis=1. Values are dimensionless
+                  (pixels of drift per pixel travelled, the tangent of the tilt
+                  angle). NaN indicates no colonies in that
                   row/column, 0 indicates single colony with no drift measurable.
                 - b_intercept (np.ndarray): Y-intercepts for each row/column, rounded
                   to nearest integer. NaN indicates no colonies in that row/column.
@@ -594,14 +598,14 @@ class GridAccessor:
         Examples:
             Analyze colony alignment across grid axes:
 
-            >>> # Check row alignment (horizontal drift of colonies across each row)
+            >>> # Check row alignment (vertical drift of colonies along each row)
             >>> row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)
-            >>> print(f"Row alignment slopes (pixels/column): {row_slopes}")
-            >>> # Check column alignment (vertical drift of colonies across each column)
+            >>> print(f"Row alignment slopes (dimensionless): {row_slopes}")
+            >>> # Check column alignment (horizontal drift of colonies down each column)
             >>> col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)
-            >>> print(f"Column alignment slopes (pixels/row): {col_slopes}")
+            >>> print(f"Column alignment slopes (dimensionless): {col_slopes}")
             >>> # Identify rows with significant drift indicating pinning issues
-            >>> drift_threshold = 0.05  # pixels per grid position
+            >>> drift_threshold = 0.05  # px of drift per px travelled (~2.9 degrees)
             >>> problematic_rows = np.where(np.abs(row_slopes) > drift_threshold)[0]
             >>> print(f"Rows with significant drift: {problematic_rows}")
         """

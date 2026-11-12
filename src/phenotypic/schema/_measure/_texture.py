@@ -4,6 +4,7 @@ import re
 
 from .._base._change_notes import SINGLE_CHANNEL_PRODUCED_NOTE, append_change_note
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DiscriminativeFeature
 
 # ``scale`` is emitted with ``{scale:02d}`` (a *minimum* width), so scales >= 100
@@ -44,6 +45,10 @@ class TEXTURE(DiscriminativeFeature):
     @classmethod
     def metric_family(cls) -> str:
         return "Texture"
+
+    @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.UNITLESS
 
     @classmethod
     def change_note(cls) -> str:

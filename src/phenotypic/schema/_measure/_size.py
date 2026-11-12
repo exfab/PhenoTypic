@@ -7,6 +7,7 @@ from .._base._change_notes import (
 )
 from .._base._categories import CATEGORIES
 from .._base._measurement_info import Entry
+from .._base._units import UNITS
 from .._base._tiers import DirectPhenotype
 
 
@@ -27,6 +28,10 @@ class SIZE(DirectPhenotype):
         return "Size"
 
     @classmethod
+    def default_unit(cls) -> UNITS:
+        return UNITS.PX
+
+    @classmethod
     def change_note(cls) -> str:
         return f"{SIZE_SHAPE_SPLIT_NOTE}\n{SINGLE_CHANNEL_SIZE_NOTE}"
 
@@ -42,27 +47,31 @@ class SIZE(DirectPhenotype):
         ),
         image="shape/area.png",
         categories=CATEGORIES.STARTING_METRICS,
+        unit=UNITS.PX2,
     )
     INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
-        r"The sum of the object's grayscale pixels. Calculated as "
-        r":math:`\sum{\text{pixel values}} \times \text{area}`.",
+        "The sum of the object's grayscale pixel values.",
         categories=CATEGORIES.STARTING_METRICS,
+        unit=UNITS.INTENSITY_PX2,
     )
     PERIMETER = Entry(
         "Perimeter",
-        "Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.",
+        "Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies. "
+        "Pixel perimeters read slightly high for round colonies (about 5% at radii above 80 px).",
         categories=CATEGORIES.STARTING_METRICS,
     )
     CONVEX_AREA = Entry(
         "ConvexArea",
         'Area of the smallest convex polygon that completely contains the colony, computed from the convex hull of its pixel centers. Represents the colony\'s "filled-in" appearance if all indentations and holes were removed. Because the hull passes through pixel centers it is slightly smaller than the pixel count of a convex colony. Useful for detecting colony spreading patterns or invasive growth characteristics.',
         categories=CATEGORIES.STARTING_METRICS,
+        unit=UNITS.PX2,
     )
     BBOX_AREA = Entry(
         "BboxArea",
         "Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.",
         categories=CATEGORIES.STARTING_METRICS,
+        unit=UNITS.PX2,
     )
     MAJOR_AXIS_LENGTH = Entry(
         "MajorAxisLength",
