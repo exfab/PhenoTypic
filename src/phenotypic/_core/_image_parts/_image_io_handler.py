@@ -50,6 +50,7 @@ from phenotypic.sdk_ import (
     is_metadata_header,
     metadata_member_for_label,
 )
+from phenotypic.sdk_._exif_logging import quiet_missing_exif
 from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
 from ._image_color_handler import ImageColorSpace
 from ._image_data_manager import normalize_integer_matrix
@@ -450,7 +451,8 @@ class ImageIOHandler(ImageColorSpace):
         if exifread is not None:
             try:
                 with open(filepath, "rb") as f:
-                    tags = exifread.process_file(f, details=True)
+                    with quiet_missing_exif():
+                        tags = exifread.process_file(f, details=True)
                     for tag, value in tags.items():
                         if tag.startswith("Thumbnail"):
                             continue  # Skip thumbnail data

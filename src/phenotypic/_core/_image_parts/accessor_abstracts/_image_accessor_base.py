@@ -139,6 +139,11 @@ class ImageAccessorBase(AccessorDashHandler):
             ensure descriptive identification. If a layer with the same name
             already exists, it is replaced with the new image data. This allows
             for easy updates and comparison of different processing stages.
+            A crop, colony (``objects[i]``) or grid section keeps its
+            plate's name, so its default ``image_name`` adds the image type
+            and the first 8 hex digits of its UUID
+            (``rgb_StandardDay6_crop_3f2a9c1b``) and never replaces the
+            plate's layer.
         """
         if not _HAS_NAPARI:
             raise ImportError(
@@ -173,7 +178,7 @@ class ImageAccessorBase(AccessorDashHandler):
             image_name = name
             resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
         else:
-            image_name = getattr(self._root_image, "name", "image")
+            image_name = getattr(self._root_image, "_display_name", "image")
             resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
 
         # Replace layer if it exists, otherwise add new layer

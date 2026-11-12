@@ -54,6 +54,24 @@ def _all_strings(component: Any) -> str:
     return " ".join(out)
 
 
+def test_home_tutorial_links_use_published_documentation(sandbox: SandboxRoot) -> None:
+    """Every Home tutorial link opens the current public documentation."""
+    from dash import html
+
+    from phenotypic._gui.shell._home import build_home_layout
+
+    links = {
+        component.children: component.href
+        for component in _walk(build_home_layout(sandbox))
+        if isinstance(component, html.A)
+    }
+    assert links == {
+        "Pipeline builder walkthrough": "https://exfab.github.io/PhenoTypic/",
+        "Results viewer cookbook": "https://exfab.github.io/PhenoTypic/",
+        "Running pipelines via the CLI": "https://exfab.github.io/PhenoTypic/",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Factory smoke + endpoints
 # ---------------------------------------------------------------------------

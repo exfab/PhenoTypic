@@ -11,12 +11,13 @@ from ..abc_ import ThresholdDetector
 
 
 class YenDetector(ThresholdDetector):
-    """Detect colonies by maximising the correlation between the original and binarised image.
+    """Detect colonies with Yen's entropic-correlation threshold.
 
-    Compute a threshold that maximises the squared correlation coefficient
-    between the original intensity image and its binarised version. Handles
-    skewed histograms reliably, offering a middle ground between variance-based
-    (Otsu) and entropy-based (Li) criteria. For a full comparison of detection
+    Compute the threshold that maximises the total entropic correlation of the
+    two classes it creates: the sum over both classes of -ln(sum((p_i / P)^2)),
+    where p_i is the histogram probability of grey level i and P is the class's
+    total probability (Yen, Chang and Chang, 1995). It is an entropy-based
+    criterion. For a full comparison of detection
     strategies see :doc:`/explanation/detection_strategies_compared`.
 
     Best For:

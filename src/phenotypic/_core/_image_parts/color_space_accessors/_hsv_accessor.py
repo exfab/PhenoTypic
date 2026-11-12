@@ -151,7 +151,7 @@ class HsvAccessor(ColorSpaceAccessor):
 
         # Original image
         axes_[0].imshow(self._root_image.rgb[:])
-        axes_[0].set_title(self._root_image.name)
+        axes_[0].set_title(self._root_image._display_name)
         axes_[0].grid(False)
 
         # Hue radial histogram

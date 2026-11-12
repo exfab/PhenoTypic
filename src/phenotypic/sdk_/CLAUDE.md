@@ -181,3 +181,15 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
   here, and `_mpl_theme.py` uses `OKABE_ITO_PUBLISHED` (black first, static figures).
 - `_radial_geometry.py` — `distance_from_point` and the overlay `circle_xy`
   shared by the zone measures and `TrimAsymmetry`.
+- `_skimage_compat.py` — bridges over scikit-image API changes, since the lock
+  (0.25.2) is older than what a fresh install resolves. Today:
+  `remove_objects_smaller_than(ar, min_size)`, the strict `size < min_size`
+  rule, called as `max_size=ceil(min_size) - 1` on 0.26+ (where `min_size`
+  raises a `FutureWarning` and `max_size` means `<=`) and as `min_size` before.
+  **Every** `remove_small_objects` call in `src/` goes through it —
+  `tests/unit/test_remove_small_objects_guard.py` fails on a direct call,
+  including one shown in a docstring example. Boundary pinned on the
+  installed release by `tests/unit/refine/test_small_object_remover.py`; both
+  branches pinned on any release by `tests/unit/sdk_/test_skimage_compat.py`,
+  which swaps in stubs with each release's signature, because CI only ever
+  runs the lock's branch.

@@ -282,7 +282,7 @@ class NapariLabelsMixin:
             image_name = name
             resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
         else:
-            image_name = getattr(self._root_image, "name", "image")
+            image_name = getattr(self._root_image, "_display_name", "image")
             resolved_layer_name = f"{self._accessor_property_name}_{image_name}"
 
         # Get label data - no RGB normalization needed for integer labels

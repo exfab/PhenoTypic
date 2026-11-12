@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ImageCorrector
+from phenotypic.schema import IMAGE
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
@@ -56,12 +57,23 @@ class CropImage(ImageCorrector):
     Returns:
         Image: Input image with all components cropped to the specified
         margins. GridImage grid positions are recalculated on the cropped
-        dimensions.
+        dimensions. It is the input image, cropped, not a sub-image of it, so
+        it keeps all of the input's metadata, ``Metadata_ImageType``
+        included; unlike a slice (``image[a:b, c:d]``), it is not typed
+        ``"Crop"``.
 
     Raises:
         ValueError: If any margin is negative.
         ValueError: If opposite margins together exceed the image dimension
             (e.g., ``top`` + ``bottom`` >= image height).
+
+    .. versionchanged:: 0.21.0
+       The cropped image keeps the input's metadata: user keys such as
+       ``Metadata_Strain``, the file suffix, the imported (EXIF) block, and
+       its ``Metadata_ImageType``. Earlier versions dropped all but the name
+       and bit depth, and typed a plain ``Image`` ``"Crop"``. So re-running a
+       pipeline that crops now updates the plate's napari layers instead of
+       adding new ones.
 
     See Also:
         :doc:`/how_to/notebooks/crop_and_pad` for a visual walkthrough of
@@ -144,14 +156,12 @@ class CropImage(ImageCorrector):
         """
         top, bottom_idx, left, right_idx = self._get_idxes(image)
 
-        # Use existing slicing (__getitem__) - returns Image for both Image and GridImage
+        # Use existing slicing (__getitem__) - returns Image for both Image and
+        # GridImage, carrying a copy of the image's metadata (name included).
         cropped = image[top:bottom_idx, left:right_idx]
 
         # Import GridImage locally to avoid potential circular imports
         from phenotypic import GridImage
-
-        # Preserve original image's name before modifications
-        original_name = image.name
 
         # If input was GridImage, upgrade the cropped Image back to GridImage
         if isinstance(image, GridImage):
@@ -167,13 +177,13 @@ class CropImage(ImageCorrector):
                 gamma=cropped.gamma,
             )
 
+        # set_image() copies the crop's metadata over the image's. The crop
+        # carries the image's own metadata, so every key survives except the
+        # type, which the slice set to "Crop". The result is this image,
+        # cropped, not a sub-image, so it keeps the input's type.
+        image_type = image.metadata[IMAGE.IMAGE_TYPE]
         result = self._cpy_new_arrs(image, cropped)
-        # Restore original name (may be overwritten by set_image).
-        # set_image() calls _set_from_class_instance() which deep copies all metadata
-        # from the source image, including the name. We preserve the original image's
-        # name to maintain its identity through the cropping operation.
-        result.name = original_name
-
+        result.metadata[IMAGE.IMAGE_TYPE] = image_type
         return result
 
     @staticmethod

@@ -261,7 +261,6 @@ def _output_layout_entries(
         phenotypic_cache_dir,
         pipeline_json_path,
         plots_dir,
-        processing_report_html_path,
         qc_dir,
         readme_md_path,
         rembi_manifest_path,
@@ -306,7 +305,6 @@ def _output_layout_entries(
         )
     entries += [
         (pipeline_json_path(output_dir), False, "the pipeline this run used"),
-        (processing_report_html_path(output_dir), False, "the processing report"),
         (dashboard_html_path(output_dir), False, "the progress dashboard"),
         (readme_md_path(output_dir), False, "what each output and column holds"),
         (rembi_manifest_path(output_dir), False, "the REMBI run manifest"),

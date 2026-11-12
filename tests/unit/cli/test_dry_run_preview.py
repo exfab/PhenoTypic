@@ -195,13 +195,13 @@ def test_the_layout_lists_every_deliverable_a_plain_run_writes(tmp_path, pipe):
     for written in (
         "measurements_by_feature",
         "measurements_by_category",
-        "processing_report.html",
         "dashboard.html",
         "README.md",
         "rembi.yaml",
         "pipeline.json.pht-pipe",
     ):
         assert written in layout, written
+    assert "processing_report.html" not in layout
     assert "every image's measurements, without your --metadata columns" in layout
     # Written only when configured: no --metadata, model, plots or QC here.
     for configured in ("metadata.csv", "analysis_manifest.json", "plots", "qc"):

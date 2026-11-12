@@ -369,13 +369,13 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             "include_dataset_column": False,
             "metadata_csv": None,
             "no_qc": False,
+            "study_yaml": None,
             "input_path": tmp_path / "inputs",
             "resume": False,
             "restart": False,
             "staged_resume_phase": resume_phase,
             "staged_finalizer_only": finalizer_only,
             "staged_stage3_markers": True,
-            "wait": False,
             "full_dataset_inventory": {},
             "nrows": None,
             "ncols": None,
@@ -470,13 +470,13 @@ def test_staged_slurm_manifest_uses_canonical_direct_store_stem(
         include_dataset_column=False,
         metadata_csv=None,
         no_qc=False,
+        study_yaml=None,
         input_path=source,
         resume=False,
         restart=False,
         staged_resume_phase=None,
         staged_finalizer_only=False,
         staged_stage3_markers=True,
-        wait=False,
         full_dataset_inventory={"plate": [source.name]},
         nrows=None,
         ncols=None,
@@ -525,6 +525,7 @@ def test_staged_job_metadata_supports_canonical_finalizer(
         metadata_csv=tmp_path / "metadata.csv",
         input_path=tmp_path / "inputs",
         no_qc=True,
+        study_yaml="Title: Plate study\n",
         pipeline_json=tmp_path / "pipeline.json",
         image_type="Image",
         nrows=None,
@@ -549,6 +550,7 @@ def test_staged_job_metadata_supports_canonical_finalizer(
     assert metadata["chunk_job_ids"] == {"0": "s1a"}
     assert metadata["chunk_scripts"][-1] == "finalizer.sh"
     assert metadata["no_qc"] is True
+    assert metadata["study_yaml"] == "Title: Plate study\n"
     assert metadata["image_task_mapping"] == {}
     assert metadata["gui_record_generation"] == gui_generation
     assert metadata["processing_generation"] == "generation-123"

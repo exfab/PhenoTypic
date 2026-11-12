@@ -13,7 +13,6 @@ Features:
     - Automatic continuation with state tracking
     - Local parallel execution (joblib)
     - Autonomous SLURM execution with bash scripts
-    - HTML failure reports with tracebacks
     - Progress monitoring tools
 
 Usage:
@@ -41,13 +40,6 @@ Examples:
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --slurm mem_gb=16
-
-    # SLURM with progress monitoring
-    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \
-        -o ./results \
-        --slurm slurm_partition=compute \
-        --slurm slurm_account=proj \
-        --wait
 
     # GridImage with custom dimensions
     uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./plates \
@@ -99,7 +91,8 @@ SLURM Execution (Autonomous HPC Cluster Processing):
     1. Generate SBATCH scripts for each dataset
     2. Create array jobs for parallel image processing
     3. Automatically handle dependencies and chunking
-    4. Support optional job monitoring with --wait
+    4. Return at submission, printing how to follow the jobs; a dependent
+       finalizer publishes the run's outputs when they finish
 
     Common Academic HPC SLURM Parameters:
         slurm_partition    Partition/queue name (e.g., compute, gpu, highmem)
@@ -130,8 +123,7 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --slurm mem_gb=32 \\
             --slurm time=120 \\
             --slurm slurm_mail_type=END \\
-            --slurm slurm_mail_user=user@university.edu \\
-            --wait
+            --slurm slurm_mail_user=user@university.edu
 
     Example: Dry-run to preview SLURM submission plan
         uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\
@@ -139,6 +131,14 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --dry-run
+
+.. versionchanged:: 0.21.0
+   ``--wait`` was removed, in every mode, with no replacement option. Every
+   SLURM run returns at submission and prints a ``SUBMITTED`` summary that
+   points at the "Monitor progress" lines; its dependent finalizer publishes
+   the run's outputs. The CLI no longer writes ``processing_report.html`` in
+   any mode; ``python -m phenotypic.sdk_.generate_report <output>`` writes it
+   on demand.
 """
 
 import importlib
@@ -151,7 +151,6 @@ from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
 from uuid import UUID
 
 import click
-import yaml  # type: ignore[import-untyped]
 from click.core import ParameterSource
 
 from phenotypic._cli._cli_directory_scanner import (
@@ -168,7 +167,6 @@ from phenotypic._cli._cli_failure_tracker import (
     work_id_for_image,
 )
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
@@ -176,6 +174,8 @@ from phenotypic._cli._cli_update_state import (
 from phenotypic._cli._cli_utils import (
     normalize_extension,
     parse_slurm_args,
+    parse_study_yaml,
+    read_study_yaml,
     resolve_local_worker_count,
 )
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
@@ -207,7 +207,6 @@ from phenotypic.sdk_ import (
     pipeline_json_path,
     pipeline_publication_lock,
     pipeline_publication_lock_path,
-    processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
     resolve_pipeline_config_path,
@@ -238,7 +237,6 @@ if TYPE_CHECKING:
         build_recompile_tasks,
         generate_recompile_slurm_scripts,
         recompile_attempt_dir,
-        recompile_task_status_path,
     )
     from phenotypic._cli._cli_staged_resume import (
         build_staged_resume_plan,
@@ -305,7 +303,6 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "build_recompile_tasks",
         "generate_recompile_slurm_scripts",
         "recompile_attempt_dir",
-        "recompile_task_status_path",
     ),
     "phenotypic._cli._cli_interactive": ("execute_dry_run", "get_sample_datasets"),
     "phenotypic._cli._cli_validation": (
@@ -1919,12 +1916,8 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--force-local",
     is_flag=True,
-    help="Force local execution even if SLURM available",
-)
-@click.option(
-    "--wait",
-    is_flag=True,
-    help="Wait and monitor SLURM jobs (default: return immediately)",
+    help="Ignore any --slurm options and run locally (the CLI already runs "
+    "locally unless --slurm is given)",
 )
 @click.option(
     "--ext",
@@ -2074,7 +2067,6 @@ def phenotypic_cli(
     gpu_shards: int,
     gpu_slurm_args: Sequence[str],
     force_local: bool,
-    wait: bool,
     ext: str,
     overlay_alpha: float,
     no_dataset_column: bool,
@@ -2113,7 +2105,9 @@ def phenotypic_cli(
                  stores and process-output trees upgrade only schema-v1 root
                  provenance. It runs locally by default or through a
                  generation-scoped SLURM attempt with --slurm; re-running it
-                 creates a fresh attempt for interrupted work.
+                 creates a fresh attempt for interrupted work. With --slurm
+                 it returns at submission: read the attempt's verdict from
+                 the terminal status file it prints.
 
       recompile  Refresh aggregate outputs from an existing output root; no
                  --input or --pipeline (both are reloaded from --output).
@@ -2133,6 +2127,11 @@ def phenotypic_cli(
     \b
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
+
+    Changed in 0.21.0: --wait was removed. A --slurm run always returns at
+    submission; its finalizer publishes the outputs when the jobs finish. The
+    processing report is no longer written automatically; run
+    python -m phenotypic.sdk_.generate_report OUTPUT to write it.
     """
     # First statement of the body, ahead of mode and option validation: a broken
     # install must fail before any parse-dependent work, and outside the ``try``
@@ -2408,7 +2407,6 @@ def phenotypic_cli(
                         if slurm_args_dict and not force_local
                         else None
                     ),
-                    wait=wait,
                     revert=revert,
                 )
             )
@@ -2447,7 +2445,6 @@ def phenotypic_cli(
                     overlay_alpha=overlay_alpha,
                     checkpoint_interval=checkpoint_interval,
                     slurm_args=slurm_args_dict,
-                    wait=wait,
                     no_qc=no_qc,
                 )
             else:
@@ -2633,7 +2630,6 @@ def phenotypic_cli(
             n_jobs=n_jobs,
             slurm_args=slurm_args_dict,
             force_local=force_local,
-            wait=wait,
             ext=ext,
             overlay_alpha=overlay_alpha,
             durable_writes=durable_writes,
@@ -2649,6 +2645,7 @@ def phenotypic_cli(
             metadata_csv=metadata_csv,
             image_manifest=image_manifest,
             no_qc=no_qc,
+            study_yaml=read_study_yaml(study),
             checkpoint_interval=checkpoint_interval,
             measure_only=measure_only,
             process_only_layer=process_only_layer,  # type: ignore[arg-type]
@@ -3397,7 +3394,6 @@ def phenotypic_cli(
                         overlay_alpha=config.overlay_alpha,
                         checkpoint_interval=config.checkpoint_interval,
                         slurm_args=config.slurm_args,
-                        wait=config.wait,
                         no_qc=config.no_qc,
                     )
                     sys.exit(0)
@@ -3613,55 +3609,60 @@ def phenotypic_cli(
         # Incremental finalization always uses the full accepted inventory,
         # never only the filtered worklist.
         finalization_datasets = full_datasets if config.resume else datasets
+
+        # Every SLURM strategy returns `submitted=True`. One that did not would
+        # fall through to the in-process publication below -- the double
+        # write the finalizer exists to prevent -- so refuse rather than run it.
+        if config.is_slurm_mode() and not results.submitted:
+            raise RuntimeError(
+                "A SLURM strategy returned without submitting; refusing to "
+                "publish in-process, which belongs to the SLURM finalizer."
+            )
+
+        if results.submitted:
+            # Every SLURM run -- ordinary, staged or process -- returns here,
+            # at submission (0.21.0 removed --wait). Its dependent finalizer
+            # is the sole publisher of the aggregated outputs, dashboard and
+            # completion marker, so this process writes only the README.
+            if config.process_only_layer:
+                _echo_submitted_summary(
+                    "PROCESS-ONLY SUBMITTED",
+                    results.total_images,
+                    [f"Layer to export: {config.process_only_layer}"],
+                    f"Mirrored layer files will be written under: {output_dir}",
+                )
+                sys.exit(0)
+            _write_readme(config, None, output_dir, finalization_datasets)
+            _echo_submitted_summary(
+                "PROCESSING SUBMITTED",
+                results.total_images,
+                [
+                    "The SLURM finalizer publishes the aggregated measurements "
+                    "when the jobs finish."
+                ],
+                f"Results will be published under: {output_dir}",
+                status=(
+                    "Submitted: the finalizer only. Every image stage is "
+                    "already complete."
+                    if config.staged_finalizer_only
+                    else None
+                ),
+            )
+            sys.exit(0)
+
+        # Only a local run reaches this point: every SLURM run exited or was
+        # refused above.
         local_staged_publication = (
             uses_staged_gpu_strategy(config)
-            and not config.is_slurm_mode()
             and config.process_only_layer is None
         )
 
-        if results.remote_managed:
-            if results.submitted:
-                click.echo("\n" + "=" * 60)
-                click.echo("PROCESSING SUBMITTED")
-                click.echo("=" * 60)
-                click.echo(
-                    "Staged SLURM jobs are running. Progress is available "
-                    "through scheduler logs; final deliverables are published "
-                    "after Stage 3."
-                )
-                click.echo(f"\nResults will be published under: {output_dir}")
-                sys.exit(0)
-            if results.detached:
-                click.echo(
-                    "\nMonitoring detached. Staged SLURM jobs continue running."
-                )
-                sys.exit(0)
-            if not results.remote_finalized:
-                click.echo(
-                    "\nSTAGED PROCESSING FAILED: the finalizer did not write its "
-                    "completion marker.",
-                    err=True,
-                )
-                sys.exit(1)
-
-            click.echo("\n" + "=" * 60)
-            click.echo("PROCESSING COMPLETE")
-            click.echo("=" * 60)
-            click.echo(
-                f"Completed: {results.total_completed}/{results.total_images}"
-            )
-            click.echo(f"Failed:    {results.total_failed}")
-            click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
-            click.echo(f"Duration: {_format_duration(results.duration)}")
-            click.echo(f"\nResults saved to: {output_dir}")
-            sys.exit(0 if results.total_failed == 0 else 1)
-
         # Process-only (apply-only) runs export image layers + a progress
-        # manifest only — no measurement aggregation, HTML report, README,
-        # or deliverables. The strategy already wrote the mirrored layers and
+        # manifest only — no measurement aggregation, README, or
+        # deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
-            if not config.is_slurm_mode() and results.total_failed == 0:
+            if results.total_failed == 0:
                 from phenotypic._cli._cli_gui_lifecycle import (
                     publish_local_gui_completion,
                 )
@@ -3688,18 +3689,11 @@ def phenotypic_cli(
         except Exception as e:
             logger.warning(f"Failed to load pipeline for finalizer: {e}")
 
-        # Parse the optional --study YAML once; its REMBI Study-level fields are
-        # folded into deliverables/rembi.yaml and override constant Metadata_*
-        # study columns. Best-effort: a malformed/unreadable file is logged and
-        # the manifest still emits from the mirror's own columns.
-        study_config: Optional[dict] = None
-        if study is not None:
-            try:
-                study_config = yaml.safe_load(
-                    Path(study).read_text(encoding="utf-8")
-                )
-            except Exception as e:
-                logger.warning(f"Failed to read --study file {study}: {e}")
+        # The optional --study file's REMBI Study-level fields are folded into
+        # deliverables/rembi.yaml and override constant Metadata_* study
+        # columns. A SLURM run's finalizer makes the same parse from
+        # job_metadata.json.
+        study_config = parse_study_yaml(config.study_yaml, source=study)
 
         # Aggregate every current marker-authorized success. This republishes
         # a valid partial snapshot even when this invocation ended with only
@@ -3777,32 +3771,10 @@ def phenotypic_cli(
                     err=True,
                 )
 
-        # Generate HTML report
-        click.echo("Generating HTML report...")
-        report_gen = HTMLReportGenerator()
-        report_path = processing_report_html_path(output_dir)
-        report_gen.generate_report(results, report_path)
-        click.echo(f"✓ Report: {report_path}")
-
-        # Generate README documentation
-        click.echo("Generating README documentation...")
-        try:
-            from phenotypic._cli._cli_readme_generator import READMEGenerator
-
-            readme_pipeline = (
-                finalizer_pipeline
-                if finalizer_pipeline is not None
-                else ImagePipeline.from_json(config.pipeline_json)
-            )
-            readme_gen = READMEGenerator(config, readme_pipeline)
-            readme_path = readme_gen.generate(
-                output_dir, finalization_datasets
-            )
-            click.echo(f"✓ README: {readme_path}")
-        except Exception as e:
+        if not _write_readme(
+            config, finalizer_pipeline, output_dir, finalization_datasets
+        ):
             finalization_succeeded = False
-            logger.warning(f"Failed to generate README: {e}")
-            click.echo(f"⚠ Warning: Could not generate README ({e})", err=True)
 
         full_stage3_complete = False
         if local_staged_publication:
@@ -3843,11 +3815,7 @@ def phenotypic_cli(
             )
             sys.exit(1)
 
-        if (
-            not config.is_slurm_mode()
-            and finalization_succeeded
-            and results.total_failed == 0
-        ):
+        if finalization_succeeded and results.total_failed == 0:
             from phenotypic._cli._cli_gui_lifecycle import (
                 publish_local_gui_completion,
             )
@@ -4047,7 +4015,6 @@ def _handle_recompile_slurm(
     overlay_alpha: float,
     checkpoint_interval: Optional[int],
     slurm_args: dict[str, Any],
-    wait: bool,
     no_qc: bool = False,
 ) -> None:
     """Submit recompile work as a SLURM array chain.
@@ -4061,7 +4028,6 @@ def _handle_recompile_slurm(
         checkpoint_interval: Reused as the measurement shard size when
             positive; otherwise defaults to 500 files per shard.
         slurm_args: Parsed SLURM key/value arguments.
-        wait: Whether to wait for the finalizer task status.
         no_qc: Forwarded from ``--no-qc`` to skip QC compute on the
             finalizer task (stashed on the finalizer task metadata so the
             recompile worker reads it).
@@ -4245,29 +4211,14 @@ def _handle_recompile_slurm(
             f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]"
         )
 
-    if wait:
-        console.print(
-            "\n[cyan]Waiting for recompile finalizer "
-            f"task {finalizer_task_index}...[/cyan]"
-        )
-        _wait_for_recompile_finalizer_status(
-            output_dir,
-            finalizer_task_index,
-            recompile_finalizer_status_path=recompile_task_status_path(
-                recompile_manifest_path, finalizer_task_index
-            ),
-            slurm_generation=attempt_id,
-        )
-        console.print("[bold green]SLURM recompilation complete[/bold green]")
-    else:
-        click.echo("\nRecompile jobs submitted. Monitor progress with:")
-        click.echo(f"  Open: {dashboard_html_path(output_dir)}")
-        click.echo("  squeue -u $USER --array")
-        from phenotypic.sdk_ import logs_dir
+    from phenotypic.sdk_ import logs_dir
 
-        click.echo(
-            f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
-        )
+    click.echo("\nRecompile jobs submitted. Monitor progress with:")
+    click.echo(f"  Open: {dashboard_html_path(output_dir)}")
+    click.echo("  squeue -u $USER --array")
+    click.echo(
+        f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
+    )
 
 
 def _discover_recompile_dataset_names(
@@ -4383,104 +4334,6 @@ def _recompile_dataset_image_names(
     # unconverted one, which ``_refuse_unmigrated_output`` rejects before any
     # recompile discovery runs.
     return []
-
-
-def _wait_for_recompile_finalizer_status(
-    output_dir: Path,
-    finalizer_task_index: int,
-    migration_finalizer_status_path: Path | None = None,
-    recompile_finalizer_status_path: Path | None = None,
-    slurm_generation: str | None = None,
-    poll_interval: float = 10.0,
-    timeout: Optional[float] = None,
-) -> None:
-    """Wait until migration and recompile finalizers complete or fail."""
-    import time
-
-    from phenotypic.sdk_ import task_status_path
-
-    status_path = recompile_finalizer_status_path or task_status_path(
-        output_dir, finalizer_task_index
-    )
-    deadline = time.monotonic() + timeout if timeout is not None else None
-    while True:
-        if migration_finalizer_status_path is not None:
-            migration_status = _read_recompile_wait_status(
-                migration_finalizer_status_path,
-                description="metadata migration finalizer",
-            )
-            if migration_status is not None:
-                migration_state = migration_status.get("status")
-                if migration_state == "failed":
-                    error = migration_status.get("error") or (
-                        "metadata migration finalizer failed"
-                    )
-                    raise RuntimeError(str(error))
-
-        if status_path.exists():
-            status = _read_recompile_wait_status(
-                status_path, description="recompile finalizer"
-            )
-            if status is not None:
-                state = status.get("status")
-                if state == "completed":
-                    return
-                if state == "failed":
-                    error = status.get("error") or "recompile finalizer failed"
-                    raise RuntimeError(str(error))
-
-        if slurm_generation is not None:
-            _raise_if_recompile_attempt_cannot_finish(
-                output_dir, slurm_generation
-            )
-
-        if deadline is not None and time.monotonic() >= deadline:
-            raise TimeoutError(
-                f"Timed out waiting for recompile finalizer status: {status_path}"
-            )
-        time.sleep(poll_interval)
-
-
-def _read_recompile_wait_status(
-    status_path: Path, *, description: str
-) -> dict[str, Any] | None:
-    """Read a finalizer status, tolerating an in-progress atomic replace."""
-    import json
-
-    if not status_path.exists():
-        return None
-    try:
-        payload = json.loads(status_path.read_text(encoding="utf-8"))
-    except Exception:
-        logger.warning("Failed to read %s status %s", description, status_path)
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-def _raise_if_recompile_attempt_cannot_finish(
-    output_dir: Path, slurm_generation: str
-) -> None:
-    """Fail a waiter when its scheduler attempt is terminal or superseded."""
-    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
-
-    state = load_slurm_lifecycle(output_dir)
-    if state is None:
-        return
-    found_generation = state.get("generation")
-    if found_generation != slurm_generation:
-        raise RuntimeError(
-            "SLURM recompile attempt was superseded before its finalizer "
-            f"published status: {slurm_generation}"
-        )
-    if state.get("active") is True:
-        return
-    error = state.get("terminal_error")
-    if error:
-        raise RuntimeError(str(error))
-    raise RuntimeError(
-        "SLURM recompile attempt became inactive before its finalizer "
-        f"published status: {slurm_generation}"
-    )
 
 
 def _refuse_unrecoverable_recompile_authority(
@@ -4728,6 +4581,82 @@ def _seed_pipeline_config(
             return None
         atomic_write_bytes(target, Path(pipeline_path).read_bytes())
     return target
+
+
+def _write_readme(
+    config: ExecutionConfig,
+    pipeline: Optional["ImagePipeline"],
+    output_dir: Path,
+    datasets: Sequence[Dataset],
+) -> bool:
+    """Write ``deliverables/README.md``, warning rather than raising.
+
+    Args:
+        config: The run's configuration.
+        pipeline: The loaded pipeline, or ``None`` to load
+            ``config.pipeline_json``.
+        output_dir: Run output root.
+        datasets: The run's full accepted inventory.
+
+    Returns:
+        Whether the README was written.
+    """
+    click.echo("Generating README documentation...")
+    try:
+        from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+        readme_pipeline = (
+            pipeline
+            if pipeline is not None
+            else ImagePipeline.from_json(config.pipeline_json)
+        )
+        readme_path = READMEGenerator(config, readme_pipeline).generate(
+            output_dir, list(datasets)
+        )
+    except Exception as e:
+        logger.warning(f"Failed to generate README: {e}")
+        click.echo(f"⚠ Warning: Could not generate README ({e})", err=True)
+        return False
+    click.echo(f"✓ README: {readme_path}")
+    return True
+
+
+def _echo_submitted_summary(
+    title: str,
+    total_images: int,
+    details: Sequence[str],
+    destination: str,
+    *,
+    status: Optional[str] = None,
+) -> None:
+    """Print the summary of a SLURM run, which returns at submission.
+
+    The CLI has no count or success rate to print: the jobs have not finished.
+    The strategy has already printed how to follow them ("Monitor progress
+    with:"), so this points at those lines instead of repeating them.
+
+    Args:
+        title: The header, e.g. ``"PROCESSING SUBMITTED"``.
+        total_images: Images the submission covers.
+        details: Mode-specific lines printed after the status line.
+        destination: The closing line naming where the outputs will appear.
+        status: Replaces the default "Submitted: N image(s)" line, for a
+            submission with no image work (a staged finalizer-only
+            continuation).
+    """
+    if status is None:
+        status = (
+            f"Submitted: {total_images} image(s). The jobs have not "
+            "finished, so nothing has been counted yet."
+        )
+    click.echo("\n" + "=" * 60)
+    click.echo(title)
+    click.echo("=" * 60)
+    click.echo(status)
+    for line in details:
+        click.echo(line)
+    click.echo('Follow the jobs with the "Monitor progress" commands above.')
+    click.echo(f"\n{destination}")
 
 
 def _format_duration(seconds: float) -> str:
