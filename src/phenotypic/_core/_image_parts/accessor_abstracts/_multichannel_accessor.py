@@ -163,7 +163,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
 
         if channel is not None:
             title = (
-                f"{self._root_image.name} - Channel {channel}"
+                f"{self._root_image._display_name} - Channel {channel}"
                 if title is None
                 else f"{title} - Channel {channel}"
             )
@@ -257,7 +257,7 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
 
         if channel is not None:
             title = (
-                f"{self._root_image.name} - Channel {channel}"
+                f"{self._root_image._display_name} - Channel {channel}"
                 if title is None
                 else f"{title} - Channel {channel}"
             )

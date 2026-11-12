@@ -196,7 +196,6 @@ class TestArrayJobScriptGeneration:
             n_jobs=-1,
             slurm_args={"slurm_partition": "short", "mem_gb": 16, "time": 60},
             force_local=False,
-            wait=False,
             ext=".tiff",
             overlay_alpha=0.3,
             include_dataset_column=False,

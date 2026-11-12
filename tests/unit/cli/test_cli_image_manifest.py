@@ -57,7 +57,6 @@ def _config(
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.3,
         include_dataset_column=True,

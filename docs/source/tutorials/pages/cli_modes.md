@@ -87,7 +87,7 @@ out/
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── measurements_by_category/           # one file per measurement category
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
-│   ├── dashboard.html, processing_report.html
+│   ├── dashboard.html
 │   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts
 │   └── README.md                           # generated column documentation
 ├── results/<dataset>/
@@ -96,6 +96,13 @@ out/
 │                           #   object table at
 │                           #   tables/measurements/table.parquet
 └── .phenotypic/            # machine state: progress manifest, event log
+```
+
+The CLI does not automatically write `processing_report.html`. After the run,
+generate it from the event log when needed:
+
+```bash
+uv run python -m phenotypic.sdk_.generate_report ./out
 ```
 
 The `zarr/` directory is what makes the other modes cheap: each store holds that
@@ -339,14 +346,16 @@ python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
 
 Use the `slurm_` prefix for standard SBATCH directives, or the convenience keys
 `mem_gb` and `time`. **`time` is in minutes, as an integer** — `time=120`, not
-`time=02:00:00`. The CLI returns as soon as the jobs are submitted; add `--wait`
-to block and monitor them. A staged GPU run without `--wait` prints
-`PROCESSING SUBMITTED` and leaves aggregation, reports, and README publication
-to its dependent finalizer. It does not print a premature completion summary.
-With `--wait`, the CLI follows the active orchestration epoch through the
-finalizer completion marker. Ctrl+C detaches monitoring while the jobs continue.
-`--force-local` overrides SLURM detection, which is
-what you want when testing on a login node.
+`time=02:00:00`. The CLI returns as soon as the jobs are submitted, prints
+a submission summary and monitoring commands, and writes the README for a full
+or measurement run. Its
+dependent finalizer publishes aggregate outputs and the completion marker.
+It does not print a premature completion summary. Follow the printed
+scheduler commands and completion evidence before consuming the results;
+version 0.21.0 removed `--wait`. Generate the HTML processing report on demand
+with the command above. The CLI runs locally unless `--slurm` is supplied;
+`--force-local` keeps a command local when testing a configured profile on a
+login node.
 
 `--checkpoint-interval N` inserts checkpoint tasks every N images in a SLURM
 array so a walltime kill loses at most N images of progress.

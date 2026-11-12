@@ -30,7 +30,7 @@ def _minimal_local_config(
     return ExecutionConfig(
         pipeline_json=pipe_path, input_path=out, output_dir=out,
         image_type="Image", nrows=None, ncols=None, bit_depth=None,
-        n_jobs=1, slurm_args={}, force_local=True, wait=False, ext=".tiff",
+        n_jobs=1, slurm_args={}, force_local=True, ext=".tiff",
         overlay_alpha=0.5, include_dataset_column=False, dry_run=False,
         sample=None, resume=False, retry_failures=False, skip_validation=True,
         save_overlays=False, measure_only=measure_only,
@@ -79,7 +79,7 @@ def _minimal_slurm_config(pipe_path, out, *, measure_only=False):
         pipeline_json=pipe_path, input_path=out, output_dir=out,
         image_type="Image", nrows=None, ncols=None, bit_depth=None,
         n_jobs=1, slurm_args={"slurm_partition": "batch"}, force_local=False,
-        wait=False, ext=".tiff", overlay_alpha=0.5, include_dataset_column=False,
+        ext=".tiff", overlay_alpha=0.5, include_dataset_column=False,
         dry_run=False, sample=None, resume=False, retry_failures=False,
         skip_validation=True, save_overlays=False, measure_only=measure_only,
     )

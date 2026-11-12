@@ -175,6 +175,21 @@ def _quantize(img: np.ndarray, bit_depth: int) -> np.ndarray:
         raise ValueError("bit_depth must be 8 or 16")
 
 
+def _array_layout(
+        nrows: int, ncols: int, plate_h: int, plate_w: int,
+) -> Tuple[float, float, float]:
+    """Return (pitch, first_row_y, first_col_x) for a centred colony array.
+
+    Pinned arrays have one centre-to-centre spacing along rows and columns, so
+    the pitch is the largest that leaves one pitch of margin on the tighter
+    axis, and the array is centred on the other.
+    """
+    pitch = min(plate_h / (nrows + 1), plate_w / (ncols + 1))
+    first_row_y = (plate_h - (nrows - 1) * pitch) / 2
+    first_col_x = (plate_w - (ncols - 1) * pitch) / 2
+    return pitch, first_row_y, first_col_x
+
+
 # --- Main Generators ---
 
 def make_synthetic_colony(
@@ -217,27 +232,32 @@ def make_synthetic_plate(
         spacing_factor: float = 0.85,
         colony_size_variation: float = 0.15,
 ) -> np.ndarray:
-    """Generate a synthetic array plate with multiple circular colonies."""
+    """Generate a synthetic array plate with multiple circular colonies.
+
+    .. versionchanged:: 0.21.0
+       Colonies sit on one pitch for rows and columns,
+       ``min(plate_h / (nrows + 1), plate_w / (ncols + 1))``, with the array
+       centred in the plate, as on a pinned plate. Rows and columns used to be
+       spaced ``plate_h / (nrows + 1)`` and ``plate_w / (ncols + 1)`` apart,
+       which differ on most plate shapes, so the same ``seed`` now gives a
+       different image. The bundled synthetic plates, such as
+       ``load_synth_yeast_plate``, are pre-rendered and unchanged.
+    """
     rng = np.random.default_rng(seed)
 
     # 1. Background
     img = _create_agar_background(plate_h, plate_w, agar_rgb, rng)
 
     # 2. Grid Setup
-    margin_y = plate_h / (nrows + 1)
-    margin_x = plate_w / (ncols + 1)
-    spacing_y = plate_h / (nrows + 1)
-    spacing_x = plate_w / (ncols + 1)
-    base_r = min(spacing_y, spacing_x) * spacing_factor * 0.5
+    pitch, first_row_y, first_col_x = _array_layout(nrows, ncols, plate_h, plate_w)
+    base_r = pitch * spacing_factor * 0.5
     col_rgb = np.array(colony_rgb, dtype=np.float32)
 
     # 3. Iterate
     for row in range(nrows):
         for col_idx in range(ncols):
-            cy = margin_y + row * spacing_y + rng.uniform(-spacing_y * 0.05,
-                                                          spacing_y * 0.05)
-            cx = margin_x + col_idx * spacing_x + rng.uniform(-spacing_x * 0.05,
-                                                              spacing_x * 0.05)
+            cy = first_row_y + row * pitch + rng.uniform(-pitch * 0.05, pitch * 0.05)
+            cx = first_col_x + col_idx * pitch + rng.uniform(-pitch * 0.05, pitch * 0.05)
             r = base_r * (1.0 + rng.uniform(-colony_size_variation,
                                             colony_size_variation))
 
@@ -261,8 +281,16 @@ def make_synthetic_filamentous_plate(
         filament_density: float = 100.0,
         filament_reach: float = 2.2,
 ) -> np.ndarray:
-    """
-    Generate a synthetic plate with filamentous (hairy/branching) colonies.
+    """Generate a synthetic plate with filamentous (hairy/branching) colonies.
+
+    .. versionchanged:: 0.21.0
+       Colonies sit on one pitch for rows and columns,
+       ``min(plate_h / (nrows + 1), plate_w / (ncols + 1))``, with the array
+       centred in the plate, as on a pinned plate. Rows and columns used to be
+       spaced ``plate_h / (nrows + 1)`` and ``plate_w / (ncols + 1)`` apart,
+       which differ on most plate shapes, so the same ``seed`` now gives a
+       different image. The bundled synthetic plates, such as
+       ``load_synth_yeast_plate``, are pre-rendered and unchanged.
     """
     rng = np.random.default_rng(seed)
 
@@ -270,20 +298,15 @@ def make_synthetic_filamentous_plate(
     img = _create_agar_background(plate_h, plate_w, agar_rgb, rng)
 
     # 2. Grid Setup
-    margin_y = plate_h / (nrows + 1)
-    margin_x = plate_w / (ncols + 1)
-    spacing_y = plate_h / (nrows + 1)
-    spacing_x = plate_w / (ncols + 1)
-    base_r_global = min(spacing_y, spacing_x) * spacing_factor * 0.5
+    pitch, first_row_y, first_col_x = _array_layout(nrows, ncols, plate_h, plate_w)
+    base_r_global = pitch * spacing_factor * 0.5
     col_rgb = np.array(colony_rgb, dtype=np.float32)
 
     # 3. Iterate
     for row in range(nrows):
         for col_idx in range(ncols):
-            cy = margin_y + row * spacing_y + rng.uniform(-spacing_y * 0.05,
-                                                          spacing_y * 0.05)
-            cx = margin_x + col_idx * spacing_x + rng.uniform(-spacing_x * 0.05,
-                                                              spacing_x * 0.05)
+            cy = first_row_y + row * pitch + rng.uniform(-pitch * 0.05, pitch * 0.05)
+            cx = first_col_x + col_idx * pitch + rng.uniform(-pitch * 0.05, pitch * 0.05)
             r = base_r_global * (1.0 + rng.uniform(-colony_size_variation,
                                                    colony_size_variation))
 

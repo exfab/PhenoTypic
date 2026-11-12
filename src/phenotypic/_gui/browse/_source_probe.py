@@ -15,6 +15,7 @@ import exifread
 from PIL import Image as PILImage
 
 from phenotypic._gui._config import BROWSE_RENDER_SCHEMA_VERSION, RAW_IMAGE_EXTS
+from phenotypic.sdk_._exif_logging import quiet_missing_exif
 from phenotypic.sdk_ import (
     is_zarr_store_name,
     source_image_suffix,
@@ -216,7 +217,7 @@ def _header_dimensions(source: Path) -> tuple[int | None, int | None]:
 
 def _read_exif(source: Path) -> dict[str, str]:
     try:
-        with source.open("rb") as handle:
+        with source.open("rb") as handle, quiet_missing_exif():
             tags = exifread.process_file(handle, details=False)
     except Exception:  # noqa: BLE001 - best-effort metadata
         logger.debug("EXIF header read failed", exc_info=True)

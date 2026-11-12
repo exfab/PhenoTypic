@@ -13,9 +13,9 @@ A :class:`CheckerLattice` is the geometric result of detection: one
 :class:`ColumnLattice` per column of patches, plus the rigid displacement that
 placed it on this frame.  It converts to per-tile boxes for measurement.
 
-See :doc:`the design spec
-</superpowers/specs/2026-09-21-in-frame-checker-color-correction/README>` for
-the surrounding algorithm.
+See the design spec,
+``docs/superpowers/specs/2026-09-21-in-frame-checker-color-correction/README.md``,
+for the surrounding algorithm.
 """
 
 from __future__ import annotations

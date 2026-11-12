@@ -28,6 +28,16 @@ from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.sdk_.exceptions_ import EmptyImageError, IllegalAssignmentError
 
+# Image types of a sub-image cut from another image; ``_display_name`` keeps
+# their napari layers and plot titles apart from their source's.
+_DERIVED_IMAGE_TYPES = frozenset(
+        {
+            IMAGE_TYPES.CROP.value,
+            IMAGE_TYPES.OBJECT.value,
+            IMAGE_TYPES.GRID_SECTION.value,
+        }
+)
+
 
 class ImageHandler(ImageDataManager):
     """Provides accessor functions and operations for image manipulation.
@@ -93,6 +103,17 @@ class ImageHandler(ImageDataManager):
         Note:
             - The subimage arrays are copied from the original image object. This means that any changes made to the subimage will not affect the original image.
             - We may add this functionality in future updates if there is demand for it.
+            - The subimage keeps a copy of the image's metadata: its name, file
+              suffix, bit depth, imported (EXIF) block, and keys set by hand such
+              as ``Metadata_Strain``. Only ``Metadata_UUID`` (the subimage is a
+              new image) and ``Metadata_ImageType`` (``"Crop"``) differ.
+
+        .. versionchanged:: 0.21.0
+           A slice keeps the image's metadata. Earlier versions kept only the
+           bit depth, renamed the slice ``<name>_crop``, and dropped every other
+           key, including user keys, the file suffix and the imported block;
+           ``CropImage`` lost them the same way.
+
         Args:
             key: A slicing key or index used to extract a subset or part of the image object.
 
@@ -111,8 +132,6 @@ class ImageHandler(ImageDataManager):
         subimage.detect_mat[:] = self.detect_mat[key].copy()
         subimage.objmap[:] = self.objmap[key].copy()
         subimage.metadata[IMAGE.IMAGE_TYPE] = IMAGE_TYPES.CROP.value
-        subimage.metadata[IMAGE.IMAGE_NAME] \
-            = f"{self.metadata[IMAGE.IMAGE_NAME]}_crop"
         return subimage
 
     def __setitem__(self, key, other_image):
@@ -200,6 +219,26 @@ class ImageHandler(ImageDataManager):
     @name.setter
     def name(self, value):
         self.metadata[IMAGE.IMAGE_NAME] = str(value)
+
+    @property
+    def _display_name(self) -> str:
+        """The name napari layers and plot titles use when none is given.
+
+        A slice keeps its source's metadata, name included, so a crop, a colony
+        (``objects[i]``) or a grid section would otherwise share the plate's
+        napari layers, which ``napari()`` replaces by name: the plate would be
+        overwritten. Such a derived image (``ImageType`` ``Crop``, ``Object``
+        or ``GridSection``) is shown as ``<name>_<type>_<first 8 hex digits of
+        its UUID>``, e.g. ``StandardDay6_crop_3f2a9c1b``. Eight digits keep a
+        viewer of hundreds of colony crops free of collisions. An unnamed
+        image is already shown by its UUID, and any other image by its name,
+        exactly as before.
+        """
+        image_type = self._metadata.protected.get(IMAGE.IMAGE_TYPE)
+        stored_name = self._metadata.protected.get(IMAGE.IMAGE_NAME)
+        if image_type in _DERIVED_IMAGE_TYPES and stored_name:
+            return f"{stored_name}_{str(image_type).lower()}_{str(self.uuid)[:8]}"
+        return self.name
 
     @property
     def uuid(self):

@@ -7,10 +7,11 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from pydantic import Field, model_validator
-from skimage import feature, morphology
+from skimage import feature
 from scipy import ndimage
 
 from phenotypic.abc_ import ThresholdDetector
+from phenotypic.sdk_._skimage_compat import remove_objects_smaller_than
 from phenotypic.sdk_.typing_ import TuneSpec
 
 
@@ -182,11 +183,11 @@ class CannyDetector(ThresholdDetector):
         # Remove small objects (pass a boolean array when only one label
         # exists to avoid skimage's "single-label" ambiguity warning).
         if objmap.max() <= 1:
-            objmap = morphology.remove_small_objects(
-                    objmap.astype(bool), min_size=self.min_size
+            objmap = remove_objects_smaller_than(
+                    objmap.astype(bool), self.min_size
             ).astype(objmap.dtype)
         else:
-            objmap = morphology.remove_small_objects(objmap, min_size=self.min_size)
+            objmap = remove_objects_smaller_than(objmap, self.min_size)
 
         # Ensure correct dtype
         if objmap.dtype != image._OBJMAP_DTYPE:

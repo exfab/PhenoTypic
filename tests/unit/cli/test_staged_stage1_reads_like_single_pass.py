@@ -129,7 +129,6 @@ def _config(out: Path, pipeline_file: Path, image_path: Path, **flags) -> Execut
         n_jobs=1,
         slurm_args={},
         force_local=True,
-        wait=False,
         ext=".tiff",
         overlay_alpha=0.3,
         include_dataset_column=True,
