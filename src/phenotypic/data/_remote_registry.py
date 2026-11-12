@@ -1,8 +1,8 @@
 """Remote sample-data fetch via pooch.
 
-Large sample PNGs (formerly ``src/phenotypic/data/SnP_images/``) are too big
-to bundle in the wheel without tripping PyPI's 100 MiB file-size limit. They
-are instead attached as assets to the ``data-v1`` GitHub Release on
+Large sample images (the PNGs formerly in ``src/phenotypic/data/SnP_images/``,
+and a 16-bit bacterial plate TIFF) are too big to bundle in the wheel without
+tripping PyPI's 100 MiB file-size limit. They are instead attached as assets to the ``data-v1`` GitHub Release on
 ``exfab/PhenoTypic`` and fetched on demand, verified against SHA256 hashes
 pinned here.
 
@@ -32,12 +32,14 @@ _REGISTRY = pooch.create(
             "sha256:3939f6099fff6ab721558ea64ee482317839da15a3ec0722461272ad3e7fbf9d",
         "NeurosporaFilamentousFungiFullPlate.png":
             "sha256:e1831d22b884c55cf6b1f76223d1446879685e4b36e95aa064765dd99c58d211",
+        "BacteriaFullPlate.tif":
+            "sha256:6a787bd5a1844ec1f20a1f564252ec2a7db1a29590914e7673038ce64d43caac",
     },
 )
 
 
 def fetch_snp(filename: str) -> str:
-    """Fetch a sample-data PNG, returning a local filesystem path.
+    """Fetch a sample-data image, returning a local filesystem path.
 
     First call downloads from the pinned ``data-v1`` GitHub Release and
     verifies the SHA256. Subsequent calls return the cached path without
