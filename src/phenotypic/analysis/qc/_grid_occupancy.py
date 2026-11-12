@@ -9,16 +9,23 @@ flags plates whose occupancy falls below threshold.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, ClassVar, TYPE_CHECKING
 
 import pandas as pd
-from pydantic import field_validator
+from pydantic import Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from phenotypic.analysis.abc_._set_analyzer import (
     normalize_measurement_metadata_columns,
     normalize_metadata_column_reference,
 )
-from phenotypic.analysis.qc._expected_vs_detected import ExpectedVsDetectedCount
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM
+from phenotypic.analysis.qc._expected_vs_detected import (
+    ExpectedVsDetectedCount,
+    _MetadataField,
+    _refuse_in_memory_layout,
+)
 from phenotypic.schema import GRID, QUALITY_OCCUPANCY
 from phenotypic.sdk_ import ColumnRef
 
@@ -37,6 +44,12 @@ class GridOccupancy(ExpectedVsDetectedCount):
     re-reads on load), and the per-key expected-count precompute. The
     expected cell count for a group is the number of metadata rows for that
     ``groupby`` key (one row per expected pin position).
+
+    **A layout is required.** The parent's no-layout mode (``metadata``
+    unset, expectation derived from the analyzed frame) is not inherited:
+    ``metadata`` is a required field here, and ``None`` is refused. So is the
+    parent's ``position_by``, which only that mode reads: it is left out of
+    this check's schema and refused if passed.
 
     Where the parent counts ``len(group)`` (raw detections, doublets
     included), this check counts ``group[cell_label].nunique()`` distinct
@@ -89,8 +102,9 @@ class GridOccupancy(ExpectedVsDetectedCount):
         FileNotFoundError: (inherited) If ``metadata`` is a path that does
             not exist.
         ValueError: (inherited) If ``metadata`` is a path with an
-            unsupported suffix, or if it is ``None`` (a check serialized
-            from an in-memory frame, which cannot round-trip).
+            unsupported suffix; if it is ``None`` (no layout); or if it is the
+            placeholder a check serialized from an in-memory frame writes,
+            which cannot round-trip. Also if ``position_by`` is given.
 
     Examples:
         Basic — 96-cell metadata vs. a measurement frame with 92 colonies
@@ -129,6 +143,52 @@ class GridOccupancy(ExpectedVsDetectedCount):
     warn_threshold: float = 0.95
     fail_threshold: float = 0.90
     cell_label: ColumnRef = str(GRID.ROW_MAJOR_IDX)
+    # Required, unlike the parent's: occupancy has no no-layout mode.
+    metadata: _MetadataField
+    # The parent's no-layout-mode parameter. Kept out of the schema and the
+    # dump, and refused if given, so it can never be passed and ignored.
+    position_by: SkipJsonSchema[None] = Field(default=None, exclude=True)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _normalize_metadata(
+        cls, value: pd.DataFrame | Path | str | None
+    ) -> pd.DataFrame | str:
+        """Refuse a missing layout; otherwise normalize as the parent does.
+
+        Overrides the parent's validator of the same name, which accepts
+        ``None`` as its no-layout mode.
+
+        Raises:
+            ValueError: If ``value`` is ``None``.
+        """
+        if value is None:
+            raise ValueError(
+                f"{cls.__name__} requires 'metadata' as a layout DataFrame "
+                "or a .csv/.parquet path. Got None — no layout was given; "
+                "occupancy has no mode that derives one from the frame."
+            )
+        if isinstance(value, str) and value == IN_MEMORY_PARAM:
+            raise _refuse_in_memory_layout(cls.__name__)
+        if isinstance(value, Path):
+            return str(value)
+        return value
+
+    @field_validator("position_by", mode="before")
+    @classmethod
+    def _refuse_position_by(cls, value: Any) -> None:
+        """Refuse the parent's no-layout-mode ``position_by``.
+
+        Raises:
+            ValueError: If ``position_by`` is given at all.
+        """
+        if value is not None:
+            raise ValueError(
+                f"{cls.__name__} takes no position_by: it counts filled cells "
+                "against a layout, and position_by only applies to "
+                "ExpectedVsDetectedCount without a layout"
+            )
+        return None
 
     @field_validator("cell_label", mode="before")
     @classmethod
@@ -217,7 +277,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
             str(QUALITY_OCCUPANCY.VACANT),
         ]
         first = (
-            df.groupby(self.groupby, dropna=False)[
+            df.groupby(self.groupby, dropna=False, observed=True)[
                 [c for c in occ_cols if c in df.columns]
             ]
             .first()
@@ -268,7 +328,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
         metric_col = self.metric_col()
         status_col = self.status_col()
         per = (
-            df.groupby(self.groupby, dropna=False)
+            df.groupby(self.groupby, dropna=False, observed=True)
             .agg({metric_col: "first", status_col: "first"})
             .reset_index()
         )

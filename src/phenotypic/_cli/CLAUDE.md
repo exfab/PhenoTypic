@@ -1219,8 +1219,13 @@ no metadata migration preflight or mutation. All generated measurement,
 analysis, QC, and REMBI outputs use canonical flat `Metadata_<Label>` headers.
 
 `QC_MetadataOnly` is a **user-facing output column, not internal machinery** — it is how a
-user filters the mirror for "which strains went undetected". Analysis/QC/post code must
-**not** branch on it. Those ops are public API (a notebook calls them on frames that never
+user filters the mirror for "which strains went undetected". Analysis and post code must
+not branch on it. **QC checks (`QualityCheck` subclasses) and plotting code may**: their
+verdicts and figures depend on the metadata join the user supplies (for example,
+`ExpectedVsDetectedCount` with no layout derives its expected positions from the join's
+phantoms). Code that reads the flag still defines what it does when the column is absent,
+since a notebook frame never has one.
+Analysis and post ops are public API (a notebook calls them on frames that never
 saw the CLI and carry no flag), so they detect a phantom the same way they detect any
 missing value: **drop/ignore NaN**. A phantom row is null in every measurement/info column,
 so NaN-native math (`notna()`, `nanpercentile`, `np.isfinite`, `dropna`) handles it, needs

@@ -22,6 +22,7 @@ from ._log_growth_model import LogGrowthModel
 from .filter import MADOutlierRemover, TukeyOutlierRemover
 from .qc import (
     ExpectedVsDetectedCount,
+    FittingWindow,
     GridOccupancy,
     ICC,
     MaxModifiedZScore,
@@ -35,6 +36,7 @@ __all__ = [
     "EdgeCorrector",
     "ErrorCutoffFinder",
     "ExpectedVsDetectedCount",
+    "FittingWindow",
     "GridOccupancy",
     "GrowthRateAtBoundWarning",
     "ICC",

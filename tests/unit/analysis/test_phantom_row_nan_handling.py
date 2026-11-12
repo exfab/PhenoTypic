@@ -1,15 +1,22 @@
-"""Analysis ops must treat ``--metadata`` phantom rows as missing data.
+"""Analysis and post ops must treat ``--metadata`` phantom rows as missing data.
 
 The CLI's ``--metadata`` join is a **left** join, so the measurements mirror
 carries a row for every metadata key — including strains that matched no
 measured object. Every measurement/info column on such a "phantom" row is null.
 
-These ops are public API: a notebook calls them on frames that never went
-through the CLI and carry no ``QC_MetadataOnly`` flag. So none of them branch on
-that flag — they detect a phantom the way they detect any missing value, by
-ignoring NaN. Each test below therefore comes in a pair: the phantom behaves
-correctly, **and** a frame with no nulls is untouched (the no-op invariant that
-keeps existing runs' numbers from moving).
+**Analysis and post** ops are public API: a notebook calls them on frames that
+never went through the CLI and carry no ``QC_MetadataOnly`` flag. So none of
+*them* branch on that flag — they detect a phantom the way they detect any
+missing value, by ignoring NaN. Each test below therefore comes in a pair: the
+phantom behaves correctly, **and** a frame with no nulls is untouched (the
+no-op invariant that keeps existing runs' numbers from moving).
+
+The rule does **not** cover QC checks (``QualityCheck`` subclasses) or plotting
+code, which may read the flag: their verdicts and figures depend on the
+metadata join the user supplies. What the tests below pin of
+``ExpectedVsDetectedCount`` is its NaN handling — ``_detected_count`` is still
+NaN-native, and correct on a frame with no flag — not a prohibition on the
+class reading the column (its no-layout mode does).
 """
 
 from __future__ import annotations

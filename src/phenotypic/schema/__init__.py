@@ -79,6 +79,7 @@ from ._analysis._qc._quality_mad import QUALITY_MAD
 from ._analysis._qc._quality_occupancy import QUALITY_OCCUPANCY
 from ._analysis._qc._quality_se import QUALITY_SE
 from ._analysis._qc._quality_tukey import QUALITY_TUKEY
+from ._analysis._qc._quality_window import QUALITY_WINDOW
 from ._analysis._qc._quality_zmax import QUALITY_ZMAX
 from ._shared._radial_expansion import RADIAL_EXPANSION
 from ._measure._orientation_zones import (
@@ -140,6 +141,7 @@ __all__ = [
     "QUALITY_OCCUPANCY",
     "QUALITY_SE",
     "QUALITY_TUKEY",
+    "QUALITY_WINDOW",
     "QUALITY_ZMAX",
     "RADIAL_EXPANSION",
     "SHAPE",

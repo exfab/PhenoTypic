@@ -265,6 +265,15 @@ _SNAPSHOT: dict[str, str] = {
     "QUALITY_TUKEY.UPPER_FENCE": "of_input",
     "QUALITY_TUKEY.NUM_OUTLIERS": "unitless",
     "QUALITY_TUKEY.NUM_MEMBERS": "unitless",
+    # QUALITY_WINDOW
+    "QUALITY_WINDOW.OUTCOME": "not_a_quantity",
+    "QUALITY_WINDOW.START": "frame",
+    "QUALITY_WINDOW.END": "frame",
+    "QUALITY_WINDOW.REASON": "not_a_quantity",
+    "QUALITY_WINDOW.BEST_CV": "unitless",
+    "QUALITY_WINDOW.BAR": "unitless",
+    "QUALITY_WINDOW.N_GROUPS": "unitless",
+    "QUALITY_WINDOW.N_FRAMES_COUNTED": "frame",
     # QUALITY_ZMAX
     "QUALITY_ZMAX.MEDIAN": "of_input",
     "QUALITY_ZMAX.MAD": "of_input",

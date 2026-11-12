@@ -49,6 +49,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.analysis.abc_ import QualityCheck
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM
 from phenotypic.sdk_ import DIR_DELIVERABLES
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -163,15 +164,60 @@ class QcRecipeEntry:
 
         Prefers the check's ``model_dump(mode="json")`` (so path-vs-frame
         normalization and ``PrivateAttr`` exclusion apply); falls back to
-        the raw :attr:`params` when the check cannot be instantiated.
+        the raw :attr:`params` when the check cannot be instantiated. A
+        param that is set but dumps to ``None`` is logged by
+        :meth:`_warn_unserializable_params`.
 
         Returns:
             A JSON-native params dict.
         """
         try:
-            return self.cls(**self.params).model_dump(mode="json")
+            rebuilt = self.cls(**self.params)
         except Exception:  # noqa: BLE001 - keep raw config for unbuildable entries
             return dict(self.params)
+        dumped = rebuilt.model_dump(mode="json")
+        self._warn_unserializable_params(rebuilt, dumped)
+        return dumped
+
+    def _warn_unserializable_params(
+        self, check: QualityCheck, dumped: dict[str, Any]
+    ) -> None:
+        """Log every configured param that JSON-dumps away to ``None``.
+
+        Two forms count: ``None`` where the live value was set, and the
+        in-memory placeholder a check writes for a runtime-only value. The
+        motivating case is an
+        :class:`~phenotypic.analysis.qc.ExpectedVsDetectedCount` whose
+        ``metadata`` is an in-memory DataFrame: it dumps to the placeholder,
+        which a reload of the persisted ``pipeline.json`` refuses, so the check
+        is skipped there. In-session use of a frame is legitimate, so this
+        **warns and does not refuse**; a config that must survive a reload
+        names a ``.csv``/``.parquet`` path instead.
+
+        Comparison is written ``is not None`` throughout: the live value may
+        be a DataFrame, and ``!=`` on one raises rather than answering.
+
+        Args:
+            check: The instance built from :attr:`params`.
+            dumped: That instance's ``model_dump(mode="json")``.
+        """
+        dropped = sorted(
+            name
+            for name, value in dumped.items()
+            if (isinstance(value, str) and value == IN_MEMORY_PARAM)
+            or (value is None and getattr(check, name, None) is not None)
+        )
+        if not dropped:
+            return
+        logger.warning(
+            "QC entry %s (%s): param(s) %s hold a runtime-only value that "
+            "pipeline.json cannot carry, so a reload will not restore them. "
+            "Configure them from a file path if the QC config must survive "
+            "a reload.",
+            self.instance_id,
+            type(check).__name__,
+            ", ".join(dropped),
+        )
 
     @classmethod
     def from_dict(

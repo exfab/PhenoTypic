@@ -1,9 +1,18 @@
 """Expected-vs-detected colony count quality check.
 
 Compares the detected colony count per group in a measurement frame against
-the expected count derived from a separately-provided metadata frame
-(usually the plate's layout CSV). Surfaces groups where colonies are
-missing or over-detected.
+the expected count. That expectation comes from one of two places:
+
+* a separately-provided ``metadata`` layout frame (usually the plate's layout
+  CSV); or
+* **the frame being analyzed**, when ``metadata`` is left unset. The CLI joins
+  ``--metadata`` as the *left* frame, so a metadata row that matched no
+  measured object survives as a phantom and the joined table is a complete
+  list of expected positions. :func:`~phenotypic.analysis.qc._expected_positions.expected_positions`
+  is the shared helper that says whether it really is one; when it cannot, this
+  check refuses rather than reporting expected == detected.
+
+Surfaces groups where colonies are missing or over-detected.
 """
 
 from __future__ import annotations
@@ -20,18 +29,27 @@ from pydantic import (
     field_validator,
 )
 
-from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.analysis.abc_._quality_check import IN_MEMORY_PARAM, QualityCheck
 from phenotypic.abc_.plotting import PlotQc
 from phenotypic.sdk_ import (
     ColumnRef,
+    ColumnRefList,
     ensure_metadata_prefix,
     is_metadata_header,
     metadata_member_for_header,
     metadata_member_for_label,
     normalize_metadata_columns,
 )
-from phenotypic.schema import MeasurementInfo, MetadataInfo, OBJECT, QUALITY_COUNT
+from phenotypic.schema import (
+    MeasurementInfo,
+    METADATA_MATCH,
+    MetadataInfo,
+    OBJECT,
+    QUALITY_COUNT,
+)
 import phenotypic.schema as schema
+
+from ._expected_positions import DEFAULT_POSITION_BY, expected_positions
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
@@ -45,9 +63,10 @@ if TYPE_CHECKING:
 #
 # Only a path string is JSON-native, so that is the form that round-trips
 # through ``model_dump`` / ``pipeline.json``: ``_serialize_metadata``
-# emits the path when ``metadata`` is a string and ``None`` when it is an
-# in-memory frame (which therefore cannot be rebuilt from JSON — configure
-# the check from a path whenever it must round-trip). A raw
+# emits the path when ``metadata`` is a string, ``None`` when it is unset (the
+# no-layout mode), and the ``"<in-memory>"`` placeholder when it is an
+# in-memory frame (which a reload refuses — configure the check from a path
+# whenever it must round-trip). A raw
 # ``pandas.DataFrame`` has no JSON schema, so the object branch attaches a
 # placeholder so ``model_json_schema()`` succeeds.
 _MetadataField = Annotated[
@@ -74,6 +93,23 @@ _MetadataField = Annotated[
 
 
 _EXTERNAL_QUALIFIED_HEADER = re.compile(r"^[A-Z][A-Za-z0-9]*_[A-Z][A-Za-z0-9]*$")
+
+
+def _refuse_in_memory_layout(cls_name: str) -> ValueError:
+    """The error a check raises when rebuilt from an in-memory layout's dump.
+
+    Args:
+        cls_name: The check's class name, for the message.
+
+    Returns:
+        The error to raise.
+    """
+    return ValueError(
+        f"{cls_name} was saved with an in-memory layout DataFrame, which has no "
+        f"source path to round-trip (its JSON form is {IN_MEMORY_PARAM!r}), so "
+        "it cannot be rebuilt. Configure it from a .csv/.parquet metadata path "
+        "so the layout survives a reload."
+    )
 
 
 def _is_known_nonmetadata_header(column: str) -> bool:
@@ -253,25 +289,52 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
     frame; otherwise :class:`KeyError` is raised at ``__init__`` so the
     failure surfaces before ``analyze`` runs.
 
+    **Leaving ``metadata`` unset derives the expectation from the analyzed
+    frame instead.** Expected positions are the distinct ``position_by``
+    tuples in the frame — which, on the CLI's ``--metadata`` left join,
+    includes the phantom rows for colonies that were never detected. Two
+    objects in one well therefore count **once** toward expected and twice
+    toward detected, which is the divergence this check exists to show. This
+    is what makes the check usable on a delivered ``measurements.csv`` alone,
+    with no layout file. The derivation is only sound when one metadata row
+    means one position on one image, so
+    :func:`~phenotypic.analysis.qc._expected_positions.expected_positions`
+    guards it: a frame that is not a metadata left join (no
+    ``QC_MetadataOnly`` column), or that carries a row with no position, makes
+    ``analyze`` refuse with a pointer to ``metadata=``. It never quietly
+    reports expected == detected for those. One case the guards cannot see:
+    metadata at a coarser grain (one row per image) in which every image had a
+    detection leaves no phantom to give it away, and then every detected
+    position reads as expected. Pass a layout when the metadata was not one row
+    per position.
+
     **Serialization:** only a path is JSON-native, so the path is the form
     that round-trips. When ``metadata`` is a path, ``model_dump`` /
     ``pipeline.json`` persist that path string under the same ``metadata``
-    key and a reloaded instance re-reads the file. When ``metadata`` is an
-    in-memory DataFrame there is no source path to persist — the JSON form
-    is ``None`` and the check cannot be rebuilt from JSON alone (it fails
-    to instantiate with a clear error, surfaced as a skip-with-warning by
-    the lazy QC instantiation path). Configure QC checks from a metadata
-    *path* whenever the pipeline is meant to round-trip.
+    key and a reloaded instance re-reads the file. When ``metadata`` is unset
+    the JSON form is ``None``, and a reload is the same derive-mode check.
+    When ``metadata`` is an in-memory DataFrame there is no source path to
+    persist: the JSON form is the placeholder ``"<in-memory>"``, and a reload
+    **refuses** it with a clear error (surfaced as a skip-with-warning by the
+    lazy QC instantiation path) rather than coming back as a different,
+    derive-mode check. Writing such a QC entry also logs a warning that names
+    the parameter. Configure QC checks from a metadata *path* whenever the
+    pipeline is meant to round-trip.
 
     Args:
         metadata: Layout whose row count per ``groupby`` key is the
             expected colony count. Either an in-memory DataFrame or a path
             (``Path``/``str``) to a ``.csv``/``.parquet`` file. The path
             form is what serializes and round-trips through JSON; an
-            in-memory frame is runtime-only.
+            in-memory frame is runtime-only. **Unset** (the default) means
+            "derive the expected positions from the analyzed frame".
         groupby: Columns that define a comparison unit. Must be present
             in both the metadata frame and the measurement frame passed
             to :meth:`analyze`.
+        position_by: Columns whose distinct tuples are one expected colony
+            position, used only when ``metadata`` is unset. Defaults to
+            :data:`~phenotypic.analysis.qc._expected_positions.DEFAULT_POSITION_BY`
+            — which image, and which grid cell on it.
         on: Measurement column the check operates on. Defaults to
             ``"Object_Label"`` since "detected" means "a measurement row
             exists".
@@ -286,11 +349,12 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
     Raises:
         FileNotFoundError: If ``metadata`` is a path that does not exist.
         KeyError: If any column in ``groupby`` is absent from the
-            resolved metadata frame.
-        ValueError: If ``metadata`` is a path with an unsupported suffix,
-            or if it is ``None`` — i.e. reconstructing from JSON that was
-            built from an in-memory frame, which has no source path to
-            persist.
+            resolved metadata frame, or (at :meth:`analyze`, with
+            ``metadata`` unset) if a ``position_by`` column is absent from
+            the analyzed frame.
+        ValueError: If ``metadata`` is a path with an unsupported suffix;
+            or, at :meth:`analyze` with ``metadata`` unset, if the frame is
+            not a metadata left join or carries a row with a blank position.
 
     Attributes:
         unmatched_groups: List of group-key tuples that appeared in the
@@ -342,6 +406,25 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         >>> _ = chk.analyze(measurements)  # doctest: +SKIP
         >>> chk.unmatched_groups  # doctest: +SKIP
         [('plate2.png',)]
+
+        No layout — a delivered ``measurements.csv`` on its own. The CLI's
+        metadata join left one phantom row (no ``Object_Label``,
+        ``QC_MetadataOnly`` true) for the position on ``plate1.png`` where
+        no colony was found, so the frame itself says four colonies were
+        expected there and three were detected:
+
+        >>> from phenotypic.schema import GRID, METADATA_MATCH, OBJECT
+        >>> table = pd.DataFrame({
+        ...     image_name: ["plate1.png"] * 4 + ["plate2.png"] * 4,
+        ...     str(GRID.ROW_NUM): [1, 1, 2, 2] * 2,
+        ...     str(GRID.COL_NUM): [1, 2, 1, 2] * 2,
+        ...     str(OBJECT.LABEL): [1, 2, 3, None, 1, 2, 3, 4],
+        ...     str(METADATA_MATCH.METADATA_ONLY): [False] * 3 + [True] + [False] * 4,
+        ... })
+        >>> chk = ExpectedVsDetectedCount(groupby=[image_name])
+        >>> per_plate = chk.analyze(table).groupby(image_name).first()
+        >>> per_plate[["QC_Count_Detected", "QC_Count_Expected"]].to_dict("index")
+        {'plate1.png': {'QC_Count_Detected': 3, 'QC_Count_Expected': 4}, 'plate2.png': {'QC_Count_Detected': 4, 'QC_Count_Expected': 4}}
     """
 
     name: ClassVar[str] = "Count"
@@ -361,8 +444,13 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
     # round-trips through JSON (see ``_serialize_metadata``). NOTE:
     # reassigning ``metadata`` post-construction does not re-resolve
     # ``_metadata``/``_expected_counts`` (``model_post_init`` runs once);
-    # construct a new instance to change the layout.
-    metadata: _MetadataField
+    # construct a new instance to change the layout. Unset means derive
+    # mode: the expectation comes from the analyzed frame.
+    metadata: _MetadataField | None = None
+
+    # Used only in derive mode; ``None`` falls through to the shared helper's
+    # default (image name plus grid cell).
+    position_by: ColumnRefList | None = None
 
     _metadata: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
     _expected_counts: pd.Series = PrivateAttr(default_factory=pd.Series)
@@ -373,12 +461,22 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         """Apply the layout namespace rule to every configured grouping key."""
         return [_normalize_layout_column_reference(column) for column in value]
 
+    @field_validator("position_by")
+    @classmethod
+    def _normalize_layout_position_references(
+        cls, value: list[str] | None
+    ) -> list[str] | None:
+        """Apply the same layout namespace rule ``groupby`` gets."""
+        if value is None:
+            return None
+        return [_normalize_layout_column_reference(column) for column in value]
+
     @field_validator("metadata", mode="before")
     @classmethod
     def _normalize_metadata(
         cls, value: pd.DataFrame | Path | str | None
-    ) -> pd.DataFrame | str:
-        """Normalize the raw ``metadata`` input to a frame or a path string.
+    ) -> pd.DataFrame | str | None:
+        """Normalize the raw ``metadata`` input to a frame, a path string or ``None``.
 
         Keeps the value in its caller-supplied form — a frame stays a
         frame, a path becomes a plain ``str`` — so ``self.metadata`` echoes
@@ -386,43 +484,45 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         *not* read here; resolution into the working frame happens in
         :meth:`model_post_init`.
 
+        ``None`` is accepted and means "derive expected positions from the
+        analyzed frame"; it is that configuration's own serialized form. A
+        JSON dump of an *in-memory-frame* check writes the placeholder
+        ``"<in-memory>"`` instead, and that is refused here, so such a check
+        fails to rebuild as it always did instead of silently reloading in
+        derive mode.
+
         Args:
             value: An in-memory DataFrame, a path (``Path`` or ``str``) to
-                a ``.csv``/``.parquet`` layout file, or ``None`` — the
-                sentinel a JSON dump of an in-memory-frame check emits,
-                which cannot be rebuilt.
+                a ``.csv``/``.parquet`` layout file, or ``None``.
 
         Returns:
-            The DataFrame unchanged, or the path coerced to ``str``.
+            ``None`` unchanged, the DataFrame unchanged, or the path coerced
+            to ``str``.
 
         Raises:
-            ValueError: If ``value`` is ``None`` — i.e. the check was
-                serialized from an in-memory frame (which has no source
-                path) and cannot be reconstructed from JSON. Configure it
-                from a ``.csv``/``.parquet`` path so the source round-trips.
+            ValueError: If ``value`` is the in-memory placeholder — the check
+                was serialized from an in-memory frame and cannot be rebuilt.
         """
         if value is None:
-            raise ValueError(
-                f"{cls.__name__} requires 'metadata' as a layout DataFrame "
-                "or a .csv/.parquet path. Got None — a check serialized "
-                "from an in-memory DataFrame has no source path to "
-                "round-trip; configure it from a metadata file path so it "
-                "can be rebuilt from JSON."
-            )
+            return None
+        if isinstance(value, str) and value == IN_MEMORY_PARAM:
+            raise _refuse_in_memory_layout(cls.__name__)
         if isinstance(value, Path):
             return str(value)
         return value
 
     @field_serializer("metadata")
     def _serialize_metadata(
-        self, value: pd.DataFrame | str, info: Any
+        self, value: pd.DataFrame | str | None, info: Any
     ) -> str | pd.DataFrame | None:
         """Serialize ``metadata`` as its source *path*, never the frame.
 
         A path string is JSON-native and round-trips; an in-memory frame is
-        not, so the JSON form is ``None`` (a reload then fails fast in
-        :meth:`_normalize_metadata` with a clear error). In Python mode the
-        frame passes through unchanged.
+        not, so its JSON form is the placeholder ``"<in-memory>"`` (a reload
+        then fails fast in :meth:`_normalize_metadata` with a clear error). It
+        is not ``None``, because ``None`` is the no-layout configuration and a
+        reload would accept it as one. In Python mode the frame passes through
+        unchanged.
 
         Args:
             value: The stored ``metadata`` value (a frame or a path str).
@@ -430,13 +530,14 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
                 or ``"python"``.
 
         Returns:
-            The path string when ``metadata`` is a path; otherwise the
-            frame in Python mode, or ``None`` in JSON mode.
+            ``None`` when ``metadata`` is unset; the path string when it is a
+            path; otherwise the frame in Python mode, or the in-memory
+            placeholder in JSON mode.
         """
-        if isinstance(value, str):
+        if value is None or isinstance(value, str):
             return value
         if info.mode == "json":
-            return None
+            return IN_MEMORY_PARAM
         return value
 
     def model_post_init(self, __context: Any) -> None:
@@ -446,6 +547,10 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         ``self.metadata`` (a frame or a path) into the working frame on the
         private ``_metadata`` slot, verifies every ``groupby`` column is
         present, and caches the per-key expected colony counts.
+
+        With ``metadata`` unset there is nothing to resolve here: the
+        expectation comes from the frame :meth:`analyze` is handed, which does
+        not exist yet. The equivalent guards run there instead.
 
         Args:
             __context: Pydantic post-init context (unused).
@@ -459,6 +564,10 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
                 resolved metadata frame.
         """
         super().model_post_init(__context)
+        if self.metadata is None:
+            self._metadata = pd.DataFrame()
+            self._expected_counts = pd.Series(dtype="int64")
+            return
         self._metadata = self._resolve_metadata(self.metadata)
         missing = [
             col for col in self.groupby if col not in self._metadata.columns
@@ -613,21 +722,83 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         row = group.iloc[0]
         return tuple(row[col] for col in self.groupby)
 
+    def _column_references(self) -> list[str]:
+        """Every measurement column this check addresses by name.
+
+        The join normalizer only resolves a bare layout-style spelling when it
+        supplies one of the check's configured keys, so the position columns
+        have to be in that set in derive mode. With a layout supplied the set
+        is ``groupby`` exactly, as it always was.
+        """
+        references = list(self.groupby)
+        if self.metadata is None:
+            references.extend(self.position_by or DEFAULT_POSITION_BY)
+        return references
+
+    def _require_expected_positions(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Return the frame's expected colony positions, or refuse.
+
+        A blank position (``ValueError``) and a missing position column
+        (``KeyError``) propagate from the shared helper with their own
+        messages. A frame with no metadata-only flag column — not a CLI left
+        join — comes back as ``None`` and becomes the refusal below, because a
+        frame with no phantoms would make expected equal detected and pass
+        every group silently.
+
+        Args:
+            frame: The normalized measurement frame being analyzed.
+
+        Returns:
+            One row per distinct ``position_by`` tuple.
+
+        Raises:
+            ValueError: If the frame cannot supply expected positions.
+        """
+        positions = expected_positions(frame, self.position_by)
+        if positions is None:
+            raise ValueError(
+                f"{type(self).__name__} cannot derive expected colony "
+                "positions from this frame: it carries no "
+                f"{str(METADATA_MATCH.METADATA_ONLY)!r} column, so it is not "
+                "a metadata left join, every expected position would be one "
+                "that was found, and every group would pass. Pass "
+                "`metadata=` a layout frame or .csv/.parquet path, or run "
+                "through the CLI with per-position `--metadata`."
+            )
+        return positions
+
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Reset :attr:`unmatched_groups` and run the base ``analyze``.
+        """Reset state, resolve the expectation, and run the base ``analyze``.
 
         Re-running the check on a different measurement frame must not
         carry over unmatched groups from a previous run, so the list is
         cleared before delegating to the base class.
+
+        With ``metadata`` unset the per-key expected counts are computed here
+        rather than in ``model_post_init``: they are a property of the frame,
+        not of the configuration, so they cannot exist before there is a
+        frame.
 
         Args:
             data: Measurement frame to evaluate.
 
         Returns:
             The augmented frame from :meth:`QualityCheck.analyze`.
+
+        Raises:
+            ValueError: If ``metadata`` is unset and the frame cannot supply
+                expected positions.
+            KeyError: If ``metadata`` is unset and a ``position_by`` column
+                is absent from the frame.
         """
         self.unmatched_groups = []
-        return super().analyze(_normalize_measurement_join_columns(data, self.groupby))
+        frame = _normalize_measurement_join_columns(data, self._column_references())
+        if self.metadata is None:
+            positions = self._require_expected_positions(frame)
+            self._expected_counts = positions.groupby(
+                self.groupby, dropna=False
+            ).size()
+        return super().analyze(frame)
 
     def inspect(
         self,
@@ -669,7 +840,7 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         expected_col = str(QUALITY_COUNT.EXPECTED)
 
         per_group = (
-            df.groupby(self.groupby, dropna=False)
+            df.groupby(self.groupby, dropna=False, observed=True)
             .agg({
                 delta_col: "first",
                 detected_col: "first",
