@@ -699,3 +699,58 @@ class TestMeasureSymmetricZones:
         assert all(
                 getattr(t, "visible", True) != "legendonly" for t in for_save_fig.data
         ), "inspect(for_save=True) must reveal every legend-only trace"
+
+
+# ---------------------------------------------------------------------------
+# find_symmetric_radius at the ends of the profile.
+# ``np.convolve(mode="same")`` zero-pads; dividing the windowed sum by the full
+# window width averaged the first and last annuli with coverage that was never
+# measured. Any coverage below 1 in the first annulus past the core then failed
+# the threshold and the radius collapsed to ``core_radius`` (0 with no core).
+# ---------------------------------------------------------------------------
+
+
+class TestFindSymmetricRadiusEdges:
+    RADII = np.arange(5.0, 105.0, 5.0)  # 20 annuli out to 100 px
+    THRESHOLD = 4 / 6
+
+    def _radius(self, coverage, core_radius, window=3):
+        from phenotypic.measure._zone_segmentation import find_symmetric_radius
+
+        return find_symmetric_radius(
+            self.RADII, np.asarray(coverage, dtype=np.float64), core_radius, self.THRESHOLD, window
+        )
+
+    def test_partial_first_annulus_past_core_does_not_collapse_to_core(self):
+        coverage = np.ones_like(self.RADII)
+        coverage[np.flatnonzero(self.RADII > 20.0)[0]] = 5 / 6
+        assert self._radius(coverage, core_radius=20.0) == 100.0
+
+    def test_partial_first_annulus_without_core_does_not_return_zero(self):
+        coverage = np.ones_like(self.RADII)
+        coverage[0] = 5 / 6
+        assert self._radius(coverage, core_radius=0.0) == 100.0
+
+    def test_partial_last_annulus_keeps_the_outer_radius(self):
+        coverage = np.ones_like(self.RADII)
+        coverage[-1] = 5 / 6
+        assert self._radius(coverage, core_radius=0.0) == 100.0
+
+    def test_genuine_asymmetry_is_still_detected(self):
+        # Coverage falls to 2/6 from 60 px outward: the last passing annulus is
+        # the one whose window first includes no failing annulus.
+        coverage = np.where(self.RADII < 60.0, 1.0, 2 / 6)
+        radius = self._radius(coverage, core_radius=0.0)
+        assert 45.0 <= radius < 60.0
+
+    def test_asymmetric_from_the_first_annulus_returns_core(self):
+        coverage = np.full_like(self.RADII, 2 / 6)
+        assert self._radius(coverage, core_radius=10.0) == 10.0
+
+    def test_interior_average_is_unchanged(self):
+        # Away from the ends every window covers ``window`` real annuli, so the
+        # threshold sees the same moving average as before the fix.
+        coverage = np.ones_like(self.RADII)
+        coverage[8:11] = [1.0, 0.25, 1.0]  # interior window means 0.75: pass
+        coverage[14:17] = [0.4, 0.4, 0.4]  # window at 14: (1 + 0.4 + 0.4) / 3 = 0.6 fails
+        assert self._radius(coverage, core_radius=0.0) == float(self.RADII[13])

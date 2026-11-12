@@ -927,7 +927,9 @@ def find_symmetric_radius(
     are treated as populated with value 0. Falls back to the outer
     radius of the last annulus when no crossing is found, and falls
     back to the unsmoothed profile when ``smoothing_window`` exceeds
-    the annulus count past the core.
+    the annulus count past the core. Near the ends of the profile the
+    moving average covers only the annuli that exist, so the first and
+    last annuli past the core are not diluted by padding.
 
     Args:
         annulus_radii: Centre radii of the equal-area annuli.
@@ -961,9 +963,17 @@ def find_symmetric_radius(
     if smoothing_window > populated_count:
         smoothed = values
     else:
+        # Moving average over the annuli that exist. ``np.convolve(mode="same")``
+        # pads both ends with zeros, so dividing by ``w`` would average the first
+        # and last annuli with coverage that was never measured: the first annulus
+        # past the core then fails the threshold whenever its coverage is below
+        # 1, collapsing the radius to ``core_radius`` (0 when PELT finds no core).
+        # Dividing by the number of real annuli under the window removes that.
         w = max(1, int(smoothing_window))
-        kernel = np.ones(w, dtype=np.float64) / float(w)
-        smoothed = np.convolve(values, kernel, mode="same")
+        kernel = np.ones(w, dtype=np.float64)
+        total = np.convolve(values, kernel, mode="same")
+        count = np.convolve(np.ones_like(values), kernel, mode="same")
+        smoothed = total / count
 
     crossings = np.where(smoothed < threshold)[0]
     if crossings.size == 0:
