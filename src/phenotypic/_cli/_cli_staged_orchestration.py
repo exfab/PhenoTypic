@@ -16,7 +16,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -707,7 +707,11 @@ class LiveSlurmJobs:
         return bool(self.live or self.unverified or self.unresolved)
 
 
-def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
+def live_slurm_job_ids(
+    output_dir: Path,
+    *,
+    is_active: Callable[[str], bool | None] | None = None,
+) -> LiveSlurmJobs:
     """Return the jobs that may make *output_dir* owned by a live SLURM run.
 
     A closed lifecycle fence answers empty without asking the scheduler.
@@ -723,7 +727,12 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     submitter died after ``sbatch``); only then is one ``squeue``-only
     comment query made. A match is ``live``; a query that cannot run leaves
     the token ``unresolved``. Unknown answers are never read as inactive.
+
+    ``is_active`` replaces :func:`scheduler_job_is_active` for the per-job
+    question; ``phenotypic-wait`` passes a memo that remembers an answer of
+    ``False``, which is final.
     """
+    query = scheduler_job_is_active if is_active is None else is_active
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and lifecycle.get("active") is False:
         return LiveSlurmJobs()
@@ -734,7 +743,7 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     live: set[str] = set()
     unverified: set[str] = set()
     for job_id in _unterminated_ledger_job_ids(rows):
-        state = scheduler_job_is_active(job_id)
+        state = query(job_id)
         if state is None:
             unverified.add(job_id)
         elif state:
