@@ -72,7 +72,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </style>
 <div class="wrap">
 <header class="top"><div class="eyebrow">Design spec · PhenoTypic + AutoConvertRaw-GC · 2026-11-12</div><h1>Design: DVC-compatible outputs, CSV → TSV, and DINOv2 embeddings</h1><div class="meta"><p><strong>Status:</strong> approved · 2026-11-12</p>
-<p><strong>Repos:</strong> PhenoTypic (<code>src/</code> identical to <code>main</code> @ <code>251e364fa</code>), AutoConvertRaw-GC @ <code>33046cb</code></p>
+<p><strong>Repos:</strong> PhenoTypic <code>main</code> @ <code>3248a9173</code>, AutoConvertRaw-GC @ <code>33046cb</code></p>
 <p><strong>Background:</strong> how measurements flow through the CLI today,</p>
 <p><code>docs/superpowers/artifacts/2026-11-12-dino-embeddings/measurement-data-flow.html</code>.</p>
 </div></header>
@@ -102,7 +102,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <h3 id="21-goals">2.1 Goals</h3>
 <ul>
 <li><p><strong>G1</strong> <code>dvc exp run -S &lt;pipeline file&gt;:&lt;key&gt;=&lt;value&gt;</code> edits a PhenoTypic pipeline file and the result still loads in PhenoTypic.</p></li>
-<li><p><strong>G2</strong> A <code>dvc.yaml</code> stage that runs <code>python -m phenotypic</code> (local, or SLURM with <code>--wait</code>) reproduces without DVC deleting resumable state, figures or embeddings.</p></li>
+<li><p><strong>G2</strong> A <code>dvc.yaml</code> stage that runs <code>python -m phenotypic</code>, locally or on SLURM through the run waiter (C3), reproduces without DVC deleting resumable state, figures or embeddings.</p></li>
 <li><p><strong>G3</strong> Every generated tabular text file is TSV. Parquet companions are unchanged.</p></li>
 <li><p><strong>G4</strong> A byte-stable <code>deliverables/metrics.json</code> run summary that <code>dvc metrics show/diff</code> and an orchestrator can both read (C4).</p></li>
 <li><p><strong>G8</strong> An orchestrator can act on a run without parsing logs:</p>
@@ -253,8 +253,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td><code>_cli/CLAUDE.md</code>, run preflight</td>
 </tr>
 <tr class="odd">
-<td>SLURM runs without <code>--wait</code> return at submission; the finalizer publishes later.</td>
-<td><code>_cli/CLAUDE.md</code> "SLURM chaining"</td>
+<td>Every SLURM run returns at submission, and its dependent finalizer is the sole publisher. 0.21.0 removed <code>--wait</code> (2026-11-05, commit <code>281430b2e</code>).</td>
+<td><code>_cli/CLAUDE.md</code> "SLURM chaining", <code>phenotypicCLI.py</code> main flow</td>
 </tr>
 </tbody>
 </table></div>
@@ -378,7 +378,18 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p>Add a regression test that no PhenoTypic path writes anything at the output root outside these three. Metrics and plots are declared in <code>dvc.yaml</code>'s <strong>top-level</strong> <code>metrics:</code>/<code>plots:</code> sections. Those may point inside an out (<code>deliverables/metrics.json</code>), so they create no overlapping outputs (DVC docs, <code>start/data-pipelines/metrics-parameters-plots.md</code>).</p></li>
 <li><p><strong>C2 <code>persist: true</code> is required, not optional.</strong> Continuation, figure runs and embeddings all depend on outputs surviving a re-run. <code>--overwrite</code> remains the only wipe.</p></li>
-<li><p><strong>C3 SLURM.</strong> A DVC stage must pass <code>--wait</code>. Without it the command returns before the finalizer publishes, and DVC hashes an incomplete tree. Document this. <em>(Optional for the builder: if DVC sets a documented environment variable during <code>repro</code>, warn when <code>--slurm</code> is used without <code>--wait</code>. Don't add the check without that documentation.)</em></p></li>
+<li><p><strong>C3 SLURM: a read-only run waiter.</strong> A SLURM run returns at submission, but DVC hashes a stage's outs the moment its command exits. So a SLURM-backed stage runs two commands:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmd</span><span class="kw">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> python -m phenotypic … --slurm …</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> python -m phenotypic.sdk_.wait_for_run --output &lt;out&gt;</span></span></code></pre></div>
+<p><code>wait_for_run</code> blocks until the run is finished, then exits with the C10 code that the run would have returned locally:</p>
+<ul>
+<li>It polls <code>resolve_run_state(output_dir, depth="shallow")</code> and the run's SLURM liveness (<code>live_slurm_job_ids</code>) on an interval. The default is 60 s, set with <code>--poll-seconds</code>.</li>
+<li>It finishes when the run proof is published, or when no ledgered job is live and no proof exists. That second case is a failed run, and the code says so.</li>
+<li>It is a <strong>reader only</strong>. It never aggregates, publishes, submits or writes, so the double publication the old <code>--wait</code> had cannot recur. It lives in <code>sdk_</code> because readers do.</li>
+<li><code>--timeout-seconds</code> (default: none) gives up with its own exit code, without cancelling anything.</li>
+<li>The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU), because head nodes kill long-running processes. The how-to page (C9) gives the <code>sbatch</code> line.</li>
+</ul></li>
 <li><p><strong>C4 Metrics.</strong> New <code>deliverables/metrics.json</code>, written by <code>finalize_run</code> (the one FINAL writer):</p>
 <ul>
 <li><strong>Content:</strong> <code>schema_version</code>, <code>phenotypic_version</code>, <code>pipeline_sha256</code>; <code>images.{accepted, succeeded, failed}</code>; <code>objects.measured</code>; <code>metadata.phantoms</code>; and, when embeddings ran, per entry id <code>{rows, stale_skipped}</code>.</li>
@@ -398,7 +409,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>C8 Results size.</strong> Whether <code>results/</code> should be <code>cache: true</code> or <code>false</code> is decided by measurement, not reasoning. Time <code>dvc status</code> and <code>dvc commit</code> on the migrated maresca copy (<code>2026-08-11-ome-zarr</code>) as a Slurm job, one config per fresh node, and record the numbers in the how-to page.</p></li>
 <li><p><strong>C9 How-to page</strong> <code>docs/source/how_to/pages/dvc.md</code>. Contents:</p>
 <ul>
-<li>a local <code>dvc.yaml</code>, a SLURM one (<code>--wait</code>), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
+<li>a local <code>dvc.yaml</code>, a SLURM one (submit, then <code>wait_for_run</code>), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
 <li>the three outs with <code>persist</code>, and the cache-type rule (C6);</li>
 <li><code>dvc gc</code> for the cache growth that tracking <code>.phenotypic/</code> causes;</li>
 <li>params addressing with an example <code>dvc exp run -S</code>;</li>
@@ -410,7 +421,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>0</strong>: complete, no terminal failures;</li>
 <li>a distinct non-zero: <strong>complete with terminal image failures</strong>;</li>
 <li><strong>1</strong>: refused, or a usage/config error (today's behaviour);</li>
-<li>a distinct code: <strong>submitted to SLURM without <code>--wait</code></strong>, so nothing is finished.</li>
+<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>wait_for_run</code> (C3) returns one of the codes above once the run ends, plus its own code for <code>--timeout-seconds</code>.</li>
 </ul>
 <p>The builder confirms what a run with terminal failures returns today; I found no distinct code for it. The values are documented and pinned by tests.</p></li>
 <li><p><strong>C11 Byte-stable deliverables</strong>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>
@@ -462,19 +473,19 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>The builder verifies how a staged run (Stages 1 and 3) and <code>--mode measure</code> map onto journal applications before relying on <code>&lt;seq&gt;</code>.</li>
 </ul></li>
 <li><p><strong>D3 Descriptor.</strong> <code>attributes.phenotypic.tables</code> moves to <code>schema_version: 2</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span> <span class="dt">&quot;schema_version&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;runs&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;2-a71e09c2b4f5&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;sequence&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;measurements&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…today&#39;s v1 measurement descriptor: path, measurement_columns, target…&quot;</span> <span class="fu">},</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span>     <span class="fu">{</span> <span class="dt">&quot;…today&#39;s metadata descriptor…&quot;</span> <span class="fu">},</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata_table&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;snapshot_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span><span class="fu">,</span> <span class="dt">&quot;join_keys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;…&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;join_kind&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span> <span class="fu">},</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;embeddings&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/crops&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/grid&quot;</span><span class="fu">:</span>  <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">},</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;upstream&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;1-3f9c2a1b7d04&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;input path relative to --input&gt;&quot;</span><span class="fu">,</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>                        <span class="dt">&quot;root_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span> <span class="dt">&quot;schema_version&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;runs&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;2-a71e09c2b4f5&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;sequence&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;measurements&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…today&#39;s v1 measurement descriptor: path, measurement_columns, target…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span>     <span class="fu">{</span> <span class="dt">&quot;…today&#39;s metadata descriptor…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata_table&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;snapshot_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span><span class="fu">,</span> <span class="dt">&quot;join_keys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;…&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;join_kind&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;embeddings&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/crops&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/grid&quot;</span><span class="fu">:</span>  <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">},</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;upstream&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;1-3f9c2a1b7d04&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;input path relative to --input&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>                        <span class="dt">&quot;root_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
 <p>The root-level <code>metadata_table</code> block moves into its run. Each embedding entry has these fields:</p>
 <div class="scroll"><table>
 <thead>
@@ -758,7 +769,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>the C8 measurement;</li>
 <li>how staged and measure runs map to journal applications (D2);</li>
 <li>whether ngio discovers nested tables (D4);</li>
-<li>the DVC env-var check (C3, optional);</li>
+<li>the exact numeric values of the C10 codes, chosen to avoid the codes Click and Python already use (1, 2);</li>
 <li>today's exit code for a run with terminal failures (C10);</li>
 <li>liveness files restored by a checkout (C13);</li>
 <li>DVC's missing-out behaviour (C14);</li>

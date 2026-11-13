@@ -1,7 +1,7 @@
 # Design: DVC-compatible outputs, CSV → TSV, and DINOv2 embeddings
 
 **Status:** approved · 2026-11-12
-**Repos:** PhenoTypic (`src/` identical to `main` @ `251e364fa`), AutoConvertRaw-GC @ `33046cb`
+**Repos:** PhenoTypic `main` @ `3248a9173`, AutoConvertRaw-GC @ `33046cb`
 **Background:** how measurements flow through the CLI today,
 `docs/superpowers/artifacts/2026-11-12-dino-embeddings/measurement-data-flow.html`.
 
@@ -44,8 +44,9 @@ DVC versioning of the raw image corpus is out of scope (§2.2).
 
 - **G1** `dvc exp run -S <pipeline file>:<key>=<value>` edits a PhenoTypic pipeline
   file and the result still loads in PhenoTypic.
-- **G2** A `dvc.yaml` stage that runs `python -m phenotypic` (local, or SLURM with
-  `--wait`) reproduces without DVC deleting resumable state, figures or embeddings.
+- **G2** A `dvc.yaml` stage that runs `python -m phenotypic`, locally or on SLURM
+  through the run waiter (C3), reproduces without DVC deleting resumable state,
+  figures or embeddings.
 - **G3** Every generated tabular text file is TSV. Parquet companions are unchanged.
 - **G4** A byte-stable `deliverables/metrics.json` run summary that
   `dvc metrics show/diff` and an orchestrator can both read (C4).
@@ -133,7 +134,7 @@ DVC source (`iterative/dvc@main`).
 | A `GpuDetector` in any `meas` slot is refused. Non-`GpuDetector` measurers are not. | `_cli_validation.py:324-367` |
 | DINO loading and patch extraction already exist: `load_dino_backbone` (:193), `hf_dino_id` (:172), `extract_patch_features` (:286), plus the license gate. | `detect/nn/_helper/_dino_support.py`, `_checkpoint_manager.py` |
 | Process mode executes only `ops` (`MODE_SLOTS`). | `_cli/CLAUDE.md`, run preflight |
-| SLURM runs without `--wait` return at submission; the finalizer publishes later. | `_cli/CLAUDE.md` "SLURM chaining" |
+| Every SLURM run returns at submission, and its dependent finalizer is the sole publisher. 0.21.0 removed `--wait` (2026-11-05, commit `281430b2e`). | `_cli/CLAUDE.md` "SLURM chaining", `phenotypicCLI.py` main flow |
 
 ### 3.3 AutoConvertRaw-GC
 
@@ -251,11 +252,32 @@ The five parts below are independent enough to plan and ship in the order of §5
 - **C2 `persist: true` is required, not optional.** Continuation, figure runs and
   embeddings all depend on outputs surviving a re-run. `--overwrite` remains the
   only wipe.
-- **C3 SLURM.** A DVC stage must pass `--wait`. Without it the command returns
-  before the finalizer publishes, and DVC hashes an incomplete tree. Document this.
-  *(Optional for the builder: if DVC sets a documented environment variable during
-  `repro`, warn when `--slurm` is used without `--wait`. Don't add the check
-  without that documentation.)*
+- **C3 SLURM: a read-only run waiter.** A SLURM run returns at submission, but
+  DVC hashes a stage's outs the moment its command exits. So a SLURM-backed
+  stage runs two commands:
+
+  ```yaml
+  cmd:
+    - python -m phenotypic … --slurm …
+    - python -m phenotypic.sdk_.wait_for_run --output <out>
+  ```
+
+  `wait_for_run` blocks until the run is finished, then exits with the C10 code
+  that the run would have returned locally:
+  - It polls `resolve_run_state(output_dir, depth="shallow")` and the run's SLURM
+    liveness (`live_slurm_job_ids`) on an interval. The default is 60 s, set with
+    `--poll-seconds`.
+  - It finishes when the run proof is published, or when no ledgered job is live
+    and no proof exists. That second case is a failed run, and the code says so.
+  - It is a **reader only**. It never aggregates, publishes, submits or
+    writes, so the double publication the old `--wait` had cannot recur. It
+    lives in `sdk_` because readers do.
+  - `--timeout-seconds` (default: none) gives up with its own exit code, without
+    cancelling anything.
+  - The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU),
+    because head nodes kill long-running processes. The how-to page (C9) gives
+    the `sbatch` line.
+
 - **C4 Metrics.** New `deliverables/metrics.json`, written by `finalize_run` (the
   one FINAL writer):
   - **Content:** `schema_version`, `phenotypic_version`, `pipeline_sha256`;
@@ -292,7 +314,8 @@ The five parts below are independent enough to plan and ship in the order of §5
   migrated maresca copy (`2026-08-11-ome-zarr`) as a Slurm job, one config per
   fresh node, and record the numbers in the how-to page.
 - **C9 How-to page** `docs/source/how_to/pages/dvc.md`. Contents:
-  - a local `dvc.yaml`, a SLURM one (`--wait`), and a process-mode one, since
+  - a local `dvc.yaml`, a SLURM one (submit, then `wait_for_run`), and a
+    process-mode one, since
     process mode creates no `deliverables/` and its outs list must say so;
   - the three outs with `persist`, and the cache-type rule (C6);
   - `dvc gc` for the cache growth that tracking `.phenotypic/` causes;
@@ -303,8 +326,9 @@ The five parts below are independent enough to plan and ship in the order of §5
   - **0**: complete, no terminal failures;
   - a distinct non-zero: **complete with terminal image failures**;
   - **1**: refused, or a usage/config error (today's behaviour);
-  - a distinct code: **submitted to SLURM without `--wait`**, so nothing is
-    finished.
+  - a distinct code: **submitted to SLURM**, so nothing is finished yet. Every
+    SLURM run returns this at submission. `wait_for_run` (C3) returns one of the
+    codes above once the run ends, plus its own code for `--timeout-seconds`.
 
   The builder confirms what a run with terminal failures returns today; I found
   no distinct code for it. The values are documented and pinned by tests.
@@ -608,7 +632,7 @@ never only PhenoTypic's own reopen), per the `working-with-ome-zarr` skill.
 - the C8 measurement;
 - how staged and measure runs map to journal applications (D2);
 - whether ngio discovers nested tables (D4);
-- the DVC env-var check (C3, optional);
+- the exact numeric values of the C10 codes, chosen to avoid the codes Click and Python already use (1, 2);
 - today's exit code for a run with terminal failures (C10);
 - liveness files restored by a checkout (C13);
 - DVC's missing-out behaviour (C14);
