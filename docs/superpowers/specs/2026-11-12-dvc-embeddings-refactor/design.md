@@ -633,6 +633,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   |---|---|---|
   | `size` | `DinoSize = "base"` | first field; `small`, `base` or `large` |
   | `version` | `DinoVersion = 2` | the DINO version; the class name already says DINO |
+  | `revision` | `None` (a `str` when pinned) | the weights' Hugging Face commit (any ref the hub accepts). `None` loads the latest. The pin is in the pipeline file, so changing it changes the pipeline hash. Either way the entry records the commit actually loaded (D3) |
   | `regions` | `"objects"` | |
   | `grid` | `ManualGridFinder` (an `OperationField`) | required when `regions="grid"`, refused otherwise; the rig's cell edges in pixels (E3a) |
   | `pooling` | `"crop_cls"` | `crop_cls`, `crop_mean` or `masked_dense`; a grid cell is cropped from its rectangle exactly as an object is from its bbox |
@@ -714,7 +715,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     the embedding deliverables separately. The vector column is named
     `embedding`, and `schema.json` lists it under each embedding table (C12).
 - **E6 AutoConvertRaw-GC rollout** (after the new wheel is built):
-  - add `MeasureDinoEmbedding(size="base", regions="grid",
+  - add `MeasureDinoEmbedding(size="base", revision=<pinned commit>, regions="grid",
     grid=ManualGridFinder(...))` to the pipeline's `meas`, with rig1's edges
     supplied by the user;
   - vendor the new wheel;

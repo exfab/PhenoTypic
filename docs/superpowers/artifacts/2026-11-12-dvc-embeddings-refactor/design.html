@@ -674,46 +674,51 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>the DINO version; the class name already says DINO</td>
 </tr>
 <tr class="odd">
+<td><code>revision</code></td>
+<td><code>None</code> (a <code>str</code> when pinned)</td>
+<td>the weights' Hugging Face commit (any ref the hub accepts). <code>None</code> loads the latest. The pin is in the pipeline file, so changing it changes the pipeline hash. Either way the entry records the commit actually loaded (D3)</td>
+</tr>
+<tr class="even">
 <td><code>regions</code></td>
 <td><code>"objects"</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>grid</code></td>
 <td><code>ManualGridFinder</code> (an <code>OperationField</code>)</td>
 <td>required when <code>regions="grid"</code>, refused otherwise; the rig's cell edges in pixels (E3a)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>pooling</code></td>
 <td><code>"crop_cls"</code></td>
 <td><code>crop_cls</code>, <code>crop_mean</code> or <code>masked_dense</code>; a grid cell is cropped from its rectangle exactly as an object is from its bbox</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>crop_px</code></td>
 <td><code>224</code></td>
 <td>validated as a multiple of the loaded patch size</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>crop_pad_frac</code></td>
 <td><code>0.25</code></td>
 <td>objects only</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>mask_background</code></td>
 <td><code>False</code></td>
 <td>objects only</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>dtype</code></td>
 <td><code>"float16"</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>batch_size</code></td>
 <td><code>64</code></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>device</code></td>
 <td><code>"auto"</code></td>
 <td></td>
@@ -765,7 +770,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
-<li>add <code>MeasureDinoEmbedding(size="base", regions="grid", grid=ManualGridFinder(...))</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
+<li>add <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid", grid=ManualGridFinder(...))</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
 <li>vendor the new wheel;</li>
 <li>install the <code>foundation</code> extra in the <code>Dockerfile</code> with CPU torch, bake in the pinned weights, and set <code>HF_HUB_OFFLINE=1</code>;</li>
 <li>make <code>verify_store</code> check that the run folder's grid entry exists (an <code>expected_embeddings</code> field in <code>run.json</code>, written by <code>plan.py</code>), the way figures are checked;</li>

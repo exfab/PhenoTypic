@@ -68,7 +68,7 @@ render tool is `~/.claude/tools/render_md_artifact.py`.
   master, mirror, splits or any TSV.
 - `PROCESS_LAYER_SEMANTICS_REVISION` goes from 4 to 5 (`_cli_failure_tracker.py:214`).
 - `MeasureDinoEmbedding` fields, in order, with defaults: `size="base"`,
-  `version=2`, `regions="objects"`, `grid=None`, `pooling="crop_cls"`,
+  `version=2`, `revision=None`, `regions="objects"`, `grid=None`, `pooling="crop_cls"`,
   `crop_px=224`, `crop_pad_frac=0.25`, `mask_background=False`,
   `dtype="float16"`, `batch_size=64`, `device="auto"`.
 - `MeasurementInfo` members get `label`/`desc` only, never `bio_desc`.

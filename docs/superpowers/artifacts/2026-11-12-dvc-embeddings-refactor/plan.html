@@ -153,7 +153,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><p><code>embedding</code> columns are Arrow <code>FixedSizeList&lt;float16&gt;[D]</code>. They are never in master, mirror, splits or any TSV.</p></li>
 <li><p><code>PROCESS_LAYER_SEMANTICS_REVISION</code> goes from 4 to 5 (<code>_cli_failure_tracker.py:214</code>).</p></li>
-<li><p><code>MeasureDinoEmbedding</code> fields, in order, with defaults: <code>size="base"</code>, <code>version=2</code>, <code>regions="objects"</code>, <code>grid=None</code>, <code>pooling="crop_cls"</code>, <code>crop_px=224</code>, <code>crop_pad_frac=0.25</code>, <code>mask_background=False</code>, <code>dtype="float16"</code>, <code>batch_size=64</code>, <code>device="auto"</code>.</p></li>
+<li><p><code>MeasureDinoEmbedding</code> fields, in order, with defaults: <code>size="base"</code>, <code>version=2</code>, <code>revision=None</code>, <code>regions="objects"</code>, <code>grid=None</code>, <code>pooling="crop_cls"</code>, <code>crop_px=224</code>, <code>crop_pad_frac=0.25</code>, <code>mask_background=False</code>, <code>dtype="float16"</code>, <code>batch_size=64</code>, <code>device="auto"</code>.</p></li>
 <li><p><code>MeasurementInfo</code> members get <code>label</code>/<code>desc</code> only, never <code>bio_desc</code>.</p></li>
 <li><p>Heavy imports (torch, transformers) stay inside functions. The startup-import guards in <code>tests/unit/ci/</code> must stay green.</p></li>
 <li><p><code>sdk_</code> never imports <code>_cli</code>. <code>tests/unit/sdk_/test_run_state_layering.py</code> enforces this.</p></li>
@@ -2204,7 +2204,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>add a batched forward helper, <code>embed_crops(model, processor, crops: np.ndarray, *, pooling: Literal["crop_cls", "crop_mean"], device: str, batch_size: int) -&gt; np.ndarray</code>, for <code>(N, crop_px, crop_px, 3)</code> uint8 crops. It normalizes with the processor's mean and std without resizing, runs batches under <code>torch.inference_mode()</code>, and takes CLS or the mean of the patch tokens (<code>reshape_patch_tokens</code>, :248, strips CLS and register tokens). <code>extract_patch_features</code> (:286) stays the dense single-image path for <code>masked_dense</code>.</li>
 </ul></li>
 <li>Create: <code>src/phenotypic/schema/_measure/_dino_embedding.py</code>. The <code>DINO_EMBEDDING</code> enum has one member, <code>EMBEDDING</code>, with <code>label</code>/<code>desc</code> only. Export it from <code>phenotypic.schema</code>.</li>
-<li>Create (helpers), in <code>tests/_tiny_run.py</code>: fixture <code>stub_backbone</code>. It monkeypatches <code>load_dino_backbone</code> in the measurer's module to return a tiny module with <code>config.patch_size=14</code>, <code>config.hidden_size=8</code>, <code>config._commit_hash="0" * 40</code> and deterministic tokens; counts calls in <code>load_calls</code>; and calls the backbone cache's <code>cache_clear()</code> before and after. No download, no GPU.</li>
+<li>Create (helpers), in <code>tests/_tiny_run.py</code>: fixture <code>stub_backbone</code>. It monkeypatches <code>load_dino_backbone</code> in the measurer's module to return a tiny module with <code>config.patch_size=14</code>, <code>config.hidden_size=8</code>, <code>config._commit_hash="0" * 40</code> and deterministic tokens; records each call's keyword arguments in the list <code>load_calls</code>; and calls the backbone cache's <code>cache_clear()</code> before and after. No download, no GPU.</li>
 <li>Test: <code>tests/unit/measure/test_measure_dino_embedding.py</code> (new). The tune annotation gate is <code>tests/unit/tune/test_annotation_coverage.py</code>.</li>
 </ul>
 <p><strong>Interfaces:</strong></p>
@@ -2220,6 +2220,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ol type="1">
 <li><code>size: DinoSize = "base"</code></li>
 <li><code>version: DinoVersion = 2</code></li>
+<li><code>revision: str | None = None</code>, the weights' Hugging Face commit; <code>None</code> loads the hub's latest</li>
 <li><code>regions: Literal["objects", "grid"] = "objects"</code></li>
 <li><code>grid: ManualGridFinder | None = None</code> (an <code>OperationField</code>)</li>
 <li><code>pooling: Literal["crop_cls", "crop_mean", "masked_dense"] = "crop_cls"</code></li>
@@ -2240,13 +2241,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>Model identity:</p>
 <ul>
 <li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, e.g. <code>dinov2-vitb14</code>.</li>
-<li>The backbone revision comes from <code>PHENOTYPIC_DINO_REVISION</code> when set, else the hub's default. The entry's <code>model.revision</code> is <code>resolved_revision(model)</code>, the commit actually loaded.</li>
+<li>The measurer passes its <code>revision</code> field to <code>load_dino_backbone</code>. The entry's <code>model.revision</code> is <code>resolved_revision(model)</code>, the commit actually loaded, whether or not a pin was given.</li>
 <li>The module-level backbone cache is a <code>functools.lru_cache</code> keyed by <code>(hf_id, revision, device)</code>.</li>
 <li>For <code>version=3</code>, the measurer calls <code>require_license_acceptance</code> with the DINOv3 checkpoint manager's model name and license constants, with <code>interactive=False</code>, <strong>before</strong> loading. The gate inside <code>load_dino_backbone</code> (:227-234) stays.</li>
 </ul>
 <p>Tune annotations:</p>
 <ul>
-<li><code>TuneSpec(tunable=False)</code> on <code>size</code>, <code>version</code>, <code>regions</code>, <code>grid</code>, <code>dtype</code>, <code>batch_size</code> and <code>device</code>;</li>
+<li><code>TuneSpec(tunable=False)</code> on <code>size</code>, <code>version</code>, <code>revision</code>, <code>regions</code>, <code>grid</code>, <code>dtype</code>, <code>batch_size</code> and <code>device</code>;</li>
 <li><code>crop_px</code> over the choices <code>112, 224, 336, 448</code>, the multiples of both 14 and 16 in range, so every value is valid for DINOv2 and DINOv3;</li>
 <li><code>crop_pad_frac</code> over 0.0–1.0.</li>
 </ul></li>
@@ -2256,48 +2257,52 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 1: Write the failing tests</strong></li>
 </ul>
 <div class="sourceCode" id="d5-cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="d5-cb3-1"><a href="#d5-cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_field_order_size_first():</span>
-<span id="d5-cb3-2"><a href="#d5-cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">list</span>(MeasureDinoEmbedding.model_fields)[:<span class="dv">3</span>] <span class="op">==</span> [<span class="st">&quot;size&quot;</span>, <span class="st">&quot;version&quot;</span>, <span class="st">&quot;regions&quot;</span>]</span>
+<span id="d5-cb3-2"><a href="#d5-cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">list</span>(MeasureDinoEmbedding.model_fields)[:<span class="dv">4</span>] <span class="op">==</span> [<span class="st">&quot;size&quot;</span>, <span class="st">&quot;version&quot;</span>, <span class="st">&quot;revision&quot;</span>, <span class="st">&quot;regions&quot;</span>]</span>
 <span id="d5-cb3-3"><a href="#d5-cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-4"><a href="#d5-cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_model_token(stub_backbone):</span>
-<span id="d5-cb3-5"><a href="#d5-cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span><span class="st">&quot;base&quot;</span>).model_token() <span class="op">==</span> <span class="st">&quot;dinov2-vitb14&quot;</span></span>
-<span id="d5-cb3-6"><a href="#d5-cb3-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-7"><a href="#d5-cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_crops_one_row_per_colony(stub_backbone, detected_plate):</span>
-<span id="d5-cb3-8"><a href="#d5-cb3-8" aria-hidden="true" tabindex="-1"></a>    frame <span class="op">=</span> MeasureDinoEmbedding().measure(detected_plate)</span>
-<span id="d5-cb3-9"><a href="#d5-cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">len</span>(frame) <span class="op">==</span> detected_plate.num_objects</span>
-<span id="d5-cb3-10"><a href="#d5-cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> frame[<span class="st">&quot;embedding&quot;</span>].iloc[<span class="dv">0</span>].dtype <span class="op">==</span> np.float16</span>
-<span id="d5-cb3-11"><a href="#d5-cb3-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-12"><a href="#d5-cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_entry_records_the_resolved_revision(stub_backbone, detected_plate):</span>
-<span id="d5-cb3-13"><a href="#d5-cb3-13" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding()<span class="op">;</span> m.measure(detected_plate)</span>
-<span id="d5-cb3-14"><a href="#d5-cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> m.entry_descriptor()[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;revision&quot;</span>] <span class="op">==</span> <span class="st">&quot;0&quot;</span> <span class="op">*</span> <span class="dv">40</span></span>
+<span id="d5-cb3-4"><a href="#d5-cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_revision_pin_reaches_the_loader(stub_backbone, detected_plate):</span>
+<span id="d5-cb3-5"><a href="#d5-cb3-5" aria-hidden="true" tabindex="-1"></a>    MeasureDinoEmbedding(revision<span class="op">=</span><span class="st">&quot;a&quot;</span> <span class="op">*</span> <span class="dv">40</span>).measure(detected_plate)</span>
+<span id="d5-cb3-6"><a href="#d5-cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> stub_backbone.load_calls[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;revision&quot;</span>] <span class="op">==</span> <span class="st">&quot;a&quot;</span> <span class="op">*</span> <span class="dv">40</span></span>
+<span id="d5-cb3-7"><a href="#d5-cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-8"><a href="#d5-cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_model_token(stub_backbone):</span>
+<span id="d5-cb3-9"><a href="#d5-cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span><span class="st">&quot;base&quot;</span>).model_token() <span class="op">==</span> <span class="st">&quot;dinov2-vitb14&quot;</span></span>
+<span id="d5-cb3-10"><a href="#d5-cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-11"><a href="#d5-cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_crops_one_row_per_colony(stub_backbone, detected_plate):</span>
+<span id="d5-cb3-12"><a href="#d5-cb3-12" aria-hidden="true" tabindex="-1"></a>    frame <span class="op">=</span> MeasureDinoEmbedding().measure(detected_plate)</span>
+<span id="d5-cb3-13"><a href="#d5-cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">len</span>(frame) <span class="op">==</span> detected_plate.num_objects</span>
+<span id="d5-cb3-14"><a href="#d5-cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> frame[<span class="st">&quot;embedding&quot;</span>].iloc[<span class="dv">0</span>].dtype <span class="op">==</span> np.float16</span>
 <span id="d5-cb3-15"><a href="#d5-cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-16"><a href="#d5-cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_grid_cell_outside_image_fails_the_image(stub_backbone, plate):</span>
-<span id="d5-cb3-17"><a href="#d5-cb3-17" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding(regions<span class="op">=</span><span class="st">&quot;grid&quot;</span>,</span>
-<span id="d5-cb3-18"><a href="#d5-cb3-18" aria-hidden="true" tabindex="-1"></a>                             grid<span class="op">=</span>ManualGridFinder(row_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">50</span>, plate.shape[<span class="dv">0</span>] <span class="op">+</span> <span class="dv">10</span>], col_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">80</span>]))</span>
-<span id="d5-cb3-19"><a href="#d5-cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OperationFailedError, match<span class="op">=</span><span class="vs">r&quot;cell \(1, 0\).*image is \d+ x \d+&quot;</span>) <span class="im">as</span> excinfo:</span>
-<span id="d5-cb3-20"><a href="#d5-cb3-20" aria-hidden="true" tabindex="-1"></a>        m.measure(plate)</span>
-<span id="d5-cb3-21"><a href="#d5-cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excinfo.value.err_type <span class="kw">is</span> GridCellOutsideImageError</span>
-<span id="d5-cb3-22"><a href="#d5-cb3-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-23"><a href="#d5-cb3-23" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_grid_edges_are_dvc_addressable():</span>
-<span id="d5-cb3-24"><a href="#d5-cb3-24" aria-hidden="true" tabindex="-1"></a>    pipe <span class="op">=</span> ImagePipeline(ops<span class="op">=</span>[], meas<span class="op">=</span>{<span class="st">&quot;emb&quot;</span>: MeasureDinoEmbedding(regions<span class="op">=</span><span class="st">&quot;grid&quot;</span>,</span>
-<span id="d5-cb3-25"><a href="#d5-cb3-25" aria-hidden="true" tabindex="-1"></a>                         grid<span class="op">=</span>ManualGridFinder(row_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">10</span>], col_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">10</span>]))})</span>
-<span id="d5-cb3-26"><a href="#d5-cb3-26" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> json.loads(pipe.to_json())</span>
-<span id="d5-cb3-27"><a href="#d5-cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> data[<span class="st">&quot;meas&quot;</span>][<span class="st">&quot;emb&quot;</span>][<span class="st">&quot;params&quot;</span>][<span class="st">&quot;grid&quot;</span>][<span class="st">&quot;params&quot;</span>][<span class="st">&quot;row_edges&quot;</span>] <span class="op">==</span> [<span class="dv">0</span>, <span class="dv">10</span>]</span>
-<span id="d5-cb3-28"><a href="#d5-cb3-28" aria-hidden="true" tabindex="-1"></a>    <span class="co"># pins the key path the how-to page documents (spec E3a)</span></span>
-<span id="d5-cb3-29"><a href="#d5-cb3-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-30"><a href="#d5-cb3-30" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_backbone_loaded_once_per_process(stub_backbone, detected_plate):</span>
-<span id="d5-cb3-31"><a href="#d5-cb3-31" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding()<span class="op">;</span> m.measure(detected_plate)<span class="op">;</span> m.measure(detected_plate)</span>
-<span id="d5-cb3-32"><a href="#d5-cb3-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> stub_backbone.load_calls <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d5-cb3-16"><a href="#d5-cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_entry_records_the_resolved_revision(stub_backbone, detected_plate):</span>
+<span id="d5-cb3-17"><a href="#d5-cb3-17" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding()<span class="op">;</span> m.measure(detected_plate)</span>
+<span id="d5-cb3-18"><a href="#d5-cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> m.entry_descriptor()[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;revision&quot;</span>] <span class="op">==</span> <span class="st">&quot;0&quot;</span> <span class="op">*</span> <span class="dv">40</span></span>
+<span id="d5-cb3-19"><a href="#d5-cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-20"><a href="#d5-cb3-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_grid_cell_outside_image_fails_the_image(stub_backbone, plate):</span>
+<span id="d5-cb3-21"><a href="#d5-cb3-21" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding(regions<span class="op">=</span><span class="st">&quot;grid&quot;</span>,</span>
+<span id="d5-cb3-22"><a href="#d5-cb3-22" aria-hidden="true" tabindex="-1"></a>                             grid<span class="op">=</span>ManualGridFinder(row_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">50</span>, plate.shape[<span class="dv">0</span>] <span class="op">+</span> <span class="dv">10</span>], col_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">80</span>]))</span>
+<span id="d5-cb3-23"><a href="#d5-cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OperationFailedError, match<span class="op">=</span><span class="vs">r&quot;cell \(1, 0\).*image is \d+ x \d+&quot;</span>) <span class="im">as</span> excinfo:</span>
+<span id="d5-cb3-24"><a href="#d5-cb3-24" aria-hidden="true" tabindex="-1"></a>        m.measure(plate)</span>
+<span id="d5-cb3-25"><a href="#d5-cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excinfo.value.err_type <span class="kw">is</span> GridCellOutsideImageError</span>
+<span id="d5-cb3-26"><a href="#d5-cb3-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-27"><a href="#d5-cb3-27" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_grid_edges_are_dvc_addressable():</span>
+<span id="d5-cb3-28"><a href="#d5-cb3-28" aria-hidden="true" tabindex="-1"></a>    pipe <span class="op">=</span> ImagePipeline(ops<span class="op">=</span>[], meas<span class="op">=</span>{<span class="st">&quot;emb&quot;</span>: MeasureDinoEmbedding(regions<span class="op">=</span><span class="st">&quot;grid&quot;</span>,</span>
+<span id="d5-cb3-29"><a href="#d5-cb3-29" aria-hidden="true" tabindex="-1"></a>                         grid<span class="op">=</span>ManualGridFinder(row_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">10</span>], col_edges<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">10</span>]))})</span>
+<span id="d5-cb3-30"><a href="#d5-cb3-30" aria-hidden="true" tabindex="-1"></a>    data <span class="op">=</span> json.loads(pipe.to_json())</span>
+<span id="d5-cb3-31"><a href="#d5-cb3-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> data[<span class="st">&quot;meas&quot;</span>][<span class="st">&quot;emb&quot;</span>][<span class="st">&quot;params&quot;</span>][<span class="st">&quot;grid&quot;</span>][<span class="st">&quot;params&quot;</span>][<span class="st">&quot;row_edges&quot;</span>] <span class="op">==</span> [<span class="dv">0</span>, <span class="dv">10</span>]</span>
+<span id="d5-cb3-32"><a href="#d5-cb3-32" aria-hidden="true" tabindex="-1"></a>    <span class="co"># pins the key path the how-to page documents (spec E3a)</span></span>
 <span id="d5-cb3-33"><a href="#d5-cb3-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-34"><a href="#d5-cb3-34" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_dinov3_requires_license_acceptance(monkeypatch, stub_backbone, detected_plate):</span>
-<span id="d5-cb3-35"><a href="#d5-cb3-35" aria-hidden="true" tabindex="-1"></a>    monkeypatch.delenv(<span class="st">&quot;PHENOTYPIC_ACCEPT_MODEL_LICENSE&quot;</span>, raising<span class="op">=</span><span class="va">False</span>)</span>
-<span id="d5-cb3-36"><a href="#d5-cb3-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OperationFailedError, match<span class="op">=</span><span class="st">&quot;license&quot;</span>) <span class="im">as</span> excinfo:</span>
-<span id="d5-cb3-37"><a href="#d5-cb3-37" aria-hidden="true" tabindex="-1"></a>        MeasureDinoEmbedding(version<span class="op">=</span><span class="dv">3</span>).measure(detected_plate)</span>
-<span id="d5-cb3-38"><a href="#d5-cb3-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excinfo.value.err_type <span class="kw">is</span> <span class="pp">RuntimeError</span></span>
-<span id="d5-cb3-39"><a href="#d5-cb3-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> stub_backbone.load_calls <span class="op">==</span> <span class="dv">0</span>                     <span class="co"># refused before loading</span></span>
-<span id="d5-cb3-40"><a href="#d5-cb3-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-41"><a href="#d5-cb3-41" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;crop_px&quot;</span>, [<span class="dv">112</span>, <span class="dv">224</span>, <span class="dv">336</span>, <span class="dv">448</span>])</span>
-<span id="d5-cb3-42"><a href="#d5-cb3-42" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_every_tunable_crop_px_fits_both_patch_sizes(crop_px):</span>
-<span id="d5-cb3-43"><a href="#d5-cb3-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> crop_px <span class="op">%</span> <span class="dv">14</span> <span class="op">==</span> <span class="dv">0</span> <span class="kw">and</span> crop_px <span class="op">%</span> <span class="dv">16</span> <span class="op">==</span> <span class="dv">0</span></span></code></pre></div>
+<span id="d5-cb3-34"><a href="#d5-cb3-34" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_backbone_loaded_once_per_process(stub_backbone, detected_plate):</span>
+<span id="d5-cb3-35"><a href="#d5-cb3-35" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding()<span class="op">;</span> m.measure(detected_plate)<span class="op">;</span> m.measure(detected_plate)</span>
+<span id="d5-cb3-36"><a href="#d5-cb3-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">len</span>(stub_backbone.load_calls) <span class="op">==</span> <span class="dv">1</span></span>
+<span id="d5-cb3-37"><a href="#d5-cb3-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-38"><a href="#d5-cb3-38" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_dinov3_requires_license_acceptance(monkeypatch, stub_backbone, detected_plate):</span>
+<span id="d5-cb3-39"><a href="#d5-cb3-39" aria-hidden="true" tabindex="-1"></a>    monkeypatch.delenv(<span class="st">&quot;PHENOTYPIC_ACCEPT_MODEL_LICENSE&quot;</span>, raising<span class="op">=</span><span class="va">False</span>)</span>
+<span id="d5-cb3-40"><a href="#d5-cb3-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(OperationFailedError, match<span class="op">=</span><span class="st">&quot;license&quot;</span>) <span class="im">as</span> excinfo:</span>
+<span id="d5-cb3-41"><a href="#d5-cb3-41" aria-hidden="true" tabindex="-1"></a>        MeasureDinoEmbedding(version<span class="op">=</span><span class="dv">3</span>).measure(detected_plate)</span>
+<span id="d5-cb3-42"><a href="#d5-cb3-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excinfo.value.err_type <span class="kw">is</span> <span class="pp">RuntimeError</span></span>
+<span id="d5-cb3-43"><a href="#d5-cb3-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">len</span>(stub_backbone.load_calls) <span class="op">==</span> <span class="dv">0</span>                     <span class="co"># refused before loading</span></span>
+<span id="d5-cb3-44"><a href="#d5-cb3-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-45"><a href="#d5-cb3-45" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;crop_px&quot;</span>, [<span class="dv">112</span>, <span class="dv">224</span>, <span class="dv">336</span>, <span class="dv">448</span>])</span>
+<span id="d5-cb3-46"><a href="#d5-cb3-46" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_every_tunable_crop_px_fits_both_patch_sizes(crop_px):</span>
+<span id="d5-cb3-47"><a href="#d5-cb3-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> crop_px <span class="op">%</span> <span class="dv">14</span> <span class="op">==</span> <span class="dv">0</span> <span class="kw">and</span> crop_px <span class="op">%</span> <span class="dv">16</span> <span class="op">==</span> <span class="dv">0</span></span></code></pre></div>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run them and confirm they fail.</strong></li>
@@ -2674,10 +2679,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Modify: <code>Dockerfile:28-35</code>, after the second <code>uv sync</code>:
 <ul>
 <li>download <code>facebook/dinov2-base</code> at a pinned commit into <code>/opt/hf</code> with <code>huggingface_hub.snapshot_download(..., revision=&lt;commit&gt;)</code>;</li>
-<li>set <code>HF_HOME=/opt/hf</code>, <code>HF_HUB_OFFLINE=1</code> and <code>PHENOTYPIC_DINO_REVISION=&lt;commit&gt;</code>, so the offline loader asks for the commit it has (P4 T3) rather than <code>refs/main</code>;</li>
+<li>set <code>HF_HOME=/opt/hf</code> and <code>HF_HUB_OFFLINE=1</code>. The pipeline's <code>revision</code> field names the same commit, so the offline loader asks for the commit the image holds (P4 T3) rather than <code>refs/main</code>;</li>
 <li>extend the import smoke line (:35) to load the backbone offline and assert the resolved revision equals the pin.</li>
 </ul></li>
-<li>Modify: <code>pipelines/exfab_rig1.pht-pipe.json</code>. Add <code>"meas": {"grid_embedding": MeasureDinoEmbedding(size="base", regions="grid", grid=ManualGridFinder(row_edges=[…], col_edges=[…]))}</code>. <strong>The rig1 edges are supplied by the user. Do not invent them</strong>; stop and ask.</li>
+<li>Modify: <code>pipelines/exfab_rig1.pht-pipe.json</code>. Add <code>"meas": {"grid_embedding": MeasureDinoEmbedding(size="base", revision=&lt;the commit the Dockerfile downloads&gt;, regions="grid", grid=ManualGridFinder(row_edges=[…], col_edges=[…]))}</code>. <strong>The rig1 edges are supplied by the user. Do not invent them</strong>; stop and ask.</li>
 <li>Modify: <code>src/acr_core/pipeline_info.py</code>. Add <code>n_grid_embeddings</code>, counting <code>MeasureEmbedding</code> entries with <code>regions == "grid"</code>.</li>
 <li>Modify: where <code>run.json</code> is built, beside <code>expected_bindings</code>: <code>src/acr_gc/cli.py:199</code> and <code>src/acr_hpcc/launch.py:144</code>. Each gains <code>"expected_embeddings": info.n_grid_embeddings</code>.</li>
 <li>Modify: <code>src/acr_core/process.py:107</code>. <code>verify_store(store, expected_bindings, expected_embeddings)</code> checks that the store's latest run in <code>tables.runs</code> holds that many <code>embeddings</code> entries, each with <code>stale: false</code> and every listed file present.</li>

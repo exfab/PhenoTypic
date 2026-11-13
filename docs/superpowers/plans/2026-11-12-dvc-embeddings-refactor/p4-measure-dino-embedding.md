@@ -175,8 +175,9 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
 - Create (helpers), in `tests/_tiny_run.py`: fixture `stub_backbone`. It
   monkeypatches `load_dino_backbone` in the measurer's module to return a tiny
   module with `config.patch_size=14`, `config.hidden_size=8`,
-  `config._commit_hash="0" * 40` and deterministic tokens; counts calls in
-  `load_calls`; and calls the backbone cache's `cache_clear()` before and after.
+  `config._commit_hash="0" * 40` and deterministic tokens; records each call's
+  keyword arguments in the list `load_calls`; and calls the backbone cache's
+  `cache_clear()` before and after.
   No download, no GPU.
 - Test: `tests/unit/measure/test_measure_dino_embedding.py` (new). The tune
   annotation gate is `tests/unit/tune/test_annotation_coverage.py`.
@@ -193,15 +194,17 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
   exact order:
   1. `size: DinoSize = "base"`
   2. `version: DinoVersion = 2`
-  3. `regions: Literal["objects", "grid"] = "objects"`
-  4. `grid: ManualGridFinder | None = None` (an `OperationField`)
-  5. `pooling: Literal["crop_cls", "crop_mean", "masked_dense"] = "crop_cls"`
-  6. `crop_px: int = 224`
-  7. `crop_pad_frac: float = 0.25`
-  8. `mask_background: bool = False`
-  9. `dtype: Literal["float16", "float32"] = "float16"`
-  10. `batch_size: int = 64`
-  11. `device: Literal["auto", "cpu", "cuda"] = "auto"`
+  3. `revision: str | None = None`, the weights' Hugging Face commit; `None`
+     loads the hub's latest
+  4. `regions: Literal["objects", "grid"] = "objects"`
+  5. `grid: ManualGridFinder | None = None` (an `OperationField`)
+  6. `pooling: Literal["crop_cls", "crop_mean", "masked_dense"] = "crop_cls"`
+  7. `crop_px: int = 224`
+  8. `crop_pad_frac: float = 0.25`
+  9. `mask_background: bool = False`
+  10. `dtype: Literal["float16", "float32"] = "float16"`
+  11. `batch_size: int = 64`
+  12. `device: Literal["auto", "cpu", "cuda"] = "auto"`
 
   Plus `_measurement_infoclass: ClassVar = DINO_EMBEDDING` and
   `GridCellOutsideImageError(ValueError)` in this module.
@@ -214,9 +217,9 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
 
   Model identity:
   - The model token is `dinov{version}-vit{s|b|l}{patch}`, e.g. `dinov2-vitb14`.
-  - The backbone revision comes from `PHENOTYPIC_DINO_REVISION` when set, else
-    the hub's default. The entry's `model.revision` is
-    `resolved_revision(model)`, the commit actually loaded.
+  - The measurer passes its `revision` field to `load_dino_backbone`. The
+    entry's `model.revision` is `resolved_revision(model)`, the commit actually
+    loaded, whether or not a pin was given.
   - The module-level backbone cache is a `functools.lru_cache` keyed by
     `(hf_id, revision, device)`.
   - For `version=3`, the measurer calls `require_license_acceptance` with the
@@ -225,7 +228,7 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
     `load_dino_backbone` (:227-234) stays.
 
   Tune annotations:
-  - `TuneSpec(tunable=False)` on `size`, `version`, `regions`, `grid`, `dtype`,
+  - `TuneSpec(tunable=False)` on `size`, `version`, `revision`, `regions`, `grid`, `dtype`,
     `batch_size` and `device`;
   - `crop_px` over the choices `112, 224, 336, 448`, the multiples of both 14
     and 16 in range, so every value is valid for DINOv2 and DINOv3;
@@ -235,7 +238,11 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
 
 ```python
 def test_field_order_size_first():
-    assert list(MeasureDinoEmbedding.model_fields)[:3] == ["size", "version", "regions"]
+    assert list(MeasureDinoEmbedding.model_fields)[:4] == ["size", "version", "revision", "regions"]
+
+def test_revision_pin_reaches_the_loader(stub_backbone, detected_plate):
+    MeasureDinoEmbedding(revision="a" * 40).measure(detected_plate)
+    assert stub_backbone.load_calls[-1]["revision"] == "a" * 40
 
 def test_model_token(stub_backbone):
     assert MeasureDinoEmbedding(size="base").model_token() == "dinov2-vitb14"
@@ -265,14 +272,14 @@ def test_grid_edges_are_dvc_addressable():
 
 def test_backbone_loaded_once_per_process(stub_backbone, detected_plate):
     m = MeasureDinoEmbedding(); m.measure(detected_plate); m.measure(detected_plate)
-    assert stub_backbone.load_calls == 1
+    assert len(stub_backbone.load_calls) == 1
 
 def test_dinov3_requires_license_acceptance(monkeypatch, stub_backbone, detected_plate):
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     with pytest.raises(OperationFailedError, match="license") as excinfo:
         MeasureDinoEmbedding(version=3).measure(detected_plate)
     assert excinfo.value.err_type is RuntimeError
-    assert stub_backbone.load_calls == 0                     # refused before loading
+    assert len(stub_backbone.load_calls) == 0                     # refused before loading
 
 @pytest.mark.parametrize("crop_px", [112, 224, 336, 448])
 def test_every_tunable_crop_px_fits_both_patch_sizes(crop_px):

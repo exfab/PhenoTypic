@@ -363,13 +363,14 @@ def test_root_changed_before_swap_rebuilds_once_then_fails(process_store_tree, s
 - Modify: `Dockerfile:28-35`, after the second `uv sync`:
   - download `facebook/dinov2-base` at a pinned commit into `/opt/hf` with
     `huggingface_hub.snapshot_download(..., revision=<commit>)`;
-  - set `HF_HOME=/opt/hf`, `HF_HUB_OFFLINE=1` and
-    `PHENOTYPIC_DINO_REVISION=<commit>`, so the offline loader asks for the
-    commit it has (P4 T3) rather than `refs/main`;
+  - set `HF_HOME=/opt/hf` and `HF_HUB_OFFLINE=1`. The pipeline's
+    `revision` field names the same commit, so the offline loader asks for the
+    commit the image holds (P4 T3) rather than `refs/main`;
   - extend the import smoke line (:35) to load the backbone offline and assert
     the resolved revision equals the pin.
 - Modify: `pipelines/exfab_rig1.pht-pipe.json`. Add
-  `"meas": {"grid_embedding": MeasureDinoEmbedding(size="base", regions="grid",
+  `"meas": {"grid_embedding": MeasureDinoEmbedding(size="base", revision=<the
+  commit the Dockerfile downloads>, regions="grid",
   grid=ManualGridFinder(row_edges=[…], col_edges=[…]))}`. **The rig1 edges are
   supplied by the user. Do not invent them**; stop and ask.
 - Modify: `src/acr_core/pipeline_info.py`. Add `n_grid_embeddings`, counting
