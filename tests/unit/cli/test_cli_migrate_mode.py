@@ -2123,6 +2123,21 @@ def test_revert_reports_an_empty_retention_as_a_message(tmp_path: Path) -> None:
     assert "Traceback" not in result.output
 
 
+def test_the_revert_returns_exit_code_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#281 P2 review M2: every exit site returns a ``RunExitCode``, never a bare int."""
+    from phenotypic._cli import _cli_migrate
+
+    output = tmp_path / "never-migrated"
+    output.mkdir()
+    refused = _cli_migrate._run_migration_revert(output)
+    assert type(refused) is RunExitCode and refused is RunExitCode.ERROR
+    monkeypatch.setattr(_cli_migrate, "revert_legacy_trees", lambda _out: 2)
+    reverted = _cli_migrate._run_migration_revert(output)
+    assert type(reverted) is RunExitCode and reverted is RunExitCode.COMPLETE
+
+
 def test_revert_puts_a_migrated_tree_back(finished_legacy_run) -> None:
     """The flag reaches the primitive, end to end through the real entry point.
 

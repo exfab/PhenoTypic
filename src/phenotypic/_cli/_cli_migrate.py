@@ -2174,23 +2174,27 @@ def _validate_migration_revert_selection(
         )
 
 
-def _run_migration_revert(output_dir: Path) -> int:
+def _run_migration_revert(output_dir: Path) -> RunExitCode:
     """Undo one migration by renaming the retained legacy trees back.
 
     Both of :func:`revert_legacy_trees`'s refusals -- nothing retained, and a
     record the retained trees do not cover -- are conditions a user can act
     on, so they are reported as messages and a nonzero exit, never a
     traceback.
+
+    Returns:
+        ``RunExitCode.COMPLETE`` once the trees are restored, else
+        ``RunExitCode.ERROR``.
     """
     try:
         moved = revert_legacy_trees(output_dir)
     except RuntimeError as exc:
         click.echo(f"--mode migrate --revert: {exc}", err=True)
-        return 1
+        return RunExitCode.ERROR
     click.echo("")
     click.echo(f"--mode migrate --revert: {output_dir}")
     click.echo(f"  Restored {moved} retained legacy tree(s).")
-    return 0
+    return RunExitCode.COMPLETE
 
 
 def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
@@ -2424,7 +2428,7 @@ def handle_migrate_mode(
         submitted attempt or a submitted SLURM dry run, whatever its jobs
         later do (the verdict is the terminal status file); ``COMPLETE``
         (``0``) on a clean local run; ``ERROR`` (``1``) on local migration
-        failure. A revert returns its own ``0``/``1``. Until #281 a SLURM
+        failure. A revert returns ``COMPLETE`` or ``ERROR``. Until #281 a SLURM
         submission returned ``0``.
     """
     if revert:
