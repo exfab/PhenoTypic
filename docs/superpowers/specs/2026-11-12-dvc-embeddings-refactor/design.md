@@ -82,7 +82,12 @@ DVC versioning of the raw image corpus is out of scope (§2.2).
   reference is recorded instead (D8).
 - Aggregating an upstream (process-mode) run's tables into a downstream run's
   deliverables.
-- Showing embeddings in the GUI.
+- **Any change under `src/phenotypic/_gui/`.** GUI work is deferred to issue #283.
+  Shared names the GUI imports keep existing, and `sdk_` readers the GUI calls
+  keep their signatures. Two GUI behaviours change until #283 lands: SLURM
+  submission exits `4`, which the run console reads as a failed submission, and
+  one direct table-path join in the results viewer. **#281 does not merge to
+  `main` before #283's first item is fixed.**
 - Byte-reproducible per-image stores from full runs. Their journals carry wall-clock
   times. Deliverables *are* in scope (C11).
 
@@ -176,7 +181,7 @@ The five parts below are independent enough to plan and ship in the order of §5
 - **A3** Canonical run artifacts use the new name:
   `deliverables/pipeline.pht-pipe.json`, `deliverables/best_pipeline.pht-pipe.json`,
   and `.phenotypic/pipeline.pht-pipe.json`.
-  - Every reader (`resolve_*`, `BundleLayout`, the GUI pickers, migrate's
+  - Every non-GUI reader (`resolve_*`, `BundleLayout`, migrate's
     `*.pht-pipe` glob at `_cli_migrate.py:679`) also accepts the old names.
   - `migration_lock_path` maps legacy `pipeline.json`, the old name and the new
     name to the **same** lock identity, extending the existing rule at
@@ -207,7 +212,6 @@ The five parts below are independent enough to plan and ship in the order of §5
   - `measurements_by_category/<Category>.tsv`
   - `<AnalysisClass>.tsv`
   - `error_analysis.tsv`
-  - the GUI curation-label, filtered-state and error-tab exports
   - migrate's `metadata.canonical.tsv`
 
   Rename the constants (`MEASUREMENTS_CSV` → `MEASUREMENTS_TSV`, …) and keep
@@ -230,11 +234,12 @@ The five parts below are independent enough to plan and ship in the order of §5
   the metadata snapshot.
 - **B7 Public API is not renamed.** A Python method or argument named `csv` keeps
   its name and behaviour. Docstring examples that write `.csv` (e.g.
-  `_objects_accessor.py:690`) stay user-chosen. B applies to files the CLI and GUI
-  generate.
-- **B8** Update the README generator, the how-to and tutorial pages,
-  `FEATURES.md`/`WORKFLOWS.md` where they name a file (`gui-tutorial-capture`
-  skill), and the root and `_cli` CLAUDE.md output inventories.
+  `_objects_accessor.py:690`) stay user-chosen. B applies to files the CLI
+  generates; GUI exports follow in #283.
+- **B8** Update the README generator, the how-to pages, and the root and `_cli`
+  CLAUDE.md output inventories. The constant names the GUI imports
+  (`MEASUREMENTS_CSV`, re-exported by `_gui/_config.py`) stay defined as legacy
+  read names.
 
 ### Part C: DVC-compatible run layout
 
@@ -617,13 +622,13 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 | P0 | Part A suffix flip, PhenoTypic and AutoConvertRaw-GC | none |
 | P1 | Part B TSV | none (parallel with P0) |
 | P2 | Part C DVC layout, `metrics.json`, how-to page, C8 measurement | P0, P1 (the template names their files) |
-| P3 | Part D: `tables/` v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, `--mode migrate` conversion, reader updates (finalizer, GUI, measure, marker) | none (parallel with P0–P2) |
+| P3 | Part D: `tables/` v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, `--mode migrate` conversion, reader updates (finalizer, measure, recompile, marker, and the `sdk_` readers the GUI calls) | none (parallel with P0–P2) |
 | P4 | Part E1–E3a, E5: `MeasureEmbedding`, `MeasureDinoEmbedding` (crops + grid), `embed()`, deliverables | P3 |
 | P5 | Part E4 + E6: process-mode measurements + AutoConvertRaw-GC rollout | P3, P4, P0 |
 | Later | GPU execution (Stage-2 dense or Stage 4) | P4 timings |
 
 P3 is now the largest phase. Every reader of `tables/measurements/table.parquet`
-changes: the finalizer, the GUI routes, measure mode, migrate and the completion
+changes: the finalizer, measure mode, recompile, migrate, the `sdk_` readers and the completion
 marker. Derive its affected test surface from importers, not from directory names
 (root CLAUDE.md).
 

@@ -129,7 +129,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Dense patch-feature grids in stores (0.3–9.5 TB over the corpus).</li>
 <li>Copying an input store's run folders into result stores. A verifiable reference is recorded instead (D8).</li>
 <li>Aggregating an upstream (process-mode) run's tables into a downstream run's deliverables.</li>
-<li>Showing embeddings in the GUI.</li>
+<li><strong>Any change under <code>src/phenotypic/_gui/</code>.</strong> GUI work is deferred to issue #283. Shared names the GUI imports keep existing, and <code>sdk_</code> readers the GUI calls keep their signatures. Two GUI behaviours change until #283 lands: SLURM submission exits <code>4</code>, which the run console reads as a failed submission, and one direct table-path join in the results viewer. <strong>#281 does not merge to <code>main</code> before #283's first item is fixed.</strong></li>
 <li>Byte-reproducible per-image stores from full runs. Their journals carry wall-clock times. Deliverables <em>are</em> in scope (C11).</li>
 </ul>
 <h3 id="23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</h3>
@@ -330,7 +330,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><p><strong>A3</strong> Canonical run artifacts use the new name: <code>deliverables/pipeline.pht-pipe.json</code>, <code>deliverables/best_pipeline.pht-pipe.json</code>, and <code>.phenotypic/pipeline.pht-pipe.json</code>.</p>
 <ul>
-<li>Every reader (<code>resolve_*</code>, <code>BundleLayout</code>, the GUI pickers, migrate's <code>*.pht-pipe</code> glob at <code>_cli_migrate.py:679</code>) also accepts the old names.</li>
+<li>Every non-GUI reader (<code>resolve_*</code>, <code>BundleLayout</code>, migrate's <code>*.pht-pipe</code> glob at <code>_cli_migrate.py:679</code>) also accepts the old names.</li>
 <li><code>migration_lock_path</code> maps legacy <code>pipeline.json</code>, the old name and the new name to the <strong>same</strong> lock identity, extending the existing rule at <code>_io_constants.py:248-259</code>.</li>
 </ul></li>
 <li><p><strong>A4</strong> One current pipeline file per folder:</p>
@@ -357,7 +357,6 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>measurements_by_category/&lt;Category&gt;.tsv</code></li>
 <li><code>&lt;AnalysisClass&gt;.tsv</code></li>
 <li><code>error_analysis.tsv</code></li>
-<li>the GUI curation-label, filtered-state and error-tab exports</li>
 <li>migrate's <code>metadata.canonical.tsv</code></li>
 </ul>
 <p>Rename the constants (<code>MEASUREMENTS_CSV</code> → <code>MEASUREMENTS_TSV</code>, …) and keep <code>_LEGACY_*_CSV</code> names for reads.</p></li>
@@ -365,8 +364,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is still refused.</p></li>
 <li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension. Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p></li>
 <li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot.</p></li>
-<li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI and GUI generate.</p></li>
-<li><p><strong>B8</strong> Update the README generator, the how-to and tutorial pages, <code>FEATURES.md</code>/<code>WORKFLOWS.md</code> where they name a file (<code>gui-tutorial-capture</code> skill), and the root and <code>_cli</code> CLAUDE.md output inventories.</p></li>
+<li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI generates; GUI exports follow in #283.</p></li>
+<li><p><strong>B8</strong> Update the README generator, the how-to pages, and the root and <code>_cli</code> CLAUDE.md output inventories. The constant names the GUI imports (<code>MEASUREMENTS_CSV</code>, re-exported by <code>_gui/_config.py</code>) stay defined as legacy read names.</p></li>
 </ul>
 <h3 id="part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</h3>
 <ul>
@@ -742,7 +741,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td>P3</td>
-<td>Part D: <code>tables/</code> v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, <code>--mode migrate</code> conversion, reader updates (finalizer, GUI, measure, marker)</td>
+<td>Part D: <code>tables/</code> v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, <code>--mode migrate</code> conversion, reader updates (finalizer, measure, recompile, marker, and the <code>sdk_</code> readers the GUI calls)</td>
 <td>none (parallel with P0–P2)</td>
 </tr>
 <tr class="odd">
@@ -762,7 +761,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
-<p>P3 is now the largest phase. Every reader of <code>tables/measurements/table.parquet</code> changes: the finalizer, the GUI routes, measure mode, migrate and the completion marker. Derive its affected test surface from importers, not from directory names (root CLAUDE.md).</p>
+<p>P3 is now the largest phase. Every reader of <code>tables/measurements/table.parquet</code> changes: the finalizer, measure mode, recompile, migrate, the <code>sdk_</code> readers and the completion marker. Derive its affected test surface from importers, not from directory names (root CLAUDE.md).</p>
 <p>Testing follows root CLAUDE.md: step guards, then per-task files, the affected surface once per phase, and the full sharded regression once at the end, on Slurm. Store changes also need an <strong>independent reader</strong> check (zarr-python + pyarrow, never only PhenoTypic's own reopen), per the <code>working-with-ome-zarr</code> skill.</p>
 <h2 id="6-left-to-the-implementer">6. Left to the implementer</h2>
 <ul>
