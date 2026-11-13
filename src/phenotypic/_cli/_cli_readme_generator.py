@@ -145,7 +145,9 @@ wrote `.csv` for the per-feature and per-category splits and for
 `measurements.csv` is kept because the results viewer's curation writes to it
 and to `measurements.parquet`, **not** to `measurements.tsv`: until #283 lands,
 curated edits reach `measurements.csv` and `measurements.parquet` but not
-`measurements.tsv`."""
+`measurements.tsv`. `--metadata` must now be a `.csv` or `.tsv` table (the
+delimiter follows the suffix); any other suffix, such as a comma-separated
+`.txt` that earlier releases read, is refused, so rename it."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""

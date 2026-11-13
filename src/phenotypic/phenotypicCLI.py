@@ -2129,7 +2129,8 @@ def _print_process_only_dry_run_plan(
     default=None,
     callback=_metadata_suffix_callback,
     help=(
-        "CSV or TSV table (.csv or .tsv; the delimiter follows the suffix) to "
+        "CSV or TSV table (.csv or .tsv; the delimiter follows the suffix, "
+        "and any other suffix is refused) to "
         "left-join onto the measurements mirror on shared columns. Rows that "
         "match no measured object are kept with null measurements and "
         "QC_MetadataOnly=true, so undetected strains stay visible. The run "

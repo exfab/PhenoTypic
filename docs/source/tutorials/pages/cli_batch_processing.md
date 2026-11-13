@@ -96,6 +96,11 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 `--overwrite` that would delete the run's own inputs, and the parsing of
 `--metadata`, `--bit-depth`, and `--gpu-slurm` values.
 
+`--metadata` must be a `.csv` or `.tsv` table; the delimiter follows the
+suffix. Any other suffix is refused as a usage error (exit 2) in every mode.
+Earlier releases read any suffix in `--mode full`, so a comma-separated
+`plates.txt` that used to work must now be renamed `plates.csv`.
+
 | Code | Reported when | Severity | Remedy |
 |---|---|---|---|
 | `PF-PIPELINE-LOAD` | The pipeline file cannot be read: invalid JSON, a duplicated key, or invalid parameters | error | Fix the pipeline file |
@@ -120,7 +125,7 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-STEM-COLLISION` | Two inputs in one dataset share a name without extension (e.g. `a.png`, `a.tif`) | error | Rename or move one file of each pair |
 | `PF-META-PARSE` | The `--metadata` CSV does not parse | error | Fix the CSV |
 | `PF-META-ALIAS` | The CSV has a legacy and a current spelling of one column, with conflicting values | error | Keep one spelling |
-| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys may be measurement columns such as `Grid_RowNum`, or metadata the images carry themselves (PhenoTypic exports, custom operations) | Add an `ImageName` column |
+| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys may be measurement columns such as `Grid_RowNum`, or metadata the images carry themselves (PhenoTypic exports, custom operations) | Add an `ImageName` column; if the message says the table looks comma- or tab-separated, fix its suffix |
 | `PF-META-DUP-KEYS` | A join key repeats in the CSV | as `PF-META-NO-KEYS` | Make each key unique |
 | `PF-META-UNMATCHED` | Some images have no metadata row | warning | Add rows, or match `ImageName` to the file names |
 | `PF-META-ORPHANS` | Some metadata rows match no image | warning | Expected for wells that grew nothing |
