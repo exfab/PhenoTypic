@@ -1072,7 +1072,7 @@ def publish_aggregate_snapshot(
     source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
     execution_epoch: str | None = None,
-    require_run_summaries: bool = True,
+    require_run_summaries: bool = False,
 ) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot.
 
@@ -1105,13 +1105,13 @@ def publish_aggregate_snapshot(
             key and never counts for a submission.
         require_run_summaries: Whether ``deliverables/metrics.json`` and
             ``deliverables/schema.json`` (#281 spec C4, C12) must exist.
-            ``finalize_run`` writes both just before this call, so on that
-            path an absent file is a fault and resolving it raises, like any
-            other required output. ``False`` is for the migrate re-publication
-            (``sdk_._hdf_to_zarr.republish_aggregate``), which re-certifies
-            whatever deliverables a tree already holds: a tree finalized
-            before the files existed has neither, and they are then certified
-            only when present.
+            ``finalize_run`` writes both just before its call and passes
+            ``True``, so on that path an absent file is a fault and resolving
+            it raises, like any other required output. With ``False`` (the
+            default) each is certified only when present: the migrate
+            re-publication (``sdk_._hdf_to_zarr.republish_aggregate``)
+            re-certifies whatever deliverables a tree already holds, and a
+            tree finalized before the files existed has neither.
 
     Returns:
         Path to the aggregate publication marker.

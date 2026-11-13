@@ -458,16 +458,21 @@ def _accepted_work_ids(output_dir: Path) -> set[str] | None:
 
 def _published_table_schemas(
     output_dir: Path,
-) -> "dict[str, dict[str, pl.DataType]]":
-    """Read the Parquet footer of every table finalization published.
+    *,
+    master_df: "pl.DataFrame",
+    mirror_df: "pl.DataFrame",
+) -> "dict[str, Mapping[str, pl.DataType]]":
+    """Return ``column -> dtype`` for every table finalization published.
 
-    Footers, not frames: ``schema.json`` describes the bytes on disk, the
-    split and analysis frames are not held here, and a footer read opens no
-    row group. Tables are keyed by their ``deliverables/``-relative path
-    without the suffix, which names the ``.parquet`` and its ``.tsv`` twin
-    alike: ``master_measurements``, ``measurements``,
-    ``measurements_by_feature/<measurer>``,
-    ``measurements_by_category/<label>``, and each named analysis from
+    The master and the mirror are the frames this finalization just wrote,
+    so their schemas come from the frames. The per-feature and per-category
+    splits and the named analyses are not held here, so they come from the
+    Parquet footers those writers published (a footer read opens no row
+    group and writes nothing). Tables are keyed by their
+    ``deliverables/``-relative path without the suffix, which names the
+    ``.parquet`` and its ``.tsv`` twin alike: ``master_measurements``,
+    ``measurements``, ``measurements_by_feature/<measurer>``,
+    ``measurements_by_category/<label>``, and each named analysis id from
     ``analysis_manifest.json``.
     """
     import polars as pl
@@ -477,17 +482,16 @@ def _published_table_schemas(
     )
     from phenotypic.sdk_ import (
         deliverables_dir,
-        master_measurements_parquet_path,
         measurements_by_category_dir,
         measurements_by_feature_dir,
-        measurements_parquet_path,
     )
 
     deliverables = deliverables_dir(output_dir)
-    paths: dict[str, Path] = {
-        "master_measurements": master_measurements_parquet_path(output_dir),
-        "measurements": measurements_parquet_path(output_dir),
+    schemas: dict[str, Mapping[str, pl.DataType]] = {
+        "master_measurements": master_df.schema,
+        "measurements": mirror_df.schema,
     }
+    paths: dict[str, Path] = {}
     for split_dir in (
         measurements_by_feature_dir(output_dir),
         measurements_by_category_dir(output_dir),
@@ -499,10 +503,10 @@ def _published_table_schemas(
     if manifest is not None:
         for analysis_id, entry in sorted(manifest.analyses.items()):
             paths[analysis_id] = deliverables / entry.parquet
-    return {
-        name: dict(pl.read_parquet_schema(path))
-        for name, path in sorted(paths.items())
-    }
+    schemas.update(
+        (name, pl.read_parquet_schema(path)) for name, path in paths.items()
+    )
+    return dict(sorted(schemas.items()))
 
 
 def publish_run_summaries(
@@ -595,7 +599,11 @@ def publish_run_summaries(
         metadata_phantoms=phantoms,
         embeddings=embeddings,
     )
-    schema = build_output_schema(_published_table_schemas(output_dir))
+    schema = build_output_schema(
+        _published_table_schemas(
+            output_dir, master_df=master_df, mirror_df=mirror_df
+        )
+    )
 
     metrics_path = metrics_json_path(output_dir)
     schema_path = schema_json_path(output_dir)
@@ -808,6 +816,7 @@ def finalize_run(
                 source_work_ids=source_work_ids,
                 commit_guard=commit_guard,
                 execution_epoch=execution_epoch,
+                require_run_summaries=True,
             )
         # AFTER the proof, so "invalidate on success" is literal. Publication
         # can still raise here -- a tree with no current state, an artifact

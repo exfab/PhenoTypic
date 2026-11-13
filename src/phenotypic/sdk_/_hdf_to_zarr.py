@@ -798,9 +798,6 @@ def republish_aggregate(
             output_dir,
             source_work_ids=authorized,
             commit_guard=commit_guard,
-            # Re-certifies what the tree holds: a tree finalized before
-            # metrics.json/schema.json existed (#281 C4/C12) has neither.
-            require_run_summaries=False,
         )
     except (OSError, RuntimeError, ValueError) as exc:
         # Also a FAULT: the tree requires markers and publishing them failed,
