@@ -343,6 +343,47 @@ def test_run_submit_passes_through_a_real_exit_code():
   stub that exits `4` and a run that publishes.
 - [ ] **Step 5: Commit.**
 
+### Task 2b: P2 review fixes
+
+Added 2026-11-13 from `reports/2026-11-12-dvc-embeddings-refactor/review-p2.md`
+and the user's answers to its forks F1–F5 (spec C3, C10). Two clusters with
+disjoint files:
+
+**C11b, the waiter and the page** (`_cli/_cli_wait.py`, `tests/unit/cli/test_cli_wait.py`,
+`docs/source/how_to/pages/dvc.md`, plus whatever the measure finalizer needs for I5):
+- I1/F5: `3` needs every accepted image resolved; otherwise `5`. The process
+  fallback also needs the fence not cancelled.
+- I5: the measure finalizer records its terminal-failure count under its
+  generation; the waiter reads it and returns `3`.
+- F1: `--accept-failures` maps a final `3` (waited or from a local child) to `0`,
+  printing the count.
+- F2: before launching, a live job of the same output means attach: skip the
+  submit, wait on the live generation.
+- M3: the output/migrate scan reads only the tokens after `phenotypic` /
+  `-m phenotypic`.
+- M4: Ctrl-C during the submit waits for the child and returns its code; an
+  interrupted wait exits `130`.
+- M5: an exception inside a poll is echoed and retried a bounded number of times
+  before exiting `1` with the reason.
+- M6: remember job ids already answered not-active within one waiter process.
+- I6, M7, M8, M9, and the `uvx` PATH problem (a stage under `uvx dvc` gets DVC's
+  Python first on PATH): page fixes; the stage commands use `uv run`.
+
+**C11c, the CLI exits and the fence** (`phenotypicCLI.py`,
+`_cli/_cli_staged_orchestration.py`, `_cli/_cli_migrate.py`,
+`_cli/_cli_readme_generator.py`, `_cli/CLAUDE.md`, their tests):
+- I2/F4: local recompile and both `_handle_recompile_slurm` local fallbacks exit
+  `_finished_run_exit(_run_failure_count(output_dir))`.
+- I3/F3: a staged-local run whose only Stage-3-less images are current terminal
+  failures exits `3`; a real publication failure stays `1`.
+- I4: never retire a fence that has no ledger rows for its generation.
+- M1: post-parse `--slurm` value errors exit `2` (re-raise as `click.UsageError`).
+- M2: `_run_migration_revert` returns `RunExitCode` members.
+- M11: README `#` column alignment; README sentence scoped to `finalize_run`.
+- Test gaps: retire on the SLURM recompile path; retire of a staged fence; the
+  negative branches (`owner_kind`, migrate, tune fences); a byte-stability
+  variant with `--metadata` and two datasets.
+
 ### Task 3: `metrics.json` and `schema.json`
 
 **Files:**

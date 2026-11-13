@@ -351,8 +351,22 @@ The five parts below are independent enough to plan and ship in the order of §5
   - refused before launching, as a usage error (`2`): an empty command after
     `--`; a child that names an output (`-o`/`--output`) resolving to a
     different path from `--output`; a child running `--mode migrate`.
-    A child that names no output (a wrapper script) is not checked.
+    A child that names no output (a wrapper script) is not checked. Only the
+    tokens after the program `phenotypic` (or `-m phenotypic`) are read, so a
+    wrapper's own `-o` (`srun -o log …`) is not taken as the run's output.
   - `--timeout-seconds` bounds the wait, never the submit.
+  - **Attach to a live run (user decision 2026-11-13, P2 review F2).** Before
+    launching, the waiter checks `live_slurm_job_ids(output_dir)`. If a job of
+    that output is live, it skips the submit, prints that it is attaching to
+    the live generation, and waits on it exactly as after a `4`. That is the
+    recovery after the job running `dvc repro` hits its walltime: re-run it. The
+    waiter cannot verify that the live run used the same pipeline; only one
+    live run per output can exist, and the message names the generation.
+  - **`--accept-failures` (user decision 2026-11-13, F1).** Maps a final `3`,
+    from the wait or from a local child, to `0` after printing the
+    terminal-failure count, so a DVC stage over a dataset with one empty plate
+    completes; `metrics.json`'s `images.failed` still records the count. Off by
+    default: the exit-code contract is unchanged.
 
   Without `--`, the waiter only waits, for a run submitted some other way. That
   form is unchanged and is what a user reaches for after a submit they typed
@@ -377,8 +391,18 @@ The five parts below are independent enough to plan and ship in the order of §5
     of: that generation's fence closed **by its finalizer**; a run proof whose
     `execution_epoch` is that generation; or an aggregate proof stamped with that
     generation. Then it exits `0`, or the complete-with-failures code when
-    images failed terminally. Anything else is a run that ended without
-    publishing, and gets its own code.
+    images failed terminally **and every accepted image is resolved** (a
+    success or a terminal failure record). An image never attempted (an
+    array task killed before it wrote a record) makes the run unfinished, not
+    complete-with-failures. Anything else, including that, is a run that ended
+    without finishing, and gets `5` (F5: the meaning of `5` is "ended without
+    finishing; re-run the same command", which covers both "published nothing"
+    and "published a partial aggregate").
+  - A `--mode measure` resubmission's failures are keyed by measure work ids,
+    outside the forward run's inventory, so `resolve_run_state` cannot see
+    them. The measure finalizer records its terminal-failure count under its
+    generation, and the waiter reads it, so a SLURM measure with a failure exits
+    `3` as the local one does (P2 review I5).
   - Two fields make that binding exact, with no clock comparison:
     - the finalizer stamps the generation it ran under into the aggregate proof
       (`execution_epoch`, as the run proof already has). A proof without the
@@ -391,7 +415,9 @@ The five parts below are independent enough to plan and ship in the order of §5
     run state, so an earlier run's aggregate proof would still match after the
     new finalizer died.
   - Process mode publishes no aggregate proof, so a process run whose images
-    finished with terminal failures and no live job exits complete-with-failures.
+    are all resolved, with some terminal failures, and no live job exits
+    complete-with-failures. A cancelled process run (fence closed without
+    `closed_by`) exits `5`.
   - It does not serve `--mode migrate`, which keeps its lifecycle under an
     external control root.
   - It never aggregates, publishes or cancels, so the double publication the
@@ -459,13 +485,18 @@ The five parts below are independent enough to plan and ship in the order of §5
   - that an in-place run (E7) is not a DVC stage: a DVC stage writes new stores.
 - **C10 Exit codes are a contract**. Four distinct codes:
   - **0**: complete, no terminal failures;
-  - a distinct non-zero: **complete with terminal image failures**;
+  - a distinct non-zero: **complete with terminal image failures**: every
+    accepted image is resolved and at least one failed terminally. This holds
+    for every mode, local and SLURM, recompile and staged GPU included (user
+    decision 2026-11-13, P2 review F3/F4): a recompile over a run that carries
+    failures exits `3`, and a staged-GPU run whose only unfinished images are
+    terminal failures exits `3`, not `1`;
   - **1**: a runtime or config error (today's behaviour). A refusal raised as a
     Click usage error keeps Click's `2`;
   - a distinct code: **submitted to SLURM**, so nothing is finished yet. Every
     SLURM run returns this at submission. `phenotypic-wait` (C3) returns one of the
     codes above once the run ends, plus its own codes for a run that ended
-    without publishing and for `--timeout-seconds`; in the `--` form, a
+    without finishing (`5`) and for `--timeout-seconds` (`6`); in the `--` form, a
     submit that did not exit `4` returns the submit's own code.
 
   The builder confirms what a run with terminal failures returns today; I found
