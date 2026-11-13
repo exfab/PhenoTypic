@@ -147,7 +147,16 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    cast,
+    get_args,
+)
 from uuid import UUID
 
 import click
@@ -973,18 +982,48 @@ def _refuse_live_slurm_run(output_dir: Path) -> None:
     sys.exit(1)
 
 
-def _retire_dead_fence(output_dir: Path) -> None:
+def _retire_dead_fence(output_dir: Path, *, submitting: bool) -> None:
     """Close a dead ``active`` lifecycle fence and say so (#281 spec C13).
 
     Called in the mutating half only, after :func:`_refuse_live_slurm_run`
     passed. See ``retire_dead_lifecycle_fence``.
+
+    A fence with no ledger row is never retired, because its submitter may
+    still be preparing its first ``sbatch`` (review I4). A SLURM submission
+    over it is refused here, exit ``1``, naming the fence. That is the refusal
+    ``initialize_slurm_lifecycle`` made before the retire existed, raised
+    before anything else is written. A local run is not refused: it never
+    publishes a fence, so it was never refused by one.
+
+    Args:
+        output_dir: Run output root.
+        submitting: Whether this invocation will publish a SLURM fence.
     """
     if not output_dir.exists():
         return
     from phenotypic._cli._cli_staged_orchestration import (
         retire_dead_lifecycle_fence,
+        unledgered_active_fence,
     )
 
+    unledgered = unledgered_active_fence(output_dir)
+    if unledgered is not None:
+        if submitting:
+            from phenotypic._cli._cli_slurm_lifecycle import lifecycle_state_path
+
+            fence = lifecycle_state_path(output_dir)
+            click.echo(
+                f"Error: Cannot submit to {output_dir}: SLURM generation "
+                f"{unledgered} holds the active lifecycle fence {fence} and "
+                "has recorded no job yet, so another invocation may still be "
+                "preparing its submission. Wait for it and run the command "
+                "again. If no invocation is running (a submitter that died "
+                "before its first sbatch leaves this state), delete "
+                f"{fence} and run the command again.",
+                err=True,
+            )
+            sys.exit(RunExitCode.ERROR)
+        return
     retired = retire_dead_lifecycle_fence(output_dir)
     if retired is not None:
         click.echo(
@@ -1324,6 +1363,51 @@ def _finished_run_exit(failed: int) -> RunExitCode:
     if failed == 0:
         return RunExitCode.COMPLETE
     return RunExitCode.COMPLETE_WITH_FAILURES
+
+
+def _stage3_less_images(
+    output_dir: Path, inventory: Mapping[str, Sequence[Any]]
+) -> set[tuple[str, str]]:
+    """The ``(dataset, image stem)`` pairs of a staged run with no Stage-3 marker.
+
+    Args:
+        output_dir: Run output root.
+        inventory: The run's full ``dataset -> images`` inventory.
+    """
+    from phenotypic._cli._cli_staged_resume import stage3_completion_exists
+
+    return {
+        (dataset, source_image_stem(Path(image)))
+        for dataset, images in inventory.items()
+        for image in images
+        if not stage3_completion_exists(
+            output_dir, dataset, source_image_stem(Path(image))
+        )
+    }
+
+
+def _all_current_terminal_failures(
+    output_dir: Path, images: set[tuple[str, str]]
+) -> bool:
+    """Whether every image in *images* has a current terminal failure record.
+
+    Asked of the run state, the one producer of an image's verdict: a
+    ``failed`` verdict is a terminal record keyed by the image's current work
+    id, so a record left from an earlier configuration does not count.
+
+    Args:
+        output_dir: Run output root.
+        images: ``(dataset, image stem)`` pairs, from
+            :func:`_stage3_less_images`.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    failed = {
+        (image.dataset, image.image_stem)
+        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        if image.verdict == "failed"
+    }
+    return images <= failed
 
 
 def error_exit(
@@ -2511,12 +2595,14 @@ def phenotypic_cli(
         # Parse SLURM args before the recompile branch so --mode recompile can
         # explicitly choose between local and SLURM recompile dispatch.
         slurm_args_dict = {}
+        # A malformed option value is a usage error, exit 2, like any refused
+        # option (#281 spec C10, review M1). Re-raised as a plain UsageError
+        # so the message reads as before rather than as "Invalid value".
         if slurm_args:
             try:
                 slurm_args_dict = _parse_slurm_args(slurm_args)
             except click.BadParameter as e:
-                click.echo(str(e), err=True)
-                sys.exit(1)
+                raise click.UsageError(str(e)) from e
 
         # Validate SLURM time parameter if present
         if slurm_args_dict:
@@ -2539,11 +2625,9 @@ def phenotypic_cli(
                     try:
                         canonical_time = parse_slurm_time(time_val)
                     except ValueError as exc:
-                        click.echo(
-                            f"Error: invalid '{time_key}': {exc}",
-                            err=True,
-                        )
-                        sys.exit(1)
+                        raise click.UsageError(
+                            f"invalid --slurm '{time_key}' {time_val!r}: {exc}"
+                        ) from exc
                     assert canonical_time is not None
                     slurm_args_dict[time_key] = canonical_time
 
@@ -2571,8 +2655,11 @@ def phenotypic_cli(
             try:
                 gpu_slurm_args_dict = _parse_slurm_args(gpu_slurm_args)
             except click.BadParameter as e:
-                click.echo(str(e), err=True)
-                sys.exit(1)
+                # The shared parser names --slurm; this value came from
+                # --gpu-slurm.
+                raise click.UsageError(
+                    str(e).replace("--slurm", "--gpu-slurm")
+                ) from e
             for time_key in ("time", "slurm_time"):
                 if time_key in gpu_slurm_args_dict:
                     try:
@@ -2580,12 +2667,10 @@ def phenotypic_cli(
                             gpu_slurm_args_dict[time_key]
                         )
                     except ValueError as exc:
-                        click.echo(
-                            f"Error: invalid --gpu-slurm '{time_key}' "
-                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}",
-                            err=True,
-                        )
-                        sys.exit(1)
+                        raise click.UsageError(
+                            f"invalid --gpu-slurm '{time_key}' "
+                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}"
+                        ) from exc
                     if canonical_time is not None:
                         gpu_slurm_args_dict[time_key] = canonical_time
 
@@ -2653,8 +2738,8 @@ def phenotypic_cli(
                 recompile_state.config["no_qc"] = no_qc
                 save_processing_state(recompile_state, output_dir)
             if slurm_args_dict and not force_local:
-                # SUBMITTED, or COMPLETE when nothing needed SLURM and the
-                # handler ran the local recompile instead.
+                # SUBMITTED, or the finished run's code when nothing needed
+                # SLURM and the handler ran the local recompile instead.
                 recompile_exit = _handle_recompile_slurm(
                     output_dir=output_dir,
                     metadata_csv=metadata_csv,
@@ -2673,7 +2758,12 @@ def phenotypic_cli(
                     n_jobs,
                     no_qc=no_qc,
                 )
-                recompile_exit = RunExitCode.COMPLETE
+                # The run's failures, as the waiter reads them on SLURM
+                # (#281 spec C10, review I2/F4): a recompile re-publishes the
+                # aggregate and leaves every terminal failure where it was.
+                recompile_exit = _finished_run_exit(
+                    _run_failure_count(output_dir)
+                )
             sys.exit(recompile_exit)
 
         # ---- Early validation for --mode measure (measure_only) --------
@@ -2776,12 +2866,11 @@ def phenotypic_cli(
 
         resume_state = None
 
-        # Validate extension argument
+        # Validate extension argument: a usage error, exit 2 (review M1).
         try:
             ext = normalize_extension(ext, ".tiff")
         except click.BadParameter as e:
-            click.echo(str(e), err=True)
-            sys.exit(1)
+            raise click.UsageError(str(e)) from e
 
         # Validate metadata CSV early, outside --skip-validation, with the one
         # reader every metadata consumer uses (full-file dtype inference).
@@ -3190,7 +3279,7 @@ def phenotypic_cli(
         # SLURM re-run's `initialize_slurm_lifecycle` refuse the new
         # generation -- the stuck-finalizer case, and a fence a `dvc
         # checkout` restored (#281 spec C13).
-        _retire_dead_fence(output_dir)
+        _retire_dead_fence(output_dir, submitting=config.is_slurm_mode())
         #
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
@@ -4022,25 +4111,28 @@ def phenotypic_cli(
         ):
             finalization_succeeded = False
 
-        full_stage3_complete = False
+        staged_complete = False
+        staged_terminal_incomplete = False
         if local_staged_publication:
-            from phenotypic._cli._cli_staged_resume import (
-                stage3_completion_exists,
+            unfinished = _stage3_less_images(
+                output_dir, config.full_dataset_inventory
             )
-
-            full_stage3_complete = all(
-                stage3_completion_exists(
-                    output_dir, dataset, source_image_stem(Path(image))
-                )
-                for dataset, images in config.full_dataset_inventory.items()
-                for image in images
+            staged_complete = (
+                finalization_succeeded
+                and results.total_failed == 0
+                and not unfinished
             )
-        if (
-            local_staged_publication
-            and finalization_succeeded
-            and results.total_failed == 0
-            and full_stage3_complete
-        ):
+            # The local twin of the SLURM finalizer's `terminal_incomplete`
+            # close (#281 spec C10, review I3/F3): every image without a
+            # Stage-3 marker failed terminally, so the run finished with
+            # failures. It is not marked staged-complete, and a re-run, which
+            # skips those images, re-finalizes and ends here again.
+            staged_terminal_incomplete = (
+                finalization_succeeded
+                and bool(unfinished)
+                and _all_current_terminal_failures(output_dir, unfinished)
+            )
+        if staged_complete:
             from phenotypic._cli._cli_staged_orchestration import (
                 mark_local_staged_complete,
             )
@@ -4050,9 +4142,7 @@ def phenotypic_cli(
             )
 
         if local_staged_publication and not (
-            finalization_succeeded
-            and results.total_failed == 0
-            and full_stage3_complete
+            staged_complete or staged_terminal_incomplete
         ):
             click.echo(
                 "\nSTAGED FINALIZATION FAILED: required outputs were not "
@@ -4083,6 +4173,11 @@ def phenotypic_cli(
         click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
         click.echo(f"Duration: {_format_duration(results.duration)}")
         click.echo(f"\nResults saved to: {output_dir}")
+        if staged_terminal_incomplete:
+            click.echo(
+                f"{run_failed} image(s) failed terminally. Running the same "
+                "command again skips them; add --retry-failures to retry them."
+            )
 
         # Exit with appropriate code
         sys.exit(_finished_run_exit(run_failed))
@@ -4286,8 +4381,10 @@ def _handle_recompile_slurm(
             recompile worker reads it).
 
     Returns:
-        ``RunExitCode.SUBMITTED`` once the chain is submitted, or
-        ``RunExitCode.COMPLETE`` when the recompile ran locally instead.
+        ``RunExitCode.SUBMITTED`` once the chain is submitted. When the
+        recompile ran locally instead, the finished run's code: ``COMPLETE``,
+        or ``COMPLETE_WITH_FAILURES`` when the run carries a terminal failure
+        (#281 spec C10, review I2/F4).
     """
     _load_cli_runtime()
     import json
@@ -4361,7 +4458,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return RunExitCode.COMPLETE
+        return _finished_run_exit(_run_failure_count(output_dir))
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -4387,7 +4484,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return RunExitCode.COMPLETE
+        return _finished_run_exit(_run_failure_count(output_dir))
 
     # No metadata-migration prologue any more: recompile does not rewrite
     # headers, so there is nothing to fan out and no afterok barrier to place
@@ -4513,14 +4610,15 @@ def _initialize_recompile_slurm_attempt(
     """Refuse a live prior launch and publish a fresh lifecycle fence.
 
     A fence whose jobs have all ended is closed first, as on the forward path
-    (``_retire_dead_fence``); only one that may still own a job refuses.
+    (``_retire_dead_fence``); one that may still own a job refuses, and so
+    does one with no ledger row yet (review I4).
     """
     from phenotypic._cli._cli_slurm_lifecycle import (
         initialize_slurm_lifecycle,
         load_slurm_lifecycle,
     )
 
-    _retire_dead_fence(output_dir)
+    _retire_dead_fence(output_dir, submitting=True)
     existing = load_slurm_lifecycle(output_dir)
     if existing is not None and existing.get("active") is True:
         previous = str(existing["generation"])

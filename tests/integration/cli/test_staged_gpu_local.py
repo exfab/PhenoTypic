@@ -525,7 +525,10 @@ def test_cli_retry_failures_includes_recorded_stage2_failure(
 
     monkeypatch.setattr(FakeGpuDetector, "_infer_one", fail_second_inference)
     first = CliRunner().invoke(phenotypic_cli, args)
-    assert first.exit_code == 1
+    # #281 spec C10 (review I3/F3): the only image without a Stage-3 marker is
+    # a recorded terminal failure, so the run finished with failures. It was
+    # `1` before the user's decision.
+    assert first.exit_code == RunExitCode.COMPLETE_WITH_FAILURES, first.output
     from phenotypic._cli._cli_staged_orchestration import (
         staged_completion_path,
     )

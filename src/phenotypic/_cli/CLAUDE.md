@@ -489,18 +489,19 @@ site, never a bare literal.
 |---|---|---|
 | `0` | `COMPLETE` | finished, no terminal failures |
 | `1` | `ERROR` | a runtime or config error |
-| `2` | — | a refusal raised as a `click.UsageError`; Click's own, unchanged |
+| `2` | — | a refused option: a `click.UsageError`, Click's own code. Includes an option value the CLI checks after parsing (`--slurm`/`--gpu-slurm` `KEY=VALUE` pairs and `time=`, `--ext`) |
 | `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
 | `4` | `SUBMITTED` | submitted to SLURM, not finished |
-| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and this submission published nothing |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing; re-run the same command. Covers both "published nothing" and "published a partial aggregate" (spec C3/C10, fork F5) |
 | `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
 
 - **Every SLURM submission exits `4`**: full, measure, staged and process
   runs, a SLURM `--mode recompile`, a forward run whose only remaining work is
   a SLURM recompile (a new metadata snapshot), a submitted `--mode migrate`
-  and a SLURM migrate `--dry-run`. `_handle_recompile_slurm` returns
-  `COMPLETE` instead when nothing needed SLURM and it ran the recompile
-  locally, because then nothing was submitted.
+  and a SLURM migrate `--dry-run`. When nothing needed SLURM,
+  `_handle_recompile_slurm` runs the recompile locally and returns the
+  finished run's code (`0` or `3`, below) instead, because then nothing was
+  submitted.
 - **"Failed" is the run's, not the invocation's.** A local exit asks
   `_run_failure_count` (`phenotypicCLI.py`), which is
   `resolve_run_state(...).diagnostics.failed` when this invocation recorded no
@@ -508,9 +509,21 @@ site, never a bare literal.
   that exited `3` exits `3` again on a plain re-run, whether that re-run is a
   "nothing left" no-op or a re-finalization. The same count gates
   `publish_local_gui_completion`, which raises on a run with failed images.
-- **A local staged run whose finalization is incomplete exits `1`**,
-  including when an image failed terminally (`full_stage3_complete` is then
-  false). That is the pre-#281 behaviour, kept unchanged.
+- **A recompile exits `3` over a run that carries a terminal failure**, local
+  or through either of `_handle_recompile_slurm`'s local fallbacks (user
+  decision 2026-11-13, P2 review I2/F4). A recompile re-publishes the
+  aggregate and leaves every failure record where it was, and on SLURM the
+  waiter reads the same run as `failed`, so the two agree.
+- **A local staged run whose only Stage-3-less images are current terminal
+  failures exits `3`, not `1`** (user decision 2026-11-13, P2 review I3/F3).
+  It is the local twin of the SLURM finalizer's `terminal_incomplete` close:
+  publication succeeded, every image without a Stage-3 marker has a `failed`
+  verdict in `resolve_run_state(depth="deep")`, the run is **not** marked
+  staged-complete, and a plain re-run (which skips those images)
+  re-finalizes and exits `3` again. It prints how to retry them
+  (`--retry-failures`), not "Run the same command again". A real publication
+  failure, or an unfinished image with no terminal record, still prints
+  `STAGED FINALIZATION FAILED ... Run the same command again` and exits `1`.
 - A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
   `130`.
 - **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
@@ -732,6 +745,21 @@ modes it owns, `ordinary`, `recompile` and `staged-*` (a staged fence through
 A `dvc checkout` that restores an old `.phenotypic/` (spec C13) is the same
 case. `migrate` (own lease and reconcile), `tune` and owned fences are never
 retired. Pinned by `tests/unit/cli/test_dvc_outs_at_submission.py`.
+
+**A fence with no ledger row for its generation is never retired** (P2 review
+I4). `live_slurm_job_ids` answers empty for it, because there is nothing to
+ask the scheduler about, yet it is exactly the state of a submitter between
+publishing its fence (`initialize_slurm_lifecycle`, or
+`initialize_orchestration` for staged runs) and writing its first `intent`
+row, a window that grows with a staged run's manifest. Retiring it made that
+submitter die with `SlurmGenerationInactiveError` after its mutating half had
+begun. `unledgered_active_fence` names such a fence; `_retire_dead_fence`
+then refuses a **SLURM** invocation with exit `1`, naming the generation and
+the fence file, before anything else is written (the refusal
+`initialize_slurm_lifecycle` made before the retire existed, moved up). A
+local run is not refused, as it never was. A submitter that died before its
+first `sbatch` leaves the same state, which is rare: the message says to
+delete the fence file once no invocation is running.
 
 The check is a read-only `squeue` from the invoking process, not a scheduler
 job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in

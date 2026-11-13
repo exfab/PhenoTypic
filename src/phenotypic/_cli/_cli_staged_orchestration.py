@@ -773,6 +773,45 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
 _RETIRABLE_FENCE_MODES = frozenset({"ordinary", "recompile"})
 
 
+def _retirable_active_fence(output_dir: Path) -> dict[str, Any] | None:
+    """The ``active`` fence when it is one a forward run or recompile may retire."""
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is None or lifecycle.get("active") is not True:
+        return None
+    mode = str(lifecycle.get("mode", ""))
+    if lifecycle.get("owner_kind") is not None or not (
+        mode in _RETIRABLE_FENCE_MODES or mode.startswith("staged-")
+    ):
+        return None
+    return lifecycle
+
+
+def unledgered_active_fence(output_dir: Path) -> str | None:
+    """The generation of a retirable ``active`` fence that has no ledger row.
+
+    That is the state of a submitter between publishing its fence and writing
+    its first ``intent`` row (#281 P2 review I4), which may last as long as
+    the manifest and controller-state writes of a large staged run. It is also
+    the state a submitter leaves when it dies in that window, which is rare and
+    recovered by hand. The two cannot be told apart, so
+    :func:`retire_dead_lifecycle_fence` never retires such a fence, and a
+    SLURM submission over it is refused.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The fence's generation, or ``None`` when there is no such fence.
+    """
+    lifecycle = _retirable_active_fence(output_dir)
+    if lifecycle is None:
+        return None
+    generation = str(lifecycle["generation"])
+    if read_job_ledger(output_dir, epoch=generation):
+        return None
+    return generation
+
+
 def retire_dead_lifecycle_fence(output_dir: Path) -> str | None:
     """Close an ``active`` fence whose jobs the scheduler reports all ended.
 
@@ -792,6 +831,10 @@ def retire_dead_lifecycle_fence(output_dir: Path) -> str | None:
     :func:`deactivate_orchestration`, which also fences the controller state
     and journals the deactivation for any straggling worker.
 
+    A fence with **no** ledger row for its generation is never retired
+    (:func:`unledgered_active_fence`): the scheduler has nothing to say about
+    it, because its submitter may still be preparing the first ``sbatch``.
+
     Never call it above the ``--dry-run`` exit: it writes.
 
     Args:
@@ -799,20 +842,16 @@ def retire_dead_lifecycle_fence(output_dir: Path) -> str | None:
 
     Returns:
         The retired generation, or ``None`` when there was nothing to retire:
-        no fence, an inactive one, a mode this function does not own, or a
-        fence that may still own a job.
+        no fence, an inactive one, a mode this function does not own, a fence
+        with no ledger row, or a fence that may still own a job.
     """
-    lifecycle = load_slurm_lifecycle(output_dir)
-    if lifecycle is None or lifecycle.get("active") is not True:
-        return None
-    mode = str(lifecycle.get("mode", ""))
-    if lifecycle.get("owner_kind") is not None or not (
-        mode in _RETIRABLE_FENCE_MODES or mode.startswith("staged-")
-    ):
+    lifecycle = _retirable_active_fence(output_dir)
+    if lifecycle is None or unledgered_active_fence(output_dir) is not None:
         return None
     if live_slurm_job_ids(output_dir):
         return None
     generation = str(lifecycle["generation"])
+    mode = str(lifecycle.get("mode", ""))
     if mode.startswith("staged-"):
         deactivate_orchestration(output_dir, "cancelled")
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
