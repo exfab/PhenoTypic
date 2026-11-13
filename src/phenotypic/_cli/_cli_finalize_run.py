@@ -589,6 +589,7 @@ def publish_run_summaries(
 
     metrics = build_run_metrics(
         phenotypic_version=phenotypic.__version__,
+        # P3 T4 feeds certified_table_run(...).pipeline_sha256 here
         pipeline_sha256=shared_pipeline_sha256(
             _aggregated_pipeline_digests(aggregated_sources)
         ),
