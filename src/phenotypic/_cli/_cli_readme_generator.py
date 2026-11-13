@@ -118,11 +118,11 @@ output_folder/
 |   +-- measurements_by_category/     # One TSV + Parquet per measurement category (see Measurement Categories)
 |   +-- metrics.json                  # Run summary: image/object/phantom counts, PhenoTypic version, pipeline sha256
 |   +-- schema.json                   # Every column of each published table: dtype, unit, measurer, schema member, description
-|   +-- pipeline.pht-pipe.json       # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
+|   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.tsv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
-|   +-- plots/                         # Configured plot outputs and page manifests
+|   +-- plots/                        # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
@@ -159,8 +159,9 @@ the pipeline every aggregated table came from (`null` when they differ or it
 is not recorded). `schema.json` lists, for every published table (keyed by
 its path under `deliverables/` without the suffix), each column's Parquet
 dtype, unit, producing measurer, schema member and description. Both are
-rewritten by every finalization and hold no timestamps, so identical runs give
-byte-identical files."""
+rewritten each time a full, measure or recompile run publishes its tables
+(`--mode migrate` does not write them), and they hold no timestamps, so
+identical runs give byte-identical files."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
