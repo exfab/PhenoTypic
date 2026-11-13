@@ -271,8 +271,10 @@ The five parts below are independent enough to plan and ship in the order of §5
   `<ext>` is the input's extension, lower-cased (`plates.TSV` snapshots to
   `metadata.tsv`). Readers locate the snapshot under either extension. Existing
   trees keep `metadata.csv`.
-  - Exactly one snapshot exists. If both suffixes exist, every mode refuses
-    with a usage error before writing anything.
+  - Exactly one snapshot exists. If both suffixes exist, any run that would
+    read the snapshot refuses with a usage error before writing anything. A
+    full or recompile run given `--metadata` replaces the snapshot instead,
+    which is how the pair is resolved; measure and migrate always refuse.
   - A `--metadata` whose suffix differs from the snapshot's **replaces** it, as
     a same-suffix edit always has. The new snapshot is published first and the
     other suffix's file removed after, so a crash leaves two files (a loud
