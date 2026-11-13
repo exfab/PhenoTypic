@@ -257,7 +257,7 @@ def _output_layout_entries(
         measurements_csv_path,
         measurements_parquet_path,
         measurements_tsv_path,
-        metadata_csv_deliverable_path,
+        metadata_snapshot_path,
         named_analysis_tsv_path,
         phenotypic_cache_dir,
         pipeline_json_path,
@@ -303,7 +303,11 @@ def _output_layout_entries(
             entries.append((qc_dir(output_dir), True, "quality-control tables (qc.duckdb)"))
     if forward and config.metadata_csv is not None:
         entries.append(
-            (metadata_csv_deliverable_path(output_dir), False, "a byte-for-byte copy of your --metadata")
+            (
+                metadata_snapshot_path(output_dir, Path(config.metadata_csv).suffix),
+                False,
+                "a byte-for-byte copy of your --metadata",
+            )
         )
     entries += [
         (pipeline_json_path(output_dir), False, "the pipeline this run used"),

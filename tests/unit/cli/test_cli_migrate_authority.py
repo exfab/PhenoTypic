@@ -1074,7 +1074,7 @@ def test_canonical_metadata_view_replaces_only_inside_commit_guard(
         emit_canonical_metadata_view(run, commit_guard=guard)
 
     assert guard.entries == 1
-    assert not (snapshot.parent / "metadata.canonical.csv").exists()
+    assert not (snapshot.parent / "metadata.canonical.tsv").exists()
 
 
 def test_aggregate_snapshot_replaces_only_inside_commit_guard(

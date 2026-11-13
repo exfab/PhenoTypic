@@ -203,7 +203,8 @@ from phenotypic.sdk_ import (
     preserved_on_restart_names,
     atomic_write_bytes,
     atomic_write_json,
-    metadata_csv_deliverable_path,
+    metadata_snapshot_path,
+    resolve_metadata_snapshot_path,
     pipeline_config_candidates,
     pipeline_json_path,
     pipeline_publication_lock,
@@ -799,15 +800,16 @@ def _refuse_unusable_reference_table(
     like the ``--metadata`` parse it extends: a bad table must not cost the
     user a changed output first. Without ``--metadata`` it checks the snapshot
     the run would fall back to, exactly as ``resolve_reference_table_path``
-    picks it (full: ``deliverables/metadata.csv``; process:
-    ``.phenotypic/reference_metadata.csv``).
+    picks it (full: ``deliverables/metadata.<ext>``; process:
+    ``.phenotypic/reference_metadata.<ext>``, either suffix).
 
     Raises:
         click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
             the run would fall back to is deleted); no table at all
-            (``PF-REF-NO-TABLE``); a ``--metadata`` that is not the CSV the
-            run snapshots (``metadata_csv_payload``, the snapshot's own
-            check); or a table that is not a valid reference table.
+            (``PF-REF-NO-TABLE``); a ``.csv`` and a ``.tsv`` snapshot both
+            present; a ``--metadata`` that is not the table the run snapshots
+            (``metadata_csv_payload``, the snapshot's own check); or a table
+            that is not a valid reference table.
     """
     from phenotypic._cli._cli_preflight import HINTS
     from phenotypic._core._reference_context import (
@@ -831,14 +833,19 @@ def _refuse_unusable_reference_table(
             "pass --metadata with the table this pipeline reads."
         )
     else:
-        table = reference_table_snapshot_path(output_dir, process_mode=process_mode)
-        label = f"reference metadata snapshot {table}"
-        if not table.is_file():
+        try:
+            snapshot = reference_table_snapshot_path(
+                output_dir, process_mode=process_mode
+            )
+        except ValueError as exc:  # both a .csv and a .tsv snapshot
+            raise click.UsageError(str(exc)) from exc
+        if snapshot is None:
             raise click.UsageError(
                 "[PF-REF-NO-TABLE] The pipeline reads reference metadata but no "
                 "--metadata was given and the run has no snapshot to fall back to.\n"
                 f"    → {HINTS['PF-REF-NO-TABLE']}"
             )
+        table, label = snapshot, f"reference metadata snapshot {snapshot}"
     try:
         ReferenceContext(table)
     except ReferenceTableError as exc:
@@ -943,41 +950,74 @@ def _refuse_live_slurm_run(output_dir: Path) -> None:
     sys.exit(1)
 
 
+def _metadata_suffix_callback(
+    ctx: click.Context, param: click.Parameter, value: Optional[Path]
+) -> Optional[Path]:
+    """Refuse a ``--metadata`` table that is neither ``.csv`` nor ``.tsv``.
+
+    Spec B4: a user table may be either, the delimiter chosen by suffix, and any
+    other suffix is refused. A Click callback rather than a check in the
+    read-only half, so the refusal is Click's own usage error (exit ``2``)
+    raised during parsing, before any mode's own logic runs -- the same exit
+    every other malformed option gets, and in every mode alike.
+    """
+    if value is None:
+        return value
+    from phenotypic.sdk_ import INPUT_TABLE_SUFFIXES
+
+    if value.suffix.lower() not in INPUT_TABLE_SUFFIXES:
+        raise click.BadParameter(
+            f"{value.name!r} must be a .csv or .tsv table (got suffix "
+            f"{value.suffix or 'none'!r}); export it as CSV or TSV.",
+            ctx=ctx,
+            param=param,
+        )
+    return value
+
+
 def _snapshot_metadata_csv(
     output_dir: Path, source: Optional[Path]
 ) -> Optional[Path]:
     """Publish and return the byte-exact startup metadata snapshot.
 
-    An existing snapshot is reused when no new source is supplied. New bytes
-    are validated as CSV and atomically replaced before any processing or
-    scheduler submission. Legacy headers are normalized only when the snapshot
-    is read; finalization and metadata migration never rewrite these source
-    bytes.
+    The snapshot is ``deliverables/metadata.<ext>``, keeping the source's
+    suffix (``.csv`` or ``.tsv``, spec B5). An existing snapshot, under either
+    suffix, is reused when no new source is supplied. New bytes are validated
+    with the suffix's delimiter and atomically replaced before any processing
+    or scheduler submission; a source whose suffix differs from the existing
+    snapshot's replaces it (the old suffix's file is removed first, see
+    ``remove_other_suffix_snapshot``), so a run never holds two. Legacy
+    headers are normalized only when the snapshot is read; finalization and
+    metadata migration never rewrite these source bytes.
     """
-    destination = metadata_csv_deliverable_path(output_dir)
     if source is None:
-        return destination if destination.is_file() else None
+        return resolve_metadata_snapshot_path(output_dir)
 
     import hashlib
     import io
     import json
 
     import pandas as pd
+    from phenotypic._cli._cli_reference import remove_other_suffix_snapshot
+    from phenotypic.sdk_ import delimiter_for
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
+    destination = metadata_snapshot_path(output_dir, source.suffix)
     payload = source.read_bytes()
     # Kept although the startup parse already ran the shared reader: pandas
     # refuses an unterminated quote that Polars reads as a header, and this
     # parse is what keeps such bytes from replacing a valid snapshot (review
     # D8 proposed removing it; test_invalid_metadata_never_replaces_existing_
     # snapshot is the counterexample).
-    pd.read_csv(io.BytesIO(payload))
+    pd.read_csv(io.BytesIO(payload), sep=delimiter_for(source))
     expected_digest = hashlib.sha256(payload).hexdigest()
     state_path = resolve_processing_state_path(output_dir)
     lock_path = state_path.with_name(f".{state_path.name}.lock")
     with exclusive_path_lock(lock_path, timeout=60.0):
         if destination.is_file() and destination.read_bytes() == payload:
+            remove_other_suffix_snapshot(destination)
             return destination
+        remove_other_suffix_snapshot(destination)
         if state_path.is_file():
             raw_state = json.loads(state_path.read_text(encoding="utf-8"))
             raw_config = raw_state.get("config")
@@ -1001,8 +1041,10 @@ def _prepare_incremental_startup(
     """Publish startup inputs and conservatively migrate exact failures."""
     metadata_snapshot_changed = False
     if not config.measure_only and not config.process_only_layer:
-        metadata_destination = metadata_csv_deliverable_path(output_dir)
         if config.metadata_csv is not None:
+            metadata_destination = metadata_snapshot_path(
+                output_dir, config.metadata_csv.suffix
+            )
             source_bytes = config.metadata_csv.read_bytes()
             metadata_snapshot_changed = (
                 not metadata_destination.is_file()
@@ -2059,10 +2101,13 @@ def _print_process_only_dry_run_plan(
     "metadata_csv",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
+    callback=_metadata_suffix_callback,
     help=(
-        "CSV file to left-join onto the measurements mirror on shared columns. "
-        "Rows that match no measured object are kept with null measurements and "
-        "QC_MetadataOnly=true, so undetected strains stay visible."
+        "CSV or TSV table (.csv or .tsv; the delimiter follows the suffix) to "
+        "left-join onto the measurements mirror on shared columns. Rows that "
+        "match no measured object are kept with null measurements and "
+        "QC_MetadataOnly=true, so undetected strains stay visible. The run "
+        "keeps a byte-for-byte copy as deliverables/metadata.csv or .tsv."
     ),
 )
 @click.option(
@@ -2658,6 +2703,20 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
+        elif (
+            metadata_csv is None
+            and cli_mode == "full"
+            and not overwrite
+            and output_dir.exists()
+        ):
+            # A continuation falls back to the run's snapshot; refuse here,
+            # above every mutation, when it holds both metadata.csv and
+            # metadata.tsv rather than letting mint_run_identity raise after
+            # --restart has already cleared machine state.
+            try:
+                resolve_metadata_snapshot_path(output_dir)
+            except ValueError as exc:
+                raise click.UsageError(str(exc)) from exc
 
         # The reference table, likewise outside --skip-validation and above
         # every mutation (the --dry-run exit, the --overwrite rmtree).
@@ -4154,13 +4213,10 @@ def _handle_recompile_slurm(
         shard_size=shard_size,
         attempt_id=attempt_id,
     )
-    from phenotypic.sdk_ import metadata_csv_deliverable_path
-
-    stable_metadata = metadata_csv_deliverable_path(output_dir)
     effective_metadata = (
         metadata_csv
         if metadata_csv is not None
-        else (stable_metadata if stable_metadata.is_file() else None)
+        else resolve_metadata_snapshot_path(output_dir)
     )
     for task in tasks:
         if task.get("task_type") in {TASK_MEASUREMENTS, TASK_FINALIZE}:
@@ -4571,19 +4627,16 @@ def _handle_recompile(
     #
     # The fallback was computing the right value and handing it to the wrong
     # consumer. `--metadata` still wins when given; otherwise the run's own
-    # `deliverables/metadata.csv` is what finalization joins, which is what
+    # `deliverables/metadata.<ext>` snapshot is what finalization joins, which is what
     # makes a bare recompile reproduce the mirror the forward run published.
     #
     # The SLURM path already does exactly this, at `_handle_recompile_slurm`:
     # it resolves `effective_metadata` the same way and stamps it onto the
     # finalizer task, so that arm never had the hole.
-    from phenotypic.sdk_ import metadata_csv_deliverable_path
-
-    stable_metadata = metadata_csv_deliverable_path(output_dir)
     effective_metadata = (
         metadata_csv
         if metadata_csv is not None
-        else (stable_metadata if stable_metadata.is_file() else None)
+        else resolve_metadata_snapshot_path(output_dir)
     )
 
     console.print("[cyan]Aggregating measurements...")

@@ -55,7 +55,7 @@ from phenotypic.sdk_ import (
     atomic_write_with_writer,
     dataset_overlays_dir,
     deliverables_dir,
-    metadata_csv_deliverable_path,
+    resolve_metadata_snapshot_path,
     measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
@@ -1992,12 +1992,8 @@ class OutputManager:
                         str(EXPERIMENT.DATASET),
                         dataset_name,
                     )
-                metadata_snapshot = metadata_csv_deliverable_path(
-                    self.base_dir
-                )
                 table = prepare_image_tables(
-                    baseline,
-                    metadata_snapshot if metadata_snapshot.is_file() else None,
+                    baseline, resolve_metadata_snapshot_path(self.base_dir)
                 )
             save_kwargs: dict[str, Any] = {
                 "work_id": work_id,
@@ -2080,10 +2076,8 @@ class OutputManager:
                 str(EXPERIMENT.DATASET),
                 dataset_name,
             )
-        metadata_snapshot = metadata_csv_deliverable_path(self.base_dir)
         tables = prepare_image_tables(
-            baseline,
-            metadata_snapshot if metadata_snapshot.is_file() else None,
+            baseline, resolve_metadata_snapshot_path(self.base_dir)
         )
         replace_image_tables(
             store_path,

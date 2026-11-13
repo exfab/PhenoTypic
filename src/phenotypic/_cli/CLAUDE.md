@@ -123,7 +123,8 @@ table as an argument; they read a run-level plan.
   `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
   in `full` mode and not in `process` mode.
 - **Process mode uses `--metadata` only when those operations exist.** It is
-  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.csv`
+  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.<ext>`
+  (the table's own suffix, `.csv` or `.tsv`)
   (preserved across `--restart`), a continuation may omit it, and a table
   inside `--output` is refused like any run input. Otherwise the old
   "`--metadata` is ignored in --mode process" warning still prints.
@@ -132,11 +133,13 @@ table as an argument; they read a run-level plan.
   - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
     (the snapshot it would fall back to is deleted); no `--metadata` and no
     snapshot (`[PF-REF-NO-TABLE]`); a `--metadata` that fails
-    `metadata_csv_payload` (not a `.csv`, or bytes pandas cannot parse --
+    `metadata_csv_payload` (not a `.csv`/`.tsv`, or bytes pandas cannot parse --
     the very check `snapshot_reference_metadata` runs after `--overwrite`,
     so the two cannot disagree); or a table, given or snapshotted, that
-    `ReferenceContext` cannot read. `--metadata` is a CSV in every CLI mode,
-    although a notebook `ReferenceContext` also reads `.parquet`.
+    `ReferenceContext` cannot read. `--metadata` is a `.csv` or `.tsv` table
+    in every CLI mode (the `--metadata` Click callback refuses any other
+    suffix with exit 2), although a notebook `ReferenceContext` also reads
+    `.parquet`.
   - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
     whose measurers read reference metadata. Measure mode plans nothing, never
     touches the manifest and carries no reference digest in its work-ids, so
@@ -973,9 +976,9 @@ otherwise.
   leaves it exactly where it is; renaming it into `legacy-v2/`, where nothing
   reads it, would orphan the work of any staged run live across the migrate.
   Only `image_complete/` and `stage3_complete/` move.
-- **`deliverables/metadata.csv` is byte-exact provenance**, with no exception for
+- **`deliverables/metadata.<ext>` is byte-exact provenance**, with no exception for
   migrate. The canonical view is emitted *alongside* it as
-  `metadata.canonical.csv`; `metadata.original.csv` does not exist and must not
+  `metadata.canonical.tsv`; `metadata.original.csv` does not exist and must not
   be created.
 - **The master is parquet-only** (D8). `master_measurements.csv` is deleted on
   sight, not rewritten.
@@ -1252,7 +1255,7 @@ visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 
 **Metadata snapshot authority.** Before local processing or SLURM submission,
 full runs and recompile atomically copy the configured `--metadata` bytes to
-`deliverables/metadata.csv`, verify the copy, and use that stable path for
+`deliverables/metadata.<ext>` (the input's own `.csv` or `.tsv` suffix), verify the copy, and use that stable path for
 finalization. The snapshot is source provenance, not a generated schema table:
 legacy headers normalize only in memory, while finalization, recompile, and
 explicit `--mode migrate` must leave its bytes unchanged. Recompile performs

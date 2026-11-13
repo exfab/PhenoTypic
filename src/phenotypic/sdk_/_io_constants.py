@@ -82,6 +82,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Iterable, Mapping, Optional
 
+from ._delimited import CSV_SUFFIX, INPUT_TABLE_SUFFIXES, TSV_SUFFIX
 from .typing_ import (
     CheckpointType,
     ExecutionMode,
@@ -395,12 +396,16 @@ MEASUREMENTS_TSV: Final[str] = "measurements.tsv"
 #: mirror); both are written atomically together.
 MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
 
-#: Best-effort co-located copy of the run's ``--metadata`` source CSV,
-#: written into :data:`DIR_DELIVERABLES` by
-#: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.
-#: The post-applied mirror carries the metadata columns, while this file
-#: preserves the full portable original mapping.
+#: The run's byte-exact ``--metadata`` snapshot when the user's table was a
+#: ``.csv`` (the only name before #281 P1, so every existing tree has it).
+#: Since spec B5 the snapshot keeps the input's suffix: build the name with
+#: :func:`metadata_snapshot_path` and find it with
+#: :func:`resolve_metadata_snapshot_path`, never by this constant alone.
 DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
+
+#: Stem of ``deliverables/metadata.<ext>`` (spec B5); ``<ext>`` is ``.csv`` or
+#: ``.tsv``, the user's own suffix, lower-cased.
+_DELIVERABLES_METADATA_STEM: Final[str] = "metadata"
 
 #: Authoritative index for class-named analysis table artifacts.
 ANALYSIS_MANIFEST_FILENAME: Final[str] = "analysis_manifest.json"
@@ -816,8 +821,17 @@ RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 #: ``--metadata`` table for a ``--mode process`` run whose pipeline reads
 #: reference metadata (full mode reads ``deliverables/metadata.csv`` instead).
 #: Preserved across ``--restart``, as ``deliverables/metadata.csv`` is; the
-#: reason is at :data:`_PRESERVED_ON_RESTART`.
+#: reason is at :data:`_PRESERVED_ON_RESTART`. Since spec B5 the snapshot keeps
+#: the input's suffix, so a ``.tsv`` table snapshots to
+#: :data:`REFERENCE_METADATA_TSV`; see :func:`reference_snapshot_path`.
 REFERENCE_METADATA_CSV: Final[str] = "reference_metadata.csv"
+
+#: ``<output>/.phenotypic/reference_metadata.tsv`` -- the same snapshot as
+#: :data:`REFERENCE_METADATA_CSV`, for a tab-separated ``--metadata`` table.
+REFERENCE_METADATA_TSV: Final[str] = "reference_metadata.tsv"
+
+#: Stem of ``.phenotypic/reference_metadata.<ext>``.
+_REFERENCE_METADATA_STEM: Final[str] = "reference_metadata"
 
 #: ``<output>/.phenotypic/reference_manifest.json`` -- the run's resolved
 #: reference plan (table, reader settings, reference-image paths, per-image
@@ -1197,6 +1211,74 @@ def reference_metadata_snapshot_path(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / REFERENCE_METADATA_CSV
 
 
+def _snapshot_suffix(suffix: str) -> str:
+    """Lower-case *suffix* and refuse anything but ``.csv``/``.tsv``.
+
+    Lower-casing keeps one spelling on disk, so a resolver probing
+    ``metadata.tsv`` finds a snapshot of ``plates.TSV`` on a case-sensitive
+    filesystem too.
+    """
+    normalized = suffix.lower()
+    if normalized not in INPUT_TABLE_SUFFIXES:
+        raise ValueError(
+            f"A metadata snapshot must be a .csv or .tsv table (got suffix {suffix!r})"
+        )
+    return normalized
+
+
+def _resolve_snapshot(directory: Path, stem: str) -> Optional[Path]:
+    """Return ``<directory>/<stem>.tsv`` or ``.csv``, whichever exists.
+
+    The snapshot writers keep exactly one; finding both means the provenance
+    of the run's table is ambiguous, so this refuses rather than picking.
+    """
+    found = [
+        directory / f"{stem}{suffix}"
+        for suffix in (TSV_SUFFIX, CSV_SUFFIX)
+        if (directory / f"{stem}{suffix}").is_file()
+    ]
+    if len(found) > 1:
+        raise ValueError(
+            f"Both {found[0].name} and {found[1].name} exist in {directory}; a run "
+            "keeps exactly one metadata snapshot. Remove the one that is not "
+            "the table this run used, or re-run with --metadata."
+        )
+    return found[0] if found else None
+
+
+def reference_snapshot_path(output_dir: Path, suffix: str) -> Path:
+    """Return ``<output>/.phenotypic/reference_metadata<suffix>`` (spec B5).
+
+    Pure path expression for the process-mode reference snapshot, which keeps
+    the ``--metadata`` table's own suffix. The writer is
+    :func:`phenotypic._cli._cli_reference.snapshot_reference_metadata`.
+
+    Args:
+        output_dir: The run's ``--output``.
+        suffix: The input table's suffix, ``.csv`` or ``.tsv`` (any case).
+
+    Returns:
+        The snapshot path, its suffix lower-cased.
+
+    Raises:
+        ValueError: For any other suffix.
+    """
+    return phenotypic_cache_dir(output_dir) / (
+        f"{_REFERENCE_METADATA_STEM}{_snapshot_suffix(suffix)}"
+    )
+
+
+def resolve_reference_metadata_snapshot_path(output_dir: Path) -> Optional[Path]:
+    """Return the process-mode reference snapshot that exists, or ``None``.
+
+    Looks for ``reference_metadata.tsv``, then ``reference_metadata.csv``.
+
+    Raises:
+        ValueError: Both exist (the writer keeps exactly one).
+    """
+    return _resolve_snapshot(phenotypic_cache_dir(output_dir), _REFERENCE_METADATA_STEM)
+
+
 def reference_manifest_path(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/reference_manifest.json``.
 
@@ -1453,6 +1535,7 @@ _PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
         RESTART_EPOCH_JSON,
         DIR_LEGACY_V2,
         REFERENCE_METADATA_CSV,
+        REFERENCE_METADATA_TSV,
     }
 )
 
@@ -1571,8 +1654,47 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 
 
 def metadata_csv_deliverable_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy)."""
+    """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy).
+
+    The pre-B5 name, kept with its one-argument signature because the GUI
+    calls it. A run given a ``.tsv`` table snapshots to ``metadata.tsv``
+    instead, so a reader resolves with :func:`resolve_metadata_snapshot_path`.
+    """
     return deliverables_dir(output_dir) / DELIVERABLES_METADATA_CSV
+
+
+def metadata_snapshot_path(output_dir: Path, suffix: str) -> Path:
+    """Return ``<output>/deliverables/metadata<suffix>`` (spec B5).
+
+    Pure path expression for the byte-exact ``--metadata`` startup snapshot,
+    which keeps the input's suffix. The writer is
+    ``phenotypicCLI._snapshot_metadata_csv``; nothing else writes it.
+
+    Args:
+        output_dir: The run's ``--output``.
+        suffix: The input table's suffix, ``.csv`` or ``.tsv`` (any case).
+
+    Returns:
+        The snapshot path, its suffix lower-cased.
+
+    Raises:
+        ValueError: For any other suffix.
+    """
+    return deliverables_dir(output_dir) / (
+        f"{_DELIVERABLES_METADATA_STEM}{_snapshot_suffix(suffix)}"
+    )
+
+
+def resolve_metadata_snapshot_path(output_dir: Path) -> Optional[Path]:
+    """Return the run's ``deliverables/metadata.<ext>`` snapshot, or ``None``.
+
+    Looks for ``metadata.tsv``, then ``metadata.csv`` (every tree written
+    before spec B5 has the latter).
+
+    Raises:
+        ValueError: Both exist (the writer keeps exactly one).
+    """
+    return _resolve_snapshot(deliverables_dir(output_dir), _DELIVERABLES_METADATA_STEM)
 
 
 def rembi_manifest_path(output_dir: Path) -> Path:

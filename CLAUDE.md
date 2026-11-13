@@ -604,12 +604,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   context (startup writes `.phenotypic/reference_manifest.json`; workers read
   it), and a per-image reference digest enters the work-id only for such
   pipelines. Process mode snapshots the table to
-  `.phenotypic/reference_metadata.csv`, preserved across `--restart`.
+  `.phenotypic/reference_metadata.<ext>`, preserved across `--restart`.
   `--mode measure` refuses a pipeline whose measurers read reference
   metadata. See `docs/source/how_to/pages/reference_metadata.md`.
 - **Metadata startup snapshot:** full runs and recompile copy a configured
-  `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
-  work or SLURM submission. Treat that file as input provenance: **never rewrite
+  `--metadata` table byte-for-byte to `deliverables/metadata.<ext>` before local
+  work or SLURM submission. `<ext>` is the input's own suffix, `.csv` or `.tsv`
+  (spec B5; any other suffix is a usage error), and a run keeps exactly one:
+  find it with `resolve_metadata_snapshot_path`, which refuses a folder holding
+  both, never by hand-joining `metadata.csv`. Treat that file as input provenance: **never rewrite
   it as a side effect** of any other operation. Finalization, chunk writers, and
   `--mode recompile` normalize legacy headers **only in memory**.
   **There is no exception, including `--mode migrate`.** An earlier draft of
@@ -620,8 +623,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
   provenance, and "the original is recoverable over there" is a weaker
   guarantee than "the bytes you supplied are still the bytes on disk".
   `--mode migrate` instead **emits a canonical view alongside** the snapshot,
-  at `deliverables/metadata.canonical.csv`, and leaves `metadata.csv`
-  byte-identical (pinned by
+  at `deliverables/metadata.canonical.tsv` (a generated table, so TSV), and
+  leaves `metadata.<ext>` byte-identical (pinned by
   `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate`).
   `metadata.original.csv` does not exist and must not be created. Generated
   scientific tables still emit only the canonical flat `Metadata_<Label>`

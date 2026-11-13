@@ -126,3 +126,23 @@ def finished_tiny_run(tmp_path: Path, tiny_inputs: Path) -> Path:
     result = run_cli(tiny_inputs, out)
     assert result.exit_code == 0, result.output
     return out
+
+
+@pytest.fixture
+def metadata_bytes() -> dict[str, bytes]:
+    """The same ``--metadata`` rows as CSV and as TSV, keyed by suffix.
+
+    One row per :func:`tiny_inputs` plate (``plate_1``, ``plate_2``), joined on
+    ``Metadata_ImageName``. The strain ``"S288C, MATa"`` holds a comma, so the
+    CSV must quote it and the TSV must not: a reader that picks the wrong
+    delimiter splits the field, and the join comparison fails rather than
+    passing by accident.
+    """
+    rows = [("plate_1", "S288C, MATa"), ("plate_2", "BY4741")]
+    header = ("Metadata_ImageName", "Metadata_Strain")
+    csv_lines = [",".join(header)] + [f'{name},"{strain}"' for name, strain in rows]
+    tsv_lines = ["\t".join(header)] + [f"{name}\t{strain}" for name, strain in rows]
+    return {
+        ".csv": ("\n".join(csv_lines) + "\n").encode("utf-8"),
+        ".tsv": ("\n".join(tsv_lines) + "\n").encode("utf-8"),
+    }

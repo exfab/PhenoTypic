@@ -24,6 +24,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
     import polars as pl
 
+    from ._atomic_io import CommitGuard
+
 #: Suffix of every tabular text file the CLI generates.
 TSV_SUFFIX: Final[str] = ".tsv"
 
@@ -66,7 +68,12 @@ def delimiter_for(path: Union[str, Path]) -> str:
         ) from None
 
 
-def write_tsv(frame: "pl.DataFrame | pd.DataFrame", path: Union[str, Path]) -> None:
+def write_tsv(
+    frame: "pl.DataFrame | pd.DataFrame",
+    path: Union[str, Path],
+    *,
+    commit_guard: "CommitGuard | None" = None,
+) -> None:
     """Atomically write ``frame`` to ``path`` as TSV.
 
     A concurrent reader sees the old file or the complete new one, never a
@@ -76,12 +83,17 @@ def write_tsv(frame: "pl.DataFrame | pd.DataFrame", path: Union[str, Path]) -> N
     Args:
         frame: A polars or pandas DataFrame. A pandas index is not written.
         path: Destination file. Its parent is created when missing.
+        commit_guard: Optional publication guard; the replace happens only
+            inside it (see :func:`phenotypic.sdk_._atomic_io.atomic_write_with_writer`).
 
     Raises:
         OSError: If the write or the rename fails; the temp file is removed.
     """
     atomic_write_with_writer(
-        path, _tsv_writer(frame), temp_suffix=f"{TSV_SUFFIX}.tmp"
+        path,
+        _tsv_writer(frame),
+        commit_guard=commit_guard,
+        temp_suffix=f"{TSV_SUFFIX}.tmp",
     )
 
 

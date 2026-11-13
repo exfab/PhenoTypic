@@ -127,7 +127,7 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     image_completion_marker_path,
     load_image_from_store,
-    metadata_csv_deliverable_path,
+    resolve_metadata_snapshot_path,
     phenotypic_cache_dir,
     pipeline_config_candidates,
     publication_commit,
@@ -693,7 +693,7 @@ def _ensure_migration_processing_state(
         output_dir / "pipeline.pht-pipe",
     )
     now = datetime.now(timezone.utc)
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
+    metadata_snapshot = resolve_metadata_snapshot_path(output_dir)
     state = ProcessingState(
         version="3.0.0",
         pipeline_path=pipeline_path,
@@ -736,7 +736,11 @@ def _ensure_migration_processing_state(
             # the only reason nothing surfaces.
             "restart_epoch": 0,
             "pipeline_sha256": _file_sha256(pipeline_path),
-            "metadata_sha256": _file_sha256(metadata_snapshot),
+            "metadata_sha256": (
+                _file_sha256(metadata_snapshot)
+                if metadata_snapshot is not None
+                else None
+            ),
             "include_dataset_column": True,
             "no_qc": True,
             "process_only_layer": None,
@@ -1056,11 +1060,10 @@ def _publish_migration_aggregate(
         for path in (output_dir / "results").iterdir()
         if path.is_dir()
     ) if (output_dir / "results").is_dir() else []
-    snapshot = metadata_csv_deliverable_path(output_dir)
     aggregate_path = aggregate_measurements(
         output_dir,
         datasets,
-        metadata_csv=snapshot if snapshot.is_file() else None,
+        metadata_csv=resolve_metadata_snapshot_path(output_dir),
         no_qc=True,
         commit_guard=commit_guard,
     )
@@ -1364,8 +1367,7 @@ def migrate_legacy_measurement_tables(
     )
 
     output_dir = Path(output_dir)
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
-    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+    metadata_csv = resolve_metadata_snapshot_path(output_dir)
     sources = sorted(
         path
         for path in (output_dir / "results").glob("*/measurements/*.parquet")
@@ -1729,8 +1731,7 @@ def _run_migrate_owned(
             )
         ),
     )
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
-    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+    metadata_csv = resolve_metadata_snapshot_path(output_dir)
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)

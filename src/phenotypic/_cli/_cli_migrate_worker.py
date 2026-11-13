@@ -10,7 +10,12 @@ from typing import Any, Mapping
 
 import click
 
-from phenotypic.sdk_ import CommitGuard, atomic_write_json, deliverables_dir
+from phenotypic.sdk_ import (
+    CommitGuard,
+    atomic_write_json,
+    deliverables_dir,
+    resolve_metadata_snapshot_path,
+)
 from phenotypic.sdk_._hdf_to_zarr import MigrationReport
 from phenotypic.sdk_._metadata_migration import MetadataMigrationAuthority
 
@@ -485,11 +490,7 @@ def _run_image_worker(config: _WorkerConfig, index: int) -> int:
         result = migrate_image_task(
             config.output_dir,
             task,
-            metadata_csv=(
-                config.scientific_output / "metadata.csv"
-                if (config.scientific_output / "metadata.csv").is_file()
-                else None
-            ),
+            metadata_csv=resolve_metadata_snapshot_path(config.output_dir),
             overlay_alpha=config.overlay_alpha,
             dry_run=config.dry_run,
             commit_guard=_commit_guard(config),
@@ -727,11 +728,7 @@ def _run_reclaim_worker(config: _WorkerConfig, index: int) -> int:
             else reclaim_image_sources(
                 config.output_dir,
                 task,
-                metadata_csv=(
-                    config.scientific_output / "metadata.csv"
-                    if (config.scientific_output / "metadata.csv").is_file()
-                    else None
-                ),
+                metadata_csv=resolve_metadata_snapshot_path(config.output_dir),
                 commit_guard=_commit_guard(config),
             )
         )

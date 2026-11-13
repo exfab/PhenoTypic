@@ -33,11 +33,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
-from ._atomic_io import CommitGuard, atomic_write_with_writer, publication_commit
+from ._atomic_io import CommitGuard, publication_commit
 from ._io_constants import (
     dataset_results_dir,
     deliverables_dir,
-    metadata_csv_deliverable_path,
+    resolve_metadata_snapshot_path,
     results_dir,
     source_image_stem,
     zarr_store_path,
@@ -455,6 +455,12 @@ def _conversion_is_faithful(src: Path, store: Path) -> bool:
 
 #: Name of the derived view emitted beside the snapshot. It is **not** the
 #: snapshot and carries no provenance role, so it needs no digest in state.
+#: A generated table, so it is TSV since #281 P1 (spec B2) whatever the
+#: snapshot's own suffix.
+CANONICAL_METADATA_TSV_NAME: str = "metadata.canonical.tsv"
+
+#: The view's pre-P1 name. Kept defined for older trees' readers; nothing
+#: writes it any more.
 CANONICAL_METADATA_CSV_NAME: str = "metadata.canonical.csv"
 
 
@@ -468,9 +474,9 @@ def canonical_metadata_view_path(output_dir: Path) -> Path:
         output_dir: Run output root.
 
     Returns:
-        ``<output>/deliverables/metadata.canonical.csv``.
+        ``<output>/deliverables/metadata.canonical.tsv``.
     """
-    return deliverables_dir(Path(output_dir)) / CANONICAL_METADATA_CSV_NAME
+    return deliverables_dir(Path(output_dir)) / CANONICAL_METADATA_TSV_NAME
 
 
 def emit_canonical_metadata_view(
@@ -480,7 +486,7 @@ def emit_canonical_metadata_view(
 ) -> Path | None:
     """Derive a canonical-header view of the metadata snapshot.
 
-    **``deliverables/metadata.csv`` is never touched.** It is immutable input
+    **``deliverables/metadata.<ext>`` is never touched.** It is immutable input
     provenance (user ruling, ledger FLOW-4): the CLI recomputes
     ``metadata_sha256`` from that file on *every* run rather than reading it
     back from state, so rewriting it makes the next run's
@@ -502,22 +508,23 @@ def emit_canonical_metadata_view(
     """
     import polars as pl
 
+    from ._delimited import delimiter_for, write_tsv
     from ._metadata_helpers import normalize_metadata_columns
 
-    source = metadata_csv_deliverable_path(Path(output_dir))
-    if not source.is_file():
+    source = resolve_metadata_snapshot_path(Path(output_dir))
+    if source is None:
         return None
     # `infer_schema_length=0` reads every column as a string: this is a view of
     # the user's own bytes, and inferring dtypes would rewrite values (a
     # zero-padded well id losing its padding, say) that the snapshot holds
-    # verbatim.
-    frame = pl.read_csv(source, infer_schema_length=0)
+    # verbatim. The snapshot keeps the user's suffix (spec B5), so the
+    # delimiter follows it.
+    frame = pl.read_csv(
+        source, infer_schema_length=0, separator=delimiter_for(source)
+    )
     target = canonical_metadata_view_path(output_dir)
-    normalized = normalize_metadata_columns(frame)
-    atomic_write_with_writer(
-        target,
-        normalized.write_csv,
-        commit_guard=commit_guard,
+    write_tsv(
+        normalize_metadata_columns(frame), target, commit_guard=commit_guard
     )
     return target
 
@@ -1001,6 +1008,7 @@ def migrate_run_hdf_to_zarr(
 
 __all__ = [
     "CANONICAL_METADATA_CSV_NAME",
+    "CANONICAL_METADATA_TSV_NAME",
     "republish_aggregate",
     "republish_image_markers",
     "_conversion_is_faithful",

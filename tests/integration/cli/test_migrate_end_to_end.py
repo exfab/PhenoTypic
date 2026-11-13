@@ -540,7 +540,7 @@ def test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate(
     assert result.exit_code == 0, result.output
     assert snapshot.read_bytes() == before
     assert not (tree / "deliverables" / "metadata.original.csv").exists()
-    assert (tree / "deliverables" / "metadata.canonical.csv").is_file()
+    assert (tree / "deliverables" / "metadata.canonical.tsv").is_file()
 
 
 @pytest.mark.xfail(
