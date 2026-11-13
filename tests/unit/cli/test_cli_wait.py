@@ -2,9 +2,13 @@
 
 The decision is a pure function (:func:`decide_wait_outcome`) so its table is
 pinned without a scheduler. The loop (:func:`wait_for_run`) is driven through
-the module-level seams ``_completion``/``_live_jobs``/``_fence_generation``/
-``_published``/``_is_process_run``, and the seams themselves are pinned against
-real lifecycle files written by the real lifecycle writers.
+the module-level seams ``_run_snapshot``/``_live_jobs``/``_fence_generation``/
+``_published``/``_cancelled``/``_generation_failures``/``_is_process_run``, and
+the seams themselves are pinned against real lifecycle files written by the
+real lifecycle writers.
+
+The P2 review fixes (Task 2b, C11b) are pinned by tests that name the review
+finding they would have caught: I1, I5, F1, F2, M3, M4, M5, M6.
 """
 
 from __future__ import annotations
@@ -31,7 +35,12 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     mark_generation_failed,
 )
 from phenotypic._cli._cli_staged_orchestration import LiveSlurmJobs
-from phenotypic._cli._cli_wait import decide_wait_outcome, main, wait_for_run
+from phenotypic._cli._cli_wait import (
+    RunSnapshot,
+    decide_wait_outcome,
+    main,
+    wait_for_run,
+)
 from phenotypic.sdk_ import (
     RunExitCode,
     aggregate_publication_marker_path,
@@ -40,6 +49,19 @@ from phenotypic.sdk_ import (
 
 NONE = LiveSlurmJobs()
 LIVE = LiveSlurmJobs(live=("123",))
+
+
+@pytest.fixture(autouse=True)
+def _fresh_inactive_job_memo():
+    # The memo is per waiter process; each test is its own waiter.
+    _cli_wait._INACTIVE_JOBS.clear()
+    yield
+    _cli_wait._INACTIVE_JOBS.clear()
+
+
+def _snapshot_seam(completion):
+    """A ``_run_snapshot`` stand-in reading *completion*, all images resolved."""
+    return lambda d: RunSnapshot(completion)
 
 
 # ---------------------------------------------------------------------------
@@ -170,13 +192,16 @@ def _patch_seams(
     published=None,
     process_run=False,
 ):
+    def _as_snapshot(value):
+        return value if isinstance(value, RunSnapshot) else RunSnapshot(value)
+
     completions = iter(completion) if isinstance(completion, list) else None
     monkeypatch.setattr(
         _cli_wait,
-        "_completion",
-        (lambda d: next(completions))
+        "_run_snapshot",
+        (lambda d: _as_snapshot(next(completions)))
         if completions
-        else (lambda d: completion),
+        else (lambda d: _as_snapshot(completion)),
     )
     job_iter = iter(jobs)
     monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: next(job_iter))
@@ -187,13 +212,15 @@ def _patch_seams(
     if published is not None:
         monkeypatch.setattr(_cli_wait, "_published", published)
     monkeypatch.setattr(_cli_wait, "_is_process_run", lambda d: process_run)
+    monkeypatch.setattr(_cli_wait, "_cancelled", lambda d, g: False)
+    monkeypatch.setattr(_cli_wait, "_generation_failures", lambda d, g: 0)
 
 
 def test_measure_resubmission_waits_then_binds_to_its_own_generation(
     monkeypatch, tmp_path
 ):
     jobs = iter([LIVE, LIVE, NONE])
-    monkeypatch.setattr(_cli_wait, "_completion", lambda d: "complete")
+    monkeypatch.setattr(_cli_wait, "_run_snapshot", _snapshot_seam("complete"))
     monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: next(jobs))
     generations = iter(["g-measure", "g-later"])
     monkeypatch.setattr(
@@ -225,8 +252,8 @@ def test_jobs_are_read_before_completion_each_poll(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         _cli_wait,
-        "_completion",
-        lambda d: order.append("completion") or "complete",
+        "_run_snapshot",
+        lambda d: order.append("completion") or RunSnapshot("complete"),
     )
     monkeypatch.setattr(
         _cli_wait, "_fence_generation", lambda d: order.append("fence") or "g"
@@ -282,7 +309,7 @@ def test_timeout_returns_6_and_cancels_nothing(monkeypatch, tmp_path):
         lambda *a, **k: cancelled.append(a),
     )
     clock = iter([0.0, 10.0, 20.0])
-    monkeypatch.setattr(_cli_wait, "_completion", lambda d: "active")
+    monkeypatch.setattr(_cli_wait, "_run_snapshot", _snapshot_seam("active"))
     monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: LIVE)
     monkeypatch.setattr(_cli_wait, "_fence_generation", lambda d: "g")
     assert (
@@ -300,7 +327,7 @@ def test_timeout_returns_6_and_cancels_nothing(monkeypatch, tmp_path):
 
 
 def test_the_last_sleep_never_overshoots_the_timeout(monkeypatch, tmp_path):
-    monkeypatch.setattr(_cli_wait, "_completion", lambda d: "active")
+    monkeypatch.setattr(_cli_wait, "_run_snapshot", _snapshot_seam("active"))
     monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: LIVE)
     monkeypatch.setattr(_cli_wait, "_fence_generation", lambda d: "g")
     clock = iter([0.0, 0.0, 50.0, 70.0])
@@ -608,7 +635,7 @@ def test_cli_rejects_a_non_positive_poll(tmp_path):
 
 
 def test_cli_timeout_exits_6(monkeypatch, tmp_path):
-    monkeypatch.setattr(_cli_wait, "_completion", lambda d: "active")
+    monkeypatch.setattr(_cli_wait, "_run_snapshot", _snapshot_seam("active"))
     monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: LIVE)
     monkeypatch.setattr(_cli_wait, "_fence_generation", lambda d: "g")
     result = CliRunner().invoke(
@@ -876,10 +903,655 @@ def test_check_submit_argv_refuses_and_passes(tmp_path):
         ["python", "-m", "phenotypic", "-o", str(tmp_path)], tmp_path
     )
     _cli_wait.check_submit_argv(["./wrapper.sh"], tmp_path)
+    # a command running no `phenotypic` program by name is a wrapper: unchecked
+    _cli_wait.check_submit_argv(
+        ["./wrapper.sh", "--output", str(tmp_path / "z")], tmp_path
+    )
     for bad in (
         [],
-        ["x", "--output", str(tmp_path / "z")],
-        ["x", "--mode", "migrate"],
+        ["python", "-m", "phenotypic", "--output", str(tmp_path / "z")],
+        ["phenotypic", "--mode", "migrate"],
     ):
         with pytest.raises(click.UsageError):
             _cli_wait.check_submit_argv(bad, tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# P2 review fixes (Task 2b, C11b)
+# ---------------------------------------------------------------------------
+
+
+def _wait_quietly(out, **kwargs):
+    lines = []
+    code = wait_for_run(out, sleep=lambda s: None, echo=lines.append, **kwargs)
+    return code, lines
+
+
+def _scheduler_says_all_ended(monkeypatch):
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active", lambda job: False
+    )
+
+
+# I1 / F5: `3` needs every accepted image resolved; otherwise `5`.
+
+
+def test_i1_a_failure_beside_an_unattempted_image_is_5():
+    # An array task OOM-killed before its image wrote any record: the run
+    # reads `failed` (one image failed) but one image was never attempted.
+    assert (
+        decide_wait_outcome(
+            "failed",
+            NONE,
+            published=True,
+            process_run=False,
+            unresolved=1,
+        )
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+
+
+def test_i1_failed_and_unverified_with_a_finalizer_closed_fence_exits_5(
+    tiny_inputs_one_bad, tmp_path
+):
+    # The review's scenario end to end: {failed: 1, unverified: 1}, and the
+    # finalizer found the run incomplete and closed the fence as `finalizer`.
+    from phenotypic.sdk_ import image_record_path
+    from tests._tiny_run import run_cli
+
+    out = tmp_path / "out"
+    assert (
+        run_cli(tiny_inputs_one_bad, out).exit_code
+        == RunExitCode.COMPLETE_WITH_FAILURES
+    )
+    image_record_path(out, "ds", "plate_1").unlink()
+    _resubmit(out, "g-oom")
+    deactivate_generation(out, "g-oom", closed_by=FENCE_CLOSED_BY_FINALIZER)
+    snapshot = _cli_wait._run_snapshot(out)
+    assert snapshot.completion == "failed" and snapshot.failed == 1
+    assert snapshot.unresolved == 1
+    code, lines = _wait_quietly(out)
+    assert code is RunExitCode.ENDED_UNPUBLISHED
+    assert any("1 accepted image(s) have neither" in line for line in lines)
+
+
+def test_i1_a_cancelled_process_run_with_a_failure_is_5():
+    assert (
+        decide_wait_outcome(
+            "failed", NONE, published=False, process_run=True, cancelled=True
+        )
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+
+
+def test_i1_a_process_run_with_an_unattempted_image_is_5():
+    assert (
+        decide_wait_outcome(
+            "failed", NONE, published=False, process_run=True, unresolved=2
+        )
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+
+
+def test_i1_cancelled_reads_only_a_non_finalizer_close_of_this_generation(
+    tmp_path,
+):
+    import subprocess
+
+    assert not _cli_wait._cancelled(tmp_path, None)
+    _resubmit(tmp_path, "g")
+    assert not _cli_wait._cancelled(tmp_path, "g")  # still active
+    cancel_generation(
+        tmp_path,
+        "g",
+        run_command=lambda c, **k: subprocess.CompletedProcess(c, 0, "", ""),
+    )
+    assert _cli_wait._cancelled(tmp_path, "g")
+    assert not _cli_wait._cancelled(tmp_path, "g-other")
+    _resubmit(tmp_path, "g2")
+    deactivate_generation(tmp_path, "g2", closed_by=FENCE_CLOSED_BY_FINALIZER)
+    assert not _cli_wait._cancelled(tmp_path, "g2")
+
+
+def test_i1_a_cancelled_process_run_with_a_failure_exits_5_end_to_end(
+    tiny_inputs_one_bad, tmp_path
+):
+    # Before the fix a cancelled process run with one recorded failure exited
+    # 3: `process_run` alone licensed the code.
+    import subprocess
+
+    from tests._tiny_run import run_cli
+
+    out = tmp_path / "out"
+    result = run_cli(
+        tiny_inputs_one_bad, out, mode="process", extra=["--layer", "gray"]
+    )
+    assert result.exit_code == RunExitCode.COMPLETE_WITH_FAILURES, (
+        result.output
+    )
+    assert _cli_wait._is_process_run(out)
+    _resubmit(out, "g-proc")
+    cancel_generation(
+        out,
+        "g-proc",
+        run_command=lambda c, **k: subprocess.CompletedProcess(c, 0, "", ""),
+    )
+    code, lines = _wait_quietly(out)
+    assert "completion=failed" in lines[0]
+    assert code is RunExitCode.ENDED_UNPUBLISHED
+
+
+# I5: a SLURM measure resubmission's failures are outside the forward
+# inventory; the waiter counts the ones journalled under its generation.
+
+
+def _journal_failure(out, *, work_id, generation, image="plate_1.tif"):
+    from phenotypic._cli._cli_failure_tracker import append_terminal_failure
+
+    assert append_terminal_failure(
+        out,
+        work_id=work_id,
+        dataset="ds",
+        relative_image_path=image,
+        failed_stage="measure",
+        exception=ValueError("no colonies to measure"),
+        attempt_id="attempt",
+        lifecycle_epoch=generation,
+    )
+
+
+def test_i5_slurm_measure_resubmission_with_a_failure_exits_3(
+    monkeypatch, finished_tiny_run
+):
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    out = finished_tiny_run
+    _resubmit(out, "g-measure")
+    _journal_failure(out, work_id="measure-work-id", generation="g-measure")
+    aggregate_measurements(
+        output_dir=out, dataset_names=["ds"], execution_epoch="g-measure"
+    )
+    _scheduler_says_all_ended(monkeypatch)
+    code, lines = _wait_quietly(out)
+    assert "completion=complete" in lines[0]  # the forward state cannot see it
+    assert code is RunExitCode.COMPLETE_WITH_FAILURES
+    assert any("1 image(s) failed terminally" in line for line in lines)
+
+
+def test_i5_a_failure_journalled_by_another_generation_does_not_count(
+    monkeypatch, finished_tiny_run
+):
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    out = finished_tiny_run
+    _journal_failure(out, work_id="old-measure-id", generation="g-old")
+    _resubmit(out, "g-measure")
+    aggregate_measurements(
+        output_dir=out, dataset_names=["ds"], execution_epoch="g-measure"
+    )
+    _scheduler_says_all_ended(monkeypatch)
+    assert _wait_quietly(out)[0] is RunExitCode.COMPLETE
+
+
+def test_i5_generation_failures_count_distinct_work_ids(finished_tiny_run):
+    out = finished_tiny_run
+    assert _cli_wait._generation_failures(out, None) == 0
+    _journal_failure(out, work_id="a", generation="g")
+    _journal_failure(out, work_id="a", generation="g")
+    _journal_failure(out, work_id="b", generation="g", image="plate_2.tif")
+    _journal_failure(out, work_id="c", generation="g-other")
+    assert _cli_wait._generation_failures(out, "g") == 2
+
+
+def test_i5_a_published_measure_with_generation_failures_is_3():
+    assert (
+        decide_wait_outcome(
+            "complete",
+            NONE,
+            published=True,
+            process_run=False,
+            generation_failures=1,
+        )
+        is RunExitCode.COMPLETE_WITH_FAILURES
+    )
+
+
+def test_i5_generation_failures_without_publication_are_still_5():
+    assert (
+        decide_wait_outcome(
+            "complete",
+            NONE,
+            published=False,
+            process_run=False,
+            generation_failures=1,
+        )
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+
+
+# F1: --accept-failures maps a final 3 to 0, printing the count.
+
+
+def _failed_run_seams(monkeypatch, *, published=True):
+    _patch_seams(
+        monkeypatch,
+        completion=RunSnapshot("failed", accepted=3, verified=2, failed=1),
+        jobs=[NONE],
+        published=lambda d, g: published,
+    )
+
+
+def test_f1_accept_failures_maps_a_waited_3_to_0_and_prints_the_count(
+    monkeypatch, tmp_path
+):
+    _failed_run_seams(monkeypatch)
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: 4)
+    monkeypatch.setattr(_cli_wait, "_live_run_to_attach", lambda d: None)
+    r = CliRunner().invoke(
+        main, ["-o", str(tmp_path), "--accept-failures", "--", "./submit.sh"]
+    )
+    assert r.exit_code == 0, r.output
+    assert "1 image(s) failed terminally" in r.output
+    assert "--accept-failures" in r.output
+
+
+def test_f1_without_the_flag_a_waited_3_stays_3(monkeypatch, tmp_path):
+    _failed_run_seams(monkeypatch)
+    r = CliRunner().invoke(main, ["-o", str(tmp_path)])
+    assert r.exit_code == RunExitCode.COMPLETE_WITH_FAILURES, r.output
+    assert "1 image(s) failed terminally" in r.output
+
+
+def test_f1_accept_failures_maps_a_local_child_3_to_0(monkeypatch, tmp_path):
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: 3)
+    monkeypatch.setattr(_cli_wait, "_live_run_to_attach", lambda d: None)
+    monkeypatch.setattr(
+        _cli_wait,
+        "_run_snapshot",
+        lambda d: RunSnapshot("failed", accepted=3, verified=1, failed=2),
+    )
+    monkeypatch.setattr(
+        _cli_wait, "wait_for_run", lambda *a, **k: pytest.fail("polled")
+    )
+    r = CliRunner().invoke(
+        main, ["-o", str(tmp_path), "--accept-failures", "--", "./run.sh"]
+    )
+    assert r.exit_code == 0, r.output
+    assert "2 image(s) failed terminally" in r.output
+
+
+@pytest.mark.parametrize("code", [0, 1, 2, 5, 6, 130])
+def test_f1_accept_failures_leaves_every_other_child_code_alone(
+    monkeypatch, tmp_path, code
+):
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: code)
+    monkeypatch.setattr(_cli_wait, "_live_run_to_attach", lambda d: None)
+    monkeypatch.setattr(
+        _cli_wait, "wait_for_run", lambda *a, **k: pytest.fail("polled")
+    )
+    r = CliRunner().invoke(
+        main, ["-o", str(tmp_path), "--accept-failures", "--", "./run.sh"]
+    )
+    assert r.exit_code == code
+
+
+def test_f1_accept_failures_leaves_a_waited_5_alone(monkeypatch, tmp_path):
+    _failed_run_seams(monkeypatch, published=False)
+    r = CliRunner().invoke(main, ["-o", str(tmp_path), "--accept-failures"])
+    assert r.exit_code == RunExitCode.ENDED_UNPUBLISHED, r.output
+
+
+def test_f1_accept_failures_leaves_a_waited_6_and_1_alone(tmp_path):
+    lines = []
+    clock = iter([0.0, 10.0])
+    with pytest.MonkeyPatch.context() as mp:
+        _patch_seams(mp, completion="active", jobs=[LIVE])
+        assert (
+            wait_for_run(
+                tmp_path,
+                timeout_seconds=5,
+                accept_failures=True,
+                clock=lambda: next(clock),
+                sleep=lambda s: None,
+                echo=lines.append,
+            )
+            is RunExitCode.WAIT_TIMEOUT
+        )
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            _cli_wait,
+            "_fence_generation",
+            lambda d: (_ for _ in ()).throw(OSError("boom")),
+        )
+        assert (
+            wait_for_run(
+                tmp_path,
+                accept_failures=True,
+                sleep=lambda s: None,
+                echo=lines.append,
+            )
+            is RunExitCode.ERROR
+        )
+
+
+# F2: a live job of the same output means attach, not launch.
+
+
+def test_f2_a_live_job_attaches_without_launching(monkeypatch, tmp_path):
+    monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: LIVE)
+    monkeypatch.setattr(_cli_wait, "_fence_generation", lambda d: "g-live")
+    monkeypatch.setattr(
+        _cli_wait, "_run_submit", lambda argv: pytest.fail("launched")
+    )
+    waits = []
+    monkeypatch.setattr(
+        _cli_wait,
+        "wait_for_run",
+        lambda d, **k: waits.append(d) or RunExitCode.COMPLETE,
+    )
+    r = CliRunner().invoke(
+        main,
+        [
+            "-o",
+            str(tmp_path),
+            "--",
+            "python",
+            "-m",
+            "phenotypic",
+            "-o",
+            str(tmp_path),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert waits == [tmp_path]
+    assert "attaching" in r.output and "g-live" in r.output
+    assert "123" in r.output
+
+
+def test_f2_attach_through_the_real_ledger(monkeypatch, tmp_path):
+    # The recovery after the `dvc repro` job hit its walltime: the run's
+    # finalizer is still queued, so re-running the stage attaches to it.
+    _resubmit(tmp_path, "g-live", finalizer_job="4242")
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active", lambda job: True
+    )
+    monkeypatch.setattr(
+        _cli_wait, "_run_submit", lambda argv: pytest.fail("launched")
+    )
+    monkeypatch.setattr(
+        _cli_wait, "wait_for_run", lambda d, **k: RunExitCode.COMPLETE
+    )
+    r = CliRunner().invoke(main, ["-o", str(tmp_path), "--", "./submit.sh"])
+    assert r.exit_code == 0, r.output
+    assert "generation g-live" in r.output and "4242" in r.output
+
+
+@pytest.mark.parametrize(
+    "jobs",
+    [
+        NONE,
+        LiveSlurmJobs(unverified=("77",)),
+        LiveSlurmJobs(unresolved=("phenotypic:g:t",)),
+    ],
+)
+def test_f2_without_an_active_job_the_submit_is_launched(
+    monkeypatch, tmp_path, jobs
+):
+    # unverified/unresolved: the submit's own guard refuses with its remedy,
+    # rather than the waiter attaching, possibly forever, to a purged run.
+    monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: jobs)
+    calls = []
+    monkeypatch.setattr(
+        _cli_wait, "_run_submit", lambda argv: calls.append(argv) or 1
+    )
+    r = CliRunner().invoke(main, ["-o", str(tmp_path), "--", "./submit.sh"])
+    assert r.exit_code == 1 and len(calls) == 1
+
+
+def test_f2_a_missing_output_is_launched_without_asking_the_scheduler(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        _cli_wait, "_live_jobs", lambda d: pytest.fail("asked the scheduler")
+    )
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: 0)
+    r = CliRunner().invoke(
+        main, ["-o", str(tmp_path / "new"), "--", "./submit.sh"]
+    )
+    assert r.exit_code == 0, r.output
+
+
+def test_f2_a_failing_live_check_launches_the_submit(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        _cli_wait,
+        "_live_jobs",
+        lambda d: (_ for _ in ()).throw(PermissionError("squeue")),
+    )
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: 0)
+    r = CliRunner().invoke(main, ["-o", str(tmp_path), "--", "./submit.sh"])
+    assert r.exit_code == 0, r.output
+    assert "could not check for a live run" in r.output
+
+
+# M3: only the tokens after the program `phenotypic` are read.
+
+
+def test_m3_a_wrappers_own_o_is_not_the_runs_output(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(
+        _cli_wait, "_run_submit", lambda argv: calls.append(argv) or 0
+    )
+    r = CliRunner().invoke(
+        main,
+        [
+            "-o",
+            str(tmp_path),
+            "--",
+            "srun",
+            "-o",
+            "slurm.log",
+            "python",
+            "-m",
+            "phenotypic",
+            "-o",
+            str(tmp_path),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["srun", "-o", "log", "python", "-m", "phenotypic", "-o", "{other}"],
+        ["uv", "run", "phenotypic", "--output={other}"],
+        ["uv", "run", "/x/.venv/bin/phenotypic", "-o", "{other}"],
+        ["srun", "-o", "{out}", "phenotypic", "--mode", "migrate"],
+        ["python", "-mphenotypic", "-m", "migrate"],
+    ],
+)
+def test_m3_the_run_s_own_options_are_still_checked(tmp_path, argv):
+    import click
+
+    filled = [
+        token.format(other=tmp_path / "other", out=tmp_path) for token in argv
+    ]
+    with pytest.raises(click.UsageError):
+        _cli_wait.check_submit_argv(filled, tmp_path)
+
+
+def test_m3_python_dash_m_phenotypic_is_not_a_mode_value(tmp_path):
+    # `-m phenotypic` is python's module flag, not the run's --mode.
+    assert _cli_wait._phenotypic_arguments(
+        ["python", "-m", "phenotypic", "-m", "measure"]
+    ) == ["-m", "measure"]
+    assert _cli_wait._phenotypic_arguments(["./wrapper.sh", "-o", "x"]) is None
+
+
+# M4: Ctrl-C during the submit waits for the child; an interrupted wait is 130.
+
+
+class _InterruptedChild:
+    """A ``Popen`` whose first ``wait`` is interrupted, then exits ``code``."""
+
+    def __init__(self, code, interrupts=1):
+        self.code = code
+        self.interrupts = interrupts
+        self.waits = 0
+
+    def __call__(self, argv):
+        return self
+
+    def wait(self):
+        self.waits += 1
+        if self.waits <= self.interrupts:
+            raise KeyboardInterrupt
+        return self.code
+
+
+def test_m4_ctrl_c_during_the_submit_waits_for_the_child(monkeypatch):
+    import subprocess
+
+    child = _InterruptedChild(130, interrupts=2)
+    monkeypatch.setattr(subprocess, "Popen", child)
+    with pytest.raises(_cli_wait.SubmitInterrupted) as caught:
+        _cli_wait._run_submit(["./submit.sh"])
+    assert caught.value.code == 130
+    assert child.waits == 3  # never killed: waited through both interrupts
+
+
+@pytest.mark.parametrize("code", [130, 4, 1])
+def test_m4_ctrl_c_during_the_submit_returns_the_childs_code_unpolled(
+    monkeypatch, tmp_path, code
+):
+    # Even a child that had already submitted (4) is not waited for: the
+    # user interrupted, and re-running the command attaches.
+    import subprocess
+
+    monkeypatch.setattr(subprocess, "Popen", _InterruptedChild(code))
+    monkeypatch.setattr(
+        _cli_wait, "wait_for_run", lambda *a, **k: pytest.fail("polled")
+    )
+    r = CliRunner().invoke(main, ["-o", str(tmp_path), "--", "./submit.sh"])
+    assert r.exit_code == code, r.output
+    assert "interrupted" in r.output
+
+
+def test_m4_an_interrupted_wait_exits_130(monkeypatch, tmp_path):
+    def interrupted(*_a, **_k):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_cli_wait, "wait_for_run", interrupted)
+    r = CliRunner().invoke(main, ["-o", str(tmp_path)])
+    assert r.exit_code == 130, r.output
+    assert "Nothing was cancelled" in r.output
+
+
+# M5: a poll exception is retried, bounded, then exits 1 with the reason.
+
+
+def test_m5_a_poll_exception_is_retried_then_the_wait_goes_on(
+    monkeypatch, tmp_path
+):
+    answers = iter([PermissionError("squeue: permission denied"), NONE])
+
+    def flaky(d):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    _patch_seams(
+        monkeypatch,
+        completion="complete",
+        jobs=[],
+        published=lambda d, g: True,
+    )
+    monkeypatch.setattr(_cli_wait, "_live_jobs", flaky)
+    sleeps = []
+    lines = []
+    assert (
+        wait_for_run(
+            tmp_path, poll_seconds=7, sleep=sleeps.append, echo=lines.append
+        )
+        is RunExitCode.COMPLETE
+    )
+    assert sleeps == [7]
+    assert "PermissionError: squeue: permission denied" in lines[0]
+    assert "retrying (1 of 5)" in lines[0]
+
+
+def test_m5_repeated_poll_exceptions_exit_1_with_the_reason(
+    monkeypatch, tmp_path
+):
+    # A fence missing its `generation` key: a KeyError every poll.
+    def broken(d):
+        raise KeyError("generation")
+
+    monkeypatch.setattr(_cli_wait, "_fence_generation", broken)
+    sleeps = []
+    lines = []
+    assert (
+        wait_for_run(tmp_path, sleep=sleeps.append, echo=lines.append)
+        is RunExitCode.ERROR
+    )
+    assert len(sleeps) == _cli_wait.MAX_CONSECUTIVE_POLL_ERRORS - 1
+    assert "KeyError: 'generation'" in lines[-1]
+    assert "Nothing was cancelled" in lines[-1] and "exit 1" in lines[-1]
+
+
+def test_m5_a_successful_poll_resets_the_error_count(monkeypatch, tmp_path):
+    errors_then_live = (
+        [OSError("x")] * 4 + [LIVE] + [OSError("y")] * 4 + [NONE]
+    )
+    answers = iter(errors_then_live)
+
+    def flaky(d):
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    _patch_seams(
+        monkeypatch,
+        completion="complete",
+        jobs=[],
+        published=lambda d, g: True,
+    )
+    monkeypatch.setattr(_cli_wait, "_live_jobs", flaky)
+    assert _wait_quietly(tmp_path)[0] is RunExitCode.COMPLETE
+
+
+# M6: a job answered not-active is not asked again within one waiter process.
+
+
+def test_m6_a_job_answered_not_active_is_not_asked_again(
+    monkeypatch, tmp_path
+):
+    _resubmit(tmp_path, "g", finalizer_job="999")
+    asked = []
+    monkeypatch.setattr(
+        _cli_staged_orchestration,
+        "scheduler_job_is_active",
+        lambda job: asked.append(job) or False,
+    )
+    assert not _cli_wait._live_jobs(tmp_path)
+    assert not _cli_wait._live_jobs(tmp_path)
+    assert asked == ["999"]
+
+
+@pytest.mark.parametrize("answer", [True, None])
+def test_m6_an_active_or_unknown_answer_is_asked_again(
+    monkeypatch, tmp_path, answer
+):
+    _resubmit(tmp_path, "g", finalizer_job="999")
+    asked = []
+    monkeypatch.setattr(
+        _cli_staged_orchestration,
+        "scheduler_job_is_active",
+        lambda job: asked.append(job) or answer,
+    )
+    _cli_wait._live_jobs(tmp_path)
+    _cli_wait._live_jobs(tmp_path)
+    assert asked == ["999", "999"]

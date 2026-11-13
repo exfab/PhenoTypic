@@ -8,11 +8,23 @@ results in the GUI.
 
 DVC is not a dependency of PhenoTypic and PhenoTypic never imports it. Install
 it in your own environment (for example `uvx --from 'dvc>=3,<4' dvc ...`). The
-commands below were checked against DVC 3.67.
+commands below were checked against DVC 3.67.1.
+
+**Every stage command starts with `uv run`.** A stage runs with DVC's own
+environment, and a DVC run through `uvx` puts its own Python first on `PATH`,
+even when your project's environment is activated. A bare
+`python -m phenotypic` then starts a Python without PhenoTypic
+(`No module named 'phenotypic'`). A bare `phenotypic-wait` is found only when
+your environment is activated, and even then the `python` it launches after
+`--` is DVC's. `uv run` resolves both from the project's environment, and a
+command `phenotypic-wait` launches inherits that `PATH`.
+If you do not use uv, install DVC into the same environment as PhenoTypic and
+drop the `uv run`.
 
 ## The Three Outputs
 
-A run writes three directories under `--output`, and nothing else at the root:
+A run writes three directories under `--output`, and nothing else at the root
+(process mode differs: see {ref}`dvc-process-mode`):
 
 | Out | Holds |
 |---|---|
@@ -33,8 +45,10 @@ ERROR: failed to reproduce 'run': output 'out/results' does not exist
 
 (exit code 255). An existing but empty out only warns
 (`WARNING: 'out/results' is empty.`). PhenoTypic creates all three outs in every
-mode, even when every image fails, so a stage whose images all fail ends with
-the run's own exit code (see {ref}`dvc-exit-codes`) and not with this error.
+mode except process mode, even when every image fails, so a stage whose images
+all fail ends with the run's own exit code (see {ref}`dvc-exit-codes`) and not
+with this error. A process-mode stage declares a different out; see
+{ref}`dvc-process-mode`.
 
 ## A Local Stage
 
@@ -42,7 +56,7 @@ the run's own exit code (see {ref}`dvc-exit-codes`) and not with this error.
 # dvc.yaml
 stages:
   run:
-    cmd: python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --njobs 16
+    cmd: uv run python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --njobs 16
     deps:
       - data
     params:
@@ -60,15 +74,16 @@ metrics:
 
 plots:
   - out/deliverables/measurements.tsv:
-      x: Metadata_ImageFile
+      x: Metadata_ImageName
       y: Size_Area
 ```
 
 - `params: - pipeline.pht-pipe.json:` with no keys tracks every key in the file.
 - `metrics:` and `plots:` are top-level sections. They may point inside an out,
   so they do not create overlapping outputs.
-- The plot columns are examples: `Size_Area` exists only when the pipeline
-  has a `MeasureSize` measurer. Plot a column your own run produced.
+- The plot columns are examples. `Metadata_ImageName` is in every mirror;
+  `Size_Area` exists only when the pipeline has a `MeasureSize` measurer. Plot
+  a column your own run produced.
   `dvc plots` reads CSV, TSV, JSON and YAML but not Parquet, so point it at
   the TSV tables.
 
@@ -121,7 +136,7 @@ launches the submission itself, then waits for the run to end.
 ```yaml
 stages:
   run:
-    cmd: phenotypic-wait --output out -- python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --slurm slurm_partition=intel --slurm mem_gb=16 --slurm time=240
+    cmd: uv run phenotypic-wait --output out -- python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --slurm slurm_partition=intel --slurm mem_gb=16 --slurm time=240
     deps:
       - data
     params:
@@ -137,7 +152,8 @@ stages:
 
 Everything after `--` is the submit command. `phenotypic-wait` runs it as a
 child process (no shell) in its own working directory, environment and
-terminal, then acts on the child's exit code:
+terminal, so the bare `python` after `--` is the one `uv run` put first on
+`PATH`. It then acts on the child's exit code:
 
 - `4` (submitted): it waits for the run, as described below;
 - `0` or `3` (the command ran locally and already finished): returned as-is,
@@ -154,36 +170,60 @@ It refuses to launch, with a usage error (exit `2`), when:
   current directory, which the child shares);
 - the submit command runs `--mode migrate`.
 
-A command that names no output, such as a wrapper script, is launched
-unchecked. `--timeout-seconds` bounds the wait, never the submit.
+Only the options after the program `phenotypic` (`python -m phenotypic …` or the
+`phenotypic` console script) are read, so a wrapper's own options before it,
+such as `srun -o slurm.log`, are not taken as the run's. A command that runs no
+`phenotypic` program by name, such as a wrapper script, is launched unchecked.
+`--timeout-seconds` bounds the wait, never the submit.
+
+**If a job of `--output` is already running**, `phenotypic-wait` does not launch
+the submit. It prints that it is attaching, names the run's lifecycle
+generation and active jobs, and waits for that run exactly as after a `4`. Only
+one SLURM run per output can be live, so this is the run the stage started
+earlier. The waiter cannot check that it uses the same pipeline; the message
+names the generation so you can.
 
 If you submit separately, `phenotypic-wait --output out` without `--` only
 waits. In a `dvc.yaml` that form needs the submit to count as success, because
 DVC stops a `cmd` list at the first command that exits non-zero:
-`cmd: ["python -m phenotypic ... --slurm ...; test $? -eq 4", "phenotypic-wait --output out"]`.
+`cmd: ["uv run python -m phenotypic ... --slurm ...; test $? -eq 4", "uv run phenotypic-wait --output out"]`.
 
 Once the run is submitted, `phenotypic-wait` polls the scheduler and the run
 state every `--poll-seconds` (default 60) and exits with the code the run would
 have returned locally:
 
 - `0` once this submission published and no image failed terminally;
-- `3` once it published and some images failed terminally;
-- `5` when no job is alive and this submission published nothing, for example a
-  finalizer killed for running out of memory;
+- `3` once it published, some images failed terminally, and every accepted
+  image has a result: a success or a terminal failure (see
+  {ref}`dvc-accept-failures` to complete the stage anyway);
+- `5` when no job is alive and the run **ended without finishing**: this
+  submission published nothing (a finalizer killed for running out of memory, a
+  cancelled run), or some images were never attempted (an array task killed
+  before its images wrote a result). Re-run the same command;
 - `6` after `--timeout-seconds` (default: wait indefinitely). Nothing is
-  cancelled.
+  cancelled;
+- `1` when the poll itself fails five times in a row (an unreadable state file,
+  a scheduler command that raises); each failure is printed and retried first.
+  `130` when the waiter is interrupted. Neither cancels anything, and the run
+  goes on.
 
 Details that matter:
 
 - "Published" is bound to **this submission's lifecycle generation**, read at the
   first poll. A re-submission whose finalizer dies does not read as published
   because an earlier run's outputs still match.
+- A `--mode measure` resubmission keeps no run state, so its terminal failures
+  are counted from the failure journal rows its own jobs wrote. It exits `3`
+  when one of its images failed, as a local `--mode measure` does.
 - Any live job keeps it waiting. A scheduler that cannot be queried also keeps it
   waiting; it never guesses.
 - It never aggregates, publishes or cancels, and the only thing it submits is
   the command you give it after `--`. Its only write is
   refreshing `.phenotypic/verification_cache.json`, which the run-state check
   already does and which is harmless.
+- Ctrl-C (or DVC's interrupt) while the submit runs waits for the submit to
+  exit, so it can record what it submitted, and returns the submit's code
+  without waiting for the run. Run the same command again to attach to it.
 - It does **not** serve `--mode migrate`.
 
 ### Run `dvc repro` itself inside a Slurm job
@@ -193,18 +233,29 @@ whole `dvc repro` inside a small, long-walltime job:
 
 ```bash
 sbatch --partition=intel --cpus-per-task=1 --mem=4G --time=7-00:00:00 \
-    --output=dvc-repro-%j.log --wrap='dvc repro'
+    --output=dvc-repro-%j.log --wrap='uvx --from dvc==3.67.1 dvc repro'
 ```
 
+**If that job hits its walltime**, or DVC is killed, the SLURM run keeps going
+without anything waiting for it, and DVC records nothing. Submit the same
+`sbatch` line again. The stage's `phenotypic-wait` finds the run's jobs still
+active, attaches to that run instead of submitting a second one, and the stage
+completes when the run ends. If the run ended in the meantime, the stage
+launches the submit again, which is an ordinary continuation: with every image
+done it exits `0` or `3` at once, and otherwise it submits only what is left,
+which the waiter then waits for.
+
+(dvc-process-mode)=
 ## A Process-Mode Stage
 
 `--mode process` exports one layer per image and mirrors the input tree. It
-writes no `deliverables/`, so the out is the whole `out` root:
+writes no `deliverables/` and no `results/`: the exported layers sit under the
+output root itself, beside `.phenotypic/`. So the out is the whole `out` root:
 
 ```yaml
 stages:
   export:
-    cmd: python -m phenotypic --mode process --layer gray -i data -o out -p pipeline.pht-pipe.json --njobs 16
+    cmd: uv run python -m phenotypic --mode process --layer gray -i data -o out -p pipeline.pht-pipe.json --njobs 16
     deps:
       - data
     params:
@@ -318,15 +369,92 @@ values are `phenotypic.sdk_.RunExitCode`.
 | `2` | none | a usage error: Click's own code, for a refused option combination |
 | `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
 | `4` | `SUBMITTED` | submitted to SLURM, not finished |
-| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive and this submission published nothing |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive and the run ended without finishing (nothing published, or images never attempted); re-run the same command |
 | `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
 
 `phenotypic-wait --output out -- <submit>` returns the submit's own code
 whenever the submit does not exit `4`, so any code above can come from it, as
-can `128 + N` for a submit killed by signal N.
+can `128 + N` for a submit killed by signal N. `phenotypic-wait` itself also
+exits `1` when its polls keep failing and `130` when interrupted.
 
-DVC treats any non-zero code as a failed stage, so `3` fails the stage while the
-outputs of the images that succeeded remain on disk.
+DVC treats any non-zero code as a failed stage, so by default `3` fails the
+stage while the outputs of the images that succeeded remain on disk. DVC writes
+no `dvc.lock` entry, and the next `dvc repro` runs the stage again, which exits
+`3` again, because a recorded terminal failure is not retried.
+
+(dvc-accept-failures)=
+### Completing a stage that has terminal failures
+
+A dataset with one plate that cannot be measured, such as an empty plate that
+raises `NoObjectsError`, exits `3` on every run. To let its stage complete, add
+`--accept-failures` to `phenotypic-wait`:
+
+```yaml
+    cmd: uv run phenotypic-wait --output out --accept-failures -- python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --slurm slurm_partition=intel
+```
+
+A final `3` becomes `0`, after the waiter prints how many images failed
+terminally. That holds whether the `3` came from the wait or from a submit that
+ran locally, so the launch form also serves a **local** stage: drop the
+`--slurm` options and keep the rest. No other code changes; `1`, `2`, `5` and
+`6` still fail the stage.
+
+What it costs:
+
+- **DVC records the run as successful.** `dvc.lock` is written, `dvc status`
+  reports the stage up to date, and downstream stages run on the images that
+  succeeded. The failed images are simply absent from every table.
+- **The failures are visible only in the outputs.** `metrics.json`'s
+  `images.failed` holds the count for a full run, and `dvc metrics diff` shows
+  it changing. (A SLURM `--mode measure` resubmission is the exception: its
+  failures are outside the forward run's inventory, so `images.failed` does
+  not count them. The waiter's log does.) The failures themselves are in
+  `.phenotypic/terminal_failures.jsonl`.
+- **A clean `dvc repro` does not retry them.** The stage is up to date, so
+  nothing runs. To retry, add `--retry-failures` to the submit command, which
+  changes the stage and makes DVC run it.
+
+Without the flag, the exit-code contract is unchanged.
+
+## After `dvc checkout` of Another Revision
+
+A `dvc checkout` restores `out/.phenotypic` from that revision along with the
+other outs. What it restores is checked before it is trusted:
+
+- A per-image record names the digests of the store it describes. A record
+  restored beside a store it does not describe is rejected, and that image
+  runs again. The outcome can be behind, never wrong.
+- The lifecycle fence `out/.phenotypic/progress/slurm_lifecycle.json` may be
+  restored as `active`, naming SLURM jobs from that revision's run. The next
+  run asks the scheduler about those jobs rather than trusting the flag, so
+  ended jobs do not block it.
+
+That breaks down once SLURM has forgotten the jobs. After its `MinJobAge` and
+`PurgeJobAfter` limits, `squeue` reports `Invalid job id` and `sacct` returns
+no rows. PhenoTypic then cannot tell whether a job is running, and it never
+calls an unknown job ended. Every run over that output refuses with
+`Ledgered SLURM jobs are unverified: <ids>`, and `phenotypic-wait` waits
+instead of attaching. There is no override flag. To recover by hand:
+
+1. Confirm that none of the listed jobs is running, from a node where
+   `squeue` works: `squeue --jobs <ids>` and `sacct -j <ids>`. Then confirm no
+   unrecorded submission is queued:
+   `squeue --noheader --format='%i|%k' | grep phenotypic:`.
+2. Mark the restored fence inactive:
+
+   ```bash
+   uv run python - <<'PY'
+   import json, pathlib
+   fence = pathlib.Path("out/.phenotypic/progress/slurm_lifecycle.json")
+   state = json.loads(fence.read_text(encoding="utf-8"))
+   state["active"] = False
+   fence.write_text(json.dumps(state, indent=2), encoding="utf-8")
+   PY
+   ```
+
+Do **not** delete the file instead. Without a fence, every generation in the
+job ledger is checked, so the same unverified jobs still refuse the run. The
+next run replaces the inactive fence with its own.
 
 ## Reclaim Cache Space
 
