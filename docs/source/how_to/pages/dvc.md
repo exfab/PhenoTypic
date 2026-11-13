@@ -113,16 +113,15 @@ identical bytes and `dvc metrics diff` is meaningful.
 
 ## A SLURM Stage
 
-A SLURM run returns exit code `4` at submission, long before it finishes, and DVC
-hashes a stage's outs the moment its command exits. So a SLURM stage runs two
-commands: submit, then wait.
+A SLURM run returns exit code `4` at submission, long before it finishes. DVC
+hashes a stage's outs the moment its command exits, and it fails a stage whose
+command exits non-zero. So a SLURM stage is one command: `phenotypic-wait`
+launches the submission itself, then waits for the run to end.
 
 ```yaml
 stages:
   run:
-    cmd:
-      - python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --slurm slurm_partition=intel --slurm mem_gb=16 --slurm time=240
-      - phenotypic-wait --output out
+    cmd: phenotypic-wait --output out -- python -m phenotypic -i data -o out -p pipeline.pht-pipe.json --slurm slurm_partition=intel --slurm mem_gb=16 --slurm time=240
     deps:
       - data
     params:
@@ -136,13 +135,36 @@ stages:
           persist: true
 ```
 
-Careful: DVC runs a `cmd` list in order and stops at the first command that
-exits non-zero, and the submit command exits `4`. Wrap it so submission
-counts as success, for example
+Everything after `--` is the submit command. `phenotypic-wait` runs it as a
+child process (no shell) in its own working directory, environment and
+terminal, then acts on the child's exit code:
+
+- `4` (submitted): it waits for the run, as described below;
+- `0` or `3` (the command ran locally and already finished): returned as-is,
+  with no waiting;
+- any other code is returned as-is, and nothing is waited for. A submit killed
+  by signal N returns `128 + N`, the shell's convention; a submit command that
+  cannot be found returns `127`.
+
+It refuses to launch, with a usage error (exit `2`), when:
+
+- nothing follows `--`;
+- the submit command names an output (`-o`/`--output`) that resolves to a
+  different directory from `--output` (a relative path resolves against the
+  current directory, which the child shares);
+- the submit command runs `--mode migrate`.
+
+A command that names no output, such as a wrapper script, is launched
+unchecked. `--timeout-seconds` bounds the wait, never the submit.
+
+If you submit separately, `phenotypic-wait --output out` without `--` only
+waits. In a `dvc.yaml` that form needs the submit to count as success, because
+DVC stops a `cmd` list at the first command that exits non-zero:
 `cmd: ["python -m phenotypic ... --slurm ...; test $? -eq 4", "phenotypic-wait --output out"]`.
 
-`phenotypic-wait` polls the scheduler and the run state every `--poll-seconds`
-(default 60) and exits with the code the run would have returned locally:
+Once the run is submitted, `phenotypic-wait` polls the scheduler and the run
+state every `--poll-seconds` (default 60) and exits with the code the run would
+have returned locally:
 
 - `0` once this submission published and no image failed terminally;
 - `3` once it published and some images failed terminally;
@@ -158,7 +180,8 @@ Details that matter:
   because an earlier run's outputs still match.
 - Any live job keeps it waiting. A scheduler that cannot be queried also keeps it
   waiting; it never guesses.
-- It never aggregates, publishes, submits or cancels. Its only write is
+- It never aggregates, publishes or cancels, and the only thing it submits is
+  the command you give it after `--`. Its only write is
   refreshing `.phenotypic/verification_cache.json`, which the run-state check
   already does and which is harmless.
 - It does **not** serve `--mode migrate`.
@@ -297,6 +320,10 @@ values are `phenotypic.sdk_.RunExitCode`.
 | `4` | `SUBMITTED` | submitted to SLURM, not finished |
 | `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive and this submission published nothing |
 | `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
+
+`phenotypic-wait --output out -- <submit>` returns the submit's own code
+whenever the submit does not exit `4`, so any code above can come from it, as
+can `128 + N` for a submit killed by signal N.
 
 DVC treats any non-zero code as a failed stage, so `3` fails the stage while the
 outputs of the images that succeeded remain on disk.

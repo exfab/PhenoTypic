@@ -515,7 +515,8 @@ site, never a bare literal.
   `130`.
 - **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
   run's own code** once the run ends, for a DVC stage or any orchestrator.
-  Read-only: it never aggregates, publishes, submits or cancels. Each poll
+  Read-only: it never aggregates, publishes or cancels, and submits only the
+  command given after `--` (below). Each poll
   reads `live_slurm_job_ids` **before** `resolve_run_state(depth="shallow")`.
   Any `live`/`unverified`/`unresolved` job keeps it waiting, whatever the
   completion says. With none live, it exits `0`/`3` only when **this
@@ -533,6 +534,21 @@ site, never a bare literal.
   `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
   `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
   external control root.
+- **`phenotypic-wait --output <out> -- <submit…>` launches the submit
+  itself** (spec C3 "Launch", P2 T2a), so a SLURM DVC stage is one `cmd`
+  (DVC aborts a stage on the submit's `4`). `_run_submit` runs the argv with
+  `subprocess.run` (no shell; the waiter's cwd, env and stdio), mapping a
+  signal death to `128 + N` and a missing/unexecutable program to `127`/`126`.
+  Child `4` → `wait_for_run`; any other child code is returned unpolled.
+  `check_submit_argv` refuses (usage error, `2`) before launching: an empty
+  command after `--`, a child `--mode migrate` (also `--mode=`, `-m`, `-m…`),
+  and a child `-o`/`--output`/`--output=`/`-o…` resolving elsewhere than
+  `--output` (cwd-relative). A child naming no output is not checked. The
+  command must be introduced by `--` (`_WaitCommand` keeps the raw args to
+  tell), and `allow_interspersed_args=False`, so a child's `-o` can never be
+  parsed as the waiter's. `--output` need not exist in the launch form (the
+  submit creates it); the wait-only form still requires it. `--timeout-seconds`
+  bounds the wait, never the submit.
 - **The GUI run console reads `4` as a failed submission**
   (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
 

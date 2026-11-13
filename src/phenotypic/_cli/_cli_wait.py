@@ -12,9 +12,15 @@ returned locally (spec C10):
   published nothing, for example a finalizer killed for running out of memory;
 * ``6`` (``WAIT_TIMEOUT``) after ``--timeout-seconds``.
 
-**It is read-only.** It never aggregates, publishes, submits or cancels. Its
-only write is the verification cache that :func:`resolve_run_state` already
-refreshes, so the double publication of the old ``--wait`` cannot come back.
+**It is read-only.** It never aggregates, publishes or cancels. Its only write
+is the verification cache that :func:`resolve_run_state` already refreshes, so
+the double publication of the old ``--wait`` cannot come back.
+
+**The launch form** (``phenotypic-wait --output out -- <submit...>``) runs the
+submit command itself, because DVC aborts a stage whose command exits
+non-zero and every SLURM submission exits ``4``. The child's ``4`` starts the
+wait; any other child code is returned without polling (spec C3, "Launch").
+That child is the only thing the waiter ever runs.
 
 **Why it lives in ``_cli``.** :func:`resolve_run_state` takes an ``active``
 lifecycle fence at face value and never asks the scheduler, so a dead finalizer
@@ -34,8 +40,10 @@ no heavy module, and each is a seam a test can replace.
 from __future__ import annotations
 
 import json
+import shlex
+import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -46,7 +54,7 @@ from phenotypic.sdk_ import RunExitCode
 if TYPE_CHECKING:
     from ._cli_staged_orchestration import LiveSlurmJobs
 
-__all__ = ["decide_wait_outcome", "main", "wait_for_run"]
+__all__ = ["check_submit_argv", "decide_wait_outcome", "main", "wait_for_run"]
 
 #: The default interval between polls, in seconds (spec C3).
 DEFAULT_POLL_SECONDS = 60.0
@@ -295,17 +303,139 @@ def wait_for_run(
         sleep(interval)
 
 
+# ---------------------------------------------------------------------------
+# The launch form: phenotypic-wait --output <out> -- <submit...>
+# ---------------------------------------------------------------------------
+
+#: The shell's codes for a command that cannot be found or cannot be run.
+_EXIT_NOT_FOUND = 127
+_EXIT_NOT_EXECUTABLE = 126
+
+
+def _run_submit(argv: Sequence[str]) -> int:
+    """Run the submit command and return its exit code.
+
+    The command runs as an argv list, never through a shell, with the
+    waiter's working directory, environment and standard streams. A child
+    killed by signal N returns ``128 + N``, the shell's convention, and a
+    program that cannot be found or executed returns ``127`` or ``126``.
+    """
+    try:
+        code = subprocess.run(list(argv), check=False).returncode
+    except FileNotFoundError as exc:
+        click.echo(f"phenotypic-wait: cannot run the submit: {exc}", err=True)
+        return _EXIT_NOT_FOUND
+    except OSError as exc:
+        click.echo(f"phenotypic-wait: cannot run the submit: {exc}", err=True)
+        return _EXIT_NOT_EXECUTABLE
+    return 128 - code if code < 0 else code
+
+
+def _option_values(argv: Sequence[str], long: str, short: str) -> list[str]:
+    """Return every value the child passes to *long* / *short*.
+
+    Recognises ``--long X``, ``--long=X``, ``-s X`` and ``-sX``. The program
+    name (``argv[0]``) is skipped, and scanning stops at the child's own
+    ``--``, after which nothing is an option.
+    """
+    values = []
+    tokens = list(argv[1:])
+    for i, token in enumerate(tokens):
+        if token == "--":
+            break
+        if token in (long, short):
+            if i + 1 < len(tokens):
+                values.append(tokens[i + 1])
+        elif token.startswith(long + "="):
+            values.append(token[len(long) + 1 :])
+        elif token.startswith(short) and not token.startswith("--"):
+            values.append(token[len(short) :])
+    return values
+
+
+def check_submit_argv(argv: Sequence[str], output_dir: Path) -> None:
+    """Refuse a submit command the waiter could not wait for.
+
+    Raised before anything runs, as a usage error (exit ``2``), for:
+
+    * an empty command after ``--``;
+    * a child running ``--mode migrate`` (``--mode=migrate``, ``-m migrate``,
+      ``-mmigrate``), whose lifecycle the waiter cannot see;
+    * a child naming an output (``-o X``, ``--output X``, ``--output=X``,
+      ``-oX``) that resolves to a different path from *output_dir*. A
+      relative path resolves against the current directory, which the child
+      inherits.
+
+    A child that names no output, such as a wrapper script, is not checked.
+
+    Args:
+        argv: The submit command, everything after ``--``.
+        output_dir: The waiter's own ``--output``.
+
+    Raises:
+        click.UsageError: For any of the cases above.
+    """
+    if not argv:
+        raise click.UsageError(
+            "nothing follows '--': give the submit command after it, e.g. "
+            "'phenotypic-wait --output out -- python -m phenotypic ... "
+            "-o out --slurm ...'."
+        )
+    if "migrate" in _option_values(argv, "--mode", "-m"):
+        raise click.UsageError(
+            "phenotypic-wait does not serve --mode migrate: its lifecycle "
+            "lives under an external control root the waiter cannot see."
+        )
+    expected = output_dir.resolve()
+    for value in _option_values(argv, "--output", "-o"):
+        if Path(value).resolve() != expected:
+            raise click.UsageError(
+                f"the submit command writes to {value!r} "
+                f"({Path(value).resolve()}), but --output is {expected}; "
+                "the waiter would watch the wrong run."
+            )
+
+
+#: The ``ctx.meta`` key under which :class:`_WaitCommand` keeps the raw args.
+_RAW_ARGS_KEY = "phenotypic_wait.raw_args"
+
+
+class _WaitCommand(click.Command):
+    """A command that keeps its raw arguments for the ``--`` check.
+
+    Click consumes the ``--`` separator, so without the raw arguments the
+    waiter could not tell ``-- cmd`` from a stray positional ``cmd``.
+    """
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        ctx.meta[_RAW_ARGS_KEY] = list(args)
+        return super().parse_args(ctx, args)
+
+
+def _introduced_by_dashdash(raw_args: Sequence[str], n_submit: int) -> bool:
+    """Return whether the trailing *n_submit* raw args follow a ``--``."""
+    index = len(raw_args) - n_submit - 1
+    return index >= 0 and raw_args[index] == "--"
+
+
 @click.command(
     name="phenotypic-wait",
-    context_settings={"help_option_names": ["-h", "--help"]},
+    cls=_WaitCommand,
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        # The first positional ends the waiter's options, so a child's -o
+        # or -h is never parsed as the waiter's own.
+        "allow_interspersed_args": False,
+    },
 )
 @click.option(
     "--output",
     "-o",
     "output_dir",
     required=True,
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    help="The run's --output directory.",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="The run's --output directory. Without '--' it must exist; with "
+    "'--' the submit may create it.",
 )
 @click.option(
     "--poll-seconds",
@@ -321,19 +451,62 @@ def wait_for_run(
     help="Give up after this many seconds (exit 6). Nothing is cancelled. "
     "Default: wait indefinitely.",
 )
+@click.argument(
+    "submit_argv",
+    nargs=-1,
+    type=click.UNPROCESSED,
+    metavar="[-- SUBMIT_COMMAND...]",
+)
 def main(
-    output_dir: Path, poll_seconds: float, timeout_seconds: float | None
+    output_dir: Path,
+    poll_seconds: float,
+    timeout_seconds: float | None,
+    submit_argv: tuple[str, ...],
 ) -> None:
     """Wait for a SLURM PhenoTypic run to end, and exit with its code.
 
-    Run this after `python -m phenotypic ... --slurm ...`, which returns 4
-    (submitted) as soon as the run is queued. Exit codes: 0 complete;
-    3 complete with terminal image failures; 5 no job is alive and this
-    submission published nothing; 6 --timeout-seconds elapsed.
+    \b
+    Launch and wait (one command, e.g. a DVC stage's cmd):
+      phenotypic-wait --output out -- python -m phenotypic -i data -o out
+          -p pipeline.pht-pipe.json --slurm slurm_partition=intel
+    Wait for a run submitted separately:
+      phenotypic-wait --output out
 
-    Read-only: it never aggregates, publishes, submits or cancels. It does
-    not serve --mode migrate.
+    Everything after -- is the submit command, run without a shell. If it
+    exits 4 (submitted), the waiter waits; any other exit code is returned
+    as-is, without waiting (a signal N gives 128+N). Refused with exit 2
+    before launching: nothing after --, a submit with --mode migrate, or a
+    submit whose -o/--output is a different directory from --output.
+
+    Exit codes once the run ends: 0 complete; 3 complete with terminal image
+    failures; 5 no job is alive and this submission published nothing;
+    6 --timeout-seconds elapsed (it bounds the wait, never the submit).
+
+    It never aggregates, publishes or cancels, and submits only the command
+    after --. It does not serve --mode migrate.
     """
+    raw_args = click.get_current_context().meta.get(_RAW_ARGS_KEY, [])
+    if submit_argv or _introduced_by_dashdash(raw_args, 0):
+        if not _introduced_by_dashdash(raw_args, len(submit_argv)):
+            raise click.UsageError(
+                f"unexpected argument {submit_argv[0]!r}; put the submit "
+                "command after '--'."
+            )
+        check_submit_argv(submit_argv, output_dir)
+        click.echo(f"phenotypic-wait: launching: {shlex.join(submit_argv)}")
+        submitted = _run_submit(submit_argv)
+        if submitted != RunExitCode.SUBMITTED:
+            click.echo(
+                f"phenotypic-wait: the submit exited {submitted}, not "
+                f"{int(RunExitCode.SUBMITTED)} (submitted); returning its "
+                "code without waiting."
+            )
+            raise SystemExit(submitted)
+    elif not output_dir.is_dir():
+        raise click.BadParameter(
+            f"Directory '{output_dir}' does not exist.",
+            param_hint="'--output' / '-o'",
+        )
     code = wait_for_run(
         output_dir, poll_seconds=poll_seconds, timeout_seconds=timeout_seconds
     )
