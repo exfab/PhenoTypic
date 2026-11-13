@@ -95,13 +95,14 @@ render tool is `~/.claude/tools/render_md_artifact.py`.
 | P0 | `tests/unit/gui/tune/test_validation.py::test_tuning_spec_path_is_deployable` (:98-99) | `_gui/tune/_validation.py:61` accepts only `CONFIG_SUFFIX_TUNING`, so a legacy `.json.pht-tune` spec is refused |
 | P0 | `tests/unit/gui/tune/test_setup_authoring.py::test_write_authored_setup_spec_preserves_existing_spec_search_space` (:147, spec at :171) | `_gui/tune/_setup_authoring.py:356` loads a `.json.pht-tune` file as a pipeline once the canonical suffix changes |
 | P0 | `tests/unit/gui/tune/test_setup_authoring.py::test_existing_spec_replaces_scorer_only_when_requested` (:190, spec at :213) | same cause |
+| P0 | `tests/integration/gui/tune/test_setup_view.py::{test_existing_spec_controls_preserve_seed_budget_and_storage, test_existing_spec_trial_override_preserves_authored_strategy, test_existing_grid_spec_never_emits_trial_override}` | `_gui/tune/_validation.py:61`, as above (found at the C1 gate) |
 | P3 | `tests/unit/gui/results_viewer/test_measurement_routes.py`: every test whose `route` fixture store (`:100`, written with `save2zarr(measurement_table=…)`) is read through `_measurement_source`, and `test_an_undeclared_column_never_opens_the_parquet` (`:205` unlinks the v1 path) | `_gui/results_viewer/_measurement_source.py:107-108` stats `store / MEASUREMENT_TABLE_RELATIVE_PATH`, which a v2 store does not have |
 | P3 | `tests/unit/gui/results_viewer/test_measurement_source.py`: every test over the `run` fixture (`:88`), and `test_a_rewritten_table_is_read_fresh` (`:249`) | same cause |
 | P3 | `tests/unit/gui/results_viewer/test_measurement_join_migration_run.py`: every test over the migrated-run fixture (`:105` reads the v1 path), and `test_the_four_table_less_stores_contribute_nothing_and_raise_nothing` (`:209`) | same cause |
 
 The P3 rows name files and the fixture that makes them red, because almost every
 test in those files reads a store through the v1 path. A test in those files
-that stays green is fine. A red test anywhere else in `tests/unit/gui` or
+that stays green is fine. A red test anywhere else in `tests/unit/gui`, `tests/integration/gui` or
 `tests/gui` is a real failure.
 
 Checked and expected to stay green:
