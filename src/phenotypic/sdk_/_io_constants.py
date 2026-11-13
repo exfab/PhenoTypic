@@ -79,7 +79,8 @@ import stat as stat_module
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Iterable, Optional
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, Iterable, Mapping, Optional
 
 from .typing_ import (
     CheckpointType,
@@ -101,10 +102,26 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 LEGACY_JSON_SUFFIX: Final[str] = ".json"
-CONFIG_SUFFIX_PIPELINE: Final[str] = ".json.pht-pipe"
-CONFIG_SUFFIX_OPERATION: Final[str] = ".json.pht-op"
-CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".json.pht-cc"
-CONFIG_SUFFIX_TUNING: Final[str] = ".json.pht-tune"
+
+#: Canonical typed config suffixes. Each ends in ``.json`` because DVC picks
+#: its params parser from the last, lower-cased suffix and falls back to YAML
+#: for an unknown one, so ``x.pht-pipe.json`` is read and written as JSON.
+CONFIG_SUFFIX_PIPELINE: Final[str] = ".pht-pipe.json"
+CONFIG_SUFFIX_OPERATION: Final[str] = ".pht-op.json"
+CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".pht-cc.json"
+CONFIG_SUFFIX_TUNING: Final[str] = ".pht-tune.json"
+
+#: Each canonical typed suffix mapped to its pre-flip ``.json.pht-*`` form.
+#: The old forms are **read-only legacy**: readers accept them, and writers
+#: produce one only when a caller names it explicitly.
+LEGACY_TYPED_CONFIG_SUFFIXES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        CONFIG_SUFFIX_PIPELINE: ".json.pht-pipe",
+        CONFIG_SUFFIX_OPERATION: ".json.pht-op",
+        CONFIG_SUFFIX_COLOR_CHECKER: ".json.pht-cc",
+        CONFIG_SUFFIX_TUNING: ".json.pht-tune",
+    }
+)
 CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
         CONFIG_SUFFIX_PIPELINE,
@@ -113,11 +130,21 @@ CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
         CONFIG_SUFFIX_TUNING,
     }
 )
+#: Every suffix a pipeline config may carry: canonical, old typed, plain.
 PIPELINE_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+    {
+        CONFIG_SUFFIX_PIPELINE,
+        LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE],
+        LEGACY_JSON_SUFFIX,
+    }
 )
+#: Every suffix a tuning spec may carry: canonical, old typed, plain.
 TUNING_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+    {
+        CONFIG_SUFFIX_TUNING,
+        LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_TUNING],
+        LEGACY_JSON_SUFFIX,
+    }
 )
 
 
@@ -137,20 +164,46 @@ def matches_any_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
 
 
 def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
-    """Return ``path`` with the canonical typed JSON suffix appended.
+    """Return ``path`` carrying the typed config ``suffix``.
 
-    Bare stems receive the full typed suffix. Legacy ``.json`` paths receive
-    only the typed tail, preserving the user-provided stem and case.
+    Rules, checked in order (all case-insensitive):
+
+    1. ``path`` already ends with ``suffix`` or its legacy typed form (see
+       :data:`LEGACY_TYPED_CONFIG_SUFFIXES`): returned unchanged, so a file is
+       never written somewhere other than where the caller asked.
+    2. ``path`` ends with ``.json``: the typed stem is inserted before it,
+       keeping the caller's ``.json`` spelling (``x.JSON`` becomes
+       ``x.pht-pipe.JSON``).
+    3. Otherwise ``suffix`` is appended.
+
+    Args:
+        path: The caller's target path.
+        suffix: A canonical typed suffix, e.g. :data:`CONFIG_SUFFIX_PIPELINE`.
+
+    Returns:
+        The path to write.
+
+    Examples:
+        >>> from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
+        >>> str(ensure_typed_json_suffix("run", CONFIG_SUFFIX_PIPELINE))
+        'run.pht-pipe.json'
+        >>> str(ensure_typed_json_suffix("run.json", CONFIG_SUFFIX_PIPELINE))
+        'run.pht-pipe.json'
+        >>> str(ensure_typed_json_suffix("run.json.pht-pipe", CONFIG_SUFFIX_PIPELINE))
+        'run.json.pht-pipe'
     """
     target = Path(path)
     text = str(target)
-    lowered = text.lower()
-    canonical_suffix = suffix.lower()
-    if lowered.endswith(canonical_suffix):
+    recognised = [suffix]
+    legacy_typed = LEGACY_TYPED_CONFIG_SUFFIXES.get(suffix)
+    if legacy_typed is not None:
+        recognised.append(legacy_typed)
+    if has_config_suffix(text, recognised):
         return target
-    if lowered.endswith(LEGACY_JSON_SUFFIX):
-        typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
-        return Path(f"{text}{typed_tail}")
+    if text.lower().endswith(LEGACY_JSON_SUFFIX):
+        cut = len(text) - len(LEGACY_JSON_SUFFIX)
+        typed_stem = suffix.removesuffix(LEGACY_JSON_SUFFIX)
+        return Path(f"{text[:cut]}{typed_stem}{text[cut:]}")
     return Path(f"{text}{suffix}")
 
 
@@ -248,13 +301,14 @@ def pipeline_publication_lock_path(config_path: Path) -> Path:
     is intentionally about publication, not one particular migration, so CLI,
     QC, Analysis, and compatibility writers serialize against each other.
 
-    Legacy ``pipeline.json`` and canonical ``pipeline.json.pht-pipe`` paths
-    intentionally map to the same output-level identity. This prevents a V1
-    reader/writer and a V2 writer from bypassing one another merely because
-    they selected different compatibility filenames.
+    Legacy ``pipeline.json``, the old typed ``pipeline.json.pht-pipe`` and
+    the canonical ``pipeline.pht-pipe.json`` intentionally map to the same
+    output-level identity. This prevents a V1 reader/writer, a writer from
+    before the suffix flip and a current writer from bypassing one another
+    merely because they selected different compatibility filenames.
     """
     config = Path(config_path)
-    if config.name in {PIPELINE_JSON, _LEGACY_PIPELINE_JSON}:
+    if config.name in _PIPELINE_CONFIG_NAMES:
         return config.parent / ".pipeline-config.migration.lock"
     return config.with_name(f".{config.name}.migration.lock")
 
@@ -444,7 +498,18 @@ REMBI_MANIFEST_YAML: Final[str] = "rembi.yaml"
 #: operations, measurements, post, filters, and model — i.e. the whole
 #: reproducibility surface.
 PIPELINE_JSON: Final[str] = f"pipeline{CONFIG_SUFFIX_PIPELINE}"
+#: The pre-flip typed name (``pipeline.json.pht-pipe``); read-only legacy.
+_OLD_TYPED_PIPELINE_JSON: Final[str] = (
+    f"pipeline{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE]}"
+)
+#: The plain V1 name (``pipeline.json``); read-only legacy.
 _LEGACY_PIPELINE_JSON: Final[str] = f"pipeline{LEGACY_JSON_SUFFIX}"
+#: Every name a run's pipeline config may carry, in resolution order.
+_PIPELINE_CONFIG_NAMES: Final[tuple[str, str, str]] = (
+    PIPELINE_JSON,
+    _OLD_TYPED_PIPELINE_JSON,
+    _LEGACY_PIPELINE_JSON,
+)
 
 #: Resume-state JSON written by ``ProcessingState.save`` and read by
 #: ``ProcessingState.load`` during automatic continuation.
@@ -459,11 +524,17 @@ README_MD: Final[str] = "README.md"
 #: The resolved tuning spec echoed by ``python -m phenotypic.tune``
 #: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
 TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
+_OLD_TYPED_TUNING_SPEC_JSON: Final[str] = (
+    f"tuning_spec{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_TUNING]}"
+)
 _LEGACY_TUNING_SPEC_JSON: Final[str] = f"tuning_spec{LEGACY_JSON_SUFFIX}"
 
 #: The winning best pipeline written by the tune CLI into
 #: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.
 BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{CONFIG_SUFFIX_PIPELINE}"
+_OLD_TYPED_BEST_PIPELINE_JSON: Final[str] = (
+    f"best_pipeline{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE]}"
+)
 _LEGACY_BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{LEGACY_JSON_SUFFIX}"
 
 #: Sidecar with the selected headline trial's params and scores, written by the
@@ -1483,30 +1554,50 @@ def rembi_manifest_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / REMBI_MANIFEST_YAML
 
 
+def _first_existing(candidates: tuple[Path, ...]) -> Path:
+    """Return the first existing path in ``candidates``, else the first one.
+
+    The first candidate is always the canonical name, so a writer handed the
+    result of a miss creates the canonical file.
+    """
+    return next((path for path in candidates if path.exists()), candidates[0])
+
+
+def _pipeline_config_candidates_in(folder: Path) -> tuple[Path, Path, Path]:
+    """Return ``folder``'s pipeline config names: new, old typed, plain."""
+    new, old_typed, plain = _PIPELINE_CONFIG_NAMES
+    return folder / new, folder / old_typed, folder / plain
+
+
 def pipeline_json_path(output_dir: Path) -> Path:
     """Return the canonical typed pipeline config path under ``deliverables/``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
 
 
-def _legacy_pipeline_json_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON pipeline config path under ``deliverables/``."""
-    return deliverables_dir(output_dir) / _LEGACY_PIPELINE_JSON
+def pipeline_config_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return every name the run's pipeline config may carry, in resolution order.
+
+    The canonical ``pipeline.pht-pipe.json``, then the pre-flip
+    ``pipeline.json.pht-pipe``, then the plain V1 ``pipeline.json``, all
+    under ``deliverables/``.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        ``(new, old_typed, plain)``.
+    """
+    return _pipeline_config_candidates_in(deliverables_dir(output_dir))
 
 
 def resolve_pipeline_config_path(output_dir: Path) -> Path:
     """Return the best existing pipeline config path for ``output_dir``.
 
-    Resolution prefers the canonical typed path, falls back to legacy
-    ``pipeline.json`` when present, and returns the canonical path when neither
-    exists so writers naturally create typed config files.
+    Walks :func:`pipeline_config_candidates` and returns the first that exists,
+    or the canonical path when none does, so writers naturally create the
+    canonical typed config file.
     """
-    canonical = pipeline_json_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_pipeline_json_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
+    return _first_existing(pipeline_config_candidates(output_dir))
 
 
 def tuning_spec_path(output_dir: Path) -> Path:
@@ -1514,25 +1605,47 @@ def tuning_spec_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / TUNING_SPEC_JSON
 
 
-def _legacy_tuning_spec_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON tuning spec path under ``deliverables/``."""
-    return deliverables_dir(output_dir) / _LEGACY_TUNING_SPEC_JSON
+def tuning_spec_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the tuning spec's names under ``deliverables/``: new, old typed, plain."""
+    folder = deliverables_dir(output_dir)
+    return (
+        folder / TUNING_SPEC_JSON,
+        folder / _OLD_TYPED_TUNING_SPEC_JSON,
+        folder / _LEGACY_TUNING_SPEC_JSON,
+    )
 
 
 def resolve_tuning_spec_path(output_dir: Path) -> Path:
-    """Return the best existing tuning spec path for ``output_dir``."""
-    canonical = tuning_spec_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_tuning_spec_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
+    """Return the best existing tuning spec path for ``output_dir``.
+
+    The first of :func:`tuning_spec_candidates` that exists, else the
+    canonical path.
+    """
+    return _first_existing(tuning_spec_candidates(output_dir))
 
 
 def best_pipeline_path(output_dir: Path) -> Path:
     """Return the canonical typed tuned-winner pipeline path."""
     return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
+
+
+def best_pipeline_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the tuned winner's names under ``deliverables/``: new, old typed, plain."""
+    folder = deliverables_dir(output_dir)
+    return (
+        folder / BEST_PIPELINE_JSON,
+        folder / _OLD_TYPED_BEST_PIPELINE_JSON,
+        folder / _LEGACY_BEST_PIPELINE_JSON,
+    )
+
+
+def resolve_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing tuned-winner pipeline path for ``output_dir``.
+
+    The first of :func:`best_pipeline_candidates` that exists, else the
+    canonical path.
+    """
+    return _first_existing(best_pipeline_candidates(output_dir))
 
 
 def param_importance_path(output_dir: Path) -> Path:
@@ -1795,10 +1908,24 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/.phenotypic/pipeline.json.pht-pipe`` — the process-only run's
+    """Return ``<output>/.phenotypic/pipeline.pht-pipe.json`` — the process-only run's
     reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
     under ``deliverables/`` (process-only writes no deliverables)."""
     return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
+
+
+def phenotypic_cache_pipeline_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the process-only copy's names under ``.phenotypic/``: new, old typed, plain."""
+    return _pipeline_config_candidates_in(phenotypic_cache_dir(output_dir))
+
+
+def resolve_phenotypic_cache_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing process-only pipeline copy for ``output_dir``.
+
+    The first of :func:`phenotypic_cache_pipeline_candidates` that exists,
+    else the canonical path.
+    """
+    return _first_existing(phenotypic_cache_pipeline_candidates(output_dir))
 
 
 def dashboard_html_path(output_dir: Path) -> Path:
@@ -2993,7 +3120,7 @@ class BundleLayout:
 
     @property
     def pipeline_config_path(self) -> Path:
-        """Return path to ``pipeline.json`` in the deliverables base."""
+        """Return path to the canonical pipeline config in the deliverables base."""
         return self.deliverables_base / PIPELINE_JSON
 
     @property
@@ -3003,17 +3130,13 @@ class BundleLayout:
         Mirrors :func:`resolve_pipeline_config_path`'s precedence but anchored
         on :attr:`deliverables_base` (so a standalone bundle resolves *inside
         itself* without double-joining ``deliverables/``): the canonical typed
-        config when present, else the legacy plain ``pipeline.json`` when
-        present, else the canonical path (so writers naturally create typed
-        config files).
+        config, else the old typed ``pipeline.json.pht-pipe``, else the legacy
+        plain ``pipeline.json``, else the canonical path (so writers naturally
+        create typed config files).
         """
-        canonical = self.pipeline_config_path
-        if canonical.exists():
-            return canonical
-        legacy = self.deliverables_base / _LEGACY_PIPELINE_JSON
-        if legacy.exists():
-            return legacy
-        return canonical
+        return _first_existing(
+            _pipeline_config_candidates_in(self.deliverables_base)
+        )
 
     @property
     def qc_dir(self) -> Path:

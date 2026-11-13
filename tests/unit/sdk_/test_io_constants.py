@@ -27,6 +27,7 @@ from phenotypic.sdk_ import (
     CONFIG_SUFFIX_TUNING,
     CONFIG_SUFFIXES,
     LEGACY_JSON_SUFFIX,
+    LEGACY_TYPED_CONFIG_SUFFIXES,
     PIPELINE_JSON,
     PIPELINE_CONFIG_SUFFIXES,
     PROCESSING_EVENTS_LOG,
@@ -218,10 +219,21 @@ class TestFilenameConstants:
         assert DELIVERABLES_METADATA_CSV == "metadata.csv"
 
     def test_pipeline_state_filenames(self) -> None:
-        assert PIPELINE_JSON == "pipeline.json.pht-pipe"
-        assert TUNING_SPEC_JSON == "tuning_spec.json.pht-tune"
-        assert BEST_PIPELINE_JSON == "best_pipeline.json.pht-pipe"
+        assert PIPELINE_JSON == "pipeline.pht-pipe.json"
+        assert TUNING_SPEC_JSON == "tuning_spec.pht-tune.json"
+        assert BEST_PIPELINE_JSON == "best_pipeline.pht-pipe.json"
         assert PROCESSING_STATE_JSON == "processing_state.json"
+
+    def test_legacy_pipeline_state_filenames(self) -> None:
+        """The old typed and plain names stay readable (spec A1, A3)."""
+        from phenotypic.sdk_ import _io_constants as io
+
+        assert io._OLD_TYPED_PIPELINE_JSON == "pipeline.json.pht-pipe"
+        assert io._LEGACY_PIPELINE_JSON == "pipeline.json"
+        assert io._OLD_TYPED_TUNING_SPEC_JSON == "tuning_spec.json.pht-tune"
+        assert io._LEGACY_TUNING_SPEC_JSON == "tuning_spec.json"
+        assert io._OLD_TYPED_BEST_PIPELINE_JSON == "best_pipeline.json.pht-pipe"
+        assert io._LEGACY_BEST_PIPELINE_JSON == "best_pipeline.json"
 
     def test_progress_sidecar_filenames(self) -> None:
         assert PROCESSING_EVENTS_LOG == "processing_events.log"
@@ -232,10 +244,19 @@ class TestFilenameConstants:
 class TestConfigSuffixConstants:
     def test_config_suffix_values(self) -> None:
         assert LEGACY_JSON_SUFFIX == ".json"
-        assert CONFIG_SUFFIX_PIPELINE == ".json.pht-pipe"
-        assert CONFIG_SUFFIX_OPERATION == ".json.pht-op"
-        assert CONFIG_SUFFIX_COLOR_CHECKER == ".json.pht-cc"
-        assert CONFIG_SUFFIX_TUNING == ".json.pht-tune"
+        assert CONFIG_SUFFIX_PIPELINE == ".pht-pipe.json"
+        assert CONFIG_SUFFIX_OPERATION == ".pht-op.json"
+        assert CONFIG_SUFFIX_COLOR_CHECKER == ".pht-cc.json"
+        assert CONFIG_SUFFIX_TUNING == ".pht-tune.json"
+        assert LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE] == ".json.pht-pipe"
+
+    def test_legacy_typed_suffixes_map_every_new_suffix(self) -> None:
+        assert dict(LEGACY_TYPED_CONFIG_SUFFIXES) == {
+            ".pht-pipe.json": ".json.pht-pipe",
+            ".pht-op.json": ".json.pht-op",
+            ".pht-cc.json": ".json.pht-cc",
+            ".pht-tune.json": ".json.pht-tune",
+        }
 
     def test_config_suffix_groups(self) -> None:
         assert CONFIG_SUFFIXES == frozenset(
@@ -247,10 +268,10 @@ class TestConfigSuffixConstants:
             }
         )
         assert PIPELINE_CONFIG_SUFFIXES == frozenset(
-            {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+            {".pht-pipe.json", ".json.pht-pipe", ".json"}
         )
         assert TUNING_CONFIG_SUFFIXES == frozenset(
-            {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+            {".pht-tune.json", ".json.pht-tune", ".json"}
         )
 
 
@@ -258,10 +279,12 @@ class TestConfigSuffixHelpers:
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
-            ("x", "x.json.pht-pipe"),
-            ("x.json", "x.json.pht-pipe"),
-            ("x.JSON", "x.JSON.pht-pipe"),
-            ("x.json.pht-pipe", "x.json.pht-pipe"),
+            ("x", "x.pht-pipe.json"),
+            ("x.json", "x.pht-pipe.json"),
+            ("x.JSON", "x.pht-pipe.JSON"),
+            ("x.pht-pipe.json", "x.pht-pipe.json"),
+            ("x.PHT-PIPE.JSON", "x.PHT-PIPE.JSON"),
+            ("x.json.pht-pipe", "x.json.pht-pipe"),  # explicit old suffix honoured
             ("x.JSON.PHT-PIPE", "x.JSON.PHT-PIPE"),
         ],
     )
@@ -269,16 +292,37 @@ class TestConfigSuffixHelpers:
         assert str(ensure_typed_json_suffix(raw, CONFIG_SUFFIX_PIPELINE)) == expected
 
     @pytest.mark.parametrize(
+        ("suffix", "raw", "expected"),
+        [
+            (CONFIG_SUFFIX_OPERATION, "op.json", "op.pht-op.json"),
+            (CONFIG_SUFFIX_OPERATION, "op.json.pht-op", "op.json.pht-op"),
+            (CONFIG_SUFFIX_COLOR_CHECKER, "profile", "profile.pht-cc.json"),
+            (CONFIG_SUFFIX_TUNING, "spec.json", "spec.pht-tune.json"),
+            (CONFIG_SUFFIX_TUNING, "spec.json.pht-tune", "spec.json.pht-tune"),
+        ],
+    )
+    def test_ensure_typed_json_suffix_other_kinds(
+        self, suffix: str, raw: str, expected: str
+    ) -> None:
+        assert str(ensure_typed_json_suffix(raw, suffix)) == expected
+
+    @pytest.mark.parametrize(
         "raw",
         [
             "x.json",
             "x.JSON",
+            "x.pht-pipe.json",
+            "x.PHT-PIPE.JSON",
             "x.json.pht-pipe",
             "x.JSON.PHT-PIPE",
         ],
     )
     def test_has_config_suffix_is_case_insensitive(self, raw: str) -> None:
         assert has_config_suffix(raw, PIPELINE_CONFIG_SUFFIXES)
+
+    def test_pipeline_suffixes_accept_new_old_and_plain(self) -> None:
+        for name in ("p.pht-pipe.json", "p.json.pht-pipe", "p.json"):
+            assert matches_any_suffix(name, PIPELINE_CONFIG_SUFFIXES)
 
     def test_matches_any_suffix_rejects_wrong_typed_config(self) -> None:
         assert matches_any_suffix("pipeline.json.pht-pipe", PIPELINE_CONFIG_SUFFIXES)
@@ -414,6 +458,97 @@ class TestPathHelpers:
         legacy.write_text("legacy", encoding="utf-8")
 
         assert resolve_tuning_spec_path(tmp_path) == legacy
+
+    def test_resolver_prefers_new_then_old_then_plain(self, tmp_path: Path) -> None:
+        d = tmp_path / "deliverables"
+        d.mkdir()
+        (d / "pipeline.json").write_text("{}")  # legacy name, read path
+        assert resolve_pipeline_config_path(tmp_path).name == "pipeline.json"
+        (d / "pipeline.json.pht-pipe").write_text("{}")  # legacy name, read path
+        assert resolve_pipeline_config_path(tmp_path).name == "pipeline.json.pht-pipe"
+        (d / "pipeline.pht-pipe.json").write_text("{}")
+        assert resolve_pipeline_config_path(tmp_path).name == "pipeline.pht-pipe.json"
+
+    def test_pipeline_config_candidates_order(self, tmp_path: Path) -> None:
+        from phenotypic.sdk_ import pipeline_config_candidates
+
+        d = tmp_path / "deliverables"
+        assert pipeline_config_candidates(tmp_path) == (
+            d / "pipeline.pht-pipe.json",
+            d / "pipeline.json.pht-pipe",
+            d / "pipeline.json",
+        )
+
+    @pytest.mark.parametrize(
+        ("resolver", "candidates", "folder", "stem", "typed"),
+        [
+            (
+                "resolve_tuning_spec_path",
+                "tuning_spec_candidates",
+                "deliverables",
+                "tuning_spec",
+                "pht-tune",
+            ),
+            (
+                "resolve_best_pipeline_path",
+                "best_pipeline_candidates",
+                "deliverables",
+                "best_pipeline",
+                "pht-pipe",
+            ),
+            (
+                "resolve_phenotypic_cache_pipeline_path",
+                "phenotypic_cache_pipeline_candidates",
+                ".phenotypic",
+                "pipeline",
+                "pht-pipe",
+            ),
+        ],
+    )
+    def test_other_resolvers_prefer_new_then_old_then_plain(
+        self,
+        tmp_path: Path,
+        resolver: str,
+        candidates: str,
+        folder: str,
+        stem: str,
+        typed: str,
+    ) -> None:
+        import phenotypic.sdk_ as sdk
+
+        resolve = getattr(sdk, resolver)
+        d = tmp_path / folder
+        new = d / f"{stem}.{typed}.json"
+        old = d / f"{stem}.json.{typed}"  # legacy name, read path
+        plain = d / f"{stem}.json"  # legacy name, read path
+        assert getattr(sdk, candidates)(tmp_path) == (new, old, plain)
+        assert resolve(tmp_path) == new
+        d.mkdir()
+        plain.write_text("{}")
+        assert resolve(tmp_path) == plain
+        old.write_text("{}")
+        assert resolve(tmp_path) == old
+        new.write_text("{}")
+        assert resolve(tmp_path) == new
+
+    def test_bundle_layout_resolves_old_typed_name(self, tmp_path: Path) -> None:
+        layout = BundleLayout(
+            deliverables_base=tmp_path / "deliverables", output_root=tmp_path
+        )
+        old = tmp_path / "deliverables" / "pipeline.json.pht-pipe"  # legacy name, read path
+        old.parent.mkdir()
+        (old.parent / "pipeline.json").write_text("{}")  # legacy name, read path
+        old.write_text("{}")
+        assert layout.resolved_pipeline_config_path == old
+        new = tmp_path / "deliverables" / "pipeline.pht-pipe.json"
+        new.write_text("{}")
+        assert layout.resolved_pipeline_config_path == new
+
+    def test_all_three_names_share_one_migration_lock(self, tmp_path: Path) -> None:
+        from phenotypic.sdk_ import migration_lock_path
+
+        names = ("pipeline.pht-pipe.json", "pipeline.json.pht-pipe", "pipeline.json")
+        assert len({migration_lock_path(tmp_path / n) for n in names}) == 1
 
 
     def test_dashboard_html_path(self, output: Path) -> None:
@@ -636,10 +771,10 @@ class TestParetoPaths:
         )
 
         assert pareto_best_pipeline_path(output, "Dice") == (
-            pareto_dir(output) / "best_Dice.json.pht-pipe"
+            pareto_dir(output) / "best_Dice.pht-pipe.json"
         )
         assert pareto_best_pipeline_path(output, "s0") == (
-            pareto_dir(output) / "best_s0.json.pht-pipe"
+            pareto_dir(output) / "best_s0.pht-pipe.json"
         )
 
     def test_validated_axes_keep_human_names_in_direct_path_helpers(
@@ -659,8 +794,8 @@ class TestParetoPaths:
         ]
 
         assert [path.name for path in paths] == [
-            "best_Dice.json.pht-pipe",
-            "best_IoU.json.pht-pipe",
+            "best_Dice.pht-pipe.json",
+            "best_IoU.pht-pipe.json",
             "param_importance_Dice.json",
             "param_importance_IoU.json",
         ]
@@ -1511,7 +1646,7 @@ def test_fingerprint_and_migration_paths_are_deterministic(
         source_cache_key,
     )
 
-    config = tmp_path / "pipeline.json.pht-pipe"
+    config = tmp_path / "pipeline.pht-pipe.json"
     config.write_bytes(b'{"version":"1"}')
     fingerprint = file_fingerprint(config)
 

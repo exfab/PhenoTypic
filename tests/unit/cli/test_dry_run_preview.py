@@ -48,7 +48,7 @@ def _save_pipeline(path: Path, ops=None, **kwargs) -> Path:
         meas=[MeasureSize()],
         **kwargs,
     )
-    # write_text, not to_json(path): the latter appends ``.pht-pipe``.
+    # write_text, not to_json(path): the latter inserts ``.pht-pipe`` before ``.json``.
     path.write_text(pipeline.to_json(), encoding="utf-8")
     return path
 
@@ -198,7 +198,7 @@ def test_the_layout_lists_every_deliverable_a_plain_run_writes(tmp_path, pipe):
         "dashboard.html",
         "README.md",
         "rembi.yaml",
-        "pipeline.json.pht-pipe",
+        "pipeline.pht-pipe.json",
     ):
         assert written in layout, written
     assert "processing_report.html" not in layout
