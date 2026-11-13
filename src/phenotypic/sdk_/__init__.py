@@ -139,6 +139,14 @@ from ._atomic_io import (  # noqa: E402
     atomic_write_with_writer,
     publication_commit,
 )
+from ._delimited import (  # noqa: E402
+    CSV_SUFFIX,
+    INPUT_TABLE_SUFFIXES,
+    TSV_SUFFIX,
+    delimiter_for,
+    read_delimited,
+    write_tsv,
+)
 from ._column_ref import (  # noqa: E402
     ColumnRef,
     ColumnRefList,
@@ -479,6 +487,12 @@ __all__ = [
     "atomic_write_text",
     "atomic_write_with_writer",
     "publication_commit",
+    "CSV_SUFFIX",
+    "INPUT_TABLE_SUFFIXES",
+    "TSV_SUFFIX",
+    "delimiter_for",
+    "read_delimited",
+    "write_tsv",
     "PARQUET_WRITE_OPTIONS",
     "PreparedEmbeddedMeasurementTable",
     "PreparedImageTables",
