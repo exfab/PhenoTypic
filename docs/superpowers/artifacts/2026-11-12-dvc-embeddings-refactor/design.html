@@ -381,12 +381,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>C3 SLURM: a read-only run waiter.</strong> A SLURM run returns at submission, but DVC hashes a stage's outs the moment its command exits. So a SLURM-backed stage runs two commands:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmd</span><span class="kw">:</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> python -m phenotypic … --slurm …</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> python -m phenotypic.sdk_.wait_for_run --output &lt;out&gt;</span></span></code></pre></div>
-<p><code>wait_for_run</code> blocks until the run is finished, then exits with the C10 code that the run would have returned locally:</p>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> phenotypic-wait --output &lt;out&gt;</span></span></code></pre></div>
+<p><code>phenotypic-wait</code> is a new console script (<code>phenotypic._cli._cli_wait</code>). It blocks until the run is finished, then exits with the C10 code that the run would have returned locally:</p>
 <ul>
-<li>It polls <code>resolve_run_state(output_dir, depth="shallow")</code> and the run's SLURM liveness (<code>live_slurm_job_ids</code>) on an interval. The default is 60 s, set with <code>--poll-seconds</code>.</li>
-<li>It finishes when the run proof is published, or when no ledgered job is live and no proof exists. That second case is a failed run, and the code says so.</li>
-<li>It is a <strong>reader only</strong>. It never aggregates, publishes, submits or writes, so the double publication the old <code>--wait</code> had cannot recur. It lives in <code>sdk_</code> because readers do.</li>
+<li>It polls <code>resolve_run_state(output_dir, depth="shallow")</code> together with <code>live_slurm_job_ids(output_dir)</code> (<code>_cli/_cli_staged_orchestration.py</code>) on an interval. The default is 60 s, set with <code>--poll-seconds</code>.</li>
+<li>Both checks are needed. <code>resolve_run_state</code> takes an <code>active</code> lifecycle fence at face value and never asks the scheduler, so a finalizer killed for running out of memory would read as <code>active</code> forever. The scheduler query is what tells a running run from a dead one. That query lives in <code>_cli</code>, which <code>sdk_</code> may not import, so the waiter lives in <code>_cli</code>.</li>
+<li>It finishes when the run proof is published (<code>complete</code>), when the run is <code>failed</code>, or when no ledgered job is live and no proof exists. The last is a run that ended without publishing, and it gets its own code.</li>
+<li>A scheduler that can't be queried (<code>unverified</code>/<code>unresolved</code> jobs) keeps it waiting, with the reason printed each poll. It never guesses.</li>
+<li>It is a <strong>reader only</strong>. It never aggregates, publishes, submits or cancels, so the double publication the old <code>--wait</code> had cannot recur.</li>
 <li><code>--timeout-seconds</code> (default: none) gives up with its own exit code, without cancelling anything.</li>
 <li>The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU), because head nodes kill long-running processes. The how-to page (C9) gives the <code>sbatch</code> line.</li>
 </ul></li>
@@ -409,7 +411,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>C8 Results size.</strong> Whether <code>results/</code> should be <code>cache: true</code> or <code>false</code> is decided by measurement, not reasoning. Time <code>dvc status</code> and <code>dvc commit</code> on the migrated maresca copy (<code>2026-08-11-ome-zarr</code>) as a Slurm job, one config per fresh node, and record the numbers in the how-to page.</p></li>
 <li><p><strong>C9 How-to page</strong> <code>docs/source/how_to/pages/dvc.md</code>. Contents:</p>
 <ul>
-<li>a local <code>dvc.yaml</code>, a SLURM one (submit, then <code>wait_for_run</code>), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
+<li>a local <code>dvc.yaml</code>, a SLURM one (submit, then <code>phenotypic-wait</code>), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
 <li>the three outs with <code>persist</code>, and the cache-type rule (C6);</li>
 <li><code>dvc gc</code> for the cache growth that tracking <code>.phenotypic/</code> causes;</li>
 <li>params addressing with an example <code>dvc exp run -S</code>;</li>
@@ -421,7 +423,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>0</strong>: complete, no terminal failures;</li>
 <li>a distinct non-zero: <strong>complete with terminal image failures</strong>;</li>
 <li><strong>1</strong>: refused, or a usage/config error (today's behaviour);</li>
-<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>wait_for_run</code> (C3) returns one of the codes above once the run ends, plus its own code for <code>--timeout-seconds</code>.</li>
+<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>phenotypic-wait</code> (C3) returns one of the codes above once the run ends, plus its own code for <code>--timeout-seconds</code>.</li>
 </ul>
 <p>The builder confirms what a run with terminal failures returns today; I found no distinct code for it. The values are documented and pinned by tests.</p></li>
 <li><p><strong>C11 Byte-stable deliverables</strong>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>

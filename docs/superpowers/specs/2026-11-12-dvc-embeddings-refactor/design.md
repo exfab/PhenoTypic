@@ -259,25 +259,32 @@ The five parts below are independent enough to plan and ship in the order of §5
   ```yaml
   cmd:
     - python -m phenotypic … --slurm …
-    - python -m phenotypic.sdk_.wait_for_run --output <out>
+    - phenotypic-wait --output <out>
   ```
 
-  `wait_for_run` blocks until the run is finished, then exits with the C10 code
-  that the run would have returned locally:
-  - It polls `resolve_run_state(output_dir, depth="shallow")` and the run's SLURM
-    liveness (`live_slurm_job_ids`) on an interval. The default is 60 s, set with
-    `--poll-seconds`.
-  - It finishes when the run proof is published, or when no ledgered job is live
-    and no proof exists. That second case is a failed run, and the code says so.
+  `phenotypic-wait` is a new console script (`phenotypic._cli._cli_wait`). It
+  blocks until the run is finished, then exits with the C10 code that the run
+  would have returned locally:
+  - It polls `resolve_run_state(output_dir, depth="shallow")` together with
+    `live_slurm_job_ids(output_dir)` (`_cli/_cli_staged_orchestration.py`) on an
+    interval. The default is 60 s, set with `--poll-seconds`.
+  - Both checks are needed. `resolve_run_state` takes an `active` lifecycle fence
+    at face value and never asks the scheduler, so a finalizer killed for running
+    out of memory would read as `active` forever. The scheduler query is what
+    tells a running run from a dead one. That query lives in `_cli`, which
+    `sdk_` may not import, so the waiter lives in `_cli`.
+  - It finishes when the run proof is published (`complete`), when the run is
+    `failed`, or when no ledgered job is live and no proof exists. The last is a
+    run that ended without publishing, and it gets its own code.
+  - A scheduler that can't be queried (`unverified`/`unresolved` jobs) keeps it
+    waiting, with the reason printed each poll. It never guesses.
   - It is a **reader only**. It never aggregates, publishes, submits or
-    writes, so the double publication the old `--wait` had cannot recur. It
-    lives in `sdk_` because readers do.
+    cancels, so the double publication the old `--wait` had cannot recur.
   - `--timeout-seconds` (default: none) gives up with its own exit code, without
     cancelling anything.
   - The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU),
     because head nodes kill long-running processes. The how-to page (C9) gives
     the `sbatch` line.
-
 - **C4 Metrics.** New `deliverables/metrics.json`, written by `finalize_run` (the
   one FINAL writer):
   - **Content:** `schema_version`, `phenotypic_version`, `pipeline_sha256`;
@@ -314,7 +321,7 @@ The five parts below are independent enough to plan and ship in the order of §5
   migrated maresca copy (`2026-08-11-ome-zarr`) as a Slurm job, one config per
   fresh node, and record the numbers in the how-to page.
 - **C9 How-to page** `docs/source/how_to/pages/dvc.md`. Contents:
-  - a local `dvc.yaml`, a SLURM one (submit, then `wait_for_run`), and a
+  - a local `dvc.yaml`, a SLURM one (submit, then `phenotypic-wait`), and a
     process-mode one, since
     process mode creates no `deliverables/` and its outs list must say so;
   - the three outs with `persist`, and the cache-type rule (C6);
@@ -327,7 +334,7 @@ The five parts below are independent enough to plan and ship in the order of §5
   - a distinct non-zero: **complete with terminal image failures**;
   - **1**: refused, or a usage/config error (today's behaviour);
   - a distinct code: **submitted to SLURM**, so nothing is finished yet. Every
-    SLURM run returns this at submission. `wait_for_run` (C3) returns one of the
+    SLURM run returns this at submission. `phenotypic-wait` (C3) returns one of the
     codes above once the run ends, plus its own code for `--timeout-seconds`.
 
   The builder confirms what a run with terminal failures returns today; I found
