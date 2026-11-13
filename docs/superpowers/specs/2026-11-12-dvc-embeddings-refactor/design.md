@@ -400,9 +400,14 @@ The five parts below are independent enough to plan and ship in the order of §5
     and "published a partial aggregate").
   - A `--mode measure` resubmission's failures are keyed by measure work ids,
     outside the forward run's inventory, so `resolve_run_state` cannot see
-    them. The measure finalizer records its terminal-failure count under its
-    generation, and the waiter reads it, so a SLURM measure with a failure exits
-    `3` as the local one does (P2 review I5).
+    them. Measure workers record a measure failure as a terminal-journal row
+    (mode `measure`, `lifecycle_epoch` = the generation), which they did not do
+    before #281; the waiter counts the distinct work ids journalled under its
+    bound generation, so a SLURM measure with a failure exits `3` as the local
+    one does (P2 review I5). `metrics.json` counts the same rows on SLURM, and
+    the invocation's own failure count locally, so it agrees with the exit
+    code. These rows are keyed by measure work ids, so they never affect a
+    forward run's continuation.
   - Two fields make that binding exact, with no clock comparison:
     - the finalizer stamps the generation it ran under into the aggregate proof
       (`execution_epoch`, as the run proof already has). A proof without the
