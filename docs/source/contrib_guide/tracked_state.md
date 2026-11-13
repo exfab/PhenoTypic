@@ -211,7 +211,9 @@ The aggregate proof and the run proof both carry `execution_epoch`: the SLURM
 generation of the finalizer that wrote them, or `"local"` (run proof) / `null`
 (aggregate proof) for a local run. A finalizer that closes the lifecycle fence
 also records `closed_by: "finalizer"` in it. A cancel (`cancel_generation`,
-`deactivate_orchestration`) leaves `closed_by` unset. `phenotypic-wait` reads
+`deactivate_orchestration`) leaves `closed_by` unset, and so does
+`retire_dead_lifecycle_fence`, which a forward run or recompile calls to close a
+fence whose jobs have all ended before it publishes its own. `phenotypic-wait` reads
 these to decide whether *this* submission published (#281 spec C3). Digests
 cannot answer that: a `--mode measure` resubmission keeps no run state, so an
 earlier run's proofs still match it after its own finalizer dies. Neither field

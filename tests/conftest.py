@@ -18,6 +18,7 @@ from tests._support.xdist_workers import resolve_xdist_auto_workers
 
 # Shared #281 plan fixtures, re-exported by name so any test can request them.
 from tests._tiny_run import (  # noqa: F401
+    all_bad_inputs,
     finished_tiny_run,
     metadata_bytes,
     old_tree_with_measurements_csv,

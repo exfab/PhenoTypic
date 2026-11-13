@@ -139,6 +139,7 @@ Earlier releases read any suffix in `--mode full`, so a comma-separated
 | `PF-OUTPUT-UNWRITABLE` | `--output` (or its nearest existing parent) is not writable | error | Choose another `--output`, or fix permissions |
 | `PF-OUTPUT-SPACE` | A `full` run's output disk has less free space than the inputs' size (a heuristic) | warning | Free space, or choose another `--output` |
 | `PF-NODE-LOCAL` | On a SLURM run, a path workers read or write is on node-local storage | warning | Move it to shared storage |
+| `PF-DVC-LINKED-CACHE` | `--output` is inside a DVC project whose `.dvc/config` or `.dvc/config.local` sets `cache.type` to `hardlink` or `symlink` (global and system DVC config are not read) | warning | Keep DVC's default `reflink,copy` |
 | `PF-CHECK-CRASHED` | A check itself failed | warning | Report it; the run is not blocked |
 
 "By reach" means an error when every input is affected, and a warning listing

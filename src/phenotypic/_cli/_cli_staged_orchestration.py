@@ -767,6 +767,59 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     )
 
 
+#: Lifecycle modes a forward run or recompile may retire once they are dead.
+#: ``migrate`` keeps its own lease and reconcile, and ``tune`` fences a tuning
+#: output, which no forward run shares; neither is listed.
+_RETIRABLE_FENCE_MODES = frozenset({"ordinary", "recompile"})
+
+
+def retire_dead_lifecycle_fence(output_dir: Path) -> str | None:
+    """Close an ``active`` fence whose jobs the scheduler reports all ended.
+
+    A finalizer killed for memory or cancelled outside PhenoTypic leaves its
+    fence ``active`` forever, and a ``dvc checkout`` of another revision
+    restores such a fence wholesale (#281 spec C13). The live-run guard
+    (``_refuse_live_slurm_run``) asks the scheduler rather than the flag, so it
+    lets the next run through -- but ``initialize_slurm_lifecycle`` then
+    refuses to publish a new generation over the stale one, and a SLURM
+    re-run, the documented recovery, failed after the mutating half had begun.
+
+    So the mutating half closes the fence first, on the same evidence the guard
+    used: :func:`live_slurm_job_ids` is empty, meaning every ledgered job is
+    terminal and no unrecorded submission is queued. The close leaves
+    ``closed_by`` unset, so ``phenotypic-wait`` never reads it as the old
+    generation's publication. A staged fence is closed through
+    :func:`deactivate_orchestration`, which also fences the controller state
+    and journals the deactivation for any straggling worker.
+
+    Never call it above the ``--dry-run`` exit: it writes.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The retired generation, or ``None`` when there was nothing to retire:
+        no fence, an inactive one, a mode this function does not own, or a
+        fence that may still own a job.
+    """
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is None or lifecycle.get("active") is not True:
+        return None
+    mode = str(lifecycle.get("mode", ""))
+    if lifecycle.get("owner_kind") is not None or not (
+        mode in _RETIRABLE_FENCE_MODES or mode.startswith("staged-")
+    ):
+        return None
+    if live_slurm_job_ids(output_dir):
+        return None
+    generation = str(lifecycle["generation"])
+    if mode.startswith("staged-"):
+        deactivate_orchestration(output_dir, "cancelled")
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        _deactivate_generation_locked(output_dir, generation)
+    return generation
+
+
 def deactivate_orchestration(
     output_dir: Path,
     phase: str = "cancelled",
@@ -906,6 +959,7 @@ __all__ = [
     "orchestration_state_path",
     "quarantine_unchanged_restart_parquets",
     "read_job_ledger",
+    "retire_dead_lifecycle_fence",
     "retryable_digest",
     "save_orchestration_state",
     "scheduler_job_is_active",

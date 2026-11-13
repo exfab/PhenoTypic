@@ -701,6 +701,22 @@ recovery procedure. So liveness always comes from the scheduler. Once every
 ledgered job is terminal and no unresolved token matches a queued job, the run
 is allowed.
 
+**Allowed also means the stale fence is closed.** Until #281 P2 T5 it was not:
+the guard let a SLURM re-run through, and `initialize_slurm_lifecycle` then
+refused to publish a new generation over the still-`active` one, so the
+documented recovery died with `Unexpected error` after the mutating half had
+begun (a SLURM recompile refused the same way in
+`_initialize_recompile_slurm_attempt`). Now the first step of the mutating
+half, and the recompile attempt before its own check, call
+`retire_dead_lifecycle_fence` (`_cli_staged_orchestration.py`), which closes
+the fence on the guard's own evidence (`live_slurm_job_ids` empty) for the
+modes it owns, `ordinary`, `recompile` and `staged-*` (a staged fence through
+`deactivate_orchestration`). It leaves `closed_by` unset, so
+`phenotypic-wait` never reads the close as the old generation's publication.
+A `dvc checkout` that restores an old `.phenotypic/` (spec C13) is the same
+case. `migrate` (own lease and reconcile), `tune` and owned fences are never
+retired. Pinned by `tests/unit/cli/test_dvc_outs_at_submission.py`.
+
 The check is a read-only `squeue` from the invoking process, not a scheduler
 job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in
 `tests/unit/cli/test_cli_v2.py`.

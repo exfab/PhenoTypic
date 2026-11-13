@@ -81,6 +81,92 @@ def tiny_inputs_one_bad(tiny_inputs: Path) -> Path:
     (tiny_inputs / "ds" / "plate_bad.tif").write_bytes(good[:64])
     return tiny_inputs
 
+
+@pytest.fixture
+def all_bad_inputs(tiny_inputs: Path) -> Path:
+    """:func:`tiny_inputs` with **both** plates truncated to half their bytes.
+
+    Unlike :func:`tiny_inputs_one_bad`, each file keeps its whole TIFF header
+    and IFD, so the run preflight's header check passes (a ``[:64]`` cut on
+    every input would be a ``PF-HEADER-UNREADABLE`` refusal, which writes
+    nothing). The pixel read then fails inside the per-image worker, so a run
+    over this tree starts, records two terminal failures and measures nothing.
+
+    Returns the input root, ready for ``--input``.
+    """
+    for plate in sorted((tiny_inputs / "ds").glob("*.tif")):
+        data = plate.read_bytes()
+        plate.write_bytes(data[: len(data) // 2])
+    return tiny_inputs
+
+
+def make_dvc_repo(
+    root: Path, *, cache_type: str | None, local_type: str | None = None
+) -> Path:
+    """Make *root* a DVC project root as far as PhenoTypic's preflight reads one.
+
+    Writes ``.dvc/config`` with ``[cache] type = <cache_type>`` (an empty
+    ``[core]`` section when ``cache_type`` is ``None``) and, when
+    ``local_type`` is given, ``.dvc/config.local`` with its own
+    ``[cache] type``. DVC itself is never invoked.
+
+    Returns:
+        The ``.dvc`` directory.
+    """
+    dvc = root / ".dvc"
+    dvc.mkdir(parents=True, exist_ok=True)
+    body = "[core]\n    autostage = true\n"
+    if cache_type is not None:
+        body += f"[cache]\n    type = {cache_type}\n"
+    (dvc / "config").write_text(body, encoding="utf-8")
+    if local_type is not None:
+        (dvc / "config.local").write_text(
+            f"[cache]\n    type = {local_type}\n", encoding="utf-8"
+        )
+    return dvc
+
+
+def run_preflight(*, output_dir: Path, mode: str = "full") -> list:
+    """The run preflight over :func:`tiny_pipeline` with ``--output output_dir``.
+
+    A local run with no scanned inputs, so only the configuration-level checks
+    have anything to say.
+
+    Returns:
+        Every :class:`~phenotypic._cli._cli_preflight.PreflightFinding`.
+    """
+    from phenotypic._cli._cli_preflight import PreflightContext
+    from phenotypic._cli._cli_preflight import run_preflight as _run_preflight
+    from phenotypic._cli._cli_types import ExecutionConfig
+
+    config = ExecutionConfig(
+        pipeline_json=output_dir.parent / "tiny_run.pht-pipe.json",
+        input_path=output_dir.parent / "in",
+        output_dir=output_dir,
+        image_type="GridImage",
+        nrows=None,
+        ncols=None,
+        bit_depth=None,
+        n_jobs=1,
+        slurm_args={},
+        force_local=True,
+        ext=".tiff",
+        overlay_alpha=0.3,
+        include_dataset_column=True,
+        dry_run=False,
+        sample=None,
+        resume=False,
+        retry_failures=False,
+        skip_validation=False,
+        measure_only=mode == "measure",
+        process_only_layer="gray" if mode == "process" else None,
+    )
+    context = PreflightContext(
+        config=config, pipeline=_build_tiny_pipeline(), datasets=(), mode=mode  # type: ignore[arg-type]
+    )
+    return list(_run_preflight(context).findings)
+
+
 def run_cli(
     inputs: Path | None,
     out: Path,

@@ -973,6 +973,26 @@ def _refuse_live_slurm_run(output_dir: Path) -> None:
     sys.exit(1)
 
 
+def _retire_dead_fence(output_dir: Path) -> None:
+    """Close a dead ``active`` lifecycle fence and say so (#281 spec C13).
+
+    Called in the mutating half only, after :func:`_refuse_live_slurm_run`
+    passed. See ``retire_dead_lifecycle_fence``.
+    """
+    if not output_dir.exists():
+        return
+    from phenotypic._cli._cli_staged_orchestration import (
+        retire_dead_lifecycle_fence,
+    )
+
+    retired = retire_dead_lifecycle_fence(output_dir)
+    if retired is not None:
+        click.echo(
+            f"Note: closed SLURM generation {retired}, whose fence was still "
+            "active although none of its jobs is queued or running."
+        )
+
+
 def _metadata_suffix_callback(
     ctx: click.Context, param: click.Parameter, value: Optional[Path]
 ) -> Optional[Path]:
@@ -3165,6 +3185,13 @@ def phenotypic_cli(
 
         # ---- Mutating half: nothing above this line writes under --output.
         #
+        # First, close a lifecycle fence `_refuse_live_slurm_run` already
+        # judged dead (every ledgered job terminal). Left active, it makes a
+        # SLURM re-run's `initialize_slurm_lifecycle` refuse the new
+        # generation -- the stuck-finalizer case, and a fence a `dvc
+        # checkout` restored (#281 spec C13).
+        _retire_dead_fence(output_dir)
+        #
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
         # while preserving any output artifacts (results/, deliverables/, qc/)
@@ -4483,12 +4510,17 @@ def _discover_recompile_dataset_names(
 def _initialize_recompile_slurm_attempt(
     output_dir: Path, attempt_id: str
 ) -> None:
-    """Refuse a live prior launch and publish a fresh lifecycle fence."""
+    """Refuse a live prior launch and publish a fresh lifecycle fence.
+
+    A fence whose jobs have all ended is closed first, as on the forward path
+    (``_retire_dead_fence``); only one that may still own a job refuses.
+    """
     from phenotypic._cli._cli_slurm_lifecycle import (
         initialize_slurm_lifecycle,
         load_slurm_lifecycle,
     )
 
+    _retire_dead_fence(output_dir)
     existing = load_slurm_lifecycle(output_dir)
     if existing is not None and existing.get("active") is True:
         previous = str(existing["generation"])
