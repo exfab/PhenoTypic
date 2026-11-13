@@ -256,8 +256,9 @@ def _output_layout_entries(
         measurements_by_feature_dir,
         measurements_csv_path,
         measurements_parquet_path,
+        measurements_tsv_path,
         metadata_csv_deliverable_path,
-        named_analysis_csv_path,
+        named_analysis_tsv_path,
         phenotypic_cache_dir,
         pipeline_json_path,
         plots_dir,
@@ -270,10 +271,11 @@ def _output_layout_entries(
     forward = not config.measure_only
     entries: List[tuple[Path, bool, str]] = [
         (
-            measurements_csv_path(output_dir),
+            measurements_tsv_path(output_dir),
             False,
             "the table to analyse: measurements, joined with --metadata when "
-            f"given (also {measurements_parquet_path(output_dir).name})",
+            f"given (also {measurements_parquet_path(output_dir).name}, and "
+            f"{measurements_csv_path(output_dir).name} for the results viewer)",
         ),
         (
             master_measurements_parquet_path(output_dir),
@@ -289,7 +291,7 @@ def _output_layout_entries(
             deliverables = deliverables_dir(output_dir)
             entries += [
                 (
-                    named_analysis_csv_path(deliverables, type(model).__name__),
+                    named_analysis_tsv_path(deliverables, type(model).__name__),
                     False,
                     "the model fit (also .parquet)",
                 ),

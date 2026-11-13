@@ -19,7 +19,7 @@ from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
 from phenotypic.sdk_ import deliverables_dir, pipeline_json_path
 from phenotypic.plotting._pipeline import (
     analysis_manifest_path,
-    named_analysis_csv_path,
+    named_analysis_tsv_path,
     named_analysis_parquet_path,
 )
 from phenotypic._cli._cli_output_manager import (
@@ -89,10 +89,10 @@ class TestEmitAnalysisOutputs:
         result = _emit_analysis_outputs(tmp_path, master, ImagePipeline())
         assert result is None
         base = deliverables_dir(tmp_path)
-        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
 
-    def test_writes_csv_and_parquet_when_model_configured(
+    def test_writes_tsv_and_parquet_when_model_configured(
         self, tmp_path: Path
     ) -> None:
         master = _synthetic_growth_master()
@@ -111,7 +111,7 @@ class TestEmitAnalysisOutputs:
         assert result.artifacts is not None
         assert result.artifacts.parquet == path
         assert len(result.table) > 0
-        assert named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert path.exists()
         assert analysis_manifest_path(base).exists()
         assert pl.read_parquet(path).height == len(result.table)
@@ -170,7 +170,7 @@ class TestEmitAnalysisOutputs:
         path = result.artifacts.parquet
         # Written into the bundle directly, NOT under deliverables_dir(tmp_path).
         assert path == bundle / "LogGrowthModel.parquet"
-        assert (bundle / "LogGrowthModel.csv").exists()
+        assert (bundle / "LogGrowthModel.tsv").exists()
         assert (bundle / "LogGrowthModel.parquet").exists()
         assert not named_analysis_parquet_path(
             deliverables_dir(tmp_path), "LogGrowthModel"
@@ -190,7 +190,7 @@ class TestEmitAnalysisOutputs:
         result = _emit_analysis_outputs(tmp_path, master, pipeline)
         assert result is None
         base = deliverables_dir(tmp_path)
-        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
 
     def test_publication_guard_blocks_before_artifact_mutation(
@@ -217,7 +217,7 @@ class TestEmitAnalysisOutputs:
 
         base = deliverables_dir(tmp_path)
         assert result is None
-        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
         assert not analysis_manifest_path(base).exists()
 
@@ -251,7 +251,7 @@ class TestEmitAnalysisOutputs:
 
         base = deliverables_dir(tmp_path)
         assert result is None
-        assert not named_analysis_csv_path(base, "LogGrowthModel").exists()
+        assert not named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
         assert not analysis_manifest_path(base).exists()
 
@@ -271,11 +271,11 @@ class TestEmitAnalysisOutputs:
         )
         assert _emit_analysis_outputs(tmp_path, master, pipeline) is not None
         base = deliverables_dir(tmp_path)
-        csv_path = named_analysis_csv_path(base, "LogGrowthModel")
+        tsv_path = named_analysis_tsv_path(base, "LogGrowthModel")
         parquet_path = named_analysis_parquet_path(base, "LogGrowthModel")
         manifest_path = analysis_manifest_path(base)
         previous = (
-            csv_path.read_bytes(),
+            tsv_path.read_bytes(),
             parquet_path.read_bytes(),
             manifest_path.read_bytes(),
         )
@@ -299,7 +299,7 @@ class TestEmitAnalysisOutputs:
         assert checks == 3
         assert result is None
         assert (
-            csv_path.read_bytes(),
+            tsv_path.read_bytes(),
             parquet_path.read_bytes(),
             manifest_path.read_bytes(),
         ) == previous
@@ -320,11 +320,11 @@ class TestEmitAnalysisOutputs:
         )
         assert _emit_analysis_outputs(tmp_path, master, pipeline) is not None
         base = deliverables_dir(tmp_path)
-        csv_path = named_analysis_csv_path(base, "LogGrowthModel")
+        tsv_path = named_analysis_tsv_path(base, "LogGrowthModel")
         parquet_path = named_analysis_parquet_path(base, "LogGrowthModel")
         manifest_path = analysis_manifest_path(base)
         previous = (
-            csv_path.read_bytes(),
+            tsv_path.read_bytes(),
             parquet_path.read_bytes(),
             manifest_path.read_bytes(),
         )
@@ -341,7 +341,7 @@ class TestEmitAnalysisOutputs:
 
         assert _emit_analysis_outputs(tmp_path, changed, pipeline) is None
         assert (
-            csv_path.read_bytes(),
+            tsv_path.read_bytes(),
             parquet_path.read_bytes(),
             manifest_path.read_bytes(),
         ) == previous

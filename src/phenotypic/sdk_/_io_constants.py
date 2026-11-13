@@ -384,6 +384,12 @@ MASTER_MEASUREMENTS_PARQUET: Final[str] = "master_measurements.parquet"
 #: colonies. Re-running the CLI overwrites it with a fresh full copy.
 MEASUREMENTS_CSV: Final[str] = "measurements.csv"
 
+#: TSV twin of :data:`MEASUREMENTS_CSV`, written by finalize from the same
+#: post-applied frame (spec B2/B9). The GUI curates the ``.csv`` and the
+#: ``.parquet`` but not this file until #283, so after a curation save it still
+#: holds the frame finalize published.
+MEASUREMENTS_TSV: Final[str] = "measurements.tsv"
+
 #: Editable curated Parquet companion to :data:`MEASUREMENTS_CSV`. The
 #: parquet is the GUI's source of truth at boot (CSV is the human-readable
 #: mirror); both are written atomically together.
@@ -398,7 +404,9 @@ DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
 
 #: Authoritative index for class-named analysis table artifacts.
 ANALYSIS_MANIFEST_FILENAME: Final[str] = "analysis_manifest.json"
-ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
+#: ``2`` since P1 (spec B3): entries name a ``tsv`` table and its
+#: ``tsv_sha256``. A version-1 manifest (``csv``/``csv_sha256``) still reads.
+ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 2
 
 _ANALYSIS_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z", re.ASCII)
 
@@ -410,6 +418,7 @@ def _reserved_analysis_artifact_stems() -> frozenset[str]:
         for filename in (
             MASTER_MEASUREMENTS_PARQUET,
             MEASUREMENTS_CSV,
+            MEASUREMENTS_TSV,
             MEASUREMENTS_PARQUET,
             DELIVERABLES_METADATA_CSV,
             ERROR_ANALYSIS_CSV,
@@ -449,11 +458,17 @@ def validate_analysis_id(analysis_id: str) -> str:
 
 @dataclass(frozen=True)
 class AnalysisArtifactPaths:
-    """Concrete paths for one named analysis generation."""
+    """Concrete paths for one named analysis generation.
 
-    csv: Path
+    ``tsv`` is the text table a generation publishes (spec B2). ``csv`` names
+    the pre-P1 ``<AnalysisClass>.csv`` a tree written before the cutover may
+    still hold; nothing writes it any more.
+    """
+
+    tsv: Path
     parquet: Path
     manifest: Path
+    csv: Path
 
 
 def analysis_manifest_path(deliverables_base: Path) -> Path:
@@ -464,6 +479,11 @@ def analysis_manifest_path(deliverables_base: Path) -> Path:
 def named_analysis_csv_path(deliverables_base: Path, analysis_id: str) -> Path:
     """Return the named CSV artifact path for ``analysis_id``."""
     return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.csv"
+
+
+def named_analysis_tsv_path(deliverables_base: Path, analysis_id: str) -> Path:
+    """Return the named TSV artifact path for ``analysis_id``."""
+    return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.tsv"
 
 
 def named_analysis_parquet_path(
@@ -481,9 +501,10 @@ def named_analysis_paths(
 ) -> AnalysisArtifactPaths:
     """Return all persisted paths associated with one analysis ID."""
     return AnalysisArtifactPaths(
-        csv=named_analysis_csv_path(deliverables_base, analysis_id),
+        tsv=named_analysis_tsv_path(deliverables_base, analysis_id),
         parquet=named_analysis_parquet_path(deliverables_base, analysis_id),
         manifest=analysis_manifest_path(deliverables_base),
+        csv=named_analysis_csv_path(deliverables_base, analysis_id),
     )
 
 
@@ -1537,6 +1558,11 @@ def master_measurements_parquet_path(output_dir: Path) -> Path:
 def measurements_csv_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements.csv`` (post-applied mirror)."""
     return deliverables_dir(output_dir) / MEASUREMENTS_CSV
+
+
+def measurements_tsv_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/measurements.tsv`` (post-applied mirror)."""
+    return deliverables_dir(output_dir) / MEASUREMENTS_TSV
 
 
 def measurements_parquet_path(output_dir: Path) -> Path:
@@ -3110,8 +3136,17 @@ class BundleLayout:
 
     @property
     def mirror_csv(self) -> Path:
-        """Return path to ``measurements.csv`` (post-applied mirror)."""
+        """Return path to ``measurements.csv`` (post-applied mirror).
+
+        The GUI's curation write target until #283 (spec B9), so it keeps
+        naming the ``.csv`` even though finalize also writes :attr:`mirror_tsv`.
+        """
         return self.deliverables_base / MEASUREMENTS_CSV
+
+    @property
+    def mirror_tsv(self) -> Path:
+        """Return path to ``measurements.tsv`` (post-applied mirror, TSV)."""
+        return self.deliverables_base / MEASUREMENTS_TSV
 
     @property
     def plots_dir(self) -> Path:

@@ -60,13 +60,16 @@ from phenotypic.sdk_ import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    measurements_tsv_path,
     logs_dir,
     pipeline_config_candidates,
     pipeline_publication_lock,
     publication_commit,
+    TSV_SUFFIX,
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
+    write_tsv,
 )
 
 logger = logging.getLogger(__name__)
@@ -747,30 +750,30 @@ def _emit_analysis_outputs(
                 "or active-owner state changed during computation."
             )
             return None
-        staged_csv = transaction.staged_csv
+        staged_tsv = transaction.staged_table
         staged_parquet = transaction.staged_parquet
-        backup_csv = transaction.backup_csv
+        backup_tsv = transaction.backup_table
         backup_parquet = transaction.backup_parquet
         try:
             recover_analysis_publication(base)
             previous_manifest = read_analysis_manifest(base)
             previous_manifest_existed = analysis_manifest_path(base).exists()
-            fit_pl.write_csv(staged_csv)
+            write_tsv(fit_pl, staged_tsv)
             fit_pl.write_parquet(staged_parquet, **PARQUET_WRITE_OPTIONS)
             entry = AnalysisManifestEntry(
                 producer_class=type(model).__name__,
-                csv=paths.csv.name,
+                tsv=paths.tsv.name,
                 parquet=paths.parquet.name,
                 rows=len(fit_pd),
                 columns=tuple(fit_pd.columns),
-                csv_sha256=file_sha256(staged_csv),
+                tsv_sha256=file_sha256(staged_tsv),
                 parquet_sha256=file_sha256(staged_parquet),
             )
             write_analysis_publication_journal(
                 base,
                 analysis_id=analysis_id,
                 token=transaction.token,
-                old_csv_exists=paths.csv.exists(),
+                old_tsv_exists=paths.tsv.exists(),
                 old_parquet_exists=paths.parquet.exists(),
                 entry=entry,
             )
@@ -781,11 +784,11 @@ def _emit_analysis_outputs(
                 )
                 recover_analysis_publication(base)
                 return None
-            if paths.csv.exists():
-                os.replace(paths.csv, backup_csv)
+            if paths.tsv.exists():
+                os.replace(paths.tsv, backup_tsv)
             if paths.parquet.exists():
                 os.replace(paths.parquet, backup_parquet)
-            os.replace(staged_csv, paths.csv)
+            os.replace(staged_tsv, paths.tsv)
             os.replace(staged_parquet, paths.parquet)
             publish_analysis_manifest_entry(base, analysis_id, entry)
             if not _analysis_publication_guard_allows(publication_guard):
@@ -839,7 +842,7 @@ def _emit_analysis_outputs(
             )
             return None
         finally:
-            for temporary in (staged_csv, staged_parquet):
+            for temporary in (staged_tsv, staged_parquet):
                 temporary.unlink(missing_ok=True)
 
     logger.info(
@@ -953,14 +956,23 @@ def _seed_measurements(
     *,
     commit_guard: "CommitGuard | None" = None,
 ) -> None:
-    """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
+    """Atomically write ``measurements.{tsv,csv,parquet}`` as a fresh master copy.
 
-    The GUI's results viewer mutates these mirrors in place when users curate
-    colonies; re-runs of the CLI (forward, measure mode, recompile mode)
-    intentionally reset them by calling this helper after the master is
-    written. Failures of either write are logged at WARNING and do not raise
-    — the master output is preserved as the authoritative source.
+    The GUI's results viewer mutates the ``.csv`` and ``.parquet`` mirrors in
+    place when users curate colonies; re-runs of the CLI (forward, measure
+    mode, recompile mode) intentionally reset all three by calling this helper
+    after the master is written. ``measurements.tsv`` is the generated table
+    (spec B2); the ``.csv`` stays because GUI curation rewrites it until #283
+    (spec B9), so until then a curation reaches the ``.csv`` and the
+    ``.parquet`` but not the ``.tsv``. Failures of any write are logged at
+    WARNING and do not raise — the master output is preserved as the
+    authoritative source.
     """
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: write_tsv(master_df, measurements_tsv_path(output_dir)),
+        warning="Failed to seed measurements.tsv (master was saved)",
+    )
     _guarded_terminal_best_effort(
         commit_guard,
         lambda: atomic_write_with_writer(
@@ -1091,8 +1103,8 @@ def finalize_post_master_outputs(
        based on the ``MeasurementInfo`` columns present in the frame, so
        users see post-derived columns (e.g. ``Metadata_Strain`` from
        ``ExpandMetadata``) in
-       ``measurements_by_feature/<feature>.{csv,parquet}`` and
-       ``measurements_by_category/<label>.{csv,parquet}``.
+       ``measurements_by_feature/<feature>.{tsv,parquet}`` and
+       ``measurements_by_category/<label>.{tsv,parquet}``.
     5. When *pipeline* is provided: persist ``pipeline.json``, run
        :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
        sees both post-applied and metadata-joined data), and run QC when
@@ -1367,7 +1379,7 @@ def split_master_by_feature(
     output_dir: Path,
     pipeline: Optional["ImagePipeline"] = None,
 ) -> Dict[str, Path]:
-    """Write one CSV + Parquet per recognized feature into *output_dir*.
+    """Write one TSV + Parquet per recognized feature into *output_dir*.
 
     Creates ``output_dir/measurements_by_feature/`` and emits a spreadsheet
     for every producer key returned by
@@ -1384,7 +1396,7 @@ def split_master_by_feature(
             columns in *master_df*.
 
     Returns:
-        Mapping of producer key → path to the emitted CSV. Empty if nothing
+        Mapping of producer key → path to the emitted TSV. Empty if nothing
         could be split.
     """
     del pipeline
@@ -1401,10 +1413,10 @@ def split_master_by_category(
     master_df: "pl.DataFrame",
     output_dir: Path,
 ) -> Dict[str, Path]:
-    """Write one CSV + Parquet per measurement category into *output_dir*.
+    """Write one TSV + Parquet per measurement category into *output_dir*.
 
     Creates ``deliverables/measurements_by_category/`` and emits
-    ``<label>.{csv,parquet}`` for every key returned by
+    ``<label>.{tsv,parquet}`` for every key returned by
     :func:`phenotypic.util.split_measurements_by_category`: the feature
     split's context columns plus that category's present columns. Called only
     from :func:`finalize_post_master_outputs`, the finalization path shared by
@@ -1415,7 +1427,7 @@ def split_master_by_category(
         output_dir: Run output root.
 
     Returns:
-        Mapping of category label → path to the emitted CSV. Empty, with no
+        Mapping of category label → path to the emitted TSV. Empty, with no
         directory created, when no categorized column is present.
     """
     master_df = normalize_measurement_metadata_columns(master_df)
@@ -1432,10 +1444,10 @@ def _write_split(
     split_dir: Path,
     split_frames: "Mapping[str, pd.DataFrame | pl.DataFrame]",
 ) -> Dict[str, Path]:
-    """Atomically write one CSV + Parquet per split frame into *split_dir*.
+    """Atomically write one TSV + Parquet per split frame into *split_dir*.
 
-    A failed CSV skips that key; a failed Parquet keeps the CSV. Returns
-    key → CSV path for every key whose CSV was written.
+    A failed TSV skips that key; a failed Parquet keeps the TSV. Returns
+    key → TSV path for every key whose TSV was written.
     """
     split_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1445,7 +1457,7 @@ def _write_split(
             subset = pl.from_pandas(subset_frame)
         else:
             subset = subset_frame
-        csv_path = split_dir / f"{key}.csv"
+        tsv_path = split_dir / f"{key}{TSV_SUFFIX}"
         pq_path = split_dir / f"{key}.parquet"
 
         def _write_parquet(
@@ -1454,10 +1466,10 @@ def _write_split(
             _subset.write_parquet(path, **PARQUET_WRITE_OPTIONS)
 
         try:
-            atomic_write_with_writer(csv_path, subset.write_csv)
+            write_tsv(subset, tsv_path)
         except Exception:
             logger.warning(
-                "Failed to write split CSV for %r", key, exc_info=True
+                "Failed to write split TSV for %r", key, exc_info=True
             )
             continue
 
@@ -1465,18 +1477,18 @@ def _write_split(
             atomic_write_with_writer(pq_path, _write_parquet)
         except Exception:
             logger.warning(
-                "Failed to write split Parquet for %r (CSV was saved)",
+                "Failed to write split Parquet for %r (TSV was saved)",
                 key,
                 exc_info=True,
             )
 
-        written[key] = csv_path
+        written[key] = tsv_path
         logger.info(
             "Split %r: %d rows x %d cols -> %s",
             key,
             subset.height,
             subset.width,
-            csv_path.name,
+            tsv_path.name,
         )
 
     return written

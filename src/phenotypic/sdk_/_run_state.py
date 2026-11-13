@@ -1233,8 +1233,13 @@ def run_proof_is_current(output_dir: Path) -> bool:
 #: whose default is "do not check" is not a fence. ``master_parquet`` has no
 #: GUI writer, so its claim survives curation and goes on being enforced --
 #: which is what makes this a narrowing rather than a disabling.
+#:
+#: ``measurements_tsv`` (spec B9) is the third mirror file and is listed for
+#: the same reason, one change early: no GUI code writes it until #283, which
+#: moves curation onto it, so a curated tree would otherwise turn stale the day
+#: #283 lands. Until then it is recorded and, like its two siblings, unenforced.
 _GUI_WRITTEN_PROOF_DESCRIPTORS: frozenset[str] = frozenset(
-    {"measurements_csv", "measurements_parquet"}
+    {"measurements_csv", "measurements_tsv", "measurements_parquet"}
 )
 
 

@@ -27,6 +27,7 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    measurements_tsv_path,
     publication_commit,
     progress_dir,
     run_completion_marker_path,
@@ -1109,20 +1110,22 @@ def publish_aggregate_snapshot(
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
 
-    # D8: three descriptors, not four. `master_measurements.csv` is gone --
-    # the un-joined master is no longer the file a human opens, the mirror is
-    # -- and `finalize_run` writes no CSV, so certifying one would make every
-    # forward finalization fail on a `resolve(strict=True)` for a file nothing
-    # writes.
+    # D8: `master_measurements.csv` is gone -- the un-joined master is no
+    # longer the file a human opens, the mirror is -- and `finalize_run`
+    # writes no master CSV, so certifying one would make every forward
+    # finalization fail on a `resolve(strict=True)` for a file nothing writes.
+    # P1 (spec B9) adds the mirror's `.tsv` beside its `.csv` and `.parquet`,
+    # so there are four descriptors: one master and three mirror files.
     #
     # O-3: the reader no longer validates whatever the proof LISTS, and that
-    # sentence used to stand here. All three are still WRITTEN -- the marker
+    # sentence used to stand here. All four are still WRITTEN -- the marker
     # is a complete record of what finalization published, which is
     # provenance worth keeping and is what lets a later reader say which
     # artifacts a run declared. But `_run_state._valid_aggregate_proof` skips
-    # the two mirror descriptors when it checks, because `CurationLabels`
-    # rewrites them on every curation save: the proof's claim about them
-    # becomes false the moment a user marks one colony, and false by design.
+    # the mirror descriptors when it checks, because `CurationLabels`
+    # rewrites the `.csv` and `.parquet` on every curation save (and the
+    # `.tsv` once #283 lands): the proof's claim about them becomes false the
+    # moment a user marks one colony, and false by design.
     #
     # So do NOT infer enforcement from this dict. Adding an entry here
     # records an artifact; whether it is enforced is decided by
@@ -1131,6 +1134,7 @@ def publish_aggregate_snapshot(
     required_paths = {
         "master_parquet": master_measurements_parquet_path(output_dir),
         "measurements_csv": measurements_csv_path(output_dir),
+        "measurements_tsv": measurements_tsv_path(output_dir),
         "measurements_parquet": measurements_parquet_path(output_dir),
     }
     output_root = output_dir.resolve()

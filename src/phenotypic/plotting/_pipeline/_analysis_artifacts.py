@@ -17,12 +17,15 @@ from pathlib import Path
 from typing import Any, Final, Mapping, Sequence
 
 from phenotypic.sdk_._atomic_io import atomic_write_json
+from phenotypic.sdk_._delimited import CSV_SUFFIX as _CSV_SUFFIX
+from phenotypic.sdk_._delimited import TSV_SUFFIX as _TSV_SUFFIX
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_._io_constants import (
     ANALYSIS_MANIFEST_SCHEMA_VERSION,
     AnalysisArtifactPaths as AnalysisArtifactPaths,
     analysis_manifest_path as analysis_manifest_path,
     named_analysis_csv_path as named_analysis_csv_path,
+    named_analysis_tsv_path as named_analysis_tsv_path,
     named_analysis_parquet_path as named_analysis_parquet_path,
     named_analysis_paths as named_analysis_paths,
     validate_analysis_id as validate_analysis_id,
@@ -34,14 +37,28 @@ _PUBLICATION_JOURNAL_FILENAME: Final = ".analysis-publication.json"
 _ENTRY_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "class",
-        "csv",
+        "tsv",
         "parquet",
         "rows",
         "columns",
-        "csv_sha256",
+        "tsv_sha256",
         "parquet_sha256",
     }
 )
+#: The last manifest version whose entries named a ``csv`` table. Its entries
+#: still read: ``csv``/``csv_sha256`` map onto ``tsv``/``tsv_sha256`` (spec B3).
+_LEGACY_CSV_SCHEMA_VERSION: Final = 1
+_LEGACY_TO_CURRENT_ENTRY_KEYS: Final[Mapping[str, str]] = {
+    "csv": "tsv",
+    "csv_sha256": "tsv_sha256",
+}
+_SUPPORTED_SCHEMA_VERSIONS: Final[frozenset[int]] = frozenset(
+    {_LEGACY_CSV_SCHEMA_VERSION, ANALYSIS_MANIFEST_SCHEMA_VERSION}
+)
+#: Publication journal versions. ``1`` journaled a ``.csv`` generation, so its
+#: staged and backup files carry ``.csv`` names; recovery still resolves it.
+_JOURNAL_SCHEMA_VERSION: Final = 2
+_LEGACY_CSV_JOURNAL_SCHEMA_VERSION: Final = 1
 
 
 class AnalysisManifestError(ValueError):
@@ -60,29 +77,50 @@ class _AnalysisPublicationPaths:
     canonical: AnalysisArtifactPaths
     lock: Path
     journal: Path
-    staged_csv: Path
+    table: Path
+    staged_table: Path
     staged_parquet: Path
-    backup_csv: Path
+    backup_table: Path
     backup_parquet: Path
 
 
 def _analysis_publication_paths(
-    deliverables_base: Path, analysis_id: str, token: str
+    deliverables_base: Path,
+    analysis_id: str,
+    token: str,
+    *,
+    table_suffix: str = _TSV_SUFFIX,
 ) -> _AnalysisPublicationPaths:
-    """Derive writer and recovery paths from one validated transaction key."""
+    """Derive writer and recovery paths from one validated transaction key.
+
+    Args:
+        deliverables_base: Directory that holds the artifacts and manifest.
+        analysis_id: The analysis whose generation is published.
+        token: The transaction's 32-hex token.
+        table_suffix: ``.tsv`` for every publication this release writes;
+            ``.csv`` only to recover a version-1 journal, whose staged and
+            backup files were named for the CSV table.
+    """
     base = Path(deliverables_base)
     safe_id = validate_analysis_id(analysis_id)
     if not _TRANSACTION_TOKEN_PATTERN.fullmatch(token):
         raise ValueError("analysis publication token must be 32 lowercase hex digits")
     canonical = named_analysis_paths(base, safe_id)
+    if table_suffix == _TSV_SUFFIX:
+        table = canonical.tsv
+    elif table_suffix == _CSV_SUFFIX:
+        table = canonical.csv
+    else:
+        raise ValueError("table_suffix must be '.tsv' or '.csv'")
     return _AnalysisPublicationPaths(
         token=token,
         canonical=canonical,
         lock=base / ".analysis-artifacts.lock",
         journal=base / _PUBLICATION_JOURNAL_FILENAME,
-        staged_csv=base / f".{canonical.csv.name}.{token}.staged",
+        table=table,
+        staged_table=base / f".{table.name}.{token}.staged",
         staged_parquet=base / f".{canonical.parquet.name}.{token}.staged",
-        backup_csv=base / f".{canonical.csv.name}.{token}.backup",
+        backup_table=base / f".{table.name}.{token}.backup",
         backup_parquet=base / f".{canonical.parquet.name}.{token}.backup",
     )
 
@@ -105,25 +143,38 @@ def file_sha256(path: Path) -> str:
 
 @dataclass(frozen=True)
 class AnalysisManifestEntry:
-    """Authoritative metadata for one named analysis artifact pair."""
+    """Authoritative metadata for one named analysis artifact pair.
+
+    ``tsv`` names the entry's text table. It is ``<id>.tsv`` for every entry
+    this release publishes, and ``<id>.csv`` only for an entry read from a
+    version-1 manifest (or carried forward from one into a later manifest),
+    which describes a generation published before the TSV cutover.
+    """
 
     producer_class: str
-    csv: str
+    tsv: str
     parquet: str
     rows: int
     columns: tuple[str, ...]
-    csv_sha256: str
+    tsv_sha256: str
     parquet_sha256: str
 
     @classmethod
     def from_mapping(
-        cls, analysis_id: str, payload: Mapping[str, Any]
+        cls,
+        analysis_id: str,
+        payload: Mapping[str, Any],
+        *,
+        schema_version: int = ANALYSIS_MANIFEST_SCHEMA_VERSION,
     ) -> AnalysisManifestEntry:
         """Validate and decode one JSON manifest entry.
 
         Args:
             analysis_id: Mapping key that owns the entry.
             payload: Decoded JSON mapping.
+            schema_version: Version of the manifest the entry came from. A
+                version-1 entry carries ``csv``/``csv_sha256``, which become
+                ``tsv``/``tsv_sha256``.
 
         Returns:
             A validated immutable entry.
@@ -136,6 +187,17 @@ class AnalysisManifestEntry:
             raise AnalysisManifestError(
                 f"analysis manifest entry {analysis_id!r} must be an object"
             )
+        legacy = schema_version == _LEGACY_CSV_SCHEMA_VERSION
+        if legacy:
+            if "tsv" in payload or "tsv_sha256" in payload:
+                raise AnalysisManifestError(
+                    f"analysis manifest entry {analysis_id!r} mixes version-1 "
+                    "csv fields with tsv fields"
+                )
+            payload = {
+                _LEGACY_TO_CURRENT_ENTRY_KEYS.get(key, key): value
+                for key, value in payload.items()
+            }
         fields = frozenset(payload)
         if fields != _ENTRY_FIELDS:
             missing = sorted(_ENTRY_FIELDS - fields)
@@ -150,11 +212,13 @@ class AnalysisManifestEntry:
             raise AnalysisManifestError(
                 f"analysis manifest entry {analysis_id!r} has an invalid class"
             )
-        csv = _validate_artifact_filename(
-            analysis_id, payload["csv"], suffix=".csv"
+        tsv = _validate_artifact_filename(
+            analysis_id,
+            payload["tsv"],
+            suffixes=(_CSV_SUFFIX,) if legacy else (_TSV_SUFFIX, _CSV_SUFFIX),
         )
         parquet = _validate_artifact_filename(
-            analysis_id, payload["parquet"], suffix=".parquet"
+            analysis_id, payload["parquet"], suffixes=(".parquet",)
         )
         rows = payload["rows"]
         if isinstance(rows, bool) or not isinstance(rows, int) or rows < 0:
@@ -168,45 +232,50 @@ class AnalysisManifestEntry:
             raise AnalysisManifestError(
                 f"analysis manifest entry {analysis_id!r} has invalid columns"
             )
-        csv_sha256 = _validate_checksum(
-            analysis_id, "csv_sha256", payload["csv_sha256"]
+        tsv_sha256 = _validate_checksum(
+            analysis_id, "tsv_sha256", payload["tsv_sha256"]
         )
         parquet_sha256 = _validate_checksum(
             analysis_id, "parquet_sha256", payload["parquet_sha256"]
         )
         return cls(
             producer_class=producer_class,
-            csv=csv,
+            tsv=tsv,
             parquet=parquet,
             rows=rows,
             columns=tuple(columns_value),
-            csv_sha256=csv_sha256,
+            tsv_sha256=tsv_sha256,
             parquet_sha256=parquet_sha256,
         )
 
     def to_mapping(self) -> dict[str, Any]:
-        """Return the JSON-compatible representation of this entry."""
+        """Return the current-version JSON representation of this entry."""
         return {
             "class": self.producer_class,
-            "csv": self.csv,
+            "tsv": self.tsv,
             "parquet": self.parquet,
             "rows": self.rows,
             "columns": list(self.columns),
-            "csv_sha256": self.csv_sha256,
+            "tsv_sha256": self.tsv_sha256,
             "parquet_sha256": self.parquet_sha256,
         }
 
 
 @dataclass(frozen=True)
 class AnalysisManifest:
-    """Versioned persisted index of named analysis artifacts."""
+    """Versioned persisted index of named analysis artifacts.
+
+    A decoded manifest is always current-version in memory: a version-1 file is
+    upgraded while it is read, and :meth:`to_mapping` writes the current
+    version, so re-publishing it rewrites the file in the current shape.
+    """
 
     analyses: Mapping[str, AnalysisManifestEntry]
     schema_version: int = ANALYSIS_MANIFEST_SCHEMA_VERSION
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> AnalysisManifest:
-        """Validate and decode a complete manifest mapping."""
+        """Validate and decode a complete manifest mapping (version 1 or 2)."""
         if not isinstance(payload, Mapping):
             raise AnalysisManifestError(
                 "analysis manifest root must be an object"
@@ -218,10 +287,14 @@ class AnalysisManifest:
                 "analysis manifest must contain only schema_version and analyses"
             )
         schema_version = payload["schema_version"]
-        if schema_version != ANALYSIS_MANIFEST_SCHEMA_VERSION:
+        if (
+            isinstance(schema_version, bool)
+            or schema_version not in _SUPPORTED_SCHEMA_VERSIONS
+        ):
             raise AnalysisManifestError(
                 "unsupported analysis manifest schema_version "
-                f"{schema_version!r}; expected {ANALYSIS_MANIFEST_SCHEMA_VERSION}"
+                f"{schema_version!r}; expected one of "
+                f"{sorted(_SUPPORTED_SCHEMA_VERSIONS)}"
             )
         analyses_payload = payload["analyses"]
         if not isinstance(analyses_payload, Mapping):
@@ -240,14 +313,14 @@ class AnalysisManifest:
                 )
             folded_ids[safe_id.casefold()] = safe_id
             analyses[safe_id] = AnalysisManifestEntry.from_mapping(
-                safe_id, entry_payload
+                safe_id, entry_payload, schema_version=schema_version
             )
-        return cls(analyses=analyses, schema_version=schema_version)
+        return cls(analyses=analyses)
 
     def to_mapping(self) -> dict[str, Any]:
-        """Return a deterministic JSON-compatible manifest mapping."""
+        """Return a deterministic, current-version JSON-compatible mapping."""
         return {
-            "schema_version": self.schema_version,
+            "schema_version": ANALYSIS_MANIFEST_SCHEMA_VERSION,
             "analyses": {
                 analysis_id: self.analyses[analysis_id].to_mapping()
                 for analysis_id in sorted(self.analyses)
@@ -275,7 +348,7 @@ def build_analysis_manifest_entry(
     *,
     analysis_id: str,
     producer_class: str,
-    csv_path: Path,
+    tsv_path: Path,
     parquet_path: Path,
     rows: int,
     columns: Sequence[str],
@@ -287,18 +360,18 @@ def build_analysis_manifest_entry(
     published last.
     """
     safe_id = validate_analysis_id(analysis_id)
-    expected_csv = f"{safe_id}.csv"
+    expected_tsv = f"{safe_id}{_TSV_SUFFIX}"
     expected_parquet = f"{safe_id}.parquet"
-    csv_path = Path(csv_path)
+    tsv_path = Path(tsv_path)
     parquet_path = Path(parquet_path)
-    if csv_path.name != expected_csv or parquet_path.name != expected_parquet:
+    if tsv_path.name != expected_tsv or parquet_path.name != expected_parquet:
         raise ValueError(
             "analysis artifact filenames must be derived from analysis_id: "
-            f"{expected_csv!r} and {expected_parquet!r}"
+            f"{expected_tsv!r} and {expected_parquet!r}"
         )
-    if csv_path.parent.resolve() != parquet_path.parent.resolve():
+    if tsv_path.parent.resolve() != parquet_path.parent.resolve():
         raise ValueError(
-            "analysis CSV and Parquet artifacts must share a directory"
+            "analysis TSV and Parquet artifacts must share a directory"
         )
     if isinstance(rows, bool) or not isinstance(rows, int) or rows < 0:
         raise ValueError("rows must be a non-negative integer")
@@ -309,11 +382,11 @@ def build_analysis_manifest_entry(
         raise ValueError("producer_class must be a non-empty string")
     return AnalysisManifestEntry(
         producer_class=producer_class,
-        csv=expected_csv,
+        tsv=expected_tsv,
         parquet=expected_parquet,
         rows=rows,
         columns=column_tuple,
-        csv_sha256=file_sha256(csv_path),
+        tsv_sha256=file_sha256(tsv_path),
         parquet_sha256=file_sha256(parquet_path),
     )
 
@@ -381,7 +454,7 @@ def write_analysis_publication_journal(
     *,
     analysis_id: str,
     token: str,
-    old_csv_exists: bool,
+    old_tsv_exists: bool,
     old_parquet_exists: bool,
     entry: AnalysisManifestEntry,
 ) -> Path:
@@ -395,7 +468,7 @@ def write_analysis_publication_journal(
     if not _TRANSACTION_TOKEN_PATTERN.fullmatch(token):
         raise ValueError("analysis publication token must be 32 lowercase hex digits")
     _validate_entry_identity(safe_id, entry)
-    if not isinstance(old_csv_exists, bool) or not isinstance(
+    if not isinstance(old_tsv_exists, bool) or not isinstance(
         old_parquet_exists, bool
     ):
         raise TypeError("analysis publication existence flags must be bool")
@@ -405,10 +478,10 @@ def write_analysis_publication_journal(
     atomic_write_json(
         path,
         {
-            "schema_version": 1,
+            "schema_version": _JOURNAL_SCHEMA_VERSION,
             "analysis_id": safe_id,
             "token": token,
-            "old_csv_exists": old_csv_exists,
+            "old_tsv_exists": old_tsv_exists,
             "old_parquet_exists": old_parquet_exists,
             "entry": entry.to_mapping(),
         },
@@ -421,8 +494,10 @@ def recover_analysis_publication(deliverables_base: Path) -> bool:
 
     The caller must hold ``.analysis-artifacts.lock``. If the manifest already
     contains the journaled entry, the generation committed and only temporary
-    files are removed. Otherwise the canonical CSV/Parquet pair is restored to
-    the generation still selected by the manifest.
+    files are removed. Otherwise the canonical TSV/Parquet pair is restored to
+    the generation still selected by the manifest. A version-1 journal, left by
+    an interrupted pre-TSV publication, is resolved against the ``.csv`` table
+    it staged.
 
     Returns:
         ``True`` when a journal was found and resolved, otherwise ``False``.
@@ -437,36 +512,55 @@ def recover_analysis_publication(deliverables_base: Path) -> bool:
         raise AnalysisManifestError(
             f"could not read analysis publication journal {journal_path}"
         ) from exc
+    if not isinstance(payload, Mapping):
+        raise AnalysisManifestError("invalid analysis publication journal fields")
+    journal_version = payload.get("schema_version")
+    if isinstance(journal_version, bool) or journal_version not in (
+        _JOURNAL_SCHEMA_VERSION,
+        _LEGACY_CSV_JOURNAL_SCHEMA_VERSION,
+    ):
+        raise AnalysisManifestError(
+            "unsupported analysis publication journal schema_version"
+        )
+    legacy = journal_version == _LEGACY_CSV_JOURNAL_SCHEMA_VERSION
+    old_table_key = "old_csv_exists" if legacy else "old_tsv_exists"
     expected_fields = {
         "schema_version",
         "analysis_id",
         "token",
-        "old_csv_exists",
+        old_table_key,
         "old_parquet_exists",
         "entry",
     }
-    if not isinstance(payload, Mapping) or set(payload) != expected_fields:
+    if set(payload) != expected_fields:
         raise AnalysisManifestError("invalid analysis publication journal fields")
-    if payload["schema_version"] != 1:
-        raise AnalysisManifestError(
-            "unsupported analysis publication journal schema_version"
-        )
     analysis_id = _validate_manifest_analysis_id(payload["analysis_id"])
     token = payload["token"]
     if not isinstance(token, str) or not _TRANSACTION_TOKEN_PATTERN.fullmatch(
         token
     ):
         raise AnalysisManifestError("invalid analysis publication journal token")
-    old_csv_exists = payload["old_csv_exists"]
+    old_table_exists = payload[old_table_key]
     old_parquet_exists = payload["old_parquet_exists"]
-    if not isinstance(old_csv_exists, bool) or not isinstance(
+    if not isinstance(old_table_exists, bool) or not isinstance(
         old_parquet_exists, bool
     ):
         raise AnalysisManifestError(
             "invalid analysis publication journal existence flags"
         )
-    entry = AnalysisManifestEntry.from_mapping(analysis_id, payload["entry"])
-    paths = _analysis_publication_paths(base, analysis_id, token)
+    entry = AnalysisManifestEntry.from_mapping(
+        analysis_id,
+        payload["entry"],
+        schema_version=(
+            _LEGACY_CSV_SCHEMA_VERSION if legacy else ANALYSIS_MANIFEST_SCHEMA_VERSION
+        ),
+    )
+    paths = _analysis_publication_paths(
+        base,
+        analysis_id,
+        token,
+        table_suffix=_CSV_SUFFIX if legacy else _TSV_SUFFIX,
+    )
 
     manifest = read_analysis_manifest(base)
     committed = (
@@ -474,9 +568,9 @@ def recover_analysis_publication(deliverables_base: Path) -> bool:
     )
     if not committed:
         _restore_analysis_artifact(
-            paths.canonical.csv,
-            paths.backup_csv,
-            old_exists=old_csv_exists,
+            paths.table,
+            paths.backup_table,
+            old_exists=old_table_exists,
         )
         _restore_analysis_artifact(
             paths.canonical.parquet,
@@ -485,9 +579,9 @@ def recover_analysis_publication(deliverables_base: Path) -> bool:
         )
 
     for temporary in (
-        paths.staged_csv,
+        paths.staged_table,
         paths.staged_parquet,
-        paths.backup_csv,
+        paths.backup_table,
         paths.backup_parquet,
     ):
         temporary.unlink(missing_ok=True)
@@ -520,7 +614,8 @@ def resolve_manifest_artifact_path(
         deliverables_base: Directory containing the manifest and artifact.
         analysis_id: ID owning ``entry``.
         entry: Validated manifest entry.
-        artifact: Either ``"parquet"`` or ``"csv"``.
+        artifact: Either ``"parquet"`` or ``"tsv"`` (the entry's text table,
+            which is a ``.csv`` for an entry from a version-1 manifest).
 
     Returns:
         The resolved artifact path.
@@ -535,11 +630,11 @@ def resolve_manifest_artifact_path(
     if artifact == "parquet":
         filename = entry.parquet
         expected_checksum = entry.parquet_sha256
-    elif artifact == "csv":
-        filename = entry.csv
-        expected_checksum = entry.csv_sha256
+    elif artifact == "tsv":
+        filename = entry.tsv
+        expected_checksum = entry.tsv_sha256
     else:
-        raise ValueError("artifact must be 'csv' or 'parquet'")
+        raise ValueError("artifact must be 'tsv' or 'parquet'")
 
     base = Path(deliverables_base).resolve()
     candidate = base / filename
@@ -574,13 +669,14 @@ def _validate_manifest_analysis_id(value: Any) -> str:
 
 
 def _validate_artifact_filename(
-    analysis_id: str, value: Any, *, suffix: str
+    analysis_id: str, value: Any, *, suffixes: Sequence[str]
 ) -> str:
-    expected = f"{analysis_id}{suffix}"
-    if not isinstance(value, str) or value != expected:
+    expected = [f"{analysis_id}{suffix}" for suffix in suffixes]
+    if not isinstance(value, str) or value not in expected:
+        allowed = " or ".join(repr(name) for name in expected)
         raise AnalysisManifestError(
             f"analysis manifest entry {analysis_id!r} must use artifact "
-            f"filename {expected!r}"
+            f"filename {allowed}"
         )
     if "/" in value or "\\" in value:
         raise AnalysisManifestError(
