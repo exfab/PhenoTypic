@@ -3,7 +3,8 @@
 An ordinary, staged or process ``--slurm`` run prints a ``SUBMITTED`` summary
 that points at the strategy's "Monitor progress" lines, writes the README (not
 for a process run, which has none), writes no ``processing_report.html``, and
-exits 0. Its dependent finalizer publishes the run's outputs.
+exits ``4`` (``RunExitCode.SUBMITTED``). Its dependent finalizer publishes the
+run's outputs.
 
 These tests drive the **real** strategies. Every scheduler seam a submission
 reaches is patched, and any other ``sbatch``/``scontrol``/``squeue``/``sacct``/
@@ -14,9 +15,7 @@ the real scheduler.
 from __future__ import annotations
 
 import json
-import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -32,6 +31,7 @@ pytestmark = pytest.mark.skipif(
 from phenotypic.phenotypicCLI import phenotypic_cli  # noqa: E402
 from phenotypic.sdk_ import (  # noqa: E402
     JobMetadataKey,
+    RunExitCode,
     job_metadata_path,
     master_measurements_parquet_path,
     processing_report_html_path,
@@ -40,82 +40,12 @@ from phenotypic.sdk_ import (  # noqa: E402
     rembi_manifest_path,
 )
 
-#: Scheduler clients a test must never start.
-_SCHEDULER_COMMANDS = frozenset(
-    {"sbatch", "scontrol", "squeue", "sacct", "sacctmgr", "sinfo", "scancel", "srun"}
-)
-
 #: The strategies' "how to follow the run" lines
 #: (``echo_slurm_monitor_commands``). The summary points at them; it must not
 #: print them a second time.
 _MONITOR_HEADER = "Jobs submitted. Monitor progress with:"
 _SQUEUE_LINE = "squeue -u $USER --array"
 _POINTER = 'Follow the jobs with the "Monitor progress" commands above.'
-
-
-def _command_name(args: Any) -> str:
-    """The executable a ``Popen`` call would start, without its directory."""
-    if isinstance(args, (str, bytes, os.PathLike)):
-        words = os.fsdecode(args).split()
-        first = words[0] if words else ""
-    else:
-        argv = list(args)
-        first = os.fsdecode(argv[0]) if argv else ""
-    return Path(first).name
-
-
-@pytest.fixture
-def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Patch both SLURM strategies' scheduler seams; refuse any other.
-
-    Returns the list each (fake) submission appends its kind to, so a test can
-    prove the real strategy reached submission.
-    """
-    import phenotypic.sdk_.slurm as sdk_slurm
-    from phenotypic._cli import _cli_execution_strategies as strategies
-    from phenotypic._cli import _cli_slurm_config, _cli_staged_slurm
-    from phenotypic._cli._cli_slurm_submission import SLURMScriptChainSubmission
-
-    seen: list[str] = []
-
-    def _submit_chain(*, flat_chunk_scripts, **_kwargs) -> SLURMScriptChainSubmission:
-        seen.append("ordinary")
-        return SLURMScriptChainSubmission(
-            job_ids=["4242", "4243"],
-            warning=None,
-            flat_scripts=list(flat_chunk_scripts),
-            dispatcher_scripts=[],
-        )
-
-    def _submit_controller(*_args: Any, **_kwargs: Any) -> str:
-        seen.append("staged")
-        return "4244"
-
-    # `submit_slurm_script_chain` is imported into the strategies module, so it
-    # is patched there; patching `phenotypicCLI` only reaches recompile.
-    monkeypatch.setattr(strategies, "submit_slurm_script_chain", _submit_chain)
-    monkeypatch.setattr(strategies, "get_slurm_array_limit", lambda: 1000)
-    monkeypatch.setattr(_cli_staged_slurm, "submit_with_intent", _submit_controller)
-    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_array_limit", lambda: 1000)
-    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_max_submit_jobs", lambda: 100)
-    # The max-submit and array-limit probes, wherever else they are resolved.
-    monkeypatch.setattr(sdk_slurm, "get_slurm_array_limit", lambda: 1000)
-    monkeypatch.setattr(sdk_slurm, "get_slurm_max_submit_jobs", lambda: 100)
-    # The checkpoint-interval estimate runs `sinfo` for the partition; the
-    # array-script writer imports it from here at call time.
-    monkeypatch.setattr(
-        _cli_slurm_config, "estimate_concurrent_capacity", lambda **_kwargs: 16
-    )
-
-    real_popen = subprocess.Popen
-
-    def _refuse_scheduler(args: Any, *popen_args: Any, **popen_kwargs: Any):
-        if _command_name(args) in _SCHEDULER_COMMANDS:
-            raise AssertionError(f"a unit test started a scheduler client: {args!r}")
-        return real_popen(args, *popen_args, **popen_kwargs)
-
-    monkeypatch.setattr(subprocess, "Popen", _refuse_scheduler)
-    return seen
 
 
 def test_version_is_0_21_0() -> None:
@@ -169,7 +99,7 @@ def test_an_ordinary_slurm_run_returns_at_submission(
         phenotypic_cli, _slurm_args(simple_pipeline_json, synth_one_level_input, output)
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["ordinary"]
     _assert_returned_at_submission(result.output, "PROCESSING SUBMITTED")
     assert "Submitted: 1 image(s)" in result.output
@@ -198,7 +128,7 @@ def test_a_process_slurm_run_returns_at_submission(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["ordinary"]
     _assert_returned_at_submission(result.output, "PROCESS-ONLY SUBMITTED")
     assert "Layer to export: rgb" in result.output
@@ -229,7 +159,7 @@ def test_a_staged_slurm_run_returns_at_submission(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["staged"]
     _assert_returned_at_submission(result.output, "PROCESSING SUBMITTED")
     # The staged path builds no dashboard at submission.
@@ -285,7 +215,7 @@ def test_a_slurm_continuation_does_not_aggregate_at_submission(
             simple_pipeline_json, synth_one_level_input, output
         )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["ordinary"]
     assert "Continuing processing (1 images remaining)" in result.output
     assert "Aggregating measurements" not in result.output
@@ -315,7 +245,7 @@ def test_invalid_study_encoding_does_not_abort_submission(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["ordinary"]
     metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
     assert metadata[JobMetadataKey.STUDY_YAML] is None
@@ -341,7 +271,7 @@ def test_a_slurm_submission_records_no_qc_and_the_study(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
     assert metadata[JobMetadataKey.NO_QC] is True
     assert metadata[JobMetadataKey.STUDY_YAML] == _STUDY
@@ -371,7 +301,7 @@ def test_a_staged_submission_records_no_qc_and_the_study(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == ["staged"]
     metadata = json.loads(job_metadata_path(output).read_text(encoding="utf-8"))
     assert metadata[JobMetadataKey.NO_QC] is True
@@ -406,7 +336,7 @@ def test_the_slurm_finalizer_applies_no_qc_and_the_study(
         "--study",
         str(study),
     )
-    assert submitted.exit_code == 0, submitted.output
+    assert submitted.exit_code == RunExitCode.SUBMITTED, submitted.output
 
     forwarded: dict[str, Any] = {}
     real_aggregate = _cli_output_manager.aggregate_measurements

@@ -126,8 +126,9 @@ parallelism. The command returns after durable submission and prints the
 generation, control root, manifest, finalizer script, and terminal-status path.
 The dependent finalizer writes that generation's success or failure verdict
 to the printed status file before closing the lifecycle. Inspect the status
-file and the scheduler logs to determine the outcome; exit code zero from the
-submitting command certifies submission only. Version 0.21.0 removed `--wait`.
+file and the scheduler logs to determine the outcome; exit code `4`
+(submitted) from the submitting command certifies submission only. A SLURM
+`--dry-run` submits its validation chain and exits `4` too. Version 0.21.0 removed `--wait`.
 
 Full runs retain the metadata → image → seal → optional reclaim → finalizer
 chain. Direct stores and process trees use an indexed store array → provenance

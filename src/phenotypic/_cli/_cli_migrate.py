@@ -116,6 +116,7 @@ from ._cli_migrate_slurm import (
 from ._embedded_measurement_tables import embedded_measurement_table_matches
 
 from phenotypic.sdk_ import (
+    RunExitCode,
     BundleLayout,
     CONFIG_SUFFIX_PIPELINE,
     CommitGuard,
@@ -2388,11 +2389,13 @@ def handle_migrate_mode(
     slurm_args: Mapping[str, Any] | None = None,
     revert: bool = False,
 ) -> int:
-    """Run local or SLURM ``--mode migrate`` and return its exit semantics.
+    """Run local or SLURM ``--mode migrate`` and return its exit code.
 
     SLURM scheduling deliberately creates a fresh generation for each call,
     returns after durable submission, and prints the durable control
-    references, including the terminal status file its finalizer writes.
+    references, including the terminal status file its finalizer writes. A
+    SLURM ``--dry-run`` submits too (its metadata preflight and per-image
+    validation chain), so it returns the same ``SUBMITTED`` code.
 
     If the finalizer itself never finishes (out of memory, time limit, node
     failure, or cancelled while pending), no terminal status file appears.
@@ -2417,8 +2420,12 @@ def handle_migrate_mode(
             trees back, instead of converting anything.
 
     Returns:
-        ``0`` on a clean local run, submitted dry run, or submitted attempt;
-        ``1`` on local migration failure.
+        A :class:`~phenotypic.sdk_.RunExitCode`: ``SUBMITTED`` (``4``) for a
+        submitted attempt or a submitted SLURM dry run, whatever its jobs
+        later do (the verdict is the terminal status file); ``COMPLETE``
+        (``0``) on a clean local run; ``ERROR`` (``1``) on local migration
+        failure. A revert returns its own ``0``/``1``. Until #281 a SLURM
+        submission returned ``0``.
     """
     if revert:
         _validate_migration_revert_selection(
@@ -2442,7 +2449,7 @@ def handle_migrate_mode(
             delete_sources=delete_sources,
         )
         echo_migration_summary(output_dir, report, dry_run=dry_run)
-        return 0 if report.ok else 1
+        return RunExitCode.COMPLETE if report.ok else RunExitCode.ERROR
 
     try:
         target = classify_provenance_migration_target(Path(output_dir))
@@ -2584,7 +2591,7 @@ def handle_migrate_mode(
             "submission owner is active"
         ) from exc
     _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=dry_run)
-    return 0
+    return RunExitCode.SUBMITTED
 
 
 __all__ = [

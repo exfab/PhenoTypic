@@ -9,6 +9,7 @@ from click.testing import CliRunner
 from datetime import datetime
 from uuid import uuid4
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
@@ -697,7 +698,7 @@ def test_cli_continues_finalizer_only_when_image_stages_are_complete(
         ],
     )
 
-    assert resumed.exit_code == 0, resumed.output
+    assert resumed.exit_code == RunExitCode.SUBMITTED, resumed.output
     assert "Continuing staged GPU finalization" in resumed.output
     # No image work was submitted, so the summary says what was (review I-a).
     assert "Submitted: the finalizer only." in resumed.output

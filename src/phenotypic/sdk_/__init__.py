@@ -149,6 +149,7 @@ from ._delimited import (  # noqa: E402
     remove_stale_csv_sibling,
     write_tsv,
 )
+from ._exit_codes import RunExitCode  # noqa: E402
 from ._column_ref import (  # noqa: E402
     ColumnRef,
     ColumnRefList,
@@ -478,6 +479,7 @@ __all__ = [
     "ColumnSource",
     "RefColumn",
     "RefImageColumn",
+    "RunExitCode",
     "FootprintMixin",
     "GridInferenceMixin",
     "HDF",

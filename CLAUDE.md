@@ -248,7 +248,9 @@ isolation before attributing it — most of them pass.
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. **Every SLURM run returns at submission** (0.21.0 removed `--wait`,
-  with no shim) and exits 0. A full, measure or staged run writes the README
+  with no shim) and exits `4` (`RunExitCode.SUBMITTED`; the full exit-code
+  table is in [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)). A full,
+  measure or staged run writes the README
   and prints `PROCESSING SUBMITTED`; a process run prints `PROCESS-ONLY
   SUBMITTED` and has no README; recompile and migrate print their own
   submission lines. The submitting CLI never aggregates for a SLURM run, so

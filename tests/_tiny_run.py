@@ -65,6 +65,22 @@ def tiny_inputs(tmp_path: Path) -> Path:
     return root
 
 
+
+@pytest.fixture
+def tiny_inputs_one_bad(tiny_inputs: Path) -> Path:
+    """:func:`tiny_inputs` plus one truncated plate, ``ds/plate_bad.tif``.
+
+    The file keeps a real TIFF header and loses the rest of its bytes, so the
+    input scan admits it by suffix and its pixel read fails inside the
+    per-image worker in every mode. A run over this tree records exactly one
+    terminal failure and succeeds on the other two plates.
+
+    Returns the input root, ready for ``--input``.
+    """
+    good = (tiny_inputs / "ds" / "plate_1.tif").read_bytes()
+    (tiny_inputs / "ds" / "plate_bad.tif").write_bytes(good[:64])
+    return tiny_inputs
+
 def run_cli(
     inputs: Path | None,
     out: Path,

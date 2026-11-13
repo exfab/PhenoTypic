@@ -20,6 +20,7 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic.phenotypicCLI import phenotypic_cli
 
 
@@ -398,7 +399,7 @@ def test_migrate_with_repeated_slurm_plans_and_submits_once(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert planned == [
         {
             "output_dir": legacy_run,
@@ -455,7 +456,7 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
         dry_run=True,
     )
 
-    assert result == 0
+    assert result == RunExitCode.SUBMITTED
     assert submitted == [plan]
     assert science.read_bytes() == b"immutable science"
 
@@ -497,7 +498,7 @@ def test_direct_slurm_dry_run_submission_writes_no_science(
         dry_run=True,
     )
 
-    assert result == 0
+    assert result == RunExitCode.SUBMITTED
     assert science.read_bytes() == b"immutable science"
 
 
@@ -863,7 +864,7 @@ def test_slurm_migration_dry_run_preserves_every_output_byte(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert _tree_snapshot(legacy_run) == before
     controls = list(cache.rglob("migration_manifest.json"))
     assert len(controls) == 1
@@ -975,7 +976,7 @@ def test_submission_reports_job_ids_without_scientific_publication(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert "Initial job IDs: 101, 102" in result.output
     # Where the verdict will be: 0.21.0 removed --wait, so nothing awaits it.
     terminal = migrate.migration_terminal_status_path(plan.control_root, "attempt-1")
@@ -1070,7 +1071,7 @@ def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == [plan]
     assert "Initial job IDs: 101, 102" in result.output
     assert _tree_snapshot(legacy_run) == before
@@ -1118,7 +1119,7 @@ def test_slurm_dry_run_keeps_its_terminal_outside_science(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert "SLURM migration dry-run submitted" in result.output
     assert migrate.migration_terminal_status_path(
         plan.control_root, "attempt-1"
@@ -1181,8 +1182,8 @@ def test_public_rerun_after_terminal_failure_uses_new_attempt(
     second = CliRunner().invoke(phenotypic_cli, args)
 
     # Submission succeeds either way; the verdict is in the terminal file.
-    assert first.exit_code == 0, first.output
-    assert second.exit_code == 0, second.output
+    assert first.exit_code == RunExitCode.SUBMITTED, first.output
+    assert second.exit_code == RunExitCode.SUBMITTED, second.output
     assert planned == ["attempt-1", "attempt-2"]
 
 
@@ -1297,7 +1298,7 @@ def test_public_rerun_after_failed_submission_uses_a_fresh_attempt(
     )
 
     assert first.exit_code == 1
-    assert second.exit_code == 0, second.output
+    assert second.exit_code == RunExitCode.SUBMITTED, second.output
     assert planned == ["attempt-1", "attempt-2"]
     assert "attempt-2" in second.output
 

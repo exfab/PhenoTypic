@@ -479,6 +479,43 @@ trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
 
+### Exit codes (`phenotypic.sdk_.RunExitCode`)
+
+The CLI's exit code is a contract (#281 spec C10): an orchestrator such as a
+DVC stage acts on it without parsing logs. Use the enum member at every exit
+site, never a bare literal.
+
+| Code | Name | Meaning |
+|---|---|---|
+| `0` | `COMPLETE` | finished, no terminal failures |
+| `1` | `ERROR` | a runtime or config error |
+| `2` | — | a refusal raised as a `click.UsageError`; Click's own, unchanged |
+| `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
+| `4` | `SUBMITTED` | submitted to SLURM, not finished |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and this submission published nothing |
+| `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
+
+- **Every SLURM submission exits `4`**: full, measure, staged and process
+  runs, a SLURM `--mode recompile`, a forward run whose only remaining work is
+  a SLURM recompile (a new metadata snapshot), a submitted `--mode migrate`
+  and a SLURM migrate `--dry-run`. `_handle_recompile_slurm` returns
+  `COMPLETE` instead when nothing needed SLURM and it ran the recompile
+  locally, because then nothing was submitted.
+- **"Failed" is the run's, not the invocation's.** A local exit asks
+  `_run_failure_count` (`phenotypicCLI.py`), which is
+  `resolve_run_state(...).diagnostics.failed` when this invocation recorded no
+  failure itself. A continuation skips recorded terminal failures, so a run
+  that exited `3` exits `3` again on a plain re-run, whether that re-run is a
+  "nothing left" no-op or a re-finalization. The same count gates
+  `publish_local_gui_completion`, which raises on a run with failed images.
+- **A local staged run whose finalization is incomplete exits `1`**,
+  including when an image failed terminally (`full_stage3_complete` is then
+  false). That is the pre-#281 behaviour, kept unchanged.
+- A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
+  `130`.
+- **The GUI run console reads `4` as a failed submission**
+  (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
+
 ### Array trigger routing, not scheduler sidecar jobs
 
 Do not add a **scheduler sidecar job**, meaning an extra `sbatch` job intended
@@ -571,8 +608,8 @@ persisting the returned ID.
 - Every worker checks the active epoch immediately before publishing the store,
   the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
-- Staged submission returns `PROCESSING SUBMITTED`, like every SLURM run
-  (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
+- Staged submission returns `PROCESSING SUBMITTED` and exits `4`
+  (`SUBMITTED`), like every SLURM run (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
   finalization owns aggregation, the dashboard and the completion marker.
   Nothing writes `processing_report.html` automatically.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
@@ -667,8 +704,9 @@ throttled per-image validation chain, and reports its durable job IDs,
 generation, control references, and the terminal status file its finalizer
 writes. That file is where a SLURM attempt's verdict is read: 0.21.0 removed
 `--wait`, which used to wait for the lifecycle to close and turn a failed
-terminal status into a Click error, so a submitted migration exits 0 whatever
-its jobs later do. **If the finalizer itself never finishes** (out of memory,
+terminal status into a Click error, so a submitted migration exits `4`
+(`SUBMITTED`) whatever its jobs later do, and so does a SLURM `--dry-run`,
+which submits its validation chain. A local migrate keeps `0`/`1`. **If the finalizer itself never finishes** (out of memory,
 time limit, node failure, or cancelled while pending), no terminal status file
 appears. Once no job of the attempt is queued, re-run `--mode migrate`:
 `reconcile_interrupted_migration_attempt` terminalizes the dead attempt as

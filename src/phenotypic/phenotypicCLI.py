@@ -194,6 +194,7 @@ from phenotypic.sdk_ import (
     RECOMPILE_TASK_MANIFEST_JSON,
     STORE_SUFFIX,
     JobMetadataKey,
+    RunExitCode,
     dashboard_html_path,
     load_image_from_store,
     source_image_stem,
@@ -1261,6 +1262,48 @@ def setup_logging(debug: bool = False):
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
     root_logger.addHandler(handler)
+
+
+def _run_failure_count(output_dir: Path, failed_now: int = 0) -> int:
+    """Accepted images whose current outcome is a terminal failure.
+
+    Asked of the run state rather than of this invocation, because a
+    continuation skips the images a previous invocation recorded as terminal
+    failures: they are still failed, merely not retried, so a run that exited
+    ``COMPLETE_WITH_FAILURES`` keeps exiting it on a plain re-run. The run
+    state is the one producer of that count. It is scoped to the accepted
+    inventory, and a verified image outranks a failure record left from
+    before a ``--restart``, so a stale record does not count.
+
+    Args:
+        output_dir: Run output root.
+        failed_now: Images this invocation recorded as terminal failures.
+            When positive the run state is not consulted: the run has failures
+            either way, and a tree without success markers (which the run
+            state cannot inventory) still reports them.
+
+    Returns:
+        ``failed_now`` when positive, else the run state's failed count.
+    """
+    if failed_now > 0:
+        return failed_now
+    from phenotypic.sdk_ import resolve_run_state
+
+    return resolve_run_state(output_dir, depth="shallow").diagnostics.failed
+
+
+def _finished_run_exit(failed: int) -> RunExitCode:
+    """The exit code of a run that finished in this process (spec #281 C10).
+
+    Args:
+        failed: From :func:`_run_failure_count`.
+
+    Returns:
+        ``COMPLETE`` when none failed, else ``COMPLETE_WITH_FAILURES``.
+    """
+    if failed == 0:
+        return RunExitCode.COMPLETE
+    return RunExitCode.COMPLETE_WITH_FAILURES
 
 
 def error_exit(
@@ -2590,7 +2633,9 @@ def phenotypic_cli(
                 recompile_state.config["no_qc"] = no_qc
                 save_processing_state(recompile_state, output_dir)
             if slurm_args_dict and not force_local:
-                _handle_recompile_slurm(
+                # SUBMITTED, or COMPLETE when nothing needed SLURM and the
+                # handler ran the local recompile instead.
+                recompile_exit = _handle_recompile_slurm(
                     output_dir=output_dir,
                     metadata_csv=metadata_csv,
                     include_dataset_column=include_dataset_column,
@@ -2608,7 +2653,8 @@ def phenotypic_cli(
                     n_jobs,
                     no_qc=no_qc,
                 )
-            sys.exit(0)
+                recompile_exit = RunExitCode.COMPLETE
+            sys.exit(recompile_exit)
 
         # ---- Early validation for --mode measure (measure_only) --------
         # Measure mode is a one-shot re-measurement run over the image
@@ -3524,7 +3570,9 @@ def phenotypic_cli(
                             config, resume_state, output_dir
                         )
                         click.echo("✓ All images already processed!")
-                        sys.exit(0)
+                        sys.exit(
+                            _finished_run_exit(_run_failure_count(output_dir))
+                        )
                 else:
                     if not config.is_slurm_mode():
                         from phenotypic._cli._cli_staged_orchestration import (
@@ -3558,16 +3606,17 @@ def phenotypic_cli(
                         or publication_refresh_required
                     )
                 ):
-                    _handle_recompile_slurm(
-                        output_dir=output_dir,
-                        metadata_csv=config.metadata_csv,
-                        include_dataset_column=config.include_dataset_column,
-                        overlay_alpha=config.overlay_alpha,
-                        checkpoint_interval=config.checkpoint_interval,
-                        slurm_args=config.slurm_args,
-                        no_qc=config.no_qc,
+                    sys.exit(
+                        _handle_recompile_slurm(
+                            output_dir=output_dir,
+                            metadata_csv=config.metadata_csv,
+                            include_dataset_column=config.include_dataset_column,
+                            overlay_alpha=config.overlay_alpha,
+                            checkpoint_interval=config.checkpoint_interval,
+                            slurm_args=config.slurm_args,
+                            no_qc=config.no_qc,
+                        )
                     )
-                    sys.exit(0)
                 if remaining_images == 0 and not (
                     metadata_snapshot_changed or publication_refresh_required
                 ):
@@ -3587,7 +3636,7 @@ def phenotypic_cli(
                         )
                     else:
                         click.echo("✓ All images already processed!")
-                    sys.exit(0)
+                    sys.exit(_finished_run_exit(_run_failure_count(output_dir)))
                 click.echo(
                     f"Continuing processing ({remaining_images} images remaining)"
                 )
@@ -3800,7 +3849,7 @@ def phenotypic_cli(
                     [f"Layer to export: {config.process_only_layer}"],
                     f"Mirrored layer files will be written under: {output_dir}",
                 )
-                sys.exit(0)
+                sys.exit(RunExitCode.SUBMITTED)
             _write_readme(config, None, output_dir, finalization_datasets)
             _echo_submitted_summary(
                 "PROCESSING SUBMITTED",
@@ -3817,7 +3866,7 @@ def phenotypic_cli(
                     else None
                 ),
             )
-            sys.exit(0)
+            sys.exit(RunExitCode.SUBMITTED)
 
         # Only a local run reaches this point: every SLURM run exited or was
         # refused above.
@@ -3831,7 +3880,8 @@ def phenotypic_cli(
         # deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
-            if results.total_failed == 0:
+            run_failed = _run_failure_count(output_dir, results.total_failed)
+            if run_failed == 0:
                 from phenotypic._cli._cli_gui_lifecycle import (
                     publish_local_gui_completion,
                 )
@@ -3847,7 +3897,7 @@ def phenotypic_cli(
             click.echo(f"Failed:    {results.total_failed}")
             click.echo(f"Duration: {_format_duration(results.duration)}")
             click.echo(f"\nMirrored layer files saved under: {output_dir}")
-            sys.exit(0 if results.total_failed == 0 else 1)
+            sys.exit(_finished_run_exit(run_failed))
 
         # Load pipeline once for the finalizer — reused by both the
         # per-feature split in aggregate_master_csv and the README generator.
@@ -3982,9 +4032,13 @@ def phenotypic_cli(
                 "fully published. Run the same command again to continue.",
                 err=True,
             )
-            sys.exit(1)
+            sys.exit(RunExitCode.ERROR)
 
-        if finalization_succeeded and results.total_failed == 0:
+        # The run's failures, not only this invocation's: a continuation
+        # that skipped a recorded failure has not completed every image, and
+        # publishing the GUI completion would raise on it.
+        run_failed = _run_failure_count(output_dir, results.total_failed)
+        if finalization_succeeded and run_failed == 0:
             from phenotypic._cli._cli_gui_lifecycle import (
                 publish_local_gui_completion,
             )
@@ -4004,7 +4058,7 @@ def phenotypic_cli(
         click.echo(f"\nResults saved to: {output_dir}")
 
         # Exit with appropriate code
-        sys.exit(0 if results.total_failed == 0 else 1)
+        sys.exit(_finished_run_exit(run_failed))
 
     except KeyboardInterrupt:
         click.echo("\n\nInterrupted by user", err=True)
@@ -4185,8 +4239,11 @@ def _handle_recompile_slurm(
     checkpoint_interval: Optional[int],
     slurm_args: dict[str, Any],
     no_qc: bool = False,
-) -> None:
+) -> RunExitCode:
     """Submit recompile work as a SLURM array chain.
+
+    When no measurement source needs SLURM, or no script is generated, the
+    recompile runs locally instead and nothing is submitted.
 
     Args:
         output_dir: Existing output directory containing ``results/``.
@@ -4200,6 +4257,10 @@ def _handle_recompile_slurm(
         no_qc: Forwarded from ``--no-qc`` to skip QC compute on the
             finalizer task (stashed on the finalizer task metadata so the
             recompile worker reads it).
+
+    Returns:
+        ``RunExitCode.SUBMITTED`` once the chain is submitted, or
+        ``RunExitCode.COMPLETE`` when the recompile ran locally instead.
     """
     _load_cli_runtime()
     import json
@@ -4273,7 +4334,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return
+        return RunExitCode.COMPLETE
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -4299,7 +4360,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return
+        return RunExitCode.COMPLETE
 
     # No metadata-migration prologue any more: recompile does not rewrite
     # headers, so there is nothing to fan out and no afterok barrier to place
@@ -4385,6 +4446,7 @@ def _handle_recompile_slurm(
     click.echo(
         f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
     )
+    return RunExitCode.SUBMITTED
 
 
 def _discover_recompile_dataset_names(
