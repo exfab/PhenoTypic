@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from phenotypic._cli._cli_failure_tracker import file_sha256
@@ -35,7 +36,13 @@ def _digests(out: Path) -> dict[str, str]:
 
 
 def _run_in_fresh_process(
-    inputs: Path, out: Path, pipeline: Path, *, hash_seed: int, njobs: int
+    inputs: Path,
+    out: Path,
+    pipeline: Path,
+    *,
+    hash_seed: int,
+    njobs: int,
+    extra: Sequence[str] = (),
 ) -> None:
     """One ``python -m phenotypic`` run in its own interpreter.
 
@@ -48,7 +55,7 @@ def _run_in_fresh_process(
         [
             sys.executable, "-m", "phenotypic",
             "--input", str(inputs), "--output", str(out), "--mode", "full",
-            "--pipeline", str(pipeline), "--njobs", str(njobs),
+            "--pipeline", str(pipeline), "--njobs", str(njobs), *extra,
         ],
         env=env, capture_output=True, text=True, timeout=900, check=False,
     )
@@ -65,6 +72,45 @@ def test_identical_runs_give_identical_deliverables(
     result = run_cli(tiny_inputs, a, pipeline=tiny_pipeline_file)
     assert result.exit_code == 0, result.output
     _run_in_fresh_process(tiny_inputs, b, tiny_pipeline_file, hash_seed=1, njobs=2)
+    _assert_identical_deliverables(a, b)
+
+
+def test_identical_runs_with_metadata_and_two_datasets_give_identical_deliverables(
+    tiny_inputs: Path, tiny_pipeline_file: Path, tmp_path: Path
+) -> None:
+    """#281 P2 review: the join, the phantom append and the dataset order are pinned too.
+
+    The plain test runs one dataset with no ``--metadata``, so the mirror's
+    join, its metadata-only phantom rows and the dataset order of the master's
+    concatenation were never compared -- the configuration a DVC user runs.
+    """
+    import polars as pl
+
+    second = tiny_inputs / "ds2"
+    second.mkdir()
+    for index, plate in enumerate(sorted((tiny_inputs / "ds").glob("*.tif")), start=3):
+        (second / f"plate_{index}.tif").write_bytes(plate.read_bytes())
+    meta = tmp_path / "meta.csv"
+    rows = [f"plate_{i},strain_{i}" for i in range(1, 5)]
+    rows += ["plate_ghost_a,strain_ghost", "plate_ghost_b,strain_ghost"]  # phantoms
+    meta.write_text(
+        "\n".join(["Metadata_ImageName,Metadata_Strain", *rows]) + "\n", encoding="utf-8"
+    )
+    a, b = tmp_path / "a", tmp_path / "b"
+    extra = ["--metadata", str(meta)]
+    result = run_cli(tiny_inputs, a, pipeline=tiny_pipeline_file, extra=extra)
+    assert result.exit_code == 0, result.output
+    _run_in_fresh_process(
+        tiny_inputs, b, tiny_pipeline_file, hash_seed=2, njobs=2, extra=extra
+    )
+    # The premise: two datasets were measured and both phantoms were appended.
+    mirror = pl.read_parquet(a / "deliverables" / "measurements.parquet")
+    assert set(mirror["Metadata_Dataset"].drop_nulls()) == {"ds", "ds2"}
+    assert int(mirror["QC_MetadataOnly"].sum()) == 2
+    _assert_identical_deliverables(a, b)
+
+
+def _assert_identical_deliverables(a: Path, b: Path) -> None:
     digests_a, digests_b = _digests(a), _digests(b)
     # The comparison only means something if it covers the C11 set.
     for required in (
