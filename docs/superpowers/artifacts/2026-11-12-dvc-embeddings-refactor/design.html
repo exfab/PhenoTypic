@@ -738,14 +738,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>dino_version</code></td>
-<td><code>DinoVersion = 2</code></td>
-<td></td>
+<td><code>size</code></td>
+<td><code>DinoSize = "base"</code></td>
+<td>first field; <code>small</code>, <code>base</code> or <code>large</code></td>
 </tr>
 <tr class="even">
-<td><code>dino_size</code></td>
-<td><code>DinoSize = "base"</code></td>
-<td></td>
+<td><code>version</code></td>
+<td><code>DinoVersion = 2</code></td>
+<td>the DINO version; the class name already says DINO</td>
 </tr>
 <tr class="odd">
 <td><code>regions</code></td>
@@ -805,7 +805,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p>Implementation notes:</p>
 <ul>
-<li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, e.g. <code>dinov2-vitb14</code>.</li>
+<li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, built from <code>version</code> and <code>size</code>, e.g. <code>dinov2-vitb14</code>. The fields drop the <code>dino_</code> prefix because the class name already says DINO <span class="chip user">user</span>.</li>
 <li>Reuse the <code>_dino_support.py</code> helpers.</li>
 <li>Keep a module-level backbone cache keyed by <code>(hf_id, revision, device)</code>.</li>
 <li>Run under <code>torch.inference_mode()</code> with <code>model.eval()</code>.</li>
@@ -836,7 +836,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
-<li>add <code>MeasureDinoEmbedding(regions="grid", grid=ManualGridFinder(...), dino_size="base")</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
+<li>add <code>MeasureDinoEmbedding(size="base", regions="grid", grid=ManualGridFinder(...))</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
 <li>vendor the new wheel;</li>
 <li>install the <code>foundation</code> extra in the <code>Dockerfile</code> with CPU torch, bake in the pinned weights, and set <code>HF_HUB_OFFLINE=1</code>;</li>
 <li>make <code>verify_store</code> check that the run folder's grid entry exists (an <code>expected_embeddings</code> field in <code>run.json</code>, written by <code>plan.py</code>), the way figures are checked;</li>

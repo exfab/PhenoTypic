@@ -551,8 +551,8 @@ do, so both live in the pipeline's own folder under `tables/` (user decision).
 
   | Field | Type, default | Notes |
   |---|---|---|
-  | `dino_version` | `DinoVersion = 2` | |
-  | `dino_size` | `DinoSize = "base"` | |
+  | `size` | `DinoSize = "base"` | first field; `small`, `base` or `large` |
+  | `version` | `DinoVersion = 2` | the DINO version; the class name already says DINO |
   | `regions` | `"objects"` | |
   | `grid` | `ManualGridFinder` (an `OperationField`) | required when `regions="grid"`, refused otherwise; the rig's cell edges in pixels (E3a) |
   | `pooling` | `"crop_cls"` | `crop_cls`, `crop_mean` or `masked_dense`; a grid cell is cropped from its rectangle exactly as an object is from its bbox |
@@ -584,7 +584,9 @@ do, so both live in the pipeline's own folder under `tables/` (user decision).
     user when the AutoConvertRaw-GC pipeline is updated (E6).
 
   Implementation notes:
-  - The model token is `dinov{version}-vit{s|b|l}{patch}`, e.g. `dinov2-vitb14`.
+  - The model token is `dinov{version}-vit{s|b|l}{patch}`, built from `version`
+    and `size`, e.g. `dinov2-vitb14`. The fields drop the `dino_` prefix because
+    the class name already says DINO (user).
   - Reuse the `_dino_support.py` helpers.
   - Keep a module-level backbone cache keyed by `(hf_id, revision, device)`.
   - Run under `torch.inference_mode()` with `model.eval()`.
@@ -624,9 +626,9 @@ do, so both live in the pipeline's own folder under `tables/` (user decision).
   - Upstream tables (D8) are not aggregated into a downstream run's deliverables
     in v1.
 - **E6 AutoConvertRaw-GC rollout** (after the new wheel is built):
-  - add `MeasureDinoEmbedding(regions="grid", grid=ManualGridFinder(...),
-    dino_size="base")` to the pipeline's `meas`, with rig1's edges supplied by the
-    user;
+  - add `MeasureDinoEmbedding(size="base", regions="grid",
+    grid=ManualGridFinder(...))` to the pipeline's `meas`, with rig1's edges
+    supplied by the user;
   - vendor the new wheel;
   - install the `foundation` extra in the `Dockerfile` with CPU torch, bake in the
     pinned weights, and set `HF_HUB_OFFLINE=1`;
