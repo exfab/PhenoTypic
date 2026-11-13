@@ -62,3 +62,13 @@ table is the authoritative list of red tests; this file collects everything else
 - Fixed outside the GUI, for reference: `post/_join_metadata.py` (`JoinMetadata`)
   matched its suffix case-sensitively and refused `plates.TSV`; it now goes through
   `delimiter_for` (review M9).
+
+## From P2 (DVC run contract)
+
+- The run console reads exit `4` (`RunExitCode.SUBMITTED`) as a failed SLURM
+  submission (`_gui/run_console/_slurm.py:826`). Merge-gate item.
+- A `.phenotypic/` restored by `dvc checkout` with a stale **active** lifecycle fence
+  reads as `active` in `resolve_run_state` (sdk_ never asks the scheduler), so the GUI
+  launch check treats the tree as running until the next CLI run, whose
+  `retire_dead_lifecycle_fence` closes it (C10, `f62e895c6`). The GUI should either ask
+  the scheduler (as `_refuse_live_slurm_run` does) or call the same retirement.
