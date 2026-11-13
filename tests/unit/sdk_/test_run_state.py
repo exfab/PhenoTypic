@@ -2206,3 +2206,69 @@ def test_the_dead_second_worklist_definition_is_gone():
         "the dead worklist definition is back; the live one is "
         "_cli_state_management.get_remaining_images_for_datasets"
     )
+
+
+# ---------------------------------------------------------------------------
+# aggregate_proof_matches_current_state (#281 P2 T2, spec C3)
+# ---------------------------------------------------------------------------
+
+
+def bump_inventory(root):
+    """Accept one more image in the saved run config, as a resubmission does.
+
+    The ``work_ids`` sibling of ``tests._output_layout.bump_scientific_config_digest``:
+    the inventory digest is ``canonical_digest(config.work_ids)``, so adding a
+    work id moves it while leaving every published artifact untouched.
+    """
+    path, payload = _read_state(root)
+    dataset = next(iter(payload["config"]["work_ids"]))
+    payload["config"]["work_ids"][dataset]["plate_new.tif"] = "work-plate-new"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_an_aggregate_proof_from_an_earlier_inventory_does_not_match(finished_tiny_run):
+    from phenotypic.sdk_ import aggregate_proof_matches_current_state
+    from phenotypic.sdk_._run_state import aggregate_proof_refusal
+
+    assert aggregate_proof_matches_current_state(finished_tiny_run)
+    bump_inventory(finished_tiny_run)  # new images accepted, as a resubmission does
+    assert aggregate_proof_refusal(finished_tiny_run) is None
+    assert not aggregate_proof_matches_current_state(finished_tiny_run)
+
+
+def test_an_aggregate_proof_under_another_pipeline_does_not_match(complete_run):
+    from phenotypic.sdk_ import aggregate_proof_matches_current_state
+    from tests._output_layout import bump_scientific_config_digest
+
+    assert aggregate_proof_matches_current_state(complete_run)
+    bump_scientific_config_digest(complete_run)
+    assert not aggregate_proof_matches_current_state(complete_run)
+
+
+def test_an_aggregate_proof_under_other_finalization_inputs_does_not_match(complete_run):
+    from phenotypic.sdk_ import aggregate_proof_matches_current_state
+
+    path, payload = _read_state(complete_run)
+    payload["config"]["metadata_sha256"] = "d" * 64  # a new metadata snapshot
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert not aggregate_proof_matches_current_state(complete_run)
+
+
+def test_an_aggregate_proof_over_another_source_set_does_not_match(incomplete_run):
+    # The proof certifies both images; one of them no longer verifies.
+    from phenotypic.sdk_ import aggregate_proof_matches_current_state
+    from phenotypic.sdk_._run_state import aggregate_proof_refusal
+
+    assert aggregate_proof_refusal(incomplete_run) is None
+    assert not aggregate_proof_matches_current_state(incomplete_run)
+
+
+def test_no_aggregate_proof_does_not_match(tmp_path):
+    from phenotypic.sdk_ import aggregate_proof_matches_current_state
+
+    assert not aggregate_proof_matches_current_state(tmp_path)
+    from tests._output_layout import build_complete_run
+
+    assert not aggregate_proof_matches_current_state(
+        build_complete_run(tmp_path, process_only_layer="gray")
+    )

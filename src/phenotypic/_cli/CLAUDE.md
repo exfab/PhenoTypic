@@ -513,6 +513,19 @@ site, never a bare literal.
   false). That is the pre-#281 behaviour, kept unchanged.
 - A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
   `130`.
+- **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
+  run's own code** once the run ends, for a DVC stage or any orchestrator.
+  Read-only: it never aggregates, publishes, submits or cancels. Each poll
+  reads `live_slurm_job_ids` **before** `resolve_run_state(depth="shallow")`.
+  Any `live`/`unverified`/`unresolved` job keeps it waiting, whatever the
+  completion says. With none live, it exits `0`/`3` only when **this
+  submission** published. It reads the fence generation once, at the first
+  poll. Published means that fence was closed with no `terminal_status`, or
+  the run completion marker's `execution_epoch` is that generation, or
+  `aggregate_proof_matches_current_state`. A process run that reads `failed`
+  exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
+  `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
+  external control root.
 - **The GUI run console reads `4` as a failed submission**
   (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
 
