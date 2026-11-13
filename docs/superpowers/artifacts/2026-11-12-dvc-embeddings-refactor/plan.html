@@ -75,8 +75,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md</code></p>
 <p><strong>Base:</strong> <code>main</code> @ <code>3248a9173</code>, branch <code>feat/dvc-embeddings-refactor</code> (PR #281)</p>
 </div></header>
-<nav class="toc" aria-label="Contents"><b>DVC and Embeddings Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-expected-red-gui-tests">Expected-red GUI tests</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li></ul><b>P0 · Typed config suffix flip</b><ul><li class="l3"><a href="#d1-task-1-suffix-constants-the-helpers-and-the-resolvers">Task 1: Suffix constants, the helpers and the resolvers</a></li><li class="l3"><a href="#d1-task-2-writers-the-seed-and-the-literal-sweep">Task 2: Writers, the seed and the literal sweep</a></li><li class="l3"><a href="#d1-task-3-autoconvertraw-gc-rename-repo-softwareautoconvertraw-gc">Task 3: AutoConvertRaw-GC rename (repo software/AutoConvertRaw-GC)</a></li></ul><b>P1 · CSV → TSV</b><ul><li class="l3"><a href="#d2-task-1-the-delimited-text-module-and-the-gui-import-guard">Task 1: The delimited-text module and the GUI import guard</a></li><li class="l3"><a href="#d2-task-2-deliverable-names-constants-and-the-writers">Task 2: Deliverable names, constants and the writers</a></li><li class="l3"><a href="#d2-task-3-user-inputs-and-the-byte-exact-snapshots">Task 3: User inputs and the byte-exact snapshots</a></li><li class="l3"><a href="#d2-task-4-old-trees-and-docs">Task 4: Old trees and docs</a></li></ul><b>P2 · DVC run contract</b><ul><li class="l3"><a href="#d3-task-1-exit-codes">Task 1: Exit codes</a></li><li class="l3"><a href="#d3-task-2-phenotypic-wait">Task 2: phenotypic-wait</a></li><li class="l3"><a href="#d3-task-3-metricsjson-and-schemajson">Task 3: metrics.json and schema.json</a></li><li class="l3"><a href="#d3-task-4-byte-stable-deliverables">Task 4: Byte-stable deliverables</a></li><li class="l3"><a href="#d3-task-5-layout-guards">Task 5: Layout guards</a></li><li class="l3"><a href="#d3-task-6-dvc-how-to-page">Task 6: DVC how-to page</a></li></ul><b>P3 · Per-pipeline tables (`tables/` v2)</b><ul><li class="l3"><a href="#d4-task-1-v1-fixtures-run-identity-and-the-resolver">Task 1: v1 fixtures, run identity and the resolver</a></li><li class="l3"><a href="#d4-task-2-the-writer-the-carry-step-and-stale-binding">Task 2: The writer, the carry step and stale binding</a></li><li class="l3"><a href="#d4-task-3-the-measure-and-recompile-rewrite">Task 3: The measure and recompile rewrite</a></li><li class="l3"><a href="#d4-task-4-every-reader-through-the-resolver">Task 4: Every reader through the resolver</a></li><li class="l3"><a href="#d4-task-5-v1-stores--refuse-forward-convert-in-migrate">Task 5: v1 stores — refuse forward, convert in migrate</a></li><li class="l3"><a href="#d4-task-6-upstream-reference">Task 6: Upstream reference</a></li></ul><b>P4 · `MeasureDinoEmbedding`</b><ul><li class="l3"><a href="#d5-task-1-measureembedding-and-pipeline-routing">Task 1: MeasureEmbedding and pipeline routing</a></li><li class="l3"><a href="#d5-task-2-embedding-tables-in-the-store">Task 2: Embedding tables in the store</a></li><li class="l3"><a href="#d5-task-3-measuredinoembedding">Task 3: MeasureDinoEmbedding</a></li><li class="l3"><a href="#d5-task-4-cli-wiring-and-deliverables">Task 4: CLI wiring and deliverables</a></li></ul><b>P5 · Process-mode measurements, in place, and the AutoConvertRaw-GC rollout</b><ul><li class="l3"><a href="#d6-task-1-process-mode-admits-meas-and-refuses-what-it-cannot-store">Task 1: Process mode admits meas, and refuses what it cannot store</a></li><li class="l3"><a href="#d6-task-2-process-stores-carry-the-run-folder">Task 2: Process stores carry the run folder</a></li><li class="l3"><a href="#d6-task-3-in-place---output-equal-to---input">Task 3: In place (--output equal to --input)</a></li><li class="l3"><a href="#d6-task-4-autoconvertraw-gc-wheel-image-and-store-check-repo-softwareautoconvertraw-gc">Task 4: AutoConvertRaw-GC: wheel, image and store check (repo software/AutoConvertRaw-GC)</a></li><li class="l3"><a href="#d6-task-5-pilot-then-the-backfill-decision">Task 5: Pilot, then the backfill decision</a></li></ul></nav>
-<main><section class="doc"><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/README.md</div><blockquote>
+<nav class="toc" aria-label="Contents"><b>DVC and Embeddings Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-expected-red-gui-tests">Expected-red GUI tests</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li></ul><b>P0 · Typed config suffix flip</b><ul><li class="l3"><a href="#d1-task-1-suffix-constants-the-helpers-and-the-resolvers">Task 1: Suffix constants, the helpers and the resolvers</a></li><li class="l3"><a href="#d1-task-2-writers-the-seed-and-the-literal-sweep">Task 2: Writers, the seed and the literal sweep</a></li><li class="l3"><a href="#d1-task-3-autoconvertraw-gc-rename-repo-softwareautoconvertraw-gc">Task 3: AutoConvertRaw-GC rename (repo software/AutoConvertRaw-GC)</a></li></ul><b>P1 · CSV → TSV</b><ul><li class="l3"><a href="#d2-task-1-the-delimited-text-module-and-the-gui-import-guard">Task 1: The delimited-text module and the GUI import guard</a></li><li class="l3"><a href="#d2-task-2-deliverable-names-constants-and-the-writers">Task 2: Deliverable names, constants and the writers</a></li><li class="l3"><a href="#d2-task-3-user-inputs-and-the-byte-exact-snapshots">Task 3: User inputs and the byte-exact snapshots</a></li><li class="l3"><a href="#d2-task-4-old-trees-and-docs">Task 4: Old trees and docs</a></li></ul><b>P2 · DVC run contract</b><ul><li class="l3"><a href="#d3-task-1-exit-codes">Task 1: Exit codes</a></li><li class="l3"><a href="#d3-task-2-phenotypic-wait">Task 2: phenotypic-wait</a></li><li class="l3"><a href="#d3-task-2a-phenotypic-wait----submit-launch-form">Task 2a: phenotypic-wait -- &lt;submit&gt; (launch form)</a></li><li class="l3"><a href="#d3-task-3-metricsjson-and-schemajson">Task 3: metrics.json and schema.json</a></li><li class="l3"><a href="#d3-task-4-byte-stable-deliverables">Task 4: Byte-stable deliverables</a></li><li class="l3"><a href="#d3-task-5-layout-guards">Task 5: Layout guards</a></li><li class="l3"><a href="#d3-task-6-dvc-how-to-page">Task 6: DVC how-to page</a></li></ul><b>P3 · Per-pipeline tables (`tables/` v2)</b><ul><li class="l3"><a href="#d4-task-1-v1-fixtures-run-identity-and-the-resolver">Task 1: v1 fixtures, run identity and the resolver</a></li><li class="l3"><a href="#d4-task-2-the-writer-the-carry-step-and-stale-binding">Task 2: The writer, the carry step and stale binding</a></li><li class="l3"><a href="#d4-task-3-the-measure-and-recompile-rewrite">Task 3: The measure and recompile rewrite</a></li><li class="l3"><a href="#d4-task-4-every-reader-through-the-resolver">Task 4: Every reader through the resolver</a></li><li class="l3"><a href="#d4-task-5-v1-stores--refuse-forward-convert-in-migrate">Task 5: v1 stores — refuse forward, convert in migrate</a></li><li class="l3"><a href="#d4-task-6-upstream-reference">Task 6: Upstream reference</a></li></ul><b>P4 · `MeasureDinoEmbedding`</b><ul><li class="l3"><a href="#d5-task-1-measureembedding-and-pipeline-routing">Task 1: MeasureEmbedding and pipeline routing</a></li><li class="l3"><a href="#d5-task-2-embedding-tables-in-the-store">Task 2: Embedding tables in the store</a></li><li class="l3"><a href="#d5-task-3-measuredinoembedding">Task 3: MeasureDinoEmbedding</a></li><li class="l3"><a href="#d5-task-4-cli-wiring-and-deliverables">Task 4: CLI wiring and deliverables</a></li></ul><b>P5 · Process-mode measurements, in place, and the AutoConvertRaw-GC rollout</b><ul><li class="l3"><a href="#d6-task-1-process-mode-admits-meas-and-refuses-what-it-cannot-store">Task 1: Process mode admits meas, and refuses what it cannot store</a></li><li class="l3"><a href="#d6-task-2-process-stores-carry-the-run-folder">Task 2: Process stores carry the run folder</a></li><li class="l3"><a href="#d6-task-3-in-place---output-equal-to---input">Task 3: In place (--output equal to --input)</a></li><li class="l3"><a href="#d6-task-4-autoconvertraw-gc-wheel-image-and-store-check-repo-softwareautoconvertraw-gc">Task 4: AutoConvertRaw-GC: wheel, image and store check (repo software/AutoConvertRaw-GC)</a></li><li class="l3"><a href="#d6-task-5-pilot-then-the-backfill-decision">Task 5: Pilot, then the backfill decision</a></li></ul></nav>
+<main><section class="doc"><div class="docsrc">README.md</div><blockquote>
 <p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
 </blockquote>
 <p><strong>Goal:</strong> Make a PhenoTypic CLI run usable as one DVC stage by automation, with per-pipeline tables in every OME-Zarr store, and DINOv2 crop and grid embeddings stored under the pipeline that produced them.</p>
@@ -479,86 +479,93 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>P2 T6, the how-to page (uses Lane B's numbers)</td>
 <td>Leaf</td>
 <td>Sonnet</td>
-<td><strong>deep: P2</strong></td>
+<td>light</td>
 </tr>
 <tr class="even">
+<td>C11a</td>
+<td>P2 T2a, the waiter's launch form (<code>--</code>), and the page's one-command stage</td>
+<td>Seam</td>
+<td>Opus</td>
+<td><strong>deep: P2</strong></td>
+</tr>
+<tr class="odd">
 <td>C12</td>
 <td>P3 T1, T2: v1 fixtures, resolver, writer, carry, stale</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C13</td>
 <td>P3 T3, the measure rewrite</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C14a–d</td>
 <td>P3 T4 reader sweep, by subsystem: (a) finalizer/aggregation, (b) per-image writers and staged, (c) recompile, (d) migrate, state and the <code>sdk_</code> readers</td>
 <td>Sweep, consistency-critical</td>
 <td>Opus</td>
 <td>light each</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C15</td>
 <td>P3 T5, v1 refusal and migrate conversion</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C16</td>
 <td>P3 T6, upstream reference</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td><strong>deep: P3</strong>, then a code-simplifier pass on the P3 layer before P4 builds on it</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C17</td>
 <td>P4 T1, T2</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C18</td>
 <td>P4 T3, <code>MeasureDinoEmbedding</code>; a fact-checker on the <code>crop_px</code> and <code>crop_pad_frac</code> tune ranges</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C19</td>
 <td>P4 T4, CLI wiring and deliverables</td>
 <td>Seam</td>
 <td>Opus</td>
 <td><strong>deep: P4</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C20</td>
 <td>P5 T1, T2, process mode</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C21</td>
 <td>P5 T3, in place</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light, then <strong>deep: P5</strong>, then the full sharded regression on Slurm, the simplify pass, and the regression again</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C22</td>
 <td>P5 T4, the AutoConvertRaw-GC rollout</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light. <strong>Blocked on the user's rig1 grid edges</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C23</td>
 <td>P5 T5, pilot and backfill decision</td>
 <td>orchestrator and user</td>
@@ -575,7 +582,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>An open design question found at any gate stops the run until the user answers.</li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d1-top">P0 · Typed config suffix flip</h2><div class="meta"><p><strong>Spec:</strong> Part A (A1–A6)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p0-config-suffix-flip.md</div><p><strong>Goal:</strong> Writers produce <code>*.pht-pipe.json</code> (and <code>-op</code>, <code>-cc</code>, <code>-tune</code>), so DVC reads and writes them with its JSON handler. Every reader still accepts the old <code>*.json.pht-*</code> names and plain <code>.json</code>.</p>
+</div><div class="docsrc">p0-config-suffix-flip.md</div><p><strong>Goal:</strong> Writers produce <code>*.pht-pipe.json</code> (and <code>-op</code>, <code>-cc</code>, <code>-tune</code>), so DVC reads and writes them with its JSON handler. Every reader still accepts the old <code>*.json.pht-*</code> names and plain <code>.json</code>.</p>
 <p><strong>Why the last suffix matters:</strong> DVC picks its params parser from the last, lower-cased suffix, and an unknown suffix falls back to YAML (<code>dvc/utils/serialize/__init__.py</code>).</p>
 <p><strong>GUI:</strong> no file under <code>src/phenotypic/_gui/</code> changes. The three P0 rows of the README's expected-red table go red here and stay red until #283. Two more GUI-side effects are #283's, and harmless until then:</p>
 <ul>
@@ -779,7 +786,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Commit</strong> in AutoConvertRaw-GC with explicit paths. Do not push until P5 (rollout).</li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d2-top">P1 · CSV → TSV</h2><div class="meta"><p><strong>Spec:</strong> Part B (B1–B9)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p1-csv-to-tsv.md</div><p><strong>Goal:</strong> Every tabular text file the CLI generates is TSV, with one shared writer and one shared delimiter rule. Inputs accept <code>.csv</code> or <code>.tsv</code>. The metadata snapshot keeps the user's bytes and extension. PhenoTypic's own readers still fall back to <code>.csv</code> in older trees.</p>
+</div><div class="docsrc">p1-csv-to-tsv.md</div><p><strong>Goal:</strong> Every tabular text file the CLI generates is TSV, with one shared writer and one shared delimiter rule. Inputs accept <code>.csv</code> or <code>.tsv</code>. The metadata snapshot keeps the user's bytes and extension. PhenoTypic's own readers still fall back to <code>.csv</code> in older trees.</p>
 <p><strong>What stays CSV until #283</strong> (spec B9), because GUI code writes it:</p>
 <ul>
 <li><code>error_analysis.csv</code>. <code>_cli/_cli_error_outputs.py:81-96</code> calls the GUI's <code>publish_error_analysis</code>, which names the file itself (<code>_gui/results_viewer/_error_tab/_publication.py:849</code>) and writes it with <code>combined.write_csv</code> (<code>:588</code>). P1 does not touch <code>ERROR_ANALYSIS_CSV</code> or <code>error_analysis_csv_path</code>.</li>
@@ -1044,7 +1051,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Commit.</strong></li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d3-top">P2 · DVC run contract</h2><div class="meta"><p><strong>Spec:</strong> Part C (C1–C14)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p2-dvc-run-contract.md</div><p><strong>Goal:</strong> An orchestrator can drive a PhenoTypic run as one DVC stage and act on the result without parsing logs. That needs:</p>
+</div><div class="docsrc">p2-dvc-run-contract.md</div><p><strong>Goal:</strong> An orchestrator can drive a PhenoTypic run as one DVC stage and act on the result without parsing logs. That needs:</p>
 <ul>
 <li>distinct exit codes;</li>
 <li>a waiter for SLURM runs;</li>
@@ -1354,10 +1361,73 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><input type="checkbox" disabled="" />
 <strong>Step 3: Implement.</strong><ul>
 <li>Each poll prints one line: <code>completion</code>, the live-job groups, and the elapsed time.</li>
-<li>The waiter never aggregates, publishes, submits or cancels. Its only write is the verification cache <code>resolve_run_state</code> already refreshes.</li>
+<li>The waiter never aggregates, publishes or cancels. Its only write is the verification cache <code>resolve_run_state</code> already refreshes. (Task 2a adds the launch form; the waiter still publishes nothing.)</li>
 </ul></li>
 <li><input type="checkbox" disabled="" />
 <strong>Step 4: Run the tests and the startup-import guard.</strong> They pass.</li>
+<li><input type="checkbox" disabled="" />
+<strong>Step 5: Commit.</strong></li>
+</ul>
+<h3 id="d3-task-2a-phenotypic-wait----submit-launch-form">Task 2a: <code>phenotypic-wait -- &lt;submit&gt;</code> (launch form)</h3>
+<p>Added 2026-11-13 after Task 6 found that DVC aborts a stage on the submit's exit <code>4</code>. The user chose the one-command stage (spec C3, "Launch").</p>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>src/phenotypic/_cli/_cli_wait.py</code></li>
+<li>Modify: <code>docs/source/how_to/pages/dvc.md</code> (the SLURM <code>dvc.yaml</code> becomes one <code>cmd</code>; keep the <code>; test $? -eq 4</code> two-command form as a short alternative)</li>
+<li>Modify: <code>src/phenotypic/_cli/CLAUDE.md</code>, wherever it documents <code>phenotypic-wait</code></li>
+<li>Test: <code>tests/unit/cli/test_cli_wait.py</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>wait_for_run</code> (Task 2), <code>RunExitCode</code></li>
+<li>Produces:
+<ul>
+<li><code>_run_submit(argv: Sequence[str]) -&gt; int</code>: module-level seam; <code>subprocess.run(list(argv), check=False).returncode</code>, mapping a negative return (killed by signal N) to <code>128 + N</code>. No shell.</li>
+<li><code>check_submit_argv(argv: Sequence[str], output_dir: Path) -&gt; None</code>: raises <code>click.UsageError</code> for an empty argv, a <code>--mode migrate</code> / <code>--mode=migrate</code> child, or a child <code>-o X</code> / <code>--output X</code> / <code>--output=X</code> whose <code>Path(X).resolve()</code> differs from <code>output_dir.resolve()</code>. A child with no output flag passes.</li>
+<li><code>main()</code>: a click command with <code>context_settings={"ignore_unknown_options": True}</code> and a trailing <code>nargs=-1, type=click.UNPROCESSED</code> argument taking everything after <code>--</code>. With no submit argv it behaves exactly as Task 2.</li>
+</ul></li>
+</ul>
+<p>Order inside <code>main</code>: check the argv (usage error before anything runs) → run the submit → child <code>4</code> → <code>wait_for_run(...)</code>; child anything else → exit with that code, never polling.</p>
+<ul class="task-list">
+<li><input type="checkbox" disabled="" />
+<strong>Step 1: Write the failing tests</strong></li>
+</ul>
+<div class="sourceCode" id="d3-cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb3-1"><a href="#d3-cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_submit_exit_4_then_waits(monkeypatch, tmp_path):</span>
+<span id="d3-cb3-2"><a href="#d3-cb3-2" aria-hidden="true" tabindex="-1"></a>    calls <span class="op">=</span> []</span>
+<span id="d3-cb3-3"><a href="#d3-cb3-3" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_wait, <span class="st">&quot;_run_submit&quot;</span>, <span class="kw">lambda</span> argv: calls.append(<span class="bu">list</span>(argv)) <span class="kw">or</span> <span class="dv">4</span>)</span>
+<span id="d3-cb3-4"><a href="#d3-cb3-4" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_wait, <span class="st">&quot;wait_for_run&quot;</span>, <span class="kw">lambda</span> d, <span class="op">**</span>k: RunExitCode.COMPLETE_WITH_FAILURES)</span>
+<span id="d3-cb3-5"><a href="#d3-cb3-5" aria-hidden="true" tabindex="-1"></a>    r <span class="op">=</span> CliRunner().invoke(main, [<span class="st">&quot;--output&quot;</span>, <span class="bu">str</span>(tmp_path), <span class="st">&quot;--&quot;</span>, <span class="st">&quot;python&quot;</span>, <span class="st">&quot;-m&quot;</span>, <span class="st">&quot;phenotypic&quot;</span>,</span>
+<span id="d3-cb3-6"><a href="#d3-cb3-6" aria-hidden="true" tabindex="-1"></a>                                  <span class="st">&quot;-o&quot;</span>, <span class="bu">str</span>(tmp_path), <span class="st">&quot;--slurm&quot;</span>, <span class="st">&quot;partition=intel&quot;</span>])</span>
+<span id="d3-cb3-7"><a href="#d3-cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> r.exit_code <span class="op">==</span> <span class="dv">3</span> <span class="kw">and</span> calls <span class="op">==</span> [[<span class="st">&quot;python&quot;</span>, <span class="st">&quot;-m&quot;</span>, <span class="st">&quot;phenotypic&quot;</span>, <span class="st">&quot;-o&quot;</span>, <span class="bu">str</span>(tmp_path),</span>
+<span id="d3-cb3-8"><a href="#d3-cb3-8" aria-hidden="true" tabindex="-1"></a>                                           <span class="st">&quot;--slurm&quot;</span>, <span class="st">&quot;partition=intel&quot;</span>]]</span>
+<span id="d3-cb3-9"><a href="#d3-cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb3-10"><a href="#d3-cb3-10" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;code&quot;</span>, [<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">130</span>])</span>
+<span id="d3-cb3-11"><a href="#d3-cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_any_other_submit_exit_is_returned_without_polling(monkeypatch, tmp_path, code):</span>
+<span id="d3-cb3-12"><a href="#d3-cb3-12" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_wait, <span class="st">&quot;_run_submit&quot;</span>, <span class="kw">lambda</span> argv: code)</span>
+<span id="d3-cb3-13"><a href="#d3-cb3-13" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_wait, <span class="st">&quot;wait_for_run&quot;</span>, <span class="kw">lambda</span> <span class="op">*</span>a, <span class="op">**</span>k: pytest.fail(<span class="st">&quot;polled&quot;</span>))</span>
+<span id="d3-cb3-14"><a href="#d3-cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> CliRunner().invoke(main, [<span class="st">&quot;-o&quot;</span>, <span class="bu">str</span>(tmp_path), <span class="st">&quot;--&quot;</span>, <span class="st">&quot;true&quot;</span>]).exit_code <span class="op">==</span> code</span>
+<span id="d3-cb3-15"><a href="#d3-cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb3-16"><a href="#d3-cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_child_naming_a_different_output_is_refused_before_launch(monkeypatch, tmp_path):</span>
+<span id="d3-cb3-17"><a href="#d3-cb3-17" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_wait, <span class="st">&quot;_run_submit&quot;</span>, <span class="kw">lambda</span> argv: pytest.fail(<span class="st">&quot;launched&quot;</span>))</span>
+<span id="d3-cb3-18"><a href="#d3-cb3-18" aria-hidden="true" tabindex="-1"></a>    r <span class="op">=</span> CliRunner().invoke(main, [<span class="st">&quot;-o&quot;</span>, <span class="bu">str</span>(tmp_path <span class="op">/</span> <span class="st">&quot;a&quot;</span>), <span class="st">&quot;--&quot;</span>, <span class="st">&quot;python&quot;</span>, <span class="st">&quot;-m&quot;</span>, <span class="st">&quot;phenotypic&quot;</span>,</span>
+<span id="d3-cb3-19"><a href="#d3-cb3-19" aria-hidden="true" tabindex="-1"></a>                                  <span class="st">&quot;--output=&quot;</span> <span class="op">+</span> <span class="bu">str</span>(tmp_path <span class="op">/</span> <span class="st">&quot;b&quot;</span>)])</span>
+<span id="d3-cb3-20"><a href="#d3-cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> r.exit_code <span class="op">==</span> <span class="dv">2</span></span>
+<span id="d3-cb3-21"><a href="#d3-cb3-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb3-22"><a href="#d3-cb3-22" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_relative_child_output_naming_the_same_dir_is_accepted(...): ...   <span class="co"># cwd-relative &quot;out&quot; vs absolute</span></span>
+<span id="d3-cb3-23"><a href="#d3-cb3-23" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_migrate_child_is_refused(...): ...                                 <span class="co"># --mode migrate and --mode=migrate → 2</span></span>
+<span id="d3-cb3-24"><a href="#d3-cb3-24" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_empty_command_after_dashdash_is_refused(...): ...                 <span class="co"># → 2</span></span>
+<span id="d3-cb3-25"><a href="#d3-cb3-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_without_dashdash_it_only_waits(...): ...                             <span class="co"># _run_submit never called</span></span>
+<span id="d3-cb3-26"><a href="#d3-cb3-26" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_run_submit_maps_a_signal_to_128_plus_n(tmp_path):</span>
+<span id="d3-cb3-27"><a href="#d3-cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _cli_wait._run_submit([sys.executable, <span class="st">&quot;-c&quot;</span>, <span class="st">&quot;import os,signal; os.kill(os.getpid(), signal.SIGTERM)&quot;</span>]) <span class="op">==</span> <span class="dv">128</span> <span class="op">+</span> <span class="dv">15</span></span>
+<span id="d3-cb3-28"><a href="#d3-cb3-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_run_submit_passes_through_a_real_exit_code():</span>
+<span id="d3-cb3-29"><a href="#d3-cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _cli_wait._run_submit([sys.executable, <span class="st">&quot;-c&quot;</span>, <span class="st">&quot;raise SystemExit(4)&quot;</span>]) <span class="op">==</span> <span class="dv">4</span></span></code></pre></div>
+<ul class="task-list">
+<li><input type="checkbox" disabled="" />
+<strong>Step 2: Run them and confirm they fail.</strong></li>
+<li><input type="checkbox" disabled="" />
+<strong>Step 3: Implement.</strong> The startup-import guard still holds: <code>subprocess</code> is stdlib, and <code>--help</code> imports nothing new.</li>
+<li><input type="checkbox" disabled="" />
+<strong>Step 4: Run <code>tests/unit/cli/test_cli_wait.py</code> and <code>tests/unit/ci/test_startup_imports.py</code>.</strong> They pass. A DVC 3.67.1 check in a scratch repo (as in Task 6) shows <code>dvc repro</code> succeeding through a submit stub that exits <code>4</code> and a run that publishes.</li>
 <li><input type="checkbox" disabled="" />
 <strong>Step 5: Commit.</strong></li>
 </ul>
@@ -1389,25 +1459,25 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><input type="checkbox" disabled="" />
 <strong>Step 1: Write the failing tests</strong></li>
 </ul>
-<div class="sourceCode" id="d3-cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb3-1"><a href="#d3-cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_metrics_has_no_wall_clock_and_is_canonical(tmp_path):</span>
-<span id="d3-cb3-2"><a href="#d3-cb3-2" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> build_run_metrics(phenotypic_version<span class="op">=</span><span class="st">&quot;0.21.0&quot;</span>, pipeline_sha256<span class="op">=</span><span class="st">&quot;a&quot;</span> <span class="op">*</span> <span class="dv">64</span>, accepted<span class="op">=</span><span class="dv">3</span>,</span>
-<span id="d3-cb3-3"><a href="#d3-cb3-3" aria-hidden="true" tabindex="-1"></a>                          succeeded<span class="op">=</span><span class="dv">2</span>, failed<span class="op">=</span><span class="dv">1</span>, measured_objects<span class="op">=</span><span class="dv">180</span>, metadata_phantoms<span class="op">=</span><span class="dv">4</span>)</span>
-<span id="d3-cb3-4"><a href="#d3-cb3-4" aria-hidden="true" tabindex="-1"></a>    write_canonical_json(tmp_path <span class="op">/</span> <span class="st">&quot;m.json&quot;</span>, m)</span>
-<span id="d3-cb3-5"><a href="#d3-cb3-5" aria-hidden="true" tabindex="-1"></a>    text <span class="op">=</span> (tmp_path <span class="op">/</span> <span class="st">&quot;m.json&quot;</span>).read_text(encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>)</span>
-<span id="d3-cb3-6"><a href="#d3-cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> text.endswith(<span class="st">&quot;}</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="kw">and</span> <span class="st">&quot;utc&quot;</span> <span class="kw">not</span> <span class="kw">in</span> text.lower()</span>
-<span id="d3-cb3-7"><a href="#d3-cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> json.loads(text)[<span class="st">&quot;images&quot;</span>] <span class="op">==</span> {<span class="st">&quot;accepted&quot;</span>: <span class="dv">3</span>, <span class="st">&quot;succeeded&quot;</span>: <span class="dv">2</span>, <span class="st">&quot;failed&quot;</span>: <span class="dv">1</span>}</span>
-<span id="d3-cb3-8"><a href="#d3-cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;embeddings&quot;</span> <span class="kw">not</span> <span class="kw">in</span> m</span>
-<span id="d3-cb3-9"><a href="#d3-cb3-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb3-10"><a href="#d3-cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_schema_names_producer_and_unit(tiny_mirror):</span>
-<span id="d3-cb3-11"><a href="#d3-cb3-11" aria-hidden="true" tabindex="-1"></a>    schema <span class="op">=</span> build_output_schema({<span class="st">&quot;measurements&quot;</span>: tiny_mirror})</span>
-<span id="d3-cb3-12"><a href="#d3-cb3-12" aria-hidden="true" tabindex="-1"></a>    area <span class="op">=</span> <span class="bu">next</span>(c <span class="cf">for</span> c <span class="kw">in</span> schema[<span class="st">&quot;tables&quot;</span>][<span class="st">&quot;measurements&quot;</span>] <span class="cf">if</span> c[<span class="st">&quot;name&quot;</span>] <span class="op">==</span> <span class="st">&quot;Size_Area&quot;</span>)</span>
-<span id="d3-cb3-13"><a href="#d3-cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> area[<span class="st">&quot;producer&quot;</span>] <span class="op">==</span> <span class="st">&quot;MeasureSize&quot;</span> <span class="kw">and</span> area[<span class="st">&quot;unit&quot;</span>] <span class="op">==</span> <span class="bu">str</span>(UNITS.PX2)</span>
-<span id="d3-cb3-14"><a href="#d3-cb3-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb3-15"><a href="#d3-cb3-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_finalize_writes_both_and_the_proof_covers_them(finished_tiny_run):</span>
-<span id="d3-cb3-16"><a href="#d3-cb3-16" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> finished_tiny_run <span class="op">/</span> <span class="st">&quot;deliverables&quot;</span></span>
-<span id="d3-cb3-17"><a href="#d3-cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (d <span class="op">/</span> <span class="st">&quot;metrics.json&quot;</span>).is_file() <span class="kw">and</span> (d <span class="op">/</span> <span class="st">&quot;schema.json&quot;</span>).is_file()</span>
-<span id="d3-cb3-18"><a href="#d3-cb3-18" aria-hidden="true" tabindex="-1"></a>    (d <span class="op">/</span> <span class="st">&quot;metrics.json&quot;</span>).write_text(<span class="st">&quot;</span><span class="sc">{}</span><span class="ch">\n</span><span class="st">&quot;</span>)</span>
-<span id="d3-cb3-19"><a href="#d3-cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_refusal(finished_tiny_run) <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span></span></code></pre></div>
+<div class="sourceCode" id="d3-cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb4-1"><a href="#d3-cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_metrics_has_no_wall_clock_and_is_canonical(tmp_path):</span>
+<span id="d3-cb4-2"><a href="#d3-cb4-2" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> build_run_metrics(phenotypic_version<span class="op">=</span><span class="st">&quot;0.21.0&quot;</span>, pipeline_sha256<span class="op">=</span><span class="st">&quot;a&quot;</span> <span class="op">*</span> <span class="dv">64</span>, accepted<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="d3-cb4-3"><a href="#d3-cb4-3" aria-hidden="true" tabindex="-1"></a>                          succeeded<span class="op">=</span><span class="dv">2</span>, failed<span class="op">=</span><span class="dv">1</span>, measured_objects<span class="op">=</span><span class="dv">180</span>, metadata_phantoms<span class="op">=</span><span class="dv">4</span>)</span>
+<span id="d3-cb4-4"><a href="#d3-cb4-4" aria-hidden="true" tabindex="-1"></a>    write_canonical_json(tmp_path <span class="op">/</span> <span class="st">&quot;m.json&quot;</span>, m)</span>
+<span id="d3-cb4-5"><a href="#d3-cb4-5" aria-hidden="true" tabindex="-1"></a>    text <span class="op">=</span> (tmp_path <span class="op">/</span> <span class="st">&quot;m.json&quot;</span>).read_text(encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>)</span>
+<span id="d3-cb4-6"><a href="#d3-cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> text.endswith(<span class="st">&quot;}</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="kw">and</span> <span class="st">&quot;utc&quot;</span> <span class="kw">not</span> <span class="kw">in</span> text.lower()</span>
+<span id="d3-cb4-7"><a href="#d3-cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> json.loads(text)[<span class="st">&quot;images&quot;</span>] <span class="op">==</span> {<span class="st">&quot;accepted&quot;</span>: <span class="dv">3</span>, <span class="st">&quot;succeeded&quot;</span>: <span class="dv">2</span>, <span class="st">&quot;failed&quot;</span>: <span class="dv">1</span>}</span>
+<span id="d3-cb4-8"><a href="#d3-cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;embeddings&quot;</span> <span class="kw">not</span> <span class="kw">in</span> m</span>
+<span id="d3-cb4-9"><a href="#d3-cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb4-10"><a href="#d3-cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_schema_names_producer_and_unit(tiny_mirror):</span>
+<span id="d3-cb4-11"><a href="#d3-cb4-11" aria-hidden="true" tabindex="-1"></a>    schema <span class="op">=</span> build_output_schema({<span class="st">&quot;measurements&quot;</span>: tiny_mirror})</span>
+<span id="d3-cb4-12"><a href="#d3-cb4-12" aria-hidden="true" tabindex="-1"></a>    area <span class="op">=</span> <span class="bu">next</span>(c <span class="cf">for</span> c <span class="kw">in</span> schema[<span class="st">&quot;tables&quot;</span>][<span class="st">&quot;measurements&quot;</span>] <span class="cf">if</span> c[<span class="st">&quot;name&quot;</span>] <span class="op">==</span> <span class="st">&quot;Size_Area&quot;</span>)</span>
+<span id="d3-cb4-13"><a href="#d3-cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> area[<span class="st">&quot;producer&quot;</span>] <span class="op">==</span> <span class="st">&quot;MeasureSize&quot;</span> <span class="kw">and</span> area[<span class="st">&quot;unit&quot;</span>] <span class="op">==</span> <span class="bu">str</span>(UNITS.PX2)</span>
+<span id="d3-cb4-14"><a href="#d3-cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb4-15"><a href="#d3-cb4-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_finalize_writes_both_and_the_proof_covers_them(finished_tiny_run):</span>
+<span id="d3-cb4-16"><a href="#d3-cb4-16" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> finished_tiny_run <span class="op">/</span> <span class="st">&quot;deliverables&quot;</span></span>
+<span id="d3-cb4-17"><a href="#d3-cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (d <span class="op">/</span> <span class="st">&quot;metrics.json&quot;</span>).is_file() <span class="kw">and</span> (d <span class="op">/</span> <span class="st">&quot;schema.json&quot;</span>).is_file()</span>
+<span id="d3-cb4-18"><a href="#d3-cb4-18" aria-hidden="true" tabindex="-1"></a>    (d <span class="op">/</span> <span class="st">&quot;metrics.json&quot;</span>).write_text(<span class="st">&quot;</span><span class="sc">{}</span><span class="ch">\n</span><span class="st">&quot;</span>)</span>
+<span id="d3-cb4-19"><a href="#d3-cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_refusal(finished_tiny_run) <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span></span></code></pre></div>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run them and confirm they fail.</strong></li>
@@ -1442,20 +1512,20 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><input type="checkbox" disabled="" />
 <strong>Step 1: Write the test</strong></li>
 </ul>
-<div class="sourceCode" id="d3-cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb4-1"><a href="#d3-cb4-1" aria-hidden="true" tabindex="-1"></a>STABLE <span class="op">=</span> (<span class="st">&quot;measurements.parquet&quot;</span>, <span class="st">&quot;measurements.tsv&quot;</span>, <span class="st">&quot;master_measurements.parquet&quot;</span>,</span>
-<span id="d3-cb4-2"><a href="#d3-cb4-2" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;metrics.json&quot;</span>, <span class="st">&quot;schema.json&quot;</span>)</span>
-<span id="d3-cb4-3"><a href="#d3-cb4-3" aria-hidden="true" tabindex="-1"></a>STABLE_DIRS <span class="op">=</span> (<span class="st">&quot;measurements_by_feature&quot;</span>, <span class="st">&quot;measurements_by_category&quot;</span>, <span class="st">&quot;embeddings&quot;</span>)</span>
-<span id="d3-cb4-4"><a href="#d3-cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb4-5"><a href="#d3-cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _digests(out):</span>
-<span id="d3-cb4-6"><a href="#d3-cb4-6" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> out <span class="op">/</span> <span class="st">&quot;deliverables&quot;</span></span>
-<span id="d3-cb4-7"><a href="#d3-cb4-7" aria-hidden="true" tabindex="-1"></a>    files <span class="op">=</span> [d <span class="op">/</span> n <span class="cf">for</span> n <span class="kw">in</span> STABLE <span class="cf">if</span> (d <span class="op">/</span> n).exists()]</span>
-<span id="d3-cb4-8"><a href="#d3-cb4-8" aria-hidden="true" tabindex="-1"></a>    files <span class="op">+=</span> [p <span class="cf">for</span> sub <span class="kw">in</span> STABLE_DIRS <span class="cf">for</span> p <span class="kw">in</span> <span class="bu">sorted</span>((d <span class="op">/</span> sub).rglob(<span class="st">&quot;*&quot;</span>)) <span class="cf">if</span> p.is_file()]</span>
-<span id="d3-cb4-9"><a href="#d3-cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="bu">str</span>(p.relative_to(d)): file_sha256(p) <span class="cf">for</span> p <span class="kw">in</span> files}</span>
-<span id="d3-cb4-10"><a href="#d3-cb4-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb4-11"><a href="#d3-cb4-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_identical_runs_give_identical_deliverables(tiny_inputs, tmp_path):</span>
-<span id="d3-cb4-12"><a href="#d3-cb4-12" aria-hidden="true" tabindex="-1"></a>    a, b <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;a&quot;</span>, tmp_path <span class="op">/</span> <span class="st">&quot;b&quot;</span></span>
-<span id="d3-cb4-13"><a href="#d3-cb4-13" aria-hidden="true" tabindex="-1"></a>    run_cli(tiny_inputs, a)<span class="op">;</span> run_cli(tiny_inputs, b)</span>
-<span id="d3-cb4-14"><a href="#d3-cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _digests(a) <span class="op">==</span> _digests(b)</span></code></pre></div>
+<div class="sourceCode" id="d3-cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb5-1"><a href="#d3-cb5-1" aria-hidden="true" tabindex="-1"></a>STABLE <span class="op">=</span> (<span class="st">&quot;measurements.parquet&quot;</span>, <span class="st">&quot;measurements.tsv&quot;</span>, <span class="st">&quot;master_measurements.parquet&quot;</span>,</span>
+<span id="d3-cb5-2"><a href="#d3-cb5-2" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;metrics.json&quot;</span>, <span class="st">&quot;schema.json&quot;</span>)</span>
+<span id="d3-cb5-3"><a href="#d3-cb5-3" aria-hidden="true" tabindex="-1"></a>STABLE_DIRS <span class="op">=</span> (<span class="st">&quot;measurements_by_feature&quot;</span>, <span class="st">&quot;measurements_by_category&quot;</span>, <span class="st">&quot;embeddings&quot;</span>)</span>
+<span id="d3-cb5-4"><a href="#d3-cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb5-5"><a href="#d3-cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> _digests(out):</span>
+<span id="d3-cb5-6"><a href="#d3-cb5-6" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> out <span class="op">/</span> <span class="st">&quot;deliverables&quot;</span></span>
+<span id="d3-cb5-7"><a href="#d3-cb5-7" aria-hidden="true" tabindex="-1"></a>    files <span class="op">=</span> [d <span class="op">/</span> n <span class="cf">for</span> n <span class="kw">in</span> STABLE <span class="cf">if</span> (d <span class="op">/</span> n).exists()]</span>
+<span id="d3-cb5-8"><a href="#d3-cb5-8" aria-hidden="true" tabindex="-1"></a>    files <span class="op">+=</span> [p <span class="cf">for</span> sub <span class="kw">in</span> STABLE_DIRS <span class="cf">for</span> p <span class="kw">in</span> <span class="bu">sorted</span>((d <span class="op">/</span> sub).rglob(<span class="st">&quot;*&quot;</span>)) <span class="cf">if</span> p.is_file()]</span>
+<span id="d3-cb5-9"><a href="#d3-cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="bu">str</span>(p.relative_to(d)): file_sha256(p) <span class="cf">for</span> p <span class="kw">in</span> files}</span>
+<span id="d3-cb5-10"><a href="#d3-cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb5-11"><a href="#d3-cb5-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_identical_runs_give_identical_deliverables(tiny_inputs, tmp_path):</span>
+<span id="d3-cb5-12"><a href="#d3-cb5-12" aria-hidden="true" tabindex="-1"></a>    a, b <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;a&quot;</span>, tmp_path <span class="op">/</span> <span class="st">&quot;b&quot;</span></span>
+<span id="d3-cb5-13"><a href="#d3-cb5-13" aria-hidden="true" tabindex="-1"></a>    run_cli(tiny_inputs, a)<span class="op">;</span> run_cli(tiny_inputs, b)</span>
+<span id="d3-cb5-14"><a href="#d3-cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> _digests(a) <span class="op">==</span> _digests(b)</span></code></pre></div>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run it.</strong> Expect a failure listing the differing files, or a pass. A pass needs no code change; keep the test.</li>
@@ -1490,35 +1560,35 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><input type="checkbox" disabled="" />
 <strong>Step 1: Write the failing tests</strong></li>
 </ul>
-<div class="sourceCode" id="d3-cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb5-1"><a href="#d3-cb5-1" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>((<span class="st">&quot;value&quot;</span>, <span class="st">&quot;warns&quot;</span>), [(<span class="st">&quot;hardlink&quot;</span>, <span class="va">True</span>), (<span class="st">&quot;symlink,copy&quot;</span>, <span class="va">True</span>),</span>
-<span id="d3-cb5-2"><a href="#d3-cb5-2" aria-hidden="true" tabindex="-1"></a>                                              (<span class="st">&quot;reflink,copy&quot;</span>, <span class="va">False</span>), (<span class="va">None</span>, <span class="va">False</span>)])</span>
-<span id="d3-cb5-3"><a href="#d3-cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_linked_cache_warns(tmp_path, value, warns):</span>
-<span id="d3-cb5-4"><a href="#d3-cb5-4" aria-hidden="true" tabindex="-1"></a>    make_dvc_repo(tmp_path, cache_type<span class="op">=</span>value)</span>
-<span id="d3-cb5-5"><a href="#d3-cb5-5" aria-hidden="true" tabindex="-1"></a>    findings <span class="op">=</span> run_preflight(output_dir<span class="op">=</span>tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)</span>
-<span id="d3-cb5-6"><a href="#d3-cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">any</span>(f.code <span class="op">==</span> <span class="st">&quot;PF-DVC-LINKED-CACHE&quot;</span> <span class="cf">for</span> f <span class="kw">in</span> findings) <span class="kw">is</span> warns</span>
-<span id="d3-cb5-7"><a href="#d3-cb5-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb5-8"><a href="#d3-cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_config_local_overrides_config(tmp_path):</span>
-<span id="d3-cb5-9"><a href="#d3-cb5-9" aria-hidden="true" tabindex="-1"></a>    make_dvc_repo(tmp_path, cache_type<span class="op">=</span><span class="st">&quot;reflink,copy&quot;</span>, local_type<span class="op">=</span><span class="st">&quot;hardlink&quot;</span>)</span>
-<span id="d3-cb5-10"><a href="#d3-cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> find_dvc_cache_type(tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>) <span class="op">==</span> <span class="st">&quot;hardlink&quot;</span></span>
-<span id="d3-cb5-11"><a href="#d3-cb5-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb5-12"><a href="#d3-cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_full_and_measure_write_only_the_three_outs(tiny_inputs, tmp_path):     <span class="co"># C1</span></span>
-<span id="d3-cb5-13"><a href="#d3-cb5-13" aria-hidden="true" tabindex="-1"></a>    run_cli(tiny_inputs, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)<span class="op">;</span> run_cli(<span class="va">None</span>, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>, mode<span class="op">=</span><span class="st">&quot;measure&quot;</span>)</span>
-<span id="d3-cb5-14"><a href="#d3-cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> {p.name <span class="cf">for</span> p <span class="kw">in</span> (tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>).iterdir()} <span class="op">==</span> {<span class="st">&quot;deliverables&quot;</span>, <span class="st">&quot;results&quot;</span>, <span class="st">&quot;.phenotypic&quot;</span>}</span>
-<span id="d3-cb5-15"><a href="#d3-cb5-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb5-16"><a href="#d3-cb5-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_outs_exist_when_every_image_fails(all_bad_inputs, tmp_path):        <span class="co"># C14</span></span>
-<span id="d3-cb5-17"><a href="#d3-cb5-17" aria-hidden="true" tabindex="-1"></a>    run_cli(all_bad_inputs, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)</span>
-<span id="d3-cb5-18"><a href="#d3-cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">all</span>((tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span> <span class="op">/</span> n).is_dir() <span class="cf">for</span> n <span class="kw">in</span> (<span class="st">&quot;deliverables&quot;</span>, <span class="st">&quot;results&quot;</span>, <span class="st">&quot;.phenotypic&quot;</span>))</span>
-<span id="d3-cb5-19"><a href="#d3-cb5-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb5-20"><a href="#d3-cb5-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_restored_liveness_state_fails_safe(finished_tiny_run, monkeypatch):    <span class="co"># C13</span></span>
-<span id="d3-cb5-21"><a href="#d3-cb5-21" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> finished_tiny_run</span>
-<span id="d3-cb5-22"><a href="#d3-cb5-22" aria-hidden="true" tabindex="-1"></a>    initialize_slurm_lifecycle(out, generation<span class="op">=</span><span class="st">&quot;g-old&quot;</span>, mode<span class="op">=</span><span class="st">&quot;full&quot;</span>)         <span class="co"># a restored `active: true` fence</span></span>
-<span id="d3-cb5-23"><a href="#d3-cb5-23" aria-hidden="true" tabindex="-1"></a>    append_lifecycle_entry(out, generation<span class="op">=</span><span class="st">&quot;g-old&quot;</span>, token<span class="op">=</span><span class="st">&quot;t&quot;</span>, role<span class="op">=</span><span class="st">&quot;finalizer&quot;</span>,</span>
-<span id="d3-cb5-24"><a href="#d3-cb5-24" aria-hidden="true" tabindex="-1"></a>                           status<span class="op">=</span><span class="st">&quot;submitted&quot;</span>, job_id<span class="op">=</span><span class="st">&quot;77&quot;</span>)</span>
-<span id="d3-cb5-25"><a href="#d3-cb5-25" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_staged_orchestration, <span class="st">&quot;scheduler_job_is_active&quot;</span>, <span class="kw">lambda</span> job_id: <span class="va">False</span>)</span>
-<span id="d3-cb5-26"><a href="#d3-cb5-26" aria-hidden="true" tabindex="-1"></a>    write_owner_record(out, pid<span class="op">=</span>dead_pid())                                    <span class="co"># gui_launch_owner.json, pid gone</span></span>
-<span id="d3-cb5-27"><a href="#d3-cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="kw">not</span> live_slurm_job_ids(out)</span>
-<span id="d3-cb5-28"><a href="#d3-cb5-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>).completion <span class="op">!=</span> <span class="st">&quot;active&quot;</span></span>
-<span id="d3-cb5-29"><a href="#d3-cb5-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_cli(<span class="va">None</span>, out, mode<span class="op">=</span><span class="st">&quot;recompile&quot;</span>).exit_code <span class="op">==</span> RunExitCode.COMPLETE   <span class="co"># the guard lets it run</span></span></code></pre></div>
+<div class="sourceCode" id="d3-cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb6-1"><a href="#d3-cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>((<span class="st">&quot;value&quot;</span>, <span class="st">&quot;warns&quot;</span>), [(<span class="st">&quot;hardlink&quot;</span>, <span class="va">True</span>), (<span class="st">&quot;symlink,copy&quot;</span>, <span class="va">True</span>),</span>
+<span id="d3-cb6-2"><a href="#d3-cb6-2" aria-hidden="true" tabindex="-1"></a>                                              (<span class="st">&quot;reflink,copy&quot;</span>, <span class="va">False</span>), (<span class="va">None</span>, <span class="va">False</span>)])</span>
+<span id="d3-cb6-3"><a href="#d3-cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_linked_cache_warns(tmp_path, value, warns):</span>
+<span id="d3-cb6-4"><a href="#d3-cb6-4" aria-hidden="true" tabindex="-1"></a>    make_dvc_repo(tmp_path, cache_type<span class="op">=</span>value)</span>
+<span id="d3-cb6-5"><a href="#d3-cb6-5" aria-hidden="true" tabindex="-1"></a>    findings <span class="op">=</span> run_preflight(output_dir<span class="op">=</span>tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)</span>
+<span id="d3-cb6-6"><a href="#d3-cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">any</span>(f.code <span class="op">==</span> <span class="st">&quot;PF-DVC-LINKED-CACHE&quot;</span> <span class="cf">for</span> f <span class="kw">in</span> findings) <span class="kw">is</span> warns</span>
+<span id="d3-cb6-7"><a href="#d3-cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb6-8"><a href="#d3-cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_config_local_overrides_config(tmp_path):</span>
+<span id="d3-cb6-9"><a href="#d3-cb6-9" aria-hidden="true" tabindex="-1"></a>    make_dvc_repo(tmp_path, cache_type<span class="op">=</span><span class="st">&quot;reflink,copy&quot;</span>, local_type<span class="op">=</span><span class="st">&quot;hardlink&quot;</span>)</span>
+<span id="d3-cb6-10"><a href="#d3-cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> find_dvc_cache_type(tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>) <span class="op">==</span> <span class="st">&quot;hardlink&quot;</span></span>
+<span id="d3-cb6-11"><a href="#d3-cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb6-12"><a href="#d3-cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_full_and_measure_write_only_the_three_outs(tiny_inputs, tmp_path):     <span class="co"># C1</span></span>
+<span id="d3-cb6-13"><a href="#d3-cb6-13" aria-hidden="true" tabindex="-1"></a>    run_cli(tiny_inputs, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)<span class="op">;</span> run_cli(<span class="va">None</span>, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>, mode<span class="op">=</span><span class="st">&quot;measure&quot;</span>)</span>
+<span id="d3-cb6-14"><a href="#d3-cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> {p.name <span class="cf">for</span> p <span class="kw">in</span> (tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>).iterdir()} <span class="op">==</span> {<span class="st">&quot;deliverables&quot;</span>, <span class="st">&quot;results&quot;</span>, <span class="st">&quot;.phenotypic&quot;</span>}</span>
+<span id="d3-cb6-15"><a href="#d3-cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb6-16"><a href="#d3-cb6-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_outs_exist_when_every_image_fails(all_bad_inputs, tmp_path):        <span class="co"># C14</span></span>
+<span id="d3-cb6-17"><a href="#d3-cb6-17" aria-hidden="true" tabindex="-1"></a>    run_cli(all_bad_inputs, tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span>)</span>
+<span id="d3-cb6-18"><a href="#d3-cb6-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">all</span>((tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span> <span class="op">/</span> n).is_dir() <span class="cf">for</span> n <span class="kw">in</span> (<span class="st">&quot;deliverables&quot;</span>, <span class="st">&quot;results&quot;</span>, <span class="st">&quot;.phenotypic&quot;</span>))</span>
+<span id="d3-cb6-19"><a href="#d3-cb6-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb6-20"><a href="#d3-cb6-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_restored_liveness_state_fails_safe(finished_tiny_run, monkeypatch):    <span class="co"># C13</span></span>
+<span id="d3-cb6-21"><a href="#d3-cb6-21" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> finished_tiny_run</span>
+<span id="d3-cb6-22"><a href="#d3-cb6-22" aria-hidden="true" tabindex="-1"></a>    initialize_slurm_lifecycle(out, generation<span class="op">=</span><span class="st">&quot;g-old&quot;</span>, mode<span class="op">=</span><span class="st">&quot;full&quot;</span>)         <span class="co"># a restored `active: true` fence</span></span>
+<span id="d3-cb6-23"><a href="#d3-cb6-23" aria-hidden="true" tabindex="-1"></a>    append_lifecycle_entry(out, generation<span class="op">=</span><span class="st">&quot;g-old&quot;</span>, token<span class="op">=</span><span class="st">&quot;t&quot;</span>, role<span class="op">=</span><span class="st">&quot;finalizer&quot;</span>,</span>
+<span id="d3-cb6-24"><a href="#d3-cb6-24" aria-hidden="true" tabindex="-1"></a>                           status<span class="op">=</span><span class="st">&quot;submitted&quot;</span>, job_id<span class="op">=</span><span class="st">&quot;77&quot;</span>)</span>
+<span id="d3-cb6-25"><a href="#d3-cb6-25" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(_cli_staged_orchestration, <span class="st">&quot;scheduler_job_is_active&quot;</span>, <span class="kw">lambda</span> job_id: <span class="va">False</span>)</span>
+<span id="d3-cb6-26"><a href="#d3-cb6-26" aria-hidden="true" tabindex="-1"></a>    write_owner_record(out, pid<span class="op">=</span>dead_pid())                                    <span class="co"># gui_launch_owner.json, pid gone</span></span>
+<span id="d3-cb6-27"><a href="#d3-cb6-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="kw">not</span> live_slurm_job_ids(out)</span>
+<span id="d3-cb6-28"><a href="#d3-cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> resolve_run_state(out, depth<span class="op">=</span><span class="st">&quot;deep&quot;</span>).completion <span class="op">!=</span> <span class="st">&quot;active&quot;</span></span>
+<span id="d3-cb6-29"><a href="#d3-cb6-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run_cli(<span class="va">None</span>, out, mode<span class="op">=</span><span class="st">&quot;recompile&quot;</span>).exit_code <span class="op">==</span> RunExitCode.COMPLETE   <span class="co"># the guard lets it run</span></span></code></pre></div>
 <p><code>write_owner_record</code> writes <code>gui_launch_owner_path(out)</code> in the shape <code>RunRegistry._persist_record_locked</code> writes (<code>_gui/shell/_runs_registry.py:1481</code>); <code>dead_pid()</code> returns the pid of a child process that has exited. Both are module-local.</p>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
@@ -1552,7 +1622,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>top-level <code>metrics: [out/deliverables/metrics.json]</code></li>
 <li><code>plots</code> over <code>out/deliverables/measurements.tsv</code></li>
 </ul></li>
-<li>The SLURM variant. <code>cmd</code> is a list: submit, then <code>phenotypic-wait --output out</code>.
+<li>The SLURM variant. <code>cmd</code> is one command: <code>phenotypic-wait --output out -- python -m phenotypic … -o out --slurm …</code> (Task 2a). The two-command form with <code>; test $? -eq 4</code> is shown as an alternative for a submit run separately.
 <ul>
 <li>The <code>sbatch</code> line that runs <code>dvc repro</code> uses <code>--partition=intel --cpus-per-task=1 --mem=4G --time=7-00:00:00</code>, and the page says why: head nodes kill long processes.</li>
 <li>The waiter refreshes <code>.phenotypic/verification_cache.json</code> as it polls; that is its only write, and it is harmless.</li>
@@ -1587,7 +1657,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Commit.</strong></li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d4-top">P3 · Per-pipeline tables (`tables/` v2)</h2><div class="meta"><p><strong>Spec:</strong> Part D (D1–D10)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p3-tables-v2.md</div><p><strong>Goal:</strong> Each store holds one folder per measuring pipeline, <code>tables/&lt;n&gt;-&lt;sha12&gt;/</code>, and every writer carries the other folders across.</p>
+</div><div class="docsrc">p3-tables-v2.md</div><p><strong>Goal:</strong> Each store holds one folder per measuring pipeline, <code>tables/&lt;n&gt;-&lt;sha12&gt;/</code>, and every writer carries the other folders across.</p>
 <p><strong>Approach:</strong> All 27 modules that touch today's flat layout reach a run folder through one resolver. That makes the change a mechanical substitution at each call site, not 27 separate path joins. v1 stores are converted by <code>--mode migrate</code>, and forward modes refuse them.</p>
 <p><strong>Folder numbers</strong> are a store-local call-order counter (spec D2). A new folder gets <code>1 +</code> the highest number among the store's run folders and its <code>upstream</code> entries. The journal's <code>sequence</code> is never used: it is <code>len(applications) + 1</code> of one image's journal (<code>_core/_provenance.py:374</code>), and a forward run builds that journal from its input (<code>_cli_process_single.py:300-321</code>), so over a raw input it is always <code>1</code>.</p>
 <p><strong>Which folder a writer owns</strong> (spec D6): an existing folder with the writer's pipeline sha256 is replaced, keeping its number, with every file rewritten as a new inode. Otherwise the writer adds a folder with the next number. A write with no known sha replaces the highest-numbered <code>-unknown</code> folder.</p>
@@ -2072,7 +2142,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Commit.</strong> Then run the P3 phase gate once: Task 4 Step 4's surface, plus <code>tests/integration/cli</code>. The red GUI set equals the README's P0 and P3 rows.</li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d5-top">P4 · `MeasureDinoEmbedding`</h2><div class="meta"><p><strong>Spec:</strong> Part E (E1–E3a, E5)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p4-measure-dino-embedding.md</div><p><strong>Goal:</strong> A measurer that embeds detected colony crops, or the cells of a user-set per-rig grid, with DINOv2. It writes each as its own table under the producing pipeline's <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/{crops,grid}/</code>, with its own deliverable. It runs on CPU in v1.</p>
+</div><div class="docsrc">p4-measure-dino-embedding.md</div><p><strong>Goal:</strong> A measurer that embeds detected colony crops, or the cells of a user-set per-rig grid, with DINOv2. It writes each as its own table under the producing pipeline's <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/{crops,grid}/</code>, with its own deliverable. It runs on CPU in v1.</p>
 <p><strong>Depends on:</strong> P3, and P2 T3 for Task 4 (<code>build_run_metrics(embeddings=)</code>).</p>
 <h3 id="d5-task-1-measureembedding-and-pipeline-routing">Task 1: <code>MeasureEmbedding</code> and pipeline routing</h3>
 <p><strong>Files:</strong></p>
@@ -2408,7 +2478,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Commit.</strong></li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d6-top">P5 · Process-mode measurements, in place, and the AutoConvertRaw-GC rollout</h2><div class="meta"><p><strong>Spec:</strong> Part E (E4, E6, E7)</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p5-process-measurements-acr.md</div><p><strong>Goal:</strong> <code>--mode process</code> runs a pipeline's measurers that need no detected objects, and stores their tables in each store's own transaction. With <code>--output</code> equal to <code>--input</code>, it adds the pipeline's run folder to the input stores in place, without rewriting pixels. Then AutoConvertRaw-GC adds grid embeddings right after calibration and denoising.</p>
+</div><div class="docsrc">p5-process-measurements-acr.md</div><p><strong>Goal:</strong> <code>--mode process</code> runs a pipeline's measurers that need no detected objects, and stores their tables in each store's own transaction. With <code>--output</code> equal to <code>--input</code>, it adds the pipeline's run folder to the input stores in place, without rewriting pixels. Then AutoConvertRaw-GC adds grid embeddings right after calibration and denoising.</p>
 <h3 id="d6-task-1-process-mode-admits-meas-and-refuses-what-it-cannot-store">Task 1: Process mode admits <code>meas</code>, and refuses what it cannot store</h3>
 <p><strong>Files:</strong></p>
 <ul>
@@ -2743,5 +2813,5 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <strong>Step 5: Ask the user</strong> whether to backfill existing done images with <code>--reprocess-changed</code>. Every image becomes "changed", because the pipeline bytes changed, and the backfill reruns calibration and BM3D denoise. Report the measured per-image cost when asking.</li>
 </ul>
 </section></main>
-<footer>Rendered from docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/README.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p0-config-suffix-flip.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p1-csv-to-tsv.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p2-dvc-run-contract.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p3-tables-v2.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p4-measure-dino-embedding.md, docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/p5-process-measurements-acr.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
+<footer>Rendered from README.md, p0-config-suffix-flip.md, p1-csv-to-tsv.md, p2-dvc-run-contract.md, p3-tables-v2.md, p4-measure-dino-embedding.md, p5-process-measurements-acr.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
 </div>

@@ -263,9 +263,84 @@ def test_an_unstamped_aggregate_proof_never_counts(...): ...
 - [ ] **Step 3: Implement.**
   - Each poll prints one line: `completion`, the live-job groups, and the
     elapsed time.
-  - The waiter never aggregates, publishes, submits or cancels. Its only write
-    is the verification cache `resolve_run_state` already refreshes.
+  - The waiter never aggregates, publishes or cancels. Its only write is the
+    verification cache `resolve_run_state` already refreshes. (Task 2a adds the
+    launch form; the waiter still publishes nothing.)
 - [ ] **Step 4: Run the tests and the startup-import guard.** They pass.
+- [ ] **Step 5: Commit.**
+
+### Task 2a: `phenotypic-wait -- <submit>` (launch form)
+
+Added 2026-11-13 after Task 6 found that DVC aborts a stage on the submit's exit
+`4`. The user chose the one-command stage (spec C3, "Launch").
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_wait.py`
+- Modify: `docs/source/how_to/pages/dvc.md` (the SLURM `dvc.yaml` becomes one
+  `cmd`; keep the `; test $? -eq 4` two-command form as a short alternative)
+- Modify: `src/phenotypic/_cli/CLAUDE.md`, wherever it documents `phenotypic-wait`
+- Test: `tests/unit/cli/test_cli_wait.py`
+
+**Interfaces:**
+- Consumes: `wait_for_run` (Task 2), `RunExitCode`
+- Produces:
+  - `_run_submit(argv: Sequence[str]) -> int`: module-level seam;
+    `subprocess.run(list(argv), check=False).returncode`, mapping a negative
+    return (killed by signal N) to `128 + N`. No shell.
+  - `check_submit_argv(argv: Sequence[str], output_dir: Path) -> None`: raises
+    `click.UsageError` for an empty argv, a `--mode migrate` / `--mode=migrate`
+    child, or a child `-o X` / `--output X` / `--output=X` whose
+    `Path(X).resolve()` differs from `output_dir.resolve()`. A child with no
+    output flag passes.
+  - `main()`: a click command with `context_settings={"ignore_unknown_options": True}`
+    and a trailing `nargs=-1, type=click.UNPROCESSED` argument taking everything
+    after `--`. With no submit argv it behaves exactly as Task 2.
+
+Order inside `main`: check the argv (usage error before anything runs) → run the
+submit → child `4` → `wait_for_run(...)`; child anything else → exit with that
+code, never polling.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+def test_submit_exit_4_then_waits(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: calls.append(list(argv)) or 4)
+    monkeypatch.setattr(_cli_wait, "wait_for_run", lambda d, **k: RunExitCode.COMPLETE_WITH_FAILURES)
+    r = CliRunner().invoke(main, ["--output", str(tmp_path), "--", "python", "-m", "phenotypic",
+                                  "-o", str(tmp_path), "--slurm", "partition=intel"])
+    assert r.exit_code == 3 and calls == [["python", "-m", "phenotypic", "-o", str(tmp_path),
+                                           "--slurm", "partition=intel"]]
+
+@pytest.mark.parametrize("code", [0, 1, 2, 3, 130])
+def test_any_other_submit_exit_is_returned_without_polling(monkeypatch, tmp_path, code):
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: code)
+    monkeypatch.setattr(_cli_wait, "wait_for_run", lambda *a, **k: pytest.fail("polled"))
+    assert CliRunner().invoke(main, ["-o", str(tmp_path), "--", "true"]).exit_code == code
+
+def test_a_child_naming_a_different_output_is_refused_before_launch(monkeypatch, tmp_path):
+    monkeypatch.setattr(_cli_wait, "_run_submit", lambda argv: pytest.fail("launched"))
+    r = CliRunner().invoke(main, ["-o", str(tmp_path / "a"), "--", "python", "-m", "phenotypic",
+                                  "--output=" + str(tmp_path / "b")])
+    assert r.exit_code == 2
+
+def test_a_relative_child_output_naming_the_same_dir_is_accepted(...): ...   # cwd-relative "out" vs absolute
+def test_a_migrate_child_is_refused(...): ...                                 # --mode migrate and --mode=migrate → 2
+def test_an_empty_command_after_dashdash_is_refused(...): ...                 # → 2
+def test_without_dashdash_it_only_waits(...): ...                             # _run_submit never called
+def test_run_submit_maps_a_signal_to_128_plus_n(tmp_path):
+    assert _cli_wait._run_submit([sys.executable, "-c", "import os,signal; os.kill(os.getpid(), signal.SIGTERM)"]) == 128 + 15
+def test_run_submit_passes_through_a_real_exit_code():
+    assert _cli_wait._run_submit([sys.executable, "-c", "raise SystemExit(4)"]) == 4
+```
+
+- [ ] **Step 2: Run them and confirm they fail.**
+- [ ] **Step 3: Implement.** The startup-import guard still holds: `subprocess`
+  is stdlib, and `--help` imports nothing new.
+- [ ] **Step 4: Run `tests/unit/cli/test_cli_wait.py` and
+  `tests/unit/ci/test_startup_imports.py`.** They pass. A DVC 3.67.1 check in a
+  scratch repo (as in Task 6) shows `dvc repro` succeeding through a submit
+  stub that exits `4` and a run that publishes.
 - [ ] **Step 5: Commit.**
 
 ### Task 3: `metrics.json` and `schema.json`
@@ -474,7 +549,10 @@ The page covers, each with a copy-ready block:
    - three `outs`, each `persist: true`
    - top-level `metrics: [out/deliverables/metrics.json]`
    - `plots` over `out/deliverables/measurements.tsv`
-2. The SLURM variant. `cmd` is a list: submit, then `phenotypic-wait --output out`.
+2. The SLURM variant. `cmd` is one command:
+   `phenotypic-wait --output out -- python -m phenotypic … -o out --slurm …`
+   (Task 2a). The two-command form with `; test $? -eq 4` is shown as an
+   alternative for a submit run separately.
    - The `sbatch` line that runs `dvc repro` uses `--partition=intel
      --cpus-per-task=1 --mem=4G --time=7-00:00:00`, and the page says why: head
      nodes kill long processes.

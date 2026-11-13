@@ -427,11 +427,19 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p>Add a regression test that no PhenoTypic path writes anything at the output root outside these three. Metrics and plots are declared in <code>dvc.yaml</code>'s <strong>top-level</strong> <code>metrics:</code>/<code>plots:</code> sections. Those may point inside an out (<code>deliverables/metrics.json</code>), so they create no overlapping outputs (DVC docs, <code>start/data-pipelines/metrics-parameters-plots.md</code>).</p></li>
 <li><p><strong>C2 <code>persist: true</code> is required, not optional.</strong> Continuation, figure runs and embeddings all depend on outputs surviving a re-run. <code>--overwrite</code> remains the only wipe.</p></li>
-<li><p><strong>C3 SLURM: a read-only run waiter.</strong> A SLURM run returns at submission, but DVC hashes a stage's outs the moment its command exits. So a SLURM-backed stage runs two commands:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmd</span><span class="kw">:</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> python -m phenotypic … --slurm …</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> phenotypic-wait --output &lt;out&gt;</span></span></code></pre></div>
-<p><code>phenotypic-wait</code> is a new console script (<code>phenotypic._cli._cli_wait</code>). It blocks until the run is finished, then exits with the C10 code that the run would have returned locally:</p>
+<li><p><strong>C3 SLURM: a run waiter that never publishes.</strong> A SLURM run returns at submission, but DVC hashes a stage's outs the moment its command exits, and DVC aborts a stage whose command exits non-zero, which every submission does (exit 4, C10; verified on DVC 3.67.1 in P2 T6). So a SLURM-backed stage is one command: the waiter launches the submission itself, then waits for it.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmd</span><span class="kw">:</span><span class="at"> phenotypic-wait --output &lt;out&gt; -- python -m phenotypic … -o &lt;out&gt; --slurm …</span></span></code></pre></div>
+<p><code>phenotypic-wait</code> is a new console script (<code>phenotypic._cli._cli_wait</code>). It blocks until the run is finished, then exits with the C10 code that the run would have returned locally.</p>
+<p><strong>Launch (<code>--</code> form).</strong> Everything after <code>--</code> is the submit command, run as a child process (an argv list, no shell) with the waiter's working directory, environment and terminal:</p>
+<ul>
+<li>child exit <code>4</code> (submitted): the waiter polls, as below;</li>
+<li>child exit <code>0</code> or <code>3</code> (a local run that already finished): returned as-is, with no poll;</li>
+<li>any other child exit (<code>1</code>, <code>2</code>, …) is returned as-is and nothing is polled; a child killed by signal N returns <code>128 + N</code>, the shell's convention;</li>
+<li>refused before launching, as a usage error (<code>2</code>): an empty command after <code>--</code>; a child that names an output (<code>-o</code>/<code>--output</code>) resolving to a different path from <code>--output</code>; a child running <code>--mode migrate</code>. A child that names no output (a wrapper script) is not checked.</li>
+<li><code>--timeout-seconds</code> bounds the wait, never the submit.</li>
+</ul>
+<p>Without <code>--</code>, the waiter only waits, for a run submitted some other way. That form is unchanged and is what a user reaches for after a submit they typed by hand.</p>
+<p><strong>Waiting:</strong></p>
 <ul>
 <li><p>It polls <code>resolve_run_state(output_dir, depth="shallow")</code> together with <code>live_slurm_job_ids(output_dir)</code> (<code>_cli/_cli_staged_orchestration.py</code>) on an interval. The default is 60 s, set with <code>--poll-seconds</code>.</p></li>
 <li><p>Both checks are needed. <code>resolve_run_state</code> takes an <code>active</code> lifecycle fence at face value and never asks the scheduler, so a finalizer killed for running out of memory would read as <code>active</code> forever. The scheduler query is what tells a running run from a dead one. That query lives in <code>_cli</code>, which <code>sdk_</code> may not import, so the waiter lives in <code>_cli</code>.</p></li>
@@ -445,7 +453,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>Matching state alone is not enough: a <code>--mode measure</code> resubmission keeps no run state, so an earlier run's aggregate proof would still match after the new finalizer died.</p></li>
 <li><p>Process mode publishes no aggregate proof, so a process run whose images finished with terminal failures and no live job exits complete-with-failures.</p></li>
 <li><p>It does not serve <code>--mode migrate</code>, which keeps its lifecycle under an external control root.</p></li>
-<li><p>It never aggregates, publishes, submits or cancels, so the double publication the old <code>--wait</code> had cannot recur. Its only write is the verification cache <code>resolve_run_state</code> already refreshes.</p></li>
+<li><p>It never aggregates, publishes or cancels, so the double publication the old <code>--wait</code> had cannot recur. The submission it may launch is the ordinary CLI, whose SLURM path publishes nothing (the finalizer is the sole publisher), so launching it changes nothing about who writes. The waiter's own only write is the verification cache <code>resolve_run_state</code> already refreshes.</p></li>
+<li><p>In the <code>--</code> form its first poll comes after the submit returns, so the generation it binds to is the one that submission opened.</p></li>
 <li><p><code>--timeout-seconds</code> (default: none) gives up with its own exit code, without cancelling anything.</p></li>
 <li><p>The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU), because head nodes kill long-running processes. The how-to page (C9) gives the <code>sbatch</code> line.</p></li>
 </ul></li>
@@ -469,7 +478,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>C8 Results size.</strong> Whether <code>results/</code> should be <code>cache: true</code> or <code>false</code> is decided by measurement, not reasoning. Time <code>dvc status</code> and <code>dvc commit</code> on a bounded subset of the migrated maresca copy (<code>2026-08-11-ome-zarr</code>, 1,354 GB in full): one dataset, <code>hdf/</code> excluded, in a scratch DVC repo on <code>/bigdata</code>. Run it as a Slurm job with an explicit <code>--time</code>, one config per fresh node, extrapolate to the full tree, and record the numbers in the how-to page.</p></li>
 <li><p><strong>C9 How-to page</strong> <code>docs/source/how_to/pages/dvc.md</code>. Contents:</p>
 <ul>
-<li>a local <code>dvc.yaml</code>, a SLURM one (submit, then <code>phenotypic-wait</code>), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
+<li>a local <code>dvc.yaml</code>, a SLURM one (one <code>phenotypic-wait … -- &lt;submit&gt;</code> command, C3), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
 <li>the three outs with <code>persist</code>, and the cache-type rule (C6);</li>
 <li><code>dvc gc</code> for the cache growth that tracking <code>.phenotypic/</code> causes;</li>
 <li>params addressing with an example <code>dvc exp run -S</code>;</li>
@@ -482,7 +491,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>0</strong>: complete, no terminal failures;</li>
 <li>a distinct non-zero: <strong>complete with terminal image failures</strong>;</li>
 <li><strong>1</strong>: a runtime or config error (today's behaviour). A refusal raised as a Click usage error keeps Click's <code>2</code>;</li>
-<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>phenotypic-wait</code> (C3) returns one of the codes above once the run ends, plus its own code for <code>--timeout-seconds</code>.</li>
+<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>phenotypic-wait</code> (C3) returns one of the codes above once the run ends, plus its own codes for a run that ended without publishing and for <code>--timeout-seconds</code>; in the <code>--</code> form, a submit that did not exit <code>4</code> returns the submit's own code.</li>
 </ul>
 <p>The builder confirms what a run with terminal failures returns today; I found no distinct code for it. The values are documented and pinned by tests.</p></li>
 <li><p><strong>C11 Byte-stable deliverables</strong>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>

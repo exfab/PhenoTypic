@@ -326,19 +326,39 @@ The five parts below are independent enough to plan and ship in the order of §5
 - **C2 `persist: true` is required, not optional.** Continuation, figure runs and
   embeddings all depend on outputs surviving a re-run. `--overwrite` remains the
   only wipe.
-- **C3 SLURM: a read-only run waiter.** A SLURM run returns at submission, but
-  DVC hashes a stage's outs the moment its command exits. So a SLURM-backed
-  stage runs two commands:
+- **C3 SLURM: a run waiter that never publishes.** A SLURM run returns at
+  submission, but DVC hashes a stage's outs the moment its command exits, and
+  DVC aborts a stage whose command exits non-zero, which every submission does
+  (exit 4, C10; verified on DVC 3.67.1 in P2 T6). So a SLURM-backed stage is one
+  command: the waiter launches the submission itself, then waits for it.
 
   ```yaml
-  cmd:
-    - python -m phenotypic … --slurm …
-    - phenotypic-wait --output <out>
+  cmd: phenotypic-wait --output <out> -- python -m phenotypic … -o <out> --slurm …
   ```
 
   `phenotypic-wait` is a new console script (`phenotypic._cli._cli_wait`). It
   blocks until the run is finished, then exits with the C10 code that the run
-  would have returned locally:
+  would have returned locally.
+
+  **Launch (`--` form).** Everything after `--` is the submit command, run as a
+  child process (an argv list, no shell) with the waiter's working directory,
+  environment and terminal:
+  - child exit `4` (submitted): the waiter polls, as below;
+  - child exit `0` or `3` (a local run that already finished): returned as-is,
+    with no poll;
+  - any other child exit (`1`, `2`, …) is returned as-is and nothing is polled;
+    a child killed by signal N returns `128 + N`, the shell's convention;
+  - refused before launching, as a usage error (`2`): an empty command after
+    `--`; a child that names an output (`-o`/`--output`) resolving to a
+    different path from `--output`; a child running `--mode migrate`.
+    A child that names no output (a wrapper script) is not checked.
+  - `--timeout-seconds` bounds the wait, never the submit.
+
+  Without `--`, the waiter only waits, for a run submitted some other way. That
+  form is unchanged and is what a user reaches for after a submit they typed
+  by hand.
+
+  **Waiting:**
   - It polls `resolve_run_state(output_dir, depth="shallow")` together with
     `live_slurm_job_ids(output_dir)` (`_cli/_cli_staged_orchestration.py`) on an
     interval. The default is 60 s, set with `--poll-seconds`.
@@ -374,9 +394,14 @@ The five parts below are independent enough to plan and ship in the order of §5
     finished with terminal failures and no live job exits complete-with-failures.
   - It does not serve `--mode migrate`, which keeps its lifecycle under an
     external control root.
-  - It never aggregates, publishes, submits or cancels, so the double
-    publication the old `--wait` had cannot recur. Its only write is the
-    verification cache `resolve_run_state` already refreshes.
+  - It never aggregates, publishes or cancels, so the double publication the
+    old `--wait` had cannot recur. The submission it may launch is the ordinary
+    CLI, whose SLURM path publishes nothing (the finalizer is the sole
+    publisher), so launching it changes nothing about who writes. The waiter's
+    own only write is the verification cache `resolve_run_state` already
+    refreshes.
+  - In the `--` form its first poll comes after the submit returns, so the
+    generation it binds to is the one that submission opened.
   - `--timeout-seconds` (default: none) gives up with its own exit code, without
     cancelling anything.
   - The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU),
@@ -423,8 +448,8 @@ The five parts below are independent enough to plan and ship in the order of §5
   it as a Slurm job with an explicit `--time`, one config per fresh node,
   extrapolate to the full tree, and record the numbers in the how-to page.
 - **C9 How-to page** `docs/source/how_to/pages/dvc.md`. Contents:
-  - a local `dvc.yaml`, a SLURM one (submit, then `phenotypic-wait`), and a
-    process-mode one, since
+  - a local `dvc.yaml`, a SLURM one (one `phenotypic-wait … -- <submit>`
+    command, C3), and a process-mode one, since
     process mode creates no `deliverables/` and its outs list must say so;
   - the three outs with `persist`, and the cache-type rule (C6);
   - `dvc gc` for the cache growth that tracking `.phenotypic/` causes;
@@ -439,7 +464,9 @@ The five parts below are independent enough to plan and ship in the order of §5
     Click usage error keeps Click's `2`;
   - a distinct code: **submitted to SLURM**, so nothing is finished yet. Every
     SLURM run returns this at submission. `phenotypic-wait` (C3) returns one of the
-    codes above once the run ends, plus its own code for `--timeout-seconds`.
+    codes above once the run ends, plus its own codes for a run that ended
+    without publishing and for `--timeout-seconds`; in the `--` form, a
+    submit that did not exit `4` returns the submit's own code.
 
   The builder confirms what a run with terminal failures returns today; I found
   no distinct code for it. The values are documented and pinned by tests.

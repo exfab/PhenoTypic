@@ -249,7 +249,8 @@ the mid tier. A reviewer is never weaker than its implementer.
 | C8 | P2 T2, `phenotypic-wait` | Keystone | Opus | light |
 | C9 | P2 T3, metrics and schema | Keystone | Opus | light |
 | C10 | P2 T4, T5: byte stability and layout guards | Seam | Opus | light |
-| C11 | P2 T6, the how-to page (uses Lane B's numbers) | Leaf | Sonnet | **deep: P2** |
+| C11 | P2 T6, the how-to page (uses Lane B's numbers) | Leaf | Sonnet | light |
+| C11a | P2 T2a, the waiter's launch form (`--`), and the page's one-command stage | Seam | Opus | **deep: P2** |
 | C12 | P3 T1, T2: v1 fixtures, resolver, writer, carry, stale | Keystone | Opus | light |
 | C13 | P3 T3, the measure rewrite | Keystone | Opus | light |
 | C14a–d | P3 T4 reader sweep, by subsystem: (a) finalizer/aggregation, (b) per-image writers and staged, (c) recompile, (d) migrate, state and the `sdk_` readers | Sweep, consistency-critical | Opus | light each |
