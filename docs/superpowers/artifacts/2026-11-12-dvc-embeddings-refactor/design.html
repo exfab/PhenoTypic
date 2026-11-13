@@ -136,6 +136,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>SLURM submission exits <code>4</code>, which the run console reads as a failed submission (<code>_gui/run_console/_slurm.py:826</code>);</li>
 <li>the results viewer's Colony picker stats the v1 table path, so it finds no table in a v2 store (<code>_gui/results_viewer/_measurement_source.py:107</code>);</li>
 <li>the tune Deploy validator refuses a legacy <code>.json.pht-tune</code> spec (<code>_gui/tune/_validation.py:61</code>);</li>
+<li>the builder's directory browser and the shell classifier list a new <code>x.pht-tune.json</code> as a pipeline, because plain <code>.json</code> is still a legacy pipeline suffix (<code>_gui/builder/_directory_browser.py:32</code>, <code>_gui/shell/_classifier.py:222</code>);</li>
 <li>curation keeps rewriting <code>measurements.csv</code>, so curated edits reach the mirror's <code>.parquet</code> and <code>.csv</code> but not its <code>.tsv</code> (B9);</li>
 <li>the error-analysis deliverable stays <code>error_analysis.csv</code>, because GUI code writes it (B9).</li>
 </ul>
@@ -288,7 +289,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td>A per-image record fingerprints its store by the root <code>zarr.json</code>, so any root rewrite stales it unless the record is republished (measure mode's <code>_republish_table_marker</code>).</td>
-<td><code>sdk_/_run_state.py:517-539</code>, <code>_cli_process_single.py:462</code></td>
+<td><code>sdk_/_run_state.py:517-539</code>, <code>_cli_recompile_tables.py:51</code>, called at <code>_cli_process_single.py:567-581</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -396,7 +397,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>B3 Analysis manifest.</strong> Fields <code>csv</code>/<code>csv_sha256</code> become <code>tsv</code>/<code>tsv_sha256</code>, with a manifest <code>schema_version</code> bump. Readers accept the old shape.</p></li>
 <li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is still refused.</p></li>
 <li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension. Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p></li>
-<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot or <code>error_analysis.csv</code>.</p></li>
+<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot, <code>error_analysis.csv</code>, or the <code>measurements.csv</code> mirror that B9 keeps.</p></li>
 <li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI generates; GUI exports follow in #283.</p></li>
 <li><p><strong>B8</strong> Update the README generator, the how-to pages, and the root and <code>_cli</code> CLAUDE.md output inventories. Every name the GUI imports from <code>sdk_</code> stays defined with its signature: <code>MEASUREMENTS_CSV</code> (re-exported by <code>_gui/_config.py</code>), <code>MEASUREMENT_TABLE_RELATIVE_PATH</code>, <code>measurements_csv_path</code>, and <code>metadata_csv_deliverable_path(output_dir)</code> with one argument. A test walks <code>src/phenotypic/_gui/**</code> for names imported from <code>phenotypic.sdk_</code> and asserts each still resolves, with an unchanged signature for each function the GUI calls.</p></li>
 <li><p><strong>B9 What stays CSV until #283.</strong> Both are written by GUI code (§3.2):</p>
@@ -435,6 +436,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><strong>Content:</strong> <code>schema_version</code>, <code>phenotypic_version</code>, <code>pipeline_sha256</code>; <code>images.{accepted, succeeded, failed}</code>; <code>objects.measured</code>; <code>metadata.phantoms</code>; and, when embeddings ran, per entry id <code>{rows, stale_skipped}</code>.</li>
 <li><strong>Derivation:</strong> values come from the run state (<code>resolve_run_state</code>) and the published frames, never from a new tracked value. This is a deliverable that PhenoTypic never reads back, so it is not a fifth tracked state.</li>
+<li><code>pipeline_sha256</code> is the sha every aggregated run folder shares, and <code>null</code> when they differ. It is not the run config's, which still names the full run's pipeline after <code>--mode measure</code> (D6a).</li>
 <li><strong>Stability:</strong> no timestamps, sorted keys, so identical runs give identical bytes and <code>dvc metrics diff</code> is meaningful.</li>
 </ul></li>
 <li><p><strong>C5 Params.</strong> The <code>--pipeline</code> file and any tune spec are listed as DVC params files. With A1 they end in <code>.json</code>, so DVC reads and writes them as JSON.</p></li>
@@ -631,7 +633,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><p><strong>D10 Migration.</strong> <code>--mode migrate</code> converts a v1 store's <code>tables/measurements</code> and <code>tables/metadata</code> into <code>tables/1-&lt;sha12&gt;/</code>.</p>
 <ul>
-<li>The sha is the figures descriptor's run sha when present, since a v1 table rewritten by <code>--mode measure</code> was never journaled. Otherwise it is the latest journal application that measured. With neither, the folder is <code>1-unknown</code> (D2).</li>
+<li>The sha is the most recent figure run's sha when present, since a v1 table rewritten by <code>--mode measure</code> was never journaled. Otherwise it is the latest journal application that measured. With neither, the folder is <code>1-unknown</code> (D2).</li>
 <li><code>replace_embedded_measurement_table</code>, which migrate uses to import legacy per-image Parquets, writes v2 directly, so no tree is left in a mixed layout. Every glob of the flat path (<code>_cli_migrate.py:1057-1061</code>) goes through the resolver.</li>
 <li>The conversion rewrites each root, so it republishes each converted image's record and then the run proof, as measure mode does. A tree that read <code>complete</code> before migrate reads <code>complete</code> after it.</li>
 </ul></li>
@@ -772,7 +774,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>Backfill of done images is an explicit <code>--reprocess-changed</code> decision at rollout. It reruns calibration and BM3D denoise.</p></li>
 <li><p><strong>E7 In place.</strong> <code>--mode process</code> with <code>--output</code> resolving to the same directory as <code>--input</code> adds the pipeline's run folder to each input store where it is. Any other <code>--output</code> writes new stores, as today. An output strictly inside an input, or an input strictly inside the output, stays refused (§3.2).</p>
 <ul>
-<li><strong>A table-only store update.</strong> Hard-link the store into a <code>.part</code>, write the run folder (D6), append the process application to the journal, write the root last, consolidate, and swap, reusing the measure rewrite's transaction. Pixel arrays are hard links and are never rewritten.</li>
+<li><strong>A store update that never rewrites pixels.</strong> Hard-link the store into a <code>.part</code>, write the run folder (D6) and the run's figure folder, append the process application to the journal, write the root last, consolidate, and swap, reusing the measure rewrite's transaction. Pixel arrays are hard links and are never rewritten.</li>
 <li>Before the swap, the writer checks that the live root still has the digest it started from. If it changed, the writer rebuilds once from the new root, and otherwise fails the image. The output's existing single-run guard already keeps a second run off the same tree.</li>
 <li><code>.phenotypic/</code> lives under the input root, as under any <code>--output</code>.</li>
 <li><strong>Refused in the read-only half</strong>, one usage-error line each, before anything is written:

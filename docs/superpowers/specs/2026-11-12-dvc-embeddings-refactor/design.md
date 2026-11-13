@@ -101,6 +101,10 @@ DVC versioning of the raw image corpus is out of scope (§2.2).
     table in a v2 store (`_gui/results_viewer/_measurement_source.py:107`);
   - the tune Deploy validator refuses a legacy `.json.pht-tune` spec
     (`_gui/tune/_validation.py:61`);
+  - the builder's directory browser and the shell classifier list a new
+    `x.pht-tune.json` as a pipeline, because plain `.json` is still a legacy
+    pipeline suffix (`_gui/builder/_directory_browser.py:32`,
+    `_gui/shell/_classifier.py:222`);
   - curation keeps rewriting `measurements.csv`, so curated edits reach the
     mirror's `.parquet` and `.csv` but not its `.tsv` (B9);
   - the error-analysis deliverable stays `error_analysis.csv`, because GUI code
@@ -170,7 +174,7 @@ DVC source (`iterative/dvc@main`).
 | Process mode refuses input and output roots that overlap, **equality included**. `--overwrite`/`--restart` refuse a run input they would delete. | `phenotypicCLI.py:2289-2306`, `:636-670` |
 | Operations that change `rgb`/`gray` are `ImageCorrector` subclasses (`CalibrateColorRpcc`, `ColorDenoise`, `DenoiseBlockMatch`, `CropImage`, the shrink correctors, `GridCorrector`s). Enhancers change only `detect_mat`. | `abc_/_image_corrector.py`, `correction/` |
 | GUI code writes the CLI's error-analysis deliverable (`publish_error_analysis`, `combined.write_csv`) and rewrites `BundleLayout.mirror_csv` on every curation save. | `_cli_error_outputs.py:81-96`, `_gui/results_viewer/_error_tab/_publication.py:588`, `_curation_labels.py:839-850` |
-| A per-image record fingerprints its store by the root `zarr.json`, so any root rewrite stales it unless the record is republished (measure mode's `_republish_table_marker`). | `sdk_/_run_state.py:517-539`, `_cli_process_single.py:462` |
+| A per-image record fingerprints its store by the root `zarr.json`, so any root rewrite stales it unless the record is republished (measure mode's `_republish_table_marker`). | `sdk_/_run_state.py:517-539`, `_cli_recompile_tables.py:51`, called at `_cli_process_single.py:567-581` |
 
 ### 3.3 AutoConvertRaw-GC
 
@@ -262,7 +266,8 @@ The five parts below are independent enough to plan and ship in the order of §5
   the README generator) fall back to the `.csv` name when no `.tsv` exists. A
   finalize into an old folder publishes the TSV, then removes the stale
   **generated** CSV sibling. This applies only to files in the B2 list, never to
-  the metadata snapshot or `error_analysis.csv`.
+  the metadata snapshot, `error_analysis.csv`, or the `measurements.csv` mirror
+  that B9 keeps.
 - **B7 Public API is not renamed.** A Python method or argument named `csv` keeps
   its name and behaviour. Docstring examples that write `.csv` (e.g.
   `_objects_accessor.py:690`) stay user-chosen. B applies to files the CLI
@@ -354,6 +359,9 @@ The five parts below are independent enough to plan and ship in the order of §5
   - **Derivation:** values come from the run state (`resolve_run_state`) and the
     published frames, never from a new tracked value. This is a deliverable that
     PhenoTypic never reads back, so it is not a fifth tracked state.
+  - `pipeline_sha256` is the sha every aggregated run folder shares, and `null`
+    when they differ. It is not the run config's, which still names the full
+    run's pipeline after `--mode measure` (D6a).
   - **Stability:** no timestamps, sorted keys, so identical runs give identical
     bytes and `dvc metrics diff` is meaningful.
 - **C5 Params.** The `--pipeline` file and any tune spec are listed as DVC params
@@ -590,7 +598,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     revoke the run's measurement authority: embeddings are additive.
 - **D10 Migration.** `--mode migrate` converts a v1 store's `tables/measurements`
   and `tables/metadata` into `tables/1-<sha12>/`.
-  - The sha is the figures descriptor's run sha when present, since a v1 table
+  - The sha is the most recent figure run's sha when present, since a v1 table
     rewritten by `--mode measure` was never journaled. Otherwise it is the
     latest journal application that measured. With neither, the folder is
     `1-unknown` (D2).
@@ -724,10 +732,11 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   where it is. Any other `--output` writes new stores, as today. An output
   strictly inside an input, or an input strictly inside the output, stays
   refused (§3.2).
-  - **A table-only store update.** Hard-link the store into a `.part`, write the
-    run folder (D6), append the process application to the journal, write the
-    root last, consolidate, and swap, reusing the measure rewrite's transaction.
-    Pixel arrays are hard links and are never rewritten.
+  - **A store update that never rewrites pixels.** Hard-link the store into a
+    `.part`, write the run folder (D6) and the run's figure folder, append the
+    process application to the journal, write the root last, consolidate, and
+    swap, reusing the measure rewrite's transaction. Pixel arrays are hard links
+    and are never rewritten.
   - Before the swap, the writer checks that the live root still has the digest
     it started from. If it changed, the writer rebuilds once from the new root,
     and otherwise fails the image. The output's existing single-run guard
