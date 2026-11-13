@@ -412,6 +412,33 @@ def test_a_finished_resubmission_exits_0(monkeypatch, finished_tiny_run):
     assert wait_for_run(out, sleep=lambda s: None, echo=lambda *_: None) is RunExitCode.COMPLETE
 
 
+def test_a_stamped_aggregate_proof_alone_exits_0(monkeypatch, finished_tiny_run):
+    # The finalizer published, then died before closing the fence: the
+    # generation stamp in the aggregate proof is what still binds it.
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    out = finished_tiny_run
+    _resubmit(out, "g-stamped")
+    aggregate_measurements(output_dir=out, dataset_names=["ds"], execution_epoch="g-stamped")
+    monkeypatch.setattr(_cli_staged_orchestration, "scheduler_job_is_active", lambda job: False)
+    assert load_slurm_lifecycle(out)["active"] is True
+    assert wait_for_run(out, sleep=lambda s: None, echo=lambda *_: None) is RunExitCode.COMPLETE
+
+
+def test_a_finalized_resubmission_with_a_failure_exits_3(tiny_inputs_one_bad, tmp_path):
+    from tests._tiny_run import run_cli
+
+    out = tmp_path / "out"
+    assert run_cli(tiny_inputs_one_bad, out).exit_code == RunExitCode.COMPLETE_WITH_FAILURES
+    _resubmit(out, "g-failed")
+    deactivate_generation(out, "g-failed", closed_by=FENCE_CLOSED_BY_FINALIZER)
+    lines = []
+    assert wait_for_run(out, sleep=lambda s: None, echo=lines.append) is (
+        RunExitCode.COMPLETE_WITH_FAILURES
+    )
+    assert "completion=failed" in lines[0]
+
+
 def test_is_process_run_is_false_without_run_state(tmp_path):
     assert not _cli_wait._is_process_run(tmp_path)
 
