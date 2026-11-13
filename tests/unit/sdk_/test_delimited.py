@@ -67,13 +67,60 @@ def test_write_tsv_leaves_no_temp_and_creates_parent(tmp_path):
     assert sorted(p.name for p in out.parent.iterdir()) == ["t.tsv"]
 
 
-def test_write_tsv_failure_keeps_the_old_file(tmp_path):
+def test_write_tsv_refuses_a_non_frame(tmp_path):
     out = tmp_path / "t.tsv"
     out.write_bytes(b"old\n")
     with pytest.raises(TypeError):
         write_tsv(object(), out)  # type: ignore[arg-type]
     assert out.read_bytes() == b"old\n"
+
+
+def test_write_tsv_failure_keeps_the_old_file(tmp_path):
+    """A writer that fails *inside* the atomic write leaves the old bytes.
+
+    Review M1: the frame must reach ``atomic_write_with_writer`` and fail
+    there. A polars ``List`` column does (``ComputeError: CSV format does not
+    support nested data``), after the temp file is opened.
+    """
+    import polars as pl
+
+    out = tmp_path / "t.tsv"
+    out.write_bytes(b"old\n")
+    with pytest.raises(pl.exceptions.ComputeError):
+        write_tsv(pl.DataFrame({"a": [[1, 2]]}), out)
+    assert out.read_bytes() == b"old\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["t.tsv"]
+
+
+def test_write_tsv_writes_one_byte_format_whichever_library_holds_the_frame(
+    tmp_path,
+):
+    """Review M5: polars and pandas frames give byte-identical TSV.
+
+    The deliverables are meant to be byte-stable (P2), so the writer cannot
+    depend on which library a caller happened to hold the table in.
+    """
+    import datetime as dt
+
+    data = {
+        "text": ["x\ty", "line1\nline2", 'q"q', "Δura3", None, ""],
+        "value": [1.5, None, 0.1, 1e-12, 3.0, -2.25],
+        "count": [1, 2, 3, 4, 5, 6],
+        "when": [dt.datetime(2026, 1, 1, 12)] * 5 + [dt.datetime(2026, 1, 1, 12, 0, 0, 123456)],
+    }
+    polars_out = tmp_path / "polars.tsv"
+    pandas_out = tmp_path / "pandas.tsv"
+    write_tsv(make_frame("polars", data), polars_out)
+    pandas_frame = make_frame("pandas", data)
+    pandas_frame.index.name = "dropped"
+    write_tsv(pandas_frame, pandas_out)
+
+    assert pandas_out.read_bytes() == polars_out.read_bytes()
+    lines = polars_out.read_bytes().decode("utf-8").split("\n")
+    assert lines[1].endswith("\t2026-01-01T12:00:00")
+    assert lines[-2].endswith("\t2026-01-01T12:00:00.123456")
+    back = read_delimited(polars_out, keep_default_na=False)
+    assert back["text"].tolist() == ["x\ty", "line1\nline2", 'q"q', "Δura3", "", ""]
 
 
 def test_read_delimited_reads_csv_by_suffix(tmp_path):

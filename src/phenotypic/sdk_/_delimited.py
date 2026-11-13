@@ -2,9 +2,9 @@
 
 Generated tables are TSV: UTF-8, one header row, ``\\t`` separator, ``\\n`` line
 ends, and ``"`` quoting for any field that contains a tab, a newline or a quote.
-That is exactly what polars ``write_csv(separator="\\t")`` and pandas
-``to_csv(sep="\\t", lineterminator="\\n")`` emit by default, so
-:func:`write_tsv` only chooses the separator and the line end.
+One library writes every file: :func:`write_tsv` converts a pandas frame to
+polars first, so a table's bytes do not depend on which library a caller held
+it in (pandas and polars disagree on datetimes and on empty strings).
 
 User-supplied tables may be ``.csv`` or ``.tsv``; :func:`delimiter_for` picks the
 delimiter from the suffix and refuses anything else, so a reader never guesses.
@@ -80,6 +80,16 @@ def write_tsv(
     partial write: the table goes to a ``.tsv.tmp`` sibling first and replaces
     ``path`` only after it is synced.
 
+    The bytes are polars ``write_csv(separator="\\t")``'s whichever library
+    holds ``frame``: a pandas frame is converted with ``pl.from_pandas`` (its
+    index dropped, ``NaN`` written as null, i.e. an empty field) and written
+    by polars, so the same table is the same file. A null is an empty field;
+    an empty string is ``""``. A datetime is ISO 8601 with a ``T`` and only
+    the fractional digits its value needs (0, 3, 6 or 9), plus ``+HH:MM`` when
+    it carries a time zone, so the bytes depend on the value and not on the
+    column's time unit (pandas holds nanoseconds, a Python ``datetime`` lands
+    in polars as microseconds).
+
     Args:
         frame: A polars or pandas DataFrame. A pandas index is not written.
         path: Destination file. Its parent is created when missing.
@@ -137,16 +147,40 @@ def remove_stale_csv_sibling(tsv_path: Union[str, Path]) -> bool:
 
 
 def _tsv_writer(frame: Any):
-    """Return a ``writer(temp_path)`` callback for ``frame``, by duck type."""
+    """Return a ``writer(temp_path)`` callback for ``frame``, by duck type.
+
+    Polars writes every file; a pandas frame is converted first (review M5).
+    """
+    if hasattr(frame, "to_csv") and not hasattr(frame, "write_csv"):  # pandas
+        import polars as pl
+
+        frame = pl.from_pandas(frame, include_index=False)
     if hasattr(frame, "write_csv"):  # polars
+        frame = _datetimes_as_iso_text(frame)
         return lambda temp: frame.write_csv(temp, separator="\t")
-    if hasattr(frame, "to_csv"):  # pandas
-        return lambda temp: frame.to_csv(
-            temp, sep="\t", index=False, lineterminator="\n", encoding="utf-8"
-        )
     raise TypeError(
         f"write_tsv needs a polars or pandas DataFrame, got {type(frame).__name__}"
     )
+
+
+#: ``chrono`` formats for a datetime column: ``%.f`` writes 0, 3, 6 or 9
+#: fractional digits as the value needs, independent of the column's unit.
+_NAIVE_DATETIME_FORMAT: Final[str] = "%Y-%m-%dT%H:%M:%S%.f"
+_ZONED_DATETIME_FORMAT: Final[str] = "%Y-%m-%dT%H:%M:%S%.f%:z"
+
+
+def _datetimes_as_iso_text(frame: "pl.DataFrame") -> "pl.DataFrame":
+    """Render each datetime column as unit-independent ISO 8601 text."""
+    import polars as pl
+
+    exprs = [
+        pl.col(name).dt.to_string(
+            _ZONED_DATETIME_FORMAT if dtype.time_zone else _NAIVE_DATETIME_FORMAT
+        )
+        for name, dtype in frame.schema.items()
+        if isinstance(dtype, pl.Datetime)
+    ]
+    return frame.with_columns(exprs) if exprs else frame
 
 
 def read_delimited(path: Union[str, Path], **pandas_kwargs: Any) -> "pd.DataFrame":
