@@ -204,6 +204,7 @@ from phenotypic.sdk_ import (
     atomic_write_bytes,
     atomic_write_json,
     metadata_csv_deliverable_path,
+    pipeline_config_candidates,
     pipeline_json_path,
     pipeline_publication_lock,
     pipeline_publication_lock_path,
@@ -480,6 +481,8 @@ def _prior_scientific_artifact_names(
     ``deliverables/`` before any image (:func:`_seed_pipeline_config`), with
     the publication lock file beside it; output trees from before that
     change instead hold a copy at the root under the source file's basename.
+    A tree seeded before the typed-suffix flip holds the seed under its old
+    name, ``pipeline.json.pht-pipe``, which is scaffolding too.
 
     Fails closed: a path that is not a directory, or a root that cannot be
     enumerated, is reported as holding artifacts rather than assumed fresh.
@@ -500,9 +503,13 @@ def _prior_scientific_artifact_names(
         when a restart would preserve nothing from an earlier run.
     """
     root = Path(output_dir)
-    seeded_config = pipeline_json_path(root)
+    seeded_config, old_typed_seed, _plain = pipeline_config_candidates(root)
     seeded_files = frozenset(
-        {seeded_config, pipeline_publication_lock_path(seeded_config)}
+        {
+            seeded_config,
+            old_typed_seed,
+            pipeline_publication_lock_path(seeded_config),
+        }
     )
     blocking: list[str] = []
     try:
@@ -4634,14 +4641,16 @@ def _handle_recompile(
 def _seed_pipeline_config(
     pipeline_path: Path, output_dir: Path
 ) -> Optional[Path]:
-    """Seed ``deliverables/pipeline.json.pht-pipe`` with the ``--pipeline`` bytes.
+    """Seed ``deliverables/pipeline.pht-pipe.json`` with the ``--pipeline`` bytes.
 
     Gives a run its canonical pipeline config from the moment it starts, where
     finalize, the analysis GUI and the QC recipe all look for it. Finalize
     later rewrites the file from the loaded pipeline, so the submitted bytes
     are kept only until then.
 
-    Never replaces a config that is already there -- canonical or legacy --
+    Never replaces a config that is already there under any of its three
+    names (:func:`~phenotypic.sdk_.pipeline_config_candidates`: canonical,
+    old typed ``pipeline.json.pht-pipe``, or plain ``pipeline.json``),
     because on a resume it is the earlier run's, and it may carry QC edits
     the GUI wrote back into it. The existence check and the write share the
     publication lock every other writer of this file holds.

@@ -115,7 +115,7 @@ output_folder/
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
 |   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
 |   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
-|   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
+|   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.csv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums

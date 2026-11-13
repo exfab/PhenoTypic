@@ -16,6 +16,12 @@ import pytest
 
 from tests._support.xdist_workers import resolve_xdist_auto_workers
 
+# Shared #281 plan fixtures, re-exported by name so any test can request them.
+from tests._tiny_run import (  # noqa: F401
+    tiny_pipeline,
+    tiny_pipeline_file,
+)
+
 # matplotlib/plotly are guarded so this conftest stays importable in
 # dependency-light pytest invocations (e.g. the packaging-integrity CI job,
 # which runs the build-artifact tests in a bare ``pytest``-only env). When the

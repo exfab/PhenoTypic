@@ -117,6 +117,7 @@ from ._embedded_measurement_tables import embedded_measurement_table_matches
 
 from phenotypic.sdk_ import (
     BundleLayout,
+    CONFIG_SUFFIX_PIPELINE,
     CommitGuard,
     DIR_LEGACY_V2,
     MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -128,6 +129,7 @@ from phenotypic.sdk_ import (
     load_image_from_store,
     metadata_csv_deliverable_path,
     phenotypic_cache_dir,
+    pipeline_config_candidates,
     publication_commit,
     replace_embedded_measurement_table,
     run_completion_marker_path,
@@ -674,9 +676,17 @@ def _ensure_migration_processing_state(
             save_processing_state(existing, output_dir)
         return
 
+    # A root copy of the source pipeline under the new typed suffix, then one
+    # under the old ``*.json.pht-pipe`` (which ``*.pht-pipe`` matches); then
+    # the canonical config under deliverables/, new name before the old one.
+    canonical_config, old_typed_config, _plain = pipeline_config_candidates(
+        output_dir
+    )
     provenance_candidates = [
+        *sorted(output_dir.glob(f"*{CONFIG_SUFFIX_PIPELINE}")),
         *sorted(output_dir.glob("*.pht-pipe")),
-        deliverables_dir(output_dir) / "pipeline.json.pht-pipe",
+        canonical_config,
+        old_typed_config,
     ]
     pipeline_path = next(
         (path for path in provenance_candidates if path.is_file()),

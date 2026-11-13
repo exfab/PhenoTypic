@@ -61,7 +61,7 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     logs_dir,
-    pipeline_json_path,
+    pipeline_config_candidates,
     pipeline_publication_lock,
     publication_commit,
     qc_duckdb_path,
@@ -611,13 +611,18 @@ def _persist_pipeline_to_output_dir(
     output_dir: Path,
     pipeline: "ImagePipeline",
 ) -> Optional[Path]:
-    """Atomically write *pipeline*'s JSON to ``deliverables/pipeline.json.pht-pipe``.
+    """Atomically write *pipeline*'s JSON to ``deliverables/pipeline.pht-pipe.json``.
 
     The canonical pipeline JSON is the source of truth for analysis recipes
     and reproducibility — it captures filters/model alongside the
     operations/measurements/post chain. The analysis GUI reads from and
     writes back to this file; the CLI seeds it on every aggregate so the
     file always reflects the most recent run.
+
+    One current pipeline file per folder (spec A4): the new name is
+    published first, then an old-typed ``pipeline.json.pht-pipe`` sibling is
+    removed, both under the publication lock. A plain legacy
+    ``pipeline.json`` is never touched, so a V1 reader still finds it.
 
     Args:
         output_dir: Output root directory (the parent that holds
@@ -629,7 +634,7 @@ def _persist_pipeline_to_output_dir(
         failed. Failure is logged at WARNING; the caller does not need to
         handle the exception.
     """
-    target = pipeline_json_path(output_dir)
+    target, old_typed, _plain = pipeline_config_candidates(output_dir)
 
     def _write(p: str) -> None:
         Path(p).write_text(pipeline.to_json() or "")
@@ -637,6 +642,7 @@ def _persist_pipeline_to_output_dir(
     try:
         with pipeline_publication_lock(target):
             atomic_write_with_writer(target, _write)
+            old_typed.unlink(missing_ok=True)
         return target
     except Exception:
         logger.warning(
