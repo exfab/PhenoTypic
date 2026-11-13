@@ -86,7 +86,7 @@ def write_stageable_pipeline(path: Path) -> Path:
     ``to_json(path)`` here: that routes through
     ``ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)``
     (``_serializable_pipeline.py:105``), so ``to_json(tmp/"pipeline.json")``
-    writes ``tmp/"pipeline.json.pht-pipe"`` and leaves the requested path
+    writes ``tmp/"pipeline.pht-pipe.json"`` and leaves the requested path
     absent -- a fixture that reports success while the caller's path is still
     empty. ``tests/integration/cli/test_staged_slurm_live.py:154`` already used
     the correct idiom. The post-condition below is what turns a repeat of that

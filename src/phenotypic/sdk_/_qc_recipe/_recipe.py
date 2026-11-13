@@ -543,6 +543,22 @@ class QcRecipe:
             return self.source_path
         return self.path
 
+    def _retire_old_typed_sibling(self) -> None:
+        """Remove an old-typed ``pipeline.json.pht-pipe`` beside the new file.
+
+        One current pipeline file per folder (spec A4): runs only when the
+        canonical name was just published. Plain ``pipeline.json`` is kept.
+        """
+        from phenotypic.sdk_._io_constants import (
+            _pipeline_config_candidates_in,
+        )
+
+        new, old_typed, _plain = _pipeline_config_candidates_in(
+            self.path.parent
+        )
+        if self.path == new:
+            old_typed.unlink(missing_ok=True)
+
     def _write_qc_array(self) -> bool:
         """Atomically rewrite *only* the ``qc`` key of ``pipeline.json``.
 
@@ -603,6 +619,7 @@ class QcRecipe:
                         entry.to_dict() for entry in self.entries
                     ]
                     atomic_write_json(self.path, document, sort_keys=False)
+                    self._retire_old_typed_sibling()
                 except Exception:
                     logger.warning(
                         "Atomic write of qc array failed for %s",

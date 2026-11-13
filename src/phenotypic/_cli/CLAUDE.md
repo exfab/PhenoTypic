@@ -1138,7 +1138,7 @@ with a present column; written beside the feature split by
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
-`pipeline.json.pht-pipe`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+`pipeline.pht-pipe.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 pipeline config is **seeded** from the `--pipeline` bytes when a full or
 staged run starts (`_seed_pipeline_config`, only when no config -- canonical
 or legacy -- exists, under `pipeline_publication_lock`) and rewritten from

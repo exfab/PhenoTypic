@@ -3656,11 +3656,9 @@ def phenotypic_cli(
         # has no deliverables/.
         if config.process_only_layer:
             try:
-                from phenotypic.sdk_ import phenotypic_cache_pipeline_json_path
-
-                cache_copy = phenotypic_cache_pipeline_json_path(output_dir)
-                cache_copy.parent.mkdir(parents=True, exist_ok=True)
-                cache_copy.write_bytes(Path(config.pipeline_json).read_bytes())
+                cache_copy = _publish_process_pipeline_copy(
+                    Path(config.pipeline_json), output_dir
+                )
                 click.echo(f"  Pipeline: {cache_copy}")
             except OSError as e:
                 logger.warning(f"Failed to copy pipeline config: {e}")
@@ -4636,6 +4634,29 @@ def _handle_recompile(
     console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}")
 
     console.print(f"\n[bold green]Recompilation complete: {output_dir}")
+
+
+def _publish_process_pipeline_copy(pipeline_path: Path, output_dir: Path) -> Path:
+    """Publish the process-only run's ``.phenotypic/pipeline.pht-pipe.json`` copy.
+
+    Writes the ``--pipeline`` bytes under the new name, then removes an
+    old-typed ``pipeline.json.pht-pipe`` sibling so one current file remains
+    (spec A4). A plain ``pipeline.json`` is left for V1 readers.
+
+    Args:
+        pipeline_path: The ``--pipeline`` file to copy byte-for-byte.
+        output_dir: The run's output root.
+
+    Returns:
+        The published path.
+    """
+    from phenotypic.sdk_ import phenotypic_cache_pipeline_candidates
+
+    target, old_typed, _plain = phenotypic_cache_pipeline_candidates(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(Path(pipeline_path).read_bytes())
+    old_typed.unlink(missing_ok=True)
+    return target
 
 
 def _seed_pipeline_config(

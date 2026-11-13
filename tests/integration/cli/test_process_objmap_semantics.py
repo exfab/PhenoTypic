@@ -141,7 +141,7 @@ def _write_pipeline(out, pipe):
     """Serialize *pipe* to ``out/pipeline.json`` and assert the file exists.
 
     ``to_json()`` with no argument RETURNS the JSON; ``to_json(path)`` writes to
-    ``ensure_typed_json_suffix(path, ".json.pht-pipe")`` and returns ``None``,
+    ``ensure_typed_json_suffix(path, ".pht-pipe.json")`` and returns ``None``,
     which leaves the requested path empty and every downstream read failing
     somewhere else. The post-condition keeps that failure here.
     """
