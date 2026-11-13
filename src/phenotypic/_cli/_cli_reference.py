@@ -422,10 +422,12 @@ def remove_other_suffix_snapshot(destination: Path) -> None:
     ``metadata.tsv``; likewise ``reference_metadata.*``), and the resolvers
     refuse a directory holding both. Both snapshot writers call this when the
     user's ``--metadata`` changes suffix, which replaces the snapshot exactly
-    as a same-suffix table with new bytes always has.
+    as a same-suffix table with new bytes always has -- and only **after**
+    *destination* is published and verified (spec B5), so a failure leaves two
+    snapshots, never none.
 
     Args:
-        destination: The snapshot about to be (or already) written.
+        destination: The snapshot already written and verified.
     """
     from phenotypic.sdk_ import INPUT_TABLE_SUFFIXES
 
@@ -440,10 +442,10 @@ def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path |
 
     The snapshot keeps *source*'s suffix (spec B5):
     ``.phenotypic/reference_metadata.csv`` or ``.tsv``. A run that switches
-    suffix replaces the snapshot rather than adding a second one: the old
-    suffix's file is removed **before** the new one is written, so a crash in
-    between leaves no snapshot (the next run, given ``--metadata`` again,
-    writes it) and never two, one of them stale.
+    suffix replaces the snapshot rather than adding a second one: the new
+    snapshot is published and verified **first** and the old suffix's file
+    removed after, so a crash in between leaves two snapshots (a loud refusal
+    from every resolver; re-passing ``--metadata`` heals it) and never none.
 
     Args:
         output_dir: The run's ``--output``.
@@ -470,11 +472,11 @@ def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path |
     if destination.is_file() and destination.read_bytes() == payload:
         remove_other_suffix_snapshot(destination)
         return destination
-    remove_other_suffix_snapshot(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_bytes(destination, payload)
     if destination.read_bytes() != payload:
         raise OSError(f"Reference metadata snapshot verification failed: {destination}")
+    remove_other_suffix_snapshot(destination)
     return destination
 
 

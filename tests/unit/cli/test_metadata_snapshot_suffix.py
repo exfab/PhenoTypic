@@ -155,6 +155,71 @@ def test_switching_suffix_replaces_the_snapshot_rather_than_adding_one(
     assert resolve_metadata_snapshot_path(out) == snap
 
 
+def _fail_on_write(*_args, **_kwargs):
+    raise OSError("simulated quota failure")
+
+
+def test_a_failed_suffix_switch_keeps_the_old_snapshot(
+    tmp_path, metadata_bytes, monkeypatch
+):
+    """Spec B5 / review I1: publish the new suffix first, retire the old after.
+
+    A write that fails mid-switch must leave the old snapshot in place, so a
+    later continuation without ``--metadata`` still joins it rather than
+    silently running with no metadata at all.
+    """
+    import phenotypic.phenotypicCLI as cli
+
+    out = tmp_path / "out"
+    old = cli._snapshot_metadata_csv(out, _write_source(tmp_path, ".csv", metadata_bytes))
+    before = old.read_bytes()
+    monkeypatch.setattr(cli, "atomic_write_bytes", _fail_on_write)
+
+    with pytest.raises(OSError, match="simulated"):
+        cli._snapshot_metadata_csv(out, _write_source(tmp_path, ".tsv", metadata_bytes))
+
+    assert old.read_bytes() == before
+    assert resolve_metadata_snapshot_path(out) == old
+
+
+def test_a_failed_reference_suffix_switch_keeps_the_old_snapshot(
+    tmp_path, monkeypatch
+):
+    """The process-mode snapshot obeys the same publish-then-retire order."""
+    import phenotypic.sdk_._atomic_io as atomic_io
+    from phenotypic._cli._cli_reference import snapshot_reference_metadata
+
+    out = tmp_path / "out"
+    csv_src = tmp_path / "blanks.csv"
+    csv_src.write_bytes(b"ImageName,BlankImage\nt01,blank\n")
+    tsv_src = tmp_path / "blanks.tsv"
+    tsv_src.write_bytes(b"ImageName\tBlankImage\nt01\tblank\n")
+    old = snapshot_reference_metadata(out, csv_src)
+    before = old.read_bytes()
+    monkeypatch.setattr(atomic_io, "atomic_write_bytes", _fail_on_write)
+
+    with pytest.raises(OSError, match="simulated"):
+        snapshot_reference_metadata(out, tsv_src)
+
+    assert old.read_bytes() == before
+    assert resolve_reference_metadata_snapshot_path(out) == old
+
+
+def test_a_reference_suffix_switch_replaces_the_snapshot(tmp_path):
+    from phenotypic._cli._cli_reference import snapshot_reference_metadata
+
+    out = tmp_path / "out"
+    csv_src = tmp_path / "blanks.csv"
+    csv_src.write_bytes(b"ImageName,BlankImage\nt01,blank\n")
+    tsv_src = tmp_path / "blanks.tsv"
+    tsv_src.write_bytes(b"ImageName\tBlankImage\nt01\tblank\n")
+    snapshot_reference_metadata(out, csv_src)
+    snap = snapshot_reference_metadata(out, tsv_src)
+    assert snap == out / ".phenotypic" / "reference_metadata.tsv"
+    assert snap.read_bytes() == tsv_src.read_bytes()
+    assert not (out / ".phenotypic" / "reference_metadata.csv").exists()
+
+
 def test_an_unparseable_tsv_never_replaces_an_existing_snapshot(tmp_path, metadata_bytes):
     from phenotypic.phenotypicCLI import _snapshot_metadata_csv
 

@@ -985,8 +985,11 @@ def _snapshot_metadata_csv(
     suffix, is reused when no new source is supplied. New bytes are validated
     with the suffix's delimiter and atomically replaced before any processing
     or scheduler submission; a source whose suffix differs from the existing
-    snapshot's replaces it (the old suffix's file is removed first, see
-    ``remove_other_suffix_snapshot``), so a run never holds two. Legacy
+    snapshot's replaces it. The new snapshot is published and verified
+    **first** and the other suffix's file removed after (spec B5, see
+    ``remove_other_suffix_snapshot``), so a failure in between leaves two
+    snapshots, which every resolver refuses loudly, and never none, which
+    would let a continuation run silently without the metadata join. Legacy
     headers are normalized only when the snapshot is read; finalization and
     metadata migration never rewrite these source bytes.
     """
@@ -1017,7 +1020,6 @@ def _snapshot_metadata_csv(
         if destination.is_file() and destination.read_bytes() == payload:
             remove_other_suffix_snapshot(destination)
             return destination
-        remove_other_suffix_snapshot(destination)
         if state_path.is_file():
             raw_state = json.loads(state_path.read_text(encoding="utf-8"))
             raw_config = raw_state.get("config")
@@ -1030,6 +1032,8 @@ def _snapshot_metadata_csv(
             raise OSError(
                 f"Metadata snapshot verification failed: {destination}"
             )
+        # Retire the other suffix only once the new snapshot is verified.
+        remove_other_suffix_snapshot(destination)
     return destination
 
 
