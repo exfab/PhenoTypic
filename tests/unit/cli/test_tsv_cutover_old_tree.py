@@ -68,10 +68,15 @@ def test_finalize_into_an_old_folder_keeps_the_csvs_that_stay(
     error_csv = d / "error_analysis.csv"
     error_csv.write_bytes(b"a,b\n1,2\n")
     metadata_before = (d / "metadata.csv").read_bytes()
+    # Review M2: a mirror finalize did not write, so the equality below can
+    # only hold if finalize rewrote measurements.csv rather than keeping it.
+    stale_mirror = b"stale_sentinel\n1\n"
+    (d / "measurements.csv").write_bytes(stale_mirror)
     result = run_cli(None, old_tree_with_measurements_csv, mode="recompile")
     assert result.exit_code == 0, result.output
     assert error_csv.read_bytes() == b"a,b\n1,2\n"
     assert (d / "metadata.csv").read_bytes() == metadata_before
+    assert (d / "measurements.csv").read_bytes() != stale_mirror
     assert pl.read_csv(d / "measurements.csv").equals(
         pl.read_csv(d / "measurements.tsv", separator="\t")
     )
@@ -79,11 +84,33 @@ def test_finalize_into_an_old_folder_keeps_the_csvs_that_stay(
 
 @pytest.mark.parametrize("stem", ["measurements", "error_analysis", "metadata"])
 def test_the_sweep_refuses_the_csvs_that_stay(tmp_path, stem):
-    (tmp_path / f"{stem}.tsv").write_text("a\n1\n", encoding="utf-8")
-    (tmp_path / f"{stem}.csv").write_text("a\n1\n", encoding="utf-8")
+    d = tmp_path / "deliverables"
+    d.mkdir()
+    (d / f"{stem}.tsv").write_text("a\n1\n", encoding="utf-8")
+    (d / f"{stem}.csv").write_text("a\n1\n", encoding="utf-8")
     with pytest.raises(ValueError):
-        remove_stale_csv_sibling(tmp_path / f"{stem}.tsv")
-    assert (tmp_path / f"{stem}.csv").is_file()
+        remove_stale_csv_sibling(d / f"{stem}.tsv")
+    assert (d / f"{stem}.csv").is_file()
+
+
+@pytest.mark.parametrize("stem", ["measurements", "error_analysis", "metadata"])
+def test_a_split_named_like_a_kept_csv_is_swept_and_does_not_abort(tmp_path, stem):
+    """Review M3: the kept CSVs live in ``deliverables/`` itself only.
+
+    A split key that happens to equal a kept stem is an ordinary generated
+    table, so ``_write_split`` sweeps its ``.csv`` twin instead of raising out
+    of finalization after the TSV was already published.
+    """
+    from phenotypic._cli._cli_output_manager import _write_split
+
+    split_dir = tmp_path / "deliverables" / "measurements_by_feature"
+    split_dir.mkdir(parents=True)
+    (split_dir / f"{stem}.csv").write_text("a\n0\n", encoding="utf-8")
+
+    written = _write_split(split_dir, {stem: pl.DataFrame({"a": [1]})})
+
+    assert written == {stem: split_dir / f"{stem}.tsv"}
+    assert not (split_dir / f"{stem}.csv").exists()
 
 
 def test_the_sweep_needs_the_tsv_to_exist(tmp_path):

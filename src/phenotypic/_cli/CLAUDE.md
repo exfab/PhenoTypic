@@ -1228,7 +1228,8 @@ byte-exact snapshot. **Finalize's stale-CSV sweep** is
 `.tsv` is published: it deletes only that file's `.csv` twin (the splits in
 `_write_split`, `<AnalysisClass>` in `_emit_analysis_outputs`, and
 `metadata.canonical.csv` in `emit_canonical_metadata_view`), and raises on the
-stems `measurements`, `error_analysis` and `metadata`. A reader of a possibly
+stems `measurements`, `error_analysis` and `metadata` directly in
+`deliverables/` (the same stem in a split folder is an ordinary split). A reader of a possibly
 pre-cutover tree resolves the mirror text file with `measurements_table_path` /
 `BundleLayout.measurements_table_path()` (`.tsv`, else `.csv`); analysis tables
 go through the manifest, whose schema-1 entries map `csv` onto `tsv`.
