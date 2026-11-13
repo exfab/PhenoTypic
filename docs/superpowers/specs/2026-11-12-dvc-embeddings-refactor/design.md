@@ -226,12 +226,17 @@ The five parts below are independent enough to plan and ship in the order of §5
     three names.
   - When finalize rewrites the pipeline file, it publishes the new name first and
     then removes an old-name sibling.
+  - A plain `pipeline.json` is never removed. It may be the user's own file or
+    a V1 run's, and the resolvers prefer the typed names over it.
 - **A5** AutoConvertRaw-GC:
   - rename `pipelines/exfab_rig1.json.pht-pipe` to `pipelines/exfab_rig1.pht-pipe.json`;
   - set `PIPELINE_NAME = "pipeline.pht-pipe.json"`;
   - update the three configs and `pipeline_info.py`'s docstring.
 
   The bytes are unchanged, so `pipeline_sha256` is unchanged. A test asserts that.
+  Stores written after the rename record the new basename in their provenance,
+  so they are not byte-identical to stores written before it. The P5 rollout
+  changes those stores anyway.
 - **A6** DVC note for the how-to page (C9): DVC addresses params by dotted
   path (`pipe_cfgs.<OpKey>.params.<field>`). An operation key containing `.` cannot
   be addressed. Document it; no code check in v1.
@@ -256,18 +261,32 @@ The five parts below are independent enough to plan and ship in the order of §5
 - **B4 User-supplied inputs accept both** `.csv` and `.tsv`, delimiter chosen by
   suffix, as `join_metadata` already does. That covers `--metadata`, reference
   metadata and tune ground truth. Extend this to `_metadata_migration.py:469`,
-  `_cli_reference.py:400` and `metadata_csv_payload`. Any other suffix is still
-  refused.
+  `_cli_reference.py:400` and `metadata_csv_payload`. Any other suffix is
+  refused, in every mode, as a usage error (exit 2). For process mode, where
+  `--metadata` used to be ignored with a warning, this refusal is new.
+  - A user `.tsv` is read with the same `"` quoting the generated TSV uses
+    (B1), which is what Excel, R and pandas write.
 - **B5 Snapshots keep the user's bytes and extension:**
   `deliverables/metadata.<ext>` and `.phenotypic/reference_metadata.<ext>`, where
-  `<ext>` is the input's extension. Readers locate the snapshot under either
-  extension. Existing trees keep `metadata.csv`.
+  `<ext>` is the input's extension, lower-cased (`plates.TSV` snapshots to
+  `metadata.tsv`). Readers locate the snapshot under either extension. Existing
+  trees keep `metadata.csv`.
+  - Exactly one snapshot exists. If both suffixes exist, every mode refuses
+    with a usage error before writing anything.
+  - A `--metadata` whose suffix differs from the snapshot's **replaces** it, as
+    a same-suffix edit always has. The new snapshot is published first and the
+    other suffix's file removed after, so a crash leaves two files (a loud
+    refusal), never none (a silent run without the metadata join).
 - **B6 Old run folders.** Readers (results viewer, analysis app, `BundleLayout`,
   the README generator) fall back to the `.csv` name when no `.tsv` exists. A
   finalize into an old folder publishes the TSV, then removes the stale
   **generated** CSV sibling. This applies only to files in the B2 list, never to
   the metadata snapshot, `error_analysis.csv`, or the `measurements.csv` mirror
-  that B9 keeps.
+  that B9 keeps. A generated CSV whose producer has left the pipeline is not
+  republished, so it stays.
+  - No CLI reader prefers `measurements.tsv` over `measurements.csv` until #283:
+    curation updates only the `.csv` and `.parquet` (B9), so a TSV-first reader
+    would read uncurated data.
 - **B7 Public API is not renamed.** A Python method or argument named `csv` keeps
   its name and behaviour. Docstring examples that write `.csv` (e.g.
   `_objects_accessor.py:690`) stay user-chosen. B applies to files the CLI

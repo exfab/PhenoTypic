@@ -372,6 +372,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><code>_seed_pipeline_config</code> seeds only when no config exists under any of the three names.</li>
 <li>When finalize rewrites the pipeline file, it publishes the new name first and then removes an old-name sibling.</li>
+<li>A plain <code>pipeline.json</code> is never removed. It may be the user's own file or a V1 run's, and the resolvers prefer the typed names over it.</li>
 </ul></li>
 <li><p><strong>A5</strong> AutoConvertRaw-GC:</p>
 <ul>
@@ -379,7 +380,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>set <code>PIPELINE_NAME = "pipeline.pht-pipe.json"</code>;</li>
 <li>update the three configs and <code>pipeline_info.py</code>'s docstring.</li>
 </ul>
-<p>The bytes are unchanged, so <code>pipeline_sha256</code> is unchanged. A test asserts that.</p></li>
+<p>The bytes are unchanged, so <code>pipeline_sha256</code> is unchanged. A test asserts that. Stores written after the rename record the new basename in their provenance, so they are not byte-identical to stores written before it. The P5 rollout changes those stores anyway.</p></li>
 <li><p><strong>A6</strong> DVC note for the how-to page (C9): DVC addresses params by dotted path (<code>pipe_cfgs.&lt;OpKey&gt;.params.&lt;field&gt;</code>). An operation key containing <code>.</code> cannot be addressed. Document it; no code check in v1.</p></li>
 </ul>
 <h3 id="part-b-csv--tsv">Part B: CSV → TSV</h3>
@@ -395,9 +396,19 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p>Add the new constants and path functions (<code>MEASUREMENTS_TSV</code>, <code>measurements_tsv_path</code>, …) <strong>beside</strong> the old ones. The old names stay defined as legacy read names (B8).</p></li>
 <li><p><strong>B3 Analysis manifest.</strong> Fields <code>csv</code>/<code>csv_sha256</code> become <code>tsv</code>/<code>tsv_sha256</code>, with a manifest <code>schema_version</code> bump. Readers accept the old shape.</p></li>
-<li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is still refused.</p></li>
-<li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension. Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p></li>
-<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot, <code>error_analysis.csv</code>, or the <code>measurements.csv</code> mirror that B9 keeps.</p></li>
+<li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is refused, in every mode, as a usage error (exit 2). For process mode, where <code>--metadata</code> used to be ignored with a warning, this refusal is new.</p>
+<ul>
+<li>A user <code>.tsv</code> is read with the same <code>"</code> quoting the generated TSV uses (B1), which is what Excel, R and pandas write.</li>
+</ul></li>
+<li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension, lower-cased (<code>plates.TSV</code> snapshots to <code>metadata.tsv</code>). Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p>
+<ul>
+<li>Exactly one snapshot exists. If both suffixes exist, every mode refuses with a usage error before writing anything.</li>
+<li>A <code>--metadata</code> whose suffix differs from the snapshot's <strong>replaces</strong> it, as a same-suffix edit always has. The new snapshot is published first and the other suffix's file removed after, so a crash leaves two files (a loud refusal), never none (a silent run without the metadata join).</li>
+</ul></li>
+<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot, <code>error_analysis.csv</code>, or the <code>measurements.csv</code> mirror that B9 keeps. A generated CSV whose producer has left the pipeline is not republished, so it stays.</p>
+<ul>
+<li>No CLI reader prefers <code>measurements.tsv</code> over <code>measurements.csv</code> until #283: curation updates only the <code>.csv</code> and <code>.parquet</code> (B9), so a TSV-first reader would read uncurated data.</li>
+</ul></li>
 <li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI generates; GUI exports follow in #283.</p></li>
 <li><p><strong>B8</strong> Update the README generator, the how-to pages, and the root and <code>_cli</code> CLAUDE.md output inventories. Every name the GUI imports from <code>sdk_</code> stays defined with its signature: <code>MEASUREMENTS_CSV</code> (re-exported by <code>_gui/_config.py</code>), <code>MEASUREMENT_TABLE_RELATIVE_PATH</code>, <code>measurements_csv_path</code>, and <code>metadata_csv_deliverable_path(output_dir)</code> with one argument. A test walks <code>src/phenotypic/_gui/**</code> for names imported from <code>phenotypic.sdk_</code> and asserts each still resolves, with an unchanged signature for each function the GUI calls.</p></li>
 <li><p><strong>B9 What stays CSV until #283.</strong> Both are written by GUI code (§3.2):</p>
