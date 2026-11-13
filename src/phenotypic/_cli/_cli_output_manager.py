@@ -69,6 +69,7 @@ from phenotypic.sdk_ import (
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
+    remove_stale_csv_sibling,
     write_tsv,
 )
 
@@ -825,6 +826,12 @@ def _emit_analysis_outputs(
                 recover_analysis_publication(base)
                 return None
             recover_analysis_publication(base)
+            try:
+                remove_stale_csv_sibling(paths.tsv)
+            except OSError:
+                logger.warning(
+                    "Could not remove stale %s.csv", analysis_id, exc_info=True
+                )
         except Exception:
             try:
                 recover_analysis_publication(base)
@@ -1480,6 +1487,14 @@ def _write_split(
                 "Failed to write split Parquet for %r (TSV was saved)",
                 key,
                 exc_info=True,
+            )
+
+        # The TSV is published, so the pre-cutover `.csv` twin is stale.
+        try:
+            remove_stale_csv_sibling(tsv_path)
+        except OSError:
+            logger.warning(
+                "Could not remove stale %s.csv", key, exc_info=True
             )
 
         written[key] = tsv_path

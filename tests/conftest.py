@@ -20,6 +20,7 @@ from tests._support.xdist_workers import resolve_xdist_auto_workers
 from tests._tiny_run import (  # noqa: F401
     finished_tiny_run,
     metadata_bytes,
+    old_tree_with_measurements_csv,
     tiny_inputs,
     tiny_pipeline,
     tiny_pipeline_file,

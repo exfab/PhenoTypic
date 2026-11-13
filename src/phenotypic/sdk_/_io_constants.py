@@ -1648,6 +1648,19 @@ def measurements_tsv_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / MEASUREMENTS_TSV
 
 
+def measurements_table_path(output_dir: Path) -> Path:
+    """Return the mirror's text table: ``.tsv`` first, then a pre-cutover ``.csv``.
+
+    A tree finalized before #281 P1 holds only ``measurements.csv``. When
+    neither exists the ``.tsv`` path is returned, the name a finalize writes.
+    """
+    tsv = measurements_tsv_path(output_dir)
+    if tsv.is_file():
+        return tsv
+    csv = measurements_csv_path(output_dir)
+    return csv if csv.is_file() else tsv
+
+
 def measurements_parquet_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements.parquet`` (post-applied mirror)."""
     return deliverables_dir(output_dir) / MEASUREMENTS_PARQUET
@@ -3264,6 +3277,15 @@ class BundleLayout:
         naming the ``.csv`` even though finalize also writes :attr:`mirror_tsv`.
         """
         return self.deliverables_base / MEASUREMENTS_CSV
+
+    def measurements_table_path(self) -> Path:
+        """Return the mirror's text table: ``.tsv``, else a pre-cutover ``.csv``.
+
+        When neither exists, the ``.tsv`` path (what a finalize would write).
+        """
+        if self.mirror_tsv.is_file():
+            return self.mirror_tsv
+        return self.mirror_csv if self.mirror_csv.is_file() else self.mirror_tsv
 
     @property
     def mirror_tsv(self) -> Path:

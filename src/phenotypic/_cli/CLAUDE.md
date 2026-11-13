@@ -1132,12 +1132,12 @@ member (`sdk_/_schema_shape.py:192`).
 ## Output layout & deliverables
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
-`master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
-`measurements_by_feature/<feature>.{csv,parquet}`,
-`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+`master_measurements.parquet` (**parquet only** since D8), `measurements.{tsv,csv,parquet}`,
+`measurements_by_feature/<feature>.{tsv,parquet}`,
+`measurements_by_category/<label>.{tsv,parquet}` (one per `CATEGORIES` member
 with a present column; written beside the feature split by
 `finalize_post_master_outputs`),
-`<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
+`<AnalysisClass>.{tsv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
@@ -1218,7 +1218,22 @@ is an advisory, and an advisory is never a gate. It *does* still refuse mixed
 **authority** — a tree holding both embedded tables and legacy external
 Parquets (`refuse_mixed_measurement_authority`).
 
-`measurements.{csv,parquet}` is the post-applied, metadata-joined mirror the GUI
+**Two generated CSVs and one input snapshot stay CSV** (#281 P1, spec B2/B9):
+`measurements.csv` stays because the GUI's curation rewrites it and the
+`.parquet` — never the `.tsv` — until #283, so until then a curated edit
+reaches `measurements.csv`/`.parquet` and not `measurements.tsv`;
+`error_analysis.csv` is written by the GUI; `metadata.<ext>` is the user's
+byte-exact snapshot. **Finalize's stale-CSV sweep** is
+`remove_stale_csv_sibling(tsv)` (`sdk_/_delimited.py`), called right after a
+`.tsv` is published: it deletes only that file's `.csv` twin (the splits in
+`_write_split`, `<AnalysisClass>` in `_emit_analysis_outputs`, and
+`metadata.canonical.csv` in `emit_canonical_metadata_view`), and raises on the
+stems `measurements`, `error_analysis` and `metadata`. A reader of a possibly
+pre-cutover tree resolves the mirror text file with `measurements_table_path` /
+`BundleLayout.measurements_table_path()` (`.tsv`, else `.csv`); analysis tables
+go through the manifest, whose schema-1 entries map `csv` onto `tsv`.
+
+`measurements.{tsv,csv,parquet}` is the post-applied, metadata-joined mirror the GUI
 reads and curates. Metadata is the **left** frame, deliberately: a metadata
 identity that matched no measured object survives as a phantom row with
 `QC_MetadataOnly=true`, its metadata values kept and its measurement/info

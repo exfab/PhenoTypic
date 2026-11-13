@@ -145,6 +145,7 @@ from ._delimited import (  # noqa: E402
     TSV_SUFFIX,
     delimiter_for,
     read_delimited,
+    remove_stale_csv_sibling,
     write_tsv,
 )
 from ._column_ref import (  # noqa: E402
@@ -319,6 +320,7 @@ from ._io_constants import (  # noqa: E402
     measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
+    measurements_table_path,
     measurements_tsv_path,
     measurements_parquet_path,
     migration_backup_dir,
@@ -499,6 +501,7 @@ __all__ = [
     "TSV_SUFFIX",
     "delimiter_for",
     "read_delimited",
+    "remove_stale_csv_sibling",
     "write_tsv",
     "PARQUET_WRITE_OPTIONS",
     "PreparedEmbeddedMeasurementTable",
@@ -759,6 +762,7 @@ __all__ = [
     "measurements_by_category_dir",
     "measurements_by_feature_dir",
     "measurements_csv_path",
+    "measurements_table_path",
     "measurements_tsv_path",
     "measurements_parquet_path",
     "migration_backup_dir",

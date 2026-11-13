@@ -92,6 +92,31 @@ class TestEmitAnalysisOutputs:
         assert not named_analysis_tsv_path(base, "LogGrowthModel").exists()
         assert not named_analysis_parquet_path(base, "LogGrowthModel").exists()
 
+    def test_a_stale_pre_cutover_analysis_csv_is_swept(
+        self, tmp_path: Path
+    ) -> None:
+        base = deliverables_dir(tmp_path)
+        base.mkdir(parents=True)
+        stale = base / "LogGrowthModel.csv"
+        stale.write_text("old\n", encoding="utf-8")
+        kept = base / "error_analysis.csv"
+        kept.write_text("keep\n", encoding="utf-8")
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Size_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+        result = _emit_analysis_outputs(
+            tmp_path, _synthetic_growth_master(), pipeline
+        )
+        assert result is not None
+        assert named_analysis_tsv_path(base, "LogGrowthModel").exists()
+        assert not stale.exists()
+        assert kept.read_text(encoding="utf-8") == "keep\n"
+
     def test_writes_tsv_and_parquet_when_model_configured(
         self, tmp_path: Path
     ) -> None:

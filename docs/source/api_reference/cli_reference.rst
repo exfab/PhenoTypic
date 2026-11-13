@@ -197,7 +197,11 @@ Output Options
    measurements and ``QC_MetadataOnly`` set to ``true``, so strains that were
    never detected stay visible instead of being silently dropped. Measurement
    rows with no matching CSV row *are* dropped. The join lands on
-   ``deliverables/measurements.csv`` and its derivatives —
+   ``deliverables/measurements.tsv`` (and ``measurements.csv``, kept for the
+   results viewer's curation until #283) and its derivatives — the per-feature
+   and per-category splits and ``<AnalysisClass>`` tables are TSV only; a
+   re-finalize into an older folder deletes the ``.csv`` twins it replaces, and
+   never ``metadata.*``, ``measurements.csv`` or ``error_analysis.csv``.
    ``master_measurements.parquet`` stays a clean, metadata-free archive.
    (The master is Parquet only: ``master_measurements.csv`` was removed, since
    the un-joined archive is not the file a human opens.)

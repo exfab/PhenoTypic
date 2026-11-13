@@ -43,7 +43,7 @@ an output here also binds the viewer to the same directory.
 - **Run analysis**: click `Run analysis`. The sub-app reads
   `<output>/deliverables/measurements.parquet` (the curated mirror), runs
   the chain via `pipeline.analyze(...)`, and writes
-  `<output>/deliverables/<AnalysisClass>.csv` and
+  `<output>/deliverables/<AnalysisClass>.tsv` and
   `<output>/deliverables/<AnalysisClass>.parquet`, with
   `<output>/deliverables/analysis_manifest.json` recording the available
   analysis tables for downstream consumers. Publication is atomic and checks
@@ -84,7 +84,7 @@ kwargs when on:
 Every section you author from the GUI is persisted to
 `<output>/deliverables/pipeline.json.pht-pipe`. A subsequent
 `python -m phenotypic --mode recompile --output <output>` run reads that file and emits
-the same `deliverables/analysis.{csv,parquet}` without booting the GUI —
+the same `deliverables/analysis.{tsv,parquet}` without booting the GUI —
 so `deliverables/pipeline.json.pht-pipe` is the single reproducibility surface.
 
 ## Where to next

@@ -97,6 +97,45 @@ def write_tsv(
     )
 
 
+#: Tables that stay ``.csv`` beside, or instead of, a ``.tsv``: the GUI's
+#: curation write target (spec B9), the GUI-written error table and the user's
+#: metadata snapshot. The stale-CSV sweep refuses these names outright.
+_KEPT_CSV_STEMS: Final[frozenset[str]] = frozenset(
+    {"measurements", "error_analysis", "metadata"}
+)
+
+
+def remove_stale_csv_sibling(tsv_path: Union[str, Path]) -> bool:
+    """Unlink the pre-cutover ``.csv`` twin of a ``.tsv`` that was just published.
+
+    Called only after the ``.tsv`` is on disk, so a failed publication never
+    costs the older ``.csv``. Refuses (``ValueError``) a path whose stem names
+    a table that stays CSV: ``measurements`` (GUI curation writes it, spec B9),
+    ``error_analysis`` (GUI-written) and ``metadata`` (the user's snapshot).
+
+    Args:
+        tsv_path: The published ``.tsv`` file.
+
+    Returns:
+        ``True`` when a ``.csv`` sibling existed and was removed.
+
+    Raises:
+        ValueError: If ``tsv_path`` is not a ``.tsv`` or names a kept CSV.
+    """
+    path = Path(tsv_path)
+    if path.suffix != TSV_SUFFIX:
+        raise ValueError(f"{path.name!r} is not a .tsv file")
+    if path.stem in _KEPT_CSV_STEMS:
+        raise ValueError(f"{path.stem}.csv is never swept; it stays CSV")
+    if not path.is_file():
+        return False
+    stale = path.with_suffix(CSV_SUFFIX)
+    if not stale.is_file():
+        return False
+    stale.unlink()
+    return True
+
+
 def _tsv_writer(frame: Any):
     """Return a ``writer(temp_path)`` callback for ``frame``, by duck type."""
     if hasattr(frame, "write_csv"):  # polars

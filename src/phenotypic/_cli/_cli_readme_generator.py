@@ -111,12 +111,13 @@ Image Type: {self.config.image_type}{grid_info}"""
 output_folder/
 +-- deliverables/                     # User-facing run outputs
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
-|   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
-|   +-- measurements.parquet          # Parquet companion of measurements.csv
-|   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
-|   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
+|   +-- measurements.tsv              # Metadata-joined mirror, tab-separated (refreshed on every run)
+|   +-- measurements.csv              # Same mirror, comma-separated: the file the GUI results viewer reads and curates (kept until #283)
+|   +-- measurements.parquet          # Parquet companion of the mirror
+|   +-- measurements_by_feature/      # One TSV + Parquet per measurer: shared context columns + that measurer's columns
+|   +-- measurements_by_category/     # One TSV + Parquet per measurement category (see Measurement Categories)
 |   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
-|   +-- <AnalysisClass>.csv           # Class-named model-fit output
+|   +-- <AnalysisClass>.tsv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
 |   +-- plots/                         # Configured plot outputs and page manifests
@@ -133,7 +134,18 @@ output_folder/
 |   +-- logs/                         # Execution logs
 |   |   +-- slurm/                    # SLURM job logs (if applicable)
 |   +-- slurm_scripts/                # Generated SLURM scripts (if applicable)
-```"""
+```
+
+**Generated tables are tab-separated (`.tsv`).** Releases before this change
+wrote `.csv` for the per-feature and per-category splits and for
+`<AnalysisClass>`; re-running finalize into such a folder replaces those with
+`.tsv` and deletes the old `.csv` files it replaces. Two CSVs stay: `metadata.csv`
+(or `metadata.tsv`; the byte-for-byte copy of the table you passed to
+`--metadata`) and `error_analysis.csv` (written by the results viewer).
+`measurements.csv` is kept because the results viewer's curation writes to it
+and to `measurements.parquet`, **not** to `measurements.tsv`: until #283 lands,
+curated edits reach `measurements.csv` and `measurements.parquet` but not
+`measurements.tsv`."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
@@ -257,7 +269,7 @@ No measurements configured in this pipeline."""
             listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
             blocks.append(
                 f"### {category.display_name}\n\n{category.desc}\n\n"
-                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.tsv` "
                 f"(and `.parquet`), alongside every context column.\n\n{listed}"
             )
         if not blocks:
@@ -343,7 +355,7 @@ No measurements configured in this pipeline."""
             "## Models & Analysis",
             "",
             f"Model `{model_name}` fit on metric `{model.on}` "
-            f"(output written to `deliverables/{model_name}.csv`).",
+            f"(output written to `deliverables/{model_name}.tsv`).",
             "",
             "Output columns follow `<Model>_<metric>_<parameter>`; for this "
             f"run `<metric>` = `{token}`.",

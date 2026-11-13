@@ -586,10 +586,18 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `project_embedded_measurement_table`). **Parquet only** — D8 deleted
   `master_measurements.csv` along with its constant, its path helper and its
   reader, because the un-joined master is not the file a human opens.
-  `measurements.{csv,parquet}` carries the metadata join, appends
+  `measurements.{tsv,csv,parquet}` carries the metadata join, appends
   metadata-only phantoms once, and is the post-applied mirror the GUI
   reads/curates — feed analysis and dashboards from the **mirror**, not the
-  master. `measurements_by_feature/` (one file per measurer) and
+  master. Generated tables are TSV (spec B2); **three CSVs stay**:
+  `metadata.<ext>` (the user's byte-exact snapshot), `error_analysis.csv`
+  (GUI-written) and `measurements.csv` (GUI curation rewrites it and the
+  `.parquet`, not the `.tsv`, until #283 — spec B9). Finalize deletes only
+  the stale `.csv` twin of a split/`<AnalysisClass>`/`metadata.canonical`
+  file it just republished as `.tsv` (`remove_stale_csv_sibling`, which
+  refuses those three names); readers resolve the mirror with
+  `measurements_table_path` (`.tsv`, else a pre-cutover `.csv`).
+  `measurements_by_feature/` (one file per measurer) and
   `measurements_by_category/` (one file per `CATEGORIES` member) are both
   written from that mirror's post-applied frame by
   `finalize_post_master_outputs`, the finalization path shared by full,

@@ -196,7 +196,7 @@ upgrade root provenance and have no legacy image source to reclaim.
   `deliverables/master_measurements.parquet` carries measurements and the
   image's intrinsic identity only — no user metadata — exactly like a run
   written by the current release. `master_measurements.csv` is deleted.
-- **Mirror.** `deliverables/measurements.{csv,parquet}` joins `metadata.csv`
+- **Mirror.** `deliverables/measurements.{tsv,csv,parquet}` joins `metadata.csv`
   once, on the columns the master and the CSV share — for a plate run typically
   `Metadata_ImageName`, `Metadata_Dataset`, `Grid_RowNum` and `Grid_ColNum`.
   Metadata is the left side of that join: a metadata row with no measured object

@@ -526,6 +526,11 @@ def emit_canonical_metadata_view(
     write_tsv(
         normalize_metadata_columns(frame), target, commit_guard=commit_guard
     )
+    # The view moved from .csv to .tsv in P1, so its old twin is stale. Only
+    # the generated view goes, never the snapshot.
+    stale = target.with_name(CANONICAL_METADATA_CSV_NAME)
+    if stale.is_file():
+        stale.unlink()
     return target
 
 

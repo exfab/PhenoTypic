@@ -129,6 +129,36 @@ def finished_tiny_run(tmp_path: Path, tiny_inputs: Path) -> Path:
 
 
 @pytest.fixture
+def old_tree_with_measurements_csv(
+    tmp_path: Path, tiny_inputs: Path, metadata_bytes: dict[str, bytes]
+) -> Path:
+    """A finished run as a pre-P1 finalize left it: generated tables are ``.csv``.
+
+    Built from a real run with a ``--metadata`` CSV. Every generated ``.tsv``
+    under ``deliverables/`` is deleted and its rows are written back under the
+    pre-cutover ``.csv`` name (comma-separated, ``measurements.csv`` included),
+    so the tree holds no ``.tsv`` at all. The metadata snapshot is untouched.
+
+    Returns:
+        The output root.
+    """
+    import polars as pl
+
+    metadata = tmp_path / "layout.csv"
+    metadata.write_bytes(metadata_bytes[".csv"])
+    out = tmp_path / "old_out"
+    result = run_cli(tiny_inputs, out, extra=["--metadata", str(metadata)])
+    assert result.exit_code == 0, result.output
+    for tsv in sorted((out / "deliverables").rglob("*.tsv")):
+        pl.read_csv(tsv, separator="\t", infer_schema_length=0).write_csv(
+            tsv.with_suffix(".csv")
+        )
+        tsv.unlink()
+    assert not list(out.rglob("*.tsv"))
+    return out
+
+
+@pytest.fixture
 def metadata_bytes() -> dict[str, bytes]:
     """The same ``--metadata`` rows as CSV and as TSV, keyed by suffix.
 
