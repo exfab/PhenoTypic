@@ -212,3 +212,24 @@ def test_fences_this_run_does_not_own_are_never_retired(
     assert not _cli_staged_orchestration.live_slurm_job_ids(out)  # dead, as premised
     assert retire_dead_lifecycle_fence(out) is None
     assert load_slurm_lifecycle(out)["active"] is True
+
+
+def test_a_passed_is_active_is_the_one_consulted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``phenotypic-wait`` hands in its memo; the module default is then never asked."""
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+
+    out = tmp_path / "out"
+    out.mkdir()
+    initialize_slurm_lifecycle(out, generation="g-live", mode="ordinary")
+    _dead_job(out, "g-live", monkeypatch)  # the default would answer "dead"
+    asked: list[str] = []
+
+    def _memo(job_id: str) -> bool:
+        asked.append(job_id)
+        return True
+
+    jobs = _cli_staged_orchestration.live_slurm_job_ids(out, is_active=_memo)
+    assert jobs.live == ("77",) and asked == ["77"]
+    assert not _cli_staged_orchestration.live_slurm_job_ids(out)  # default unchanged
