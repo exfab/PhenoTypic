@@ -979,7 +979,7 @@ def _refuse_live_slurm_run(output_dir: Path) -> None:
             for comment in jobs.unresolved
         )
     click.echo("\n".join(lines), err=True)
-    sys.exit(1)
+    sys.exit(RunExitCode.ERROR)
 
 
 def _retire_dead_fence(output_dir: Path, *, submitting: bool) -> None:
