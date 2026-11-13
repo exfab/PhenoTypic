@@ -198,7 +198,7 @@ def test_canonical_view_is_tsv_and_leaves_the_snapshot_byte_identical(tmp_path, 
     snap = metadata_snapshot_path(tmp_path, ext)
     snap.parent.mkdir(parents=True)
     sep = "\t" if ext == ".tsv" else ","
-    snap.write_bytes(f"MetadataGenetic_Strain{sep}ImageName\nS288C{sep}007\n".encode())
+    snap.write_bytes(f"Strain{sep}ImageName\nS288C{sep}007\n".encode())
     before = snap.read_bytes()
 
     view = emit_canonical_metadata_view(tmp_path)
@@ -262,7 +262,7 @@ def test_metadata_migration_reads_and_writes_by_suffix(tmp_path, ext):
     sep = "\t" if ext == ".tsv" else ","
     table = tmp_path / f"user_table{ext}"
     table.write_text(
-        f'MetadataGenetic_Strain{sep}Note\nS288C{sep}"a, b"\n', encoding="utf-8"
+        f'Strain{sep}Note\nS288C{sep}"a, b"\n', encoding="utf-8"
     )
     report = preflight_metadata_schema(table)
     assert report.status != "blocked", report.conflicts
