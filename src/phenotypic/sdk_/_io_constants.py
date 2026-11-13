@@ -208,6 +208,35 @@ def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
     return Path(f"{text}{suffix}")
 
 
+def old_typed_config_sibling(path: str | Path) -> Path | None:
+    """Return the pre-flip ``.json.pht-*`` twin of a canonical typed config path.
+
+    A writer that publishes ``x.pht-pipe.json`` into a folder an older release
+    wrote retires ``x.json.pht-pipe`` after the publish, so the folder keeps one
+    current file (spec A4). A plain ``x.json`` has no typed twin and is never
+    retired.
+
+    Args:
+        path: A path ending in one of :data:`CONFIG_SUFFIXES` (matched
+            case-sensitively, as the writers spell them).
+
+    Returns:
+        The same folder and stem with the old typed suffix, or ``None`` when
+        ``path`` carries no canonical typed suffix.
+
+    Examples:
+        >>> from phenotypic.sdk_ import old_typed_config_sibling
+        >>> old_typed_config_sibling("best_pipeline.pht-pipe.json").name
+        'best_pipeline.json.pht-pipe'
+    """
+    target = Path(path)
+    for suffix, legacy in LEGACY_TYPED_CONFIG_SUFFIXES.items():
+        if target.name.endswith(suffix):
+            stem = target.name[: -len(suffix)]
+            return target.with_name(f"{stem}{legacy}")
+    return None
+
+
 def bytes_fingerprint(data: bytes) -> str:
     """Return a versioned SHA-256 fingerprint for exact bytes.
 
@@ -1653,6 +1682,12 @@ def measurements_table_path(output_dir: Path) -> Path:
 
     A tree finalized before #281 P1 holds only ``measurements.csv``. When
     neither exists the ``.tsv`` path is returned, the name a finalize writes.
+
+    **No CLI reader calls this until #283** (spec B6). The GUI's curation
+    rewrites ``measurements.csv`` and ``measurements.parquet`` but never
+    ``measurements.tsv``, so on a curated tree the ``.tsv`` this prefers is
+    stale; a reader that wants the curated mirror reads the ``.parquet``.
+    Keep it unwired until #283 makes curation update the ``.tsv``.
     """
     tsv = measurements_tsv_path(output_dir)
     if tsv.is_file():
@@ -1804,7 +1839,9 @@ def resolve_best_pipeline_path(output_dir: Path) -> Path:
     """Return the best existing tuned-winner pipeline path for ``output_dir``.
 
     The first of :func:`best_pipeline_candidates` that exists, else the
-    canonical path.
+    canonical path. No non-GUI code reads the tuned winner, so nothing calls
+    this yet; it is the reader #283 gives the GUI's tune export, which today
+    looks only at the canonical name.
     """
     return _first_existing(best_pipeline_candidates(output_dir))
 
@@ -2084,7 +2121,9 @@ def resolve_phenotypic_cache_pipeline_path(output_dir: Path) -> Path:
     """Return the best existing process-only pipeline copy for ``output_dir``.
 
     The first of :func:`phenotypic_cache_pipeline_candidates` that exists,
-    else the canonical path.
+    else the canonical path. The process-only copy is a reproducibility record
+    for people; no code reads it back, so this has no caller and exists for a
+    reader that needs it, beside the old-name-aware resolvers of its siblings.
     """
     return _first_existing(phenotypic_cache_pipeline_candidates(output_dir))
 
@@ -3282,6 +3321,8 @@ class BundleLayout:
         """Return the mirror's text table: ``.tsv``, else a pre-cutover ``.csv``.
 
         When neither exists, the ``.tsv`` path (what a finalize would write).
+        Unwired until #283, for the reason :func:`measurements_table_path`
+        gives: curation does not update the ``.tsv``.
         """
         if self.mirror_tsv.is_file():
             return self.mirror_tsv

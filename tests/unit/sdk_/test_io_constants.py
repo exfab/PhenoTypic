@@ -2139,3 +2139,19 @@ def test_the_removed_posix_only_parameter_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(TypeError):
         store_publication_token(tmp_path, root_dir_fd=3)
+
+
+def test_old_typed_config_sibling():
+    """Spec A4 / review M8: the pre-flip twin of a canonical typed name."""
+    from pathlib import Path
+
+    from phenotypic.sdk_ import old_typed_config_sibling
+
+    assert old_typed_config_sibling(Path("d/best.pht-pipe.json")) == Path(
+        "d/best.json.pht-pipe"
+    )
+    assert old_typed_config_sibling(Path("d/spec.pht-tune.json")) == Path(
+        "d/spec.json.pht-tune"
+    )
+    assert old_typed_config_sibling(Path("d/pipeline.json")) is None
+    assert old_typed_config_sibling(Path("d/pipeline.json.pht-pipe")) is None
