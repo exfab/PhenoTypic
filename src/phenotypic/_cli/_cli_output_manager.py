@@ -1521,6 +1521,7 @@ def _aggregate_measurements_unlocked(
     planned_work_ids: Optional[Sequence[str]] = None,
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: Optional[str] = None,
 ) -> Optional[Path]:
     """Finalize this run through the one aggregation + join + publish path.
 
@@ -1551,6 +1552,9 @@ def _aggregate_measurements_unlocked(
         study_config: Optional REMBI Study-level fields (parsed ``--study``
             YAML) forwarded to the manifest.
         commit_guard: Publication guard threaded to every terminal write.
+        execution_epoch: The SLURM generation the calling finalizer runs
+            under, stamped into the aggregate proof (#281 spec C3). ``None``
+            for a local run.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` if no
@@ -1590,6 +1594,7 @@ def _aggregate_measurements_unlocked(
         shard_paths=shard_paths,
         planned_work_ids=planned_work_ids,
         commit_guard=commit_guard,
+        execution_epoch=execution_epoch,
     )
 
 
@@ -1605,6 +1610,7 @@ def aggregate_measurements(
     planned_work_ids: Optional[Sequence[str]] = None,
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: Optional[str] = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -1626,6 +1632,7 @@ def aggregate_measurements(
             planned_work_ids=planned_work_ids,
             njobs=njobs,
             commit_guard=commit_guard,
+            execution_epoch=execution_epoch,
         )
 
 

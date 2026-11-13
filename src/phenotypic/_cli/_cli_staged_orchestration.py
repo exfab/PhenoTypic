@@ -29,6 +29,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
+    FENCE_CLOSED_BY_FINALIZER,
     SchedulerQueryUnavailable,
     SlurmGenerationInactiveError,
     _deactivate_generation_locked,
@@ -767,13 +768,20 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
 
 
 def deactivate_orchestration(
-    output_dir: Path, phase: str = "cancelled"
+    output_dir: Path,
+    phase: str = "cancelled",
+    *,
+    closed_by: str | None = None,
 ) -> bool:
     """Fence an epoch immediately, without waiting for its controller lock.
 
     The append-only fence is authoritative over the mutable controller state.
     This lets cancellation stop publication even when a controller is blocked
     inside a scheduler query or submission retry.
+
+    ``closed_by`` is passed only by the finalizer
+    (``FENCE_CLOSED_BY_FINALIZER``), so a cancel leaves the fence's close
+    reason unset (#281 spec C3).
     """
     state = load_orchestration_state(output_dir)
     if state is None or state.get("phase") in {
@@ -784,7 +792,7 @@ def deactivate_orchestration(
         return False
     epoch = str(state.get("epoch", ""))
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        _deactivate_generation_locked(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch, closed_by=closed_by)
     atomic_append(
         epoch_deactivation_journal_path(output_dir),
         json.dumps(
@@ -838,7 +846,9 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     }
     atomic_write_json(staged_completion_path(output_dir), marker)
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        _deactivate_generation_locked(output_dir, epoch)
+        _deactivate_generation_locked(
+            output_dir, epoch, closed_by=FENCE_CLOSED_BY_FINALIZER
+        )
     state = load_orchestration_state(output_dir)
     if state is not None and state.get("epoch") == epoch:
         state["phase"] = "complete"

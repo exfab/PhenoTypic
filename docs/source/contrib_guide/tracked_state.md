@@ -205,17 +205,18 @@ its user-facing consumer is not wired — the message a user sees still comes
 from `OutputRoot.discover`. This is the capability, not its wiring.
 ```
 
-### Whether the aggregate proof describes this run
+### Which submission published
 
-`aggregate_proof_is_current` asks only whether the published outputs still hold
-the bytes the proof recorded. `aggregate_proof_matches_current_state(output_dir)`
-also asks whether the proof was published against the run as it stands now.
-The proof's inventory, scientific-config and finalization-input digests must
-equal the current config's. Its source set must equal the images that verify
-now, read from a shallow `resolve_run_state`. A resubmission that accepts new
-images, runs another pipeline or snapshots new metadata leaves the earlier
-proof byte-current, and this is the check that tells the two apart.
-`phenotypic-wait` uses it (#281 spec C3).
+The aggregate proof and the run proof both carry `execution_epoch`: the SLURM
+generation of the finalizer that wrote them, or `"local"` (run proof) / `null`
+(aggregate proof) for a local run. A finalizer that closes the lifecycle fence
+also records `closed_by: "finalizer"` in it. A cancel (`cancel_generation`,
+`deactivate_orchestration`) leaves `closed_by` unset. `phenotypic-wait` reads
+these to decide whether *this* submission published (#281 spec C3). Digests
+cannot answer that: a `--mode measure` resubmission keeps no run state, so an
+earlier run's proofs still match it after its own finalizer dies. Neither field
+is a verdict input: `resolve_run_state` never reads them. An aggregate proof or
+fence written before the fields existed reads as "not this submission".
 
 ---
 
@@ -439,7 +440,7 @@ here when you add a consumer.
 | `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
 | `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
-| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; `aggregate_proof_matches_current_state` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
+| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
 
 ### Consumers that deliberately ask something else
 

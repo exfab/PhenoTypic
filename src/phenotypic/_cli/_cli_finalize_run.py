@@ -416,6 +416,7 @@ def finalize_run(
     shard_paths: Sequence[Path] | None = None,
     planned_work_ids: Sequence[str] | None = None,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: str | None = None,
 ) -> Path | None:
     """Aggregate, join, publish -- one path for ``full``, ``measure`` and ``recompile``.
 
@@ -480,6 +481,10 @@ def finalize_run(
             sources this call itself selected -- the same moment the master
             was built from, so the proof still describes the master.
         commit_guard: Publication guard threaded to every terminal write.
+        execution_epoch: The SLURM generation this finalizer runs under,
+            stamped into the aggregate proof so ``phenotypic-wait`` can tell
+            this submission's publication from an earlier one (#281 spec C3).
+            ``None`` for a local run.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` when no
@@ -578,6 +583,7 @@ def finalize_run(
                 output_dir,
                 source_work_ids=source_work_ids,
                 commit_guard=commit_guard,
+                execution_epoch=execution_epoch,
             )
         # AFTER the proof, so "invalidate on success" is literal. Publication
         # can still raise here -- a tree with no current state, an artifact

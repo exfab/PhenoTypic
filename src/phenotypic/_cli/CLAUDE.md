@@ -520,10 +520,17 @@ site, never a bare literal.
   Any `live`/`unverified`/`unresolved` job keeps it waiting, whatever the
   completion says. With none live, it exits `0`/`3` only when **this
   submission** published. It reads the fence generation once, at the first
-  poll. Published means that fence was closed with no `terminal_status`, or
-  the run completion marker's `execution_epoch` is that generation, or
-  `aggregate_proof_matches_current_state`. A process run that reads `failed`
-  exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
+  poll. Published means one of: that fence was closed with
+  `closed_by: "finalizer"` (`FENCE_CLOSED_BY_FINALIZER`) and no
+  `terminal_status`; the run proof's `execution_epoch` is that generation; or
+  the current aggregate proof's `execution_epoch` is that generation. The
+  finalizer is the only writer of both fields. It passes `execution_epoch=`
+  through `aggregate_measurements`/`finalize_run` to
+  `publish_aggregate_snapshot`, and `closed_by=` to the fence close. A cancel
+  leaves `closed_by` unset. **Matching digests are not enough:** a
+  `--mode measure` resubmission keeps no run state, so the earlier run's
+  proofs still match after its finalizer dies. A process run that reads
+  `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
   `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
   external control root.
 - **The GUI run console reads `4` as a failed submission**

@@ -432,7 +432,6 @@ from ._run_state import (  # noqa: E402
     RunIdentity,
     RunState,
     aggregate_proof_is_current,
-    aggregate_proof_matches_current_state,
     assert_identity_current,
     clear_verification_cache,
     finalization_input_object,
@@ -581,9 +580,6 @@ __all__ = [
     # `state_requires_success_markers`, so `core_readable` itself cannot live
     # here -- INV-LAYER keeps `_cli` out of `sdk_`.
     "aggregate_proof_is_current",
-    # #281 spec C3: `phenotypic-wait` asks whether the aggregate proof was
-    # published against the run as it stands, not only whether its bytes hold.
-    "aggregate_proof_matches_current_state",
     "assert_identity_current",
     "clear_verification_cache",
     "finalization_input_object",

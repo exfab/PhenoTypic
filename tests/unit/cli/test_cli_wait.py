@@ -16,15 +16,22 @@ from click.testing import CliRunner
 
 from phenotypic._cli import _cli_slurm_lifecycle, _cli_staged_orchestration, _cli_wait
 from phenotypic._cli._cli_slurm_lifecycle import (
+    FENCE_CLOSED_BY_FINALIZER,
     SchedulerQueryUnavailable,
     append_lifecycle_entry,
+    cancel_generation,
     deactivate_generation,
     initialize_slurm_lifecycle,
+    load_slurm_lifecycle,
     mark_generation_failed,
 )
 from phenotypic._cli._cli_staged_orchestration import LiveSlurmJobs
 from phenotypic._cli._cli_wait import decide_wait_outcome, main, wait_for_run
-from phenotypic.sdk_ import RunExitCode, run_completion_marker_path
+from phenotypic.sdk_ import (
+    RunExitCode,
+    aggregate_publication_marker_path,
+    run_completion_marker_path,
+)
 
 NONE = LiveSlurmJobs()
 LIVE = LiveSlurmJobs(live=("123",))
@@ -268,8 +275,15 @@ def test_fence_generation_is_none_without_a_fence(tmp_path):
 def test_a_fence_closed_by_its_finalizer_is_published(tmp_path):
     initialize_slurm_lifecycle(tmp_path, generation="g", mode="full")
     assert not _cli_wait._published(tmp_path, "g")
-    deactivate_generation(tmp_path, "g")
+    deactivate_generation(tmp_path, "g", closed_by=FENCE_CLOSED_BY_FINALIZER)
     assert _cli_wait._published(tmp_path, "g")
+
+
+def test_a_fence_closed_without_a_reason_is_not_published(tmp_path):
+    # Every cancel path closes the fence with no `closed_by`.
+    initialize_slurm_lifecycle(tmp_path, generation="g", mode="full")
+    deactivate_generation(tmp_path, "g")
+    assert not _cli_wait._published(tmp_path, "g")
 
 
 def test_a_fence_marked_failed_is_not_published(tmp_path):
@@ -280,7 +294,7 @@ def test_a_fence_marked_failed_is_not_published(tmp_path):
 
 def test_a_closed_fence_of_another_generation_is_not_published(tmp_path):
     initialize_slurm_lifecycle(tmp_path, generation="g-old", mode="full")
-    deactivate_generation(tmp_path, "g-old")
+    deactivate_generation(tmp_path, "g-old", closed_by=FENCE_CLOSED_BY_FINALIZER)
     assert not _cli_wait._published(tmp_path, "g-new")
 
 
@@ -301,19 +315,101 @@ def test_with_no_fence_at_the_first_poll_the_run_state_decides(tmp_path):
     assert _cli_wait._published(tmp_path, None)
 
 
+def _aggregate_proof(out):
+    return json.loads(aggregate_publication_marker_path(out).read_text(encoding="utf-8"))
+
+
+def _resubmit(out, generation, *, finalizer_job="999"):
+    """Fence *out* for a new SLURM generation whose finalizer job is ledgered."""
+    initialize_slurm_lifecycle(out, generation=generation, mode="measure")
+    append_lifecycle_entry(out, generation=generation, token="fin", role="finalizer",
+                           status="intent")
+    append_lifecycle_entry(out, generation=generation, token="fin", role="finalizer",
+                           status="submitted", job_id=finalizer_job)
+
+
+def test_an_aggregate_proof_stamped_with_this_generation_is_published(finished_tiny_run):
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    out = finished_tiny_run
+    _resubmit(out, "g")
+    assert not _cli_wait._published(out, "g")
+    aggregate_measurements(output_dir=out, dataset_names=["ds"], execution_epoch="g")
+    assert _aggregate_proof(out)["execution_epoch"] == "g"
+    assert _cli_wait._published(out, "g")
+    assert not _cli_wait._published(out, "g-later")
+
+
+def test_an_aggregate_proof_without_the_stamp_is_not_published(finished_tiny_run):
+    # A proof written before the stamp existed never counts for a submission.
+    from phenotypic.sdk_ import aggregate_proof_is_current
+
+    out = finished_tiny_run
+    _resubmit(out, "g")
+    path = aggregate_publication_marker_path(out)
+    proof = _aggregate_proof(out)
+    proof.pop("execution_epoch", None)
+    path.write_text(json.dumps(proof), encoding="utf-8")
+    assert aggregate_proof_is_current(out)  # still byte-current
+    assert not _cli_wait._published(out, "g")
+
+
+def test_a_local_run_stamps_no_generation(finished_tiny_run):
+    assert _aggregate_proof(finished_tiny_run)["execution_epoch"] is None
+
+
 def test_dead_finalizer_over_an_active_fence_exits_5_end_to_end(monkeypatch, tmp_path):
     # Review Focus 4 through the real seams: the finalizer was OOM-killed, so
     # the fence stays active and the only ledgered job is gone from SLURM.
-    initialize_slurm_lifecycle(tmp_path, generation="g", mode="full")
-    append_lifecycle_entry(tmp_path, generation="g", token="fin", role="finalizer",
-                           status="intent")
-    append_lifecycle_entry(tmp_path, generation="g", token="fin", role="finalizer",
-                           status="submitted", job_id="999")
+    _resubmit(tmp_path, "g")
     monkeypatch.setattr(_cli_staged_orchestration, "scheduler_job_is_active", lambda job: False)
     assert (
         wait_for_run(tmp_path, sleep=lambda s: None, echo=lambda *_: None)
         is RunExitCode.ENDED_UNPUBLISHED
     )
+
+
+def test_measure_resubmission_whose_finalizer_died_exits_5(monkeypatch, finished_tiny_run):
+    # A measure resubmission keeps no run state, so the earlier run's proofs
+    # still match it and the run still reads `complete`. Only the generation
+    # binding tells the dead finalizer apart from a finished one.
+    out = finished_tiny_run
+    _resubmit(out, "g-measure")
+    monkeypatch.setattr(_cli_staged_orchestration, "scheduler_job_is_active", lambda job: False)
+    lines = []
+    assert wait_for_run(out, sleep=lambda s: None, echo=lines.append) is (
+        RunExitCode.ENDED_UNPUBLISHED
+    )
+    assert "completion=complete" in lines[0]
+
+
+def test_cancelled_resubmission_exits_5(monkeypatch, finished_tiny_run):
+    import subprocess
+
+    out = finished_tiny_run
+    _resubmit(out, "g-cancel")
+    scancelled = []
+
+    def fake_scheduler(command, **_kwargs):
+        if command[0] == "scancel":
+            scancelled.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    cancel_generation(out, "g-cancel", run_command=fake_scheduler)
+    lifecycle = load_slurm_lifecycle(out)
+    assert lifecycle["active"] is False and "closed_by" not in lifecycle
+    lines = []
+    assert wait_for_run(out, sleep=lambda s: None, echo=lines.append) is (
+        RunExitCode.ENDED_UNPUBLISHED
+    )
+    assert "completion=complete" in lines[0]
+
+
+def test_a_finished_resubmission_exits_0(monkeypatch, finished_tiny_run):
+    out = finished_tiny_run
+    _resubmit(out, "g-done")
+    deactivate_generation(out, "g-done", closed_by=FENCE_CLOSED_BY_FINALIZER)
+    assert wait_for_run(out, sleep=lambda s: None, echo=lambda *_: None) is RunExitCode.COMPLETE
 
 
 def test_is_process_run_is_false_without_run_state(tmp_path):

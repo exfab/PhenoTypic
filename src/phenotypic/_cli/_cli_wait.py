@@ -82,31 +82,43 @@ def _fence_generation(output_dir: Path) -> str | None:
 def _published(output_dir: Path, generation: str | None) -> bool:
     """Return whether the submission fenced by *generation* published.
 
-    With no fence at the first poll there is no SLURM submission to bind to
-    (the run before it was local), so the run state alone decides and this
-    returns ``True``. Otherwise any one of these is enough:
+    **This is the one place the "published by this submission" rule lives**
+    (spec C3). With no fence at the first poll there is no SLURM submission
+    to bind to (the run before it was local), so the run state alone decides
+    and this returns ``True``. Otherwise any one of these is enough, and each
+    names *generation* itself, so no clock is compared:
 
-    * that generation's fence is closed by its finalizer: same generation,
-      ``active: false`` and no ``terminal_status`` (``mark_generation_failed``
-      sets one);
+    * that generation's fence was closed by its finalizer: same generation,
+      ``active: false``, ``closed_by`` is
+      :data:`~phenotypic._cli._cli_slurm_lifecycle.FENCE_CLOSED_BY_FINALIZER`
+      and no ``terminal_status``. A cancel leaves ``closed_by`` unset, so a
+      cancelled resubmission ends unpublished;
     * the run completion marker is a finished one whose ``execution_epoch`` is
       that generation;
-    * :func:`aggregate_proof_matches_current_state`.
+    * the aggregate proof is current and its ``execution_epoch`` is that
+      generation. A proof written before the stamp existed has no
+      ``execution_epoch`` and never counts.
+
+    Matching state alone is deliberately not enough: a ``--mode measure``
+    resubmission keeps no run state, so an earlier run's aggregate proof
+    would still match it after the new finalizer died.
     """
     if generation is None:
         return True
-    from phenotypic.sdk_ import (
-        aggregate_proof_matches_current_state,
-        run_completion_marker_path,
-    )
+    from phenotypic.sdk_ import run_completion_marker_path
 
-    from ._cli_slurm_lifecycle import load_slurm_lifecycle
+    from ._cli_completion import valid_aggregate_snapshot
+    from ._cli_slurm_lifecycle import (
+        FENCE_CLOSED_BY_FINALIZER,
+        load_slurm_lifecycle,
+    )
 
     lifecycle = load_slurm_lifecycle(output_dir)
     if (
         lifecycle is not None
         and lifecycle.get("generation") == generation
         and lifecycle.get("active") is False
+        and lifecycle.get("closed_by") == FENCE_CLOSED_BY_FINALIZER
         and not lifecycle.get("terminal_status")
     ):
         return True
@@ -123,7 +135,11 @@ def _published(output_dir: Path, generation: str | None) -> bool:
         and marker.get("execution_epoch") == generation
     ):
         return True
-    return aggregate_proof_matches_current_state(output_dir)
+    aggregate = valid_aggregate_snapshot(output_dir)
+    return (
+        aggregate is not None
+        and aggregate.get("execution_epoch") == generation
+    )
 
 
 def _is_process_run(output_dir: Path) -> bool:

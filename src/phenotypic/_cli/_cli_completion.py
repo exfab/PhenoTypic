@@ -1069,6 +1069,7 @@ def publish_aggregate_snapshot(
     *,
     source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
+    execution_epoch: str | None = None,
 ) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot.
 
@@ -1093,6 +1094,12 @@ def publish_aggregate_snapshot(
             parameter would have left ``sdk_/_hdf_to_zarr.py`` on the old
             live-derive behaviour, unmodified and unnoticed.
         commit_guard: Publication guard threaded to the marker write.
+        execution_epoch: The SLURM generation the publishing finalizer runs
+            under, or ``None`` for a local run. Recorded as the proof's
+            ``execution_epoch``, as the run proof already records it, so
+            ``phenotypic-wait`` accepts this proof only for that submission
+            (#281 spec C3). A proof written before the field existed has no
+            key and never counts for a submission.
 
     Returns:
         Path to the aggregate publication marker.
@@ -1169,6 +1176,7 @@ def publish_aggregate_snapshot(
         "scientific_config_digest": state.config.get("pipeline_sha256"),
         "source_set_digest": canonical_digest(sorted(source_work_ids)),
         "source_image_count": len(set(source_work_ids)),
+        "execution_epoch": execution_epoch,
         "required_outputs": descriptors,
         "published_at": datetime.now(timezone.utc).isoformat(
             timespec="milliseconds"

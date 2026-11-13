@@ -113,7 +113,6 @@ __all__ = [
     "RunState",
     "accepted_finalization_digests",
     "aggregate_proof_is_current",
-    "aggregate_proof_matches_current_state",
     "assert_identity_current",
     "clear_verification_cache",
     "fenced_artifact_path",
@@ -1342,67 +1341,6 @@ def aggregate_proof_is_current(output_dir: Path) -> bool:
     why callers re-ask it rather than caching the answer.
     """
     return _valid_aggregate_proof(output_dir) is not None
-
-
-def aggregate_proof_matches_current_state(output_dir: Path) -> bool:
-    """Return whether the aggregate proof certifies the run as it stands now.
-
-    :func:`aggregate_proof_is_current` asks whether the published outputs still
-    hold the bytes the proof recorded. That says nothing about which run they
-    came from. A resubmission that accepts new images, runs another pipeline or
-    snapshots new metadata leaves the earlier proof byte-current. If its
-    finalizer then dies, that earlier proof still passes the byte check.
-
-    This adds the bindings. The proof's ``inventory_digest``,
-    ``scientific_config_digest`` and ``finalization_input_digest`` must equal
-    the current run config's. Its source set, read through
-    :func:`_source_set_binding`, must equal the images that verify now, by
-    digest and by count. That is the comparison rule 1 of the verdict ladder
-    makes against the run proof. ``phenotypic-wait`` (spec C3) asks it to
-    decide whether a submission published.
-
-    The verified set comes from :func:`resolve_run_state` at
-    ``depth="shallow"``. That function is the one producer of per-image
-    verdicts, so this helper never re-derives them.
-
-    Args:
-        output_dir: Run output root. May be any directory.
-
-    Returns:
-        ``True`` only when a current aggregate proof matches all of the above.
-        A process tree publishes no aggregate proof, so it always returns
-        ``False``. So does any absent or unreadable input. Never raises.
-    """
-    aggregate = _valid_aggregate_proof(output_dir)
-    if aggregate is None:
-        return False
-    config = _read_state_config(output_dir)
-    if config is None or not isinstance(config.get("work_ids"), dict):
-        return False
-    if aggregate.get("inventory_digest") != canonical_digest(
-        config.get("work_ids", {})
-    ):
-        return False
-    if aggregate.get("scientific_config_digest") != config.get(
-        "pipeline_sha256"
-    ):
-        return False
-    if str(
-        aggregate.get("finalization_input_digest") or ""
-    ) not in accepted_finalization_digests(config):
-        return False
-    binding = _source_set_binding(output_dir, aggregate)
-    if binding is None:
-        return False
-    state = resolve_run_state(output_dir, depth="shallow")
-    verified = sorted(
-        work_id
-        for work_id, image in state.images.items()
-        if image.verdict == "verified"
-    )
-    return binding.get("source_set_digest") == canonical_digest(
-        verified
-    ) and binding.get("source_image_count") == len(verified)
 
 
 def accepted_finalization_digests(
