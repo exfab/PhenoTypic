@@ -191,6 +191,16 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>same cause</td>
 </tr>
 <tr class="even">
+<td>P0</td>
+<td><code>tests/integration/gui/tune/test_setup_view.py::{test_existing_spec_controls_preserve_seed_budget_and_storage, test_existing_spec_trial_override_preserves_authored_strategy, test_existing_grid_spec_never_emits_trial_override}</code></td>
+<td><code>_gui/tune/_validation.py:61</code>, as above (found at the C1 gate)</td>
+</tr>
+<tr class="odd">
+<td>P1</td>
+<td><code>tests/unit/gui/test_curation_does_not_unfence_the_run.py::test_the_proof_still_records_every_published_artifact</code></td>
+<td>asserts the proof's <code>required_outputs</code> is exactly the three pre-TSV names; spec B9 adds <code>measurements_tsv</code> (found at the C4 gate)</td>
+</tr>
+<tr class="even">
 <td>P3</td>
 <td><code>tests/unit/gui/results_viewer/test_measurement_routes.py</code>: every test whose <code>route</code> fixture store (<code>:100</code>, written with <code>save2zarr(measurement_table=…)</code>) is read through <code>_measurement_source</code>, and <code>test_an_undeclared_column_never_opens_the_parquet</code> (<code>:205</code> unlinks the v1 path)</td>
 <td><code>_gui/results_viewer/_measurement_source.py:107-108</code> stats <code>store / MEASUREMENT_TABLE_RELATIVE_PATH</code>, which a v2 store does not have</td>
@@ -207,7 +217,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
-<p>The P3 rows name files and the fixture that makes them red, because almost every test in those files reads a store through the v1 path. A test in those files that stays green is fine. A red test anywhere else in <code>tests/unit/gui</code> or <code>tests/gui</code> is a real failure.</p>
+<p>The P3 rows name files and the fixture that makes them red, because almost every test in those files reads a store through the v1 path. A test in those files that stays green is fine. A red test anywhere else in <code>tests/unit/gui</code>, <code>tests/integration/gui</code> or <code>tests/gui</code> is a real failure.</p>
 <p>Checked and expected to stay green:</p>
 <ul>
 <li><code>tests/unit/gui/tune/test_setup_authoring.py:60</code>, because the GUI writes the literal <code>.setup.json.pht-tune</code> (<code>_setup_authoring.py:535</code>).</li>
@@ -1180,10 +1190,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Files:</strong></p>
 <ul>
 <li>Create: <code>src/phenotypic/_cli/_cli_wait.py</code></li>
-<li>Modify: <code>src/phenotypic/sdk_/_run_state.py</code>. Add <code>aggregate_proof_matches_current_state(output_dir) -&gt; bool</code>, built on <code>_source_set_binding</code> (:1447), and export it from <code>phenotypic.sdk_</code>.</li>
+<li>Modify: the SLURM finalizers (ordinary, staged, recompile). They stamp the generation they ran under into the aggregate proof as <code>execution_epoch</code> (<code>null</code> for a local run), threaded through <code>aggregate_measurements</code> and <code>finalize_run</code> to <code>publish_aggregate_snapshot</code>, and their fence close records <code>closed_by: "finalizer"</code> (<code>FENCE_CLOSED_BY_FINALIZER</code>). Cancels and failure teardowns leave <code>closed_by</code> unset.</li>
 <li>Modify: <code>pyproject.toml</code> <code>[project.scripts]</code>: <code>phenotypic-wait = "phenotypic._cli._cli_wait:main"</code></li>
 <li>Modify: <code>tests/unit/ci/test_startup_imports.py</code>. Add <code>phenotypic-wait --help</code> to the lazy entry points: no <code>HEAVY_STARTUP_MODULES</code>.</li>
-<li>Test: <code>tests/unit/cli/test_cli_wait.py</code>, and <code>tests/unit/sdk_/test_run_state.py</code> for the new helper</li>
+<li>Test: <code>tests/unit/cli/test_cli_wait.py</code>; the finalizer stamps in <code>test_cli_checkpoint_handler.py</code>, <code>test_staged_controller.py</code> and <code>test_cli_recompile_slurm.py</code></li>
 </ul>
 <p><strong>Interfaces:</strong></p>
 <ul>
@@ -1197,7 +1207,6 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li>Produces:
 <ul>
-<li><code>aggregate_proof_matches_current_state(output_dir) -&gt; bool</code>: the aggregate proof is current (<code>aggregate_proof_refusal</code> is <code>None</code>) <strong>and</strong> its inventory, scientific-config and source-set digests equal the current state's. <code>aggregate_proof_refusal</code> (:1255-1282) checks only output bytes.</li>
 <li>Module-level wrappers in <code>_cli_wait</code>, each importing lazily so <code>--help</code> stays light, and each the seam tests monkeypatch:
 <ul>
 <li><code>_completion(d) -&gt; str</code>: <code>resolve_run_state(d, depth="shallow").completion</code></li>
@@ -1213,10 +1222,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p><strong>Published</strong> means this submission published. <code>wait_for_run</code> reads the fence's generation <strong>once, at the first poll</strong>, and <code>_published(d, generation)</code> is true when any of these holds:</p>
 <ul>
-<li>that generation's fence is closed by its finalizer: same <code>generation</code>, <code>active: false</code>, no <code>terminal_status</code>;</li>
+<li>that generation's fence is closed by its finalizer: same <code>generation</code>, <code>active: false</code>, <code>closed_by: "finalizer"</code>, no <code>terminal_status</code>;</li>
 <li>the run completion marker's <code>execution_epoch</code> equals that generation;</li>
-<li><code>aggregate_proof_matches_current_state(d)</code>.</li>
+<li>a valid aggregate proof (<code>valid_aggregate_snapshot</code>) whose <code>execution_epoch</code> equals that generation. A proof without the field never counts.</li>
 </ul>
+<p>Matching run state is not enough: a <code>--mode measure</code> resubmission keeps no run state, so an earlier run's aggregate proof would still match after the new finalizer died.</p>
 <p>With no fence at the first poll (the run before it was local), a <code>complete</code> or <code>failed</code> run state counts as published.</p>
 <p>The decision, applied top to bottom:</p>
 <div class="scroll"><table>
@@ -1334,13 +1344,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d3-cb2-60"><a href="#d3-cb2-60" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_cli_exit_code_matches(finished_tiny_run):</span>
 <span id="d3-cb2-61"><a href="#d3-cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> CliRunner().invoke(main, [<span class="st">&quot;--output&quot;</span>, <span class="bu">str</span>(finished_tiny_run)]).exit_code <span class="op">==</span> <span class="dv">0</span></span>
 <span id="d3-cb2-62"><a href="#d3-cb2-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb2-63"><a href="#d3-cb2-63" aria-hidden="true" tabindex="-1"></a><span class="co"># tests/unit/sdk_/test_run_state.py</span></span>
-<span id="d3-cb2-64"><a href="#d3-cb2-64" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_aggregate_proof_from_an_earlier_inventory_does_not_match(finished_tiny_run):</span>
-<span id="d3-cb2-65"><a href="#d3-cb2-65" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_matches_current_state(finished_tiny_run)</span>
-<span id="d3-cb2-66"><a href="#d3-cb2-66" aria-hidden="true" tabindex="-1"></a>    bump_inventory(finished_tiny_run)         <span class="co"># new images accepted, as a resubmission does</span></span>
-<span id="d3-cb2-67"><a href="#d3-cb2-67" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> aggregate_proof_refusal(finished_tiny_run) <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d3-cb2-68"><a href="#d3-cb2-68" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="kw">not</span> aggregate_proof_matches_current_state(finished_tiny_run)</span></code></pre></div>
-<p><code>append_lifecycle_entry</code> is <code>_cli_slurm_lifecycle.py:232</code>; the row has no <code>submitted</code> successor. <code>bump_inventory</code> is a module-local helper that adds a work id to the saved run config, the way <code>tests/_output_layout.py:349</code> (<code>bump_scientific_config_digest</code>) edits the config digest.</p>
+<span id="d3-cb2-63"><a href="#d3-cb2-63" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_measure_resubmission_with_a_dead_finalizer_ends_unpublished(...): ...   <span class="co"># → 5</span></span>
+<span id="d3-cb2-64"><a href="#d3-cb2-64" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_cancelled_resubmission_ends_unpublished(...): ...                     <span class="co"># → 5</span></span>
+<span id="d3-cb2-65"><a href="#d3-cb2-65" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_unstamped_aggregate_proof_never_counts(...): ...</span></code></pre></div>
+<p><code>append_lifecycle_entry</code> is <code>_cli_slurm_lifecycle.py:232</code>; the row has no <code>submitted</code> successor.</p>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run them and confirm they fail.</strong></li>

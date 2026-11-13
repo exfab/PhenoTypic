@@ -121,15 +121,19 @@ def test_a_usage_refusal_still_exits_2(tiny_inputs, tmp_path):     # Click's own
 
 **Files:**
 - Create: `src/phenotypic/_cli/_cli_wait.py`
-- Modify: `src/phenotypic/sdk_/_run_state.py`. Add
-  `aggregate_proof_matches_current_state(output_dir) -> bool`, built on
-  `_source_set_binding` (:1447), and export it from `phenotypic.sdk_`.
+- Modify: the SLURM finalizers (ordinary, staged, recompile). They stamp the
+  generation they ran under into the aggregate proof as `execution_epoch`
+  (`null` for a local run), threaded through `aggregate_measurements` and
+  `finalize_run` to `publish_aggregate_snapshot`, and their fence close records
+  `closed_by: "finalizer"` (`FENCE_CLOSED_BY_FINALIZER`). Cancels and failure
+  teardowns leave `closed_by` unset.
 - Modify: `pyproject.toml` `[project.scripts]`:
   `phenotypic-wait = "phenotypic._cli._cli_wait:main"`
 - Modify: `tests/unit/ci/test_startup_imports.py`. Add `phenotypic-wait --help`
   to the lazy entry points: no `HEAVY_STARTUP_MODULES`.
-- Test: `tests/unit/cli/test_cli_wait.py`, and
-  `tests/unit/sdk_/test_run_state.py` for the new helper
+- Test: `tests/unit/cli/test_cli_wait.py`; the finalizer stamps in
+  `test_cli_checkpoint_handler.py`, `test_staged_controller.py` and
+  `test_cli_recompile_slurm.py`
 
 **Interfaces:**
 - Consumes:
@@ -139,10 +143,6 @@ def test_a_usage_refusal_still_exits_2(tiny_inputs, tmp_path):     # Click's own
   - the run completion marker's `execution_epoch` (`_cli_completion.py:1234`)
   - `RunExitCode`
 - Produces:
-  - `aggregate_proof_matches_current_state(output_dir) -> bool`: the aggregate
-    proof is current (`aggregate_proof_refusal` is `None`) **and** its
-    inventory, scientific-config and source-set digests equal the current
-    state's. `aggregate_proof_refusal` (:1255-1282) checks only output bytes.
   - Module-level wrappers in `_cli_wait`, each importing lazily so `--help`
     stays light, and each the seam tests monkeypatch:
     - `_completion(d) -> str`: `resolve_run_state(d, depth="shallow").completion`
@@ -161,9 +161,14 @@ def test_a_usage_refusal_still_exits_2(tiny_inputs, tmp_path):     # Click's own
 fence's generation **once, at the first poll**, and `_published(d, generation)`
 is true when any of these holds:
 - that generation's fence is closed by its finalizer: same `generation`,
-  `active: false`, no `terminal_status`;
+  `active: false`, `closed_by: "finalizer"`, no `terminal_status`;
 - the run completion marker's `execution_epoch` equals that generation;
-- `aggregate_proof_matches_current_state(d)`.
+- a valid aggregate proof (`valid_aggregate_snapshot`) whose `execution_epoch`
+  equals that generation. A proof without the field never counts.
+
+Matching run state is not enough: a `--mode measure` resubmission keeps no run
+state, so an earlier run's aggregate proof would still match after the new
+finalizer died.
 
 With no fence at the first poll (the run before it was local), a `complete` or
 `failed` run state counts as published.
@@ -247,18 +252,13 @@ def test_timeout_returns_6_and_cancels_nothing(monkeypatch, tmp_path):
 def test_cli_exit_code_matches(finished_tiny_run):
     assert CliRunner().invoke(main, ["--output", str(finished_tiny_run)]).exit_code == 0
 
-# tests/unit/sdk_/test_run_state.py
-def test_an_aggregate_proof_from_an_earlier_inventory_does_not_match(finished_tiny_run):
-    assert aggregate_proof_matches_current_state(finished_tiny_run)
-    bump_inventory(finished_tiny_run)         # new images accepted, as a resubmission does
-    assert aggregate_proof_refusal(finished_tiny_run) is None
-    assert not aggregate_proof_matches_current_state(finished_tiny_run)
+def test_measure_resubmission_with_a_dead_finalizer_ends_unpublished(...): ...   # → 5
+def test_a_cancelled_resubmission_ends_unpublished(...): ...                     # → 5
+def test_an_unstamped_aggregate_proof_never_counts(...): ...
 ```
 
   `append_lifecycle_entry` is `_cli_slurm_lifecycle.py:232`; the row has no
-  `submitted` successor. `bump_inventory` is a module-local helper that adds a work id to
-  the saved run config, the way `tests/_output_layout.py:349`
-  (`bump_scientific_config_digest`) edits the config digest.
+  `submitted` successor.
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement.**
   - Each poll prints one line: `completion`, the live-job groups, and the
