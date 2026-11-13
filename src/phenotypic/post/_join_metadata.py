@@ -9,6 +9,8 @@ from pydantic import PrivateAttr, field_validator, model_validator
 from phenotypic.abc_._post_measurement import PostMeasurement
 
 from phenotypic.sdk_ import (
+    INPUT_TABLE_SUFFIXES,
+    delimiter_for,
     external_metadata_preserved_columns,
     normalize_metadata_columns,
 )
@@ -180,10 +182,13 @@ class JoinMetadata(PostMeasurement):
         path = Path(self.metadata)
         if not path.exists():
             raise FileNotFoundError(f"JoinMetadata: no metadata table at {path}")
-        if path.suffix == ".parquet":
+        # Suffixes match case-insensitively, through the CLI's one delimiter
+        # rule (spec B4), so ``plates.TSV`` reads here as it does on the CLI.
+        suffix = path.suffix.lower()
+        if suffix == ".parquet":
             table = pd.read_parquet(path)
-        elif path.suffix in {".csv", ".tsv"}:
-            table = pd.read_csv(path, sep="\t" if path.suffix == ".tsv" else ",")
+        elif suffix in INPUT_TABLE_SUFFIXES:
+            table = pd.read_csv(path, sep=delimiter_for(path))
         else:
             raise ValueError(
                 f"JoinMetadata: unsupported metadata suffix {path.suffix!r}; "
