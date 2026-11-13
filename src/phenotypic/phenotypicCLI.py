@@ -894,6 +894,28 @@ def _print_dry_run_mutation_preview(
             click.echo(f"  ... and {len(targets) - 10} more")
 
 
+def _refuse_ambiguous_metadata_snapshot(output_dir: Path) -> None:
+    """Refuse, as a usage error, an output holding two metadata snapshots.
+
+    Spec B5: a run keeps exactly one ``deliverables/metadata.<ext>``. When
+    both ``metadata.csv`` and ``metadata.tsv`` exist (a suffix switch
+    interrupted between publishing the new one and retiring the old), every
+    mode that would read the snapshot refuses here, in the read-only half,
+    before anything under ``--output`` is written. Re-passing ``--metadata``
+    to a full run or a recompile replaces the snapshot and heals the pair;
+    so does deleting the stale file by hand.
+
+    Raises:
+        click.UsageError: Both snapshots exist.
+    """
+    if not output_dir.exists():
+        return
+    try:
+        resolve_metadata_snapshot_path(output_dir)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+
+
 def _refuse_live_slurm_run(output_dir: Path) -> None:
     """Exit when a live SLURM run may still own *output_dir*.
 
@@ -2516,6 +2538,8 @@ def phenotypic_cli(
                     "--mode migrate output directory does not exist: "
                     f"{output_dir}."
                 )
+            # Migrate takes no --metadata, so it always reads the snapshot.
+            _refuse_ambiguous_metadata_snapshot(output_dir)
             njobs_was_explicit = (
                 ctx.get_parameter_source("n_jobs") is not ParameterSource.DEFAULT
             )
@@ -2541,6 +2565,8 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            if metadata_csv is None:  # a --metadata replaces the snapshot
+                _refuse_ambiguous_metadata_snapshot(output_dir)
             _refuse_live_slurm_run(output_dir)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
@@ -2707,20 +2733,16 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
-        elif (
-            metadata_csv is None
-            and cli_mode == "full"
-            and not overwrite
-            and output_dir.exists()
+        # A run that reads the snapshot refuses here, above every mutation,
+        # when it holds both metadata.csv and metadata.tsv rather than letting
+        # mint_run_identity raise after --restart has already cleared machine
+        # state. A full continuation reads it only without --metadata (a new
+        # table replaces it); measure mode never writes the snapshot, so it
+        # reads it whatever it is given.
+        if not overwrite and (
+            cli_mode == "measure" or (cli_mode == "full" and metadata_csv is None)
         ):
-            # A continuation falls back to the run's snapshot; refuse here,
-            # above every mutation, when it holds both metadata.csv and
-            # metadata.tsv rather than letting mint_run_identity raise after
-            # --restart has already cleared machine state.
-            try:
-                resolve_metadata_snapshot_path(output_dir)
-            except ValueError as exc:
-                raise click.UsageError(str(exc)) from exc
+            _refuse_ambiguous_metadata_snapshot(output_dir)
 
         # The reference table, likewise outside --skip-validation and above
         # every mutation (the --dry-run exit, the --overwrite rmtree).

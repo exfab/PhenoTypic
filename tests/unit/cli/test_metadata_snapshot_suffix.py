@@ -435,3 +435,31 @@ def test_a_continuation_over_two_snapshots_is_refused_before_any_write(
     assert result.exit_code == 2, result.output
     assert "Both metadata.tsv and metadata.csv" in result.output
     assert {path: path.read_bytes() for path in watched} == before
+
+
+def _tree_bytes(root: Path) -> dict[Path, bytes]:
+    return {p: p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+@pytest.mark.parametrize("mode", ["recompile", "migrate", "measure"])
+def test_every_mode_refuses_two_snapshots_before_any_write(
+    tmp_path, tiny_inputs, metadata_bytes, mode
+):
+    """Spec B5 / review M4: both suffixes present is a usage error in every mode.
+
+    Recompile, migrate and measure used to meet the pair with a bare
+    ``ValueError`` (a traceback, or a failed image per worker); they now exit
+    ``2`` in the read-only half, like a full-mode continuation, and change
+    nothing under ``--output``.
+    """
+    out = tmp_path / "out"
+    src = _write_source(tmp_path, ".csv", metadata_bytes)
+    assert run_cli(tiny_inputs, out, extra=["--metadata", str(src)]).exit_code == 0
+    (out / "deliverables" / "metadata.tsv").write_bytes(metadata_bytes[".tsv"])
+    before = _tree_bytes(out)
+
+    result = run_cli(None, out, mode=mode)
+
+    assert result.exit_code == 2, result.output
+    assert "Both metadata.tsv and metadata.csv" in result.output
+    assert _tree_bytes(out) == before
