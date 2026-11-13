@@ -7,7 +7,9 @@ process, recompile, and the forward run whose only remaining work is a SLURM
 recompile), and Click's own usage refusal.
 
 The migrate submission (and a SLURM migrate ``--dry-run``, which submits its
-validation chain) is pinned by ``test_cli_migrate_slurm.py``.
+validation chain) is pinned by ``test_cli_migrate_mode.py`` and
+``test_cli_provenance_migration_slurm.py``; ``test_cli_migrate_slurm.py``
+drives only the migration worker CLI, whose ``0``/``1`` are unchanged.
 """
 
 from __future__ import annotations
