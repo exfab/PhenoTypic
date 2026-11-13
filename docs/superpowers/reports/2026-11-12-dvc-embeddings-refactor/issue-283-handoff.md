@@ -22,3 +22,11 @@ table is the authoritative list of red tests; this file collects everything else
 
 - `tests/migration/test_metadata_schema_migration.py` writes legacy-named inputs at
   ~10 sites without `# legacy name, read path` markers.
+
+## From P1 (TSV)
+
+- `tests/unit/gui/test_curation_does_not_unfence_the_run.py::test_the_proof_still_records_every_published_artifact`
+  pins the proof's `required_outputs` to the pre-TSV set; it must add `measurements_tsv`.
+- Curation rewrites `measurements.csv`/`.parquet` but not `measurements.tsv` (spec B9).
+  `measurements_tsv` is already in `_GUI_WRITTEN_PROOF_DESCRIPTORS`, so until #283
+  nothing checks the TSV's bytes; #283 should make curation write the TSV.
