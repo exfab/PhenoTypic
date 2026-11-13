@@ -26,9 +26,20 @@ from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Any, Union
 
+#: Every Parquet write's options. Byte-stable deliverables (#281 spec C11)
+#: need the row-group layout pinned rather than left to the writer's default:
+#: ``row_group_size`` is spelled the same by polars ``write_parquet``, pyarrow
+#: ``write_table`` and pandas ``to_parquet`` (which forwards it to pyarrow),
+#: so one key pins all three. 122,880 rows is polars 1.41's own default, so
+#: the pin changed no file written before it; it stops a dependency upgrade
+#: from silently re-splitting a table, and with it every DVC downstream
+#: stage. polars writes ``created_by = "Polars"``, with no version, and no
+#: key-value metadata beyond ``ARROW:schema``; pinned by
+#: ``tests/unit/sdk_/test_parquet_write_options.py``.
 PARQUET_WRITE_OPTIONS: dict[str, Any] = {
     "compression": "zstd",
     "compression_level": 3,
+    "row_group_size": 122_880,
 }
 
 CommitGuard = Callable[[], AbstractContextManager[None]]
