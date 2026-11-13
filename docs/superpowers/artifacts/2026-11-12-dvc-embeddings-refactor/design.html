@@ -3,66 +3,66 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: a sticky contents rail beside one reading column on wide screens; the rail folds above the text on phones. Tokens follow PhenoTypic DESIGN.md. */
+/* Layout: sticky contents rail beside one reading column; the rail folds above the text on phones. */
 :root {
   --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
-  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --accent-soft: #e6f0f9; --gold: #926a00; --gold-soft: #fff4d6;
-  --code-bg: #edf2f7; --ok: #006B4F; --ok-soft: #e3f4ee; --warn: #7A5500; --warn-soft: #fbf1db;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --gold: #926a00; --code-bg: #edf2f7;
+  --ok: #006B4F; --ok-soft: #e3f4ee;
   --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
-  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
-  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; color-scheme: dark; } }
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
-  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
-  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; color-scheme: dark; }
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.62; }
 .wrap { max-width: 80rem; margin: 0 auto; padding-block: 2.25rem 4rem;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
-header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .7rem; border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; }
+  display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .6rem; border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; }
 .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
 header.top h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); text-wrap: balance; }
-.meta { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: .88rem; color: var(--muted); }
-.meta a { color: var(--accent); }
-.status { font-family: var(--mono); font-size: .76rem; font-weight: 600; padding: .15rem .6rem; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.meta { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
+.meta p { margin: 0; max-width: none; }
 nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); max-height: calc(100vh - 2rem); overflow-y: auto; font-size: .86rem; }
-nav.toc b { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .5rem; }
-nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .2rem; }
+nav.toc b { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .9rem 0 .35rem; }
+nav.toc b:first-child { margin-top: 0; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
 nav.toc li.l3 { padding-left: .9rem; font-size: .82rem; }
-nav.toc a { color: var(--fg); text-decoration: none; display: block; padding: .1rem 0; }
-nav.toc li.l2 > a { color: var(--heading); font-weight: 700; margin-top: .35rem; }
+nav.toc a { color: var(--fg); text-decoration: none; display: block; padding: .08rem 0; }
+nav.toc li.l2 > a { color: var(--heading); font-weight: 700; margin-top: .3rem; }
 nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-main { min-width: 0; max-width: 54rem; display: flex; flex-direction: column; gap: .9rem; }
-main h2 { font-size: 1.5rem; line-height: 1.2; color: var(--heading); margin: 2.2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--rule); text-wrap: balance; }
-main h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+main { min-width: 0; max-width: 56rem; display: flex; flex-direction: column; gap: .9rem; }
+section.doc { display: flex; flex-direction: column; gap: .9rem; }
+section.doc + section.doc { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 3px solid var(--rule); }
+.doctitle { font-size: 1.7rem; color: var(--heading); margin: 0; line-height: 1.15; }
+.docsrc { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+main h2 { font-size: 1.45rem; line-height: 1.2; color: var(--heading); margin: 2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--rule); text-wrap: balance; }
 main h3 { font-size: 1.12rem; color: var(--heading); margin: 1.4rem 0 0; }
+main h4 { font-size: 1rem; color: var(--heading); margin: 1rem 0 0; }
 main p, main li { max-width: 72ch; }
 main p { margin: 0; }
-main ul, main ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .45rem; }
-main li > ul, main li > ol { margin-top: .35rem; }
+main ul, main ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; }
+main li > ul, main li > ol { margin-top: .3rem; }
 main strong { color: var(--heading); }
+main ul.task-list, main li.task-list-item { list-style: none; }
+main input[type="checkbox"] { margin-right: .45rem; accent-color: var(--ok); }
 code { font-family: var(--mono); font-size: .84em; background: var(--code-bg); padding: .06em .32em; border-radius: 4px; overflow-wrap: anywhere; }
 pre { margin: .2rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.55; }
 pre code { background: none; padding: 0; overflow-wrap: normal; font-size: inherit; }
+blockquote { margin: 0; padding: .6rem 1rem; border-left: 4px solid var(--gold); background: var(--surface); border-radius: 0 6px 6px 0; }
 .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: .2rem 0; }
-table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 38rem; }
+table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 36rem; }
 th, td { text-align: left; vertical-align: top; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); }
 th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
 tr:last-child td { border-bottom: 0; }
 td:first-child { color: var(--heading); font-weight: 600; }
-.chip { font-family: var(--mono); font-size: .7rem; font-weight: 600; padding: .05rem .45rem; border-radius: 999px; white-space: nowrap; vertical-align: .08em; }
-.chip.call { background: var(--gold-soft); color: var(--gold); }
-.chip.user { background: var(--ok-soft); color: var(--ok); }
-.chip.pick { background: var(--accent-soft); color: var(--accent); }
-.why { color: var(--muted); font-size: .92em; }
-#open + ul > li { background: var(--gold-soft); border-left: 4px solid var(--gold); border-radius: 6px; padding: .7rem .9rem; list-style: none; margin-left: -1.3rem; }
-.legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .84rem; color: var(--muted); align-items: center; }
 footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
 @media (max-width: 860px) {
   .wrap { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
@@ -71,21 +71,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 }
 </style>
 <div class="wrap">
-<header class="top">
-  <div class="eyebrow">Design spec · PhenoTypic + AutoConvertRaw-GC · 2026-11-12</div>
-  <h1>DVC and Embeddings Design</h1>
-  <div class="meta">
-    <span class="status">approved · 2026-11-12</span>
-    <span>Source: <code>docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md</code></span>
-    <span>PhenoTypic <code>main @ 251e364fa</code> · AutoConvertRaw-GC <code>@ 33046cb</code></span>
-  </div>
-  <div class="meta">
-    <span>Background: <a href="https://claude.ai/artifact/Gr5JRyKm4kiCL9QYkDcyXd">how measurements flow through the CLI today</a></span>
-  </div>
-</header>
-<nav class="toc" aria-label="Contents"><b>Contents</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-constraints-verified">3. Constraints (verified)</a></li><li class="l3"><a href="#31-dvc">3.1 DVC</a></li><li class="l3"><a href="#32-phenotypic">3.2 PhenoTypic</a></li><li class="l3"><a href="#33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</a></li><li class="l3"><a href="#34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</a></li><li class="l2"><a href="#4-design">4. Design</a></li><li class="l3"><a href="#part-a-typed-config-suffix-flip">Part A: typed config suffix flip</a></li><li class="l3"><a href="#part-b-csv--tsv">Part B: CSV → TSV</a></li><li class="l3"><a href="#part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</a></li><li class="l3"><a href="#part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</a></li><li class="l3"><a href="#part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</a></li><li class="l2"><a href="#5-order">5. Order</a></li><li class="l2"><a href="#6-left-to-the-implementer">6. Left to the implementer</a></li></ul></nav>
-<main>
-<h2 id="1-intent">1. Intent</h2>
+<header class="top"><div class="eyebrow">Design spec · PhenoTypic + AutoConvertRaw-GC · 2026-11-12</div><h1>Design: DVC-compatible outputs, CSV → TSV, and DINOv2 embeddings</h1><div class="meta"><p><strong>Status:</strong> approved · 2026-11-12</p>
+<p><strong>Repos:</strong> PhenoTypic (<code>src/</code> identical to <code>main</code> @ <code>251e364fa</code>), AutoConvertRaw-GC @ <code>33046cb</code></p>
+<p><strong>Background:</strong> how measurements flow through the CLI today,</p>
+<p><code>docs/superpowers/artifacts/2026-11-12-dino-embeddings/measurement-data-flow.html</code>.</p>
+</div></header>
+<nav class="toc" aria-label="Contents"><b>DVC and Embeddings Design</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-constraints-verified">3. Constraints (verified)</a></li><li class="l3"><a href="#31-dvc">3.1 DVC</a></li><li class="l3"><a href="#32-phenotypic">3.2 PhenoTypic</a></li><li class="l3"><a href="#33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</a></li><li class="l3"><a href="#34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</a></li><li class="l2"><a href="#4-design">4. Design</a></li><li class="l3"><a href="#part-a-typed-config-suffix-flip">Part A: typed config suffix flip</a></li><li class="l3"><a href="#part-b-csv--tsv">Part B: CSV → TSV</a></li><li class="l3"><a href="#part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</a></li><li class="l3"><a href="#part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</a></li><li class="l3"><a href="#part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</a></li><li class="l2"><a href="#5-order">5. Order</a></li><li class="l2"><a href="#6-left-to-the-implementer">6. Left to the implementer</a></li></ul></nav>
+<main><section class="doc"><h2 id="1-intent">1. Intent</h2>
 <p>Two requests arrived together because both change the CLI and the per-image store:</p>
 <ol type="1">
 <li><strong>DINOv2 embeddings, and one store holding several pipelines' results.</strong>
@@ -773,7 +765,6 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>test placement;</li>
 <li>naming of private helpers.</li>
 </ul>
-
-</main>
-<footer>Rendered from the Markdown source with pandoc. The Markdown file is the source of truth; comments here are folded back into it.</footer>
+</section></main>
+<footer>Rendered from docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
 </div>
