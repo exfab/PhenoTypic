@@ -492,7 +492,7 @@ site, never a bare literal.
 | `2` | — | a refused option: a `click.UsageError`, Click's own code. Includes an option value the CLI checks after parsing (`--slurm`/`--gpu-slurm` `KEY=VALUE` pairs and `time=`, `--ext`) |
 | `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
 | `4` | `SUBMITTED` | submitted to SLURM, not finished |
-| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing; re-run the same command. Covers both "published nothing" and "published a partial aggregate" (spec C3/C10, fork F5) |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing (nothing published, or accepted images never attempted); re-run the same command (spec C3/C10, fork F5) |
 | `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
 
 - **Every SLURM submission exits `4`**: full, measure, staged and process
@@ -543,7 +543,13 @@ site, never a bare literal.
   `publish_aggregate_snapshot`, and `closed_by=` to the fence close. A cancel
   leaves `closed_by` unset. **Matching digests are not enough:** a
   `--mode measure` resubmission keeps no run state, so the earlier run's
-  proofs still match after its finalizer dies. A process run that reads
+  proofs still match after its finalizer dies. **`3` also needs every
+  accepted image resolved** (`RunSnapshot.unresolved == 0`, i.e.
+  `verified + failed == accepted`); an image never attempted makes it `5`.
+  A SLURM `--mode measure` resubmission's failures sit outside the forward
+  inventory, so `_generation_failures` counts distinct work ids in the
+  terminal journal whose `lifecycle_epoch` is the bound generation; published
+  plus any such row gives `3` (review I5). A process run that reads
   `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
   `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
   external control root.
@@ -556,12 +562,32 @@ site, never a bare literal.
   `check_submit_argv` refuses (usage error, `2`) before launching: an empty
   command after `--`, a child `--mode migrate` (also `--mode=`, `-m`, `-m…`),
   and a child `-o`/`--output`/`--output=`/`-o…` resolving elsewhere than
-  `--output` (cwd-relative). A child naming no output is not checked. The
+  `--output` (cwd-relative). Only the tokens after the program `phenotypic`
+  (`-m phenotypic`, `-mphenotypic`, or a token whose file name is
+  `phenotypic`) are read, so a wrapper's own `-o` (`srun -o log …`) is not the
+  run's; a command naming no such program, or no output, is not checked. The
   command must be introduced by `--` (`_WaitCommand` keeps the raw args to
   tell), and `allow_interspersed_args=False`, so a child's `-o` can never be
   parsed as the waiter's. `--output` need not exist in the launch form (the
   submit creates it); the wait-only form still requires it. `--timeout-seconds`
   bounds the wait, never the submit.
+- **Before launching, an active job means attach** (fork F2): if
+  `LiveSlurmJobs.live` is non-empty for `--output`, the waiter skips the
+  submit, prints the generation and jobs, and waits on that run, which is the
+  recovery after the job running `dvc repro` hits its walltime.
+  `unverified`/`unresolved` alone still launch, and the child's own guard
+  refuses. Ctrl-C during the submit waits for the child and returns its code
+  unpolled; an interrupted wait exits `130`. Up to
+  `MAX_CONSECUTIVE_POLL_ERRORS` (5) failed polls in a row are printed and
+  retried; the fifth exits `1` with the reason.
+- **`--accept-failures`** (fork F1) maps a final `3`, waited or from a local
+  child, to `0` after printing the terminal-failure count, so a DVC stage
+  over a dataset with one empty plate completes. Every other code is left
+  alone. `_live_jobs` passes a per-process `_InactiveJobMemo` as
+  `live_slurm_job_ids(..., is_active=)`, since a job answered not-active
+  stays so. The seams tests replace are `_run_snapshot`, `_live_jobs`,
+  `_fence_generation`, `_published`, `_cancelled`, `_generation_failures`
+  and `_is_process_run`.
 - **The GUI run console reads `4` as a failed submission**
   (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
 
@@ -720,7 +746,12 @@ naming each `<generation>:<token>` for `unresolved`. When either unknown group
 is non-empty it adds the one remedy that works: run the same command on a
 cluster node where `squeue` works. It then lists `sacct -j <id>` and
 `squeue --noheader --format='%i|%k' | grep 'phenotypic:<gen>:<token>'` for
-checking by hand. There is no override flag. A host that cannot reach the
+checking by hand. There is no override flag. **A restored fence whose job ids
+SLURM has purged** (`squeue` says invalid, `sacct` has no rows) stays
+`unverified` forever; after confirming with `sacct` that nothing runs, set the
+fence's `"active"` to `false` in `.phenotypic/slurm_lifecycle.json`. Deleting
+the file does **not** work: with no fence, every generation's ledger is
+walked and the same jobs stay unverified (measured, P2 review M7). A host that cannot reach the
 scheduler cannot clear a stuck fence.
 
 **A stuck `active: true` does not refuse on its own, deliberately.** A
