@@ -11,6 +11,7 @@ from phenotypic.sdk_ import (
     INPUT_TABLE_SUFFIXES,
     TSV_SUFFIX,
     delimiter_for,
+    misdelimited_table_hint,
     read_delimited,
     write_tsv,
 )
@@ -134,3 +135,10 @@ def test_read_delimited_refuses_an_explicit_separator(tmp_path):
     src.write_text("a\n1\n", encoding="utf-8")
     with pytest.raises(TypeError, match="sep="):
         read_delimited(src, sep=";")
+
+
+def test_misdelimited_table_hint():
+    assert misdelimited_table_hint(Path("m.tsv"), ["a,b"]).endswith("name it .csv")
+    assert misdelimited_table_hint(Path("m.CSV"), ["a\tb"]).endswith("name it .tsv")
+    assert misdelimited_table_hint(Path("m.csv"), ["a", "b"]) == ""
+    assert misdelimited_table_hint(Path("m.csv"), ["ab"]) == ""

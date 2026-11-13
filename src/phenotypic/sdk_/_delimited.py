@@ -68,6 +68,37 @@ def delimiter_for(path: Union[str, Path]) -> str:
         ) from None
 
 
+_DELIMITER_NAMES: Final[dict[str, tuple[str, str]]] = {
+    ",": ("comma-separated", CSV_SUFFIX),
+    "\t": ("tab-separated", TSV_SUFFIX),
+}
+
+
+def misdelimited_table_hint(path: Union[str, Path], columns: "list[str]") -> str:
+    """A sentence naming the real delimiter of a table read with the wrong one.
+
+    A comma-separated file named ``.tsv`` parses, as a single column whose
+    name holds every comma; the reverse holds for a tab-separated ``.csv``.
+    The refusal that follows (no join key) would otherwise point the user at
+    their column names rather than at the suffix (review M6).
+
+    Args:
+        path: The table, read with :func:`delimiter_for`'s delimiter.
+        columns: The header it parsed to.
+
+    Returns:
+        ``"<name> looks like a comma-separated table; name it .csv"`` (or the
+        tab/``.tsv`` form), or ``""`` when the header gives no such sign.
+    """
+    if len(columns) != 1:
+        return ""
+    used = delimiter_for(path)
+    for delimiter, (label, suffix) in _DELIMITER_NAMES.items():
+        if delimiter != used and delimiter in columns[0]:
+            return f"{Path(path).name} looks like a {label} table; name it {suffix}"
+    return ""
+
+
 def write_tsv(
     frame: "pl.DataFrame | pd.DataFrame",
     path: Union[str, Path],

@@ -1269,10 +1269,13 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
         caveat = ", so without a measurement-level key nothing would join"
     findings: list[PreflightFinding] = []
     if not analysis.join_columns:
+        from phenotypic.sdk_ import misdelimited_table_hint
+
+        hint = misdelimited_table_hint(metadata_csv, list(frame.columns))
         findings.append(PreflightFinding(
             "PF-META-NO-KEYS", key_severity,
             f"{metadata_csv} shares no column with the images' ImageName, "
-            "FileSuffix or Dataset" + caveat,
+            "FileSuffix or Dataset" + caveat + (f" ({hint})" if hint else ""),
         ))
     if analysis.duplicate_key_count:
         findings.append(PreflightFinding(
