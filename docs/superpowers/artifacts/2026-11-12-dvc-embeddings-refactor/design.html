@@ -80,14 +80,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
     <span>PhenoTypic <code>main @ 251e364fa</code> · AutoConvertRaw-GC <code>@ 33046cb</code></span>
   </div>
   <div class="meta">
-    <span>Companions:</span>
-    <a href="https://claude.ai/artifact/Gr5JRyKm4kiCL9QYkDcyXd">Measurement data flow</a>
-    <a href="https://claude.ai/artifact/Uug4G7E8dzByEA6Ghfi7LT">Embedding feasibility</a>
-    <a href="https://claude.ai/artifact/5LtY1Gqp1ve1HenyPjW6ow">Pipeline folders layout</a>
+    <span>Background: <a href="https://claude.ai/artifact/Gr5JRyKm4kiCL9QYkDcyXd">how measurements flow through the CLI today</a></span>
   </div>
-  <div class="legend"><span class="chip user">user decision</span><span class="chip call">call</span> a choice made in the spec, open to correction <span class="chip pick">picked</span></div>
 </header>
-<nav class="toc" aria-label="Contents"><b>Contents</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-constraints-verified">3. Constraints (verified)</a></li><li class="l3"><a href="#31-dvc">3.1 DVC</a></li><li class="l3"><a href="#32-phenotypic">3.2 PhenoTypic</a></li><li class="l3"><a href="#33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</a></li><li class="l3"><a href="#34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</a></li><li class="l2"><a href="#4-approaches-considered">4. Approaches considered</a></li><li class="l3"><a href="#41-pipeline-file-format">4.1 Pipeline file format</a></li><li class="l3"><a href="#42-embedding-storage">4.2 Embedding storage</a></li><li class="l3"><a href="#43-autoconvertraw-gc-integration">4.3 AutoConvertRaw-GC integration</a></li><li class="l3"><a href="#44-where-per-colony-embedding-runs">4.4 Where per-colony embedding runs</a></li><li class="l3"><a href="#45-dvc-output-layout">4.5 DVC output layout</a></li><li class="l3"><a href="#46-linking-a-result-store-to-its-input-store">4.6 Linking a result store to its input store</a></li><li class="l3"><a href="#47-tabular-text-format">4.7 Tabular text format</a></li><li class="l2"><a href="#5-design">5. Design</a></li><li class="l3"><a href="#part-a-typed-config-suffix-flip">Part A: typed config suffix flip</a></li><li class="l3"><a href="#part-b-csv--tsv">Part B: CSV → TSV</a></li><li class="l3"><a href="#part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</a></li><li class="l3"><a href="#part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</a></li><li class="l3"><a href="#part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</a></li><li class="l2"><a href="#6-order">6. Order</a></li><li class="l2"><a href="#7-who-decided-what">7. Who decided what</a></li><li class="l2"><a href="#8-questions">8. Questions</a></li><li class="l3"><a href="#resolved-user-2026-11-12">Resolved (user, 2026-11-12)</a></li><li class="l2"><a href="#9-corrections-to-earlier-artifacts-and-drafts">9. Corrections to earlier artifacts and drafts</a></li></ul></nav>
+<nav class="toc" aria-label="Contents"><b>Contents</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-constraints-verified">3. Constraints (verified)</a></li><li class="l3"><a href="#31-dvc">3.1 DVC</a></li><li class="l3"><a href="#32-phenotypic">3.2 PhenoTypic</a></li><li class="l3"><a href="#33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</a></li><li class="l3"><a href="#34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</a></li><li class="l2"><a href="#4-design">4. Design</a></li><li class="l3"><a href="#part-a-typed-config-suffix-flip">Part A: typed config suffix flip</a></li><li class="l3"><a href="#part-b-csv--tsv">Part B: CSV → TSV</a></li><li class="l3"><a href="#part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</a></li><li class="l3"><a href="#part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</a></li><li class="l3"><a href="#part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</a></li><li class="l2"><a href="#5-order">5. Order</a></li><li class="l2"><a href="#6-left-to-the-implementer">6. Left to the implementer</a></li></ul></nav>
 <main>
 <h2 id="1-intent">1. Intent</h2>
 <p>Two requests arrived together because both change the CLI and the per-image store:</p>
@@ -101,13 +97,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><strong>DVC compatibility.</strong> PhenoTypic runs should work as DVC pipeline stages, and every generated CSV should become TSV.</li>
 </ol>
-<p><strong>What DVC is for</strong> (user, 2026-11-12): compatibility with automation and data-engineering pipeline infrastructure. An orchestrator (CI, Airflow, Prefect, Dagster, a cloud scheduler) drives PhenoTypic unattended, decides from its outputs whether to continue, and feeds its tables to other systems.</p>
+<p><strong>What DVC is for:</strong> compatibility with automation and data-engineering pipeline infrastructure. An orchestrator (CI, Airflow, Prefect, Dagster, a cloud scheduler) drives PhenoTypic unattended, decides from its outputs whether to continue, and feeds its tables to other systems.</p>
 <p><strong>The shape:</strong> a PhenoTypic CLI run is one DVC stage.</p>
 <ul>
 <li>Its pipeline file and tune spec are DVC <em>params</em>.</li>
 <li>Its <code>deliverables/</code>, <code>results/</code> and <code>.phenotypic/</code> are DVC <em>outs</em>.</li>
 <li>It emits a machine-readable run summary as DVC <em>metrics</em>, plus TSV tables for <code>dvc plots</code>.</li>
-<li>It runs in a <strong>persistent</strong> workspace: the same <code>--output</code> on the cluster every time <span class="chip user">user</span>.</li>
+<li>It runs in a <strong>persistent</strong> workspace: the same <code>--output</code> on the cluster every time.</li>
 </ul>
 <p>DVC versioning of the raw image corpus is out of scope (§2.2).</p>
 <h2 id="2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</h2>
@@ -329,138 +325,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div>
-<h2 id="4-approaches-considered">4. Approaches considered</h2>
-<h3 id="41-pipeline-file-format">4.1 Pipeline file format</h3>
-<div class="scroll"><table>
-<thead>
-<tr class="header">
-<th>Option</th>
-<th>Trade-off</th>
-<th>Verdict</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><strong>Keep JSON, flip the suffix to <code>.pht-pipe.json</code></strong></td>
-<td>DVC uses its JSON handler; content and <code>pipeline_sha256</code> are unchanged; a small, central change</td>
-<td><span class="chip pick">picked</span></td>
-</tr>
-<tr class="even">
-<td>Convert to YAML</td>
-<td>Works with DVC, but changes every pipeline's hash, which forces an AutoConvertRaw-GC mass reprocess; adds a second format to support</td>
-<td>rejected</td>
-</tr>
-<tr class="odd">
-<td>Keep the suffix and ship a <code>params.yaml</code> mirror</td>
-<td>Two sources of truth that drift</td>
-<td>rejected</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="42-embedding-storage">4.2 Embedding storage</h3>
-<div class="scroll"><table>
-<thead>
-<tr class="header">
-<th>Option</th>
-<th>Trade-off</th>
-<th>Verdict</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><strong>Per-pipeline folders under <code>tables/</code>, with embeddings inside their pipeline's folder</strong></td>
-<td><code>tables/</code> sub-schema v2 plus a migration; several pipelines coexist; the carry step is per run folder</td>
-<td><span class="chip pick">picked</span> <span class="chip user">user</span></td>
-</tr>
-<tr class="even">
-<td>Top-level <code>embeddings/</code> namespace with its own carry step</td>
-<td>Separates embeddings from the pipeline that produced them, and still leaves one flat measurement table per store</td>
-<td>superseded</td>
-</tr>
-<tr class="odd">
-<td><code>tables/embeddings/</code> beside today's flat tables</td>
-<td>Deleted by every <code>--mode measure</code> (<code>rmtree(part/tables)</code>)</td>
-<td>rejected</td>
-</tr>
-<tr class="even">
-<td>Wide columns in the measurement table</td>
-<td>Spreads to master, mirror, every split and every TSV</td>
-<td>rejected</td>
-</tr>
-<tr class="odd">
-<td>Sidecar file outside the store</td>
-<td>Robust, but not in the OME-Zarr store, which the user asked for</td>
-<td>fallback only</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="43-autoconvertraw-gc-integration">4.3 AutoConvertRaw-GC integration</h3>
-<p>A <strong>native image-scope embedder run by process mode</strong> (picked). The alternatives were a post-step in the child that mutates and re-consolidates a promoted store, and a sidecar file. Both break the immutability or in-store requirements.</p>
-<h3 id="44-where-per-colony-embedding-runs">4.4 Where per-colony embedding runs</h3>
-<p><strong>CPU inside <code>meas</code></strong> (picked for v1; no staged-engine change). The deferred alternatives are dense features from Stage 2 pooled in Stage 3, and a new GPU Stage 4.</p>
-<h3 id="45-dvc-output-layout">4.5 DVC output layout</h3>
-<div class="scroll"><table>
-<thead>
-<tr class="header">
-<th>Option</th>
-<th>Trade-off</th>
-<th>Verdict</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><strong>Three outs, <code>deliverables/</code>, <code>results/</code> and <code>.phenotypic/</code>, all <code>persist: true</code></strong></td>
-<td>A <code>dvc checkout</code> of any revision restores the run state that matches its stores. Costs: churn in <code>dvc.lock</code> every run, a growing cache, and no hardlink/symlink cache (C6)</td>
-<td><span class="chip pick">picked</span> <span><span class="chip user">user</span></span></td>
-</tr>
-<tr class="even">
-<td>Two outs, <code>.phenotypic/</code> untracked</td>
-<td>Less churn, but rolling back outputs leaves state from another revision behind</td>
-<td>superseded</td>
-</tr>
-<tr class="odd">
-<td>Move <code>.phenotypic/</code> outside the output root</td>
-<td>Large change to continuation, SLURM scripts, locks and Stage-2 signals</td>
-<td>rejected</td>
-</tr>
-<tr class="even">
-<td>The whole output root as one out</td>
-<td>Works, but downstream consumers can't name "just the deliverables", and <code>results/</code> can't get its own cache setting (C8)</td>
-<td>rejected</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="46-linking-a-result-store-to-its-input-store">4.6 Linking a result store to its input store</h3>
-<div class="scroll"><table>
-<thead>
-<tr class="header">
-<th>Option</th>
-<th>Trade-off</th>
-<th>Verdict</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>A · copy the input's run folders in</td>
-<td>Self-contained, but duplicates another pipeline's results into a store it never wrote, and the copy goes stale silently</td>
-<td>rejected</td>
-</tr>
-<tr class="even">
-<td><strong>C · record a reference</strong> (input path + root digest)</td>
-<td>No copy; a changed input is detectable; reading upstream tables needs the input store to be reachable</td>
-<td><span class="chip pick">picked</span> <span class="chip call">call</span></td>
-</tr>
-<tr class="odd">
-<td>D · record nothing</td>
-<td>Simplest, but you can't tell whether the input changed</td>
-<td>rejected</td>
-</tr>
-</tbody>
-</table></div>
-<h3 id="47-tabular-text-format">4.7 Tabular text format</h3>
-<p><strong>Generated files become TSV only</strong> (picked). Writing CSV and TSV side by side doubles the files and leaves readers unsure which one is current.</p>
-<h2 id="5-design">5. Design</h2>
-<p>The five parts below are independent enough to plan and ship in the order of §6.</p>
+<h2 id="4-design">4. Design</h2>
+<p>The five parts below are independent enough to plan and ship in the order of §5.</p>
 <h3 id="part-a-typed-config-suffix-flip">Part A: typed config suffix flip</h3>
 <ul>
 <li><p><strong>A1</strong> New canonical suffixes: <code>.pht-pipe.json</code>, <code>.pht-op.json</code>, <code>.pht-cc.json</code>, <code>.pht-tune.json</code>. The old <code>.json.pht-*</code> forms become <strong>legacy read</strong> suffixes. Plain <code>.json</code> stays legacy-readable where it already is (pipelines, tune specs).</p></li>
@@ -468,7 +334,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li>A bare stem gets the new suffix.</li>
 <li><code>x.json</code> becomes <code>x.&lt;typed&gt;.json</code> (insert before <code>.json</code>). Today it becomes <code>x.json.&lt;typed&gt;</code>.</li>
-<li>A path that already ends in a recognised suffix, old or new, is returned as given. <span class="chip call">call</span> <span class="why">honouring an explicit old suffix avoids writing a file somewhere other than where the user asked.</span></li>
+<li>A path that already ends in a recognised suffix, old or new, is returned as given, so a file is never written somewhere other than where the caller asked.</li>
 </ul></li>
 <li><p><strong>A3</strong> Canonical run artifacts use the new name: <code>deliverables/pipeline.pht-pipe.json</code>, <code>deliverables/best_pipeline.pht-pipe.json</code>, and <code>.phenotypic/pipeline.pht-pipe.json</code>.</p>
 <ul>
@@ -478,7 +344,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>A4</strong> One current pipeline file per folder:</p>
 <ul>
 <li><code>_seed_pipeline_config</code> seeds only when no config exists under any of the three names.</li>
-<li>When finalize rewrites the pipeline file, it publishes the new name first and then removes an old-name sibling. <span class="chip call">call</span></li>
+<li>When finalize rewrites the pipeline file, it publishes the new name first and then removes an old-name sibling.</li>
 </ul></li>
 <li><p><strong>A5</strong> AutoConvertRaw-GC:</p>
 <ul>
@@ -487,7 +353,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>update the three configs and <code>pipeline_info.py</code>'s docstring.</li>
 </ul>
 <p>The bytes are unchanged, so <code>pipeline_sha256</code> is unchanged. A test asserts that.</p></li>
-<li><p><strong>A6</strong> DVC note for the how-to page (§5 Part C): DVC addresses params by dotted path (<code>pipe_cfgs.&lt;OpKey&gt;.params.&lt;field&gt;</code>). An operation key containing <code>.</code> cannot be addressed. Document it; no code check in v1.</p></li>
+<li><p><strong>A6</strong> DVC note for the how-to page (C9): DVC addresses params by dotted path (<code>pipe_cfgs.&lt;OpKey&gt;.params.&lt;field&gt;</code>). An operation key containing <code>.</code> cannot be addressed. Document it; no code check in v1.</p></li>
 </ul>
 <h3 id="part-b-csv--tsv">Part B: CSV → TSV</h3>
 <ul>
@@ -506,13 +372,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>B3 Analysis manifest.</strong> Fields <code>csv</code>/<code>csv_sha256</code> become <code>tsv</code>/<code>tsv_sha256</code>, with a manifest <code>schema_version</code> bump. Readers accept the old shape.</p></li>
 <li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is still refused.</p></li>
 <li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension. Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p></li>
-<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot. <span class="chip call">call</span></p></li>
+<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot.</p></li>
 <li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI and GUI generate.</p></li>
 <li><p><strong>B8</strong> Update the README generator, the how-to and tutorial pages, <code>FEATURES.md</code>/<code>WORKFLOWS.md</code> where they name a file (<code>gui-tutorial-capture</code> skill), and the root and <code>_cli</code> CLAUDE.md output inventories.</p></li>
 </ul>
 <h3 id="part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</h3>
 <ul>
-<li><p><strong>C1 Outs.</strong> The supported DVC shape is three outs, all <code>persist: true</code> <span class="chip user">user decision</span>:</p>
+<li><p><strong>C1 Outs.</strong> The supported DVC shape is three outs, all <code>persist: true</code></p>
 <ul>
 <li><code>&lt;out&gt;/deliverables</code></li>
 <li><code>&lt;out&gt;/results</code></li>
@@ -535,8 +401,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>In-place writers under <code>deliverables/</code> (DuckDB <code>qc.duckdb</code>, GUI curation) have the same problem.</li>
 <li>On GPFS the default <code>reflink,copy</code> resolves to copy, so the default is already correct. It costs one extra copy of each output in the cache.</li>
 </ul>
-<p>The run preflight gains a warning when the enclosing DVC project's <code>.dvc/config</code> selects <code>hardlink</code> or <code>symlink</code> <em><span class="chip call">call</span></em>. The check reads one config file and never imports DVC.</p></li>
-<li><p><strong>C7 Post-run curation.</strong> GUI curation changes files inside the <code>deliverables</code> out, so <code>dvc status</code> reports the out as modified until the user runs <code>dvc commit</code>. This is intended (user decision, §8 Q2): no code change, and the how-to page documents the commit step.</p></li>
+<p>The run preflight gains a warning when the enclosing DVC project's <code>.dvc/config</code> selects <code>hardlink</code> or <code>symlink</code>. The check reads one config file and never imports DVC.</p></li>
+<li><p><strong>C7 Post-run curation.</strong> GUI curation changes files inside the <code>deliverables</code> out, so <code>dvc status</code> reports the out as modified until the user runs <code>dvc commit</code>. This is intended: no code change, and the how-to page documents the commit step.</p></li>
 <li><p><strong>C8 Results size.</strong> Whether <code>results/</code> should be <code>cache: true</code> or <code>false</code> is decided by measurement, not reasoning. Time <code>dvc status</code> and <code>dvc commit</code> on the migrated maresca copy (<code>2026-08-11-ome-zarr</code>) as a Slurm job, one config per fresh node, and record the numbers in the how-to page.</p></li>
 <li><p><strong>C9 How-to page</strong> <code>docs/source/how_to/pages/dvc.md</code>. Contents:</p>
 <ul>
@@ -547,7 +413,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>top-level <code>metrics:</code>/<code>plots:</code>;</li>
 <li>the one-line-JSON caveat (§3.1) and the <code>dvc commit</code> step after curation.</li>
 </ul></li>
-<li><p><strong>C10 Exit codes are a contract</strong> <em><span class="chip call">call</span></em>. Four distinct codes:</p>
+<li><p><strong>C10 Exit codes are a contract</strong>. Four distinct codes:</p>
 <ul>
 <li><strong>0</strong>: complete, no terminal failures;</li>
 <li>a distinct non-zero: <strong>complete with terminal image failures</strong>;</li>
@@ -555,7 +421,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>a distinct code: <strong>submitted to SLURM without <code>--wait</code></strong>, so nothing is finished.</li>
 </ul>
 <p>The builder confirms what a run with terminal failures returns today; I found no distinct code for it. The values are documented and pinned by tests.</p></li>
-<li><p><strong>C11 Byte-stable deliverables</strong> <em><span class="chip call">call</span></em>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>
+<li><p><strong>C11 Byte-stable deliverables</strong>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>
 <ul>
 <li>every table under <code>deliverables/</code> (Parquet and TSV);</li>
 <li><code>deliverables/embeddings/</code>;</li>
@@ -563,7 +429,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>schema.json</code>.</li>
 </ul>
 <p>That means no wall-clock or host values in them, stable row and column order (the contiguous shard split already gives order independence, <code>87f933cb</code>), and pinned Parquet writer metadata. Reports, dashboards and <code>.phenotypic/</code> are exempt. A test runs the same tiny run twice and compares digests. This matters because DVC re-runs every downstream stage when an upstream output's bytes change.</p></li>
-<li><p><strong>C12 <code>deliverables/schema.json</code></strong> <em><span class="chip call">call</span></em>. Every column of each published table, with:</p>
+<li><p><strong>C12 <code>deliverables/schema.json</code></strong>. Every column of each published table, with:</p>
 <ul>
 <li>name, dtype and unit;</li>
 <li>the producing measurer;</li>
@@ -578,7 +444,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>C14 Outs must exist.</strong> DVC expects declared outs to exist after the command. The builder verifies how DVC reports a missing out, then makes every mode create the outs its template declares, even on a run where every image fails.</p></li>
 </ul>
 <h3 id="part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</h3>
-<p>This part replaces the earlier top-level <code>embeddings/</code> group. An embedding belongs to the pipeline that produced it, exactly as that pipeline's scalar measurements do, so both live in the pipeline's own folder under <code>tables/</code> <span class="chip user">user decision</span>.</p>
+<p>An embedding belongs to the pipeline that produced it, exactly as that pipeline's scalar measurements do, so both live in the pipeline's own folder under <code>tables/</code>.</p>
 <ul>
 <li><p><strong>D1 Layout.</strong> <code>tables/</code> stays the top-level group, since it is already part of the store schema. Below it there is one folder per pipeline application that wrote measurements into this store:</p>
 <pre><code>tables/
@@ -687,7 +553,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>If one exists, it replaces that folder in place, keeping its original <code>&lt;seq&gt;</code>. This covers <code>--mode measure</code> and re-runs.</li>
 <li>Otherwise it creates <code>&lt;this application's sequence&gt;-&lt;sha12&gt;</code>.</li>
 <li>The journal still logs every application.</li>
-<li>This matches how measure mode already reuses a figure run folder for the same pipeline. <span class="chip call">call</span></li>
+<li>This matches how measure mode already reuses a figure run folder for the same pipeline.</li>
 </ul></li>
 <li><p><strong>D7 Stale binding</strong> is recomputed on every write, never latched:</p>
 <ul>
@@ -695,22 +561,22 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>Grid:</strong> compare <code>array_sha256</code> with the embedded level-0 array.</li>
 <li>Set <code>stale = (they differ)</code>, and keep the files either way.</li>
 <li>Readers and aggregation refuse a stale entry.</li>
-<li>A latched flag would be wrong. Staged Stage 1 writes an all-zeros objmap, which would mark every carried crop entry stale even after Stage 3 restores the identical objmap.</li>
+<li>Recomputing is what lets a staged run work: Stage 1 writes an all-zeros objmap, and Stage 3's identical objmap clears the flag again.</li>
 <li>Digests are computed from in-memory arrays at write time.</li>
 <li>The measure rewrite writes no objmap and leaves <code>stale</code> unchanged.</li>
 </ul></li>
-<li><p><strong>D8 Upstream reference (option C).</strong></p>
+<li><p><strong>D8 Upstream reference.</strong></p>
 <ul>
 <li>When an input image is a PhenoTypic store with a v2 <code>tables</code> descriptor, the result store's <code>upstream</code> records each of the input's run folders, along with any entries in the input's own <code>upstream</code>, so the chain is complete.</li>
 <li>Nothing is copied.</li>
-<li>A reader that follows a reference compares <code>root_sha256</code> and reports "upstream changed" on a mismatch, for example after an AutoConvertRaw-GC reprocess. <span class="chip call">call</span></li>
+<li>A reader that follows a reference compares <code>root_sha256</code> and reports "upstream changed" on a mismatch, for example after an AutoConvertRaw-GC reprocess.</li>
 </ul></li>
 <li><p><strong>D9 Integrity.</strong></p>
 <ul>
 <li>File <code>sha256</code>s live in the root, so the completion marker covers them.</li>
-<li>Missing or corrupted embedding bytes make that entry unreadable. They do not revoke the run's measurement authority: embeddings are additive. <span class="chip call">call</span></li>
+<li>Missing or corrupted embedding bytes make that entry unreadable. They do not revoke the run's measurement authority: embeddings are additive.</li>
 </ul></li>
-<li><p><strong>D10 Migration.</strong> <code>--mode migrate</code> converts a v1 store's <code>tables/measurements</code> and <code>tables/metadata</code> into <code>tables/&lt;seq&gt;-&lt;sha12&gt;/</code>. <code>&lt;seq&gt;</code> and the hash come from the latest journal application that measured. When the journal has no pipeline digest for it, which is possible for a converted <code>legacy</code> application, the folder is <code>&lt;seq&gt;-unknown</code> with <code>pipeline_sha256: null</code>. Never fabricate a digest. <span class="chip call">call</span></p></li>
+<li><p><strong>D10 Migration.</strong> <code>--mode migrate</code> converts a v1 store's <code>tables/measurements</code> and <code>tables/metadata</code> into <code>tables/&lt;seq&gt;-&lt;sha12&gt;/</code>. <code>&lt;seq&gt;</code> and the hash come from the latest journal application that measured. When the journal has no pipeline digest for it, which is possible for a converted <code>legacy</code> application, the folder is <code>&lt;seq&gt;-unknown</code> with <code>pipeline_sha256: null</code>. Never fabricate a digest.</p></li>
 </ul>
 <h3 id="part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</h3>
 <ul>
@@ -719,13 +585,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>objects</code> requires a non-empty objmap and writes <code>crops/</code>.</li>
 <li><code>grid</code> requires a grid definition, not an objmap, and writes <code>grid/</code>.</li>
 </ul>
-<p>A whole-image embedding is a 1 × 1 grid, so there is no separate image scope. <span class="chip call">call</span> <code>measure(image)</code> returns the table's frame directly, for notebook use.</p></li>
+<p>A whole-image embedding is a 1 × 1 grid, so there is no separate image scope. <code>measure(image)</code> returns the table's frame directly, for notebook use.</p></li>
 <li><p><strong>E2 Pipeline routing.</strong></p>
 <ul>
 <li><code>ImagePipeline.measure()</code> keeps its return contract and does not run <code>MeasureEmbedding</code> entries.</li>
 <li>A new <code>ImagePipeline.embed(image) -&gt; dict["&lt;model&gt;/&lt;crops|grid&gt;", EmbeddingPayload]</code> runs them.</li>
 <li>The CLI per-image writers call both, then write one run folder (D1). These are the single-pass worker, Stage 3, measure mode and process mode.</li>
-<li>Both docstrings say so. <span class="chip call">call</span></li>
+<li>Both docstrings say so.</li>
 </ul></li>
 <li><p><strong>E3 <code>MeasureDinoEmbedding</code></strong> (<code>measure/_measure_dino_embedding.py</code>). Fields:</p>
 <div class="scroll"><table>
@@ -794,18 +660,18 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 </tbody>
 </table></div></li>
-<li><p><strong>E3a Grid coordinates are per-rig parameters</strong> <span class="chip user">user decision</span>. A rig puts plates at the same pixels in every image, so a grid is fixed pixel edges, the way the checker-card ROIs are fixed pixel boxes. The edges are <strong>parameters, never constants</strong>, so a user with a different rig sets their own:</p>
+<li><p><strong>E3a Grid coordinates are per-rig parameters.</strong> A rig puts plates at the same pixels in every image, so a grid is fixed pixel edges, the way the checker-card ROIs are fixed pixel boxes. The edges are <strong>parameters, never constants</strong>, so a user with a different rig sets their own:</p>
 <ul>
 <li>They live in the pipeline file as <code>ManualGridFinder(row_edges=[…], col_edges=[…])</code>. Changing rigs means changing those two lists, or using a pipeline file per rig.</li>
 <li>They are addressable as DVC params, e.g. <code>dvc exp run -S 'rig2.pht-pipe.json:meas.&lt;key&gt;.params.grid.params.row_edges=[…]'</code>. The builder confirms the exact key path the serializer produces.</li>
 <li>Coordinates are in the pixel frame of the image the measurer sees, after <code>ops</code>. Color correction and denoising don't change geometry.</li>
-<li>A cell that falls outside an image fails that image, with a message naming the cell and the image size, rather than being clipped <em><span class="chip call">call</span></em>.</li>
-<li>For <code>phenotypic-tune</code>, the edges are <code>TuneSpec(tunable=False)</code> structural plate geometry, as <code>ManualGridFinder.nrows/ncols</code> already are. They are user-set, not searched <em><span class="chip call">call</span></em>.</li>
+<li>A cell that falls outside an image fails that image, with a message naming the cell and the image size, rather than being clipped.</li>
+<li>For <code>phenotypic-tune</code>, the edges are <code>TuneSpec(tunable=False)</code> structural plate geometry, as <code>ManualGridFinder.nrows/ncols</code> already are. They are user-set, not searched.</li>
 <li>No coordinates are shipped as defaults. The rig1 edges are supplied by the user when the AutoConvertRaw-GC pipeline is updated (E6).</li>
 </ul>
 <p>Implementation notes:</p>
 <ul>
-<li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, built from <code>version</code> and <code>size</code>, e.g. <code>dinov2-vitb14</code>. The fields drop the <code>dino_</code> prefix because the class name already says DINO <span class="chip user">user</span>.</li>
+<li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, built from <code>version</code> and <code>size</code>, e.g. <code>dinov2-vitb14</code>. The fields drop the <code>dino_</code> prefix because the class name already says DINO.</li>
 <li>Reuse the <code>_dino_support.py</code> helpers.</li>
 <li>Keep a module-level backbone cache keyed by <code>(hf_id, revision, device)</code>.</li>
 <li>Run under <code>torch.inference_mode()</code> with <code>model.eval()</code>.</li>
@@ -815,12 +681,12 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Tune annotations go on numeric fields, per the <code>adding-an-operation</code> skill.</li>
 <li>Add a <code>DINO_EMBEDDING</code> schema enum, authoring <code>label</code>/<code>desc</code> only (no <code>bio_desc</code>), exported from <code>phenotypic.schema</code>.</li>
 </ul></li>
-<li><p><strong>E4 Process mode runs the pipeline's measurements</strong> <span class="chip user">user decision</span>.</p>
+<li><p><strong>E4 Process mode runs the pipeline's measurements.</strong></p>
 <ul>
 <li><code>MODE_SLOTS["process"]</code> becomes <code>ops</code> + <code>meas</code>, and the preflight's mode walk follows. <code>post</code>/<code>filters</code>/<code>model</code> still don't run, and no deliverables are built.</li>
 <li><code>process_single_apply_only_core</code> runs <code>measure()</code> and <code>embed()</code> after <code>apply()</code>, and writes the run folder into the <code>.part</code> before consolidation. The store stays write-once.</li>
-<li>A process store holds no objmap (<code>write_objmap=False</code>). So a measurer that needs objects is refused in the read-only half, with one usage-error line naming it, rather than writing a table keyed on labels the store can't resolve. <span class="chip call">call</span></li>
-<li><strong>Bump <code>PROCESS_LAYER_SEMANTICS_REVISION</code> 4 → 5.</strong> Process mode used to ignore <code>meas</code>, so a process tree whose pipeline already had measurers would otherwise resume onto stores that lack the tables it now writes. This corrects an earlier statement that no bump was needed.</li>
+<li>A process store holds no objmap (<code>write_objmap=False</code>). So a measurer that needs objects is refused in the read-only half, with one usage-error line naming it, rather than writing a table keyed on labels the store can't resolve.</li>
+<li><strong>Bump <code>PROCESS_LAYER_SEMANTICS_REVISION</code> 4 → 5.</strong> Process mode used to ignore <code>meas</code>, so a process tree whose pipeline already had measurers would otherwise resume onto stores that lack the tables it now writes.</li>
 </ul></li>
 <li><p><strong>E5 Deliverables.</strong> The finalizer aggregates <strong>its own</strong> run folder:</p>
 <ul>
@@ -831,7 +697,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>Rules:</p>
 <ul>
 <li>These files are Parquet only. They are never joined to metadata, and never in master, mirror, splits or any TSV.</li>
-<li>A failure fails finalization, like the master. <span class="chip call">call</span></li>
+<li>A failure fails finalization, like the master.</li>
 <li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
 </ul></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
@@ -844,7 +710,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p>Backfill of done images is an explicit <code>--reprocess-changed</code> decision at rollout. It reruns calibration and BM3D denoise.</p></li>
 </ul>
-<h2 id="6-order">6. Order</h2>
+<h2 id="5-order">5. Order</h2>
 <div class="scroll"><table>
 <thead>
 <tr class="header">
@@ -893,59 +759,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </table></div>
 <p>P3 is now the largest phase. Every reader of <code>tables/measurements/table.parquet</code> changes: the finalizer, the GUI routes, measure mode, migrate and the completion marker. Derive its affected test surface from importers, not from directory names (root CLAUDE.md).</p>
 <p>Testing follows root CLAUDE.md: step guards, then per-task files, the affected surface once per phase, and the full sharded regression once at the end, on Slurm. Store changes also need an <strong>independent reader</strong> check (zarr-python + pyarrow, never only PhenoTypic's own reopen), per the <code>working-with-ome-zarr</code> skill.</p>
-<h2 id="7-who-decided-what">7. Who decided what</h2>
-<p><strong>Decided by the user:</strong></p>
-<ul>
-<li>flip the suffix (all four typed suffixes);</li>
-<li>keep JSON (no YAML);</li>
-<li>all generated CSV becomes TSV, as a hard cutover;</li>
-<li>curation leaves <code>deliverables</code> modified until <code>dvc commit</code>;</li>
-<li>DVC is for automation and data-engineering pipeline infrastructure; a run is one DVC stage;</li>
-<li>automation runs in a persistent workspace;</li>
-<li><code>.phenotypic/</code> is tracked as a DVC output, beside <code>deliverables/</code> and <code>results/</code>;</li>
-<li>the feasibility recommendations:
-<ul>
-<li>CPU-first <code>MeasureDinoEmbedding</code> in <code>meas</code>;</li>
-<li>AutoConvertRaw-GC Option A;</li>
-<li>DINOv2 base, fp16, <code>crop_cls</code>;</li>
-<li><code>FixedSizeList</code> vectors;</li>
-<li>embeddings out of the scalar table and its own deliverable;</li>
-</ul></li>
-<li>the store layout: one folder per pipeline under <code>tables/</code>, named <code>&lt;call order&gt;-&lt;pipeline hash&gt;</code>;</li>
-<li>embeddings under their pipeline's folder, with the model naming the folder;</li>
-<li>crop and grid embeddings as two separate tables;</li>
-<li>grid embeddings from manually defined grid coordinates;</li>
-<li>process mode runs the pipeline's measurements and stores them in each store;</li>
-<li>the grid is fixed per rig, with user-set coordinates;</li>
-<li><code>tables/</code> stays the top-level group.</li>
-</ul>
-<p><strong>Calls made in this document (check these):</strong></p>
-<ul>
-<li>A2 honours explicit old suffixes;</li>
-<li>A4 removes the old-name pipeline file after publishing the new one;</li>
-<li>B5 keeps the snapshot's extension;</li>
-<li>B6 removes stale generated CSVs;</li>
-<li>B7 leaves public API names alone;</li>
-<li>C4's metrics content;</li>
-<li>D2 keys folders by pipeline-file bytes, so a formatting-only change gives a new folder;</li>
-<li>D4 adds ngio attributes to scalar tables and a prefixed type to embedding tables;</li>
-<li>D6 has a re-measure with the same pipeline replace its folder and keep its <code>&lt;seq&gt;</code>;</li>
-<li>D7 marks stale entries rather than deleting them;</li>
-<li>D8 records the upstream link as a reference (option C), not a copy;</li>
-<li>D9 keeps embeddings out of measurement authority;</li>
-<li>D10 names a migrated folder <code>&lt;seq&gt;-unknown</code> when no digest exists;</li>
-<li>E1 drops the separate image-level scope (a whole image is a 1 × 1 grid);</li>
-<li>E2's <code>measure()</code>/<code>embed()</code> split;</li>
-<li>E3a fails an image whose grid cell falls outside it, and makes grid edges user-set rather than tune-searched;</li>
-<li>E4 refuses object measurers in process mode;</li>
-<li>E5 fails finalization on embedding aggregation errors;</li>
-<li>figures stay in <code>figures/&lt;date&gt;-&lt;sha12&gt;/</code> in this change;</li>
-<li>C6 adds a preflight warning on a hardlink/symlink DVC cache;</li>
-<li>C10 defines four exit codes;</li>
-<li>C11 makes deliverables byte-stable;</li>
-<li>C12 adds <code>schema.json</code>.</li>
-</ul>
-<p><strong>Left to the builder:</strong></p>
+<h2 id="6-left-to-the-implementer">6. Left to the implementer</h2>
 <ul>
 <li>the exact TSV quoting configuration;</li>
 <li>the writer audit for C6;</li>
@@ -958,22 +772,6 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>DVC's missing-out behaviour (C14);</li>
 <li>test placement;</li>
 <li>naming of private helpers.</li>
-</ul>
-<h2 id="8-questions">8. Questions</h2>
-<h3 id="resolved-user-2026-11-12">Resolved (user, 2026-11-12)</h3>
-<ul>
-<li><p><strong>Q1 (P1) Downstream readers get a hard cutover.</strong> Generated files are TSV-only from the release that ships P1. There is no dual CSV+TSV transition release. PhenoTypic's own readers still fall back to <code>.csv</code> in old run folders (B6); that is about reading old trees, not about external scripts. The release notes and the deliverables <code>README.md</code> state the rename.</p></li>
-<li><p><strong>Q2 (P2) Curation leaves the <code>deliverables</code> out modified.</strong> The GUI keeps writing <code>deliverables/qc/</code> and the curated <code>measurements.parquet</code> in place after the stage. <code>dvc status</code> reporting <code>deliverables</code> as modified until the user runs <code>dvc commit</code> is the intended behaviour, not a defect. Curation state stays in <code>deliverables/</code>, so the bundle remains self-contained. The how-to page (C9) documents the <code>dvc commit</code> step after curating.</p></li>
-<li><p><strong>Q3 (P4) The grid is at the same pixels in every image of a rig</strong>, and its coordinates are user-set parameters so other rigs can use their own (E3a).</p></li>
-</ul>
-<h2 id="9-corrections-to-earlier-artifacts-and-drafts">9. Corrections to earlier artifacts and drafts</h2>
-<ul>
-<li><strong>The feasibility page's top-level <code>embeddings/</code> group, and this document's first Part D, are superseded</strong> by per-pipeline folders under <code>tables/</code> (Part D).</li>
-<li><strong>The process-mode revision bump <em>is</em> needed</strong> (4 → 5, E4). An earlier draft said it wasn't, because adding an embedder changes the pipeline. That missed pipelines that already had measurers, which process mode used to ignore.</li>
-<li><strong>The image-level CLS + mean vectors are dropped</strong> in favour of grid embeddings (E1).</li>
-<li><strong>The design keeps <code>meas</code> and adds an explicit <code>ImagePipeline.embed()</code></strong> (E2), where the feasibility page offered a <code>MeasureEmbedding</code> or a new <code>embed</code> slot.</li>
-<li><strong><code>.phenotypic/</code> is now tracked</strong>, a third out (user decision, §4.5, C1). The earlier two-out layout, which left it untracked, is superseded, and so is the earlier statement that <code>.phenotypic/</code> had to move out of the output folder.</li>
-<li><strong>Byte-stable deliverables moved from non-goal to goal</strong> (C11), once the DVC purpose became automation.</li>
 </ul>
 
 </main>
