@@ -576,6 +576,19 @@ PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 #: :func:`readme_md_path`.
 README_MD: Final[str] = "README.md"
 
+#: The run summary a DVC stage reads with ``dvc metrics show`` (#281 spec C4):
+#: image and object counts, the PhenoTypic version and the shared pipeline
+#: digest. Written by ``finalize_run``, byte-stable, and never read back by
+#: PhenoTypic, so it is a deliverable rather than tracked state. See
+#: :func:`metrics_json_path`.
+METRICS_JSON: Final[str] = "metrics.json"
+
+#: The column schema of every published deliverables table (#281 spec C12):
+#: each column's dtype, unit, producing measurer and ``MeasurementInfo``
+#: member. Written by ``finalize_run`` beside :data:`METRICS_JSON`, byte-stable,
+#: never read back. See :func:`schema_json_path`.
+SCHEMA_JSON: Final[str] = "schema.json"
+
 #: The resolved tuning spec echoed by ``python -m phenotypic.tune``
 #: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
 TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
@@ -2761,6 +2774,16 @@ def processing_report_html_path(output_dir: Path) -> Path:
 def readme_md_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/README.md``."""
     return deliverables_dir(output_dir) / README_MD
+
+
+def metrics_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/metrics.json``."""
+    return deliverables_dir(output_dir) / METRICS_JSON
+
+
+def schema_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/schema.json``."""
+    return deliverables_dir(output_dir) / SCHEMA_JSON
 
 
 def analysis_full_parquet_path(progress_dir_: Path) -> Path:

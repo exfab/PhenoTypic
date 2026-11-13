@@ -1196,6 +1196,12 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 with a present column; written beside the feature split by
 `finalize_post_master_outputs`),
 `<AnalysisClass>.{tsv,parquet}`, `analysis_manifest.json`,
+`metrics.json` and `schema.json` (#281 spec C4/C12: the run summary and the
+column schema of every published table, written by `finalize_run`'s
+`publish_run_summaries` after the splits and before the aggregate proof, which
+declares and enforces both; byte-stable canonical JSON, never read back, so
+not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
+aggregated table shares and is `null` for v1 flat tables, which record none),
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),

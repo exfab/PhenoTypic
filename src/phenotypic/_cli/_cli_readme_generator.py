@@ -116,7 +116,9 @@ output_folder/
 |   +-- measurements.parquet          # Parquet companion of the mirror
 |   +-- measurements_by_feature/      # One TSV + Parquet per measurer: shared context columns + that measurer's columns
 |   +-- measurements_by_category/     # One TSV + Parquet per measurement category (see Measurement Categories)
-|   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
+|   +-- metrics.json                  # Run summary: image/object/phantom counts, PhenoTypic version, pipeline sha256
+|   +-- schema.json                   # Every column of each published table: dtype, unit, measurer, schema member, description
+|   +-- pipeline.pht-pipe.json       # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.tsv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
@@ -147,7 +149,18 @@ and to `measurements.parquet`, **not** to `measurements.tsv`: until #283 lands,
 curated edits reach `measurements.csv` and `measurements.parquet` but not
 `measurements.tsv`. `--metadata` must now be a `.csv` or `.tsv` table (the
 delimiter follows the suffix); any other suffix, such as a comma-separated
-`.txt` that earlier releases read, is refused, so rename it."""
+`.txt` that earlier releases read, is refused, so rename it.
+
+**`metrics.json` and `schema.json` are for automation** (for example
+`dvc metrics show`). `metrics.json` counts the images the run accepted,
+succeeded on and failed terminally, the objects measured and the
+metadata-only phantom rows, and names the PhenoTypic version and the sha256 of
+the pipeline every aggregated table came from (`null` when they differ or it
+is not recorded). `schema.json` lists, for every published table (keyed by
+its path under `deliverables/` without the suffix), each column's Parquet
+dtype, unit, producing measurer, schema member and description. Both are
+rewritten by every finalization and hold no timestamps, so identical runs give
+byte-identical files."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""

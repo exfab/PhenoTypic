@@ -23,6 +23,7 @@ from tests._tiny_run import (  # noqa: F401
     old_tree_with_measurements_csv,
     tiny_inputs,
     tiny_inputs_one_bad,
+    tiny_mirror,
     tiny_pipeline,
     tiny_pipeline_file,
 )

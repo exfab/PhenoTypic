@@ -28,7 +28,9 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     measurements_tsv_path,
+    metrics_json_path,
     publication_commit,
+    schema_json_path,
     progress_dir,
     run_completion_marker_path,
     source_image_stem,
@@ -1070,6 +1072,7 @@ def publish_aggregate_snapshot(
     source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
     execution_epoch: str | None = None,
+    require_run_summaries: bool = True,
 ) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot.
 
@@ -1100,6 +1103,15 @@ def publish_aggregate_snapshot(
             ``phenotypic-wait`` accepts this proof only for that submission
             (#281 spec C3). A proof written before the field existed has no
             key and never counts for a submission.
+        require_run_summaries: Whether ``deliverables/metrics.json`` and
+            ``deliverables/schema.json`` (#281 spec C4, C12) must exist.
+            ``finalize_run`` writes both just before this call, so on that
+            path an absent file is a fault and resolving it raises, like any
+            other required output. ``False`` is for the migrate re-publication
+            (``sdk_._hdf_to_zarr.republish_aggregate``), which re-certifies
+            whatever deliverables a tree already holds: a tree finalized
+            before the files existed has neither, and they are then certified
+            only when present.
 
     Returns:
         Path to the aggregate publication marker.
@@ -1122,7 +1134,8 @@ def publish_aggregate_snapshot(
     # writes no master CSV, so certifying one would make every forward
     # finalization fail on a `resolve(strict=True)` for a file nothing writes.
     # P1 (spec B9) adds the mirror's `.tsv` beside its `.csv` and `.parquet`,
-    # so there are four descriptors: one master and three mirror files.
+    # so there are four descriptors: one master and three mirror files. #281
+    # C4/C12 adds metrics.json and schema.json below, for six.
     #
     # O-3: the reader no longer validates whatever the proof LISTS, and that
     # sentence used to stand here. All four are still WRITTEN -- the marker
@@ -1144,6 +1157,16 @@ def publish_aggregate_snapshot(
         "measurements_tsv": measurements_tsv_path(output_dir),
         "measurements_parquet": measurements_parquet_path(output_dir),
     }
+    # #281 spec C4/C12: the run summary and the column schema are deliverables
+    # a DVC stage reads, published by the same finalization, so the proof
+    # fences them like the master. No GUI writer touches either, so both stay
+    # enforced (they are not in `_GUI_WRITTEN_PROOF_DESCRIPTORS`).
+    for name, path in (
+        ("metrics_json", metrics_json_path(output_dir)),
+        ("schema_json", schema_json_path(output_dir)),
+    ):
+        if require_run_summaries or path.is_file():
+            required_paths[name] = path
     output_root = output_dir.resolve()
     descriptors: dict[str, dict[str, object]] = {}
     for name, path in required_paths.items():

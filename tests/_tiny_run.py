@@ -145,6 +145,18 @@ def finished_tiny_run(tmp_path: Path, tiny_inputs: Path) -> Path:
 
 
 @pytest.fixture
+def tiny_mirror(finished_tiny_run: Path):
+    """The ``deliverables/measurements.parquet`` frame of :func:`finished_tiny_run`.
+
+    Returns:
+        A polars ``DataFrame``: the post-applied, metadata-joined mirror.
+    """
+    import polars as pl
+
+    return pl.read_parquet(finished_tiny_run / "deliverables" / "measurements.parquet")
+
+
+@pytest.fixture
 def old_tree_with_measurements_csv(
     tmp_path: Path, tiny_inputs: Path, metadata_bytes: dict[str, bytes]
 ) -> Path:
