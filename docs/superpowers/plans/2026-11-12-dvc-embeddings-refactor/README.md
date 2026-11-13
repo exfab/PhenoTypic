@@ -134,5 +134,65 @@ accident. Each one is pinned by a test in the task named.
 | P4 | [p4-measure-dino-embedding.md](p4-measure-dino-embedding.md) | P3 | 4 |
 | P5 | [p5-process-measurements-acr.md](p5-process-measurements-acr.md) | P0, P3, P4 | 4 |
 
-P0, P1 and P3 touch disjoint files and can be worked in parallel. P3 is the
-largest and the riskiest, because 27 modules read today's flat table layout.
+P3 is the largest and the riskiest phase, because 27 modules read today's flat
+table layout.
+
+## Execution
+
+**The phases are not file-disjoint.** These hot files are shared:
+
+| File | Phases |
+|---|---|
+| `sdk_/_io_constants.py` | P0 P1 P2 P4 |
+| `sdk_/__init__.py` | P0 P1 P3 |
+| `_cli_output_manager.py` | P0 P1 P3 |
+| `phenotypicCLI.py` | P0 P1 P2 P5 |
+| `_cli_finalize_run.py` | P2 P3 P4 |
+| `_measurement_tables.py`, `_image_io_handler.py` | P3 P4 |
+| `_cli_completion.py` | P1 P2 |
+| `_cli_preflight.py` | P2 P5 |
+| `_cli_process_single.py` | P3 P4 |
+| `_cli_process_only.py` | P3 P5 |
+
+So the main line runs **sequentially in one worktree**. Two side lanes have zero
+overlap and may run alongside it:
+- **Lane A:** P0 T3, in the AutoConvertRaw-GC repo.
+- **Lane B:** P2 T6 Step 1, the C8 DVC timing on the maresca copy. It is a
+  read-only Slurm job whose numbers land in the how-to page later.
+
+**Clusters.** One agent per cluster. "Opus" is the frontier tier and "Sonnet"
+the mid tier. A reviewer is never weaker than its implementer.
+
+| # | Tasks | Shape | Model | Gate after |
+|---|---|---|---|---|
+| C1 | P0 T1, T2 steps 1–4 | Keystone | Opus | light |
+| C2 | P0 T2 step 5, the literal sweep | Sweep | Sonnet | light; the Opus phase review covers it |
+| C3 | P0 T3 (Lane A) | Leaf | Sonnet | light |
+| C4 | P1 T1, T2 | Keystone | Opus | light |
+| C5 | P1 T3, the snapshots (provenance invariant) | Seam | Opus | light |
+| C6 | P1 T4 | Sweep | Sonnet | **deep: P0+P1** (implementation-test-reviewer) |
+| C7 | P2 T1, exit codes | Seam | Opus | light |
+| C8 | P2 T2, `phenotypic-wait` | Keystone | Opus | light |
+| C9 | P2 T3, metrics and schema | Keystone | Opus | light |
+| C10 | P2 T4, T5: byte stability and layout guards | Seam | Opus | light |
+| C11 | P2 T6, the how-to page (uses Lane B's numbers) | Leaf | Sonnet | **deep: P2** |
+| C12 | P3 T1, T2: resolver, writer, carry, stale | Keystone | Opus | light |
+| C13 | P3 T3, the measure rewrite | Keystone | Opus | light |
+| C14a–d | P3 T4 reader sweep, by subsystem: (a) finalizer/aggregation, (b) per-image writers and staged, (c) recompile, (d) migrate, state and the `sdk_` readers | Sweep, consistency-critical | Opus | light each |
+| C15 | P3 T5, v1 refusal and conversion | Seam | Opus | light |
+| C16 | P3 T6, upstream reference | Keystone | Opus | **deep: P3**, then a code-simplifier pass on the P3 layer before P4 builds on it |
+| C17 | P4 T1, T2 | Keystone | Opus | light |
+| C18 | P4 T3, `MeasureDinoEmbedding`; a fact-checker on the `crop_px` and `crop_pad_frac` tune ranges | Keystone | Opus | light |
+| C19 | P4 T4, CLI wiring and deliverables | Seam | Opus | **deep: P4** |
+| C20 | P5 T1, T2, process mode | Seam | Opus | **deep: P5**, then the full sharded regression on Slurm, the simplify pass, and the regression again |
+| C21 | P5 T3, the AutoConvertRaw-GC rollout | Seam | Opus | light. **Blocked on the user's rig1 grid edges** |
+| C22 | P5 T4, pilot and backfill decision | orchestrator and user | — | — |
+
+**Rules for every cluster.**
+- The agent runs its own tests and lint, and commits its own work with explicit
+  paths.
+- It reports each commit SHA and the failing-test names it saw before the fix.
+- The orchestrator re-reads the disk at each gate, and never runs verification
+  while an agent is mid-edit.
+- An open design question found at any gate stops the run until the user
+  answers.
