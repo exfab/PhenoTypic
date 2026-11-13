@@ -354,12 +354,22 @@ The five parts below are independent enough to plan and ship in the order of §5
     it waiting, with the reason printed each poll. It never guesses.
   - **With no job live, it accepts only a publication by this submission.** At
     its first poll it reads the lifecycle fence's generation. Published means one
-    of: that generation's fence closed by its finalizer; a run proof whose
-    `execution_epoch` is that generation; or an aggregate proof whose inventory,
-    config and source-set digests match current state (a new `sdk_` helper
-    reusing `_source_set_binding`). Then it exits `0`, or the
-    complete-with-failures code when images failed terminally. Anything else is
-    a run that ended without publishing, and gets its own code.
+    of: that generation's fence closed **by its finalizer**; a run proof whose
+    `execution_epoch` is that generation; or an aggregate proof stamped with that
+    generation. Then it exits `0`, or the complete-with-failures code when
+    images failed terminally. Anything else is a run that ended without
+    publishing, and gets its own code.
+  - Two fields make that binding exact, with no clock comparison:
+    - the finalizer stamps the generation it ran under into the aggregate proof
+      (`execution_epoch`, as the run proof already has). A proof without the
+      field, written before this change, never counts for a new submission;
+    - the finalizer's close of the fence records `closed_by: "finalizer"`. A
+      cancel (`cancel_generation`, `deactivate_orchestration`) leaves it unset,
+      so a cancelled resubmission ends unpublished.
+
+    Matching state alone is not enough: a `--mode measure` resubmission keeps no
+    run state, so an earlier run's aggregate proof would still match after the
+    new finalizer died.
   - Process mode publishes no aggregate proof, so a process run whose images
     finished with terminal failures and no live job exits complete-with-failures.
   - It does not serve `--mode migrate`, which keeps its lifecycle under an
