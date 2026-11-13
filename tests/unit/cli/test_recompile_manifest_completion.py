@@ -44,6 +44,7 @@ from phenotypic.sdk_ import (
     manifest_json_path,
     master_measurements_parquet_path,
     measurements_csv_path,
+    measurements_tsv_path,
     measurements_parquet_path,
 )
 
@@ -135,6 +136,7 @@ def _build_run(tmp_path: Path) -> Path:
     for core in (
         master_measurements_parquet_path(tmp_path),
         measurements_csv_path(tmp_path),
+        measurements_tsv_path(tmp_path),
         measurements_parquet_path(tmp_path),
     ):
         core.parent.mkdir(parents=True, exist_ok=True)

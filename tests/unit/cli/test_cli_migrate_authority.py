@@ -70,6 +70,7 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     master_measurements_parquet_path,
     measurements_csv_path,
+    measurements_tsv_path,
     measurements_parquet_path,
     phenotypic_cache_dir,
     run_completion_marker_path,
@@ -1051,6 +1052,7 @@ def _install_completion_fixture(run: Path) -> None:
         (
             master_measurements_parquet_path(run),
             measurements_csv_path(run),
+            measurements_tsv_path(run),
             measurements_parquet_path(run),
         )
     ):
@@ -1678,8 +1680,9 @@ def test_measurement_mirror_does_not_swallow_generation_rejection(
     ("reject_at", "expected_events"),
     (
         (1, []),
-        (4, ["legacy_qc"]),
-        (6, ["legacy_qc", "rembi", "split"]),
+        # 2-4 are the mirror seeds: measurements.tsv, .csv and .parquet.
+        (5, ["legacy_qc"]),
+        (7, ["legacy_qc", "rembi", "split"]),
     ),
 )
 def test_terminal_auxiliary_writers_stop_at_early_middle_and_late_revocation(
@@ -1782,9 +1785,9 @@ def test_analysis_registry_write_is_generation_guarded(
     monkeypatch.setattr(plotting_pipeline, "AnalysisRegistry", Registry)
     monkeypatch.setattr(plotting_pipeline, "PlotCoordinator", Coordinator)
     pipeline = SimpleNamespace(get_post=lambda: (), get_qc=lambda: None)
-    guard = _RejectOnEntry(8)
+    guard = _RejectOnEntry(9)
 
-    with pytest.raises(RuntimeError, match="publication 8"):
+    with pytest.raises(RuntimeError, match="publication 9"):
         subject.finalize_post_master_outputs(
             run,
             pl.DataFrame({"Object_Label": [1], "Size_Area": [25.0]}),

@@ -731,11 +731,11 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     assert measurements_parquet_path(output_dir).exists()
     # The recompile finalizer reaches the category split through the same
     # finalize_post_master_outputs path as full/measure (spec §5.3).
-    category_csv = (
-        measurements_by_category_dir(output_dir) / "StartingMetrics.csv"
+    category_tsv = (
+        measurements_by_category_dir(output_dir) / "StartingMetrics.tsv"
     )
-    assert category_csv.exists()
-    assert pl.read_csv(category_csv)["Size_Area"].to_list() == [1, 2]
+    assert category_tsv.exists()
+    assert pl.read_csv(category_tsv, separator="\t")["Size_Area"].to_list() == [1, 2]
     assert pl.read_parquet(master_measurements_parquet_path(output_dir))[
         "Size_Area"
     ].to_list() == [
