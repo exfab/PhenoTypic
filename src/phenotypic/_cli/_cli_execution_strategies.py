@@ -789,8 +789,12 @@ class LocalParallelStrategy(ExecutionStrategy):
         """
         # Lazy-import the measure worker to match the forward-run pattern and
         # avoid any new top-level import cycle.
-        from ._cli_process_single import process_single_store_measure_core
+        from ._cli_process_single import (
+            measure_scientific_boundary,
+            process_single_store_measure_core,
+        )
 
+        attempt_id = uuid4().hex
         append_event(event_log, dataset.name, image_path.name, "started")
 
         try:
@@ -799,14 +803,15 @@ class LocalParallelStrategy(ExecutionStrategy):
             # store root so a GridImage rehydrates with its grid state intact,
             # and falls back to the configured ``--image-type`` only when the
             # block carries none.
-            process_single_store_measure_core(
-                pipeline_path=self.config.pipeline_json,
-                store_path=image_path,
-                output_dir=output_dir,
-                dataset_name=dataset.name,
-                image_type=self.config.image_type,  # type: ignore[arg-type]
-                output_manager=self.output_manager,
-            )
+            with measure_scientific_boundary():
+                process_single_store_measure_core(
+                    pipeline_path=self.config.pipeline_json,
+                    store_path=image_path,
+                    output_dir=output_dir,
+                    dataset_name=dataset.name,
+                    image_type=self.config.image_type,  # type: ignore[arg-type]
+                    output_manager=self.output_manager,
+                )
 
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
@@ -818,6 +823,25 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             error_msg = str(e)
             tb = traceback.format_exc()
+
+            # The SLURM measure worker's twin (#281 P2 C11d): the record is
+            # keyed by the measure work id `work_id_for_image` derives from
+            # this config, outside the forward inventory. The local exit code
+            # and metrics.json count this invocation's own failures instead.
+            if not _record_local_terminal_failure(
+                self.config,
+                output_dir,
+                dataset.name,
+                image_path,
+                e,
+                tb,
+                attempt_id,
+            ) and isinstance(e, PerImageScientificError):
+                logger.warning(
+                    "Measure failure for %s/%s was not journalled as terminal",
+                    dataset.name,
+                    image_path.name,
+                )
 
             logger.error(
                 "Measure rerun failed for %s/%s:\n%s",

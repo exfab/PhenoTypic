@@ -7,7 +7,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, contextmanager
 import json
 import os
 import sys
@@ -15,7 +15,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Mapping, cast
+from typing import Optional, Dict, Any, Callable, Iterator, Mapping, cast
 from uuid import uuid4
 
 import matplotlib
@@ -52,6 +52,7 @@ from ._cli_update_state import (
     append_completion_event,
 )
 from ._cli_failure_tracker import (
+    MEASURE_FAILURE_STAGE,
     PerImageScientificError,
     _normalized_input_relative_path,
     append_failure,
@@ -410,6 +411,39 @@ def process_single_image_core(
         raise PerImageScientificError("full", exc) from exc
 
     return True
+
+
+@contextmanager
+def measure_scientific_boundary() -> Iterator[None]:
+    """Make a ``--mode measure`` re-measure's failure a terminal scientific one.
+
+    The worker-side twin of the boundary :func:`process_single_image_core`
+    draws around a forward image: a failure inside it becomes a
+    :class:`PerImageScientificError` with stage
+    :data:`MEASURE_FAILURE_STAGE`, which both measure workers journal as a
+    terminal record under the image's measure work id (#281 P2 C11d, spec
+    C3). Before #281 measure mode journalled nothing, so neither
+    ``phenotypic-wait`` nor ``metrics.json`` could see a SLURM re-measure
+    fail. It wraps the call rather than living in
+    :func:`process_single_store_measure_core`, whose callers rely on the
+    original exception propagating.
+
+    As in the forward core, an inactive SLURM generation, ``MemoryError`` and
+    a stale reference plan propagate unwrapped: none of them is the image's
+    own outcome.
+
+    Raises:
+        PerImageScientificError: Wrapping any other exception.
+    """
+    try:
+        yield
+    except (SlurmGenerationInactiveError, MemoryError, ReferencePlanStaleError):
+        raise
+    except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        raise PerImageScientificError(MEASURE_FAILURE_STAGE, exc) from exc
 
 
 def process_single_store_measure_core(
@@ -994,15 +1028,19 @@ def main(
             )
 
             click.echo(f"Measuring {image.name} (store rerun)...")
-            process_single_store_measure_core(
-                pipeline_path=pipeline,
-                store_path=image,
-                output_dir=output_dir,
-                dataset_name=dataset_name,
-                image_type=cast(ImageTypeName, image_type),
-                output_manager=output_manager,
-                commit_guard=commit_guard,
-            )
+            # Journalled below under the measure work id `_identity()` gives
+            # (mode "measure") and this generation, which `phenotypic-wait`
+            # and the measure finalizer's metrics.json count.
+            with measure_scientific_boundary():
+                process_single_store_measure_core(
+                    pipeline_path=pipeline,
+                    store_path=image,
+                    output_dir=output_dir,
+                    dataset_name=dataset_name,
+                    image_type=cast(ImageTypeName, image_type),
+                    output_manager=output_manager,
+                    commit_guard=commit_guard,
+                )
         else:
             # Forward run: prepare read kwargs and dispatch to the detection path.
             read_kwargs = input_read_settings(bit_depth, detect_mode)

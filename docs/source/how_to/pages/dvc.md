@@ -120,6 +120,12 @@ record the same pipeline digest or do not record one. Do not rely on a value.
 When an embedding step ran, an `embeddings` block adds `{rows, stale_skipped}`
 per entry.
 
+After a `--mode measure` run, `images.failed` counts the images whose
+re-measure failed in that run, so it agrees with the exit code `3`, and
+`images.succeeded` leaves them out. A re-measure that fails before it replaces
+the image's table leaves the store as it was, so that image's **previous**
+measurements are still in the tables.
+
 `deliverables/schema.json` lists every column of each published table with its
 dtype, producing measurer, and `MeasurementInfo` description.
 
@@ -405,11 +411,8 @@ What it costs:
   reports the stage up to date, and downstream stages run on the images that
   succeeded. The failed images are simply absent from every table.
 - **The failures are visible only in the outputs.** `metrics.json`'s
-  `images.failed` holds the count for a full run, and `dvc metrics diff` shows
-  it changing. (A SLURM `--mode measure` resubmission is the exception: its
-  failures are outside the forward run's inventory, so `images.failed` does
-  not count them. The waiter's log does.) The failures themselves are in
-  `.phenotypic/terminal_failures.jsonl`.
+  `images.failed` holds the count, and `dvc metrics diff` shows it changing.
+  The failures themselves are in `.phenotypic/terminal_failures.jsonl`.
 - **A clean `dvc repro` does not retry them.** The stage is up to date, so
   nothing runs. To retry, add `--retry-failures` to the submit command, which
   changes the stage and makes DVC run it.

@@ -4069,6 +4069,17 @@ def phenotypic_cli(
                 no_qc=no_qc,
                 study_config=study_config,
                 njobs=config.n_jobs,
+                # The failures this exit code counts (`results.total_failed`),
+                # so metrics.json agrees with it (#281 P2 C11d).
+                measure_failures=(
+                    {
+                        (failure.dataset, source_image_stem(Path(failure.image_filename)))
+                        for dataset_result in results.datasets.values()
+                        for failure in dataset_result.failures
+                    }
+                    if measure_only
+                    else None
+                ),
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from collections.abc import Mapping
+    from collections.abc import Collection, Mapping
 
     import polars as pl
 
@@ -509,6 +509,26 @@ def _published_table_schemas(
     return dict(sorted(schemas.items()))
 
 
+def _aggregated_image_keys(
+    aggregated_sources: "dict[Path, str]",
+) -> set[tuple[str, str]]:
+    """Return ``(dataset, image stem)`` of each embedded-table source.
+
+    A source on the embedded arm is ``<store>/tables/measurements/table.parquet``,
+    so the store is its ``MEASUREMENT_TABLE_RELATIVE_PATH``-th parent, as in
+    :func:`~phenotypic._cli._cli_finalize_fanout._work_ids_for_sources`. A
+    legacy-arm source names no store and yields no key.
+    """
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, store_stem
+
+    parts = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    return {
+        (dataset, store_stem(Path(source).parents[len(parts) - 1]))
+        for source, dataset in aggregated_sources.items()
+        if Path(source).parts[-len(parts):] == parts
+    }
+
+
 def publish_run_summaries(
     output_dir: Path,
     *,
@@ -518,6 +538,7 @@ def publish_run_summaries(
     source_work_ids: Sequence[str] | None,
     commit_guard: "CommitGuard | None" = None,
     embeddings: "Mapping[str, Mapping[str, int]] | None" = None,
+    measure_failures: "Collection[tuple[str, str]] | None" = None,
 ) -> tuple[Path, Path]:
     """Write ``deliverables/metrics.json`` and ``deliverables/schema.json``.
 
@@ -531,6 +552,17 @@ def publish_run_summaries(
     - ``failed``: accepted work ids in the terminal-failure journal that did
       not succeed, the same precedence ``resolve_run_state`` gives a verified
       image over a recorded failure;
+    - on a ``--mode measure`` finalization, ``measure_failures``: each image
+      whose re-measure failed adds one to ``failed`` and, when it is among
+      the aggregated sources, takes one from ``succeeded`` (#281 P2 C11d).
+      Measure records are keyed by measure work ids, outside the accepted
+      inventory, so the line above never sees them, and the exit code
+      (``3``) would otherwise disagree with ``failed: 0``. **Such an image's
+      previous table is still aggregated:** its store and record are
+      untouched by the failed re-measure, so it remains marker-authorized,
+      and the master, the mirror and ``objects.measured`` carry its earlier
+      measurements. It is counted failed because it did not succeed in this
+      run, not because its rows are absent;
     - ``objects.measured`` and ``metadata.phantoms``: the master's rows and
       the mirror's ``QC_MetadataOnly`` rows.
 
@@ -546,6 +578,9 @@ def publish_run_summaries(
         commit_guard: Publication guard threaded to both writes.
         embeddings: Per embedding entry id, ``{"rows", "stale_skipped"}``.
             The P4 embedding deliverables pass it; ``None`` omits the key.
+        measure_failures: ``(dataset, image stem)`` of each image whose
+            ``--mode measure`` re-measure failed in this finalization's
+            invocation; ``None`` or empty for any other run.
 
     Returns:
         ``(metrics_path, schema_path)``.
@@ -576,6 +611,14 @@ def publish_run_summaries(
         failed = len(
             (set(terminal_failure_index(output_dir)) & accepted_ids)
             - (succeeded_ids or set())
+        )
+    if measure_failures:
+        failed_images = set(measure_failures)
+        failed += len(failed_images)
+        succeeded = max(
+            0,
+            succeeded
+            - len(_aggregated_image_keys(aggregated_sources) & failed_images),
         )
 
     phantom_flag = str(METADATA_MATCH.METADATA_ONLY)
@@ -631,6 +674,7 @@ def finalize_run(
     planned_work_ids: Sequence[str] | None = None,
     commit_guard: "CommitGuard | None" = None,
     execution_epoch: str | None = None,
+    measure_failures: "Collection[tuple[str, str]] | None" = None,
 ) -> Path | None:
     """Aggregate, join, publish -- one path for ``full``, ``measure`` and ``recompile``.
 
@@ -701,6 +745,14 @@ def finalize_run(
             stamped into the aggregate proof so ``phenotypic-wait`` can tell
             this submission's publication from an earlier one (#281 spec C3).
             ``None`` for a local run.
+        measure_failures: A local ``--mode measure`` invocation's own failed
+            images, ``(dataset, image stem)``, for ``metrics.json`` (#281 P2
+            C11d, spec C3): the count its exit code is computed from. ``None``
+            on SLURM, where the same images are read from the terminal
+            journal's measure rows under ``execution_epoch``
+            (:func:`~phenotypic._cli._cli_failure_tracker.measure_failures_under_epoch`),
+            the rows ``phenotypic-wait`` counts. A forward SLURM generation
+            has no measure rows, so that read is empty for it.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` when no
@@ -797,6 +849,12 @@ def finalize_run(
 
     # After the mirror and splits, whose columns schema.json describes, and
     # BEFORE the proof, which declares both files (#281 spec C4, C12).
+    if measure_failures is None and execution_epoch is not None:
+        from ._cli_failure_tracker import measure_failures_under_epoch
+
+        measure_failures = measure_failures_under_epoch(
+            output_dir, execution_epoch
+        )
     with logged_step(logger, "finalize_run: publish metrics.json and schema.json"):
         publish_run_summaries(
             output_dir,
@@ -805,6 +863,7 @@ def finalize_run(
             aggregated_sources=aggregated_sources,
             source_work_ids=source_work_ids,
             commit_guard=commit_guard,
+            measure_failures=measure_failures,
         )
 
     if authorized:

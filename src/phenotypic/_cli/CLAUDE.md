@@ -549,7 +549,18 @@ site, never a bare literal.
   A SLURM `--mode measure` resubmission's failures sit outside the forward
   inventory, so `_generation_failures` counts distinct work ids in the
   terminal journal whose `lifecycle_epoch` is the bound generation; published
-  plus any such row gives `3` (review I5). A process run that reads
+  plus any such row gives `3` (review I5). **Those rows exist only since
+  C11d:** before it, measure mode journalled nothing (its core raises the
+  bare exception), so the count was always `0` for a real failure. Both
+  measure workers now wrap the core in `measure_scientific_boundary`
+  (`_cli_process_single.py`), which raises `PerImageScientificError` with
+  stage `MEASURE_FAILURE_STAGE` (`"measure"`, not the staged `"stage3"`), and
+  journal it under the measure work id. `metrics.json` counts the same
+  images: on SLURM `finalize_run` reads `measure_failures_under_epoch(output,
+  execution_epoch)`; locally the CLI passes the invocation's own failures as
+  `measure_failures=`, because a local measure's `lifecycle_epoch` is the
+  forward run's content-derived generation and is shared by every measure
+  invocation. A process run that reads
   `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
   `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
   external control root.

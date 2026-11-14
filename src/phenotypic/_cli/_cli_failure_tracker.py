@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 TERMINAL_FAILURE_SCHEMA_VERSION = 1
 WORK_ID_SCHEMA_VERSION = 1
 
+#: ``failed_stage`` of a ``--mode measure`` re-measure's terminal record
+#: (#281 P2 C11d, spec C3). Distinct from the staged engine's ``"stage3"``
+#: measure stage, which is a forward run's.
+MEASURE_FAILURE_STAGE = "measure"
+
 
 @dataclass(frozen=True)
 class TerminalFailureRecord:
@@ -593,6 +598,34 @@ def terminal_failure_index(
 ) -> Dict[str, TerminalFailureRecord]:
     """Return the latest valid terminal record for each ``work_id``."""
     return {record.work_id: record for record in read_terminal_failures(output_dir)}
+
+
+def measure_failures_under_epoch(
+    output_dir: Path, epoch: str
+) -> set[tuple[str, str]]:
+    """Return ``(dataset, image stem)`` of each measure failure journalled under *epoch*.
+
+    A SLURM ``--mode measure`` worker records its re-measure failure with the
+    generation it ran under as ``lifecycle_epoch``, so the measure finalizer,
+    which runs under the same generation, counts this submission's failures
+    and no earlier one's. These are the rows ``phenotypic-wait`` counts
+    (``_generation_failures``), restricted to the measure stage so that a
+    forward run's own rows, which the accepted inventory already counts, are
+    never counted twice.
+
+    Args:
+        output_dir: Run output root.
+        epoch: The generation the finalizer runs under.
+
+    Returns:
+        One key per failed image.
+    """
+    return {
+        (record.dataset, source_image_stem(Path(record.relative_image_path)))
+        for record in read_terminal_failures(output_dir)
+        if record.failed_stage == MEASURE_FAILURE_STAGE
+        and record.lifecycle_epoch == epoch
+    }
 
 
 def migrate_legacy_terminal_failures(
