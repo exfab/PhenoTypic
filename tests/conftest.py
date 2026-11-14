@@ -20,8 +20,13 @@ from tests._support.xdist_workers import resolve_xdist_auto_workers
 from tests._tiny_run import (  # noqa: F401
     all_bad_inputs,
     finished_tiny_run,
+    measured_image,
     metadata_bytes,
     old_tree_with_measurements_csv,
+    pipeline_file_a,
+    pipeline_file_b,
+    store_with_crop_entry,
+    store_with_two_runs,
     tiny_inputs,
     tiny_inputs_one_bad,
     tiny_mirror,

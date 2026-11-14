@@ -310,10 +310,21 @@ def _phenotypic(store: Path) -> dict:
     return _root(store)["attributes"][PhenotypicAttr.ROOT]
 
 
+def _run_entry(store: Path) -> dict:
+    """The descriptor of the store's measuring run folder (#281 P3, spec D3)."""
+    from phenotypic.sdk_ import latest_measurement_run
+
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} declares no run with measurements"
+    return dict(run.descriptor)
+
+
 def _snapshot_sha256(store: Path) -> str | None:
     from phenotypic.sdk_.ngff_ import PhenotypicAttr
 
-    block = _phenotypic(store).get(PhenotypicAttr.METADATA_TABLE)
+    # The block moved from the root into its run entry (spec D3).
+    assert PhenotypicAttr.METADATA_TABLE not in _phenotypic(store)
+    block = _run_entry(store).get(PhenotypicAttr.METADATA_TABLE)
     if block is None:
         return None
     return block.get(PhenotypicAttr.SNAPSHOT_SHA256)
@@ -328,15 +339,15 @@ def _sha256_of(path: Path) -> str:
 def _embedded_measurements(store: Path) -> pd.DataFrame:
     import pyarrow.parquet as pq
 
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from phenotypic.sdk_ import latest_measurement_run
 
-    return pq.read_table(store / MEASUREMENT_TABLE_RELATIVE_PATH).to_pandas()
+    return pq.read_table(latest_measurement_run(store).measurements_path()).to_pandas()
 
 
 def _metadata_payload(store: Path) -> Path:
-    from phenotypic.sdk_ import METADATA_TABLE_RELATIVE_PATH
+    from phenotypic.sdk_ import latest_measurement_run
 
-    return store / METADATA_TABLE_RELATIVE_PATH
+    return latest_measurement_run(store).metadata_path()
 
 
 def test_both_tables_land_in_the_same_part_before_the_root(
@@ -352,24 +363,17 @@ def test_both_tables_land_in_the_same_part_before_the_root(
     promoted store is that it carries both files, the new group document, and
     a root that declares them.
     """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-    from phenotypic.sdk_.ngff_ import (
-        METADATA_TABLE_GROUP,
-        STORE_ROOT_JSON,
-        TABLES_GROUP,
-        PhenotypicAttr,
-    )
+    from phenotypic.sdk_ import latest_measurement_run
+    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP, STORE_ROOT_JSON
 
     store = _save_store(tmp_path, snapshot=_JOINABLE_SNAPSHOT)
 
-    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert latest_measurement_run(store).measurements_path().is_file()
     assert _metadata_payload(store).is_file()
-    assert METADATA_TABLE_GROUP in _phenotypic(store)[PhenotypicAttr.TABLES]
+    assert METADATA_TABLE_GROUP in _run_entry(store)
     # M2: a Zarr v3 hierarchy needs a group document for the new group too,
     # and the contract compares it by exact equality.
-    assert (
-        store / TABLES_GROUP / METADATA_TABLE_GROUP / STORE_ROOT_JSON
-    ).is_file()
+    assert (_metadata_payload(store).parent / STORE_ROOT_JSON).is_file()
 
 
 def test_the_store_records_the_metadata_snapshot_it_was_built_against(
@@ -415,9 +419,9 @@ def test_a_metadata_free_run_records_no_metadata_table_block(
 
     store = _save_store(tmp_path / "without", snapshot=None)
 
-    phenotypic = _phenotypic(store)
-    assert PhenotypicAttr.METADATA_TABLE not in phenotypic
-    assert METADATA_TABLE_GROUP not in phenotypic[PhenotypicAttr.TABLES]
+    assert PhenotypicAttr.METADATA_TABLE not in _phenotypic(store)
+    assert PhenotypicAttr.METADATA_TABLE not in _run_entry(store)
+    assert METADATA_TABLE_GROUP not in _run_entry(store)
     assert not _metadata_payload(store).exists()
 
 
@@ -434,7 +438,7 @@ def test_a_no_common_keys_run_still_records_its_snapshot(
     ``not_requested``.
     """
     from phenotypic.sdk_ import metadata_csv_deliverable_path
-    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP, PhenotypicAttr
+    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP
 
     store = _save_store(tmp_path, snapshot=_UNRELATED_SNAPSHOT)
 
@@ -443,9 +447,7 @@ def test_a_no_common_keys_run_still_records_its_snapshot(
     assert _snapshot_sha256(store) == _sha256_of(snapshot)
     # Present block, absent table: there is genuinely nothing to join, so the
     # descriptor and the payload must both be absent rather than empty.
-    assert (
-        METADATA_TABLE_GROUP not in _phenotypic(store)[PhenotypicAttr.TABLES]
-    )
+    assert METADATA_TABLE_GROUP not in _run_entry(store)
     assert not _metadata_payload(store).exists()
 
 
@@ -553,7 +555,7 @@ def test_re_measuring_without_metadata_clears_the_stores_metadata_block(
 
     _replace_store_tables(tmp_path, snapshot=None)
 
-    phenotypic = _phenotypic(store)
-    assert PhenotypicAttr.METADATA_TABLE not in phenotypic
-    assert METADATA_TABLE_GROUP not in phenotypic[PhenotypicAttr.TABLES]
+    assert PhenotypicAttr.METADATA_TABLE not in _phenotypic(store)
+    assert PhenotypicAttr.METADATA_TABLE not in _run_entry(store)
+    assert METADATA_TABLE_GROUP not in _run_entry(store)
     assert not _metadata_payload(store).exists()

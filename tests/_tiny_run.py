@@ -33,6 +33,17 @@ def _build_tiny_pipeline() -> "ImagePipeline":
     return ImagePipeline(ops=[OtsuDetector()], meas={"size": MeasureSize()})
 
 
+def _build_pipeline_b() -> "ImagePipeline":
+    """:func:`_build_tiny_pipeline` plus ``MeasureShape()``: a second, different pipeline."""
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureShape, MeasureSize
+
+    return ImagePipeline(
+        ops=[OtsuDetector()], meas={"size": MeasureSize(), "shape": MeasureShape()}
+    )
+
+
 @pytest.fixture
 def tiny_pipeline() -> "ImagePipeline":
     """One detector and one measurer: the smallest pipeline a run can measure with."""
@@ -186,7 +197,9 @@ def run_cli(
         mode: The ``--mode`` value.
         pipeline: The ``--pipeline`` file for ``full``, ``measure`` and
             ``process``. Defaults to :func:`tiny_pipeline`, written beside
-            ``out`` as ``tiny_run.pht-pipe.json``.
+            ``out`` as ``tiny_run.pht-pipe.json``. Those are the bytes of
+            :func:`pipeline_file_a`, so a default run's table folder is
+            ``<n>-<SHA_A[:12]>``.
         slurm: Add ``--slurm partition=intel`` (pair it with a stubbed
             submitter); otherwise ``full``, ``measure`` and ``process`` get
             ``--njobs 1``.
@@ -432,3 +445,257 @@ def v2_block(
             "upstream": {key: dict(value) for key, value in upstream.items()},
         },
     }
+
+
+def _pipeline_bytes(builder) -> bytes:
+    return (builder().to_json() or "").encode("utf-8")
+
+
+@pytest.fixture
+def pipeline_file_a(tmp_path: Path) -> Path:
+    """The :func:`tiny_pipeline` as ``<tmp>/A.pht-pipe.json``; ``SHA_A`` is its ``file_sha256``.
+
+    Byte-identical to :func:`run_cli`'s default pipeline file.
+    """
+    path = tmp_path / "A.pht-pipe.json"
+    path.write_bytes(_pipeline_bytes(_build_tiny_pipeline))
+    return path
+
+
+@pytest.fixture
+def pipeline_file_b(tmp_path: Path) -> Path:
+    """The :func:`tiny_pipeline` plus ``MeasureShape()``, as ``<tmp>/B.pht-pipe.json``."""
+    path = tmp_path / "B.pht-pipe.json"
+    path.write_bytes(_pipeline_bytes(_build_pipeline_b))
+    return path
+
+
+def _pipeline_for_sha(sha: str | None) -> "tuple[str, ImagePipeline]":
+    """``(marker, pipeline)`` for a journal digest: ``A``, ``B`` or ``unknown``."""
+    import hashlib
+
+    for marker, builder in (("A", _build_tiny_pipeline), ("B", _build_pipeline_b)):
+        if sha == hashlib.sha256(_pipeline_bytes(builder)).hexdigest():
+            return marker, builder()
+    return "unknown", _build_tiny_pipeline()
+
+
+@pytest.fixture
+def measured_image(pipeline_file_a: Path):
+    """``load_synth_yeast_plate()`` detected by ``OtsuDetector``, then opened as a ``full`` application of A.
+
+    The application is left ``in_progress``, as a CLI worker holds it until
+    the store is written.
+    """
+    from phenotypic._core._provenance import initialize_cli_provenance
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.detect import OtsuDetector
+
+    image = OtsuDetector().apply(load_synth_yeast_plate())
+    initialize_cli_provenance(
+        image, pipeline_file_a, kind="full", input_filename="plate.tif"
+    )
+    return image
+
+
+def tables_for(image):
+    """The tables the forward worker builds for *image*, plus a ``Pipeline_Marker`` column.
+
+    The pipeline is the one the image's journal names (``A`` or ``B``, by
+    digest; the tiny pipeline when the journal names neither), and the marker
+    is that letter, so a reader can tell which run folder a row came from.
+
+    Returns:
+        A :class:`~phenotypic.sdk_.PreparedImageTables`, with no metadata.
+    """
+    from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
+    from phenotypic._core._provenance import current_pipeline_sha256
+
+    marker, pipeline = _pipeline_for_sha(current_pipeline_sha256(image))
+    frame = pipeline.measure(image)
+    frame["Pipeline_Marker"] = marker
+    return prepare_image_tables(frame, None)
+
+
+def tree_digest(path: Path) -> str:
+    """sha256 over the sorted relative paths and bytes of every file under *path*."""
+    import hashlib
+
+    digest = hashlib.sha256()
+    root = Path(path)
+    for file in sorted(p for p in root.rglob("*") if p.is_file()):
+        digest.update(file.relative_to(root).as_posix().encode("utf-8") + b"\0")
+        digest.update(file.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def _load_store(store: Path):
+    """Load *store* with the class its root names (``GridImage`` or ``Image``)."""
+    import phenotypic
+    from phenotypic.sdk_ import ngff_
+
+    image_class = ngff_.read_phenotypic_attributes(store).get(
+        ngff_.PhenotypicAttr.IMAGE_CLASS, "Image"
+    )
+    return getattr(phenotypic, image_class).load_zarr(store)
+
+
+def _close_open_application(image) -> None:
+    from phenotypic._core._provenance import set_provenance_status
+
+    applications = image._metadata.provenance_journal["applications"]
+    if applications and applications[-1]["status"] not in {"complete", "failed"}:
+        set_provenance_status(image, "complete")
+
+
+def resave_with_pipeline(store: Path, pipeline_file: Path, *, tables: bool = True) -> Path:
+    """Load *store*, open a ``full`` application of *pipeline_file*, and save it back.
+
+    With ``tables=False`` the save carries no tables of its own, as the
+    initial-checkpoint and Stage-1 saves do.
+    """
+    from phenotypic._core._provenance import initialize_cli_provenance
+
+    image = _load_store(store)
+    _close_open_application(image)
+    initialize_cli_provenance(image, pipeline_file, kind="full", input_filename="plate.tif")
+    return image.save2zarr(store, measurement_table=tables_for(image) if tables else None)
+
+
+@pytest.fixture
+def store_with_two_runs(tmp_path: Path, measured_image, pipeline_file_b: Path) -> Path:
+    """:func:`measured_image` saved with A's tables, then re-saved by B: folders ``1-<A>`` and ``2-<B>``."""
+    store = measured_image.save2zarr(
+        tmp_path / "two_runs.ome.zarr", measurement_table=tables_for(measured_image)
+    )
+    resave_with_pipeline(store, pipeline_file_b)
+    return store
+
+
+#: The embedding key and model folder :func:`store_with_crop_entry` writes.
+CROP_ENTRY_KEY = "dinov2-vitb14/crops"
+
+
+def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
+    """Write a 4-D float16 crop embedding table into *part* and return its raw entry."""
+    import hashlib
+
+    import numpy as np
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import embedding_table_relative_path
+
+    relative = embedding_table_relative_path(run_id, "dinov2-vitb14", "crops")
+    payload = part / relative
+    payload.parent.mkdir(parents=True, exist_ok=True)
+    for group in (payload.parent.parent.parent, payload.parent.parent, payload.parent):
+        (group / ngff_.STORE_ROOT_JSON).write_text(
+            '{"zarr_format": 3, "node_type": "group", "attributes": {}}',
+            encoding="utf-8",
+        )
+    vectors = pa.FixedSizeListArray.from_arrays(
+        pa.array(np.tile(np.array([0.0, 0.25, 0.5, 1.0], dtype=np.float16), len(labels))),
+        4,
+    )
+    pq.write_table(
+        pa.table({"Object_Label": pa.array(labels, type=pa.int64()), "embedding": vectors}),
+        payload,
+    )
+    return {
+        "model": {"family": "dinov2", "hf_id": "facebook/dinov2-base",
+                  "revision": "0" * 40, "patch_size": 14},
+        "dim": 4,
+        "dtype": "float16",
+        "pooling": "crop_cls",
+        "key": "Object_Label",
+        "input": {"series": "rgb", "level": 0},
+        "producer": {"class": "MeasureDinoEmbedding", "params_sha256": "0" * 64},
+        "binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": None},
+        "stale": False,
+        "files": [{
+            "path": relative.as_posix(),
+            "sha256": hashlib.sha256(payload.read_bytes()).hexdigest(),
+            "media_type": "application/vnd.apache.parquet",
+        }],
+    }
+
+
+@pytest.fixture
+def store_with_crop_entry(tmp_path: Path, measured_image) -> Path:
+    """A measured store whose one run entry holds a hand-built crop embedding entry.
+
+    The entry is bound to the store's objmap (``binds.objmap_sha256`` is
+    :func:`~phenotypic.sdk_._measurement_tables.objmap_digest` of it) and is
+    written through ``write_run_entry``'s ``embeddings=`` raw-entry seam,
+    inside a root-last rewrite of the store.
+    """
+    import numpy as np
+
+    from phenotypic.sdk_ import latest_table_run
+    from phenotypic.sdk_._measurement_tables import (
+        _rewrite_store_tables,
+        objmap_digest,
+        write_run_entry,
+    )
+
+    store = measured_image.save2zarr(
+        tmp_path / "crops.ome.zarr", measurement_table=tables_for(measured_image)
+    )
+    run = latest_table_run(store)
+    objmap = measured_image.objmap[:]
+    tables = tables_for(measured_image)
+
+    def _plan(phenotypic: dict):
+        def _populate(part: Path) -> None:
+            raw = _write_crop_payload(
+                part, run.run_id, [int(v) for v in np.unique(objmap) if v]
+            )
+            raw["binds"]["objmap_sha256"] = objmap_digest(objmap)
+            entry = write_run_entry(
+                part,
+                run.run_id,
+                order=run.order,
+                pipeline_sha256=run.pipeline_sha256,
+                measurements=tables,
+                objmap_target="rgb/labels/objmap",
+                embeddings={CROP_ENTRY_KEY: raw},
+                objmap_sha256=objmap_digest(objmap),
+            )
+            phenotypic["tables"]["runs"][run.run_id] = entry
+
+        return _populate
+
+    _rewrite_store_tables(
+        store, plan=_plan, durable=False, commit_guard=None, clear_table_run=run.run_id
+    )
+    return store
+
+
+def resave_with_objmap(store: Path, *, zeros: bool) -> Path:
+    """Re-save *store* table-less, with an all-zeros objmap (Stage 1) or the detected one (Stage 3).
+
+    ``zeros=False`` re-runs ``OtsuDetector`` on the loaded image, which gives
+    back the labels the store was measured with.
+    """
+    from phenotypic.detect import OtsuDetector
+
+    image = _load_store(store)
+    _close_open_application(image)
+    if zeros:
+        image.objmap[:] = 0
+    else:
+        image = OtsuDetector().apply(image)
+    return image.save2zarr(store)
+
+
+def crop_entry(store: Path) -> dict:
+    """The :data:`CROP_ENTRY_KEY` embedding entry of *store*'s first run that has one."""
+    from phenotypic.sdk_ import list_table_runs
+
+    for run in list_table_runs(store):
+        embeddings = run.descriptor.get("embeddings") or {}
+        if CROP_ENTRY_KEY in embeddings:
+            return dict(embeddings[CROP_ENTRY_KEY])
+    raise KeyError(f"{store} has no {CROP_ENTRY_KEY} entry")
