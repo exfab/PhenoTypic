@@ -218,6 +218,83 @@ def run_cli(
     return CliRunner().invoke(phenotypic_cli, args)
 
 
+#: The level-0 objmap array metadata :func:`break_store_for_measure` corrupts.
+_MEASURE_BREAK_PATH = ("rgb", "labels", "objmap", "0", "zarr.json")
+
+
+def break_store_for_measure(
+    out: Path, stem: str = "plate_1"
+) -> tuple[Path, bytes]:
+    """Make one store of :func:`finished_tiny_run` fail a ``--mode measure`` re-measure.
+
+    Corrupts the store's level-0 objmap array metadata. The root
+    ``zarr.json`` is untouched, so the store is still scanned and its
+    per-image record still verifies (it fingerprints the root only), but the
+    store cannot be loaded, so its re-measure fails inside the per-image
+    worker.
+
+    Returns:
+        ``(store, original_bytes)``; write the bytes back to
+        ``store.joinpath(*_MEASURE_BREAK_PATH)`` to repair it, or call
+        :func:`repair_store_for_measure`.
+    """
+    store = out / "results" / "ds" / "zarr" / f"{stem}.ome.zarr"
+    target = store.joinpath(*_MEASURE_BREAK_PATH)
+    original = target.read_bytes()
+    target.write_text("{not json", encoding="utf-8")
+    return store, original
+
+
+def repair_store_for_measure(store: Path, original: bytes) -> None:
+    """Undo :func:`break_store_for_measure`."""
+    store.joinpath(*_MEASURE_BREAK_PATH).write_bytes(original)
+
+
+def run_slurm_measure_worker(
+    out: Path,
+    store: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    generation: str | None = None,
+) -> "Result":
+    """Run the real ordinary SLURM array worker in ``--mode measure`` over *store*.
+
+    ``python -m phenotypic._cli._cli_process_single`` is what each array task
+    of a SLURM measure submission runs. ``SLURM_JOB_ID`` is set, so it takes
+    its SLURM branch, and ``PHENOTYPIC_SLURM_GENERATION`` is *generation*
+    (unset when ``None``), the generation it journals its terminal records
+    under. With a generation, the output must carry an active lifecycle fence
+    for it, or the worker's publication guard refuses.
+    """
+    from click.testing import CliRunner
+
+    from phenotypic._cli import _cli_process_single
+
+    with monkeypatch.context() as scoped:
+        scoped.setenv("SLURM_JOB_ID", "123")
+        if generation is None:
+            scoped.delenv("PHENOTYPIC_SLURM_GENERATION", raising=False)
+        else:
+            scoped.setenv("PHENOTYPIC_SLURM_GENERATION", generation)
+        return CliRunner().invoke(
+            _cli_process_single.main,
+            [
+                "--pipeline",
+                str(out.parent / "tiny_run.pht-pipe.json"),
+                "--image",
+                str(store),
+                "--output-dir",
+                str(out),
+                "--dataset-name",
+                "ds",
+                "--image-type",
+                "GridImage",
+                "--mode",
+                "measure",
+            ],
+        )
+
+
 @pytest.fixture
 def finished_tiny_run(tmp_path: Path, tiny_inputs: Path) -> Path:
     """A finished local full run of :func:`tiny_pipeline` over :func:`tiny_inputs`.

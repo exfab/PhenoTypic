@@ -20,7 +20,12 @@ from phenotypic.sdk_ import (
     schema_json_path,
 )
 from phenotypic.sdk_._run_state import aggregate_proof_refusal
-from tests._tiny_run import run_cli
+from tests._tiny_run import (
+    break_store_for_measure,
+    repair_store_for_measure,
+    run_cli,
+    run_slurm_measure_worker,
+)
 
 
 def _json(path):
@@ -130,15 +135,6 @@ def test_the_readme_documents_both_files(finished_tiny_run):
 # -- #281 P2 C11d (review I5): a --mode measure failure counts ----------------
 
 
-def _break_one_store(out):
-    """Corrupt plate_1's objmap level-0 metadata, so its re-measure cannot load it."""
-    store = out / "results" / "ds" / "zarr" / "plate_1.ome.zarr"
-    (store / "rgb" / "labels" / "objmap" / "0" / "zarr.json").write_text(
-        "{not json"
-    )
-    return store
-
-
 def _measure_rows(out):
     from phenotypic._cli._cli_failure_tracker import (
         MEASURE_FAILURE_STAGE,
@@ -152,16 +148,20 @@ def _measure_rows(out):
     ]
 
 
+def _images(out):
+    return _json(metrics_json_path(out))["images"]
+
+
 def test_a_local_measure_failure_exits_3_and_counts_in_metrics(
     finished_tiny_run,
 ):
-    _break_one_store(finished_tiny_run)
+    break_store_for_measure(finished_tiny_run)
     result = run_cli(None, finished_tiny_run, mode="measure")
     assert result.exit_code == RunExitCode.COMPLETE_WITH_FAILURES, (
         result.output
     )
     # plate_1's old table is still aggregated, but it did not succeed this run.
-    assert _json(metrics_json_path(finished_tiny_run))["images"] == {
+    assert _images(finished_tiny_run) == {
         "accepted": 2,
         "succeeded": 1,
         "failed": 1,
@@ -173,7 +173,7 @@ def test_a_local_measure_failure_is_journalled_under_its_measure_work_id(
 ):
     from phenotypic._cli._cli_finalize_run import _accepted_work_ids
 
-    store = _break_one_store(finished_tiny_run)
+    store, _ = break_store_for_measure(finished_tiny_run)
     assert run_cli(None, finished_tiny_run, mode="measure").exit_code == 3
     rows = _measure_rows(finished_tiny_run)
     assert [(r.dataset, Path(r.relative_image_path).name) for r in rows] == [
@@ -186,7 +186,7 @@ def test_a_local_measure_failure_is_journalled_under_its_measure_work_id(
 def test_a_clean_measure_keeps_the_forward_counts(finished_tiny_run):
     result = run_cli(None, finished_tiny_run, mode="measure")
     assert result.exit_code == 0, result.output
-    assert _json(metrics_json_path(finished_tiny_run))["images"] == {
+    assert _images(finished_tiny_run) == {
         "accepted": 2,
         "succeeded": 2,
         "failed": 0,
@@ -194,33 +194,54 @@ def test_a_clean_measure_keeps_the_forward_counts(finished_tiny_run):
     assert _measure_rows(finished_tiny_run) == []
 
 
+def test_a_measure_record_does_not_touch_a_following_forward_run(
+    finished_tiny_run, tiny_inputs
+):
+    from phenotypic.sdk_ import resolve_run_state
+
+    store, original = break_store_for_measure(finished_tiny_run)
+    assert run_cli(None, finished_tiny_run, mode="measure").exit_code == 3
+    assert _measure_rows(finished_tiny_run)
+    repair_store_for_measure(store, original)
+    # A plain forward continuation: forward work ids differ from the measure
+    # row's, so nothing is skipped as a recorded failure and the run is clean.
+    result = run_cli(tiny_inputs, finished_tiny_run)
+    assert result.exit_code == RunExitCode.COMPLETE, result.output
+    assert "recorded failure" not in result.output
+    state = resolve_run_state(finished_tiny_run, depth="deep")
+    assert state.diagnostics.failed == 0
+
+
+def test_a_measure_record_neither_blocks_a_later_measure_nor_takes_retry_failures(
+    finished_tiny_run,
+):
+    store, original = break_store_for_measure(finished_tiny_run)
+    assert run_cli(None, finished_tiny_run, mode="measure").exit_code == 3
+    rows = _measure_rows(finished_tiny_run)
+    # --retry-failures is refused in measure mode before anything is written.
+    refused = run_cli(
+        None, finished_tiny_run, mode="measure", extra=["--retry-failures"]
+    )
+    assert refused.exit_code == 2, refused.output
+    assert "--retry-failures" in refused.output
+    assert _measure_rows(finished_tiny_run) == rows
+    # Measure mode never skips a recorded failure, so once the store is
+    # repaired a plain re-measure re-measures it and the run is clean again.
+    repair_store_for_measure(store, original)
+    result = run_cli(None, finished_tiny_run, mode="measure")
+    assert result.exit_code == 0, result.output
+    assert _images(finished_tiny_run) == {
+        "accepted": 2,
+        "succeeded": 2,
+        "failed": 0,
+    }
+
+
 def test_a_slurm_measure_worker_journals_its_failure(
     finished_tiny_run, monkeypatch
 ):
-    from click.testing import CliRunner
-
-    from phenotypic._cli import _cli_process_single
-
-    store = _break_one_store(finished_tiny_run)
-    monkeypatch.setenv("SLURM_JOB_ID", "123")
-    monkeypatch.delenv("PHENOTYPIC_SLURM_GENERATION", raising=False)
-    result = CliRunner().invoke(
-        _cli_process_single.main,
-        [
-            "--pipeline",
-            str(finished_tiny_run.parent / "tiny_run.pht-pipe.json"),
-            "--image",
-            str(store),
-            "--output-dir",
-            str(finished_tiny_run),
-            "--dataset-name",
-            "ds",
-            "--image-type",
-            "GridImage",
-            "--mode",
-            "measure",
-        ],
-    )
+    store, _ = break_store_for_measure(finished_tiny_run)
+    result = run_slurm_measure_worker(finished_tiny_run, store, monkeypatch)
     assert result.exit_code == 1, result.output
     rows = _measure_rows(finished_tiny_run)
     assert [(r.dataset, r.lifecycle_epoch) for r in rows] == [
@@ -229,37 +250,39 @@ def test_a_slurm_measure_worker_journals_its_failure(
 
 
 def test_a_slurm_measure_finalizer_counts_the_rows_of_its_generation(
-    finished_tiny_run,
+    finished_tiny_run, monkeypatch
 ):
-    # The SLURM measure finalizer passes its generation as `execution_epoch`.
-    # metrics.json counts the measure rows journalled under it -- the rows
-    # `phenotypic-wait` counts (`_generation_failures`) -- and no others.
-    from phenotypic._cli import _cli_wait
-    from phenotypic._cli._cli_failure_tracker import (
-        MEASURE_FAILURE_STAGE,
-        append_terminal_failure,
-    )
+    # The rows come from the real SLURM measure worker, one under an earlier
+    # generation and one under this one. The finalizer passes its generation
+    # as `execution_epoch` and counts only its own.
     from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        deactivate_generation,
+        initialize_slurm_lifecycle,
+    )
 
-    for stem, epoch in (("plate_1", "gen-now"), ("plate_2", "gen-old")):
-        assert append_terminal_failure(
-            finished_tiny_run,
-            work_id=f"measure-{stem}",
-            dataset="ds",
-            relative_image_path=f"{stem}.ome.zarr",
-            failed_stage=MEASURE_FAILURE_STAGE,
-            exception=ValueError("simulated re-measure failure"),
-            attempt_id="a",
-            lifecycle_epoch=epoch,
+    for stem, generation in (("plate_2", "gen-old"), ("plate_1", "gen-now")):
+        initialize_slurm_lifecycle(
+            finished_tiny_run, generation=generation, mode="measure"
         )
+        store, _ = break_store_for_measure(finished_tiny_run, stem)
+        result = run_slurm_measure_worker(
+            finished_tiny_run, store, monkeypatch, generation=generation
+        )
+        assert result.exit_code == 1, result.output
+        if generation == "gen-old":
+            deactivate_generation(finished_tiny_run, generation)
+    assert {r.lifecycle_epoch for r in _measure_rows(finished_tiny_run)} == {
+        "gen-old",
+        "gen-now",
+    }
     assert aggregate_measurements(
         output_dir=finished_tiny_run,
         dataset_names=["ds"],
         execution_epoch="gen-now",
     )
-    assert _json(metrics_json_path(finished_tiny_run))["images"] == {
+    assert _images(finished_tiny_run) == {
         "accepted": 2,
         "succeeded": 1,
         "failed": 1,
     }
-    assert _cli_wait._generation_failures(finished_tiny_run, "gen-now") == 1

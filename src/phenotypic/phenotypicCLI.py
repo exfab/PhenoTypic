@@ -3739,11 +3739,11 @@ def phenotypic_cli(
                     _repair_incremental_manifest(
                         config, resume_state, output_dir
                     )
-                    from phenotypic._cli._cli_failure_tracker import (
-                        terminal_failure_index,
-                    )
-
-                    skipped_failures = len(terminal_failure_index(output_dir))
+                    # The run's own failures, the count its exit code uses,
+                    # not the whole journal: since #281 P2 C11d the journal
+                    # also holds `--mode measure` rows, keyed by measure work
+                    # ids, which this continuation neither skips nor retries.
+                    skipped_failures = _run_failure_count(output_dir)
                     if skipped_failures and not config.retry_failures:
                         click.echo(
                             "No resumable images; "
@@ -3752,7 +3752,7 @@ def phenotypic_cli(
                         )
                     else:
                         click.echo("✓ All images already processed!")
-                    sys.exit(_finished_run_exit(_run_failure_count(output_dir)))
+                    sys.exit(_finished_run_exit(skipped_failures))
                 click.echo(
                     f"Continuing processing ({remaining_images} images remaining)"
                 )
@@ -4071,15 +4071,7 @@ def phenotypic_cli(
                 njobs=config.n_jobs,
                 # The failures this exit code counts (`results.total_failed`),
                 # so metrics.json agrees with it (#281 P2 C11d).
-                measure_failures=(
-                    {
-                        (failure.dataset, source_image_stem(Path(failure.image_filename)))
-                        for dataset_result in results.datasets.values()
-                        for failure in dataset_result.failures
-                    }
-                    if measure_only
-                    else None
-                ),
+                measure_failed=results.total_failed if measure_only else None,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")

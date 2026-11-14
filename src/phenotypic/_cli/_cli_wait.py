@@ -278,15 +278,9 @@ def _generation_failures(output_dir: Path, generation: str | None) -> int:
     """
     if generation is None:
         return 0
-    from ._cli_failure_tracker import read_terminal_failures
+    from ._cli_failure_tracker import terminal_failure_work_ids_under_epoch
 
-    return len(
-        {
-            record.work_id
-            for record in read_terminal_failures(output_dir)
-            if record.lifecycle_epoch == generation
-        }
-    )
+    return len(terminal_failure_work_ids_under_epoch(output_dir, generation))
 
 
 def _is_process_run(output_dir: Path) -> bool:

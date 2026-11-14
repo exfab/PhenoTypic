@@ -1046,14 +1046,17 @@ def test_i1_a_cancelled_process_run_with_a_failure_exits_5_end_to_end(
 
 
 def _journal_failure(out, *, work_id, generation, image="plate_1.tif"):
-    from phenotypic._cli._cli_failure_tracker import append_terminal_failure
+    from phenotypic._cli._cli_failure_tracker import (
+        MEASURE_FAILURE_STAGE,
+        append_terminal_failure,
+    )
 
     assert append_terminal_failure(
         out,
         work_id=work_id,
         dataset="ds",
         relative_image_path=image,
-        failed_stage="measure",
+        failed_stage=MEASURE_FAILURE_STAGE,
         exception=ValueError("no colonies to measure"),
         attempt_id="attempt",
         lifecycle_epoch=generation,
@@ -1063,11 +1066,20 @@ def _journal_failure(out, *, work_id, generation, image="plate_1.tif"):
 def test_i5_slurm_measure_resubmission_with_a_failure_exits_3(
     monkeypatch, finished_tiny_run
 ):
+    # End to end through the real seams (C11d): the row is written by the
+    # real SLURM measure array worker under this generation, the real
+    # finalizer path publishes, and the waiter reads both. Before C11d the
+    # worker journalled nothing, which a hand-written row here had hidden.
     from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from tests._tiny_run import break_store_for_measure, run_slurm_measure_worker
 
     out = finished_tiny_run
     _resubmit(out, "g-measure")
-    _journal_failure(out, work_id="measure-work-id", generation="g-measure")
+    store, _ = break_store_for_measure(out)
+    worker = run_slurm_measure_worker(
+        out, store, monkeypatch, generation="g-measure"
+    )
+    assert worker.exit_code == 1, worker.output
     aggregate_measurements(
         output_dir=out, dataset_names=["ds"], execution_epoch="g-measure"
     )
@@ -1076,6 +1088,10 @@ def test_i5_slurm_measure_resubmission_with_a_failure_exits_3(
     assert "completion=complete" in lines[0]  # the forward state cannot see it
     assert code is RunExitCode.COMPLETE_WITH_FAILURES
     assert any("1 image(s) failed terminally" in line for line in lines)
+    images = json.loads(
+        (out / "deliverables" / "metrics.json").read_text(encoding="utf-8")
+    )["images"]
+    assert images["failed"] == 1  # metrics.json agrees with the waiter's 3
 
 
 def test_i5_a_failure_journalled_by_another_generation_does_not_count(

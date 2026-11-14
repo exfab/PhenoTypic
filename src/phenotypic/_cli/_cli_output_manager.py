@@ -15,7 +15,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import (
     Any,
     Callable,
@@ -1522,7 +1522,7 @@ def _aggregate_measurements_unlocked(
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
     execution_epoch: Optional[str] = None,
-    measure_failures: Optional[Collection[tuple[str, str]]] = None,
+    measure_failed: Optional[int] = None,
 ) -> Optional[Path]:
     """Finalize this run through the one aggregation + join + publish path.
 
@@ -1556,8 +1556,8 @@ def _aggregate_measurements_unlocked(
         execution_epoch: The SLURM generation the calling finalizer runs
             under, stamped into the aggregate proof (#281 spec C3). ``None``
             for a local run.
-        measure_failures: A local ``--mode measure`` invocation's own failed
-            images, ``(dataset, image stem)``, for ``metrics.json``. See
+        measure_failed: A local ``--mode measure`` invocation's own failure
+            count, for ``metrics.json``. See
             :func:`~phenotypic._cli._cli_finalize_run.finalize_run`.
 
     Returns:
@@ -1599,7 +1599,7 @@ def _aggregate_measurements_unlocked(
         planned_work_ids=planned_work_ids,
         commit_guard=commit_guard,
         execution_epoch=execution_epoch,
-        measure_failures=measure_failures,
+        measure_failed=measure_failed,
     )
 
 
@@ -1616,7 +1616,7 @@ def aggregate_measurements(
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
     execution_epoch: Optional[str] = None,
-    measure_failures: Optional[Collection[tuple[str, str]]] = None,
+    measure_failed: Optional[int] = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -1639,7 +1639,7 @@ def aggregate_measurements(
             njobs=njobs,
             commit_guard=commit_guard,
             execution_epoch=execution_epoch,
-            measure_failures=measure_failures,
+            measure_failed=measure_failed,
         )
 
 
@@ -2125,7 +2125,7 @@ class OutputManager:
         no_qc: bool = False,
         study_config: Optional[dict] = None,
         njobs: int = 1,
-        measure_failures: Optional[Collection[tuple[str, str]]] = None,
+        measure_failed: Optional[int] = None,
     ) -> Optional[Path]:
         """Finalize the run: aggregate, join, and publish every deliverable.
 
@@ -2147,8 +2147,8 @@ class OutputManager:
                 :func:`finalize_post_master_outputs`.
             study_config: Optional parsed ``--study`` YAML forwarded to the
                 REMBI manifest writer in :func:`finalize_post_master_outputs`.
-            measure_failures: A local ``--mode measure`` invocation's own
-                failed images, ``(dataset, image stem)``; ``None`` otherwise.
+            measure_failed: A local ``--mode measure`` invocation's own
+                failure count; ``None`` otherwise.
 
         Returns:
             Path to ``master_measurements.parquet``, or ``None`` if no
@@ -2163,5 +2163,5 @@ class OutputManager:
             no_qc=no_qc,
             njobs=njobs,
             study_config=study_config,
-            measure_failures=measure_failures,
+            measure_failed=measure_failed,
         )

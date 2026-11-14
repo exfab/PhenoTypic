@@ -555,12 +555,19 @@ site, never a bare literal.
   measure workers now wrap the core in `measure_scientific_boundary`
   (`_cli_process_single.py`), which raises `PerImageScientificError` with
   stage `MEASURE_FAILURE_STAGE` (`"measure"`, not the staged `"stage3"`), and
-  journal it under the measure work id. `metrics.json` counts the same
-  images: on SLURM `finalize_run` reads `measure_failures_under_epoch(output,
-  execution_epoch)`; locally the CLI passes the invocation's own failures as
-  `measure_failures=`, because a local measure's `lifecycle_epoch` is the
-  forward run's content-derived generation and is shared by every measure
-  invocation. A process run that reads
+  journal it under the measure work id. One helper,
+  `terminal_failure_work_ids_under_epoch` (`_cli_failure_tracker.py`), is
+  the count for both the waiter and `metrics.json`: on SLURM `finalize_run`
+  counts its `stage=MEASURE_FAILURE_STAGE` rows under `execution_epoch` (the
+  stage filter keeps a forward generation's own rows, already counted through
+  the inventory, from counting twice); locally the CLI passes the
+  invocation's own count as `measure_failed=` and mints no epoch, because a
+  local measure's `lifecycle_epoch` is the forward run's content-derived
+  generation, shared by every measure invocation. `failed` adds the count and
+  `succeeded` drops by it, although such an image's previous table usually
+  stays aggregated. The rows are keyed by measure work ids, so a forward
+  continuation never skips on them; its "N recorded failure(s) skipped" line
+  therefore counts `_run_failure_count`, not the whole journal. A process run that reads
   `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
   `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
   external control root.

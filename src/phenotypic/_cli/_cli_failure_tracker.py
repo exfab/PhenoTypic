@@ -600,31 +600,34 @@ def terminal_failure_index(
     return {record.work_id: record for record in read_terminal_failures(output_dir)}
 
 
-def measure_failures_under_epoch(
-    output_dir: Path, epoch: str
-) -> set[tuple[str, str]]:
-    """Return ``(dataset, image stem)`` of each measure failure journalled under *epoch*.
+def terminal_failure_work_ids_under_epoch(
+    output_dir: Path, epoch: str, *, stage: str | None = None
+) -> set[str]:
+    """Return the distinct work ids journalled as terminal failures under *epoch*.
 
-    A SLURM ``--mode measure`` worker records its re-measure failure with the
-    generation it ran under as ``lifecycle_epoch``, so the measure finalizer,
-    which runs under the same generation, counts this submission's failures
-    and no earlier one's. These are the rows ``phenotypic-wait`` counts
-    (``_generation_failures``), restricted to the measure stage so that a
-    forward run's own rows, which the accepted inventory already counts, are
-    never counted twice.
+    A SLURM worker records the generation it ran under in each row's
+    ``lifecycle_epoch`` (``PHENOTYPIC_SLURM_GENERATION``, the fence's own
+    generation), so this is the SLURM twin of "the failures this invocation
+    recorded". Distinct work ids, so a retried image counts once. It is the
+    one count behind both ``phenotypic-wait``'s ``_generation_failures`` and a
+    SLURM measure finalizer's ``metrics.json`` (#281 P2 review I5, C11d),
+    which is how a SLURM ``--mode measure`` resubmission's failures, keyed by
+    measure work ids outside the forward inventory, are seen at all.
 
     Args:
         output_dir: Run output root.
-        epoch: The generation the finalizer runs under.
+        epoch: The generation to match against ``lifecycle_epoch``.
+        stage: Only rows with this ``failed_stage`` when given, e.g.
+            :data:`MEASURE_FAILURE_STAGE`; every stage when ``None``.
 
     Returns:
-        One key per failed image.
+        The matching work ids.
     """
     return {
-        (record.dataset, source_image_stem(Path(record.relative_image_path)))
+        record.work_id
         for record in read_terminal_failures(output_dir)
-        if record.failed_stage == MEASURE_FAILURE_STAGE
-        and record.lifecycle_epoch == epoch
+        if record.lifecycle_epoch == epoch
+        and (stage is None or record.failed_stage == stage)
     }
 
 
