@@ -503,83 +503,90 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>light</td>
 </tr>
 <tr class="odd">
+<td>C11d</td>
+<td>P2 T2b: measure failures journalled; metrics.json agrees with the exit code</td>
+<td>Seam</td>
+<td>Opus</td>
+<td>light</td>
+</tr>
+<tr class="even">
 <td>C12</td>
 <td>P3 T1, T2: v1 fixtures, resolver, writer, carry, stale</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C13</td>
 <td>P3 T3, the measure rewrite</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C14a–d</td>
 <td>P3 T4 reader sweep, by subsystem: (a) finalizer/aggregation, (b) per-image writers and staged, (c) recompile, (d) migrate, state and the <code>sdk_</code> readers</td>
 <td>Sweep, consistency-critical</td>
 <td>Opus</td>
 <td>light each</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C15</td>
 <td>P3 T5, v1 refusal and migrate conversion</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C16</td>
 <td>P3 T6, upstream reference</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td><strong>deep: P3</strong>, then a code-simplifier pass on the P3 layer before P4 builds on it</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C17</td>
 <td>P4 T1, T2</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C18</td>
 <td>P4 T3, <code>MeasureDinoEmbedding</code>; a fact-checker on the <code>crop_px</code> and <code>crop_pad_frac</code> tune ranges</td>
 <td>Keystone</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C19</td>
 <td>P4 T4, CLI wiring and deliverables</td>
 <td>Seam</td>
 <td>Opus</td>
 <td><strong>deep: P4</strong></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C20</td>
 <td>P5 T1, T2, process mode</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C21</td>
 <td>P5 T3, in place</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light, then <strong>deep: P5</strong>, then the full sharded regression on Slurm, the simplify pass, and the regression again</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>C22</td>
 <td>P5 T4, the AutoConvertRaw-GC rollout</td>
 <td>Seam</td>
 <td>Opus</td>
 <td>light. <strong>Blocked on the user's rig1 grid edges</strong></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>C23</td>
 <td>P5 T5, pilot and backfill decision</td>
 <td>orchestrator and user</td>
