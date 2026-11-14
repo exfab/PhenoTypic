@@ -99,6 +99,7 @@ Run it:
 dvc repro
 ```
 
+(dvc-metrics)=
 ### Metrics and the column schema
 
 `deliverables/metrics.json` is written when the run finalizes. Its keys:
@@ -409,7 +410,9 @@ What it costs:
 
 - **DVC records the run as successful.** `dvc.lock` is written, `dvc status`
   reports the stage up to date, and downstream stages run on the images that
-  succeeded. The failed images are simply absent from every table.
+  succeeded. An image that failed in a full run is absent from every table;
+  one whose `--mode measure` re-measure failed usually keeps its previous
+  measurements (see {ref}`dvc-metrics`).
 - **The failures are visible only in the outputs.** `metrics.json`'s
   `images.failed` holds the count, and `dvc metrics diff` shows it changing.
   The failures themselves are in `.phenotypic/terminal_failures.jsonl`.
