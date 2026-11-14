@@ -1,0 +1,352 @@
+<title>Pipeline Folders in OME-Zarr</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column; paired store trees sit side by side and stack on phones. Tree lines are colour-coded by what the proposal does to them. Tokens follow PhenoTypic DESIGN.md. */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --accent-soft: #e6f0f9; --gold: #926a00; --gold-soft: #fff4d6;
+  --code-bg: #edf2f7;
+  --new: #006B4F; --new-soft: #e3f4ee; --moved: #0B6E9E; --moved-soft: #e3f1f9; --gone: #b85100; --gone-soft: #fbe9dc; --same: #7c8594;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839;
+  --new: #43c9a2; --new-soft: #12352c; --moved: #6cbdf0; --moved-soft: #142f45; --gone: #f29a5e; --gone-soft: #3d2416; --same: #8692a4;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839;
+  --new: #43c9a2; --new-soft: #12352c; --moved: #6cbdf0; --moved-soft: #142f45; --gone: #f29a5e; --gone-soft: #3d2416; --same: #8692a4;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.page { max-width: 72rem; margin: 0 auto; padding-block: 2.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 3rem; }
+header { display: flex; flex-direction: column; gap: .75rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+h1 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h2 { font-size: 1.5rem; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h3 { font-size: 1.05rem; color: var(--heading); margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 70ch; }
+.lede { font-size: 1.1rem; }
+section { display: flex; flex-direction: column; gap: 1rem; }
+.secnum { font-family: var(--mono); color: var(--muted); font-size: .85rem; font-weight: 400; margin-right: .5rem; }
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+nav.toc { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: .92rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: .75rem; }
+nav.toc a { color: var(--accent); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .85rem; align-items: center; }
+.chip { font-family: var(--mono); font-size: .76rem; font-weight: 600; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
+.chip.new { background: var(--new-soft); color: var(--new); }
+.chip.moved { background: var(--moved-soft); color: var(--moved); }
+.chip.gone { background: var(--gone-soft); color: var(--gone); }
+.chip.same { background: var(--code-bg); color: var(--same); }
+
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1rem; }
+.store { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; min-width: 0; }
+.store .cap { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap; padding: .7rem 1rem; border-bottom: 1px solid var(--rule); }
+.store .cap b { color: var(--heading); font-size: .98rem; }
+.store .cap span { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+.store pre { margin: 0; padding: .9rem 1rem 1rem; font-family: var(--mono); font-size: .78rem; line-height: 1.6; overflow-x: auto; color: var(--same); }
+.store pre .n { color: var(--new); font-weight: 600; }
+.store pre .m { color: var(--moved); font-weight: 600; }
+.store pre .x { color: var(--gone); text-decoration: line-through; }
+.store pre .c { color: var(--muted); font-weight: 400; font-style: italic; }
+.store pre .h { color: var(--heading); font-weight: 600; }
+.store .foot { padding: .6rem 1rem .8rem; border-top: 1px solid var(--rule); font-size: .88rem; }
+
+.flow { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; }
+.flow pre.mermaid { margin: 0; min-width: 38rem; background: transparent; }
+
+.why { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+.why > div { border-top: 3px solid var(--accent); padding-top: .6rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.why b { color: var(--heading); }
+.why p { font-size: .94rem; }
+
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; }
+.opt { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; min-width: 0; }
+.opt.pick { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.opt .cap { padding: .7rem 1rem; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; align-items: baseline; }
+.opt .cap b { color: var(--heading); }
+.opt pre { margin: 0; padding: .8rem 1rem; font-family: var(--mono); font-size: .76rem; line-height: 1.6; overflow-x: auto; color: var(--same); }
+.opt pre .n { color: var(--new); font-weight: 600; }
+.opt pre .c { color: var(--muted); font-style: italic; }
+.opt ul { margin: 0; padding: .7rem 1rem .9rem 2rem; display: flex; flex-direction: column; gap: .3rem; font-size: .9rem; }
+.pickbadge { font-family: var(--mono); font-size: .72rem; font-weight: 600; color: var(--accent); }
+
+pre.json { margin: 0; font-family: var(--mono); font-size: .78rem; line-height: 1.55; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; color: var(--fg); }
+pre.json .k { color: var(--accent); }
+pre.json .c { color: var(--muted); font-style: italic; }
+pre.json .n { color: var(--new); font-weight: 600; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 44rem; }
+th, td { text-align: left; vertical-align: top; padding: .6rem .75rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; color: var(--heading); }
+
+ol.open { list-style: none; counter-reset: o; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .75rem; max-width: none; }
+ol.open li { counter-increment: o; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 6px; padding: .8rem 1rem; display: grid; grid-template-columns: 2.2rem 1fr; gap: .2rem .5rem; }
+ol.open li::before { content: "Q" counter(o); font-family: var(--mono); font-weight: 600; color: var(--gold); grid-row: span 2; }
+ol.open li b { color: var(--heading); }
+ol.open li span { font-size: .93rem; }
+.note { font-size: .88rem; color: var(--muted); }
+footer { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">Proposal for comment · OME-Zarr store layout · 2026-11-12</div>
+  <h1>Pipeline Folders in OME-Zarr</h1>
+  <p class="lede">Every pipeline that writes measurements into a store gets its own folder, named by its place in the store's history and its pipeline hash. A pipeline's scalar measurements, metadata projection and embeddings all live inside that folder. This page shows today's stores beside the proposed ones, and the three ways a downstream store could relate to the AutoConvertRaw-GC store it read.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#flow">1 · Two stores, two places</a><a href="#today">2 · Today</a><a href="#proposed">3 · Proposed</a><a href="#inherit">4 · Linking the two stores</a><a href="#descriptor">5 · Root descriptor</a><a href="#readers">6 · What changes for readers</a><a href="#prior">7 · Prior art</a><a href="#open">8 · Open for comment</a>
+  </nav>
+  <div class="legend" aria-label="Legend">
+    <span class="chip new">new</span><span class="chip moved">moved / renamed</span><span class="chip gone">removed</span><span class="chip same">unchanged</span>
+  </div>
+</header>
+
+<section id="flow">
+  <h2><span class="secnum">1</span>Why copying came up: two stores in two places</h2>
+  <p>A downstream PhenoTypic run never writes into its input. It reads the AutoConvertRaw-GC store as pixels and writes a separate store under its own <code>--output</code>. The AutoConvertRaw-GC store is write-once, and a reprocess there replaces it wholesale. So the grid embeddings and the analysis measurements are produced into two different directories. Copying was one way to put them side by side. Section 4 shows two ways that don't copy.</p>
+  <div class="flow">
+<pre class="mermaid">
+flowchart LR
+  CR3["CR3 raw"] --> RT["RawTherapee TIFF"]
+  RT --> P1["AutoConvertRaw-GC process run: CalibrateColorRpcc, ColorDenoise, grid embeddings"]
+  P1 --> S1[("AutoConvertRaw-GC store, bucket / NAS, write-once")]
+  S1 -- "read as pixels + journal" --> P2["Downstream full run: detect, measure, crop embeddings"]
+  P2 --> S2[("Result store, your --output")]
+</pre>
+  </div>
+</section>
+
+<section id="today">
+  <h2><span class="secnum">2</span>Today</h2>
+  <div class="pair">
+    <div class="store">
+      <div class="cap"><b>AutoConvertRaw-GC store</b><span>--mode process --layer rgb</span></div>
+<pre><span class="h">&lt;stem&gt;.ome.zarr/</span>
+├── zarr.json          <span class="c">consolidated · journal [1 process]</span>
+├── OME/zarr.json  OME/METADATA.ome.xml
+├── rgb/0 … n          <span class="c">calibrated + denoised, planar (c,y,x)</span>
+└── figures/
+    └── &lt;UTC-date&gt;-&lt;sha12&gt;/CalibrateColorRpcc/…
+                       <span class="c">no tables, no objmap, no image_class</span></pre>
+      <div class="foot">No measurements of any kind. Process mode runs only <code>ops</code>.</div>
+    </div>
+    <div class="store">
+      <div class="cap"><b>Result store</b><span>--mode full</span></div>
+<pre><span class="h">&lt;stem&gt;.ome.zarr/</span>
+├── zarr.json          <span class="c">journal [1 process, 2 full]</span>
+│                      <span class="c">tables{measurements, metadata} · figures{runs}</span>
+├── OME/…
+├── rgb/ gray/ detect_mat/ original/
+│   └── rgb/labels/objmap/
+├── tables/
+│   ├── measurements/table.parquet   <span class="c">ONE table, replaced by every measure run</span>
+│   └── metadata/pht-metadata.parquet
+└── figures/&lt;UTC-date&gt;-&lt;sha12&gt;/…</pre>
+      <div class="foot">One measurement slot. A second pipeline's measurements replace the first's.</div>
+    </div>
+  </div>
+</section>
+
+<section id="proposed">
+  <h2><span class="secnum">3</span>Proposed: one folder per pipeline</h2>
+  <p>The top-level group stays <code>tables/</code>, which is already part of PhenoTypic's store schema; what changes is one level below it. The folder name is <code>&lt;call order&gt;-&lt;pipeline hash&gt;</code>. The call order is the application's <code>sequence</code> in the store's provenance journal. The hash is the first 12 hex of the pipeline file's sha256, the same digest the journal, the figure run folders and AutoConvertRaw-GC already record. Inside each folder, the model names the embedding subfolder, and crops and grid are two separate tables.</p>
+  <div class="pair">
+    <div class="store">
+      <div class="cap"><b>AutoConvertRaw-GC store</b><span>process mode now runs its measurements</span></div>
+<pre><span class="h">&lt;stem&gt;.ome.zarr/</span>
+├── zarr.json          <span class="c">consolidated · journal [1 process]</span>
+│                      <span class="n">tables{runs: {"1-3f9c2a1b7d04": …}}</span>
+├── OME/…
+├── rgb/0 … n
+├── <span class="n">tables/</span>
+│   └── <span class="n">1-3f9c2a1b7d04/</span>
+│       └── <span class="n">embeddings/</span>
+│           └── <span class="n">dinov2-vitb14/</span>
+│               └── <span class="n">grid/table.parquet</span>
+│                   <span class="c">Grid_RowNum | Grid_ColNum | Grid_RowMajorIdx</span>
+│                   <span class="c">| Grid_*IntervalStart/End | embedding[768] f16</span>
+└── figures/&lt;UTC-date&gt;-&lt;sha12&gt;/…</pre>
+      <div class="foot">Written inside the store's own transaction, before consolidation. The store stays write-once.</div>
+    </div>
+    <div class="store">
+      <div class="cap"><b>Result store</b><span>downstream analysis pipeline</span></div>
+<pre><span class="h">&lt;stem&gt;.ome.zarr/</span>
+├── zarr.json          <span class="c">journal [1 process, 2 full]</span>
+│                      <span class="m">tables{runs: {"2-a71e09c2b4f5": …}}</span>
+├── OME/…
+├── rgb/ gray/ detect_mat/ original/
+│   └── rgb/labels/objmap/
+├── tables/
+│   ├── <span class="x">measurements/  metadata/</span>   <span class="c">move into the run folder</span>
+│   └── <span class="n">2-a71e09c2b4f5/</span>
+│       ├── <span class="m">measurements/table.parquet</span>  <span class="c">was tables/measurements/</span>
+│       │   <span class="c">Object_Label | Size_Area | Shape_… | …</span>
+│       ├── <span class="m">metadata/pht-metadata.parquet</span>  <span class="c">was tables/metadata/</span>
+│       └── <span class="n">embeddings/dinov2-vitb14/</span>
+│           └── <span class="n">crops/table.parquet</span>
+│               <span class="c">Object_Label | embedding[768] f16</span>
+└── figures/&lt;UTC-date&gt;-&lt;sha12&gt;/…</pre>
+      <div class="foot">The <code>1-…</code> folder from the AutoConvertRaw-GC store is not shown here; how this store relates to it is section 4.</div>
+    </div>
+  </div>
+  <div class="why">
+    <div><b>Folder per pipeline</b><p>Pipelines coexist in one store. A second analysis pipeline gets <code>3-&lt;its hash&gt;</code> instead of replacing <code>2-…</code>.</p></div>
+    <div><b>Embeddings under their pipeline</b><p>No separate top-level <code>embeddings/</code> group. An embedding belongs to the pipeline that produced it, exactly as its scalar measurements do.</p></div>
+    <div><b>Scalar table stays separate</b><p><code>measurements/</code> inside the run keeps the scalar measurements alone, so the master, mirror, splits and TSVs never see a vector column.</p></div>
+    <div><b>Model names the folder</b><p><code>embeddings/&lt;model&gt;/</code>, then <code>crops/</code> or <code>grid/</code>. A second model is a sibling folder, never extra columns.</p></div>
+  </div>
+</section>
+
+<section id="inherit">
+  <h2><span class="secnum">4</span>How the result store relates to the store it read</h2>
+  <p>All three keep the AutoConvertRaw-GC store untouched, and all three number the result store's own folder <code>2-…</code>, because the inherited journal already holds application 1. They differ only in what the result store says about <code>1-…</code>.</p>
+  <div class="opts">
+    <div class="opt">
+      <div class="cap"><b>A · Copy</b><span class="note">previous proposal</span></div>
+<pre>tables/
+├── <span class="n">1-3f9c2a1b7d04/</span>   <span class="c">copied, read-only</span>
+│   └── embeddings/dinov2-vitb14/grid/…
+└── 2-a71e09c2b4f5/
+    └── …</pre>
+      <ul>
+        <li>The result store is self-contained: hand it over, or track it in DVC, without the bucket.</li>
+        <li>Duplicates the grid table into every result store. It's small, and a hardlink on one filesystem.</li>
+        <li>The copy is a snapshot that won't follow a later AutoConvertRaw-GC reprocess.</li>
+      </ul>
+    </div>
+    <div class="opt pick">
+      <div class="cap"><b>C · Reference</b><span class="pickbadge">recommended now</span></div>
+<pre>tables/
+└── 2-a71e09c2b4f5/
+    └── …
+<span class="c">zarr.json → tables.upstream:</span>
+<span class="n">  "1-3f9c2a1b7d04": { source: "&lt;ds&gt;/&lt;stem&gt;.ome.zarr",</span>
+<span class="n">                      root_sha256: "…" }</span></pre>
+      <ul>
+        <li>No copy. The record names the input store and the digest of its root, so a reader can find <code>1-…</code> and verify it is the same version.</li>
+        <li>Reading grid embeddings needs the AutoConvertRaw-GC store to be reachable.</li>
+        <li>A reprocessed input shows up as a digest mismatch rather than going unnoticed.</li>
+      </ul>
+    </div>
+    <div class="opt">
+      <div class="cap"><b>D · Nothing</b><span class="note">simplest</span></div>
+<pre>tables/
+└── 2-a71e09c2b4f5/
+    └── …
+<span class="c">(the journal's application 1 is the only trace)</span></pre>
+      <ul>
+        <li>Each store holds only what was written into it.</li>
+        <li>The journal already names the input file and its pipeline hash, but not the input store's digest. You can't tell whether the input changed afterwards.</li>
+        <li>Joining across stores is up to you.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">Why C over A now: once embeddings live under their pipeline's folder, copying means duplicating another pipeline's results into a store it never wrote. That is exactly what you questioned. C keeps one source of truth and still makes the link checkable.</p>
+</section>
+
+<section id="descriptor">
+  <h2><span class="secnum">5</span>Root descriptor, before and after</h2>
+  <div class="pair">
+<pre class="json"><span class="c">// today: attributes.phenotypic</span>
+{
+  <span class="k">"tables"</span>: {
+    <span class="k">"measurements"</span>: { "schema_version": 1,
+      "path": "tables/measurements/table.parquet",
+      "measurement_columns": [ … ],
+      "target": { "column": "Object_Label",
+                  "path": "rgb/labels/objmap" } },
+    <span class="k">"metadata"</span>: { … }
+  },
+  <span class="k">"figures"</span>: { "schema_version": 2, "runs": { … } }
+}</pre>
+<pre class="json"><span class="c">// proposed: attributes.phenotypic</span>
+{
+  <span class="k">"tables"</span>: { <span class="n">"schema_version": 2,</span>
+    <span class="n">"runs"</span>: {
+      "2-a71e09c2b4f5": {
+        "sequence": 2, "pipeline_sha256": "a71e09c2…",
+        <span class="k">"measurements"</span>: { "path": "tables/2-a71e…/measurements/table.parquet",
+                      "measurement_columns": [ … ],
+                      "target": { "column": "Object_Label", … } },
+        <span class="k">"metadata"</span>: { … },
+        <span class="k">"embeddings"</span>: {
+          "dinov2-vitb14/crops": { "model": { "hf_id": "facebook/dinov2-base",
+              "revision": "…" }, "dim": 768, "dtype": "float16",
+              "pooling": "crop_cls", "key": "Object_Label",
+              "binds": { "objmap_sha256": "…" }, "stale": false,
+              "files": [ { "path": "…", "sha256": "…" } ] } } } },
+    <span class="n">"upstream"</span>: { "1-3f9c2a1b7d04": { "source": "…", "root_sha256": "…" } }
+  },
+  <span class="k">"figures"</span>: { "schema_version": 2, "runs": { … } }
+}</pre>
+  </div>
+  <p class="note">The per-run <code>measurements</code> entry is today's <code>tables.measurements</code> descriptor moved inside its run, with the same fields. The <code>tables</code> block bumps to <code>schema_version: 2</code>, because the same key now has a different shape. The figures descriptor is unchanged.</p>
+</section>
+
+<section id="readers">
+  <h2><span class="secnum">6</span>What changes for the code that reads stores</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Reader or writer</th><th>Today</th><th>Proposed</th></tr></thead>
+    <tbody>
+      <tr><td>Finalizer (master)</td><td>reads <code>tables/measurements</code></td><td>reads the folder of the run it is finalizing: the pipeline it ran, with its own sequence</td></tr>
+      <tr><td><code>--mode measure</code></td><td>replaces the one table</td><td>writes its pipeline's folder; replace vs new folder is Q3</td></tr>
+      <tr><td>Process mode</td><td>measures nothing</td><td>runs measurers that need no objects (grid and image embeddings) and writes its own folder</td></tr>
+      <tr><td>Every store rewrite</td><td>drops unknown groups; measure drops all of <code>tables/</code></td><td>carries every other run's folder unchanged, like figure runs; only <code>--overwrite</code> deletes</td></tr>
+      <tr><td>GUI viewer</td><td>serves the one table</td><td>serves the latest run by default, with a way to pick another</td></tr>
+      <tr><td>Completion marker</td><td>binds root + one table hash</td><td>binds root + this run's file hashes</td></tr>
+      <tr><td><code>--mode migrate</code></td><td>imports legacy Parquets into <code>tables/</code></td><td>also moves <code>tables/measurements</code> to <code>tables/&lt;seq&gt;-&lt;hash&gt;/measurements</code>, numbered from the journal application that produced it</td></tr>
+      <tr><td>Store schema</td><td><code>tables</code> descriptor v1, one table</td><td><code>tables</code> descriptor v2, one folder per run; readers keep accepting the v1 layout in unmigrated stores</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="prior">
+  <h2><span class="secnum">7</span>How others store tables and embeddings in OME-Zarr</h2>
+  <p>There is no canonical schema for either one. OME-NGFF 0.5 specifies images, labels and plates, but not tables. The AnnData-based table proposal (ngff PR #64), whose stated scope included low-dimensional embeddings such as UMAP, was <b>closed unmerged in September 2023</b>. RFC-8 (Collections and Extensibility) is under review. It deliberately does not define a table format; it gives a way to link derived data to images and allows prefixed extension types. So each tool brings its own sub-spec:</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Convention</th><th>Where it lives</th><th>How a per-object vector is stored</th><th>Fit for PhenoTypic</th></tr></thead>
+    <tbody>
+      <tr><td>ngio / Fractal feature table</td><td><code>&lt;image&gt;/tables/&lt;name&gt;/</code>; the <code>tables</code> group's attributes list every table</td><td>a feature table tied to a label image. Its group attributes are <code>type: "feature_table"</code>, <code>table_version</code>, <code>region</code> (path to the label image), <code>backend</code> (AnnData, Parquet, CSV or JSON), <code>index_key</code> and <code>instance_key</code>. Columns are features</td><td>closest to what PhenoTypic already does: a <code>tables/</code> group, Parquet, keyed on a label. Writing these attributes on each table group would let ngio discover our tables. I haven't checked whether it reads a list-typed vector column</td></tr>
+      <tr><td>AnnData in Zarr (scverse, SpatialData)</td><td>a table element in a SpatialData Zarr store; linked to labels through <code>uns/spatialdata_attrs</code> {<code>region</code>, <code>region_key</code>, <code>instance_key</code>}</td><td><code>obsm/&lt;key&gt;</code>, an N × D matrix per embedding. This is the usual home for embeddings in single-cell tools (<code>X_pca</code>, <code>X_umap</code>)</td><td>best for scanpy/squidpy users, but a different container from our Parquet tables. Better as an optional export than as the store format</td></tr>
+      <tr><td>Label <code>image-label.properties</code></td><td>the label group's JSON metadata</td><td>one JSON object per <code>label-value</code>, with arbitrary keys</td><td>fine for a class name, not for 768 floats per colony</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">What this means for the design: keeping vectors in Parquet under <code>tables/</code> matches the most common OME-Zarr practice (ngio's Parquet backend) without inventing a new container. Interoperability improves further if each table group also carries ngio-style attributes, and an AnnData export can come later if someone needs scanpy directly. Sources: ngff PR #64; RFC-8; ngio table specs; SpatialData TableModel docs; the NGFF label schema.</p>
+</section>
+
+<section id="open">
+  <h2><span class="secnum">8</span>Open for your comments</h2>
+  <ol class="open">
+    <li><b>Which link between stores: A, C or D?</b><span>My pick is C (section 4).</span></li>
+    <li><b>Interop attributes</b><span>Decided: the top-level group stays <code>tables/</code>. Open: should each table group also carry ngio-style attributes (<code>type</code>, <code>table_version</code>, <code>region</code>, <code>backend: "parquet"</code>, <code>index_key</code>) so Fractal/ngio can discover our tables (section 7)?</span></li>
+    <li><b>Re-measuring with the same pipeline</b><span>Should a second <code>--mode measure</code> with the same pipeline replace <code>2-a71e…</code>, or write <code>3-a71e…</code> beside it? Replacing keeps one folder per pipeline; a new folder keeps every pass.</span></li>
+    <li><b>Hash of what</b><span>The pipeline file's bytes, as the journal records today. A formatting-only change, such as DVC's one-line JSON rewrite, gives a new folder even if no parameter changed.</span></li>
+    <li><b>Figures</b><span>They stay in <code>figures/&lt;UTC-date&gt;-&lt;sha12&gt;/</code>. Should they move under their pipeline's folder too, for one place per run?</span></li>
+    <li><b>Grid definition</b><span>Does a grid cell stand for a pinned colony position at fixed pixels in every rig1 image (<code>ManualGridFinder</code> edges in the pipeline), or can the plate move between images?</span></li>
+  </ol>
+  <p class="note">Leave a comment on any section and I'll fold it into the design spec.</p>
+</section>
+
+<footer>Grid column names come from <code>phenotypic.schema.GRID</code>. Journal and figure-hash conventions come from <code>_core/_provenance.py</code> and <code>sdk_/_image_figures.py</code>. This proposal supersedes Part D (the top-level <code>embeddings/</code> group) of <code>docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md</code>, which is not yet updated.</footer>
+</div>

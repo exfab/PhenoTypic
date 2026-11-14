@@ -6,7 +6,7 @@ import inspect
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Iterator, Protocol, TypeAlias, TypeGuard
+from typing import Iterable, Iterator, Mapping, Protocol, TypeAlias, TypeGuard
 
 import pandas as pd
 import polars as pl
@@ -445,6 +445,97 @@ def _describe_column(column: str) -> str | None:
     """Resolve *column* to its member's ``desc`` across all schemes, or None."""
     member = _member_for_column(column)
     return member.desc if member is not None else None
+
+
+#: ``schema.json``'s own format version (#281 spec C12).
+OUTPUT_SCHEMA_VERSION = 1
+
+
+def _member_id(member: MeasurementInfo) -> str:
+    """Name *member* as ``<enum class>.<member name>``, e.g. ``SIZE.AREA``."""
+    return f"{type(member).__name__}.{member.name}"
+
+
+def _table_schema(table: object) -> Mapping[str, object]:
+    """Return ``column -> dtype`` for a frame or for an already-read schema."""
+    if isinstance(table, (pl.DataFrame, pl.LazyFrame)):
+        return table.collect_schema()
+    if isinstance(table, pd.DataFrame):
+        return {str(column): dtype for column, dtype in table.dtypes.items()}
+    if isinstance(table, Mapping):
+        return table
+    raise TypeError(
+        f"expected a DataFrame or a column -> dtype mapping, got {type(table).__name__}"
+    )
+
+
+def build_output_schema(tables: Mapping[str, object]) -> dict[str, object]:
+    """Describe every column of each published table, for ``deliverables/schema.json``.
+
+    Each column gets its name, its dtype, and -- when a public schema enum
+    owns the header -- the owning ``MeasurementInfo`` member, that member's
+    ``desc`` and unit, and the measurer that produces it. The member is
+    decoded from the header with the same recognition schemes the
+    per-feature split uses, and the producer comes from the
+    :func:`measurement_producers` registry the deliverables README reads, so
+    the schema, the split and the README cannot disagree about a column.
+
+    A column no enum owns (a user metadata column, a run's own bookkeeping)
+    gets ``member``, ``desc``, ``unit`` and ``producer`` all ``None``. A
+    column an enum owns but no measurer writes (``Object_Label``, the
+    ``Metadata_*`` image identity) gets its member with ``producer: None``.
+    ``unit`` is the member's own unit, else its enum's ``default_unit()``,
+    written as the ``UNITS`` key (``"px2"``); an input-dependent unit is
+    written unresolved (``"of_input"``), because the column it was computed
+    on is not recoverable from every header.
+
+    Columns keep each table's own order and tables are keyed by name, so a
+    canonical JSON dump of the result is byte-stable for identical tables.
+
+    Args:
+        tables: Table name -> the table, as a polars or pandas frame, or as a
+            ``column -> dtype`` mapping (a Parquet footer read with
+            ``pl.read_parquet_schema``). ``dtype`` is rendered with ``str``.
+
+    Returns:
+        ``{"schema_version": 1, "tables": {name: [{"name", "dtype", "unit",
+        "producer", "member", "desc"}, ...]}}``.
+
+    Examples:
+        >>> import polars as pl
+        >>> from phenotypic.util._measurement_outputs import build_output_schema
+        >>> frame = pl.DataFrame({"Size_Area": [12.0], "Strain": ["BY4741"]})
+        >>> area, strain = build_output_schema({"measurements": frame})["tables"]["measurements"]
+        >>> area["producer"], area["member"], area["unit"]
+        ('MeasureSize', 'SIZE.AREA', 'px2')
+        >>> strain["member"] is None and strain["producer"] is None
+        True
+    """
+    described: dict[str, list[dict[str, object]]] = {}
+    for name, table in tables.items():
+        schema = _table_schema(table)
+        columns = [str(column) for column in schema]
+        producer_of: dict[str, str] = {}
+        for producer, owned in _producer_column_groups(columns).items():
+            for column in owned:
+                producer_of.setdefault(column, producer)
+        rows: list[dict[str, object]] = []
+        for raw_column, dtype in schema.items():
+            column = str(raw_column)
+            member = _member_for_column(column)
+            unit = member.unit if member is not None else None
+            rows.append(
+                {
+                    "name": column,
+                    "dtype": str(dtype),
+                    "unit": str(unit) if unit is not None else None,
+                    "producer": producer_of.get(column),
+                    "member": _member_id(member) if member is not None else None,
+                    "desc": member.desc if member is not None else None,
+                }
+            )
+        described[str(name)] = rows
+    return {"schema_version": OUTPUT_SCHEMA_VERSION, "tables": described}
 
 
 def unit_of_column(column: str) -> ResolvedUnit | None:

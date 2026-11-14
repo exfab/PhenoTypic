@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
@@ -90,7 +91,8 @@ class TestRecompileCliRouting:
         with (
             patch("phenotypic.phenotypicCLI._handle_recompile") as mock_local,
             patch(
-                "phenotypic.phenotypicCLI._handle_recompile_slurm"
+                "phenotypic.phenotypicCLI._handle_recompile_slurm",
+                return_value=RunExitCode.SUBMITTED,
             ) as mock_slurm,
         ):
             result = CliRunner().invoke(
@@ -107,7 +109,7 @@ class TestRecompileCliRouting:
                 ],
             )
 
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == RunExitCode.SUBMITTED, result.output
         mock_local.assert_not_called()
         mock_slurm.assert_called_once_with(
             output_dir=output_dir,

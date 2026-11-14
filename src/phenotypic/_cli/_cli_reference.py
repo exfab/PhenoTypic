@@ -327,8 +327,9 @@ def resolve_reference_table_path(
     """The table a run's reference ops read: ``--metadata``, else the run's snapshot.
 
     Measure mode applies no operation and so reads no table. Full mode falls
-    back to ``deliverables/metadata.csv``, process mode to
-    ``.phenotypic/reference_metadata.csv``.
+    back to ``deliverables/metadata.<ext>``, process mode to
+    ``.phenotypic/reference_metadata.<ext>``, whichever suffix the run's
+    snapshot kept (spec B5).
     """
     if config.measure_only:
         return None
@@ -336,27 +337,31 @@ def resolve_reference_table_path(
         return Path(config.metadata_csv)
     if output_dir is None:
         return None
-    snapshot = reference_table_snapshot_path(
+    return reference_table_snapshot_path(
         output_dir, process_mode=config.process_only_layer is not None
     )
-    return snapshot if snapshot.is_file() else None
 
 
-def reference_table_snapshot_path(output_dir: Path, *, process_mode: bool) -> Path:
-    """The snapshot a run without ``--metadata`` falls back to.
+def reference_table_snapshot_path(
+    output_dir: Path, *, process_mode: bool
+) -> Path | None:
+    """The snapshot a run without ``--metadata`` falls back to, or ``None``.
 
-    Full mode: ``deliverables/metadata.csv``; process mode:
-    ``.phenotypic/reference_metadata.csv``. Whether it exists is the caller's
-    question.
+    Full mode: ``deliverables/metadata.<ext>``; process mode:
+    ``.phenotypic/reference_metadata.<ext>``. Either suffix is found (spec
+    B5); ``None`` means the run has no snapshot.
+
+    Raises:
+        ValueError: Both a ``.csv`` and a ``.tsv`` snapshot exist.
     """
     from phenotypic.sdk_._io_constants import (
-        metadata_csv_deliverable_path,
-        reference_metadata_snapshot_path,
+        resolve_metadata_snapshot_path,
+        resolve_reference_metadata_snapshot_path,
     )
 
     if process_mode:
-        return reference_metadata_snapshot_path(output_dir)
-    return metadata_csv_deliverable_path(output_dir)
+        return resolve_reference_metadata_snapshot_path(output_dir)
+    return resolve_metadata_snapshot_path(output_dir)
 
 
 def input_read_kwargs(config: "ExecutionConfig") -> dict[str, Any]:
@@ -365,14 +370,14 @@ def input_read_kwargs(config: "ExecutionConfig") -> dict[str, Any]:
 
 
 def metadata_csv_payload(source: Path) -> bytes:
-    """The bytes of a ``--metadata`` table, validated as the CSV the run snapshots.
+    """The bytes of a ``--metadata`` table, validated as the table the run snapshots.
 
     One rule for the CLI's read-only refusal and the process-mode snapshot, so
     a table the refusal accepts cannot fail at snapshot time, after
     ``--overwrite`` has deleted the output (code review #3). ``--metadata`` is
-    a CSV in every mode -- the measurement join reads one, and the snapshot is
-    ``reference_metadata.csv`` -- although a notebook ``ReferenceContext``
-    also reads ``.parquet``.
+    a ``.csv`` or ``.tsv`` table in every mode (spec B4) -- the measurement
+    join reads one, and the snapshot keeps its suffix -- although a notebook
+    ``ReferenceContext`` also reads ``.parquet``.
 
     Args:
         source: The ``--metadata`` path.
@@ -381,30 +386,66 @@ def metadata_csv_payload(source: Path) -> bytes:
         The file's bytes.
 
     Raises:
-        ValueError: The name does not end in ``.csv``, or pandas cannot parse
-            the bytes (it refuses an unterminated quote that Polars reads as a
-            header, as ``phenotypicCLI._snapshot_metadata_csv`` notes).
+        ValueError: The suffix is neither ``.csv`` nor ``.tsv``, or pandas
+            cannot parse the bytes with that suffix's delimiter (it refuses an
+            unterminated quote that Polars reads as a header, as
+            ``phenotypicCLI._snapshot_metadata_csv`` notes).
     """
     import io
 
     import pandas as pd
 
+    from phenotypic.sdk_ import delimiter_for
+
     path = Path(source)
-    if path.suffix.lower() != ".csv":
+    try:
+        separator = delimiter_for(path)
+    except ValueError:
         raise ValueError(
-            f"--metadata must be a .csv file, got {path.name!r}; export the "
-            f"table to CSV (the run snapshots it byte for byte as a CSV)"
-        )
+            f"--metadata must be a .csv or .tsv table, got {path.name!r}; export "
+            f"the table as CSV or TSV (the run snapshots it byte for byte)"
+        ) from None
     payload = path.read_bytes()
     try:
-        pd.read_csv(io.BytesIO(payload))
+        pd.read_csv(io.BytesIO(payload), sep=separator)
     except ValueError as exc:  # ParserError, EmptyDataError, UnicodeDecodeError
-        raise ValueError(f"--metadata {path.name!r} is not a readable CSV: {exc}") from exc
+        raise ValueError(
+            f"--metadata {path.name!r} is not a readable {path.suffix.lower()[1:].upper()}: {exc}"
+        ) from exc
     return payload
+
+
+def remove_other_suffix_snapshot(destination: Path) -> None:
+    """Unlink *destination*'s sibling under the other input-table suffix.
+
+    A run keeps exactly one snapshot (``metadata.csv`` **or**
+    ``metadata.tsv``; likewise ``reference_metadata.*``), and the resolvers
+    refuse a directory holding both. Both snapshot writers call this when the
+    user's ``--metadata`` changes suffix, which replaces the snapshot exactly
+    as a same-suffix table with new bytes always has -- and only **after**
+    *destination* is published and verified (spec B5), so a failure leaves two
+    snapshots, never none.
+
+    Args:
+        destination: The snapshot already written and verified.
+    """
+    from phenotypic.sdk_ import INPUT_TABLE_SUFFIXES
+
+    for suffix in INPUT_TABLE_SUFFIXES - {destination.suffix}:
+        sibling = destination.with_suffix(suffix)
+        if sibling.is_file():
+            sibling.unlink()
 
 
 def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path | None:
     """Byte-copy *source* to the process-mode snapshot; reuse it when *source* is None.
+
+    The snapshot keeps *source*'s suffix (spec B5):
+    ``.phenotypic/reference_metadata.csv`` or ``.tsv``. A run that switches
+    suffix replaces the snapshot rather than adding a second one: the new
+    snapshot is published and verified **first** and the old suffix's file
+    removed after, so a crash in between leaves two snapshots (a loud refusal
+    from every resolver; re-passing ``--metadata`` heals it) and never none.
 
     Args:
         output_dir: The run's ``--output``.
@@ -414,23 +455,28 @@ def snapshot_reference_metadata(output_dir: Path, source: Path | None) -> Path |
         The snapshot, or ``None`` when there is no source and no snapshot.
 
     Raises:
-        ValueError: *source* is not a CSV this snapshot accepts
+        ValueError: *source* is not a table this snapshot accepts
             (:func:`metadata_csv_payload`); an existing snapshot is left
             untouched.
     """
     from phenotypic.sdk_._atomic_io import atomic_write_bytes
-    from phenotypic.sdk_._io_constants import reference_metadata_snapshot_path
+    from phenotypic.sdk_._io_constants import (
+        reference_snapshot_path,
+        resolve_reference_metadata_snapshot_path,
+    )
 
-    destination = reference_metadata_snapshot_path(output_dir)
     if source is None:
-        return destination if destination.is_file() else None
+        return resolve_reference_metadata_snapshot_path(output_dir)
     payload = metadata_csv_payload(source)
+    destination = reference_snapshot_path(output_dir, Path(source).suffix)
     if destination.is_file() and destination.read_bytes() == payload:
+        remove_other_suffix_snapshot(destination)
         return destination
     destination.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_bytes(destination, payload)
     if destination.read_bytes() != payload:
         raise OSError(f"Reference metadata snapshot verification failed: {destination}")
+    remove_other_suffix_snapshot(destination)
     return destination
 
 

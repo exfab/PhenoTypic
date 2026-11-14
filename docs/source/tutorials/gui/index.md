@@ -25,7 +25,7 @@ the images aligned with the implementation.
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
 | [Scatter plots](19_scatter.md) | Bind plotting roles, page through section groups, click a point to open its colony, and export every section as a PDF. |
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
-| [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
+| [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{tsv,parquet}`. |
 | [Aux ports](09_aux_ports.md) | Fill operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) through side-loader port targets. |
 | [Fill a scalar aux target](12_aux_wire_in_dag.md) | Select a gold side port, watch it turn green, and fill it with a compatible palette operation. |
 | [Open an embedded Pipeline aux](13_wire_pipeline_as_aux.md) | Fill a side value with `+ New Pipeline`, build the nested chain, and use breadcrumbs to return. |

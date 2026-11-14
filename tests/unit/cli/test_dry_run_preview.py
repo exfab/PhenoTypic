@@ -48,7 +48,7 @@ def _save_pipeline(path: Path, ops=None, **kwargs) -> Path:
         meas=[MeasureSize()],
         **kwargs,
     )
-    # write_text, not to_json(path): the latter appends ``.pht-pipe``.
+    # write_text, not to_json(path): the latter inserts ``.pht-pipe`` before ``.json``.
     path.write_text(pipeline.to_json(), encoding="utf-8")
     return path
 
@@ -108,7 +108,7 @@ def test_dry_run_preview_is_current(tmp_path, pipe, inp):
     assert "sigma=3.0" in result.output
     # The current layout, by its real file names.
     for current in (
-        "deliverables/measurements.csv",
+        "deliverables/measurements.tsv",
         "deliverables/master_measurements.parquet",
         "results/<dataset>/zarr/<stem>.ome.zarr",
         "img001.ome.zarr",
@@ -198,7 +198,7 @@ def test_the_layout_lists_every_deliverable_a_plain_run_writes(tmp_path, pipe):
         "dashboard.html",
         "README.md",
         "rembi.yaml",
-        "pipeline.json.pht-pipe",
+        "pipeline.pht-pipe.json",
     ):
         assert written in layout, written
     assert "processing_report.html" not in layout
@@ -214,5 +214,5 @@ def test_the_layout_adds_what_metadata_and_a_model_write(tmp_path):
     )
     config = make_config(pipeline_json=pipe, metadata_csv=tmp_path / "plates.csv")
     layout = "\n".join(_section(_preview(config, tmp_path), "Output Layout:"))
-    for written in ("metadata.csv", "LogGrowthModel.csv", "analysis_manifest.json"):
+    for written in ("metadata.csv", "LogGrowthModel.tsv", "analysis_manifest.json"):
         assert written in layout, written

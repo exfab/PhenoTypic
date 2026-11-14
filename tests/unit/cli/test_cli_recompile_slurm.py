@@ -731,11 +731,11 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
     assert measurements_parquet_path(output_dir).exists()
     # The recompile finalizer reaches the category split through the same
     # finalize_post_master_outputs path as full/measure (spec §5.3).
-    category_csv = (
-        measurements_by_category_dir(output_dir) / "StartingMetrics.csv"
+    category_tsv = (
+        measurements_by_category_dir(output_dir) / "StartingMetrics.tsv"
     )
-    assert category_csv.exists()
-    assert pl.read_csv(category_csv)["Size_Area"].to_list() == [1, 2]
+    assert category_tsv.exists()
+    assert pl.read_csv(category_tsv, separator="\t")["Size_Area"].to_list() == [1, 2]
     assert pl.read_parquet(master_measurements_parquet_path(output_dir))[
         "Size_Area"
     ].to_list() == [
@@ -2367,3 +2367,82 @@ def test_the_recompile_finalizer_forwards_nothing_when_a_shard_could_not_say(
         "a partial union was forwarded; it understates the master exactly "
         "as badly as a live re-derivation overstates it"
     )
+
+
+def test_the_recompile_finalizer_binds_its_publication_to_its_generation(
+    tmp_path: Path,
+) -> None:
+    """#281 spec C3: ``phenotypic-wait`` accepts only this submission's publication.
+
+    The finalizer stamps its generation into the aggregate proof (through
+    ``finalize_run(execution_epoch=)``) and closes the fence as
+    ``closed_by: "finalizer"``. Driven through the worker CLI, like
+    :func:`_run_finalizer_over`.
+    """
+    from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        initialize_slurm_lifecycle,
+        load_slurm_lifecycle,
+    )
+
+    generation = "recompile-binds-generation"
+    output_dir = tmp_path / generation
+    initialize_slurm_lifecycle(
+        output_dir, generation=generation, mode="recompile"
+    )
+    attempt_dir = (
+        progress_dir(output_dir) / "recompile" / "attempts" / generation
+    )
+    (attempt_dir / "measurement_shards").mkdir(parents=True)
+    (attempt_dir / "status").mkdir(parents=True)
+    manifest_path = attempt_dir / "task_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "tasks": [
+                    {
+                        "task_type": "finalize",
+                        "dataset_names": ["plate_a"],
+                        "include_dataset_column": True,
+                        "metadata_csv": None,
+                        "expected_non_finalizer_tasks": 0,
+                        "slurm_generation": generation,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    captured: list[object] = []
+
+    def _capture(output_dir: Path, **kwargs: object) -> None:
+        captured.append(kwargs.get("execution_epoch", "ABSENT"))
+        return None
+
+    with (
+        patch("phenotypic._cli._cli_finalize_run.finalize_run", new=_capture),
+        patch("phenotypic._cli._dashboard._manifest_builder.build_manifest"),
+        patch("phenotypic._cli._dashboard._generator.generate_dashboard"),
+    ):
+        result = CliRunner().invoke(
+            main,
+            [
+                "--output-dir",
+                str(output_dir),
+                "--task-manifest",
+                str(manifest_path),
+                "--task-index",
+                "0",
+                "--slurm-generation",
+                generation,
+                "--attempt-id",
+                generation,
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert captured == [generation]
+    lifecycle = load_slurm_lifecycle(output_dir)
+    assert lifecycle is not None
+    assert lifecycle["active"] is False
+    assert lifecycle["closed_by"] == "finalizer"

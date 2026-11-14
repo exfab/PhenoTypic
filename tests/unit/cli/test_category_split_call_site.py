@@ -123,7 +123,11 @@ def test_category_dir_is_referenced_only_by_split_master_by_category() -> None:
     # The dry-run preview names the folder so users see where it will land; it
     # only formats the path for display and never writes there, so it adds no
     # second route to the folder (import + use, both inside the function).
+    # schema.json (#281 C12) reads the Parquet footers the split just wrote;
+    # a footer read writes nothing, so it adds no second route either.
     assert sorted(where for where, _, _ in references) == [
+        "_cli/_cli_finalize_run.py:_published_table_schemas",  # footer-read import
+        "_cli/_cli_finalize_run.py:_published_table_schemas",  # footer read only
         "_cli/_cli_interactive.py:_output_layout_entries",  # dry-run display import
         "_cli/_cli_interactive.py:_output_layout_entries",  # dry-run display only
         f"{_OUTPUT_MANAGER}:<module>",  # import

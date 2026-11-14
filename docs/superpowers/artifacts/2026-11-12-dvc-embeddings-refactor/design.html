@@ -1,0 +1,893 @@
+<title>DVC and Embeddings Design</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky contents rail beside one reading column; the rail folds above the text on phones. */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --gold: #926a00; --code-bg: #edf2f7;
+  --ok: #006B4F; --ok-soft: #e3f4ee;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.62; }
+.wrap { max-width: 80rem; margin: 0 auto; padding-block: 2.25rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .6rem; border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+header.top h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); text-wrap: balance; }
+.meta { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
+.meta p { margin: 0; max-width: none; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); max-height: calc(100vh - 2rem); overflow-y: auto; font-size: .86rem; }
+nav.toc b { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .9rem 0 .35rem; }
+nav.toc b:first-child { margin-top: 0; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+nav.toc li.l3 { padding-left: .9rem; font-size: .82rem; }
+nav.toc a { color: var(--fg); text-decoration: none; display: block; padding: .08rem 0; }
+nav.toc li.l2 > a { color: var(--heading); font-weight: 700; margin-top: .3rem; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { min-width: 0; max-width: 56rem; display: flex; flex-direction: column; gap: .9rem; }
+section.doc { display: flex; flex-direction: column; gap: .9rem; }
+section.doc + section.doc { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 3px solid var(--rule); }
+.doctitle { font-size: 1.7rem; color: var(--heading); margin: 0; line-height: 1.15; }
+.docsrc { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+main h2 { font-size: 1.45rem; line-height: 1.2; color: var(--heading); margin: 2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--rule); text-wrap: balance; }
+main h3 { font-size: 1.12rem; color: var(--heading); margin: 1.4rem 0 0; }
+main h4 { font-size: 1rem; color: var(--heading); margin: 1rem 0 0; }
+main p, main li { max-width: 72ch; }
+main p { margin: 0; }
+main ul, main ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; }
+main li > ul, main li > ol { margin-top: .3rem; }
+main strong { color: var(--heading); }
+main ul.task-list, main li.task-list-item { list-style: none; }
+main input[type="checkbox"] { margin-right: .45rem; accent-color: var(--ok); }
+code { font-family: var(--mono); font-size: .84em; background: var(--code-bg); padding: .06em .32em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: .2rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.55; }
+pre code { background: none; padding: 0; overflow-wrap: normal; font-size: inherit; }
+blockquote { margin: 0; padding: .6rem 1rem; border-left: 4px solid var(--gold); background: var(--surface); border-radius: 0 6px 6px 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: .2rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 36rem; }
+th, td { text-align: left; vertical-align: top; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--heading); font-weight: 600; }
+footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  nav.toc { position: static; max-height: none; border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; background: var(--surface); }
+  nav.toc li.l3 { display: none; }
+}
+</style>
+<div class="wrap">
+<header class="top"><div class="eyebrow">Design spec · PhenoTypic + AutoConvertRaw-GC · 2026-11-12</div><h1>Design: DVC-compatible outputs, CSV → TSV, and DINOv2 embeddings</h1><div class="meta"><p><strong>Status:</strong> approved · 2026-11-12 · revised 2026-11-12 (in place, call-order counter, plan-review fixes)</p>
+<p><strong>Repos:</strong> PhenoTypic <code>main</code> @ <code>3248a9173</code>, AutoConvertRaw-GC @ <code>33046cb</code></p>
+<p><strong>Background:</strong> how measurements flow through the CLI today,</p>
+<p><code>docs/superpowers/artifacts/2026-11-12-dino-embeddings/measurement-data-flow.html</code>.</p>
+</div></header>
+<nav class="toc" aria-label="Contents"><b>DVC and Embeddings Design</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</a></li><li class="l3"><a href="#21-goals">2.1 Goals</a></li><li class="l3"><a href="#22-non-goals">2.2 Non-goals</a></li><li class="l3"><a href="#23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</a></li><li class="l2"><a href="#3-constraints-verified">3. Constraints (verified)</a></li><li class="l3"><a href="#31-dvc">3.1 DVC</a></li><li class="l3"><a href="#32-phenotypic">3.2 PhenoTypic</a></li><li class="l3"><a href="#33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</a></li><li class="l3"><a href="#34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</a></li><li class="l2"><a href="#4-design">4. Design</a></li><li class="l3"><a href="#part-a-typed-config-suffix-flip">Part A: typed config suffix flip</a></li><li class="l3"><a href="#part-b-csv--tsv">Part B: CSV → TSV</a></li><li class="l3"><a href="#part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</a></li><li class="l3"><a href="#part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</a></li><li class="l3"><a href="#part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</a></li><li class="l2"><a href="#5-order">5. Order</a></li><li class="l2"><a href="#6-left-to-the-implementer">6. Left to the implementer</a></li></ul></nav>
+<main><section class="doc"><h2 id="1-intent">1. Intent</h2>
+<p>Two requests arrived together because both change the CLI and the per-image store:</p>
+<ol type="1">
+<li><strong>DINOv2 embeddings, and one store holding several pipelines' results.</strong>
+<ul>
+<li>PhenoTypic gains a <code>MeasureDinoEmbedding</code> with two cases: embeddings of detected colony <strong>crops</strong>, and embeddings of <strong>manually defined grid</strong> cells.</li>
+<li>AutoConvertRaw-GC's preprocessing (calibrate → denoise) runs grid embeddings in process mode and stores them in each OME-Zarr it publishes. A downstream analysis pipeline stores its own tables.</li>
+<li>Each pipeline's tables live under <code>tables/&lt;call order&gt;-&lt;pipeline hash&gt;/</code>, so results from several pipelines coexist.</li>
+<li>Nothing is silently overwritten or dropped by a later rewrite, and a re-run of the same pipeline replaces its own folder rather than duplicating rows.</li>
+<li>A pipeline that detects nothing can add its folder to existing stores <strong>in place</strong>, so a run over AutoConvertRaw-GC's corrected stores skips color correction and denoising without copying pixels (E7).</li>
+</ul></li>
+<li><strong>DVC compatibility.</strong> PhenoTypic runs should work as DVC pipeline stages, and every generated CSV should become TSV.</li>
+</ol>
+<p><strong>What DVC is for:</strong> compatibility with automation and data-engineering pipeline infrastructure. An orchestrator (CI, Airflow, Prefect, Dagster, a cloud scheduler) drives PhenoTypic unattended, decides from its outputs whether to continue, and feeds its tables to other systems.</p>
+<p><strong>The shape:</strong> a PhenoTypic CLI run is one DVC stage.</p>
+<ul>
+<li>Its pipeline file and tune spec are DVC <em>params</em>.</li>
+<li>Its <code>deliverables/</code>, <code>results/</code> and <code>.phenotypic/</code> are DVC <em>outs</em>.</li>
+<li>It emits a machine-readable run summary as DVC <em>metrics</em>, plus TSV tables for <code>dvc plots</code>.</li>
+<li>It runs in a <strong>persistent</strong> workspace: the same <code>--output</code> on the cluster every time.</li>
+</ul>
+<p>DVC versioning of the raw image corpus is out of scope (§2.2).</p>
+<h2 id="2-goals-non-goals-anti-goals">2. Goals, non-goals, anti-goals</h2>
+<h3 id="21-goals">2.1 Goals</h3>
+<ul>
+<li><p><strong>G1</strong> <code>dvc exp run -S &lt;pipeline file&gt;:&lt;key&gt;=&lt;value&gt;</code> edits a PhenoTypic pipeline file and the result still loads in PhenoTypic.</p></li>
+<li><p><strong>G2</strong> A <code>dvc.yaml</code> stage that runs <code>python -m phenotypic</code>, locally or on SLURM through the run waiter (C3), reproduces without DVC deleting resumable state, figures or embeddings.</p></li>
+<li><p><strong>G3</strong> Every generated tabular text file is TSV. Parquet companions are unchanged.</p></li>
+<li><p><strong>G4</strong> A byte-stable <code>deliverables/metrics.json</code> run summary that <code>dvc metrics show/diff</code> and an orchestrator can both read (C4).</p></li>
+<li><p><strong>G8</strong> An orchestrator can act on a run without parsing logs:</p>
+<ul>
+<li>distinct exit codes (C10);</li>
+<li>byte-stable deliverables, so unchanged inputs never trigger downstream stages (C11);</li>
+<li>a machine-readable column schema (C12).</li>
+</ul></li>
+<li><p><strong>G5</strong> One folder per measuring pipeline under the store's <code>tables/</code>, named <code>&lt;call order&gt;-&lt;pipeline hash&gt;</code>. Several pipelines' results coexist in one store, and every store rewrite carries the other pipelines' folders across.</p></li>
+<li><p><strong>G6</strong> <code>MeasureDinoEmbedding</code> produces two kinds of table, each under its pipeline's folder and its model's name (CPU, v1):</p>
+<ul>
+<li><strong>crop</strong> embeddings, one vector per detected colony;</li>
+<li><strong>grid</strong> embeddings, one vector per manually defined grid cell.</li>
+</ul>
+<p>Both are aggregated to their own deliverable, never into master, mirror, splits or TSV.</p></li>
+<li><p><strong>G7</strong> Process mode runs the pipeline's measurements and stores them in each store, inside the store's own transaction. AutoConvertRaw-GC stores thereby carry grid embeddings computed right after color correction and denoising.</p></li>
+<li><p><strong>G9</strong> <code>--mode process</code> with <code>--output</code> equal to <code>--input</code> adds the pipeline's run folder to the input stores in place, without rewriting pixels, for pipelines that detect no objects (E7). Every other <code>--output</code> writes new stores, as today.</p></li>
+</ul>
+<h3 id="22-non-goals">2.2 Non-goals</h3>
+<ul>
+<li><p>DVC tracking of the raw corpus or AutoConvertRaw-GC's bucket and NAS trees. Those keep their own marker system.</p></li>
+<li><p>Converting pipelines to YAML.</p></li>
+<li><p>A <code>dvc.yaml</code> generator. A documented template is enough.</p></li>
+<li><p>GPU execution of embeddings (Stage-2 dense features or a Stage 4). This is a later change, chosen after v1's CPU timings are measured.</p></li>
+<li><p>Dense patch-feature grids in stores (0.3–9.5 TB over the corpus).</p></li>
+<li><p>Copying an input store's run folders into result stores. A verifiable reference is recorded instead (D8).</p></li>
+<li><p>Aggregating an upstream (process-mode) run's tables into a downstream run's deliverables.</p></li>
+<li><p><strong>Any change under <code>src/phenotypic/_gui/</code>.</strong> GUI work is deferred to issue #283. Every name the GUI imports from <code>phenotypic.sdk_</code> stays defined, and every <code>sdk_</code> function the GUI calls keeps its name and signature. Beyond that, GUI breakage is accepted until #283, and the GUI tests it turns red <strong>stay red</strong>; the plan lists them by name. The known breaks:</p>
+<ul>
+<li>SLURM submission exits <code>4</code>, which the run console reads as a failed submission (<code>_gui/run_console/_slurm.py:826</code>);</li>
+<li>the results viewer's Colony picker stats the v1 table path, so it finds no table in a v2 store (<code>_gui/results_viewer/_measurement_source.py:107</code>);</li>
+<li>the tune Deploy validator refuses a legacy <code>.json.pht-tune</code> spec (<code>_gui/tune/_validation.py:61</code>);</li>
+<li>the builder's directory browser and the shell classifier list a new <code>x.pht-tune.json</code> as a pipeline, because plain <code>.json</code> is still a legacy pipeline suffix (<code>_gui/builder/_directory_browser.py:32</code>, <code>_gui/shell/_classifier.py:222</code>);</li>
+<li>curation keeps rewriting <code>measurements.csv</code>, so curated edits reach the mirror's <code>.parquet</code> and <code>.csv</code> but not its <code>.tsv</code> (B9);</li>
+<li>the error-analysis deliverable stays <code>error_analysis.csv</code>, because GUI code writes it (B9).</li>
+</ul>
+<p><strong>#281 does not merge to <code>main</code> before #283 fixes these.</strong></p></li>
+<li><p>In-place runs of pipelines that detect objects (E7). A store holds one label image; storing one per run is a follow-up.</p></li>
+<li><p>An in-place run as a DVC stage. Its input tree would also be its out.</p></li>
+<li><p>Byte-reproducible per-image stores from full runs. Their journals carry wall-clock times. Deliverables <em>are</em> in scope (C11).</p></li>
+</ul>
+<h3 id="23-anti-goals-failure-even-if-everything-works">2.3 Anti-goals (failure even if everything "works")</h3>
+<ul>
+<li>A store rewrite that drops another pipeline's run folder or a carried embedding entry.</li>
+<li>A re-measure that renumbers or duplicates a pipeline's folder, or leaves rows from its previous write beside the new ones.</li>
+<li>Two run folders in one store with the same number.</li>
+<li>An in-place run that changes a store's pixels, or deletes or overwrites an input.</li>
+<li>A per-colony vector readable against an objmap it was not computed from.</li>
+<li>Embedding vectors appearing in <code>master_measurements.parquet</code>, <code>measurements.*</code>, the splits, or any TSV.</li>
+<li><code>dvc repro</code> deleting a run's resumable state, figures, or embeddings.</li>
+<li>Any rewrite of the user's metadata snapshot bytes.</li>
+<li>The suffix rename changing AutoConvertRaw-GC's <code>pipeline_sha256</code>.</li>
+</ul>
+<h2 id="3-constraints-verified">3. Constraints (verified)</h2>
+<h3 id="31-dvc">3.1 DVC</h3>
+<p>Verified 2026-11-12 against the DVC docs (context7 <code>/treeverse/dvc.org</code>) and the DVC source (<code>iterative/dvc@main</code>).</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Fact</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Params files may be YAML 1.2, JSON, TOML 1.0 or Python.</td>
+<td>docs: <code>user-guide/project-structure/dvcyaml-files.md</code>, <code>command-reference/params</code></td>
+</tr>
+<tr class="even">
+<td>The parser is chosen by the <strong>last</strong> suffix, lower-cased. <code>.json</code>, <code>.toml</code> and <code>.py</code> have handlers; <strong>any other suffix gets the YAML loader, dumper and modifier.</strong></td>
+<td>source: <code>dvc/utils/serialize/__init__.py</code> (<code>LOADERS</code>/<code>DUMPERS</code>/<code>MODIFIERS</code> are <code>defaultdict(lambda: …yaml)</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>modify_json</code> writes through <code>json.dump</code> with no indent or sort arguments. The intermediate helpers were not inspected, so the exact output formatting is <strong>unverified</strong>; expect a one-line file.</td>
+<td>source: <code>dvc/utils/serialize/_json.py</code></td>
+</tr>
+<tr class="even">
+<td>Stage outputs are deleted before the stage runs unless <code>persist: true</code>.</td>
+<td>docs: <code>command-reference/repro.md</code></td>
+</tr>
+<tr class="odd">
+<td><code>cache: false</code> on any output disables the run cache for that stage.</td>
+<td>docs: <code>dvcyaml-files.md</code> output subfields</td>
+</tr>
+<tr class="even">
+<td><code>cache.type</code> default is <code>reflink,copy</code>. Reflinks need Btrfs, XFS or OCFS2 on Linux, so on GPFS every checkout is a <strong>copy</strong>. With <code>hardlink</code>/<code>symlink</code>, DVC makes linked files read-only, and modifying them in place corrupts the cache.</td>
+<td>docs: <code>project-structure/configuration.md</code>, <code>data-management/large-dataset-optimization.md</code></td>
+</tr>
+<tr class="odd">
+<td><code>.dvcignore</code> patterns from a higher directory can exclude paths inside an output directory, but <code>dvc repro</code>/<code>dvc exp run</code> <strong>may remove ignored files</strong>. A <code>.dvcignore</code> inside an output directory is an error.</td>
+<td>docs: <code>project-structure/dvcignore-files.md</code></td>
+</tr>
+<tr class="even">
+<td>Metrics: JSON, TOML 1.0, YAML 1.2. Plots: JSON, YAML 1.2, CSV, <strong>TSV</strong>, or images. Parquet is neither.</td>
+<td>docs: <code>command-reference/metrics</code>, <code>command-reference/plots</code></td>
+</tr>
+<tr class="odd">
+<td><code>dvc.yaml</code> may declare <code>metrics:</code>/<code>plots:</code> at top level, outside any stage, pointing at files inside a stage's directory out. Two stages may not declare the same or overlapping outs.</td>
+<td>docs: <code>start/data-pipelines/metrics-parameters-plots.md</code>, <code>command-reference/stage/add.md</code></td>
+</tr>
+<tr class="even">
+<td>A directory output is one <code>.dir</code> cache entry. For "tens of thousands of small files or object-store-scale datasets" DVC's docs point to lakeFS.</td>
+<td>docs: <code>command-reference/add.md</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="32-phenotypic">3.2 PhenoTypic</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Fact</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Typed config suffixes are <code>.json.pht-pipe</code>, <code>.json.pht-op</code>, <code>.json.pht-cc</code>, <code>.json.pht-tune</code>. Plain <code>.json</code> is already accepted as legacy for pipelines and tune specs. Matching is centralised in <code>has_config_suffix</code> / <code>ensure_typed_json_suffix</code>.</td>
+<td><code>sdk_/_io_constants.py:103-154</code></td>
+</tr>
+<tr class="even">
+<td>Suffix footprint: <code>pht-pipe</code> in 20 src / 54 test / 10 doc files; <code>pht-op</code> 3/2/0; <code>pht-cc</code> 3/2/0; <code>pht-tune</code> 11/21/0. No such file is git-tracked.</td>
+<td>grep, 2026-11-12</td>
+</tr>
+<tr class="odd">
+<td>The output root holds three siblings: <code>deliverables/</code>, <code>results/</code>, <code>.phenotypic/</code>.</td>
+<td><code>_cli_readme_generator.py:98-125</code>, <code>phenotypic_cache_dir</code> (<code>_io_constants.py:1069</code>)</td>
+</tr>
+<tr class="even">
+<td>Generated CSV writers: the mirror and splits (<code>_cli_output_manager.py</code>), named analysis (<code>:752</code>), error-analysis publication (<code>_gui/results_viewer/_error_tab/_publication.py:588</code>), curation labels (<code>_curation_labels.py:965</code>), filtered-state export (<code>_filtered_state.py:586</code>), migrate's <code>metadata.canonical.csv</code> (<code>sdk_/_metadata_migration.py:2935</code>). The analysis manifest records <code>csv</code> and <code>csv_sha256</code> fields (<code>plotting/_pipeline/_analysis_artifacts.py:37-41</code>).</td>
+<td>grep</td>
+</tr>
+<tr class="odd">
+<td>Input readers: <code>join_metadata</code> already picks tab vs comma by suffix (<code>post/_join_metadata.py:186</code>). <code>_metadata_migration.py:469</code> and <code>_cli_reference.py:400</code> assume comma. <code>--metadata</code> is CSV-only in the CLI (<code>metadata_csv_payload</code>).</td>
+<td>grep; <code>_cli/CLAUDE.md</code></td>
+</tr>
+<tr class="even">
+<td>A full store save starts from an empty <code>.part</code> and carries only figure runs. The root is rebuilt.</td>
+<td><code>_image_io_handler.py:1468</code>, <code>:1478</code></td>
+</tr>
+<tr class="odd">
+<td>The measure/recompile rewrite hard-link-copies the store, then <code>rmtree(part/tables)</code>. Top-level groups and root attributes survive.</td>
+<td><code>sdk_/_measurement_tables.py:638-718</code></td>
+</tr>
+<tr class="even">
+<td>Process stores are consolidated inside the <code>.part</code> and are "written once and never mutated".</td>
+<td><code>_cli_process_only.py:224-247</code>, <code>_image_io_handler.py:1511</code></td>
+</tr>
+<tr class="odd">
+<td><code>MeasureFeatures</code> frames merge into the one measurement table. A column no <code>MeasurementInfo</code> owns is copied into every split.</td>
+<td><code>_image_pipeline_core.py:1122</code>, <code>util/_measurement_outputs.py:96,200</code></td>
+</tr>
+<tr class="even">
+<td>A <code>GpuDetector</code> in any <code>meas</code> slot is refused. Non-<code>GpuDetector</code> measurers are not.</td>
+<td><code>_cli_validation.py:324-367</code></td>
+</tr>
+<tr class="odd">
+<td>DINO loading and patch extraction already exist: <code>load_dino_backbone</code> (:193), <code>hf_dino_id</code> (:172), <code>extract_patch_features</code> (:286), plus the license gate.</td>
+<td><code>detect/nn/_helper/_dino_support.py</code>, <code>_checkpoint_manager.py</code></td>
+</tr>
+<tr class="even">
+<td>Process mode executes only <code>ops</code> (<code>MODE_SLOTS</code>).</td>
+<td><code>_cli/CLAUDE.md</code>, run preflight</td>
+</tr>
+<tr class="odd">
+<td>Every SLURM run returns at submission, and its dependent finalizer is the sole publisher. 0.21.0 removed <code>--wait</code> (2026-11-05, commit <code>281430b2e</code>).</td>
+<td><code>_cli/CLAUDE.md</code> "SLURM chaining", <code>phenotypicCLI.py</code> main flow</td>
+</tr>
+<tr class="even">
+<td>A journal application's <code>sequence</code> is <code>len(applications) + 1</code>, local to one image's journal. A forward run builds the journal from its input, so over a raw input it is always <code>1</code>. <code>--mode measure</code> appends no application.</td>
+<td><code>_core/_provenance.py:374</code>, <code>_cli_process_single.py:300-321</code>, <code>phenotypicCLI.py:3526-3528</code></td>
+</tr>
+<tr class="odd">
+<td>Process mode refuses input and output roots that overlap, <strong>equality included</strong>. <code>--overwrite</code>/<code>--restart</code> refuse a run input they would delete.</td>
+<td><code>phenotypicCLI.py:2289-2306</code>, <code>:636-670</code></td>
+</tr>
+<tr class="even">
+<td>Operations that change <code>rgb</code>/<code>gray</code> are <code>ImageCorrector</code> subclasses (<code>CalibrateColorRpcc</code>, <code>ColorDenoise</code>, <code>DenoiseBlockMatch</code>, <code>CropImage</code>, the shrink correctors, <code>GridCorrector</code>s). Enhancers change only <code>detect_mat</code>.</td>
+<td><code>abc_/_image_corrector.py</code>, <code>correction/</code></td>
+</tr>
+<tr class="odd">
+<td>GUI code writes the CLI's error-analysis deliverable (<code>publish_error_analysis</code>, <code>combined.write_csv</code>) and rewrites <code>BundleLayout.mirror_csv</code> on every curation save.</td>
+<td><code>_cli_error_outputs.py:81-96</code>, <code>_gui/results_viewer/_error_tab/_publication.py:588</code>, <code>_curation_labels.py:839-850</code></td>
+</tr>
+<tr class="even">
+<td>A per-image record fingerprints its store by the root <code>zarr.json</code>, so any root rewrite stales it unless the record is republished (measure mode's <code>_republish_table_marker</code>).</td>
+<td><code>sdk_/_run_state.py:517-539</code>, <code>_cli_recompile_tables.py:51</code>, called at <code>_cli_process_single.py:567-581</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="33-autoconvertraw-gc">3.3 AutoConvertRaw-GC</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Fact</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Runs <code>process_single_apply_only_core(layer="rgb", process_format="zarr")</code> in a child process.</td>
+<td><code>src/acr_core/process_one.py:118</code></td>
+</tr>
+<tr class="even">
+<td>Publishing deletes the remote prefix, then uploads the tree.</td>
+<td><code>src/acr_core/worker.py:189-190</code></td>
+</tr>
+<tr class="odd">
+<td>The run-record pipeline name is <code>pipeline.json.pht-pipe</code>. The configs point at <code>pipelines/exfab_rig1.json.pht-pipe</code>. <code>pipeline_sha256</code> hashes file bytes.</td>
+<td><code>src/acr_core/plan.py:27</code>, <code>configs/*.yaml:32-33</code>, <code>worker.py:286</code></td>
+</tr>
+<tr class="even">
+<td>GC VMs are Spot <code>c3d-highmem-4</code> with no external IP; the pilot ran 612 s/image with a 16.3 GB peak. The PhenoTypic wheel is vendored at 0.20.2.</td>
+<td><code>configs/exfab.yaml:40-49</code>, <code>vendor/</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="34-prior-art-tables-and-embeddings-in-ome-zarr">3.4 Prior art: tables and embeddings in OME-Zarr</h3>
+<p>Checked 2026-11-12.</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Fact</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>OME-NGFF has <strong>no table or embedding spec</strong>. The AnnData-based table proposal, whose stated scope included low-dimensional embeddings, was closed unmerged on 2023-09-25.</td>
+<td><a href="https://github.com/ome/ngff/pull/64">https://github.com/ome/ngff/pull/64</a></td>
+</tr>
+<tr class="even">
+<td>RFC-8 (Collections and Extensibility) is "R1, under review". It defines no table format; it links derived data to images, and allows prefixed extension node types and attribute keys.</td>
+<td><a href="https://ngff.openmicroscopy.org/rfc/8/index.html">https://ngff.openmicroscopy.org/rfc/8/index.html</a></td>
+</tr>
+<tr class="odd">
+<td>ngio/Fractal keeps tables in <code>&lt;image&gt;/tables/&lt;name&gt;/</code>, with Parquet as one allowed backend. A feature table carries <code>type: "feature_table"</code>, <code>table_version</code>, <code>region</code> (label path), <code>backend</code>, <code>index_key</code>, <code>index_type</code> and <code>instance_key</code>.</td>
+<td><a href="https://biovisioncenter.github.io/ngio/stable/table_specs/overview/">https://biovisioncenter.github.io/ngio/stable/table_specs/overview/</a>, <code>…/table_types/feature_table/</code></td>
+</tr>
+<tr class="even">
+<td>SpatialData stores tables as AnnData. Per-object embeddings conventionally live in <code>obsm/&lt;key&gt;</code> as N × D matrices, and the table links to labels through <code>uns/spatialdata_attrs</code> (<code>region</code>, <code>region_key</code>, <code>instance_key</code>).</td>
+<td><a href="https://spatialdata.scverse.org/en/latest/generated/spatialdata.models.TableModel.html">https://spatialdata.scverse.org/en/latest/generated/spatialdata.models.TableModel.html</a></td>
+</tr>
+<tr class="odd">
+<td>Label <code>image-label.properties</code> holds a per-<code>label-value</code> JSON object. That is fit for class names, not vectors.</td>
+<td><a href="https://ngff-spec.readthedocs.io/en/latest/schemas/label">https://ngff-spec.readthedocs.io/en/latest/schemas/label</a></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-design">4. Design</h2>
+<p>The five parts below are independent enough to plan and ship in the order of §5.</p>
+<h3 id="part-a-typed-config-suffix-flip">Part A: typed config suffix flip</h3>
+<ul>
+<li><p><strong>A1</strong> New canonical suffixes: <code>.pht-pipe.json</code>, <code>.pht-op.json</code>, <code>.pht-cc.json</code>, <code>.pht-tune.json</code>. The old <code>.json.pht-*</code> forms become <strong>legacy read</strong> suffixes. Plain <code>.json</code> stays legacy-readable where it already is (pipelines, tune specs).</p></li>
+<li><p><strong>A2</strong> <code>ensure_typed_json_suffix(path, suffix)</code>:</p>
+<ul>
+<li>A bare stem gets the new suffix.</li>
+<li><code>x.json</code> becomes <code>x.&lt;typed&gt;.json</code> (insert before <code>.json</code>). Today it becomes <code>x.json.&lt;typed&gt;</code>.</li>
+<li>A path that already ends in a recognised suffix, old or new, is returned as given, so a file is never written somewhere other than where the caller asked.</li>
+</ul></li>
+<li><p><strong>A3</strong> Canonical run artifacts use the new name: <code>deliverables/pipeline.pht-pipe.json</code>, <code>deliverables/best_pipeline.pht-pipe.json</code>, and <code>.phenotypic/pipeline.pht-pipe.json</code>.</p>
+<ul>
+<li>Every non-GUI reader (<code>resolve_*</code>, <code>BundleLayout</code>, migrate's <code>*.pht-pipe</code> glob at <code>_cli_migrate.py:679</code>) also accepts the old names.</li>
+<li><code>migration_lock_path</code> maps legacy <code>pipeline.json</code>, the old name and the new name to the <strong>same</strong> lock identity, extending the existing rule at <code>_io_constants.py:248-259</code>.</li>
+</ul></li>
+<li><p><strong>A4</strong> One current pipeline file per folder:</p>
+<ul>
+<li><code>_seed_pipeline_config</code> seeds only when no config exists under any of the three names.</li>
+<li>When finalize rewrites the pipeline file, it publishes the new name first and then removes an old-name sibling.</li>
+<li>A plain <code>pipeline.json</code> is never removed. It may be the user's own file or a V1 run's, and the resolvers prefer the typed names over it.</li>
+</ul></li>
+<li><p><strong>A5</strong> AutoConvertRaw-GC:</p>
+<ul>
+<li>rename <code>pipelines/exfab_rig1.json.pht-pipe</code> to <code>pipelines/exfab_rig1.pht-pipe.json</code>;</li>
+<li>set <code>PIPELINE_NAME = "pipeline.pht-pipe.json"</code>;</li>
+<li>update the three configs and <code>pipeline_info.py</code>'s docstring.</li>
+</ul>
+<p>The bytes are unchanged, so <code>pipeline_sha256</code> is unchanged. A test asserts that. Stores written after the rename record the new basename in their provenance, so they are not byte-identical to stores written before it. The P5 rollout changes those stores anyway.</p></li>
+<li><p><strong>A6</strong> DVC note for the how-to page (C9): DVC addresses params by dotted path (<code>pipe_cfgs.&lt;OpKey&gt;.params.&lt;field&gt;</code>). An operation key containing <code>.</code> cannot be addressed. Document it; no code check in v1.</p></li>
+</ul>
+<h3 id="part-b-csv--tsv">Part B: CSV → TSV</h3>
+<ul>
+<li><p><strong>B1 Format.</strong> UTF-8, one header row, <code>\t</code> separator, <code>\n</code> line ends, with fields containing tab, newline or quote quoted with <code>"</code>. This is polars <code>write_csv( separator="\t")</code> / pandas <code>to_csv(sep="\t")</code> defaults. Extension <code>.tsv</code>.</p></li>
+<li><p><strong>B2 Generated files that switch:</strong></p>
+<ul>
+<li><code>measurements.tsv</code></li>
+<li><code>measurements_by_feature/&lt;Measurer&gt;.tsv</code></li>
+<li><code>measurements_by_category/&lt;Category&gt;.tsv</code></li>
+<li><code>&lt;AnalysisClass&gt;.tsv</code></li>
+<li>migrate's <code>metadata.canonical.tsv</code></li>
+</ul>
+<p>Add the new constants and path functions (<code>MEASUREMENTS_TSV</code>, <code>measurements_tsv_path</code>, …) <strong>beside</strong> the old ones. The old names stay defined as legacy read names (B8).</p></li>
+<li><p><strong>B3 Analysis manifest.</strong> Fields <code>csv</code>/<code>csv_sha256</code> become <code>tsv</code>/<code>tsv_sha256</code>, with a manifest <code>schema_version</code> bump. Readers accept the old shape.</p></li>
+<li><p><strong>B4 User-supplied inputs accept both</strong> <code>.csv</code> and <code>.tsv</code>, delimiter chosen by suffix, as <code>join_metadata</code> already does. That covers <code>--metadata</code>, reference metadata and tune ground truth. Extend this to <code>_metadata_migration.py:469</code>, <code>_cli_reference.py:400</code> and <code>metadata_csv_payload</code>. Any other suffix is refused, in every mode, as a usage error (exit 2). For process mode, where <code>--metadata</code> used to be ignored with a warning, this refusal is new.</p>
+<ul>
+<li>A user <code>.tsv</code> is read with the same <code>"</code> quoting the generated TSV uses (B1), which is what Excel, R and pandas write.</li>
+</ul></li>
+<li><p><strong>B5 Snapshots keep the user's bytes and extension:</strong> <code>deliverables/metadata.&lt;ext&gt;</code> and <code>.phenotypic/reference_metadata.&lt;ext&gt;</code>, where <code>&lt;ext&gt;</code> is the input's extension, lower-cased (<code>plates.TSV</code> snapshots to <code>metadata.tsv</code>). Readers locate the snapshot under either extension. Existing trees keep <code>metadata.csv</code>.</p>
+<ul>
+<li>Exactly one snapshot exists. If both suffixes exist, any run that would read the snapshot refuses with a usage error before writing anything. A full or recompile run given <code>--metadata</code> replaces the snapshot instead, which is how the pair is resolved; measure and migrate always refuse.</li>
+<li>A <code>--metadata</code> whose suffix differs from the snapshot's <strong>replaces</strong> it, as a same-suffix edit always has. The new snapshot is published first and the other suffix's file removed after, so a crash leaves two files (a loud refusal), never none (a silent run without the metadata join).</li>
+</ul></li>
+<li><p><strong>B6 Old run folders.</strong> Readers (results viewer, analysis app, <code>BundleLayout</code>, the README generator) fall back to the <code>.csv</code> name when no <code>.tsv</code> exists. A finalize into an old folder publishes the TSV, then removes the stale <strong>generated</strong> CSV sibling. This applies only to files in the B2 list, never to the metadata snapshot, <code>error_analysis.csv</code>, or the <code>measurements.csv</code> mirror that B9 keeps. A generated CSV whose producer has left the pipeline is not republished, so it stays.</p>
+<ul>
+<li>No CLI reader prefers <code>measurements.tsv</code> over <code>measurements.csv</code> until #283: curation updates only the <code>.csv</code> and <code>.parquet</code> (B9), so a TSV-first reader would read uncurated data.</li>
+</ul></li>
+<li><p><strong>B7 Public API is not renamed.</strong> A Python method or argument named <code>csv</code> keeps its name and behaviour. Docstring examples that write <code>.csv</code> (e.g. <code>_objects_accessor.py:690</code>) stay user-chosen. B applies to files the CLI generates; GUI exports follow in #283.</p></li>
+<li><p><strong>B8</strong> Update the README generator, the how-to pages, and the root and <code>_cli</code> CLAUDE.md output inventories. Every name the GUI imports from <code>sdk_</code> stays defined with its signature: <code>MEASUREMENTS_CSV</code> (re-exported by <code>_gui/_config.py</code>), <code>MEASUREMENT_TABLE_RELATIVE_PATH</code>, <code>measurements_csv_path</code>, and <code>metadata_csv_deliverable_path(output_dir)</code> with one argument. A test walks <code>src/phenotypic/_gui/**</code> for names imported from <code>phenotypic.sdk_</code> and asserts each still resolves, with an unchanged signature for each function the GUI calls.</p></li>
+<li><p><strong>B9 What stays CSV until #283.</strong> Both are written by GUI code (§3.2):</p>
+<ul>
+<li><code>error_analysis.csv</code>;</li>
+<li>the curated mirror. <code>BundleLayout.mirror_csv</code> keeps pointing at <code>measurements.csv</code>, the GUI's write target, and a new <code>mirror_tsv</code> names the TSV. Finalize writes both the <code>.tsv</code> and the <code>.csv</code> mirror, so the GUI keeps a current file to curate. <code>measurements_tsv</code> joins <code>_GUI_WRITTEN_PROOF_DESCRIPTORS</code> with <code>measurements_csv</code>, so a curation does not invalidate the run proof.</li>
+</ul></li>
+</ul>
+<h3 id="part-c-dvc-compatible-run-layout">Part C: DVC-compatible run layout</h3>
+<ul>
+<li><p><strong>C1 Outs.</strong> The supported DVC shape is three outs, all <code>persist: true</code></p>
+<ul>
+<li><code>&lt;out&gt;/deliverables</code></li>
+<li><code>&lt;out&gt;/results</code></li>
+<li><code>&lt;out&gt;/.phenotypic</code></li>
+</ul>
+<p>Add a regression test that no PhenoTypic path writes anything at the output root outside these three. Metrics and plots are declared in <code>dvc.yaml</code>'s <strong>top-level</strong> <code>metrics:</code>/<code>plots:</code> sections. Those may point inside an out (<code>deliverables/metrics.json</code>), so they create no overlapping outputs (DVC docs, <code>start/data-pipelines/metrics-parameters-plots.md</code>).</p></li>
+<li><p><strong>C2 <code>persist: true</code> is required, not optional.</strong> Continuation, figure runs and embeddings all depend on outputs surviving a re-run. <code>--overwrite</code> remains the only wipe.</p></li>
+<li><p><strong>C3 SLURM: a run waiter that never publishes.</strong> A SLURM run returns at submission, but DVC hashes a stage's outs the moment its command exits, and DVC aborts a stage whose command exits non-zero, which every submission does (exit 4, C10; verified on DVC 3.67.1 in P2 T6). So a SLURM-backed stage is one command: the waiter launches the submission itself, then waits for it.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cmd</span><span class="kw">:</span><span class="at"> phenotypic-wait --output &lt;out&gt; -- python -m phenotypic … -o &lt;out&gt; --slurm …</span></span></code></pre></div>
+<p><code>phenotypic-wait</code> is a new console script (<code>phenotypic._cli._cli_wait</code>). It blocks until the run is finished, then exits with the C10 code that the run would have returned locally.</p>
+<p><strong>Launch (<code>--</code> form).</strong> Everything after <code>--</code> is the submit command, run as a child process (an argv list, no shell) with the waiter's working directory, environment and terminal:</p>
+<ul>
+<li>child exit <code>4</code> (submitted): the waiter polls, as below;</li>
+<li>child exit <code>0</code> or <code>3</code> (a local run that already finished): returned as-is, with no poll;</li>
+<li>any other child exit (<code>1</code>, <code>2</code>, …) is returned as-is and nothing is polled; a child killed by signal N returns <code>128 + N</code>, the shell's convention;</li>
+<li>refused before launching, as a usage error (<code>2</code>): an empty command after <code>--</code>; a child that names an output (<code>-o</code>/<code>--output</code>) resolving to a different path from <code>--output</code>; a child running <code>--mode migrate</code>. A child that names no output (a wrapper script) is not checked. Only the tokens after the program <code>phenotypic</code> (or <code>-m phenotypic</code>) are read, so a wrapper's own <code>-o</code> (<code>srun -o log …</code>) is not taken as the run's output.</li>
+<li><code>--timeout-seconds</code> bounds the wait, never the submit.</li>
+<li><strong>Attach to a live run (user decision 2026-11-13, P2 review F2).</strong> Before launching, the waiter checks <code>live_slurm_job_ids(output_dir)</code>. If a job of that output is live, it skips the submit, prints that it is attaching to the live generation, and waits on it exactly as after a <code>4</code>. That is the recovery after the job running <code>dvc repro</code> hits its walltime: re-run it. The waiter cannot verify that the live run used the same pipeline; only one live run per output can exist, and the message names the generation.</li>
+<li><strong><code>--accept-failures</code> (user decision 2026-11-13, F1).</strong> Maps a final <code>3</code>, from the wait or from a local child, to <code>0</code> after printing the terminal-failure count, so a DVC stage over a dataset with one empty plate completes; <code>metrics.json</code>'s <code>images.failed</code> still records the count. Off by default: the exit-code contract is unchanged.</li>
+</ul>
+<p>Without <code>--</code>, the waiter only waits, for a run submitted some other way. That form is unchanged and is what a user reaches for after a submit they typed by hand.</p>
+<p><strong>Waiting:</strong></p>
+<ul>
+<li><p>It polls <code>resolve_run_state(output_dir, depth="shallow")</code> together with <code>live_slurm_job_ids(output_dir)</code> (<code>_cli/_cli_staged_orchestration.py</code>) on an interval. The default is 60 s, set with <code>--poll-seconds</code>.</p></li>
+<li><p>Both checks are needed. <code>resolve_run_state</code> takes an <code>active</code> lifecycle fence at face value and never asks the scheduler, so a finalizer killed for running out of memory would read as <code>active</code> forever. The scheduler query is what tells a running run from a dead one. That query lives in <code>_cli</code>, which <code>sdk_</code> may not import, so the waiter lives in <code>_cli</code>.</p></li>
+<li><p><strong>Any live job keeps it waiting, whatever the run state reads.</strong> A measure or same-metadata recompile resubmission leaves the previous run's proof current, so <code>complete</code> alone does not mean this submission finished. A scheduler that can't be queried (<code>unverified</code>/<code>unresolved</code> jobs) also keeps it waiting, with the reason printed each poll. It never guesses.</p></li>
+<li><p><strong>With no job live, it accepts only a publication by this submission.</strong> At its first poll it reads the lifecycle fence's generation. Published means one of: that generation's fence closed <strong>by its finalizer</strong>; a run proof whose <code>execution_epoch</code> is that generation; or an aggregate proof stamped with that generation. Then it exits <code>0</code>, or the complete-with-failures code when images failed terminally <strong>and every accepted image is resolved</strong> (a success or a terminal failure record). An image never attempted (an array task killed before it wrote a record) makes the run unfinished, not complete-with-failures. Anything else, including that, is a run that ended without finishing, and gets <code>5</code> (F5: the meaning of <code>5</code> is "ended without finishing; re-run the same command", which covers both "published nothing" and "published a partial aggregate").</p></li>
+<li><p>A <code>--mode measure</code> resubmission's failures are keyed by measure work ids, outside the forward run's inventory, so <code>resolve_run_state</code> cannot see them. Measure workers record a measure failure as a terminal-journal row (mode <code>measure</code>, <code>lifecycle_epoch</code> = the generation), which they did not do before #281; the waiter counts the distinct work ids journalled under its bound generation, so a SLURM measure with a failure exits <code>3</code> as the local one does (P2 review I5). <code>metrics.json</code> counts the same rows on SLURM, and the invocation's own failure count locally, so it agrees with the exit code. These rows are keyed by measure work ids, so they never affect a forward run's continuation.</p></li>
+<li><p>Two fields make that binding exact, with no clock comparison:</p>
+<ul>
+<li>the finalizer stamps the generation it ran under into the aggregate proof (<code>execution_epoch</code>, as the run proof already has). A proof without the field, written before this change, never counts for a new submission;</li>
+<li>the finalizer's close of the fence records <code>closed_by: "finalizer"</code>. A cancel (<code>cancel_generation</code>, <code>deactivate_orchestration</code>) leaves it unset, so a cancelled resubmission ends unpublished.</li>
+</ul>
+<p>Matching state alone is not enough: a <code>--mode measure</code> resubmission keeps no run state, so an earlier run's aggregate proof would still match after the new finalizer died.</p></li>
+<li><p>Process mode publishes no aggregate proof, so a process run whose images are all resolved, with some terminal failures, and no live job exits complete-with-failures. A cancelled process run (fence closed without <code>closed_by</code>) exits <code>5</code>.</p></li>
+<li><p>It does not serve <code>--mode migrate</code>, which keeps its lifecycle under an external control root.</p></li>
+<li><p>It never aggregates, publishes or cancels, so the double publication the old <code>--wait</code> had cannot recur. The submission it may launch is the ordinary CLI, whose SLURM path publishes nothing (the finalizer is the sole publisher), so launching it changes nothing about who writes. The waiter's own only write is the verification cache <code>resolve_run_state</code> already refreshes.</p></li>
+<li><p>In the <code>--</code> form its first poll comes after the submit returns, so the generation it binds to is the one that submission opened.</p></li>
+<li><p><code>--timeout-seconds</code> (default: none) gives up with its own exit code, without cancelling anything.</p></li>
+<li><p>The DVC stage itself runs inside a small, long-walltime Slurm job (1 CPU), because head nodes kill long-running processes. The how-to page (C9) gives the <code>sbatch</code> line.</p></li>
+</ul></li>
+<li><p><strong>C4 Metrics.</strong> New <code>deliverables/metrics.json</code>, written by <code>finalize_run</code> (the one FINAL writer):</p>
+<ul>
+<li><strong>Content:</strong> <code>schema_version</code>, <code>phenotypic_version</code>, <code>pipeline_sha256</code>; <code>images.{accepted, succeeded, failed}</code>; <code>objects.measured</code>; <code>metadata.phantoms</code>; and, when embeddings ran, per entry id <code>{rows, stale_skipped}</code>.</li>
+<li><strong>Derivation:</strong> values come from the run state (<code>resolve_run_state</code>) and the published frames, never from a new tracked value. This is a deliverable that PhenoTypic never reads back, so it is not a fifth tracked state.</li>
+<li><code>pipeline_sha256</code> is the sha every aggregated run folder shares, and <code>null</code> when they differ. It is not the run config's, which still names the full run's pipeline after <code>--mode measure</code> (D6a).</li>
+<li><strong>Stability:</strong> no timestamps, sorted keys, so identical runs give identical bytes and <code>dvc metrics diff</code> is meaningful.</li>
+</ul></li>
+<li><p><strong>C5 Params.</strong> The <code>--pipeline</code> file and any tune spec are listed as DVC params files. With A1 they end in <code>.json</code>, so DVC reads and writes them as JSON.</p></li>
+<li><p><strong>C6 Cache type: <code>reflink,copy</code> only.</strong> With <code>.phenotypic/</code> tracked, <code>hardlink</code> and <code>symlink</code> are <strong>unsupported</strong>.</p>
+<ul>
+<li>DVC makes linked files read-only. <code>.phenotypic/</code> holds files that are appended in place by concurrent writers: the terminal-failure journal, the event log and the SLURM lifecycle ledger.</li>
+<li>These cannot become write-then-rename: concurrent SLURM workers rely on appends.</li>
+<li>In-place writers under <code>deliverables/</code> (DuckDB <code>qc.duckdb</code>, GUI curation) have the same problem.</li>
+<li>On GPFS the default <code>reflink,copy</code> resolves to copy, so the default is already correct. It costs one extra copy of each output in the cache.</li>
+</ul>
+<p>The run preflight gains a warning when the enclosing DVC project's <code>.dvc/config</code> selects <code>hardlink</code> or <code>symlink</code>. The check reads one config file and never imports DVC.</p></li>
+<li><p><strong>C7 Post-run curation.</strong> GUI curation changes files inside the <code>deliverables</code> out, so <code>dvc status</code> reports the out as modified until the user runs <code>dvc commit</code>. This is intended: no code change, and the how-to page documents the commit step.</p></li>
+<li><p><strong>C8 Results size.</strong> Whether <code>results/</code> should be <code>cache: true</code> or <code>false</code> is decided by measurement, not reasoning. Time <code>dvc status</code> and <code>dvc commit</code> on a bounded subset of the migrated maresca copy (<code>2026-08-11-ome-zarr</code>, 1,354 GB in full): one dataset, <code>hdf/</code> excluded, in a scratch DVC repo on <code>/bigdata</code>. Run it as a Slurm job with an explicit <code>--time</code>, one config per fresh node, extrapolate to the full tree, and record the numbers in the how-to page.</p></li>
+<li><p><strong>C9 How-to page</strong> <code>docs/source/how_to/pages/dvc.md</code>. Contents:</p>
+<ul>
+<li>a local <code>dvc.yaml</code>, a SLURM one (one <code>phenotypic-wait … -- &lt;submit&gt;</code> command, C3), and a process-mode one, since process mode creates no <code>deliverables/</code> and its outs list must say so;</li>
+<li>the three outs with <code>persist</code>, and the cache-type rule (C6);</li>
+<li><code>dvc gc</code> for the cache growth that tracking <code>.phenotypic/</code> causes;</li>
+<li>params addressing with an example <code>dvc exp run -S</code>;</li>
+<li>top-level <code>metrics:</code>/<code>plots:</code>;</li>
+<li>the one-line-JSON caveat (§3.1) and the <code>dvc commit</code> step after curation;</li>
+<li>that an in-place run (E7) is not a DVC stage: a DVC stage writes new stores.</li>
+</ul></li>
+<li><p><strong>C10 Exit codes are a contract</strong>. Four distinct codes:</p>
+<ul>
+<li><strong>0</strong>: complete, no terminal failures;</li>
+<li>a distinct non-zero: <strong>complete with terminal image failures</strong>: every accepted image is resolved and at least one failed terminally. This holds for every mode, local and SLURM, recompile and staged GPU included (user decision 2026-11-13, P2 review F3/F4): a recompile over a run that carries failures exits <code>3</code>, and a staged-GPU run whose only unfinished images are terminal failures exits <code>3</code>, not <code>1</code>;</li>
+<li><strong>1</strong>: a runtime or config error (today's behaviour). A refusal raised as a Click usage error keeps Click's <code>2</code>;</li>
+<li>a distinct code: <strong>submitted to SLURM</strong>, so nothing is finished yet. Every SLURM run returns this at submission. <code>phenotypic-wait</code> (C3) returns one of the codes above once the run ends, plus its own codes for a run that ended without finishing (<code>5</code>) and for <code>--timeout-seconds</code> (<code>6</code>); in the <code>--</code> form, a submit that did not exit <code>4</code> returns the submit's own code.</li>
+</ul>
+<p>The builder confirms what a run with terminal failures returns today; I found no distinct code for it. The values are documented and pinned by tests.</p></li>
+<li><p><strong>C11 Byte-stable deliverables</strong>. For identical inputs, pipeline and PhenoTypic version, these files are byte-identical across runs:</p>
+<ul>
+<li>every table under <code>deliverables/</code> (Parquet and TSV);</li>
+<li><code>deliverables/embeddings/</code>;</li>
+<li><code>metrics.json</code>;</li>
+<li><code>schema.json</code>.</li>
+</ul>
+<p>That means no wall-clock or host values in them, stable row and column order (the contiguous shard split already gives order independence, <code>87f933cb</code>), and pinned Parquet writer metadata. Reports, dashboards and <code>.phenotypic/</code> are exempt. A test runs the same tiny run twice and compares digests. This matters because DVC re-runs every downstream stage when an upstream output's bytes change.</p></li>
+<li><p><strong>C12 <code>deliverables/schema.json</code></strong>. Every column of each published table, with:</p>
+<ul>
+<li>name, dtype and unit;</li>
+<li>the producing measurer;</li>
+<li>the <code>MeasurementInfo</code> member and its <code>desc</code>.</li>
+</ul>
+<p>It is generated from the schema enums the README generator already reads (one producer). Embedding tables list <code>embedding</code> as <code>FixedSizeList&lt;float16&gt;[D]</code> with the model.</p></li>
+<li><p><strong>C13 Restored state fails safe.</strong> A <code>dvc checkout</code> of another revision restores <code>.phenotypic/</code> from that revision.</p>
+<ul>
+<li>Per-image records bind store digests, so a record restored beside a store it doesn't describe is rejected, and the image re-runs. That outcome is behind, never wrong.</li>
+<li>Liveness and ownership files (tracked state #3) restored from another revision must not block or mislead. The live-SLURM guard already asks the scheduler rather than trusting the fence. The builder verifies the same for <code>gui_launch_owner</code> and the migration lease.</li>
+</ul></li>
+<li><p><strong>C14 Outs must exist.</strong> DVC expects declared outs to exist after the command. The builder verifies how DVC reports a missing out, then makes every mode create the outs its template declares, even on a run where every image fails.</p></li>
+</ul>
+<h3 id="part-d-per-pipeline-tables-in-the-store">Part D: per-pipeline tables in the store</h3>
+<p>An embedding belongs to the pipeline that produced it, exactly as that pipeline's scalar measurements do, so both live in the pipeline's own folder under <code>tables/</code>.</p>
+<ul>
+<li><p><strong>D1 Layout.</strong> <code>tables/</code> stays the top-level group, since it is already part of the store schema. Below it there is one folder per pipeline application that wrote measurements into this store:</p>
+<pre><code>tables/
+├── &lt;n&gt;-&lt;sha12&gt;/                         one folder per measuring pipeline
+│   ├── measurements/table.parquet       scalar measurements (was tables/measurements/)
+│   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
+│   └── embeddings/&lt;model&gt;/              e.g. dinov2-vitb14
+│       ├── crops/table.parquet          Object_Label | embedding
+│       └── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
+│                                        Grid_{Row,Col}Interval{Start,End} | embedding
+└── …</code></pre>
+<ul>
+<li><code>embedding</code> is <code>FixedSizeList&lt;float16&gt;[D]</code>.</li>
+<li>Every level is a Zarr v3 group document.</li>
+<li>Every subtable is optional. AutoConvertRaw-GC's folder holds only <code>embeddings/&lt;model&gt;/grid/</code>.</li>
+<li><code>&lt;model&gt;</code> names the model, so a second model is a sibling folder, never extra columns.</li>
+<li>Nothing goes in <code>ome.series</code> or <code>attributes.ome</code>.</li>
+</ul></li>
+<li><p><strong>D2 Folder name <code>&lt;n&gt;-&lt;sha12&gt;</code>.</strong></p>
+<ul>
+<li><code>&lt;n&gt;</code> is a <strong>store-local call-order counter</strong>. A new folder gets 1 + the highest number already used in this store, counting both its run folders and its <code>upstream</code> entries (D8). So a result store whose input carries AutoConvertRaw-GC's <code>1-&lt;sha&gt;</code> names its own folder <code>2-&lt;sha&gt;</code>.</li>
+<li>Numbers are never reused or renumbered, so two folders in one store never share a number, and "the latest run" never ties.</li>
+<li>The journal's <code>sequence</code> is not used: it is local to one journal, and a forward run over a raw input is always <code>1</code> (§3.2). The journal still logs every application.</li>
+<li><code>&lt;sha12&gt;</code> is the first 12 hex of the pipeline sha256 the journal records, which is the pipeline file's bytes. It is the same digest the figure run folders and AutoConvertRaw-GC use.</li>
+<li>When no pipeline digest is known (a programmatic <code>save2zarr</code>, an empty journal, or a converted <code>legacy</code> application), the folder is <code>&lt;n&gt;-unknown</code> with <code>pipeline_sha256: null</code>. Never fabricate a digest.</li>
+</ul></li>
+<li><p><strong>D3 Descriptor.</strong> <code>attributes.phenotypic.tables</code> moves to <code>schema_version: 2</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span> <span class="dt">&quot;schema_version&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;runs&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;2-a71e09c2b4f5&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;order&quot;</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;measurements&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…today&#39;s v1 measurement descriptor: path, measurement_columns, target…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span>     <span class="fu">{</span> <span class="dt">&quot;…today&#39;s metadata descriptor…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata_table&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;snapshot_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span><span class="fu">,</span> <span class="dt">&quot;join_keys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;…&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;join_kind&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;embeddings&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/crops&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/grid&quot;</span><span class="fu">:</span>  <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">},</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;upstream&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;1-3f9c2a1b7d04&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;input path relative to --input&gt;&quot;</span><span class="fu">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>                        <span class="dt">&quot;root_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span><span class="fu">,</span> <span class="dt">&quot;pipeline_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;64 hex&gt;&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
+<p>The root-level <code>metadata_table</code> block moves into its run. Each embedding entry has these fields:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>model</code></td>
+<td><code>{family, hf_id, revision, patch_size}</code>, where <code>revision</code> is the resolved hub commit</td>
+</tr>
+<tr class="even">
+<td><code>dim</code>, <code>dtype</code></td>
+<td>vector length and stored type</td>
+</tr>
+<tr class="odd">
+<td><code>pooling</code></td>
+<td>the pooling mode used</td>
+</tr>
+<tr class="even">
+<td><code>key</code></td>
+<td><code>Object_Label</code> for crops, <code>Grid_RowMajorIdx</code> for grid</td>
+</tr>
+<tr class="odd">
+<td><code>input</code></td>
+<td><code>{series, level}</code></td>
+</tr>
+<tr class="even">
+<td><code>producer</code></td>
+<td><code>{class, params_sha256}</code></td>
+</tr>
+<tr class="odd">
+<td><code>binds</code></td>
+<td>for crops, <code>{objmap_path, objmap_sha256}</code>; for grid, <code>{array_sha256, grid_sha256}</code></td>
+</tr>
+<tr class="even">
+<td><code>stale</code></td>
+<td><code>false</code> when written</td>
+</tr>
+<tr class="odd">
+<td><code>files</code></td>
+<td><code>[{path, sha256, media_type}]</code></td>
+</tr>
+</tbody>
+</table></div></li>
+<li><p><strong>D4 Interop attributes</strong> go on each table group (§3.4):</p>
+<ul>
+<li>Scalar <code>measurements/</code> groups carry ngio's feature-table attributes: <code>{type: "feature_table", table_version: "1", region: {path: &lt;relative path to the objmap label&gt;}, backend: "parquet", index_key: "Object_Label", index_type: "int", instance_key: "Object_Label"}</code>.</li>
+<li>Embedding table groups carry <code>type: "phenotypic:embedding_table"</code>, a prefixed extension type in RFC-8's style, plus <code>backend</code> and <code>index_key</code>.</li>
+<li>The builder installs ngio in a test and checks whether it discovers tables nested one level down. If it doesn't, keep the attributes, which are harmless, and record the limit. Do not flatten the layout to suit ngio.</li>
+</ul></li>
+<li><p><strong>D5 Carry rule.</strong> Every writer carries every run folder other than its own, and the <code>upstream</code> block, unchanged. The writers are:</p>
+<ul>
+<li>save2zarr (full, Stage 1, Stage 3);</li>
+<li>process <code>_save_store</code>;</li>
+<li>the measure/recompile rewrite.</li>
+</ul>
+<p>Further rules:</p>
+<ul>
+<li>The measure rewrite's <code>rmtree(part/tables)</code> (<code>_measurement_tables.py:694</code>) narrows to <code>rmtree(part/tables/&lt;own run&gt;)</code>. That folder's files are rewritten as new inodes, which is the figures rule.</li>
+<li>A write that produces no tables of its own (the initial-checkpoint saves, the Stage 1 save) carries <strong>every</strong> folder, its own pipeline's included. It excludes its own folder only when it writes that folder's tables, the rule figures already follow (<code>_image_io_handler.py:1468-1470</code>).</li>
+<li>Only <code>--overwrite</code> deletes run folders.</li>
+<li>Forward modes refuse a store still in the v1 flat layout and point at <code>--mode migrate</code>, as they already refuse unconverted trees. The check is CLI-only, in the read-only half, and stops at the first v1 store. It is not added to <code>datasets_needing_migration</code>, which every <code>resolve_run_state</code> call (GUI and <code>phenotypic-wait</code> polls included) runs.</li>
+</ul></li>
+<li><p><strong>D6 Which folder a writer owns, and how re-runs avoid duplicates.</strong></p>
+<ul>
+<li>A writer looks for an existing run folder with its pipeline's sha256. If one exists, it <strong>replaces</strong> that folder, keeping its number. The folder's files are rewritten as new inodes, and no row from the previous write survives. So re-running a pipeline, in any mode, never duplicates measurements.</li>
+<li>Otherwise it creates a new folder with the next number (D2). Every other folder is carried untouched (D5).</li>
+<li>A write with an unknown sha replaces the highest-numbered <code>-unknown</code> folder, so notebook re-saves don't pile up folders.</li>
+<li>So <code>--mode measure</code> over a full run's stores replaces the full run's folder when the pipeline is the same, and adds a folder beside it when the pipeline differs. This matches how measure mode already reuses a figure run folder for the same pipeline.</li>
+</ul></li>
+<li><p><strong>D6a Which folder a reader uses.</strong></p>
+<ul>
+<li>Finalize, recompile and measure aggregate, per image, the folder that image's record certifies: the completion marker already names the table it hashes (<code>marker_claims_measurement_authority</code>). They never select by "the run's pipeline sha", which goes wrong after <code>--mode measure</code>: measure mode keeps no run state, so the run config still names the full run's pipeline.</li>
+<li>A reader without a record (the <code>sdk_</code> readers, notebooks) defaults to the highest-numbered folder that holds <code>measurements</code>. A grid-only process folder has none.</li>
+</ul></li>
+<li><p><strong>D7 Stale binding</strong> is recomputed on every write, never latched:</p>
+<ul>
+<li><strong>Crops:</strong> compare the entry's <code>objmap_sha256</code> with the objmap being written.</li>
+<li><strong>Grid:</strong> compare <code>array_sha256</code> with the embedded level-0 array.</li>
+<li>Set <code>stale = (they differ)</code>, and keep the files either way.</li>
+<li>Readers and aggregation refuse a stale entry.</li>
+<li>Recomputing is what lets a staged run work: Stage 1 writes an all-zeros objmap, and Stage 3's identical objmap clears the flag again.</li>
+<li>Digests are computed from in-memory arrays at write time.</li>
+<li>The measure rewrite writes no objmap and leaves <code>stale</code> unchanged.</li>
+</ul></li>
+<li><p><strong>D8 Upstream reference.</strong></p>
+<ul>
+<li>When an input image is a PhenoTypic store with a v2 <code>tables</code> descriptor, the result store's <code>upstream</code> records each of the input's run folders, along with any entries in the input's own <code>upstream</code>, so the chain is complete.</li>
+<li>Nothing is copied.</li>
+<li>A reader that follows a reference compares <code>root_sha256</code> and reports "upstream changed" on a mismatch, for example after an AutoConvertRaw-GC reprocess.</li>
+</ul></li>
+<li><p><strong>D9 Integrity.</strong></p>
+<ul>
+<li>File <code>sha256</code>s live in the root, so the completion marker covers them.</li>
+<li>Missing or corrupted embedding bytes make that entry unreadable. They do not revoke the run's measurement authority: embeddings are additive.</li>
+</ul></li>
+<li><p><strong>D10 Migration.</strong> <code>--mode migrate</code> converts a v1 store's <code>tables/measurements</code> and <code>tables/metadata</code> into <code>tables/1-&lt;sha12&gt;/</code>.</p>
+<ul>
+<li>The sha is the most recent figure run's sha when present, since a v1 table rewritten by <code>--mode measure</code> was never journaled. Otherwise it is the latest journal application that measured. With neither, the folder is <code>1-unknown</code> (D2).</li>
+<li><code>replace_embedded_measurement_table</code>, which migrate uses to import legacy per-image Parquets, writes v2 directly, so no tree is left in a mixed layout. Every glob of the flat path (<code>_cli_migrate.py:1057-1061</code>) goes through the resolver.</li>
+<li>The conversion rewrites each root, so it republishes each converted image's record and then the run proof, as measure mode does. A tree that read <code>complete</code> before migrate reads <code>complete</code> after it.</li>
+</ul></li>
+</ul>
+<h3 id="part-e-producers-deliverables-autoconvertraw-gc">Part E: producers, deliverables, AutoConvertRaw-GC</h3>
+<ul>
+<li><p><strong>E1 <code>MeasureEmbedding</code> ABC</strong> (<code>abc_/</code>), a <code>MeasureFeatures</code> subclass with <code>regions: Literal["objects", "grid"]</code>:</p>
+<ul>
+<li><code>objects</code> requires a non-empty objmap and writes <code>crops/</code>.</li>
+<li><code>grid</code> requires a grid definition, not an objmap, and writes <code>grid/</code>.</li>
+</ul>
+<p>A whole-image embedding is a 1 × 1 grid, so there is no separate image scope. <code>measure(image)</code> returns the table's frame directly, for notebook use.</p></li>
+<li><p><strong>E2 Pipeline routing.</strong></p>
+<ul>
+<li><code>ImagePipeline.measure()</code> keeps its return contract and does not run <code>MeasureEmbedding</code> entries.</li>
+<li>A new <code>ImagePipeline.embed(image) -&gt; dict["&lt;model&gt;/&lt;crops|grid&gt;", EmbeddingPayload]</code> runs them.</li>
+<li>The CLI per-image writers call both, then write one run folder (D1). These are the single-pass worker, Stage 3, measure mode and process mode.</li>
+<li>Both docstrings say so.</li>
+</ul></li>
+<li><p><strong>E3 <code>MeasureDinoEmbedding</code></strong> (<code>measure/_measure_dino_embedding.py</code>). Fields:</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type, default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>size</code></td>
+<td><code>DinoSize = "base"</code></td>
+<td>first field; <code>small</code>, <code>base</code> or <code>large</code></td>
+</tr>
+<tr class="even">
+<td><code>version</code></td>
+<td><code>DinoVersion = 2</code></td>
+<td>the DINO version; the class name already says DINO</td>
+</tr>
+<tr class="odd">
+<td><code>revision</code></td>
+<td><code>None</code> (a <code>str</code> when pinned)</td>
+<td>the weights' Hugging Face commit (any ref the hub accepts). <code>None</code> loads the latest. The pin is in the pipeline file, so changing it changes the pipeline hash. Either way the entry records the commit actually loaded (D3)</td>
+</tr>
+<tr class="even">
+<td><code>regions</code></td>
+<td><code>"objects"</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>grid</code></td>
+<td><code>ManualGridFinder</code> (an <code>OperationField</code>)</td>
+<td>required when <code>regions="grid"</code>, refused otherwise; the rig's cell edges in pixels (E3a)</td>
+</tr>
+<tr class="even">
+<td><code>pooling</code></td>
+<td><code>"crop_cls"</code></td>
+<td><code>crop_cls</code>, <code>crop_mean</code> or <code>masked_dense</code>; a grid cell is cropped from its rectangle exactly as an object is from its bbox</td>
+</tr>
+<tr class="odd">
+<td><code>crop_px</code></td>
+<td><code>224</code></td>
+<td>validated as a multiple of the loaded patch size</td>
+</tr>
+<tr class="even">
+<td><code>crop_pad_frac</code></td>
+<td><code>0.25</code></td>
+<td>objects only</td>
+</tr>
+<tr class="odd">
+<td><code>mask_background</code></td>
+<td><code>False</code></td>
+<td>objects only</td>
+</tr>
+<tr class="even">
+<td><code>dtype</code></td>
+<td><code>"float16"</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>batch_size</code></td>
+<td><code>64</code></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>device</code></td>
+<td><code>"auto"</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div></li>
+<li><p><strong>E3a Grid coordinates are per-rig parameters.</strong> A rig puts plates at the same pixels in every image, so a grid is fixed pixel edges, the way the checker-card ROIs are fixed pixel boxes. The edges are <strong>parameters, never constants</strong>, so a user with a different rig sets their own:</p>
+<ul>
+<li>They live in the pipeline file as <code>ManualGridFinder(row_edges=[…], col_edges=[…])</code>. Changing rigs means changing those two lists, or using a pipeline file per rig.</li>
+<li>They are addressable as DVC params, e.g. <code>dvc exp run -S 'rig2.pht-pipe.json:meas.&lt;key&gt;.params.grid.params.row_edges=[…]'</code>. The builder confirms the exact key path the serializer produces.</li>
+<li>Coordinates are in the pixel frame of the image the measurer sees, after <code>ops</code>. Color correction and denoising don't change geometry.</li>
+<li>A cell that falls outside an image fails that image, with a message naming the cell and the image size, rather than being clipped.</li>
+<li>For <code>phenotypic-tune</code>, the edges are <code>TuneSpec(tunable=False)</code> structural plate geometry, as <code>ManualGridFinder.nrows/ncols</code> already are. They are user-set, not searched.</li>
+<li>No coordinates are shipped as defaults. The rig1 edges are supplied by the user when the AutoConvertRaw-GC pipeline is updated (E6).</li>
+</ul>
+<p>Implementation notes:</p>
+<ul>
+<li>The model token is <code>dinov{version}-vit{s|b|l}{patch}</code>, built from <code>version</code> and <code>size</code>, e.g. <code>dinov2-vitb14</code>. The fields drop the <code>dino_</code> prefix because the class name already says DINO.</li>
+<li>Reuse the <code>_dino_support.py</code> helpers.</li>
+<li>Keep a module-level backbone cache keyed by <code>(hf_id, revision, device)</code>.</li>
+<li>Run under <code>torch.inference_mode()</code> with <code>model.eval()</code>.</li>
+<li>Import heavy modules lazily (startup-import guards).</li>
+<li>DINOv3 goes through <code>PHENOTYPIC_ACCEPT_MODEL_LICENSE</code>.</li>
+<li>Declare <code>preflight_requirements()</code> for <code>torch</code>/<code>transformers</code>.</li>
+<li>Tune annotations go on numeric fields, per the <code>adding-an-operation</code> skill.</li>
+<li>Add a <code>DINO_EMBEDDING</code> schema enum, authoring <code>label</code>/<code>desc</code> only (no <code>bio_desc</code>), exported from <code>phenotypic.schema</code>.</li>
+</ul></li>
+<li><p><strong>E4 Process mode runs the pipeline's measurements.</strong></p>
+<ul>
+<li><code>MODE_SLOTS["process"]</code> becomes <code>ops</code> + <code>meas</code>, and the preflight's mode walk follows. <code>post</code>/<code>filters</code>/<code>model</code> still don't run, and no deliverables are built.</li>
+<li><code>process_single_apply_only_core</code> runs <code>measure()</code> and <code>embed()</code> after <code>apply()</code>, and writes the run folder into the <code>.part</code> before consolidation. The store stays write-once.</li>
+<li>A process store holds no objmap (<code>write_objmap=False</code>). So a measurer that needs objects is refused in the read-only half, with one usage-error line naming it, rather than writing a table keyed on labels the store can't resolve.</li>
+<li><code>meas</code> is refused unless the output is a store (<code>--layer rgb</code>/<code>gray</code> with zarr format). A flat TIFF or PNG export has nowhere to put a table.</li>
+<li>The same two checks also run in <code>process_single_apply_only_core</code>, because AutoConvertRaw-GC calls it directly and never passes the CLI's refusal.</li>
+<li><strong>Bump <code>PROCESS_LAYER_SEMANTICS_REVISION</code> 4 → 5.</strong> Process mode used to ignore <code>meas</code>, so a process tree whose pipeline already had measurers would otherwise resume onto stores that lack the tables it now writes.</li>
+</ul></li>
+<li><p><strong>E5 Deliverables.</strong> The finalizer aggregates <strong>its own</strong> run folder, chosen per image by D6a:</p>
+<ul>
+<li>the master comes from <code>measurements/</code>, exactly as today;</li>
+<li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;crops|grid&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key and <code>embedding</code>;</li>
+<li><code>deliverables/embeddings/manifest.json</code> holds each entry's descriptor, row count, sha256 and the stores skipped as stale.</li>
+</ul>
+<p>Rules:</p>
+<ul>
+<li>These files are Parquet only. They are never joined to metadata, and never in master, mirror, splits or any TSV.</li>
+<li>A failure fails finalization, like the master.</li>
+<li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
+<li>A <code>MeasureEmbedding</code> gets no by-feature split and no column section in the deliverables README, which document mirror columns. The README documents the embedding deliverables separately. The vector column is named <code>embedding</code>, and <code>schema.json</code> lists it under each embedding table (C12).</li>
+</ul></li>
+<li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
+<ul>
+<li>add <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid", grid=ManualGridFinder(...))</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
+<li>vendor the new wheel;</li>
+<li>install the <code>foundation</code> extra in the <code>Dockerfile</code> with CPU torch, bake in the pinned weights, and set <code>HF_HUB_OFFLINE=1</code>;</li>
+<li>make <code>verify_store</code> check that the run folder's grid entry exists (an <code>expected_embeddings</code> field in <code>run.json</code>, written by <code>plan.py</code>), the way figures are checked;</li>
+<li>re-pilot memory and timeout on the smoke configs, never on <code>data/</code>.</li>
+</ul>
+<p>Backfill of done images is an explicit <code>--reprocess-changed</code> decision at rollout. It reruns calibration and BM3D denoise.</p></li>
+<li><p><strong>E7 In place.</strong> <code>--mode process</code> with <code>--output</code> resolving to the same directory as <code>--input</code> adds the pipeline's run folder to each input store where it is. Any other <code>--output</code> writes new stores, as today. An output strictly inside an input, or an input strictly inside the output, stays refused (§3.2).</p>
+<ul>
+<li><strong>A store update that never rewrites pixels.</strong> Hard-link the store into a <code>.part</code>, write the run folder (D6) and the run's figure folder, append the process application to the journal, write the root last, consolidate, and swap, reusing the measure rewrite's transaction. Pixel arrays are hard links and are never rewritten.</li>
+<li>Before the swap, the writer checks that the live root still has the digest it started from. If it changed, the writer rebuilds once from the new root, and otherwise fails the image. The output's existing single-run guard already keeps a second run off the same tree.</li>
+<li><code>.phenotypic/</code> lives under the input root, as under any <code>--output</code>.</li>
+<li><strong>Refused in the read-only half</strong>, one usage-error line each, before anything is written:
+<ul>
+<li><code>--overwrite</code> and <code>--restart</code>, which would delete inputs;</li>
+<li><code>--process-format tiff</code>, and any layer that writes no store;</li>
+<li>an input that is not a PhenoTypic store (a raw image, a third-party OME-Zarr), which has nothing to write into;</li>
+<li>a <code>--layer</code> that is not the store's primary series;</li>
+<li>an <code>ObjectDetector</code> anywhere in the pipeline. A store holds one label image, so a second detecting pipeline would leave the first one's table pointing at labels it was not computed from;</li>
+<li>an <code>ImageCorrector</code> anywhere in <code>ops</code>, which changes the pixels the store holds.</li>
+</ul></li>
+<li><strong>Checked per image.</strong> After <code>apply()</code>, the exported layer's level-0 digest must equal the store's. Otherwise that image fails without writing. This catches any pixel-changing op the class check misses.</li>
+<li><strong>Continuation.</strong> Re-running the same command does no work for an image whose store already holds this pipeline's folder with every entry <code>stale: false</code>. The run's own write changes the store's root, so the work id must not include the bytes the run writes.</li>
+<li><strong>Where to run it.</strong> An AutoConvertRaw-GC reprocess deletes and re-uploads a store, dropping every folder added in place. So in place runs on a local copy, such as the <code>/bigdata</code> mirror, never on the bucket or the NAS tree AutoConvertRaw-GC publishes. The how-to page says so.</li>
+</ul></li>
+</ul>
+<h2 id="5-order">5. Order</h2>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Phase</th>
+<th>Content</th>
+<th>Depends on</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>P0</td>
+<td>Part A suffix flip, PhenoTypic and AutoConvertRaw-GC</td>
+<td>none</td>
+</tr>
+<tr class="even">
+<td>P1</td>
+<td>Part B TSV</td>
+<td>none (parallel with P0)</td>
+</tr>
+<tr class="odd">
+<td>P2</td>
+<td>Part C DVC layout, <code>metrics.json</code>, how-to page, C8 measurement</td>
+<td>P0, P1 (the template names their files)</td>
+</tr>
+<tr class="even">
+<td>P3</td>
+<td>Part D: <code>tables/</code> v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, <code>--mode migrate</code> conversion, reader updates (finalizer, measure, recompile, marker, and the <code>sdk_</code> readers the GUI calls)</td>
+<td>none (parallel with P0–P2)</td>
+</tr>
+<tr class="odd">
+<td>P4</td>
+<td>Part E1–E3a, E5: <code>MeasureEmbedding</code>, <code>MeasureDinoEmbedding</code> (crops + grid), <code>embed()</code>, deliverables</td>
+<td>P3</td>
+</tr>
+<tr class="even">
+<td>P5</td>
+<td>Part E4, E6, E7: process-mode measurements, in place, AutoConvertRaw-GC rollout</td>
+<td>P3, P4, P0</td>
+</tr>
+<tr class="odd">
+<td>Later</td>
+<td>GPU execution (Stage-2 dense or Stage 4)</td>
+<td>P4 timings</td>
+</tr>
+</tbody>
+</table></div>
+<p>P3 is now the largest phase. Every reader of <code>tables/measurements/table.parquet</code> changes: the finalizer, measure mode, recompile, migrate, the <code>sdk_</code> readers and the completion marker. Derive its affected test surface from importers, not from directory names (root CLAUDE.md).</p>
+<p>Testing follows root CLAUDE.md: step guards, then per-task files, the affected surface once per phase, and the full sharded regression once at the end, on Slurm. Store changes also need an <strong>independent reader</strong> check (zarr-python + pyarrow, never only PhenoTypic's own reopen), per the <code>working-with-ome-zarr</code> skill.</p>
+<h2 id="6-left-to-the-implementer">6. Left to the implementer</h2>
+<ul>
+<li>the exact TSV quoting configuration;</li>
+<li>the writer audit for C6;</li>
+<li>the C8 measurement;</li>
+<li>whether ngio discovers nested tables (D4);</li>
+<li>how the in-place work id leaves out the bytes the run writes (E7);</li>
+<li>the exact numeric values of the C10 codes, chosen to avoid the codes Click and Python already use (1, 2);</li>
+<li>today's exit code for a run with terminal failures (C10);</li>
+<li>liveness files restored by a checkout (C13);</li>
+<li>DVC's missing-out behaviour (C14);</li>
+<li>test placement;</li>
+<li>naming of private helpers.</li>
+</ul>
+</section></main>
+<footer>Rendered from docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
+</div>

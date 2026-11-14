@@ -189,12 +189,19 @@ Output Options
    ``master_measurements.parquet``. The column is included by default.
 
 ``--metadata PATH``
-   CSV file to left-join onto the measurements mirror on shared columns. Every
+   A ``.csv`` or ``.tsv`` table (the delimiter follows the suffix; any other
+   suffix is refused with a usage error) to left-join onto the measurements
+   mirror on shared columns. The run keeps a byte-for-byte copy under the same
+   suffix, ``deliverables/metadata.csv`` or ``deliverables/metadata.tsv``. Every
    CSV row survives: one that matches no measured object is kept with null
    measurements and ``QC_MetadataOnly`` set to ``true``, so strains that were
    never detected stay visible instead of being silently dropped. Measurement
    rows with no matching CSV row *are* dropped. The join lands on
-   ``deliverables/measurements.csv`` and its derivatives —
+   ``deliverables/measurements.tsv`` (and ``measurements.csv``, kept for the
+   results viewer's curation until #283) and its derivatives — the per-feature
+   and per-category splits and ``<AnalysisClass>`` tables are TSV only; a
+   re-finalize into an older folder deletes the ``.csv`` twins it replaces, and
+   never ``metadata.*``, ``measurements.csv`` or ``error_analysis.csv``.
    ``master_measurements.parquet`` stays a clean, metadata-free archive.
    (The master is Parquet only: ``master_measurements.csv`` was removed, since
    the un-joined archive is not the file a human opens.)

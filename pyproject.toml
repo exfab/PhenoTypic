@@ -144,6 +144,7 @@ topology = [
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
 phenotypic-gui = "phenotypic._gui.shell._launcher:main"
 phenotypic-tune = "phenotypic.tune.__main__:main"
+phenotypic-wait = "phenotypic._cli._cli_wait:main"
 
 [dependency-groups]
 dev = [

@@ -309,6 +309,26 @@ def test_unsupported_suffix_is_rejected(tmp_path):
         JoinMetadata(metadata=path, on=["Metadata_ImageName"])
 
 
+@pytest.mark.parametrize("name", ["layout.TSV", "layout.Csv", "layout.PARQUET"])
+def test_the_suffix_is_matched_case_insensitively(tmp_path, measurements, name):
+    """Review M9 / spec B4: ``plates.TSV`` is a TSV, as the CLI already reads it."""
+    frame = pd.DataFrame(
+        {
+            "Metadata_ImageName": ["p1", "p1", "p2", "p2"],
+            "Grid_RowNum": [1, 3, 1, 3],
+            "Grid_ColNum": [1, 2, 1, 2],
+            "Metadata_Strain": ["WT", "mut", "WT", "mut"],
+        }
+    )
+    path = tmp_path / name
+    if name.lower().endswith(".parquet"):
+        frame.to_parquet(path)
+    else:
+        frame.to_csv(path, index=False, sep="\t" if name.lower().endswith(".tsv") else ",")
+    out = JoinMetadata(metadata=path, on=KEYS).apply(measurements)
+    assert out.Metadata_Strain.notna().all()
+
+
 def test_empty_on_is_rejected(layout):
     with pytest.raises(ValueError, match="at least one key column"):
         JoinMetadata(metadata=layout, on=[])

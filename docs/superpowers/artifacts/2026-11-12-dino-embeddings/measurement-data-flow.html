@@ -1,0 +1,269 @@
+<title>PhenoTypic Measurement Data Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column with wide tables in their own scrollers; tokens mirror PhenoTypic DESIGN.md (navy chrome, Okabe-Ito semantics). */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --accent-soft: #e6f0f9; --gold: #926a00; --gold-soft: #fff4d6;
+  --code-bg: #edf2f7; --ok: #006B4F; --ok-soft: #e3f4ee; --warn: #7A5500; --warn-soft: #fbf1db; --bad: #b85100; --bad-soft: #fbe9dc;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; --bad: #f29a5e; --bad-soft: #3d2416;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; --bad: #f29a5e; --bad-soft: #3d2416;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.page { max-width: 68rem; margin: 0 auto; padding-block: 2.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 3rem; }
+header { display: flex; flex-direction: column; gap: .75rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+h1 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h2 { font-size: 1.5rem; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h3 { font-size: 1.1rem; color: var(--heading); margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 1.1rem; color: var(--fg); }
+section { display: flex; flex-direction: column; gap: 1rem; }
+.secnum { font-family: var(--mono); color: var(--muted); font-size: .85rem; font-weight: 400; margin-right: .5rem; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+code { background: var(--code-bg); padding: .08em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+nav.toc { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: .92rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: .75rem; }
+nav.toc a { text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.fact { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.fact b { color: var(--heading); font-size: 1rem; }
+.fact span { font-size: .92rem; }
+
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; min-width: 40rem; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; vertical-align: top; padding: .6rem .75rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; background: var(--bg); position: sticky; top: 0; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; color: var(--heading); }
+.wide table { min-width: 62rem; }
+.mid table { min-width: 46rem; }
+
+.pill { display: inline-block; font-family: var(--mono); font-size: .74rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; white-space: nowrap; }
+.keep { background: var(--ok-soft); color: var(--ok); }
+.drop { background: var(--bad-soft); color: var(--bad); }
+.repl { background: var(--warn-soft); color: var(--warn); }
+.na { background: var(--code-bg); color: var(--muted); }
+
+pre.tree { font-family: var(--mono); font-size: .82rem; line-height: 1.55; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; margin: 0; overflow-x: auto; color: var(--fg); }
+pre.tree .c { color: var(--muted); }
+pre.tree .k { color: var(--accent); font-weight: 600; }
+pre.tree .g { color: var(--gold); }
+
+.callout { border: 1px solid var(--border); border-left: 4px solid var(--gold); background: var(--gold-soft); border-radius: 6px; padding: .9rem 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
+.callout.blue { border-left-color: var(--accent); background: var(--accent-soft); }
+.callout b { color: var(--heading); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; }
+.two > div { min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+ul, ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .35rem; max-width: 70ch; }
+.src { font-size: .85rem; color: var(--muted); }
+.src li { overflow-wrap: anywhere; }
+footer { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">PhenoTypic · python -m phenotypic · read from main @ 251e364fa</div>
+  <h1>PhenoTypic Measurement Data Flow</h1>
+  <p class="lede">Every measured colony starts as one row in one image's OME-Zarr store. A finalizer then fans those rows out into the deliverables users open. This page traces that path, lists every table the CLI writes, and shows what each writer keeps or drops when it rewrites a store.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#flow">1 · CLI flow</a><a href="#tables">2 · Table map</a><a href="#routing">3 · Column routing</a><a href="#store">4 · Store anatomy</a><a href="#multi">5 · Several pipelines, one store</a><a href="#rewrite">6 · Rewrite matrix</a><a href="#sources">Sources</a>
+  </nav>
+</header>
+
+<div class="facts">
+  <div class="fact"><b>One table per store</b><span>Each store holds one <code>tables/measurements/table.parquet</code>. A later measure run replaces it; it never sits beside a second one.</span></div>
+  <div class="fact"><b>Master is un-joined</b><span><code>master_measurements.parquet</code> is a plain concatenation of the embedded tables. User metadata is joined later, into the mirror.</span></div>
+  <div class="fact"><b>Figures and the journal accumulate</b><span>Figure runs are keyed by date + pipeline hash, and every writer carries the other runs across. The provenance journal appends one entry per application.</span></div>
+  <div class="fact"><b>Everything else is rebuilt</b><span>A store re-save starts from an empty <code>.part</code>. A group the writer doesn't know about is not carried into it.</span></div>
+</div>
+
+<section id="flow">
+  <h2><span class="secnum">1</span>The CLI, end to end</h2>
+  <p>Every forward mode (<code>full</code>, the Stage 3 half of a staged GPU run, and <code>measure</code>) ends at the same per-image store transaction and the same finalizer. <code>--mode process</code> branches off before measurement and writes a different kind of store (see the note below the diagram).</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["python -m phenotypic  (full / measure / recompile)"] --> B{"pipeline contains a GpuDetector?"}
+  B -- "no" --> C["single pass per image: local loky or SLURM array"]
+  B -- "yes" --> S1["Stage 1 CPU: pre-GPU ops, write store"]
+  S1 --> S2["Stage 2 GPU: resident model reads store read-only, writes stage2_raw npy + stage2_done token"]
+  S2 --> S3["Stage 3 CPU: ReplayDetector at the detector path, post-detector ops"]
+  C --> M["pipeline.measure(image, apply_post=False): meas ops merged on Object_Label"]
+  S3 --> M
+  M --> P["PreparedImageTables: measurements = un-joined baseline; metadata = this image's metadata rows"]
+  P --> W["save2zarr into a .part: arrays, OME/, tables/, figures/, root zarr.json LAST, then rename"]
+  W --> K["completion marker binds root zarr.json + table sha256"]
+  K --> F["finalizer (sole publisher): read authorized embedded tables, project each onto its measurement_columns"]
+  F --> MM[("deliverables/master_measurements.parquet")]
+  MM --> FP["finalize_post_master_outputs"]
+  FP --> J["left-join metadata.csv; unmatched metadata rows become phantoms with QC_MetadataOnly = true"]
+  J --> PO["apply pipeline.post ops"]
+  PO --> MIR[("measurements.csv / measurements.parquet mirror")]
+  PO --> SF[("measurements_by_feature/")]
+  PO --> SC[("measurements_by_category/")]
+  PO --> AN["pipeline.analyze: filters, then model"]
+  AN --> AO[("named analysis table + analysis manifest")]
+  PO --> QC[("deliverables/qc/")]
+</pre>
+  </div>
+  <div class="callout blue">
+    <b>The process-mode branch (what AutoConvertRaw-GC runs)</b>
+    <p><code>--mode process --layer rgb</code> calls <code>pipeline.apply()</code> only. It writes one single-series store per input with <code>write_objmap=False</code>, no <code>tables/</code>, no <code>image_class</code> and reproducible provenance, and it consolidates the metadata inside the <code>.part</code> because "a process-mode store is written once and never mutated". Figures from bound <code>PlotImage</code>s are the only extra payload. No master, mirror or analysis is produced.</p>
+  </div>
+</section>
+
+<section id="tables">
+  <h2><span class="secnum">2</span>Every table the CLI writes</h2>
+  <p>The order follows the data. Rows 1–2 live inside each image's store; rows 3–8 live under <code>&lt;output&gt;/deliverables/</code>. Paths are always resolved through the <code>phenotypic.sdk_</code> helpers.</p>
+  <div class="scroll wide">
+  <table>
+    <thead><tr><th>Table</th><th>Path</th><th>Written by</th><th>Grain</th><th>User metadata</th><th>Post ops</th><th>Read by</th></tr></thead>
+    <tbody>
+      <tr><td>Embedded measurements</td><td><code>results/&lt;ds&gt;/zarr/&lt;stem&gt;.ome.zarr/tables/measurements/table.parquet</code></td><td>per-image worker (full, Stage 3, measure); recompile re-promotes it</td><td>one row per object of one image</td><td>no; join triple recorded as <code>not_requested</code> since the inversion</td><td>no</td><td>finalizer; GUI Plate/Colony viewer</td></tr>
+      <tr><td>Embedded metadata</td><td><code>…/tables/metadata/pht-metadata.parquet</code></td><td>same store transaction</td><td>metadata rows for this image's join keys</td><td>it <em>is</em> the metadata; self-describing via Parquet key/value metadata</td><td>no</td><td>third-party readers</td></tr>
+      <tr><td>Master</td><td><code>deliverables/master_measurements.parquet</code></td><td>finalizer, through <code>project_embedded_measurement_table</code></td><td>all measured objects, all images</td><td>no (intrinsic identity only)</td><td>no</td><td><code>finalize_post_master_outputs</code>; archive. Parquet only; the CSV was deleted in D8</td></tr>
+      <tr><td>Mirror</td><td><code>deliverables/measurements.{csv,parquet}</code></td><td><code>finalize_post_master_outputs</code> → <code>_seed_measurements</code></td><td>measured rows + metadata-only phantoms</td><td>yes: left join, metadata on the left</td><td>yes</td><td>GUI viewer and curation, analysis, dashboards</td></tr>
+      <tr><td>By feature</td><td><code>deliverables/measurements_by_feature/&lt;Measurer&gt;.{csv,parquet}</code></td><td><code>split_measurements</code></td><td>mirror rows, one file per producer</td><td>yes (context columns)</td><td>yes</td><td>users</td></tr>
+      <tr><td>By category</td><td><code>deliverables/measurements_by_category/&lt;Category&gt;.{csv,parquet}</code></td><td><code>split_measurements_by_category</code></td><td>mirror rows, one file per <code>CATEGORIES</code> member</td><td>yes (context columns)</td><td>yes</td><td>users</td></tr>
+      <tr><td>Analysis</td><td><code>deliverables/</code>, named after the model class, plus an analysis manifest</td><td><code>_emit_analysis_outputs</code> → <code>pipeline.analyze</code></td><td>whatever the model emits (per strain, per curve, …)</td><td>inherited from the mirror</td><td>input is post-applied</td><td>users; GUI analysis sub-app</td></tr>
+      <tr><td>Metadata snapshot</td><td><code>deliverables/metadata.csv</code></td><td>startup, byte-for-byte copy of <code>--metadata</code></td><td>as supplied</td><td>n/a</td><td>n/a</td><td>provenance; never rewritten (migrate writes <code>metadata.canonical.csv</code> beside it)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="src">Under <code>--wait</code> on SLURM the aggregated outputs are written twice, once by the submitting process and once by the finalizer. A lock serializes the two writes, and they produce the same bytes because <code>shard_sources</code> is a contiguous split.</p>
+</section>
+
+<section id="routing">
+  <h2><span class="secnum">3</span>How a column finds its table</h2>
+  <div class="two">
+    <div>
+      <h3>Inside one image</h3>
+      <ol>
+        <li>Each <code>MeasureFeatures</code> op in <code>meas</code> returns a frame keyed on <code>Object_Label</code>. Columns are family-prefixed (<code>Size_Area</code>, <code>Texture_…-deg045-scale01</code>).</li>
+        <li><code>pipeline.measure</code> merges them, then appends the framework <code>Metadata_*</code> block and the per-object info block (<code>Object_Label</code>, <code>Bbox_*</code>, <code>Grid_*</code>).</li>
+        <li>The merged frame becomes <code>PreparedImageTables.measurements</code>. Its ordered columns are recorded as <code>measurement_columns</code> in the root descriptor.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Across the run</h3>
+      <ol>
+        <li>The master concatenates the stores. If their schemas differ, it falls back to a <code>diagonal_relaxed</code> concat, so stores with different measurers can share one run.</li>
+        <li>The feature and category splits ask the schema which producer owns each column: <code>MeasurementInfo</code> enums decode headers through <code>member_for_header</code>, with three header schemes (static, metric_qualified, texture).</li>
+        <li><b>A column that no enum owns becomes a context column and is copied into every split file.</b> This matters for any wide, non-enum output.</li>
+        <li>Post ops and the analysis model see the metadata-joined mirror frame, never the master.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="store">
+  <h2><span class="secnum">4</span>Inside one store</h2>
+  <p>This is a full-run store (<code>save2zarr</code>). PhenoTypic's own state lives under <code>attributes.phenotypic</code>. <code>attributes.ome</code> holds only OME-Zarr metadata.</p>
+<pre class="tree"><span class="k">&lt;stem&gt;.ome.zarr/</span>
+├── <span class="k">zarr.json</span>                         <span class="c"># written LAST; its presence means "complete"; the marker digests it</span>
+│     attributes.ome          version 0.5, bioformats2raw.layout
+│     attributes.phenotypic   store_schema_version · phenotypic_version · image_class · work_id
+│                             provenance  <span class="c"># journal: applications[] {sequence, kind, pipeline, operations, …}</span>
+│                             series · labels · pyramid · grid · detect_mode · illuminant · gamma
+│                             metadata {protected, public, imported}
+│                             <span class="g">tables</span> {measurements: descriptor, metadata: descriptor} · metadata_table
+│                             <span class="g">figures</span> {schema_version: 2, runs: {run_id: entry}}
+├── OME/zarr.json  OME/METADATA.ome.xml   <span class="c"># ome.series = ["rgb", "gray", …]</span>
+├── rgb/0 … rgb/n                      <span class="c"># planar (c, y, x) multiscale; NGFF has no RGB type</span>
+│   └── labels/objmap/0 … n            <span class="c"># the object label image that measurements target</span>
+├── gray/   detect_mat/   original/
+├── <span class="g">tables/</span>
+│   ├── measurements/table.parquet     <span class="c"># ONE table, sub-schema v1, target.column = Object_Label</span>
+│   └── metadata/pht-metadata.parquet
+└── <span class="g">figures/</span>&lt;UTC-date&gt;-&lt;pipeline sha12&gt;/&lt;binding&gt;/&lt;plot&gt;/&lt;file&gt;   <span class="c"># one folder per run, never wiped</span></pre>
+  <div class="callout">
+    <b>A process-mode store, for comparison</b>
+    <p>A single series (<code>rgb</code> or <code>gray</code>), no <code>labels/</code>, no <code>tables/</code>, no <code>image_class</code> (so <code>Image.load_zarr</code> refuses it and <code>Image.imread</code> reads it as pixels), and journal wall-clock fields omitted so two runs on the same UTC day are byte-identical. Root metadata is consolidated. The store is valid <code>--input</code> to a later full run, which writes a <em>new</em> store in its own output folder and leaves the input store untouched.</p>
+  </div>
+</section>
+
+<section id="multi">
+  <h2><span class="secnum">5</span>Several measurement pipelines, one store</h2>
+  <p>The short answer: a store holds the result of one measurement pipeline. Two things in it are designed to hold several runs side by side: figure runs and the provenance journal. Everything else has a single slot.</p>
+  <div class="scroll mid">
+  <table>
+    <thead><tr><th>Payload</th><th>How many per store</th><th>Keyed by</th><th>A second pipeline's run</th></tr></thead>
+    <tbody>
+      <tr><td>Pixel series</td><td>one set</td><td>layer name</td><td><span class="pill repl">replaced</span></td></tr>
+      <tr><td>objmap label</td><td>one</td><td>none</td><td><span class="pill repl">replaced</span></td></tr>
+      <tr><td>Measurement table</td><td>one</td><td>none</td><td><span class="pill repl">replaced</span> measure rewrites rebuild <code>tables/</code> from scratch</td></tr>
+      <tr><td>Metadata table</td><td>one</td><td>none</td><td><span class="pill repl">replaced</span></td></tr>
+      <tr><td>Figures</td><td>many</td><td>run id = UTC date + 12 hex of pipeline sha256</td><td><span class="pill keep">coexist</span> other runs carried by every writer</td></tr>
+      <tr><td>Provenance journal</td><td>many applications</td><td><code>sequence</code>, typed <code>kind</code></td><td><span class="pill keep">appended</span> cumulative</td></tr>
+      <tr><td>Anything else</td><td>no slot</td><td>none</td><td><span class="pill drop">depends on writer</span> see the next table</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>In practice, two measurement pipelines over the same images go to two output folders, each with its own stores and deliverables. Within one run, the master tolerates stores with different columns, but each store still holds only one measurement table.</p>
+</section>
+
+<section id="rewrite">
+  <h2><span class="secnum">6</span>What each writer keeps when it rewrites a store</h2>
+  <p>This is the table to check before adding anything new to a store. "Unknown" means a group or attribute key the writer has no code for, such as an embedding group added by another tool.</p>
+  <div class="scroll wide">
+  <table>
+    <thead><tr><th>Payload</th><th>save2zarr: full, Stage 1, Stage 3</th><th>process <code>_save_store</code></th><th>measure / recompile <code>_rewrite_store_tables</code></th><th><code>--overwrite</code></th><th>AutoConvertRaw-GC reprocess</th></tr></thead>
+    <tbody>
+      <tr><td>Pixel arrays</td><td><span class="pill repl">rewritten</span></td><td><span class="pill repl">rewritten</span></td><td><span class="pill keep">kept</span> hard-linked, never recomputed</td><td><span class="pill drop">deleted</span></td><td><span class="pill repl">regenerated</span></td></tr>
+      <tr><td><code>tables/measurements</code></td><td><span class="pill repl">written if measured</span></td><td><span class="pill na">none</span></td><td><span class="pill repl">rewritten</span></td><td><span class="pill drop">deleted</span></td><td><span class="pill na">none</span></td></tr>
+      <tr><td>Unknown <code>tables/&lt;x&gt;</code></td><td><span class="pill drop">dropped</span></td><td><span class="pill drop">dropped</span></td><td><span class="pill drop">dropped</span> <code>rmtree(part/tables)</code></td><td><span class="pill drop">deleted</span></td><td><span class="pill drop">deleted</span></td></tr>
+      <tr><td>Other figure runs</td><td><span class="pill keep">carried</span> <code>carry_figure_runs</code></td><td><span class="pill keep">carried</span></td><td><span class="pill keep">carried</span></td><td><span class="pill drop">deleted</span></td><td><span class="pill drop">deleted</span> unless regenerated</td></tr>
+      <tr><td>Provenance journal</td><td><span class="pill keep">rebuilt from the Image</span> cumulative when the input was a PhenoTypic store</td><td><span class="pill keep">same</span></td><td><span class="pill keep">kept</span></td><td><span class="pill drop">deleted</span></td><td><span class="pill repl">regenerated</span></td></tr>
+      <tr><td>Unknown top-level group</td><td><span class="pill drop">dropped</span> fresh <code>.part</code></td><td><span class="pill drop">dropped</span></td><td><span class="pill keep">kept</span> survives the hard-link copytree</td><td><span class="pill drop">deleted</span></td><td><span class="pill drop">deleted</span> <code>delete_prefix</code> + <code>upload_tree</code></td></tr>
+      <tr><td>Unknown <code>attributes.phenotypic.&lt;x&gt;</code></td><td><span class="pill drop">dropped</span> root rebuilt</td><td><span class="pill drop">dropped</span></td><td><span class="pill keep">kept</span> unless the plan mutates it</td><td><span class="pill drop">deleted</span></td><td><span class="pill drop">deleted</span></td></tr>
+      <tr><td>A group added after promotion</td><td colspan="5">Possible on disk, but it is outside the root that the completion marker digests. On a process store it is also missing from the consolidated metadata. Continuation, consolidated readers and byte-reproducibility all stop describing the store.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <b>Why this matters for new payloads</b>
+    <p>Figures are currently the only payload built to survive another writer: they have their own namespace, their own descriptor, an explicit carry step in each writer, and an <code>--overwrite</code>-only wipe. Any new per-store payload that must not be overwritten has to follow the same pattern. The companion page, <em>DINOv2 Embedding Feasibility</em>, applies this to embeddings.</p>
+  </div>
+</section>
+
+<section id="sources">
+  <h2>Sources</h2>
+  <ul class="src">
+    <li><code>src/phenotypic/_core/_image_parts/_image_io_handler.py:1115</code> <code>save2zarr</code>; <code>:1453</code> tables into the part; <code>:1468</code> <code>carry_figure_runs</code>; <code>:1478</code> root written last; <code>:1511</code> consolidation</li>
+    <li><code>src/phenotypic/sdk_/_measurement_tables.py:638</code> <code>_rewrite_store_tables</code>; <code>:694</code> <code>rmtree(part / tables)</code>; <code>:63</code> <code>PreparedImageTables</code></li>
+    <li><code>src/phenotypic/sdk_/ngff_.py:78–100</code> table, metadata and figures constants; <code>PhenotypicAttr</code> key names</li>
+    <li><code>src/phenotypic/_cli/_cli_process_only.py:224–247</code> process store: <code>write_objmap=False</code>, <code>write_image_class=False</code>, <code>reproducible_provenance=True</code>, <code>consolidate=True</code></li>
+    <li><code>src/phenotypic/_cli/_cli_output_manager.py:1038</code> <code>finalize_post_master_outputs</code>; <code>:650</code> <code>_emit_analysis_outputs</code>; <code>:1366–1422</code> splits</li>
+    <li><code>src/phenotypic/util/_measurement_outputs.py:96</code> <code>split_measurements</code>; <code>:200</code> <code>_context_columns</code></li>
+    <li><code>src/phenotypic/_cli/_cli_parquet_agg.py:110</code> <code>diagonal_relaxed</code> fallback; <code>:177</code> <code>project_embedded_measurement_table</code></li>
+    <li><code>src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py:1122</code> <code>ImagePipeline.measure</code></li>
+    <li><code>src/phenotypic/_core/_provenance.py:31–44</code> journal and application keys</li>
+    <li>AutoConvertRaw-GC <code>src/acr_core/worker.py:189–190</code> <code>delete_prefix</code> then <code>upload_tree</code></li>
+  </ul>
+</section>
+
+<footer>Read from the working tree on 2026-11-12. <code>src/</code> is identical to <code>main</code> at 251e364fa. Companion page: DINOv2 Embedding Feasibility.</footer>
+</div>

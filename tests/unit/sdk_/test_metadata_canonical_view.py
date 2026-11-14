@@ -41,10 +41,10 @@ def test_a_canonical_view_is_emitted_beside_it(legacy_run: Path) -> None:
     from phenotypic.sdk_._hdf_to_zarr import migrate_run_hdf_to_zarr
 
     migrate_run_hdf_to_zarr(legacy_run)
-    view = legacy_run / "deliverables" / "metadata.canonical.csv"
+    view = legacy_run / "deliverables" / "metadata.canonical.tsv"
     assert view.is_file()
     with view.open(encoding="utf-8") as handle:
-        header = next(csv.reader(handle))
+        header = next(csv.reader(handle, delimiter="\t"))
     assert all(column.startswith("Metadata_") for column in header if column), header
 
 
@@ -59,10 +59,10 @@ def test_the_view_actually_canonicalizes_a_legacy_header(legacy_run: Path) -> No
     from phenotypic.sdk_._hdf_to_zarr import migrate_run_hdf_to_zarr
 
     migrate_run_hdf_to_zarr(legacy_run)
-    with (legacy_run / "deliverables" / "metadata.canonical.csv").open(
+    with (legacy_run / "deliverables" / "metadata.canonical.tsv").open(
         encoding="utf-8"
     ) as handle:
-        header = next(csv.reader(handle))
+        header = next(csv.reader(handle, delimiter="\t"))
     assert "MetadataGenetic_Strain" not in header, header
     assert "Metadata_Strain" in header, header
 
@@ -75,8 +75,8 @@ def test_the_view_preserves_every_row(legacy_run: Path) -> None:
     deliverables = legacy_run / "deliverables"
     with (deliverables / "metadata.csv").open(encoding="utf-8") as handle:
         source_rows = list(csv.reader(handle))[1:]
-    with (deliverables / "metadata.canonical.csv").open(encoding="utf-8") as handle:
-        view_rows = list(csv.reader(handle))[1:]
+    with (deliverables / "metadata.canonical.tsv").open(encoding="utf-8") as handle:
+        view_rows = list(csv.reader(handle, delimiter="\t"))[1:]
     assert view_rows == source_rows
 
 
@@ -86,7 +86,7 @@ def test_no_view_is_emitted_without_a_snapshot(legacy_run: Path) -> None:
 
     (legacy_run / "deliverables" / "metadata.csv").unlink()
     migrate_run_hdf_to_zarr(legacy_run)
-    assert not (legacy_run / "deliverables" / "metadata.canonical.csv").exists()
+    assert not (legacy_run / "deliverables" / "metadata.canonical.tsv").exists()
 
 
 @pytest.mark.xfail(
@@ -139,5 +139,5 @@ def test_the_view_sits_beside_the_snapshot(legacy_run: Path) -> None:
 
     migrate_run_hdf_to_zarr(legacy_run)
     deliverables = legacy_run / "deliverables"
-    assert (deliverables / "metadata.canonical.csv").is_file()
+    assert (deliverables / "metadata.canonical.tsv").is_file()
     assert (deliverables / "metadata.csv").is_file()  # snapshot untouched

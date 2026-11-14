@@ -48,3 +48,4 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    pages/reference_metadata
    pages/zarr_storage
    pages/generate_reports
+   pages/dvc

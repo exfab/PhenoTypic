@@ -83,6 +83,7 @@ FindingCode = Literal[
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
     "PF-NODE-LOCAL",
+    "PF-DVC-LINKED-CACHE",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -249,6 +250,12 @@ HINTS: dict[str, str] = {
         "Add an object detector (for example OtsuDetector) to the pipeline's "
         "ops. If a custom operation writes the object map itself, rerun with "
         "--skip-validation."
+    ),
+    "PF-DVC-LINKED-CACHE": (
+        "Keep DVC's default cache type: run `dvc config cache.type "
+        "reflink,copy`, or `dvc config --local --unset cache.type` when "
+        ".dvc/config.local sets it. On GPFS that copies each out into the "
+        "cache once. hardlink and symlink are unsupported for PhenoTypic outs."
     ),
 }
 
@@ -1269,10 +1276,13 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
         caveat = ", so without a measurement-level key nothing would join"
     findings: list[PreflightFinding] = []
     if not analysis.join_columns:
+        from phenotypic.sdk_ import misdelimited_table_hint
+
+        hint = misdelimited_table_hint(metadata_csv, list(frame.columns))
         findings.append(PreflightFinding(
             "PF-META-NO-KEYS", key_severity,
             f"{metadata_csv} shares no column with the images' ImageName, "
-            "FileSuffix or Dataset" + caveat,
+            "FileSuffix or Dataset" + caveat + (f" ({hint})" if hint else ""),
         ))
     if analysis.duplicate_key_count:
         findings.append(PreflightFinding(
@@ -1548,6 +1558,96 @@ def check_node_local_paths(context: PreflightContext) -> list[PreflightFinding]:
     )]
 
 
+#: The DVC ``cache.type`` links that make a cached file read-only (#281 C6).
+_DVC_LINKED_CACHE_TYPES = frozenset({"hardlink", "symlink"})
+#: The project config files ``find_dvc_cache_type`` reads, later overlaying
+#: earlier -- DVC's own precedence among the project's two levels.
+_DVC_PROJECT_CONFIGS = ("config", "config.local")
+
+
+def _dvc_cache_type_source(start: Path) -> "tuple[str, Path] | None":
+    """``(raw cache.type, the file that set it)`` for the project above *start*.
+
+    See :func:`find_dvc_cache_type`, which is this without the file.
+    """
+    import configparser
+
+    current = Path(os.path.abspath(start))
+    for directory in (current, *current.parents):
+        dvc_dir = directory / ".dvc"
+        if dvc_dir.is_dir():
+            break
+    else:
+        return None
+    found: "tuple[str, Path] | None" = None
+    for name in _DVC_PROJECT_CONFIGS:
+        path = dvc_dir / name
+        if not path.is_file():
+            continue
+        parser = configparser.ConfigParser(interpolation=None, strict=False)
+        parser.read(path, encoding="utf-8")
+        if parser.has_option("cache", "type"):
+            found = (parser.get("cache", "type").strip().strip("'\""), path)
+    return found
+
+
+def find_dvc_cache_type(start: Path) -> str | None:
+    """The ``cache.type`` of the DVC project enclosing *start*, as written.
+
+    Walks up from *start* (which need not exist yet: ``--output`` usually
+    does not) to the first directory holding a ``.dvc/`` directory, which is
+    how DVC finds a project root. Reads ``[cache] type`` from ``.dvc/config``
+    and overlays ``.dvc/config.local`` on it, with the stdlib's
+    ``configparser``.
+
+    **Only those two files are read.** DVC also merges a global
+    (``~/.config/dvc/config``) and a system config, below the project's; they
+    are ignored here, so a linked cache set only there goes unreported. DVC is
+    never imported: the preflight runs in every submitting process, and DVC
+    need not be installed in PhenoTypic's environment at all.
+
+    Args:
+        start: A path inside the project, typically ``--output``.
+
+    Returns:
+        The raw value (e.g. ``"reflink,copy"``), or ``None`` when no
+        enclosing project sets it, which means DVC's default,
+        ``reflink,copy``.
+    """
+    source = _dvc_cache_type_source(start)
+    return None if source is None else source[0]
+
+
+def _check_dvc_cache_link_type(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-DVC-LINKED-CACHE``: the enclosing DVC project links cached files.
+
+    #281 spec C6. With ``hardlink`` or ``symlink`` anywhere in ``cache.type``,
+    DVC makes the checked-out outs read-only links into its cache, and
+    ``.phenotypic/`` holds files appended in place by concurrent writers (the
+    terminal-failure journal, the event log, the SLURM lifecycle ledger), so
+    an append either fails or rewrites the cached copy. A warning: the run
+    itself is unaffected until DVC links its outs.
+    """
+    if context.config.output_dir is None:
+        return []
+    source = _dvc_cache_type_source(Path(context.config.output_dir))
+    if source is None:
+        return []
+    value, path = source
+    links = {part.strip().lower() for part in value.split(",")}
+    if not links & _DVC_LINKED_CACHE_TYPES:
+        return []
+    return [PreflightFinding(
+        "PF-DVC-LINKED-CACHE", "warning",
+        f"{path} sets the DVC cache.type to {value!r}. DVC makes linked "
+        "(hardlink or symlink) files read-only, and PhenoTypic appends "
+        "in place to files under .phenotypic/ (the failure journal, the event "
+        "log, the SLURM ledger), so tracking this run's outs would break or "
+        "corrupt them. Only the project's .dvc/config and .dvc/config.local "
+        "were read; global and system DVC config are not.",
+    )]
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
@@ -1573,6 +1673,7 @@ CHECKS: tuple[Check, ...] = (
     check_output_writable,
     check_output_space,
     check_node_local_paths,
+    _check_dvc_cache_link_type,
 )
 
 

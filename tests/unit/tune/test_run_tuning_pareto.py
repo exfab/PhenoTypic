@@ -660,3 +660,54 @@ def test_headline_winner_prefers_pareto_knee_over_scalar_best():
             return knee
 
     assert _headline_winner(_Store(), multi_objective=True) is knee
+
+
+# ---------------------------------------------------------------------------
+# Spec A4 / review M8: a re-run into a pre-flip folder keeps one current file
+# ---------------------------------------------------------------------------
+
+
+def test_a_rerun_retires_the_old_typed_tune_outputs(tmp_path):
+    """The new names are published, then the pre-flip ``.json.pht-*`` twins go.
+
+    A plain V1 ``best_pipeline.json`` is kept, as a plain ``pipeline.json``
+    is (spec A4): it may be the user's own file.
+    """
+    out = tmp_path / "run"
+    deliverables = io.deliverables_dir(out)
+    deliverables.mkdir(parents=True)
+    old_best = deliverables / "best_pipeline.json.pht-pipe"
+    old_spec = deliverables / "tuning_spec.json.pht-tune"
+    plain_best = deliverables / "best_pipeline.json"
+    for stale in (old_best, old_spec, plain_best):
+        stale.write_text("{}", encoding="utf-8")
+
+    run_tuning(_single_objective_spec(tmp_path), [load_synth_yeast_plate()], out)
+
+    assert io.best_pipeline_path(out).is_file()
+    assert io.tuning_spec_path(out).is_file()
+    assert not old_best.exists()
+    assert not old_spec.exists()
+    assert plain_best.read_text(encoding="utf-8") == "{}"
+
+
+def test_pareto_export_retires_the_old_typed_per_axis_pipeline(tmp_path):
+    from phenotypic.tune._study_store import JournalStudyStore
+    from phenotypic.tune._tune_cli._run import _finalize_pareto_outputs
+
+    spec = _single_objective_spec(tmp_path)
+    store = JournalStudyStore([
+        Trial(number=0, params={"0.sigma": 1.0}, score=0.5, terms={},
+              n_images=1, objectives={"s0": 0.1, "s1": 0.9}),
+        Trial(number=1, params={"0.sigma": 2.0}, score=0.5, terms={},
+              n_images=1, objectives={"s0": 0.9, "s1": 0.1}),
+    ])  # fmt: skip
+    out = tmp_path / "per_axis"
+    io.pareto_dir(out).mkdir(parents=True)
+    old_axis = io.pareto_dir(out) / "best_s0.json.pht-pipe"
+    old_axis.write_text("{}", encoding="utf-8")
+
+    _finalize_pareto_outputs(store, spec, out)
+
+    assert io.pareto_best_pipeline_path(out, "s0").is_file()
+    assert not old_axis.exists()

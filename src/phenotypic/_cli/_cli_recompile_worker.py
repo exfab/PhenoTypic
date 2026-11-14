@@ -182,7 +182,11 @@ def run_recompile_task(
                 output_dir=output_dir,
                 slurm_generation=slurm_generation,
             )
-            _deactivate_generation_value(output_dir, slurm_generation)
+            from ._cli_slurm_lifecycle import FENCE_CLOSED_BY_FINALIZER
+
+            _deactivate_generation_value(
+                output_dir, slurm_generation, closed_by=FENCE_CLOSED_BY_FINALIZER
+            )
         else:
             raise ValueError(f"Unknown recompile task type: {task_type!r}")
     except Exception as exc:
@@ -855,11 +859,17 @@ def _read_expected_non_finalizer_statuses(
     return statuses
 
 
-def _deactivate_generation_value(output_dir: Path, generation: str) -> None:
-    """Deactivate a generation supplied independently of task metadata."""
+def _deactivate_generation_value(
+    output_dir: Path, generation: str, *, closed_by: str | None = None
+) -> None:
+    """Deactivate a generation supplied independently of task metadata.
+
+    Only the finalizer's success path passes ``closed_by``; a failure
+    teardown leaves the close reason unset (#281 spec C3).
+    """
     from ._cli_slurm_lifecycle import deactivate_generation
 
-    deactivate_generation(output_dir, generation)
+    deactivate_generation(output_dir, generation, closed_by=closed_by)
 
 
 def _recompile_shard_paths(attempt_dir: Path) -> list[Path]:
@@ -947,6 +957,9 @@ def _run_post_master_steps(
         "metadata_csv": metadata_csv,
         "no_qc": bool(task.get(JobMetadataKey.NO_QC, False)),
         "shard_paths": _recompile_shard_paths(attempt_dir),
+        # #281 spec C3: the aggregate proof names the generation that
+        # published it, so `phenotypic-wait` can bind it to a submission.
+        "execution_epoch": slurm_generation,
     }
     # **Only when every measurement shard answered.** An empty union is a
     # real answer from a shard that merged nothing; an absent one is not the

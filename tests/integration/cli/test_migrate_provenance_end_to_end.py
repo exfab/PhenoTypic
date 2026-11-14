@@ -37,6 +37,7 @@ import shutil
 from click.testing import CliRunner
 import pytest
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
     image_record_path,
@@ -270,7 +271,7 @@ def _migrate_both_ways(
             "slurm_partition=short",
         ],
     )
-    assert slurm.exit_code == 0, slurm.output
+    assert slurm.exit_code == RunExitCode.SUBMITTED, slurm.output
     assert read_migration_terminal_status(slurm.output)["status"] == "succeeded"
 
     return _provenance_snapshot(local_tree), _provenance_snapshot(slurm_tree)

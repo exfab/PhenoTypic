@@ -18,6 +18,7 @@ import shutil
 from click.testing import CliRunner
 import pytest
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic._cli._cli_completion import (
     _current_aggregate_is_current,
     _current_success_counts,
@@ -382,7 +383,7 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
             "slurm_partition=short",
         ],
     )
-    assert slurm.exit_code == 0, slurm.output
+    assert slurm.exit_code == RunExitCode.SUBMITTED, slurm.output
 
     expected_first_counters = (
         "Pass 1 (metadata headers, non-image targets): migrated 0 target(s)",
@@ -431,7 +432,10 @@ def test_local_and_synchronous_slurm_migration_publish_equivalent_runs(
         before = _published_migration_snapshot(tree, finished_legacy_run.stems)
         sources_before = _retained_source_snapshot(tree, finished_legacy_run.stems)
         rerun = CliRunner().invoke(phenotypic_cli, rerun_args)
-        assert rerun.exit_code == 0, rerun.output
+        expected_exit = (
+            RunExitCode.COMPLETE if tree == local_tree else RunExitCode.SUBMITTED
+        )
+        assert rerun.exit_code == expected_exit, rerun.output
         counters = (
             _summary_counters(rerun.output)
             if tree == local_tree
@@ -540,7 +544,7 @@ def test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate(
     assert result.exit_code == 0, result.output
     assert snapshot.read_bytes() == before
     assert not (tree / "deliverables" / "metadata.original.csv").exists()
-    assert (tree / "deliverables" / "metadata.canonical.csv").is_file()
+    assert (tree / "deliverables" / "metadata.canonical.tsv").is_file()
 
 
 @pytest.mark.xfail(

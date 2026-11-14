@@ -123,7 +123,8 @@ table as an argument; they read a run-level plan.
   `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
   in `full` mode and not in `process` mode.
 - **Process mode uses `--metadata` only when those operations exist.** It is
-  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.csv`
+  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.<ext>`
+  (the table's own suffix, `.csv` or `.tsv`)
   (preserved across `--restart`), a continuation may omit it, and a table
   inside `--output` is refused like any run input. Otherwise the old
   "`--metadata` is ignored in --mode process" warning still prints.
@@ -132,11 +133,13 @@ table as an argument; they read a run-level plan.
   - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
     (the snapshot it would fall back to is deleted); no `--metadata` and no
     snapshot (`[PF-REF-NO-TABLE]`); a `--metadata` that fails
-    `metadata_csv_payload` (not a `.csv`, or bytes pandas cannot parse --
+    `metadata_csv_payload` (not a `.csv`/`.tsv`, or bytes pandas cannot parse --
     the very check `snapshot_reference_metadata` runs after `--overwrite`,
     so the two cannot disagree); or a table, given or snapshotted, that
-    `ReferenceContext` cannot read. `--metadata` is a CSV in every CLI mode,
-    although a notebook `ReferenceContext` also reads `.parquet`.
+    `ReferenceContext` cannot read. `--metadata` is a `.csv` or `.tsv` table
+    in every CLI mode (the `--metadata` Click callback refuses any other
+    suffix with exit 2), although a notebook `ReferenceContext` also reads
+    `.parquet`.
   - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
     whose measurers read reference metadata. Measure mode plans nothing, never
     touches the manifest and carries no reference digest in its work-ids, so
@@ -476,6 +479,136 @@ trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
 
+### Exit codes (`phenotypic.sdk_.RunExitCode`)
+
+The CLI's exit code is a contract (#281 spec C10): an orchestrator such as a
+DVC stage acts on it without parsing logs. Use the enum member at every exit
+site, never a bare literal.
+
+| Code | Name | Meaning |
+|---|---|---|
+| `0` | `COMPLETE` | finished, no terminal failures |
+| `1` | `ERROR` | a runtime or config error |
+| `2` | — | a refused option: a `click.UsageError`, Click's own code. Includes an option value the CLI checks after parsing (`--slurm`/`--gpu-slurm` `KEY=VALUE` pairs and `time=`, `--ext`) |
+| `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
+| `4` | `SUBMITTED` | submitted to SLURM, not finished |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing (nothing published, or accepted images never attempted); re-run the same command (spec C3/C10, fork F5) |
+| `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
+
+- **Every SLURM submission exits `4`**: full, measure, staged and process
+  runs, a SLURM `--mode recompile`, a forward run whose only remaining work is
+  a SLURM recompile (a new metadata snapshot), a submitted `--mode migrate`
+  and a SLURM migrate `--dry-run`. When nothing needed SLURM,
+  `_handle_recompile_slurm` runs the recompile locally and returns the
+  finished run's code (`0` or `3`, below) instead, because then nothing was
+  submitted.
+- **"Failed" is the run's, not the invocation's.** A local exit asks
+  `_run_failure_count` (`phenotypicCLI.py`), which is
+  `resolve_run_state(...).diagnostics.failed` when this invocation recorded no
+  failure itself. A continuation skips recorded terminal failures, so a run
+  that exited `3` exits `3` again on a plain re-run, whether that re-run is a
+  "nothing left" no-op or a re-finalization. The same count gates
+  `publish_local_gui_completion`, which raises on a run with failed images.
+- **A recompile exits `3` over a run that carries a terminal failure**, local
+  or through either of `_handle_recompile_slurm`'s local fallbacks (user
+  decision 2026-11-13, P2 review I2/F4). A recompile re-publishes the
+  aggregate and leaves every failure record where it was, and on SLURM the
+  waiter reads the same run as `failed`, so the two agree.
+- **A local staged run whose only Stage-3-less images are current terminal
+  failures exits `3`, not `1`** (user decision 2026-11-13, P2 review I3/F3).
+  It is the local twin of the SLURM finalizer's `terminal_incomplete` close:
+  publication succeeded, every image without a Stage-3 marker has a `failed`
+  verdict in `resolve_run_state(depth="deep")`, the run is **not** marked
+  staged-complete, and a plain re-run (which skips those images)
+  re-finalizes and exits `3` again. It prints how to retry them
+  (`--retry-failures`), not "Run the same command again". A real publication
+  failure, or an unfinished image with no terminal record, still prints
+  `STAGED FINALIZATION FAILED ... Run the same command again` and exits `1`.
+- A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
+  `130`.
+- **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
+  run's own code** once the run ends, for a DVC stage or any orchestrator.
+  Read-only: it never aggregates, publishes or cancels, and submits only the
+  command given after `--` (below). Each poll
+  reads `live_slurm_job_ids` **before** `resolve_run_state(depth="shallow")`.
+  Any `live`/`unverified`/`unresolved` job keeps it waiting, whatever the
+  completion says. With none live, it exits `0`/`3` only when **this
+  submission** published. It reads the fence generation once, at the first
+  poll. Published means one of: that fence was closed with
+  `closed_by: "finalizer"` (`FENCE_CLOSED_BY_FINALIZER`) and no
+  `terminal_status`; the run proof's `execution_epoch` is that generation; or
+  the current aggregate proof's `execution_epoch` is that generation. The
+  finalizer is the only writer of both fields. It passes `execution_epoch=`
+  through `aggregate_measurements`/`finalize_run` to
+  `publish_aggregate_snapshot`, and `closed_by=` to the fence close. A cancel
+  leaves `closed_by` unset. **Matching digests are not enough:** a
+  `--mode measure` resubmission keeps no run state, so the earlier run's
+  proofs still match after its finalizer dies. **`3` also needs every
+  accepted image resolved** (`RunSnapshot.unresolved == 0`, i.e.
+  `verified + failed == accepted`); an image never attempted makes it `5`.
+  A SLURM `--mode measure` resubmission's failures sit outside the forward
+  inventory, so `_generation_failures` counts distinct work ids in the
+  terminal journal whose `lifecycle_epoch` is the bound generation; published
+  plus any such row gives `3` (review I5). **Those rows exist only since
+  C11d:** before it, measure mode journalled nothing (its core raises the
+  bare exception), so the count was always `0` for a real failure. Both
+  measure workers now wrap the core in `measure_scientific_boundary`
+  (`_cli_process_single.py`), which raises `PerImageScientificError` with
+  stage `MEASURE_FAILURE_STAGE` (`"measure"`, not the staged `"stage3"`), and
+  journal it under the measure work id. One helper,
+  `terminal_failure_work_ids_under_epoch` (`_cli_failure_tracker.py`), is
+  the count for both the waiter and `metrics.json`: on SLURM `finalize_run`
+  counts its `stage=MEASURE_FAILURE_STAGE` rows under `execution_epoch` (the
+  stage filter keeps a forward generation's own rows, already counted through
+  the inventory, from counting twice); locally the CLI passes the
+  invocation's own count as `measure_failed=` and mints no epoch, because a
+  local measure's `lifecycle_epoch` is the forward run's content-derived
+  generation, shared by every measure invocation. `failed` adds the count and
+  `succeeded` drops by it, although such an image's previous table usually
+  stays aggregated. The rows are keyed by measure work ids, so a forward
+  continuation never skips on them; its "N recorded failure(s) skipped" line
+  therefore counts `_run_failure_count`, not the whole journal. A process run that reads
+  `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
+  `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
+  external control root.
+- **`phenotypic-wait --output <out> -- <submit…>` launches the submit
+  itself** (spec C3 "Launch", P2 T2a), so a SLURM DVC stage is one `cmd`
+  (DVC aborts a stage on the submit's `4`). `_run_submit` runs the argv with
+  `subprocess.run` (no shell; the waiter's cwd, env and stdio), mapping a
+  signal death to `128 + N` and a missing/unexecutable program to `127`/`126`.
+  Child `4` → `wait_for_run`; any other child code is returned unpolled.
+  `check_submit_argv` refuses (usage error, `2`) before launching: an empty
+  command after `--`, a child `--mode migrate` (also `--mode=`, `-m`, `-m…`),
+  and a child `-o`/`--output`/`--output=`/`-o…` resolving elsewhere than
+  `--output` (cwd-relative). Only the tokens after the program `phenotypic`
+  (`-m phenotypic`, `-mphenotypic`, or a token whose file name is
+  `phenotypic`) are read, so a wrapper's own `-o` (`srun -o log …`) is not the
+  run's; a command naming no such program, or no output, is not checked. The
+  command must be introduced by `--` (`_WaitCommand` keeps the raw args to
+  tell), and `allow_interspersed_args=False`, so a child's `-o` can never be
+  parsed as the waiter's. `--output` need not exist in the launch form (the
+  submit creates it); the wait-only form still requires it. `--timeout-seconds`
+  bounds the wait, never the submit.
+- **Before launching, an active job means attach** (fork F2): if
+  `LiveSlurmJobs.live` is non-empty for `--output`, the waiter skips the
+  submit, prints the generation and jobs, and waits on that run, which is the
+  recovery after the job running `dvc repro` hits its walltime.
+  `unverified`/`unresolved` alone still launch, and the child's own guard
+  refuses. Ctrl-C during the submit waits for the child and returns its code
+  unpolled; an interrupted wait exits `130`. Up to
+  `MAX_CONSECUTIVE_POLL_ERRORS` (5) failed polls in a row are printed and
+  retried; the fifth exits `1` with the reason.
+- **`--accept-failures`** (fork F1) maps a final `3`, waited or from a local
+  child, to `0` after printing the terminal-failure count, so a DVC stage
+  over a dataset with one empty plate completes. Every other code is left
+  alone. `_live_jobs` passes a per-process `_InactiveJobMemo` as
+  `live_slurm_job_ids(..., is_active=)`, since a job answered not-active
+  stays so. The seams tests replace are `_run_snapshot`, `_live_jobs`,
+  `_fence_generation`, `_published`, `_cancelled`, `_generation_failures`
+  and `_is_process_run`.
+- **The GUI run console reads `4` as a failed submission**
+  (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
+
 ### Array trigger routing, not scheduler sidecar jobs
 
 Do not add a **scheduler sidecar job**, meaning an extra `sbatch` job intended
@@ -568,8 +701,8 @@ persisting the returned ID.
 - Every worker checks the active epoch immediately before publishing the store,
   the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
-- Staged submission returns `PROCESSING SUBMITTED`, like every SLURM run
-  (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
+- Staged submission returns `PROCESSING SUBMITTED` and exits `4`
+  (`SUBMITTED`), like every SLURM run (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
   finalization owns aggregation, the dashboard and the completion marker.
   Nothing writes `processing_report.html` automatically.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
@@ -631,7 +764,12 @@ naming each `<generation>:<token>` for `unresolved`. When either unknown group
 is non-empty it adds the one remedy that works: run the same command on a
 cluster node where `squeue` works. It then lists `sacct -j <id>` and
 `squeue --noheader --format='%i|%k' | grep 'phenotypic:<gen>:<token>'` for
-checking by hand. There is no override flag. A host that cannot reach the
+checking by hand. There is no override flag. **A restored fence whose job ids
+SLURM has purged** (`squeue` says invalid, `sacct` has no rows) stays
+`unverified` forever; after confirming with `sacct` that nothing runs, set the
+fence's `"active"` to `false` in `.phenotypic/slurm_lifecycle.json`. Deleting
+the file does **not** work: with no fence, every generation's ledger is
+walked and the same jobs stay unverified (measured, P2 review M7). A host that cannot reach the
 scheduler cannot clear a stuck fence.
 
 **A stuck `active: true` does not refuse on its own, deliberately.** A
@@ -640,6 +778,37 @@ active forever. Refusing on the flag would block the plain re-run that is the
 recovery procedure. So liveness always comes from the scheduler. Once every
 ledgered job is terminal and no unresolved token matches a queued job, the run
 is allowed.
+
+**Allowed also means the stale fence is closed.** Until #281 P2 T5 it was not:
+the guard let a SLURM re-run through, and `initialize_slurm_lifecycle` then
+refused to publish a new generation over the still-`active` one, so the
+documented recovery died with `Unexpected error` after the mutating half had
+begun (a SLURM recompile refused the same way in
+`_initialize_recompile_slurm_attempt`). Now the first step of the mutating
+half, and the recompile attempt before its own check, call
+`retire_dead_lifecycle_fence` (`_cli_staged_orchestration.py`), which closes
+the fence on the guard's own evidence (`live_slurm_job_ids` empty) for the
+modes it owns, `ordinary`, `recompile` and `staged-*` (a staged fence through
+`deactivate_orchestration`). It leaves `closed_by` unset, so
+`phenotypic-wait` never reads the close as the old generation's publication.
+A `dvc checkout` that restores an old `.phenotypic/` (spec C13) is the same
+case. `migrate` (own lease and reconcile), `tune` and owned fences are never
+retired. Pinned by `tests/unit/cli/test_dvc_outs_at_submission.py`.
+
+**A fence with no ledger row for its generation is never retired** (P2 review
+I4). `live_slurm_job_ids` answers empty for it, because there is nothing to
+ask the scheduler about, yet it is exactly the state of a submitter between
+publishing its fence (`initialize_slurm_lifecycle`, or
+`initialize_orchestration` for staged runs) and writing its first `intent`
+row, a window that grows with a staged run's manifest. Retiring it made that
+submitter die with `SlurmGenerationInactiveError` after its mutating half had
+begun. `unledgered_active_fence` names such a fence; `_retire_dead_fence`
+then refuses a **SLURM** invocation with exit `1`, naming the generation and
+the fence file, before anything else is written (the refusal
+`initialize_slurm_lifecycle` made before the retire existed, moved up). A
+local run is not refused, as it never was. A submitter that died before its
+first `sbatch` leaves the same state, which is rare: the message says to
+delete the fence file once no invocation is running.
 
 The check is a read-only `squeue` from the invoking process, not a scheduler
 job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in
@@ -664,8 +833,9 @@ throttled per-image validation chain, and reports its durable job IDs,
 generation, control references, and the terminal status file its finalizer
 writes. That file is where a SLURM attempt's verdict is read: 0.21.0 removed
 `--wait`, which used to wait for the lifecycle to close and turn a failed
-terminal status into a Click error, so a submitted migration exits 0 whatever
-its jobs later do. **If the finalizer itself never finishes** (out of memory,
+terminal status into a Click error, so a submitted migration exits `4`
+(`SUBMITTED`) whatever its jobs later do, and so does a SLURM `--dry-run`,
+which submits its validation chain. A local migrate keeps `0`/`1`. **If the finalizer itself never finishes** (out of memory,
 time limit, node failure, or cancelled while pending), no terminal status file
 appears. Once no job of the attempt is queued, re-run `--mode migrate`:
 `reconcile_interrupted_migration_attempt` terminalizes the dead attempt as
@@ -973,9 +1143,9 @@ otherwise.
   leaves it exactly where it is; renaming it into `legacy-v2/`, where nothing
   reads it, would orphan the work of any staged run live across the migrate.
   Only `image_complete/` and `stage3_complete/` move.
-- **`deliverables/metadata.csv` is byte-exact provenance**, with no exception for
+- **`deliverables/metadata.<ext>` is byte-exact provenance**, with no exception for
   migrate. The canonical view is emitted *alongside* it as
-  `metadata.canonical.csv`; `metadata.original.csv` does not exist and must not
+  `metadata.canonical.tsv`; `metadata.original.csv` does not exist and must not
   be created.
 - **The master is parquet-only** (D8). `master_measurements.csv` is deleted on
   sight, not rewritten.
@@ -1129,16 +1299,22 @@ member (`sdk_/_schema_shape.py:192`).
 ## Output layout & deliverables
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
-`master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
-`measurements_by_feature/<feature>.{csv,parquet}`,
-`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+`master_measurements.parquet` (**parquet only** since D8), `measurements.{tsv,csv,parquet}`,
+`measurements_by_feature/<feature>.{tsv,parquet}`,
+`measurements_by_category/<label>.{tsv,parquet}` (one per `CATEGORIES` member
 with a present column; written beside the feature split by
 `finalize_post_master_outputs`),
-`<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
+`<AnalysisClass>.{tsv,parquet}`, `analysis_manifest.json`,
+`metrics.json` and `schema.json` (#281 spec C4/C12: the run summary and the
+column schema of every published table, written by `finalize_run`'s
+`publish_run_summaries` after the splits and before the aggregate proof, which
+declares and enforces both; byte-stable canonical JSON, never read back, so
+not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
+aggregated table shares and is `null` for v1 flat tables, which record none),
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
-`pipeline.json.pht-pipe`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+`pipeline.pht-pipe.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 pipeline config is **seeded** from the `--pipeline` bytes when a full or
 staged run starts (`_seed_pipeline_config`, only when no config -- canonical
 or legacy -- exists, under `pipeline_publication_lock`) and rewritten from
@@ -1215,7 +1391,23 @@ is an advisory, and an advisory is never a gate. It *does* still refuse mixed
 **authority** — a tree holding both embedded tables and legacy external
 Parquets (`refuse_mixed_measurement_authority`).
 
-`measurements.{csv,parquet}` is the post-applied, metadata-joined mirror the GUI
+**Two generated CSVs and one input snapshot stay CSV** (#281 P1, spec B2/B9):
+`measurements.csv` stays because the GUI's curation rewrites it and the
+`.parquet` — never the `.tsv` — until #283, so until then a curated edit
+reaches `measurements.csv`/`.parquet` and not `measurements.tsv`;
+`error_analysis.csv` is written by the GUI; `metadata.<ext>` is the user's
+byte-exact snapshot. **Finalize's stale-CSV sweep** is
+`remove_stale_csv_sibling(tsv)` (`sdk_/_delimited.py`), called right after a
+`.tsv` is published: it deletes only that file's `.csv` twin (the splits in
+`_write_split`, `<AnalysisClass>` in `_emit_analysis_outputs`, and
+`metadata.canonical.csv` in `emit_canonical_metadata_view`), and raises on the
+stems `measurements`, `error_analysis` and `metadata` directly in
+`deliverables/` (the same stem in a split folder is an ordinary split). A reader of a possibly
+pre-cutover tree resolves the mirror text file with `measurements_table_path` /
+`BundleLayout.measurements_table_path()` (`.tsv`, else `.csv`); analysis tables
+go through the manifest, whose schema-1 entries map `csv` onto `tsv`.
+
+`measurements.{tsv,csv,parquet}` is the post-applied, metadata-joined mirror the GUI
 reads and curates. Metadata is the **left** frame, deliberately: a metadata
 identity that matched no measured object survives as a phantom row with
 `QC_MetadataOnly=true`, its metadata values kept and its measurement/info
@@ -1252,7 +1444,7 @@ visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 
 **Metadata snapshot authority.** Before local processing or SLURM submission,
 full runs and recompile atomically copy the configured `--metadata` bytes to
-`deliverables/metadata.csv`, verify the copy, and use that stable path for
+`deliverables/metadata.<ext>` (the input's own `.csv` or `.tsv` suffix), verify the copy, and use that stable path for
 finalization. The snapshot is source provenance, not a generated schema table:
 legacy headers normalize only in memory, while finalization, recompile, and
 explicit `--mode migrate` must leave its bytes unchanged. Recompile performs

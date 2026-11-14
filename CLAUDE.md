@@ -248,7 +248,9 @@ isolation before attributing it — most of them pass.
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. **Every SLURM run returns at submission** (0.21.0 removed `--wait`,
-  with no shim) and exits 0. A full, measure or staged run writes the README
+  with no shim) and exits `4` (`RunExitCode.SUBMITTED`; the full exit-code
+  table is in [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)). A full,
+  measure or staged run writes the README
   and prints `PROCESSING SUBMITTED`; a process run prints `PROCESS-ONLY
   SUBMITTED` and has no README; recompile and migrate print their own
   submission lines. The submitting CLI never aggregates for a SLURM run, so
@@ -586,10 +588,18 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `project_embedded_measurement_table`). **Parquet only** — D8 deleted
   `master_measurements.csv` along with its constant, its path helper and its
   reader, because the un-joined master is not the file a human opens.
-  `measurements.{csv,parquet}` carries the metadata join, appends
+  `measurements.{tsv,csv,parquet}` carries the metadata join, appends
   metadata-only phantoms once, and is the post-applied mirror the GUI
   reads/curates — feed analysis and dashboards from the **mirror**, not the
-  master. `measurements_by_feature/` (one file per measurer) and
+  master. Generated tables are TSV (spec B2); **three CSVs stay**:
+  `metadata.<ext>` (the user's byte-exact snapshot), `error_analysis.csv`
+  (GUI-written) and `measurements.csv` (GUI curation rewrites it and the
+  `.parquet`, not the `.tsv`, until #283 — spec B9). Finalize deletes only
+  the stale `.csv` twin of a split/`<AnalysisClass>`/`metadata.canonical`
+  file it just republished as `.tsv` (`remove_stale_csv_sibling`, which
+  refuses those three names); readers resolve the mirror with
+  `measurements_table_path` (`.tsv`, else a pre-cutover `.csv`).
+  `measurements_by_feature/` (one file per measurer) and
   `measurements_by_category/` (one file per `CATEGORIES` member) are both
   written from that mirror's post-applied frame by
   `finalize_post_master_outputs`, the finalization path shared by full,
@@ -604,12 +614,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   context (startup writes `.phenotypic/reference_manifest.json`; workers read
   it), and a per-image reference digest enters the work-id only for such
   pipelines. Process mode snapshots the table to
-  `.phenotypic/reference_metadata.csv`, preserved across `--restart`.
+  `.phenotypic/reference_metadata.<ext>`, preserved across `--restart`.
   `--mode measure` refuses a pipeline whose measurers read reference
   metadata. See `docs/source/how_to/pages/reference_metadata.md`.
 - **Metadata startup snapshot:** full runs and recompile copy a configured
-  `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
-  work or SLURM submission. Treat that file as input provenance: **never rewrite
+  `--metadata` table byte-for-byte to `deliverables/metadata.<ext>` before local
+  work or SLURM submission. `<ext>` is the input's own suffix, `.csv` or `.tsv`
+  (spec B5; any other suffix is a usage error), and a run keeps exactly one:
+  find it with `resolve_metadata_snapshot_path`, which refuses a folder holding
+  both, never by hand-joining `metadata.csv`. Treat that file as input provenance: **never rewrite
   it as a side effect** of any other operation. Finalization, chunk writers, and
   `--mode recompile` normalize legacy headers **only in memory**.
   **There is no exception, including `--mode migrate`.** An earlier draft of
@@ -620,8 +633,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
   provenance, and "the original is recoverable over there" is a weaker
   guarantee than "the bytes you supplied are still the bytes on disk".
   `--mode migrate` instead **emits a canonical view alongside** the snapshot,
-  at `deliverables/metadata.canonical.csv`, and leaves `metadata.csv`
-  byte-identical (pinned by
+  at `deliverables/metadata.canonical.tsv` (a generated table, so TSV), and
+  leaves `metadata.<ext>` byte-identical (pinned by
   `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate`).
   `metadata.original.csv` does not exist and must not be created. Generated
   scientific tables still emit only the canonical flat `Metadata_<Label>`

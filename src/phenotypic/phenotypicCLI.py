@@ -147,7 +147,16 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    cast,
+    get_args,
+)
 from uuid import UUID
 
 import click
@@ -194,6 +203,7 @@ from phenotypic.sdk_ import (
     RECOMPILE_TASK_MANIFEST_JSON,
     STORE_SUFFIX,
     JobMetadataKey,
+    RunExitCode,
     dashboard_html_path,
     load_image_from_store,
     source_image_stem,
@@ -203,7 +213,9 @@ from phenotypic.sdk_ import (
     preserved_on_restart_names,
     atomic_write_bytes,
     atomic_write_json,
-    metadata_csv_deliverable_path,
+    metadata_snapshot_path,
+    resolve_metadata_snapshot_path,
+    pipeline_config_candidates,
     pipeline_json_path,
     pipeline_publication_lock,
     pipeline_publication_lock_path,
@@ -480,6 +492,8 @@ def _prior_scientific_artifact_names(
     ``deliverables/`` before any image (:func:`_seed_pipeline_config`), with
     the publication lock file beside it; output trees from before that
     change instead hold a copy at the root under the source file's basename.
+    A tree seeded before the typed-suffix flip holds the seed under its old
+    name, ``pipeline.json.pht-pipe``, which is scaffolding too.
 
     Fails closed: a path that is not a directory, or a root that cannot be
     enumerated, is reported as holding artifacts rather than assumed fresh.
@@ -500,9 +514,13 @@ def _prior_scientific_artifact_names(
         when a restart would preserve nothing from an earlier run.
     """
     root = Path(output_dir)
-    seeded_config = pipeline_json_path(root)
+    seeded_config, old_typed_seed, _plain = pipeline_config_candidates(root)
     seeded_files = frozenset(
-        {seeded_config, pipeline_publication_lock_path(seeded_config)}
+        {
+            seeded_config,
+            old_typed_seed,
+            pipeline_publication_lock_path(seeded_config),
+        }
     )
     blocking: list[str] = []
     try:
@@ -792,15 +810,16 @@ def _refuse_unusable_reference_table(
     like the ``--metadata`` parse it extends: a bad table must not cost the
     user a changed output first. Without ``--metadata`` it checks the snapshot
     the run would fall back to, exactly as ``resolve_reference_table_path``
-    picks it (full: ``deliverables/metadata.csv``; process:
-    ``.phenotypic/reference_metadata.csv``).
+    picks it (full: ``deliverables/metadata.<ext>``; process:
+    ``.phenotypic/reference_metadata.<ext>``, either suffix).
 
     Raises:
         click.UsageError: ``--overwrite`` without ``--metadata`` (the snapshot
             the run would fall back to is deleted); no table at all
-            (``PF-REF-NO-TABLE``); a ``--metadata`` that is not the CSV the
-            run snapshots (``metadata_csv_payload``, the snapshot's own
-            check); or a table that is not a valid reference table.
+            (``PF-REF-NO-TABLE``); a ``.csv`` and a ``.tsv`` snapshot both
+            present; a ``--metadata`` that is not the table the run snapshots
+            (``metadata_csv_payload``, the snapshot's own check); or a table
+            that is not a valid reference table.
     """
     from phenotypic._cli._cli_preflight import HINTS
     from phenotypic._core._reference_context import (
@@ -824,14 +843,19 @@ def _refuse_unusable_reference_table(
             "pass --metadata with the table this pipeline reads."
         )
     else:
-        table = reference_table_snapshot_path(output_dir, process_mode=process_mode)
-        label = f"reference metadata snapshot {table}"
-        if not table.is_file():
+        try:
+            snapshot = reference_table_snapshot_path(
+                output_dir, process_mode=process_mode
+            )
+        except ValueError as exc:  # both a .csv and a .tsv snapshot
+            raise click.UsageError(str(exc)) from exc
+        if snapshot is None:
             raise click.UsageError(
                 "[PF-REF-NO-TABLE] The pipeline reads reference metadata but no "
                 "--metadata was given and the run has no snapshot to fall back to.\n"
                 f"    → {HINTS['PF-REF-NO-TABLE']}"
             )
+        table, label = snapshot, f"reference metadata snapshot {snapshot}"
     try:
         ReferenceContext(table)
     except ReferenceTableError as exc:
@@ -878,6 +902,28 @@ def _print_dry_run_mutation_preview(
             click.echo(f"  - {target.relative_to(output_dir)}")
         if len(targets) > 10:
             click.echo(f"  ... and {len(targets) - 10} more")
+
+
+def _refuse_ambiguous_metadata_snapshot(output_dir: Path) -> None:
+    """Refuse, as a usage error, an output holding two metadata snapshots.
+
+    Spec B5: a run keeps exactly one ``deliverables/metadata.<ext>``. When
+    both ``metadata.csv`` and ``metadata.tsv`` exist (a suffix switch
+    interrupted between publishing the new one and retiring the old), every
+    mode that would read the snapshot refuses here, in the read-only half,
+    before anything under ``--output`` is written. Re-passing ``--metadata``
+    to a full run or a recompile replaces the snapshot and heals the pair;
+    so does deleting the stale file by hand.
+
+    Raises:
+        click.UsageError: Both snapshots exist.
+    """
+    if not output_dir.exists():
+        return
+    try:
+        resolve_metadata_snapshot_path(output_dir)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
 
 
 def _refuse_live_slurm_run(output_dir: Path) -> None:
@@ -933,7 +979,82 @@ def _refuse_live_slurm_run(output_dir: Path) -> None:
             for comment in jobs.unresolved
         )
     click.echo("\n".join(lines), err=True)
-    sys.exit(1)
+    sys.exit(RunExitCode.ERROR)
+
+
+def _retire_dead_fence(output_dir: Path, *, submitting: bool) -> None:
+    """Close a dead ``active`` lifecycle fence and say so (#281 spec C13).
+
+    Called in the mutating half only, after :func:`_refuse_live_slurm_run`
+    passed. See ``retire_dead_lifecycle_fence``.
+
+    A fence with no ledger row is never retired, because its submitter may
+    still be preparing its first ``sbatch`` (review I4). A SLURM submission
+    over it is refused here, exit ``1``, naming the fence. That is the refusal
+    ``initialize_slurm_lifecycle`` made before the retire existed, raised
+    before anything else is written. A local run is not refused: it never
+    publishes a fence, so it was never refused by one.
+
+    Args:
+        output_dir: Run output root.
+        submitting: Whether this invocation will publish a SLURM fence.
+    """
+    if not output_dir.exists():
+        return
+    from phenotypic._cli._cli_staged_orchestration import (
+        retire_dead_lifecycle_fence,
+        unledgered_active_fence,
+    )
+
+    unledgered = unledgered_active_fence(output_dir)
+    if unledgered is not None:
+        if submitting:
+            from phenotypic._cli._cli_slurm_lifecycle import lifecycle_state_path
+
+            fence = lifecycle_state_path(output_dir)
+            click.echo(
+                f"Error: Cannot submit to {output_dir}: SLURM generation "
+                f"{unledgered} holds the active lifecycle fence {fence} and "
+                "has recorded no job yet, so another invocation may still be "
+                "preparing its submission. Wait for it and run the command "
+                "again. If no invocation is running (a submitter that died "
+                "before its first sbatch leaves this state), delete "
+                f"{fence} and run the command again.",
+                err=True,
+            )
+            sys.exit(RunExitCode.ERROR)
+        return
+    retired = retire_dead_lifecycle_fence(output_dir)
+    if retired is not None:
+        click.echo(
+            f"Note: closed SLURM generation {retired}, whose fence was still "
+            "active although none of its jobs is queued or running."
+        )
+
+
+def _metadata_suffix_callback(
+    ctx: click.Context, param: click.Parameter, value: Optional[Path]
+) -> Optional[Path]:
+    """Refuse a ``--metadata`` table that is neither ``.csv`` nor ``.tsv``.
+
+    Spec B4: a user table may be either, the delimiter chosen by suffix, and any
+    other suffix is refused. A Click callback rather than a check in the
+    read-only half, so the refusal is Click's own usage error (exit ``2``)
+    raised during parsing, before any mode's own logic runs -- the same exit
+    every other malformed option gets, and in every mode alike.
+    """
+    if value is None:
+        return value
+    from phenotypic.sdk_ import INPUT_TABLE_SUFFIXES
+
+    if value.suffix.lower() not in INPUT_TABLE_SUFFIXES:
+        raise click.BadParameter(
+            f"{value.name!r} must be a .csv or .tsv table (got suffix "
+            f"{value.suffix or 'none'!r}); export it as CSV or TSV.",
+            ctx=ctx,
+            param=param,
+        )
+    return value
 
 
 def _snapshot_metadata_csv(
@@ -941,35 +1062,45 @@ def _snapshot_metadata_csv(
 ) -> Optional[Path]:
     """Publish and return the byte-exact startup metadata snapshot.
 
-    An existing snapshot is reused when no new source is supplied. New bytes
-    are validated as CSV and atomically replaced before any processing or
-    scheduler submission. Legacy headers are normalized only when the snapshot
-    is read; finalization and metadata migration never rewrite these source
-    bytes.
+    The snapshot is ``deliverables/metadata.<ext>``, keeping the source's
+    suffix (``.csv`` or ``.tsv``, spec B5). An existing snapshot, under either
+    suffix, is reused when no new source is supplied. New bytes are validated
+    with the suffix's delimiter and atomically replaced before any processing
+    or scheduler submission; a source whose suffix differs from the existing
+    snapshot's replaces it. The new snapshot is published and verified
+    **first** and the other suffix's file removed after (spec B5, see
+    ``remove_other_suffix_snapshot``), so a failure in between leaves two
+    snapshots, which every resolver refuses loudly, and never none, which
+    would let a continuation run silently without the metadata join. Legacy
+    headers are normalized only when the snapshot is read; finalization and
+    metadata migration never rewrite these source bytes.
     """
-    destination = metadata_csv_deliverable_path(output_dir)
     if source is None:
-        return destination if destination.is_file() else None
+        return resolve_metadata_snapshot_path(output_dir)
 
     import hashlib
     import io
     import json
 
     import pandas as pd
+    from phenotypic._cli._cli_reference import remove_other_suffix_snapshot
+    from phenotypic.sdk_ import delimiter_for
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
+    destination = metadata_snapshot_path(output_dir, source.suffix)
     payload = source.read_bytes()
     # Kept although the startup parse already ran the shared reader: pandas
     # refuses an unterminated quote that Polars reads as a header, and this
     # parse is what keeps such bytes from replacing a valid snapshot (review
     # D8 proposed removing it; test_invalid_metadata_never_replaces_existing_
     # snapshot is the counterexample).
-    pd.read_csv(io.BytesIO(payload))
+    pd.read_csv(io.BytesIO(payload), sep=delimiter_for(source))
     expected_digest = hashlib.sha256(payload).hexdigest()
     state_path = resolve_processing_state_path(output_dir)
     lock_path = state_path.with_name(f".{state_path.name}.lock")
     with exclusive_path_lock(lock_path, timeout=60.0):
         if destination.is_file() and destination.read_bytes() == payload:
+            remove_other_suffix_snapshot(destination)
             return destination
         if state_path.is_file():
             raw_state = json.loads(state_path.read_text(encoding="utf-8"))
@@ -983,6 +1114,8 @@ def _snapshot_metadata_csv(
             raise OSError(
                 f"Metadata snapshot verification failed: {destination}"
             )
+        # Retire the other suffix only once the new snapshot is verified.
+        remove_other_suffix_snapshot(destination)
     return destination
 
 
@@ -994,8 +1127,10 @@ def _prepare_incremental_startup(
     """Publish startup inputs and conservatively migrate exact failures."""
     metadata_snapshot_changed = False
     if not config.measure_only and not config.process_only_layer:
-        metadata_destination = metadata_csv_deliverable_path(output_dir)
         if config.metadata_csv is not None:
+            metadata_destination = metadata_snapshot_path(
+                output_dir, config.metadata_csv.suffix
+            )
             source_bytes = config.metadata_csv.read_bytes()
             metadata_snapshot_changed = (
                 not metadata_destination.is_file()
@@ -1186,6 +1321,93 @@ def setup_logging(debug: bool = False):
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
     root_logger.addHandler(handler)
+
+
+def _run_failure_count(output_dir: Path, failed_now: int = 0) -> int:
+    """Accepted images whose current outcome is a terminal failure.
+
+    Asked of the run state rather than of this invocation, because a
+    continuation skips the images a previous invocation recorded as terminal
+    failures: they are still failed, merely not retried, so a run that exited
+    ``COMPLETE_WITH_FAILURES`` keeps exiting it on a plain re-run. The run
+    state is the one producer of that count. It is scoped to the accepted
+    inventory, and a verified image outranks a failure record left from
+    before a ``--restart``, so a stale record does not count.
+
+    Args:
+        output_dir: Run output root.
+        failed_now: Images this invocation recorded as terminal failures.
+            When positive the run state is not consulted: the run has failures
+            either way, and a tree without success markers (which the run
+            state cannot inventory) still reports them.
+
+    Returns:
+        ``failed_now`` when positive, else the run state's failed count.
+    """
+    if failed_now > 0:
+        return failed_now
+    from phenotypic.sdk_ import resolve_run_state
+
+    return resolve_run_state(output_dir, depth="shallow").diagnostics.failed
+
+
+def _finished_run_exit(failed: int) -> RunExitCode:
+    """The exit code of a run that finished in this process (spec #281 C10).
+
+    Args:
+        failed: From :func:`_run_failure_count`.
+
+    Returns:
+        ``COMPLETE`` when none failed, else ``COMPLETE_WITH_FAILURES``.
+    """
+    if failed == 0:
+        return RunExitCode.COMPLETE
+    return RunExitCode.COMPLETE_WITH_FAILURES
+
+
+def _stage3_less_images(
+    output_dir: Path, inventory: Mapping[str, Sequence[Any]]
+) -> set[tuple[str, str]]:
+    """The ``(dataset, image stem)`` pairs of a staged run with no Stage-3 marker.
+
+    Args:
+        output_dir: Run output root.
+        inventory: The run's full ``dataset -> images`` inventory.
+    """
+    from phenotypic._cli._cli_staged_resume import stage3_completion_exists
+
+    return {
+        (dataset, source_image_stem(Path(image)))
+        for dataset, images in inventory.items()
+        for image in images
+        if not stage3_completion_exists(
+            output_dir, dataset, source_image_stem(Path(image))
+        )
+    }
+
+
+def _all_current_terminal_failures(
+    output_dir: Path, images: set[tuple[str, str]]
+) -> bool:
+    """Whether every image in *images* has a current terminal failure record.
+
+    Asked of the run state, the one producer of an image's verdict: a
+    ``failed`` verdict is a terminal record keyed by the image's current work
+    id, so a record left from an earlier configuration does not count.
+
+    Args:
+        output_dir: Run output root.
+        images: ``(dataset, image stem)`` pairs, from
+            :func:`_stage3_less_images`.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    failed = {
+        (image.dataset, image.image_stem)
+        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        if image.verdict == "failed"
+    }
+    return images <= failed
 
 
 def error_exit(
@@ -2052,10 +2274,14 @@ def _print_process_only_dry_run_plan(
     "metadata_csv",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
+    callback=_metadata_suffix_callback,
     help=(
-        "CSV file to left-join onto the measurements mirror on shared columns. "
-        "Rows that match no measured object are kept with null measurements and "
-        "QC_MetadataOnly=true, so undetected strains stay visible."
+        "CSV or TSV table (.csv or .tsv; the delimiter follows the suffix, "
+        "and any other suffix is refused) to "
+        "left-join onto the measurements mirror on shared columns. Rows that "
+        "match no measured object are kept with null measurements and "
+        "QC_MetadataOnly=true, so undetected strains stay visible. The run "
+        "keeps a byte-for-byte copy as deliverables/metadata.csv or .tsv."
     ),
 )
 @click.option(
@@ -2369,12 +2595,14 @@ def phenotypic_cli(
         # Parse SLURM args before the recompile branch so --mode recompile can
         # explicitly choose between local and SLURM recompile dispatch.
         slurm_args_dict = {}
+        # A malformed option value is a usage error, exit 2, like any refused
+        # option (#281 spec C10, review M1). Re-raised as a plain UsageError
+        # so the message reads as before rather than as "Invalid value".
         if slurm_args:
             try:
                 slurm_args_dict = _parse_slurm_args(slurm_args)
             except click.BadParameter as e:
-                click.echo(str(e), err=True)
-                sys.exit(1)
+                raise click.UsageError(str(e)) from e
 
         # Validate SLURM time parameter if present
         if slurm_args_dict:
@@ -2397,11 +2625,9 @@ def phenotypic_cli(
                     try:
                         canonical_time = parse_slurm_time(time_val)
                     except ValueError as exc:
-                        click.echo(
-                            f"Error: invalid '{time_key}': {exc}",
-                            err=True,
-                        )
-                        sys.exit(1)
+                        raise click.UsageError(
+                            f"invalid --slurm '{time_key}' {time_val!r}: {exc}"
+                        ) from exc
                     assert canonical_time is not None
                     slurm_args_dict[time_key] = canonical_time
 
@@ -2429,8 +2655,11 @@ def phenotypic_cli(
             try:
                 gpu_slurm_args_dict = _parse_slurm_args(gpu_slurm_args)
             except click.BadParameter as e:
-                click.echo(str(e), err=True)
-                sys.exit(1)
+                # The shared parser names --slurm; this value came from
+                # --gpu-slurm.
+                raise click.UsageError(
+                    str(e).replace("--slurm", "--gpu-slurm")
+                ) from e
             for time_key in ("time", "slurm_time"):
                 if time_key in gpu_slurm_args_dict:
                     try:
@@ -2438,12 +2667,10 @@ def phenotypic_cli(
                             gpu_slurm_args_dict[time_key]
                         )
                     except ValueError as exc:
-                        click.echo(
-                            f"Error: invalid --gpu-slurm '{time_key}' "
-                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}",
-                            err=True,
-                        )
-                        sys.exit(1)
+                        raise click.UsageError(
+                            f"invalid --gpu-slurm '{time_key}' "
+                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}"
+                        ) from exc
                     if canonical_time is not None:
                         gpu_slurm_args_dict[time_key] = canonical_time
 
@@ -2460,6 +2687,8 @@ def phenotypic_cli(
                     "--mode migrate output directory does not exist: "
                     f"{output_dir}."
                 )
+            # Migrate takes no --metadata, so it always reads the snapshot.
+            _refuse_ambiguous_metadata_snapshot(output_dir)
             njobs_was_explicit = (
                 ctx.get_parameter_source("n_jobs") is not ParameterSource.DEFAULT
             )
@@ -2485,6 +2714,8 @@ def phenotypic_cli(
                 raise click.UsageError(
                     f"--mode recompile output directory does not exist: {output_dir}."
                 )
+            if metadata_csv is None:  # a --metadata replaces the snapshot
+                _refuse_ambiguous_metadata_snapshot(output_dir)
             _refuse_live_slurm_run(output_dir)
             try:
                 metadata_csv = _snapshot_metadata_csv(output_dir, metadata_csv)
@@ -2507,7 +2738,9 @@ def phenotypic_cli(
                 recompile_state.config["no_qc"] = no_qc
                 save_processing_state(recompile_state, output_dir)
             if slurm_args_dict and not force_local:
-                _handle_recompile_slurm(
+                # SUBMITTED, or the finished run's code when nothing needed
+                # SLURM and the handler ran the local recompile instead.
+                recompile_exit = _handle_recompile_slurm(
                     output_dir=output_dir,
                     metadata_csv=metadata_csv,
                     include_dataset_column=include_dataset_column,
@@ -2525,7 +2758,13 @@ def phenotypic_cli(
                     n_jobs,
                     no_qc=no_qc,
                 )
-            sys.exit(0)
+                # The run's failures, as the waiter reads them on SLURM
+                # (#281 spec C10, review I2/F4): a recompile re-publishes the
+                # aggregate and leaves every terminal failure where it was.
+                recompile_exit = _finished_run_exit(
+                    _run_failure_count(output_dir)
+                )
+            sys.exit(recompile_exit)
 
         # ---- Early validation for --mode measure (measure_only) --------
         # Measure mode is a one-shot re-measurement run over the image
@@ -2627,12 +2866,11 @@ def phenotypic_cli(
 
         resume_state = None
 
-        # Validate extension argument
+        # Validate extension argument: a usage error, exit 2 (review M1).
         try:
             ext = normalize_extension(ext, ".tiff")
         except click.BadParameter as e:
-            click.echo(str(e), err=True)
-            sys.exit(1)
+            raise click.UsageError(str(e)) from e
 
         # Validate metadata CSV early, outside --skip-validation, with the one
         # reader every metadata consumer uses (full-file dtype inference).
@@ -2651,6 +2889,16 @@ def phenotypic_cli(
                     )
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
+        # A run that reads the snapshot refuses here, above every mutation,
+        # when it holds both metadata.csv and metadata.tsv rather than letting
+        # mint_run_identity raise after --restart has already cleared machine
+        # state. A full continuation reads it only without --metadata (a new
+        # table replaces it); measure mode never writes the snapshot, so it
+        # reads it whatever it is given.
+        if not overwrite and (
+            cli_mode == "measure" or (cli_mode == "full" and metadata_csv is None)
+        ):
+            _refuse_ambiguous_metadata_snapshot(output_dir)
 
         # The reference table, likewise outside --skip-validation and above
         # every mutation (the --dry-run exit, the --overwrite rmtree).
@@ -3025,6 +3273,13 @@ def phenotypic_cli(
             sys.exit(0)
 
         # ---- Mutating half: nothing above this line writes under --output.
+        #
+        # First, close a lifecycle fence `_refuse_live_slurm_run` already
+        # judged dead (every ledgered job terminal). Left active, it makes a
+        # SLURM re-run's `initialize_slurm_lifecycle` refuse the new
+        # generation -- the stuck-finalizer case, and a fence a `dvc
+        # checkout` restored (#281 spec C13).
+        _retire_dead_fence(output_dir, submitting=config.is_slurm_mode())
         #
         # Handle restart mode - clear ALL previous machine-state so the
         # orchestration re-runs cleanly (fresh state + event log + progress),
@@ -3431,7 +3686,9 @@ def phenotypic_cli(
                             config, resume_state, output_dir
                         )
                         click.echo("✓ All images already processed!")
-                        sys.exit(0)
+                        sys.exit(
+                            _finished_run_exit(_run_failure_count(output_dir))
+                        )
                 else:
                     if not config.is_slurm_mode():
                         from phenotypic._cli._cli_staged_orchestration import (
@@ -3465,27 +3722,28 @@ def phenotypic_cli(
                         or publication_refresh_required
                     )
                 ):
-                    _handle_recompile_slurm(
-                        output_dir=output_dir,
-                        metadata_csv=config.metadata_csv,
-                        include_dataset_column=config.include_dataset_column,
-                        overlay_alpha=config.overlay_alpha,
-                        checkpoint_interval=config.checkpoint_interval,
-                        slurm_args=config.slurm_args,
-                        no_qc=config.no_qc,
+                    sys.exit(
+                        _handle_recompile_slurm(
+                            output_dir=output_dir,
+                            metadata_csv=config.metadata_csv,
+                            include_dataset_column=config.include_dataset_column,
+                            overlay_alpha=config.overlay_alpha,
+                            checkpoint_interval=config.checkpoint_interval,
+                            slurm_args=config.slurm_args,
+                            no_qc=config.no_qc,
+                        )
                     )
-                    sys.exit(0)
                 if remaining_images == 0 and not (
                     metadata_snapshot_changed or publication_refresh_required
                 ):
                     _repair_incremental_manifest(
                         config, resume_state, output_dir
                     )
-                    from phenotypic._cli._cli_failure_tracker import (
-                        terminal_failure_index,
-                    )
-
-                    skipped_failures = len(terminal_failure_index(output_dir))
+                    # The run's own failures, the count its exit code uses,
+                    # not the whole journal: since #281 P2 C11d the journal
+                    # also holds `--mode measure` rows, keyed by measure work
+                    # ids, which this continuation neither skips nor retries.
+                    skipped_failures = _run_failure_count(output_dir)
                     if skipped_failures and not config.retry_failures:
                         click.echo(
                             "No resumable images; "
@@ -3494,7 +3752,7 @@ def phenotypic_cli(
                         )
                     else:
                         click.echo("✓ All images already processed!")
-                    sys.exit(0)
+                    sys.exit(_finished_run_exit(skipped_failures))
                 click.echo(
                     f"Continuing processing ({remaining_images} images remaining)"
                 )
@@ -3649,11 +3907,9 @@ def phenotypic_cli(
         # has no deliverables/.
         if config.process_only_layer:
             try:
-                from phenotypic.sdk_ import phenotypic_cache_pipeline_json_path
-
-                cache_copy = phenotypic_cache_pipeline_json_path(output_dir)
-                cache_copy.parent.mkdir(parents=True, exist_ok=True)
-                cache_copy.write_bytes(Path(config.pipeline_json).read_bytes())
+                cache_copy = _publish_process_pipeline_copy(
+                    Path(config.pipeline_json), output_dir
+                )
                 click.echo(f"  Pipeline: {cache_copy}")
             except OSError as e:
                 logger.warning(f"Failed to copy pipeline config: {e}")
@@ -3709,7 +3965,7 @@ def phenotypic_cli(
                     [f"Layer to export: {config.process_only_layer}"],
                     f"Mirrored layer files will be written under: {output_dir}",
                 )
-                sys.exit(0)
+                sys.exit(RunExitCode.SUBMITTED)
             _write_readme(config, None, output_dir, finalization_datasets)
             _echo_submitted_summary(
                 "PROCESSING SUBMITTED",
@@ -3726,7 +3982,7 @@ def phenotypic_cli(
                     else None
                 ),
             )
-            sys.exit(0)
+            sys.exit(RunExitCode.SUBMITTED)
 
         # Only a local run reaches this point: every SLURM run exited or was
         # refused above.
@@ -3740,7 +3996,8 @@ def phenotypic_cli(
         # deliverables. The strategy already wrote the mirrored layers and
         # the manifest; print a focused summary and exit.
         if config.process_only_layer:
-            if results.total_failed == 0:
+            run_failed = _run_failure_count(output_dir, results.total_failed)
+            if run_failed == 0:
                 from phenotypic._cli._cli_gui_lifecycle import (
                     publish_local_gui_completion,
                 )
@@ -3756,7 +4013,7 @@ def phenotypic_cli(
             click.echo(f"Failed:    {results.total_failed}")
             click.echo(f"Duration: {_format_duration(results.duration)}")
             click.echo(f"\nMirrored layer files saved under: {output_dir}")
-            sys.exit(0 if results.total_failed == 0 else 1)
+            sys.exit(_finished_run_exit(run_failed))
 
         # Load pipeline once for the finalizer — reused by both the
         # per-feature split in aggregate_master_csv and the README generator.
@@ -3812,6 +4069,9 @@ def phenotypic_cli(
                 no_qc=no_qc,
                 study_config=study_config,
                 njobs=config.n_jobs,
+                # The failures this exit code counts (`results.total_failed`),
+                # so metrics.json agrees with it (#281 P2 C11d).
+                measure_failed=results.total_failed if measure_only else None,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
@@ -3854,25 +4114,28 @@ def phenotypic_cli(
         ):
             finalization_succeeded = False
 
-        full_stage3_complete = False
+        staged_complete = False
+        staged_terminal_incomplete = False
         if local_staged_publication:
-            from phenotypic._cli._cli_staged_resume import (
-                stage3_completion_exists,
+            unfinished = _stage3_less_images(
+                output_dir, config.full_dataset_inventory
             )
-
-            full_stage3_complete = all(
-                stage3_completion_exists(
-                    output_dir, dataset, source_image_stem(Path(image))
-                )
-                for dataset, images in config.full_dataset_inventory.items()
-                for image in images
+            staged_complete = (
+                finalization_succeeded
+                and results.total_failed == 0
+                and not unfinished
             )
-        if (
-            local_staged_publication
-            and finalization_succeeded
-            and results.total_failed == 0
-            and full_stage3_complete
-        ):
+            # The local twin of the SLURM finalizer's `terminal_incomplete`
+            # close (#281 spec C10, review I3/F3): every image without a
+            # Stage-3 marker failed terminally, so the run finished with
+            # failures. It is not marked staged-complete, and a re-run, which
+            # skips those images, re-finalizes and ends here again.
+            staged_terminal_incomplete = (
+                finalization_succeeded
+                and bool(unfinished)
+                and _all_current_terminal_failures(output_dir, unfinished)
+            )
+        if staged_complete:
             from phenotypic._cli._cli_staged_orchestration import (
                 mark_local_staged_complete,
             )
@@ -3882,18 +4145,20 @@ def phenotypic_cli(
             )
 
         if local_staged_publication and not (
-            finalization_succeeded
-            and results.total_failed == 0
-            and full_stage3_complete
+            staged_complete or staged_terminal_incomplete
         ):
             click.echo(
                 "\nSTAGED FINALIZATION FAILED: required outputs were not "
                 "fully published. Run the same command again to continue.",
                 err=True,
             )
-            sys.exit(1)
+            sys.exit(RunExitCode.ERROR)
 
-        if finalization_succeeded and results.total_failed == 0:
+        # The run's failures, not only this invocation's: a continuation
+        # that skipped a recorded failure has not completed every image, and
+        # publishing the GUI completion would raise on it.
+        run_failed = _run_failure_count(output_dir, results.total_failed)
+        if finalization_succeeded and run_failed == 0:
             from phenotypic._cli._cli_gui_lifecycle import (
                 publish_local_gui_completion,
             )
@@ -3911,9 +4176,14 @@ def phenotypic_cli(
         click.echo(f"Success rate: {results.success_rate * 100:.1f}%")
         click.echo(f"Duration: {_format_duration(results.duration)}")
         click.echo(f"\nResults saved to: {output_dir}")
+        if staged_terminal_incomplete:
+            click.echo(
+                f"{run_failed} image(s) failed terminally. Running the same "
+                "command again skips them; add --retry-failures to retry them."
+            )
 
         # Exit with appropriate code
-        sys.exit(0 if results.total_failed == 0 else 1)
+        sys.exit(_finished_run_exit(run_failed))
 
     except KeyboardInterrupt:
         click.echo("\n\nInterrupted by user", err=True)
@@ -4094,8 +4364,11 @@ def _handle_recompile_slurm(
     checkpoint_interval: Optional[int],
     slurm_args: dict[str, Any],
     no_qc: bool = False,
-) -> None:
+) -> RunExitCode:
     """Submit recompile work as a SLURM array chain.
+
+    When no measurement source needs SLURM, or no script is generated, the
+    recompile runs locally instead and nothing is submitted.
 
     Args:
         output_dir: Existing output directory containing ``results/``.
@@ -4109,6 +4382,12 @@ def _handle_recompile_slurm(
         no_qc: Forwarded from ``--no-qc`` to skip QC compute on the
             finalizer task (stashed on the finalizer task metadata so the
             recompile worker reads it).
+
+    Returns:
+        ``RunExitCode.SUBMITTED`` once the chain is submitted. When the
+        recompile ran locally instead, the finished run's code: ``COMPLETE``,
+        or ``COMPLETE_WITH_FAILURES`` when the run carries a terminal failure
+        (#281 spec C10, review I2/F4).
     """
     _load_cli_runtime()
     import json
@@ -4149,13 +4428,10 @@ def _handle_recompile_slurm(
         shard_size=shard_size,
         attempt_id=attempt_id,
     )
-    from phenotypic.sdk_ import metadata_csv_deliverable_path
-
-    stable_metadata = metadata_csv_deliverable_path(output_dir)
     effective_metadata = (
         metadata_csv
         if metadata_csv is not None
-        else (stable_metadata if stable_metadata.is_file() else None)
+        else resolve_metadata_snapshot_path(output_dir)
     )
     for task in tasks:
         if task.get("task_type") in {TASK_MEASUREMENTS, TASK_FINALIZE}:
@@ -4185,7 +4461,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return
+        return _finished_run_exit(_run_failure_count(output_dir))
 
     console.print("[cyan]Querying SLURM array limits...[/cyan]")
     array_limit = get_slurm_array_limit()
@@ -4211,7 +4487,7 @@ def _handle_recompile_slurm(
             -1,
             no_qc=no_qc,
         )
-        return
+        return _finished_run_exit(_run_failure_count(output_dir))
 
     # No metadata-migration prologue any more: recompile does not rewrite
     # headers, so there is nothing to fan out and no afterok barrier to place
@@ -4297,6 +4573,7 @@ def _handle_recompile_slurm(
     click.echo(
         f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
     )
+    return RunExitCode.SUBMITTED
 
 
 def _discover_recompile_dataset_names(
@@ -4333,12 +4610,18 @@ def _discover_recompile_dataset_names(
 def _initialize_recompile_slurm_attempt(
     output_dir: Path, attempt_id: str
 ) -> None:
-    """Refuse a live prior launch and publish a fresh lifecycle fence."""
+    """Refuse a live prior launch and publish a fresh lifecycle fence.
+
+    A fence whose jobs have all ended is closed first, as on the forward path
+    (``_retire_dead_fence``); one that may still own a job refuses, and so
+    does one with no ledger row yet (review I4).
+    """
     from phenotypic._cli._cli_slurm_lifecycle import (
         initialize_slurm_lifecycle,
         load_slurm_lifecycle,
     )
 
+    _retire_dead_fence(output_dir, submitting=True)
     existing = load_slurm_lifecycle(output_dir)
     if existing is not None and existing.get("active") is True:
         previous = str(existing["generation"])
@@ -4566,19 +4849,16 @@ def _handle_recompile(
     #
     # The fallback was computing the right value and handing it to the wrong
     # consumer. `--metadata` still wins when given; otherwise the run's own
-    # `deliverables/metadata.csv` is what finalization joins, which is what
+    # `deliverables/metadata.<ext>` snapshot is what finalization joins, which is what
     # makes a bare recompile reproduce the mirror the forward run published.
     #
     # The SLURM path already does exactly this, at `_handle_recompile_slurm`:
     # it resolves `effective_metadata` the same way and stamps it onto the
     # finalizer task, so that arm never had the hole.
-    from phenotypic.sdk_ import metadata_csv_deliverable_path
-
-    stable_metadata = metadata_csv_deliverable_path(output_dir)
     effective_metadata = (
         metadata_csv
         if metadata_csv is not None
-        else (stable_metadata if stable_metadata.is_file() else None)
+        else resolve_metadata_snapshot_path(output_dir)
     )
 
     console.print("[cyan]Aggregating measurements...")
@@ -4631,17 +4911,42 @@ def _handle_recompile(
     console.print(f"\n[bold green]Recompilation complete: {output_dir}")
 
 
+def _publish_process_pipeline_copy(pipeline_path: Path, output_dir: Path) -> Path:
+    """Publish the process-only run's ``.phenotypic/pipeline.pht-pipe.json`` copy.
+
+    Writes the ``--pipeline`` bytes under the new name, then removes an
+    old-typed ``pipeline.json.pht-pipe`` sibling so one current file remains
+    (spec A4). A plain ``pipeline.json`` is left for V1 readers.
+
+    Args:
+        pipeline_path: The ``--pipeline`` file to copy byte-for-byte.
+        output_dir: The run's output root.
+
+    Returns:
+        The published path.
+    """
+    from phenotypic.sdk_ import phenotypic_cache_pipeline_candidates
+
+    target, old_typed, _plain = phenotypic_cache_pipeline_candidates(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(Path(pipeline_path).read_bytes())
+    old_typed.unlink(missing_ok=True)
+    return target
+
+
 def _seed_pipeline_config(
     pipeline_path: Path, output_dir: Path
 ) -> Optional[Path]:
-    """Seed ``deliverables/pipeline.json.pht-pipe`` with the ``--pipeline`` bytes.
+    """Seed ``deliverables/pipeline.pht-pipe.json`` with the ``--pipeline`` bytes.
 
     Gives a run its canonical pipeline config from the moment it starts, where
     finalize, the analysis GUI and the QC recipe all look for it. Finalize
     later rewrites the file from the loaded pipeline, so the submitted bytes
     are kept only until then.
 
-    Never replaces a config that is already there -- canonical or legacy --
+    Never replaces a config that is already there under any of its three
+    names (:func:`~phenotypic.sdk_.pipeline_config_candidates`: canonical,
+    old typed ``pipeline.json.pht-pipe``, or plain ``pipeline.json``),
     because on a resume it is the earlier run's, and it may carry QC edits
     the GUI wrote back into it. The existence check and the write share the
     publication lock every other writer of this file holds.

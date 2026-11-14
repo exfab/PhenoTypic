@@ -79,8 +79,10 @@ import stat as stat_module
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Iterable, Optional
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, Iterable, Mapping, Optional
 
+from ._delimited import CSV_SUFFIX, INPUT_TABLE_SUFFIXES, TSV_SUFFIX
 from .typing_ import (
     CheckpointType,
     ExecutionMode,
@@ -101,10 +103,26 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 LEGACY_JSON_SUFFIX: Final[str] = ".json"
-CONFIG_SUFFIX_PIPELINE: Final[str] = ".json.pht-pipe"
-CONFIG_SUFFIX_OPERATION: Final[str] = ".json.pht-op"
-CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".json.pht-cc"
-CONFIG_SUFFIX_TUNING: Final[str] = ".json.pht-tune"
+
+#: Canonical typed config suffixes. Each ends in ``.json`` because DVC picks
+#: its params parser from the last, lower-cased suffix and falls back to YAML
+#: for an unknown one, so ``x.pht-pipe.json`` is read and written as JSON.
+CONFIG_SUFFIX_PIPELINE: Final[str] = ".pht-pipe.json"
+CONFIG_SUFFIX_OPERATION: Final[str] = ".pht-op.json"
+CONFIG_SUFFIX_COLOR_CHECKER: Final[str] = ".pht-cc.json"
+CONFIG_SUFFIX_TUNING: Final[str] = ".pht-tune.json"
+
+#: Each canonical typed suffix mapped to its pre-flip ``.json.pht-*`` form.
+#: The old forms are **read-only legacy**: readers accept them, and writers
+#: produce one only when a caller names it explicitly.
+LEGACY_TYPED_CONFIG_SUFFIXES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        CONFIG_SUFFIX_PIPELINE: ".json.pht-pipe",
+        CONFIG_SUFFIX_OPERATION: ".json.pht-op",
+        CONFIG_SUFFIX_COLOR_CHECKER: ".json.pht-cc",
+        CONFIG_SUFFIX_TUNING: ".json.pht-tune",
+    }
+)
 CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
         CONFIG_SUFFIX_PIPELINE,
@@ -113,11 +131,21 @@ CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
         CONFIG_SUFFIX_TUNING,
     }
 )
+#: Every suffix a pipeline config may carry: canonical, old typed, plain.
 PIPELINE_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {CONFIG_SUFFIX_PIPELINE, LEGACY_JSON_SUFFIX}
+    {
+        CONFIG_SUFFIX_PIPELINE,
+        LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE],
+        LEGACY_JSON_SUFFIX,
+    }
 )
+#: Every suffix a tuning spec may carry: canonical, old typed, plain.
 TUNING_CONFIG_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {CONFIG_SUFFIX_TUNING, LEGACY_JSON_SUFFIX}
+    {
+        CONFIG_SUFFIX_TUNING,
+        LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_TUNING],
+        LEGACY_JSON_SUFFIX,
+    }
 )
 
 
@@ -137,21 +165,76 @@ def matches_any_suffix(path: str | Path, suffixes: Iterable[str]) -> bool:
 
 
 def ensure_typed_json_suffix(path: str | Path, suffix: str) -> Path:
-    """Return ``path`` with the canonical typed JSON suffix appended.
+    """Return ``path`` carrying the typed config ``suffix``.
 
-    Bare stems receive the full typed suffix. Legacy ``.json`` paths receive
-    only the typed tail, preserving the user-provided stem and case.
+    Rules, checked in order (all case-insensitive):
+
+    1. ``path`` already ends with ``suffix`` or its legacy typed form (see
+       :data:`LEGACY_TYPED_CONFIG_SUFFIXES`): returned unchanged, so a file is
+       never written somewhere other than where the caller asked.
+    2. ``path`` ends with ``.json``: the typed stem is inserted before it,
+       keeping the caller's ``.json`` spelling (``x.JSON`` becomes
+       ``x.pht-pipe.JSON``).
+    3. Otherwise ``suffix`` is appended.
+
+    Args:
+        path: The caller's target path.
+        suffix: A canonical typed suffix, e.g. :data:`CONFIG_SUFFIX_PIPELINE`.
+
+    Returns:
+        The path to write.
+
+    Examples:
+        >>> from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
+        >>> str(ensure_typed_json_suffix("run", CONFIG_SUFFIX_PIPELINE))
+        'run.pht-pipe.json'
+        >>> str(ensure_typed_json_suffix("run.json", CONFIG_SUFFIX_PIPELINE))
+        'run.pht-pipe.json'
+        >>> str(ensure_typed_json_suffix("run.json.pht-pipe", CONFIG_SUFFIX_PIPELINE))
+        'run.json.pht-pipe'
     """
     target = Path(path)
     text = str(target)
-    lowered = text.lower()
-    canonical_suffix = suffix.lower()
-    if lowered.endswith(canonical_suffix):
+    recognised = [suffix]
+    legacy_typed = LEGACY_TYPED_CONFIG_SUFFIXES.get(suffix)
+    if legacy_typed is not None:
+        recognised.append(legacy_typed)
+    if has_config_suffix(text, recognised):
         return target
-    if lowered.endswith(LEGACY_JSON_SUFFIX):
-        typed_tail = suffix.removeprefix(LEGACY_JSON_SUFFIX)
-        return Path(f"{text}{typed_tail}")
+    if text.lower().endswith(LEGACY_JSON_SUFFIX):
+        cut = len(text) - len(LEGACY_JSON_SUFFIX)
+        typed_stem = suffix.removesuffix(LEGACY_JSON_SUFFIX)
+        return Path(f"{text[:cut]}{typed_stem}{text[cut:]}")
     return Path(f"{text}{suffix}")
+
+
+def old_typed_config_sibling(path: str | Path) -> Path | None:
+    """Return the pre-flip ``.json.pht-*`` twin of a canonical typed config path.
+
+    A writer that publishes ``x.pht-pipe.json`` into a folder an older release
+    wrote retires ``x.json.pht-pipe`` after the publish, so the folder keeps one
+    current file (spec A4). A plain ``x.json`` has no typed twin and is never
+    retired.
+
+    Args:
+        path: A path ending in one of :data:`CONFIG_SUFFIXES` (matched
+            case-sensitively, as the writers spell them).
+
+    Returns:
+        The same folder and stem with the old typed suffix, or ``None`` when
+        ``path`` carries no canonical typed suffix.
+
+    Examples:
+        >>> from phenotypic.sdk_ import old_typed_config_sibling
+        >>> old_typed_config_sibling("best_pipeline.pht-pipe.json").name
+        'best_pipeline.json.pht-pipe'
+    """
+    target = Path(path)
+    for suffix, legacy in LEGACY_TYPED_CONFIG_SUFFIXES.items():
+        if target.name.endswith(suffix):
+            stem = target.name[: -len(suffix)]
+            return target.with_name(f"{stem}{legacy}")
+    return None
 
 
 def bytes_fingerprint(data: bytes) -> str:
@@ -248,13 +331,14 @@ def pipeline_publication_lock_path(config_path: Path) -> Path:
     is intentionally about publication, not one particular migration, so CLI,
     QC, Analysis, and compatibility writers serialize against each other.
 
-    Legacy ``pipeline.json`` and canonical ``pipeline.json.pht-pipe`` paths
-    intentionally map to the same output-level identity. This prevents a V1
-    reader/writer and a V2 writer from bypassing one another merely because
-    they selected different compatibility filenames.
+    Legacy ``pipeline.json``, the old typed ``pipeline.json.pht-pipe`` and
+    the canonical ``pipeline.pht-pipe.json`` intentionally map to the same
+    output-level identity. This prevents a V1 reader/writer, a writer from
+    before the suffix flip and a current writer from bypassing one another
+    merely because they selected different compatibility filenames.
     """
     config = Path(config_path)
-    if config.name in {PIPELINE_JSON, _LEGACY_PIPELINE_JSON}:
+    if config.name in _PIPELINE_CONFIG_NAMES:
         return config.parent / ".pipeline-config.migration.lock"
     return config.with_name(f".{config.name}.migration.lock")
 
@@ -330,21 +414,33 @@ MASTER_MEASUREMENTS_PARQUET: Final[str] = "master_measurements.parquet"
 #: colonies. Re-running the CLI overwrites it with a fresh full copy.
 MEASUREMENTS_CSV: Final[str] = "measurements.csv"
 
+#: TSV twin of :data:`MEASUREMENTS_CSV`, written by finalize from the same
+#: post-applied frame (spec B2/B9). The GUI curates the ``.csv`` and the
+#: ``.parquet`` but not this file until #283, so after a curation save it still
+#: holds the frame finalize published.
+MEASUREMENTS_TSV: Final[str] = "measurements.tsv"
+
 #: Editable curated Parquet companion to :data:`MEASUREMENTS_CSV`. The
 #: parquet is the GUI's source of truth at boot (CSV is the human-readable
 #: mirror); both are written atomically together.
 MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
 
-#: Best-effort co-located copy of the run's ``--metadata`` source CSV,
-#: written into :data:`DIR_DELIVERABLES` by
-#: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.
-#: The post-applied mirror carries the metadata columns, while this file
-#: preserves the full portable original mapping.
+#: The run's byte-exact ``--metadata`` snapshot when the user's table was a
+#: ``.csv`` (the only name before #281 P1, so every existing tree has it).
+#: Since spec B5 the snapshot keeps the input's suffix: build the name with
+#: :func:`metadata_snapshot_path` and find it with
+#: :func:`resolve_metadata_snapshot_path`, never by this constant alone.
 DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
+
+#: Stem of ``deliverables/metadata.<ext>`` (spec B5); ``<ext>`` is ``.csv`` or
+#: ``.tsv``, the user's own suffix, lower-cased.
+_DELIVERABLES_METADATA_STEM: Final[str] = "metadata"
 
 #: Authoritative index for class-named analysis table artifacts.
 ANALYSIS_MANIFEST_FILENAME: Final[str] = "analysis_manifest.json"
-ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
+#: ``2`` since P1 (spec B3): entries name a ``tsv`` table and its
+#: ``tsv_sha256``. A version-1 manifest (``csv``/``csv_sha256``) still reads.
+ANALYSIS_MANIFEST_SCHEMA_VERSION: Final[int] = 2
 
 _ANALYSIS_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z", re.ASCII)
 
@@ -356,6 +452,7 @@ def _reserved_analysis_artifact_stems() -> frozenset[str]:
         for filename in (
             MASTER_MEASUREMENTS_PARQUET,
             MEASUREMENTS_CSV,
+            MEASUREMENTS_TSV,
             MEASUREMENTS_PARQUET,
             DELIVERABLES_METADATA_CSV,
             ERROR_ANALYSIS_CSV,
@@ -395,11 +492,17 @@ def validate_analysis_id(analysis_id: str) -> str:
 
 @dataclass(frozen=True)
 class AnalysisArtifactPaths:
-    """Concrete paths for one named analysis generation."""
+    """Concrete paths for one named analysis generation.
 
-    csv: Path
+    ``tsv`` is the text table a generation publishes (spec B2). ``csv`` names
+    the pre-P1 ``<AnalysisClass>.csv`` a tree written before the cutover may
+    still hold; nothing writes it any more.
+    """
+
+    tsv: Path
     parquet: Path
     manifest: Path
+    csv: Path
 
 
 def analysis_manifest_path(deliverables_base: Path) -> Path:
@@ -410,6 +513,11 @@ def analysis_manifest_path(deliverables_base: Path) -> Path:
 def named_analysis_csv_path(deliverables_base: Path, analysis_id: str) -> Path:
     """Return the named CSV artifact path for ``analysis_id``."""
     return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.csv"
+
+
+def named_analysis_tsv_path(deliverables_base: Path, analysis_id: str) -> Path:
+    """Return the named TSV artifact path for ``analysis_id``."""
+    return Path(deliverables_base) / f"{validate_analysis_id(analysis_id)}.tsv"
 
 
 def named_analysis_parquet_path(
@@ -427,9 +535,10 @@ def named_analysis_paths(
 ) -> AnalysisArtifactPaths:
     """Return all persisted paths associated with one analysis ID."""
     return AnalysisArtifactPaths(
-        csv=named_analysis_csv_path(deliverables_base, analysis_id),
+        tsv=named_analysis_tsv_path(deliverables_base, analysis_id),
         parquet=named_analysis_parquet_path(deliverables_base, analysis_id),
         manifest=analysis_manifest_path(deliverables_base),
+        csv=named_analysis_csv_path(deliverables_base, analysis_id),
     )
 
 
@@ -444,7 +553,18 @@ REMBI_MANIFEST_YAML: Final[str] = "rembi.yaml"
 #: operations, measurements, post, filters, and model — i.e. the whole
 #: reproducibility surface.
 PIPELINE_JSON: Final[str] = f"pipeline{CONFIG_SUFFIX_PIPELINE}"
+#: The pre-flip typed name (``pipeline.json.pht-pipe``); read-only legacy.
+_OLD_TYPED_PIPELINE_JSON: Final[str] = (
+    f"pipeline{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE]}"
+)
+#: The plain V1 name (``pipeline.json``); read-only legacy.
 _LEGACY_PIPELINE_JSON: Final[str] = f"pipeline{LEGACY_JSON_SUFFIX}"
+#: Every name a run's pipeline config may carry, in resolution order.
+_PIPELINE_CONFIG_NAMES: Final[tuple[str, str, str]] = (
+    PIPELINE_JSON,
+    _OLD_TYPED_PIPELINE_JSON,
+    _LEGACY_PIPELINE_JSON,
+)
 
 #: Resume-state JSON written by ``ProcessingState.save`` and read by
 #: ``ProcessingState.load`` during automatic continuation.
@@ -456,14 +576,33 @@ PROCESSING_STATE_JSON: Final[str] = "processing_state.json"
 #: :func:`readme_md_path`.
 README_MD: Final[str] = "README.md"
 
+#: The run summary a DVC stage reads with ``dvc metrics show`` (#281 spec C4):
+#: image and object counts, the PhenoTypic version and the shared pipeline
+#: digest. Written by ``finalize_run``, byte-stable, and never read back by
+#: PhenoTypic, so it is a deliverable rather than tracked state. See
+#: :func:`metrics_json_path`.
+METRICS_JSON: Final[str] = "metrics.json"
+
+#: The column schema of every published deliverables table (#281 spec C12):
+#: each column's dtype, unit, producing measurer and ``MeasurementInfo``
+#: member. Written by ``finalize_run`` beside :data:`METRICS_JSON`, byte-stable,
+#: never read back. See :func:`schema_json_path`.
+SCHEMA_JSON: Final[str] = "schema.json"
+
 #: The resolved tuning spec echoed by ``python -m phenotypic.tune``
 #: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
 TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
+_OLD_TYPED_TUNING_SPEC_JSON: Final[str] = (
+    f"tuning_spec{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_TUNING]}"
+)
 _LEGACY_TUNING_SPEC_JSON: Final[str] = f"tuning_spec{LEGACY_JSON_SUFFIX}"
 
 #: The winning best pipeline written by the tune CLI into
 #: :data:`DIR_DELIVERABLES`; reloads as a runnable ``ImagePipeline``.
 BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{CONFIG_SUFFIX_PIPELINE}"
+_OLD_TYPED_BEST_PIPELINE_JSON: Final[str] = (
+    f"best_pipeline{LEGACY_TYPED_CONFIG_SUFFIXES[CONFIG_SUFFIX_PIPELINE]}"
+)
 _LEGACY_BEST_PIPELINE_JSON: Final[str] = f"best_pipeline{LEGACY_JSON_SUFFIX}"
 
 #: Sidecar with the selected headline trial's params and scores, written by the
@@ -724,8 +863,17 @@ RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 #: ``--metadata`` table for a ``--mode process`` run whose pipeline reads
 #: reference metadata (full mode reads ``deliverables/metadata.csv`` instead).
 #: Preserved across ``--restart``, as ``deliverables/metadata.csv`` is; the
-#: reason is at :data:`_PRESERVED_ON_RESTART`.
+#: reason is at :data:`_PRESERVED_ON_RESTART`. Since spec B5 the snapshot keeps
+#: the input's suffix, so a ``.tsv`` table snapshots to
+#: :data:`REFERENCE_METADATA_TSV`; see :func:`reference_snapshot_path`.
 REFERENCE_METADATA_CSV: Final[str] = "reference_metadata.csv"
+
+#: ``<output>/.phenotypic/reference_metadata.tsv`` -- the same snapshot as
+#: :data:`REFERENCE_METADATA_CSV`, for a tab-separated ``--metadata`` table.
+REFERENCE_METADATA_TSV: Final[str] = "reference_metadata.tsv"
+
+#: Stem of ``.phenotypic/reference_metadata.<ext>``.
+_REFERENCE_METADATA_STEM: Final[str] = "reference_metadata"
 
 #: ``<output>/.phenotypic/reference_manifest.json`` -- the run's resolved
 #: reference plan (table, reader settings, reference-image paths, per-image
@@ -1105,6 +1253,74 @@ def reference_metadata_snapshot_path(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / REFERENCE_METADATA_CSV
 
 
+def _snapshot_suffix(suffix: str) -> str:
+    """Lower-case *suffix* and refuse anything but ``.csv``/``.tsv``.
+
+    Lower-casing keeps one spelling on disk, so a resolver probing
+    ``metadata.tsv`` finds a snapshot of ``plates.TSV`` on a case-sensitive
+    filesystem too.
+    """
+    normalized = suffix.lower()
+    if normalized not in INPUT_TABLE_SUFFIXES:
+        raise ValueError(
+            f"A metadata snapshot must be a .csv or .tsv table (got suffix {suffix!r})"
+        )
+    return normalized
+
+
+def _resolve_snapshot(directory: Path, stem: str) -> Optional[Path]:
+    """Return ``<directory>/<stem>.tsv`` or ``.csv``, whichever exists.
+
+    The snapshot writers keep exactly one; finding both means the provenance
+    of the run's table is ambiguous, so this refuses rather than picking.
+    """
+    found = [
+        directory / f"{stem}{suffix}"
+        for suffix in (TSV_SUFFIX, CSV_SUFFIX)
+        if (directory / f"{stem}{suffix}").is_file()
+    ]
+    if len(found) > 1:
+        raise ValueError(
+            f"Both {found[0].name} and {found[1].name} exist in {directory}; a run "
+            "keeps exactly one metadata snapshot. Remove the one that is not "
+            "the table this run used, or re-run with --metadata."
+        )
+    return found[0] if found else None
+
+
+def reference_snapshot_path(output_dir: Path, suffix: str) -> Path:
+    """Return ``<output>/.phenotypic/reference_metadata<suffix>`` (spec B5).
+
+    Pure path expression for the process-mode reference snapshot, which keeps
+    the ``--metadata`` table's own suffix. The writer is
+    :func:`phenotypic._cli._cli_reference.snapshot_reference_metadata`.
+
+    Args:
+        output_dir: The run's ``--output``.
+        suffix: The input table's suffix, ``.csv`` or ``.tsv`` (any case).
+
+    Returns:
+        The snapshot path, its suffix lower-cased.
+
+    Raises:
+        ValueError: For any other suffix.
+    """
+    return phenotypic_cache_dir(output_dir) / (
+        f"{_REFERENCE_METADATA_STEM}{_snapshot_suffix(suffix)}"
+    )
+
+
+def resolve_reference_metadata_snapshot_path(output_dir: Path) -> Optional[Path]:
+    """Return the process-mode reference snapshot that exists, or ``None``.
+
+    Looks for ``reference_metadata.tsv``, then ``reference_metadata.csv``.
+
+    Raises:
+        ValueError: Both exist (the writer keeps exactly one).
+    """
+    return _resolve_snapshot(phenotypic_cache_dir(output_dir), _REFERENCE_METADATA_STEM)
+
+
 def reference_manifest_path(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/reference_manifest.json``.
 
@@ -1361,6 +1577,7 @@ _PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
         RESTART_EPOCH_JSON,
         DIR_LEGACY_V2,
         REFERENCE_METADATA_CSV,
+        REFERENCE_METADATA_TSV,
     }
 )
 
@@ -1468,14 +1685,77 @@ def measurements_csv_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / MEASUREMENTS_CSV
 
 
+def measurements_tsv_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/measurements.tsv`` (post-applied mirror)."""
+    return deliverables_dir(output_dir) / MEASUREMENTS_TSV
+
+
+def measurements_table_path(output_dir: Path) -> Path:
+    """Return the mirror's text table: ``.tsv`` first, then a pre-cutover ``.csv``.
+
+    A tree finalized before #281 P1 holds only ``measurements.csv``. When
+    neither exists the ``.tsv`` path is returned, the name a finalize writes.
+
+    **No CLI reader calls this until #283** (spec B6). The GUI's curation
+    rewrites ``measurements.csv`` and ``measurements.parquet`` but never
+    ``measurements.tsv``, so on a curated tree the ``.tsv`` this prefers is
+    stale; a reader that wants the curated mirror reads the ``.parquet``.
+    Keep it unwired until #283 makes curation update the ``.tsv``.
+    """
+    tsv = measurements_tsv_path(output_dir)
+    if tsv.is_file():
+        return tsv
+    csv = measurements_csv_path(output_dir)
+    return csv if csv.is_file() else tsv
+
+
 def measurements_parquet_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements.parquet`` (post-applied mirror)."""
     return deliverables_dir(output_dir) / MEASUREMENTS_PARQUET
 
 
 def metadata_csv_deliverable_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy)."""
+    """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy).
+
+    The pre-B5 name, kept with its one-argument signature because the GUI
+    calls it. A run given a ``.tsv`` table snapshots to ``metadata.tsv``
+    instead, so a reader resolves with :func:`resolve_metadata_snapshot_path`.
+    """
     return deliverables_dir(output_dir) / DELIVERABLES_METADATA_CSV
+
+
+def metadata_snapshot_path(output_dir: Path, suffix: str) -> Path:
+    """Return ``<output>/deliverables/metadata<suffix>`` (spec B5).
+
+    Pure path expression for the byte-exact ``--metadata`` startup snapshot,
+    which keeps the input's suffix. The writer is
+    ``phenotypicCLI._snapshot_metadata_csv``; nothing else writes it.
+
+    Args:
+        output_dir: The run's ``--output``.
+        suffix: The input table's suffix, ``.csv`` or ``.tsv`` (any case).
+
+    Returns:
+        The snapshot path, its suffix lower-cased.
+
+    Raises:
+        ValueError: For any other suffix.
+    """
+    return deliverables_dir(output_dir) / (
+        f"{_DELIVERABLES_METADATA_STEM}{_snapshot_suffix(suffix)}"
+    )
+
+
+def resolve_metadata_snapshot_path(output_dir: Path) -> Optional[Path]:
+    """Return the run's ``deliverables/metadata.<ext>`` snapshot, or ``None``.
+
+    Looks for ``metadata.tsv``, then ``metadata.csv`` (every tree written
+    before spec B5 has the latter).
+
+    Raises:
+        ValueError: Both exist (the writer keeps exactly one).
+    """
+    return _resolve_snapshot(deliverables_dir(output_dir), _DELIVERABLES_METADATA_STEM)
 
 
 def rembi_manifest_path(output_dir: Path) -> Path:
@@ -1483,30 +1763,50 @@ def rembi_manifest_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / REMBI_MANIFEST_YAML
 
 
+def _first_existing(candidates: tuple[Path, ...]) -> Path:
+    """Return the first existing path in ``candidates``, else the first one.
+
+    The first candidate is always the canonical name, so a writer handed the
+    result of a miss creates the canonical file.
+    """
+    return next((path for path in candidates if path.exists()), candidates[0])
+
+
+def _pipeline_config_candidates_in(folder: Path) -> tuple[Path, Path, Path]:
+    """Return ``folder``'s pipeline config names: new, old typed, plain."""
+    new, old_typed, plain = _PIPELINE_CONFIG_NAMES
+    return folder / new, folder / old_typed, folder / plain
+
+
 def pipeline_json_path(output_dir: Path) -> Path:
     """Return the canonical typed pipeline config path under ``deliverables/``."""
     return deliverables_dir(output_dir) / PIPELINE_JSON
 
 
-def _legacy_pipeline_json_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON pipeline config path under ``deliverables/``."""
-    return deliverables_dir(output_dir) / _LEGACY_PIPELINE_JSON
+def pipeline_config_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return every name the run's pipeline config may carry, in resolution order.
+
+    The canonical ``pipeline.pht-pipe.json``, then the pre-flip
+    ``pipeline.json.pht-pipe``, then the plain V1 ``pipeline.json``, all
+    under ``deliverables/``.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        ``(new, old_typed, plain)``.
+    """
+    return _pipeline_config_candidates_in(deliverables_dir(output_dir))
 
 
 def resolve_pipeline_config_path(output_dir: Path) -> Path:
     """Return the best existing pipeline config path for ``output_dir``.
 
-    Resolution prefers the canonical typed path, falls back to legacy
-    ``pipeline.json`` when present, and returns the canonical path when neither
-    exists so writers naturally create typed config files.
+    Walks :func:`pipeline_config_candidates` and returns the first that exists,
+    or the canonical path when none does, so writers naturally create the
+    canonical typed config file.
     """
-    canonical = pipeline_json_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_pipeline_json_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
+    return _first_existing(pipeline_config_candidates(output_dir))
 
 
 def tuning_spec_path(output_dir: Path) -> Path:
@@ -1514,25 +1814,49 @@ def tuning_spec_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / TUNING_SPEC_JSON
 
 
-def _legacy_tuning_spec_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON tuning spec path under ``deliverables/``."""
-    return deliverables_dir(output_dir) / _LEGACY_TUNING_SPEC_JSON
+def tuning_spec_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the tuning spec's names under ``deliverables/``: new, old typed, plain."""
+    folder = deliverables_dir(output_dir)
+    return (
+        folder / TUNING_SPEC_JSON,
+        folder / _OLD_TYPED_TUNING_SPEC_JSON,
+        folder / _LEGACY_TUNING_SPEC_JSON,
+    )
 
 
 def resolve_tuning_spec_path(output_dir: Path) -> Path:
-    """Return the best existing tuning spec path for ``output_dir``."""
-    canonical = tuning_spec_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_tuning_spec_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
+    """Return the best existing tuning spec path for ``output_dir``.
+
+    The first of :func:`tuning_spec_candidates` that exists, else the
+    canonical path.
+    """
+    return _first_existing(tuning_spec_candidates(output_dir))
 
 
 def best_pipeline_path(output_dir: Path) -> Path:
     """Return the canonical typed tuned-winner pipeline path."""
     return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
+
+
+def best_pipeline_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the tuned winner's names under ``deliverables/``: new, old typed, plain."""
+    folder = deliverables_dir(output_dir)
+    return (
+        folder / BEST_PIPELINE_JSON,
+        folder / _OLD_TYPED_BEST_PIPELINE_JSON,
+        folder / _LEGACY_BEST_PIPELINE_JSON,
+    )
+
+
+def resolve_best_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing tuned-winner pipeline path for ``output_dir``.
+
+    The first of :func:`best_pipeline_candidates` that exists, else the
+    canonical path. No non-GUI code reads the tuned winner, so nothing calls
+    this yet; it is the reader #283 gives the GUI's tune export, which today
+    looks only at the canonical name.
+    """
+    return _first_existing(best_pipeline_candidates(output_dir))
 
 
 def param_importance_path(output_dir: Path) -> Path:
@@ -1795,10 +2119,26 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/.phenotypic/pipeline.json.pht-pipe`` — the process-only run's
+    """Return ``<output>/.phenotypic/pipeline.pht-pipe.json`` — the process-only run's
     reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
     under ``deliverables/`` (process-only writes no deliverables)."""
     return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
+
+
+def phenotypic_cache_pipeline_candidates(output_dir: Path) -> tuple[Path, Path, Path]:
+    """Return the process-only copy's names under ``.phenotypic/``: new, old typed, plain."""
+    return _pipeline_config_candidates_in(phenotypic_cache_dir(output_dir))
+
+
+def resolve_phenotypic_cache_pipeline_path(output_dir: Path) -> Path:
+    """Return the best existing process-only pipeline copy for ``output_dir``.
+
+    The first of :func:`phenotypic_cache_pipeline_candidates` that exists,
+    else the canonical path. The process-only copy is a reproducibility record
+    for people; no code reads it back, so this has no caller and exists for a
+    reader that needs it, beside the old-name-aware resolvers of its siblings.
+    """
+    return _first_existing(phenotypic_cache_pipeline_candidates(output_dir))
 
 
 def dashboard_html_path(output_dir: Path) -> Path:
@@ -2436,6 +2776,16 @@ def readme_md_path(output_dir: Path) -> Path:
     return deliverables_dir(output_dir) / README_MD
 
 
+def metrics_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/metrics.json``."""
+    return deliverables_dir(output_dir) / METRICS_JSON
+
+
+def schema_json_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/schema.json``."""
+    return deliverables_dir(output_dir) / SCHEMA_JSON
+
+
 def analysis_full_parquet_path(progress_dir_: Path) -> Path:
     """Return the legacy-named rolling measurement aggregation state.
 
@@ -2983,8 +3333,28 @@ class BundleLayout:
 
     @property
     def mirror_csv(self) -> Path:
-        """Return path to ``measurements.csv`` (post-applied mirror)."""
+        """Return path to ``measurements.csv`` (post-applied mirror).
+
+        The GUI's curation write target until #283 (spec B9), so it keeps
+        naming the ``.csv`` even though finalize also writes :attr:`mirror_tsv`.
+        """
         return self.deliverables_base / MEASUREMENTS_CSV
+
+    def measurements_table_path(self) -> Path:
+        """Return the mirror's text table: ``.tsv``, else a pre-cutover ``.csv``.
+
+        When neither exists, the ``.tsv`` path (what a finalize would write).
+        Unwired until #283, for the reason :func:`measurements_table_path`
+        gives: curation does not update the ``.tsv``.
+        """
+        if self.mirror_tsv.is_file():
+            return self.mirror_tsv
+        return self.mirror_csv if self.mirror_csv.is_file() else self.mirror_tsv
+
+    @property
+    def mirror_tsv(self) -> Path:
+        """Return path to ``measurements.tsv`` (post-applied mirror, TSV)."""
+        return self.deliverables_base / MEASUREMENTS_TSV
 
     @property
     def plots_dir(self) -> Path:
@@ -2993,7 +3363,7 @@ class BundleLayout:
 
     @property
     def pipeline_config_path(self) -> Path:
-        """Return path to ``pipeline.json`` in the deliverables base."""
+        """Return path to the canonical pipeline config in the deliverables base."""
         return self.deliverables_base / PIPELINE_JSON
 
     @property
@@ -3003,17 +3373,13 @@ class BundleLayout:
         Mirrors :func:`resolve_pipeline_config_path`'s precedence but anchored
         on :attr:`deliverables_base` (so a standalone bundle resolves *inside
         itself* without double-joining ``deliverables/``): the canonical typed
-        config when present, else the legacy plain ``pipeline.json`` when
-        present, else the canonical path (so writers naturally create typed
-        config files).
+        config, else the old typed ``pipeline.json.pht-pipe``, else the legacy
+        plain ``pipeline.json``, else the canonical path (so writers naturally
+        create typed config files).
         """
-        canonical = self.pipeline_config_path
-        if canonical.exists():
-            return canonical
-        legacy = self.deliverables_base / _LEGACY_PIPELINE_JSON
-        if legacy.exists():
-            return legacy
-        return canonical
+        return _first_existing(
+            _pipeline_config_candidates_in(self.deliverables_base)
+        )
 
     @property
     def qc_dir(self) -> Path:

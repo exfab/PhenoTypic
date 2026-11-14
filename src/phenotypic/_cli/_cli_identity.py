@@ -115,7 +115,7 @@ def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
     """
     import hashlib
 
-    from ..sdk_._io_constants import metadata_csv_deliverable_path
+    from ..sdk_._io_constants import resolve_metadata_snapshot_path
 
     path = getattr(config, "metadata_csv", None)
     if (
@@ -127,7 +127,7 @@ def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
         # The snapshot fallback, and the GUARD is the load-bearing half.
         #
         # `_prepare_incremental_startup` reassigns `config.metadata_csv` to
-        # the existing `deliverables/metadata.csv` **after** the mint, so a
+        # the existing `deliverables/metadata.<ext>` **after** the mint, so a
         # continuation that does not re-pass `--metadata` -- the default way
         # a run is continued -- saw `None` here and `state.config` recorded
         # the snapshot's real digest. The two then disagreed on every such
@@ -136,10 +136,10 @@ def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
         #
         # Unguarded, the fallback introduces the mirror-image bug: measure
         # and process runs **skip** the snapshot entirely, so pointing at
-        # `deliverables/metadata.csv` would invent a digest for a file those
+        # `deliverables/metadata.<ext>` would invent a digest for a file those
         # modes never wrote. The two arms fail in opposite directions, which
         # is why both are tested.
-        path = metadata_csv_deliverable_path(config.output_dir)
+        path = resolve_metadata_snapshot_path(config.output_dir)
     if path is None or not Path(path).is_file():
         return None
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()

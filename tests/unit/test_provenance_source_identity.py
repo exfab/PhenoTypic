@@ -15,7 +15,7 @@ from phenotypic.data import load_synth_yeast_plate
 def _pipeline_file(tmp_path: Path) -> Path:
     nested = tmp_path / "config" / "deep"
     nested.mkdir(parents=True)
-    path = nested / "preprocess_pipeline.json.pht-pipe"
+    path = nested / "preprocess_pipeline.pht-pipe.json"
     path.write_text('{"name": "acr_preprocess"}', encoding="utf-8")
     return path
 
@@ -30,7 +30,7 @@ def test_default_records_the_resolved_absolute_path(tmp_path: Path) -> None:
 def test_basename_only_records_just_the_filename(tmp_path: Path) -> None:
     path = _pipeline_file(tmp_path)
     identity = pipeline_source_identity(path, basename_only=True)
-    assert identity["source_path"] == "preprocess_pipeline.json.pht-pipe"
+    assert identity["source_path"] == "preprocess_pipeline.pht-pipe.json"
     assert "/" not in identity["source_path"]
 
 
@@ -49,5 +49,5 @@ def test_initialize_cli_provenance_threads_the_flag(tmp_path: Path) -> None:
     initialize_cli_provenance(img, path, basename_only=True)
     journal = img._metadata.provenance_journal
     assert journal["applications"][-1]["pipeline"]["source_path"] == (
-        "preprocess_pipeline.json.pht-pipe"
+        "preprocess_pipeline.pht-pipe.json"
     )

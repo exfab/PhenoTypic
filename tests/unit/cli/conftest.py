@@ -8,6 +8,8 @@ factories with sensible defaults overridable by keyword.
 
 from __future__ import annotations
 
+import os
+import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -86,7 +88,7 @@ def write_stageable_pipeline(path: Path) -> Path:
     ``to_json(path)`` here: that routes through
     ``ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)``
     (``_serializable_pipeline.py:105``), so ``to_json(tmp/"pipeline.json")``
-    writes ``tmp/"pipeline.json.pht-pipe"`` and leaves the requested path
+    writes ``tmp/"pipeline.pht-pipe.json"`` and leaves the requested path
     absent -- a fixture that reports success while the caller's path is still
     empty. ``tests/integration/cli/test_staged_slurm_live.py:154`` already used
     the correct idiom. The post-condition below is what turns a repeat of that
@@ -906,3 +908,101 @@ def _run_mode(output_dir: Path, mode: str) -> Path:
 
 def _master_bytes(output_dir: Path) -> bytes:
     return master_measurements_parquet_path(output_dir).read_bytes()
+
+
+# ---------------------------------------------------------------------------
+# The SLURM submission stub (moved from test_cli_slurm_submission_summary.py
+# by #281 P2 T1, so every CLI test can drive a real submission path).
+# ---------------------------------------------------------------------------
+
+#: Scheduler clients a test must never start.
+_SCHEDULER_COMMANDS = frozenset(
+    {"sbatch", "scontrol", "squeue", "sacct", "sacctmgr", "sinfo", "scancel", "srun"}
+)
+
+def _command_name(args: Any) -> str:
+    """The executable a ``Popen`` call would start, without its directory."""
+    if isinstance(args, (str, bytes, os.PathLike)):
+        words = os.fsdecode(args).split()
+        first = words[0] if words else ""
+    else:
+        argv = list(args)
+        first = os.fsdecode(argv[0]) if argv else ""
+    return Path(first).name
+
+
+@pytest.fixture
+def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Patch every SLURM submission seam the CLI reaches; refuse any other.
+
+    Covers both SLURM strategies and the SLURM recompile path
+    (``phenotypicCLI._handle_recompile_slurm``, which a forward run with
+    nothing left to do also reaches). Any other ``sbatch``/``squeue``/...
+    process is refused outright: on the HPCC an unpatched test queries the
+    real scheduler.
+
+    Returns the list each (fake) submission appends its kind to
+    (``"ordinary"``, ``"staged"`` or ``"recompile"``), so a test can prove the
+    real code path reached submission.
+    """
+    import phenotypic.sdk_.slurm as sdk_slurm
+    from phenotypic import phenotypicCLI
+    from phenotypic._cli import _cli_execution_strategies as strategies
+    from phenotypic._cli import _cli_slurm_config, _cli_staged_slurm
+    from phenotypic._cli._cli_slurm_submission import SLURMScriptChainSubmission
+
+    seen: list[str] = []
+
+    def _submit_chain(*, flat_chunk_scripts, **_kwargs) -> SLURMScriptChainSubmission:
+        seen.append("ordinary")
+        return SLURMScriptChainSubmission(
+            job_ids=["4242", "4243"],
+            warning=None,
+            flat_scripts=list(flat_chunk_scripts),
+            dispatcher_scripts=[],
+        )
+
+    def _submit_recompile_chain(
+        *, flat_chunk_scripts, **_kwargs
+    ) -> SLURMScriptChainSubmission:
+        seen.append("recompile")
+        return SLURMScriptChainSubmission(
+            job_ids=["4245", "4246"],
+            warning=None,
+            flat_scripts=list(flat_chunk_scripts),
+            dispatcher_scripts=[],
+        )
+
+    def _submit_controller(*_args: Any, **_kwargs: Any) -> str:
+        seen.append("staged")
+        return "4244"
+
+    # `submit_slurm_script_chain` is imported into the strategies module, so it
+    # is patched there; patching `phenotypicCLI` only reaches recompile.
+    monkeypatch.setattr(strategies, "submit_slurm_script_chain", _submit_chain)
+    monkeypatch.setattr(strategies, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(
+        phenotypicCLI, "submit_slurm_script_chain", _submit_recompile_chain
+    )
+    monkeypatch.setattr(phenotypicCLI, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(_cli_staged_slurm, "submit_with_intent", _submit_controller)
+    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    # The max-submit and array-limit probes, wherever else they are resolved.
+    monkeypatch.setattr(sdk_slurm, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(sdk_slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    # The checkpoint-interval estimate runs `sinfo` for the partition; the
+    # array-script writer imports it from here at call time.
+    monkeypatch.setattr(
+        _cli_slurm_config, "estimate_concurrent_capacity", lambda **_kwargs: 16
+    )
+
+    real_popen = subprocess.Popen
+
+    def _refuse_scheduler(args: Any, *popen_args: Any, **popen_kwargs: Any):
+        if _command_name(args) in _SCHEDULER_COMMANDS:
+            raise AssertionError(f"a unit test started a scheduler client: {args!r}")
+        return real_popen(args, *popen_args, **popen_kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", _refuse_scheduler)
+    return seen

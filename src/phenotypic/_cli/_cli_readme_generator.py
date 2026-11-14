@@ -111,15 +111,18 @@ Image Type: {self.config.image_type}{grid_info}"""
 output_folder/
 +-- deliverables/                     # User-facing run outputs
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
-|   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
-|   +-- measurements.parquet          # Parquet companion of measurements.csv
-|   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
-|   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
-|   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
-|   +-- <AnalysisClass>.csv           # Class-named model-fit output
+|   +-- measurements.tsv              # Metadata-joined mirror, tab-separated (refreshed on every run)
+|   +-- measurements.csv              # Same mirror, comma-separated: the file the GUI results viewer reads and curates (kept until #283)
+|   +-- measurements.parquet          # Parquet companion of the mirror
+|   +-- measurements_by_feature/      # One TSV + Parquet per measurer: shared context columns + that measurer's columns
+|   +-- measurements_by_category/     # One TSV + Parquet per measurement category (see Measurement Categories)
+|   +-- metrics.json                  # Run summary: image/object/phantom counts, PhenoTypic version, pipeline sha256
+|   +-- schema.json                   # Every column of each published table: dtype, unit, measurer, schema member, description
+|   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
+|   +-- <AnalysisClass>.tsv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
-|   +-- plots/                         # Configured plot outputs and page manifests
+|   +-- plots/                        # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
@@ -133,7 +136,32 @@ output_folder/
 |   +-- logs/                         # Execution logs
 |   |   +-- slurm/                    # SLURM job logs (if applicable)
 |   +-- slurm_scripts/                # Generated SLURM scripts (if applicable)
-```"""
+```
+
+**Generated tables are tab-separated (`.tsv`).** Releases before this change
+wrote `.csv` for the per-feature and per-category splits and for
+`<AnalysisClass>`; re-running finalize into such a folder replaces those with
+`.tsv` and deletes the old `.csv` files it replaces. Two CSVs stay: `metadata.csv`
+(or `metadata.tsv`; the byte-for-byte copy of the table you passed to
+`--metadata`) and `error_analysis.csv` (written by the results viewer).
+`measurements.csv` is kept because the results viewer's curation writes to it
+and to `measurements.parquet`, **not** to `measurements.tsv`: until #283 lands,
+curated edits reach `measurements.csv` and `measurements.parquet` but not
+`measurements.tsv`. `--metadata` must now be a `.csv` or `.tsv` table (the
+delimiter follows the suffix); any other suffix, such as a comma-separated
+`.txt` that earlier releases read, is refused, so rename it.
+
+**`metrics.json` and `schema.json` are for automation** (for example
+`dvc metrics show`). `metrics.json` counts the images the run accepted,
+succeeded on and failed terminally, the objects measured and the
+metadata-only phantom rows, and names the PhenoTypic version and the sha256 of
+the pipeline every aggregated table came from (`null` when they differ or it
+is not recorded). `schema.json` lists, for every published table (keyed by
+its path under `deliverables/` without the suffix), each column's Parquet
+dtype, unit, producing measurer, schema member and description. Both are
+rewritten each time a full, measure or recompile run publishes its tables
+(`--mode migrate` does not write them), and they hold no timestamps, so
+identical runs give byte-identical files."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
@@ -257,7 +285,7 @@ No measurements configured in this pipeline."""
             listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
             blocks.append(
                 f"### {category.display_name}\n\n{category.desc}\n\n"
-                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.tsv` "
                 f"(and `.parquet`), alongside every context column.\n\n{listed}"
             )
         if not blocks:
@@ -343,7 +371,7 @@ No measurements configured in this pipeline."""
             "## Models & Analysis",
             "",
             f"Model `{model_name}` fit on metric `{model.on}` "
-            f"(output written to `deliverables/{model_name}.csv`).",
+            f"(output written to `deliverables/{model_name}.tsv`).",
             "",
             "Output columns follow `<Model>_<metric>_<parameter>`; for this "
             f"run `<metric>` = `{token}`.",

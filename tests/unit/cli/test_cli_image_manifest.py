@@ -529,7 +529,7 @@ def test_manifest_restart_accepts_a_started_run_holding_only_its_seeded_pipeline
 ) -> None:
     """The pipeline config a run seeds at startup is not prior science.
 
-    Every forward run writes ``deliverables/pipeline.json.pht-pipe`` before
+    Every forward run writes ``deliverables/pipeline.pht-pipe.json`` before
     processing an image, so treating it as science would refuse a subset
     exchange on every run that ever started.
     """

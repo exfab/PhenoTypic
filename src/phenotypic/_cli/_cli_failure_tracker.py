@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 TERMINAL_FAILURE_SCHEMA_VERSION = 1
 WORK_ID_SCHEMA_VERSION = 1
 
+#: ``failed_stage`` of a ``--mode measure`` re-measure's terminal record
+#: (#281 P2 C11d, spec C3). Distinct from the staged engine's ``"stage3"``
+#: measure stage, which is a forward run's.
+MEASURE_FAILURE_STAGE = "measure"
+
 
 @dataclass(frozen=True)
 class TerminalFailureRecord:
@@ -593,6 +598,37 @@ def terminal_failure_index(
 ) -> Dict[str, TerminalFailureRecord]:
     """Return the latest valid terminal record for each ``work_id``."""
     return {record.work_id: record for record in read_terminal_failures(output_dir)}
+
+
+def terminal_failure_work_ids_under_epoch(
+    output_dir: Path, epoch: str, *, stage: str | None = None
+) -> set[str]:
+    """Return the distinct work ids journalled as terminal failures under *epoch*.
+
+    A SLURM worker records the generation it ran under in each row's
+    ``lifecycle_epoch`` (``PHENOTYPIC_SLURM_GENERATION``, the fence's own
+    generation), so this is the SLURM twin of "the failures this invocation
+    recorded". Distinct work ids, so a retried image counts once. It is the
+    one count behind both ``phenotypic-wait``'s ``_generation_failures`` and a
+    SLURM measure finalizer's ``metrics.json`` (#281 P2 review I5, C11d),
+    which is how a SLURM ``--mode measure`` resubmission's failures, keyed by
+    measure work ids outside the forward inventory, are seen at all.
+
+    Args:
+        output_dir: Run output root.
+        epoch: The generation to match against ``lifecycle_epoch``.
+        stage: Only rows with this ``failed_stage`` when given, e.g.
+            :data:`MEASURE_FAILURE_STAGE`; every stage when ``None``.
+
+    Returns:
+        The matching work ids.
+    """
+    return {
+        record.work_id
+        for record in read_terminal_failures(output_dir)
+        if record.lifecycle_epoch == epoch
+        and (stage is None or record.failed_stage == stage)
+    }
 
 
 def migrate_legacy_terminal_failures(

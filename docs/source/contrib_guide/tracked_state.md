@@ -205,6 +205,21 @@ its user-facing consumer is not wired — the message a user sees still comes
 from `OutputRoot.discover`. This is the capability, not its wiring.
 ```
 
+### Which submission published
+
+The aggregate proof and the run proof both carry `execution_epoch`: the SLURM
+generation of the finalizer that wrote them, or `"local"` (run proof) / `null`
+(aggregate proof) for a local run. A finalizer that closes the lifecycle fence
+also records `closed_by: "finalizer"` in it. A cancel (`cancel_generation`,
+`deactivate_orchestration`) leaves `closed_by` unset, and so does
+`retire_dead_lifecycle_fence`, which a forward run or recompile calls to close a
+fence whose jobs have all ended before it publishes its own. `phenotypic-wait` reads
+these to decide whether *this* submission published (#281 spec C3). Digests
+cannot answer that: a `--mode measure` resubmission keeps no run state, so an
+earlier run's proofs still match it after its own finalizer dies. Neither field
+is a verdict input: `resolve_run_state` never reads them. An aggregate proof or
+fence written before the fields existed reads as "not this submission".
+
 ---
 
 ## (c) Derived, and by what
@@ -427,6 +442,7 @@ here when you add a consumer.
 | `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
 | `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
+| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
 
 ### Consumers that deliberately ask something else
 
