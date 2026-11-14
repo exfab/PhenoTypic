@@ -473,6 +473,19 @@ from .ngff_ import (  # noqa: E402
     sweep_orphan_parts,
     valid_staged_store,
 )
+from ._table_runs import (  # noqa: E402
+    TABLE_RUN_ID_RE,
+    TableRun,
+    choose_table_run_id,
+    latest_measurement_run,
+    latest_table_run,
+    list_table_runs,
+    next_table_run_order,
+    store_of_table_path,
+    store_tables_schema,
+    table_run_for_pipeline,
+    table_run_id,
+)
 from .typing_ import InputLayer, NormOut, ProcessOnlyLayer  # noqa: E402
 
 __all__ = [
@@ -571,6 +584,18 @@ __all__ = [
     "read_phenotypic_attributes",
     "sweep_orphan_parts",
     "valid_staged_store",
+    # Per-pipeline table runs (#281 P3, spec D1-D6a)
+    "TABLE_RUN_ID_RE",
+    "TableRun",
+    "choose_table_run_id",
+    "latest_measurement_run",
+    "latest_table_run",
+    "list_table_runs",
+    "next_table_run_order",
+    "store_of_table_path",
+    "store_tables_schema",
+    "table_run_for_pipeline",
+    "table_run_id",
     # Run-state readers (spec §5.2). The four frozen types land in P1
     # Task 2, clear_verification_cache in Task 3, the identity readers in
     # Task 4 and resolve_run_state in Task 5 -- each exported by the task

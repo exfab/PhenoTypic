@@ -27,6 +27,9 @@ from tests._tiny_run import (  # noqa: F401
     tiny_mirror,
     tiny_pipeline,
     tiny_pipeline_file,
+    v1_store,
+    v1_store_legacy_null_pipeline,
+    v1_tree,
 )
 
 # matplotlib/plotly are guarded so this conftest stays importable in

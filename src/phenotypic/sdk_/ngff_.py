@@ -78,9 +78,21 @@ OBJMAP_LABEL: Final[str] = "objmap"
 TABLES_GROUP: Final[str] = "tables"
 MEASUREMENT_TABLE_GROUP: Final[str] = "measurements"
 MEASUREMENT_TABLE_FILENAME: Final[str] = "table.parquet"
+#: The **v1** flat measurement-table path, ``tables/measurements/table.parquet``.
+#: Since #281 P3 a store's tables live one folder per measuring pipeline,
+#: ``tables/<n>-<sha12>/measurements/table.parquet`` (spec D1), reached through
+#: :mod:`phenotypic.sdk_._table_runs`. This constant is kept for the legacy v1
+#: readers (``--mode migrate``) and because the GUI imports it until #283.
 MEASUREMENT_TABLE_RELATIVE_PATH: Final[Path] = Path(
     TABLES_GROUP, MEASUREMENT_TABLE_GROUP, MEASUREMENT_TABLE_FILENAME
 )
+#: The ``attributes.phenotypic.tables`` descriptor version this writer writes
+#: (spec D3): ``{"schema_version": 2, "runs": {...}, "upstream": {...}}``. A v1
+#: descriptor has no top-level ``schema_version``; its ``measurements`` and
+#: ``metadata`` sub-descriptors carry their own.
+TABLES_SCHEMA_VERSION: Final[int] = 2
+#: The per-run embeddings group, ``tables/<run>/embeddings/<model>/{crops,grid}/``.
+EMBEDDINGS_TABLE_GROUP: Final[str] = "embeddings"
 MEASUREMENT_TABLE_SCHEMA_VERSION: Final[int] = 1
 
 #: The user-metadata sibling of the measurement table (spec §7.1-7.2). The

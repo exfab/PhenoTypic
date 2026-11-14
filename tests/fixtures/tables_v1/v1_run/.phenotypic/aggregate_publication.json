@@ -1,0 +1,43 @@
+{
+  "execution_epoch": null,
+  "finalization_input_digest": "09adfe352ddaeb34401220b05bd99143b1f217ea5b3b1202aa89118116f53b14",
+  "inventory_digest": "54d8cd408fa670938d2a2e4d3b32927ea8b7537e9f284ddfc1ccecd346ccf039",
+  "processing_generation": "94721db8b82a393b92d84ac09fe6ff6ba7f3b1ce3684f17b1fb4f8d98a7824ed",
+  "published_at": "2026-11-14T00:51:22.336+00:00",
+  "required_outputs": {
+    "master_parquet": {
+      "path": "deliverables/master_measurements.parquet",
+      "sha256": "58cb2b189363ab9765ca7ac6e682dbce88da0aaec53f2b934269e5abb3028bcf",
+      "size": 42783
+    },
+    "measurements_csv": {
+      "path": "deliverables/measurements.csv",
+      "sha256": "97bd54cd7a27532d7c61a99c5d9edd4bf8f51e32acc1be9aa7d01c2b1167287a",
+      "size": 111641
+    },
+    "measurements_parquet": {
+      "path": "deliverables/measurements.parquet",
+      "sha256": "57cbdbb2fb709be8c3de1d175314dcf248c91cf14133420db1204f90f2f353ea",
+      "size": 42771
+    },
+    "measurements_tsv": {
+      "path": "deliverables/measurements.tsv",
+      "sha256": "be59b4a02394ec53ce24ecc9a11f6435f5760908fe54f6b5e905e0a2321c338b",
+      "size": 111641
+    },
+    "metrics_json": {
+      "path": "deliverables/metrics.json",
+      "sha256": "70700a59f12ca02f935a855a4df00f726303e7f1a73dc026c2d2fcf644afd8fe",
+      "size": 240
+    },
+    "schema_json": {
+      "path": "deliverables/schema.json",
+      "sha256": "0fd03284d1e9edf178ca1f44a4160bbd09e648b19c214b0c6072a98ad0c29cb0",
+      "size": 54367
+    }
+  },
+  "scientific_config_digest": "ae2757956880293d6534d21cebb9358ca7a309b95e92e704ac174e619750747f",
+  "source_image_count": 1,
+  "source_set_digest": "b4bd28a0191aaabd957a9bc316c507c0827f7bd24d7542366cf6b6ac9c3304ec",
+  "version": 2
+}

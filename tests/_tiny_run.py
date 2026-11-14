@@ -9,8 +9,9 @@ packaging-integrity CI job), where ``phenotypic`` may be absent.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import pytest
@@ -366,4 +367,68 @@ def metadata_bytes() -> dict[str, bytes]:
     return {
         ".csv": ("\n".join(csv_lines) + "\n").encode("utf-8"),
         ".tsv": ("\n".join(tsv_lines) + "\n").encode("utf-8"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# P3 · tables v2 (spec D1-D10)
+# ---------------------------------------------------------------------------
+
+#: The committed v1 fixtures (``tests/fixtures/tables_v1/_generate.py``).
+_TABLES_V1_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "tables_v1"
+
+
+@pytest.fixture
+def v1_tree(tmp_path: Path) -> Path:
+    """A ``tmp_path`` copy of the committed v1 full-run tree ``tables_v1/v1_run``.
+
+    A complete one-image run written before #281 P3: its one store holds the
+    flat ``tables/measurements/table.parquet``. Returns the output root.
+    """
+    import shutil
+
+    target = tmp_path / "v1_run"
+    shutil.copytree(_TABLES_V1_FIXTURES / "v1_run", target, symlinks=True)
+    return target
+
+
+@pytest.fixture
+def v1_store(v1_tree: Path) -> Path:
+    """The one store of :func:`v1_tree` (``results/ds/zarr/plate.ome.zarr``)."""
+    return v1_tree / "results" / "ds" / "zarr" / "plate.ome.zarr"
+
+
+@pytest.fixture
+def v1_store_legacy_null_pipeline(tmp_path: Path) -> Path:
+    """A ``tmp_path`` copy of ``tables_v1/v1_store_null_pipeline.ome.zarr``.
+
+    :func:`v1_store` with a journal of one ``legacy`` application whose
+    ``pipeline`` is ``null`` and no figure run, so its table digest is unknown.
+    """
+    import shutil
+
+    target = tmp_path / "v1_store_null_pipeline.ome.zarr"
+    shutil.copytree(_TABLES_V1_FIXTURES / "v1_store_null_pipeline.ome.zarr", target)
+    return target
+
+
+def v2_block(
+    *,
+    runs: Mapping[str, Mapping] = MappingProxyType({}),
+    upstream: Mapping[str, Mapping] = MappingProxyType({}),
+) -> dict:
+    """A v2 ``attributes.phenotypic`` block whose ``tables`` holds *runs* and *upstream*.
+
+    Only ``tables`` (and ``store_schema_version``, so the block is readable as
+    a store root) is filled in; entries are copied as given.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    return {
+        ngff_.PhenotypicAttr.STORE_SCHEMA_VERSION: ngff_.STORE_SCHEMA_VERSION,
+        ngff_.PhenotypicAttr.TABLES: {
+            "schema_version": ngff_.TABLES_SCHEMA_VERSION,
+            "runs": {key: dict(value) for key, value in runs.items()},
+            "upstream": {key: dict(value) for key, value in upstream.items()},
+        },
     }

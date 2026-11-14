@@ -925,6 +925,48 @@ def resume_provenance_application(
     return True
 
 
+def current_pipeline_sha256(image: "Image") -> str | None:
+    """Return the pipeline digest of the image's last journal application.
+
+    This is the digest a store's table run folder is named by (#281 spec D2):
+    the sha256 of the pipeline file's bytes that the CLI recorded when it
+    opened the application. It is read, never computed, so it is the same
+    value the figure run folders use.
+
+    ``None`` -- and the folder is ``<n>-unknown`` -- whenever no digest is
+    known for the *current* state of the image, and a digest is never
+    fabricated:
+
+    - an empty journal (``Image(arr=...)``, a notebook image never run by the
+      CLI);
+    - a ``programmatic`` last application (an ``op.apply(image)`` in a
+      notebook, recorded with ``pipeline=None``), even when an earlier CLI
+      application carried one: the operations applied since then are not that
+      pipeline's;
+    - a converted ``legacy`` last application, whose history is a migrated v1
+      journal rather than a pipeline this build ran;
+    - a schema-v1 journal, which has no applications.
+
+    Args:
+        image: Any image.
+
+    Returns:
+        The 64-hex digest, or ``None``.
+    """
+    journal = image._metadata.provenance_journal
+    applications = journal.get("applications") if isinstance(journal, Mapping) else None
+    if not isinstance(applications, list) or not applications:
+        return None
+    last = applications[-1]
+    if not isinstance(last, Mapping) or last.get("kind") in {"programmatic", "legacy"}:
+        return None
+    pipeline = last.get("pipeline")
+    if not isinstance(pipeline, Mapping):
+        return None
+    digest = pipeline.get("sha256")
+    return digest if isinstance(digest, str) else None
+
+
 def current_application_operations(image: "Image") -> list[dict[str, Any]]:
     """Return the mutable operation list for the current internal application."""
     return _current_application(image._metadata.provenance_journal)["operations"]

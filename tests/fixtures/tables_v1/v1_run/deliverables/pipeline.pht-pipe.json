@@ -1,0 +1,28 @@
+{
+  "version": "0.21.0",
+  "name": "2e086c47-218d-4bbe-a23c-d5505b038e57",
+  "desc": null,
+  "reset": false,
+  "pipe_cfgs": {
+    "OtsuDetector": {
+      "class": "OtsuDetector",
+      "params": {
+        "ignore_zeros": false,
+        "ignore_borders": true
+      }
+    }
+  },
+  "meas": {
+    "size": {
+      "class": "MeasureSize",
+      "params": {
+        "angular_bins": 360,
+        "trim_proportion": 0.2,
+        "plateau_tolerance": 0.01
+      }
+    }
+  },
+  "post": {},
+  "filters": {},
+  "model": null
+}

@@ -1,0 +1,16 @@
+{
+  "completed_at": "2026-11-14T00:51:22.355+00:00",
+  "execution_epoch": "local",
+  "finalization_input_digest": "09adfe352ddaeb34401220b05bd99143b1f217ea5b3b1202aa89118116f53b14",
+  "finalizer_succeeded": true,
+  "generation": "local",
+  "gui_record_generation": null,
+  "inventory_digest": "54d8cd408fa670938d2a2e4d3b32927ea8b7537e9f284ddfc1ccecd346ccf039",
+  "mode": "local",
+  "processing_generation": "94721db8b82a393b92d84ac09fe6ff6ba7f3b1ce3684f17b1fb4f8d98a7824ed",
+  "scientific_config_digest": "ae2757956880293d6534d21cebb9358ca7a309b95e92e704ac174e619750747f",
+  "source_image_count": 1,
+  "source_set_digest": "b4bd28a0191aaabd957a9bc316c507c0827f7bd24d7542366cf6b6ac9c3304ec",
+  "status": "complete",
+  "version": 2
+}

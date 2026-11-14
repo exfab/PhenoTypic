@@ -32,6 +32,8 @@ phenotypic.egg-info/
 # Phenotypic run machine-state (normally under a user-chosen output dir,
 # but ignored defensively in case an output dir is placed inside the repo)
 .phenotypic/
+# ...except a committed fixture tree, whose machine state is the point.
+!tests/fixtures/tables_v1/v1_run/.phenotypic/
 .pht-tune-cache/
 
 # Virtual environments
