@@ -4262,6 +4262,7 @@ def _regenerate_missing_overlays(
 
     from phenotypic._cli._cli_recompile_recovery import (
         certified_measurement_table,
+        image_authority_path,
         marker_claims_measurement_authority,
         store_holds_measurement_table,
     )
@@ -4269,7 +4270,6 @@ def _regenerate_missing_overlays(
         _marker_binds_overlay_and_table,
         repair_overlay_marker_authority,
     )
-    from phenotypic.sdk_ import image_completion_marker_path
 
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
@@ -4292,7 +4292,11 @@ def _regenerate_missing_overlays(
                 table_path,
             )
         )
-        marker_path = image_completion_marker_path(
+        # The record when it exists, the legacy marker otherwise -- never the
+        # legacy path alone, which a record-era tree does not have, so a
+        # record claiming a missing table went unseen here and its overlay
+        # was rendered into a run the later authority check refuses.
+        marker_path = image_authority_path(
             output_dir, item.dataset, item.stem
         )
         if not requires_marker_restore and (

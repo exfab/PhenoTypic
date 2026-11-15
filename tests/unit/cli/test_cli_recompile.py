@@ -708,3 +708,39 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
 
     assert overlay.is_file()
+
+
+def test_local_overlay_pass_refuses_a_record_claiming_a_missing_table(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """The overlay pass asks the RECORD whether the image claims a table.
+
+    A record-era tree has no legacy ``image_complete/`` marker, so a guard
+    that read only that path saw no claim. With the record's certified table
+    deleted, the store holds no table and the record cannot bind the
+    overlay, so the pass used to render the overlay best-effort and leave
+    the refusal to the later authority check -- writing a deliverable into
+    a run it then refused. It must refuse first and write nothing.
+    """
+    from phenotypic.sdk_ import dataset_overlays_dir, image_record_path
+    from tests._tiny_run import journal_table_path
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    # STANDING RULE: the tree must really be record-era, or the legacy path
+    # would answer and this decides nothing.
+    assert image_record_path(output_dir, DATASET, stem).is_file()
+    journal_table_path(store).unlink()
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+
+    with pytest.raises(
+        RuntimeError, match="Cannot safely restore marker authority"
+    ):
+        _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
+
+    assert not overlay.exists()

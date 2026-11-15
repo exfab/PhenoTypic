@@ -1587,7 +1587,14 @@ def replace_embedded_measurement_table(
 def read_embedded_measurement_descriptor(
     store_path: Path,
 ) -> dict[str, object]:
-    """Return one store's ``tables.measurements`` descriptor.
+    """Return one store's measurement-table descriptor, from its latest measuring run.
+
+    A store holds one run folder per measuring pipeline (#281 spec D1). This
+    reader holds no per-image record, so it reads spec D6a's default: the
+    ``measurements`` descriptor of
+    :func:`~phenotypic.sdk_._table_runs.latest_measurement_run`, the
+    highest-numbered run that holds ``measurements``. A newer run without
+    measurements (a grid-only process folder) is skipped.
 
     The descriptor is the store's own account of its embedded table: the
     payload path, the ``measurement_columns`` list, and the ``target``
@@ -1605,13 +1612,15 @@ def read_embedded_measurement_descriptor(
 
     Raises:
         OSError: If the store's root ``zarr.json`` does not exist.
-        KeyError: If the root carries no ``phenotypic`` block, or the block
-            declares no ``tables.measurements`` descriptor. **An absent
-            descriptor is a normal state**, not a fault: a ``--mode
-            process`` run never measures, and a store written before
-            embedded tables has none.
+        KeyError: If the root carries no ``phenotypic`` block, or no run
+            of the store declares ``measurements``. **An absent descriptor
+            is a normal state**, not a fault: a ``--mode process`` run never
+            measures, and a store written before embedded tables has none.
+            A store still in the v1 flat layout reads the same way until
+            ``--mode migrate`` converts it.
         ValueError: If the store's ``store_schema_version`` is not this
-            build's -- the same refusal every other content reader makes.
+            build's -- the same refusal every other content reader makes --
+            or its tables descriptor is corrupt or of an unknown version.
 
     Examples:
         >>> import tempfile
@@ -1627,23 +1636,35 @@ def read_embedded_measurement_descriptor(
         ...         print('no embedded table')
         no embedded table
     """
-    from . import ngff_
+    # Gated by VALUE, not read raw: `latest_measurement_run` reads the root
+    # through `require_readable_store`, so a store written by a newer build
+    # is refused here exactly as it is on every other path that decodes store
+    # content, rather than this reader becoming the one place a future
+    # schema slips through under today's semantics.
+    return _latest_measurement_descriptor(Path(store_path))[1]
 
-    store_path = Path(store_path)
-    # Gated by VALUE, not read raw: a store written by a newer build must be
-    # refused here exactly as it is on every other path that decodes store
-    # content, or this reader becomes the one place a future schema slips
-    # through under today's semantics.
-    block = ngff_.require_readable_store(store_path)
-    descriptor = block.get(ngff_.PhenotypicAttr.TABLES, {}).get(
-        ngff_.MEASUREMENT_TABLE_GROUP
+
+def _latest_measurement_descriptor(
+    store_path: Path,
+) -> tuple[TableRun, dict[str, object]]:
+    """The record-less default run (spec D6a) and its ``measurements`` descriptor.
+
+    Raises:
+        KeyError: If no run of the store declares ``measurements``.
+    """
+    from . import ngff_
+    from ._table_runs import latest_measurement_run
+
+    run = latest_measurement_run(store_path)
+    descriptor = (
+        None if run is None else run.descriptor.get(ngff_.MEASUREMENT_TABLE_GROUP)
     )
-    if not isinstance(descriptor, dict):
+    if run is None or not isinstance(descriptor, Mapping):
         raise KeyError(
             f"OME-Zarr store declares no embedded measurement table: "
             f"{store_path}"
         )
-    return descriptor
+    return run, dict(descriptor)
 
 
 def embedded_measurement_columns(store_path: Path) -> tuple[str, ...]:
@@ -1679,6 +1700,9 @@ def read_embedded_measurement_column(
 ) -> dict[int, float | None]:
     """Project one measurement column out of a store's embedded table.
 
+    Reads the same run as :func:`read_embedded_measurement_descriptor`: the
+    store's latest run that holds ``measurements`` (spec D6a).
+
     Returns the column keyed by the descriptor's own ``target.column`` --
     ``Object_Label`` -- rather than by a positional index or an assumed key
     name, so the value a caller paints onto a colony is the value measured
@@ -1713,10 +1737,9 @@ def read_embedded_measurement_column(
     """
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
-    from . import ngff_
 
     store_path = Path(store_path)
-    descriptor = read_embedded_measurement_descriptor(store_path)
+    run, descriptor = _latest_measurement_descriptor(store_path)
     declared = descriptor.get("measurement_columns")
     if not isinstance(declared, list) or column not in declared:
         raise ValueError(
@@ -1733,7 +1756,11 @@ def read_embedded_measurement_column(
         )
     join_column = str(target["column"])
 
-    payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    # The same run's payload, so the columns checked above and the file read
+    # below come from one run folder. Resolved through the run, never from
+    # the descriptor's own `path` string, so a request-facing caller cannot
+    # be pointed outside the store by a hand-edited root.
+    payload = run.measurements_path()
     projection = [join_column]
     if column != join_column:
         projection.append(column)
