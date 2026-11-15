@@ -386,3 +386,129 @@ def test_a_record_without_measurements_reads_the_latest_measuring_runs_snapshot(
         block, store_relative=_STORE_RELATIVE, measurements_artifact=None
     )
     assert entry is not None and entry["metadata_table"]["snapshot_sha256"] == "2" * 64
+
+
+# ---------------------------------------------------------------------------
+# A v1 flat store is read, read-only (spec D5 refuses it only in forward modes)
+# ---------------------------------------------------------------------------
+
+_V1_STORE_RELATIVE = "results/ds/zarr/plate.ome.zarr"
+_V1_TABLE = "tables/measurements/table.parquet"
+
+
+def _v1_root_block(store: Path) -> dict:
+    return json.loads((store / "zarr.json").read_text(encoding="utf-8"))["attributes"][
+        "phenotypic"
+    ]
+
+
+def test_the_v1_fixture_is_the_flat_layout(v1_store):
+    """Every test below reads a real v1 store, not a v2 one by accident."""
+    from phenotypic.sdk_ import store_tables_schema
+
+    assert store_tables_schema(v1_store) == 1
+    assert list_table_runs(v1_store) == () and latest_measurement_run(v1_store) is None
+    assert (v1_store / _V1_TABLE).is_file()
+
+
+def test_the_descriptor_reader_reads_a_v1_stores_flat_descriptor(v1_store):
+    from phenotypic.sdk_ import read_embedded_measurement_descriptor
+
+    assert read_embedded_measurement_descriptor(v1_store) == (
+        _v1_root_block(v1_store)["tables"]["measurements"]
+    )
+
+
+def test_the_columns_reader_reads_a_v1_stores_flat_columns(v1_store):
+    from phenotypic.sdk_ import embedded_measurement_columns
+
+    declared = _v1_root_block(v1_store)["tables"]["measurements"]["measurement_columns"]
+    assert declared and embedded_measurement_columns(v1_store) == tuple(declared)
+
+
+def test_the_column_reader_reads_a_v1_stores_flat_payload(v1_store):
+    from phenotypic.schema import SIZE
+    from phenotypic.sdk_ import read_embedded_measurement_column
+
+    column = str(SIZE.AREA)
+    table = pq.read_table(v1_store / _V1_TABLE, columns=["Object_Label", column])
+    expected = {
+        int(label): float(value)
+        for label, value in zip(
+            table.column("Object_Label").to_pylist(),
+            table.column(column).to_pylist(),
+            strict=True,
+        )
+    }
+    assert expected and read_embedded_measurement_column(v1_store, column) == expected
+
+
+def test_a_v1_store_with_no_flat_descriptor_declares_no_table(v1_store):
+    """Keyed on the schema, not on the file: the payload alone declares nothing."""
+    from phenotypic.sdk_ import embedded_measurement_columns
+
+    root = v1_store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"]["tables"].pop("measurements")
+    root.write_text(json.dumps(payload), encoding="utf-8")
+    assert (v1_store / _V1_TABLE).is_file()
+    with pytest.raises(KeyError):
+        embedded_measurement_columns(v1_store)
+
+
+def test_unprojectable_stores_gives_no_false_advisory_on_a_v1_tree(v1_tree, v1_store):
+    """A v1 store with its flat descriptor is projectable; one without is named.
+
+    The second half is the co-witness: an enumeration that named nothing at
+    all would pass the first half alone.
+    """
+    from phenotypic._cli._cli_migrate_state import unprojectable_stores
+
+    assert unprojectable_stores(v1_tree) == ()
+    root = v1_store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"]["tables"].pop("measurements")
+    root.write_text(json.dumps(payload), encoding="utf-8")
+    assert unprojectable_stores(v1_tree) == (_V1_STORE_RELATIVE,)
+
+
+def test_run_state_reads_a_v1_trees_flat_table(v1_tree):
+    """The committed v1 run verifies, and its flat table counts as projectable."""
+    from phenotypic.sdk_ import resolve_run_state
+    from phenotypic.sdk_._image_record import STAGE_MEASURED
+    from phenotypic.sdk_._run_state import (
+        _DECLARES_MEASUREMENTS,
+        _PROJECTABLE_MEASUREMENTS,
+    )
+
+    state = resolve_run_state(v1_tree, depth="deep")
+    assert state.completion == "complete"
+    (image,) = state.images.values()
+    stage = image.stages[STAGE_MEASURED]
+    assert stage[_DECLARES_MEASUREMENTS] is True
+    assert stage[_PROJECTABLE_MEASUREMENTS] is True
+    assert not any("declares no column list" in note for note in state.advisories)
+
+
+def test_a_v1_stores_snapshot_is_its_root_level_block(v1_store):
+    """v1 keeps ``metadata_table`` at the root; it is read there, for the flat table only."""
+    from phenotypic.sdk_._run_state import (
+        _certified_tables_entry,
+        _store_metadata_snapshot,
+    )
+
+    block = _v1_root_block(v1_store)
+    block["metadata_table"] = {"snapshot_sha256": _DIGEST}
+    certified = f"{_V1_STORE_RELATIVE}/{_V1_TABLE}"
+    for artifact in (certified, None):
+        entry = _certified_tables_entry(
+            block, store_relative=_V1_STORE_RELATIVE, measurements_artifact=artifact
+        )
+        assert _store_metadata_snapshot(entry) == _DIGEST
+    v2_spelling = f"{_V1_STORE_RELATIVE}/tables/1-unknown/measurements/table.parquet"
+    assert (
+        _certified_tables_entry(
+            block, store_relative=_V1_STORE_RELATIVE, measurements_artifact=v2_spelling
+        )
+        is None
+    )

@@ -372,6 +372,106 @@ def table_run_by_id(store: Path, run_id: str) -> TableRun | None:
     )
 
 
+@dataclass(frozen=True)
+class DeclaredMeasurementTable:
+    """One ``measurements`` table a store root declares, for a reader.
+
+    The common shape of a v2 run's table and of a **v1 flat** store's single
+    table, so a reader that must also read an unconverted store does not
+    grow a second code path. Read-only: nothing here, and nothing a reader
+    builds from it, writes the v1 layout.
+
+    Attributes:
+        relative_path: The payload, relative to the store: the run's
+            ``tables/<run>/measurements/table.parquet``, or the v1
+            ``tables/measurements/table.parquet``. Derived from the layout,
+            never from the descriptor's own ``path`` string.
+        entry: A run-entry-shaped mapping: ``measurements`` (the table's
+            descriptor), and ``metadata_table`` when recorded. For a v2 run
+            it is the run's own entry; for a v1 store it is assembled from
+            ``tables.measurements`` and the root-level ``metadata_table``
+            block, where the v1 layout keeps them.
+        run: The v2 run, or ``None`` for a v1 store.
+    """
+
+    relative_path: PurePosixPath
+    entry: Mapping[str, object]
+    run: TableRun | None
+
+    @property
+    def descriptor(self) -> Mapping[str, object]:
+        """The table's ``measurements`` descriptor."""
+        from . import ngff_
+
+        descriptor = self.entry[ngff_.MEASUREMENT_TABLE_GROUP]
+        assert isinstance(descriptor, Mapping)
+        return descriptor
+
+
+def declared_measurement_tables(
+    store: Path, block: Mapping[str, object]
+) -> tuple[DeclaredMeasurementTable, ...]:
+    """Every ``measurements`` table *block* declares, by ascending run order.
+
+    The one place a reader learns where a store's measurement tables are,
+    for both layouts. Keyed **strictly on the tables schema**
+    (:func:`tables_schema_of_block`), never on which paths exist:
+
+    - schema 2: each run that holds ``measurements``, in ``order``;
+    - schema 1 (the v1 flat layout ``--mode migrate`` converts): the single
+      ``tables.measurements`` table, when the descriptor declares one. Spec
+      D5 refuses v1 only in the *forward* modes; ``resolve_run_state``, the
+      GUI and migrate's own planning read unconverted trees;
+    - schema 0: none.
+
+    The last element is spec D6a's record-less default (the v2 form of which
+    is :func:`latest_measurement_run`); a reader holding a per-image record
+    picks the element whose :attr:`~DeclaredMeasurementTable.relative_path`
+    the record certifies instead.
+
+    Args:
+        store: The store the block belongs to.
+        block: Its ``attributes.phenotypic`` block.
+
+    Raises:
+        ValueError: If the tables descriptor is corrupt or of a version this
+            build does not read.
+    """
+    from . import ngff_
+
+    schema = tables_schema_of_block(block)
+    if schema == 2:
+        return tuple(
+            DeclaredMeasurementTable(
+                relative_path=measurement_table_relative_path(run.run_id),
+                entry=run.descriptor,
+                run=run,
+            )
+            for run in table_runs_of_block(store, block)
+            if run.has_measurements
+        )
+    if schema == 1:
+        tables = _tables_block(block)
+        assert tables is not None
+        descriptor = tables.get(ngff_.MEASUREMENT_TABLE_GROUP)
+        if not isinstance(descriptor, Mapping):
+            return ()
+        entry: dict[str, object] = {ngff_.MEASUREMENT_TABLE_GROUP: descriptor}
+        metadata_table = block.get(ngff_.PhenotypicAttr.METADATA_TABLE)
+        if isinstance(metadata_table, Mapping):
+            entry[ngff_.PhenotypicAttr.METADATA_TABLE] = metadata_table
+        return (
+            DeclaredMeasurementTable(
+                relative_path=PurePosixPath(
+                    ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix()
+                ),
+                entry=entry,
+                run=None,
+            ),
+        )
+    return ()
+
+
 def _upstream_orders(block: Mapping[str, object]) -> list[int]:
     tables = _tables_block(block)
     if tables is None or tables_schema_of_block(block) != 2:

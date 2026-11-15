@@ -1594,7 +1594,9 @@ def read_embedded_measurement_descriptor(
     ``measurements`` descriptor of
     :func:`~phenotypic.sdk_._table_runs.latest_measurement_run`, the
     highest-numbered run that holds ``measurements``. A newer run without
-    measurements (a grid-only process folder) is skipped.
+    measurements (a grid-only process folder) is skipped. A store still in
+    the v1 flat layout (tables schema 1, before ``--mode migrate``) reads
+    its one flat ``tables.measurements`` descriptor.
 
     The descriptor is the store's own account of its embedded table: the
     payload path, the ``measurement_columns`` list, and the ``target``
@@ -1616,8 +1618,6 @@ def read_embedded_measurement_descriptor(
             of the store declares ``measurements``. **An absent descriptor
             is a normal state**, not a fault: a ``--mode process`` run never
             measures, and a store written before embedded tables has none.
-            A store still in the v1 flat layout reads the same way until
-            ``--mode migrate`` converts it.
         ValueError: If the store's ``store_schema_version`` is not this
             build's -- the same refusal every other content reader makes --
             or its tables descriptor is corrupt or of an unknown version.
@@ -1646,25 +1646,30 @@ def read_embedded_measurement_descriptor(
 
 def _latest_measurement_descriptor(
     store_path: Path,
-) -> tuple[TableRun, dict[str, object]]:
-    """The record-less default run (spec D6a) and its ``measurements`` descriptor.
+) -> tuple[Path, dict[str, object]]:
+    """The record-less default table (spec D6a): its payload and its descriptor.
+
+    The latest run that holds ``measurements``, or, for a store still in the
+    v1 flat layout, its one flat table
+    (:func:`~phenotypic.sdk_._table_runs.declared_measurement_tables`, keyed
+    on the tables schema). Read-only: a v1 store is read, never written.
 
     Raises:
-        KeyError: If no run of the store declares ``measurements``.
+        KeyError: If the store declares no measurement table.
     """
     from . import ngff_
-    from ._table_runs import latest_measurement_run
+    from ._table_runs import declared_measurement_tables
 
-    run = latest_measurement_run(store_path)
-    descriptor = (
-        None if run is None else run.descriptor.get(ngff_.MEASUREMENT_TABLE_GROUP)
+    declared = declared_measurement_tables(
+        store_path, ngff_.require_readable_store(store_path)
     )
-    if run is None or not isinstance(descriptor, Mapping):
+    if not declared:
         raise KeyError(
             f"OME-Zarr store declares no embedded measurement table: "
             f"{store_path}"
         )
-    return run, dict(descriptor)
+    table = declared[-1]
+    return store_path / table.relative_path, dict(table.descriptor)
 
 
 def embedded_measurement_columns(store_path: Path) -> tuple[str, ...]:
@@ -1700,8 +1705,9 @@ def read_embedded_measurement_column(
 ) -> dict[int, float | None]:
     """Project one measurement column out of a store's embedded table.
 
-    Reads the same run as :func:`read_embedded_measurement_descriptor`: the
-    store's latest run that holds ``measurements`` (spec D6a).
+    Reads the same table as :func:`read_embedded_measurement_descriptor`:
+    the store's latest run that holds ``measurements`` (spec D6a), or a v1
+    store's flat table.
 
     Returns the column keyed by the descriptor's own ``target.column`` --
     ``Object_Label`` -- rather than by a positional index or an assumed key
@@ -1739,7 +1745,7 @@ def read_embedded_measurement_column(
 
 
     store_path = Path(store_path)
-    run, descriptor = _latest_measurement_descriptor(store_path)
+    payload, descriptor = _latest_measurement_descriptor(store_path)
     declared = descriptor.get("measurement_columns")
     if not isinstance(declared, list) or column not in declared:
         raise ValueError(
@@ -1756,11 +1762,11 @@ def read_embedded_measurement_column(
         )
     join_column = str(target["column"])
 
-    # The same run's payload, so the columns checked above and the file read
-    # below come from one run folder. Resolved through the run, never from
-    # the descriptor's own `path` string, so a request-facing caller cannot
-    # be pointed outside the store by a hand-edited root.
-    payload = run.measurements_path()
+    # `payload` is the same table's, so the columns checked above and the
+    # file read below come from one run folder. It is derived from the
+    # layout, never from the descriptor's own `path` string, so a
+    # request-facing caller cannot be pointed outside the store by a
+    # hand-edited root.
     projection = [join_column]
     if column != join_column:
         projection.append(column)

@@ -737,6 +737,12 @@ def _certified_tables_entry(
     consulted only together with a declared artifact, so the fallback never
     reaches the exclusion advisory.
 
+    A store still in the v1 flat layout (tables schema 1, before
+    ``--mode migrate``) has one table and no runs; its "entry" is its flat
+    ``tables.measurements`` descriptor and the root-level ``metadata_table``
+    block, where v1 keeps them
+    (:func:`~phenotypic.sdk_._table_runs.declared_measurement_tables`).
+
     A projection over the block :func:`_store_phenotypic_block` already read:
     it opens nothing, and it never raises -- a corrupt or newer-version
     tables descriptor certifies nothing.
@@ -754,29 +760,20 @@ def _certified_tables_entry(
     """
     from pathlib import PurePosixPath
 
-    from ._table_runs import (
-        measurement_table_relative_path,
-        table_runs_of_block,
-        tables_schema_of_block,
-    )
+    from ._table_runs import declared_measurement_tables
 
     if block is None:
         return None
     try:
-        if tables_schema_of_block(block) != 2:
-            return None
-        runs = table_runs_of_block(Path(store_relative), block)
+        declared = declared_measurement_tables(Path(store_relative), block)
     except ValueError:
         return None
     if measurements_artifact is None:
-        measuring = [run for run in runs if run.has_measurements]
-        return measuring[-1].descriptor if measuring else None
-    for run in runs:
-        declared = PurePosixPath(store_relative) / measurement_table_relative_path(
-            run.run_id
-        )
-        if run.has_measurements and declared == PurePosixPath(measurements_artifact):
-            return run.descriptor
+        return declared[-1].entry if declared else None
+    certified = PurePosixPath(measurements_artifact)
+    for table in declared:
+        if PurePosixPath(store_relative) / table.relative_path == certified:
+            return table.entry
     return None
 
 

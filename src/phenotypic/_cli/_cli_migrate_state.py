@@ -50,7 +50,7 @@ import shutil
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -223,7 +223,7 @@ def plan_per_image_records(output_dir: Path) -> tuple[PlannedRecord, ...]:
         One :class:`PlannedRecord` per image found in either tree, ordered by
         ``(dataset, image_stem)`` so a dry run's output is stable.
     """
-    found: dict[tuple[str, str], dict[str, object]] = {}
+    found: dict[tuple[str, str], dict[str, Any]] = {}
     for segment, stage in LEGACY_MARKER_SEGMENTS:
         for dataset, stem, path in _walk_segment(output_dir, segment):
             payload = _read_json(path)
@@ -233,24 +233,24 @@ def plan_per_image_records(output_dir: Path) -> tuple[PlannedRecord, ...]:
                 (dataset, stem),
                 {"stages": {}, "artifacts": {}, "identity": {}, "sources": []},
             )
-            entry["stages"][stage] = {  # type: ignore[index]
+            entry["stages"][stage] = {
                 "at": payload.get("completed_at"),
                 "legacy_migration": True,
             }
-            entry["sources"].append(path)  # type: ignore[union-attr]
+            entry["sources"].append(path)
             # Verbatim. Re-deriving these from the store would certify
             # whatever is there now.
             artifacts = payload.get("artifacts")
             if isinstance(artifacts, dict) and artifacts:
                 entry["artifacts"] = artifacts
             for key in ("work_id", "relative_image_path", "mode", "attempt_id"):
-                if key in payload and key not in entry["identity"]:  # type: ignore[operator]
-                    entry["identity"][key] = payload[key]  # type: ignore[index]
+                if key in payload and key not in entry["identity"]:
+                    entry["identity"][key] = payload[key]
 
     planned: list[PlannedRecord] = []
     for (dataset, stem) in sorted(found):
         entry = found[(dataset, stem)]
-        stages = dict(entry["stages"])  # type: ignore[arg-type]
+        stages = dict(entry["stages"])
         stage2 = _stage2_entry(output_dir, dataset, stem)
         if stage2 is not None:
             stages[STAGE_STAGE2] = stage2
@@ -259,9 +259,9 @@ def plan_per_image_records(output_dir: Path) -> tuple[PlannedRecord, ...]:
                 dataset=dataset,
                 image_stem=stem,
                 stages=stages,
-                artifacts=dict(entry["artifacts"]),  # type: ignore[arg-type]
-                identity=dict(entry["identity"]),  # type: ignore[arg-type]
-                sources=tuple(entry["sources"]),  # type: ignore[arg-type]
+                artifacts=dict(entry["artifacts"]),
+                identity=dict(entry["identity"]),
+                sources=tuple(entry["sources"]),
             )
         )
     return tuple(planned)
@@ -301,11 +301,13 @@ def _merge_stages(
     test that catches it plants only ``image_complete/``, so the collision
     never arose and the suite stayed green.
     """
-    merged: dict[str, Mapping[str, object]] = {
-        key: value
-        for key, value in (existing or {}).items()
-        if isinstance(existing, Mapping)
-    }
+    # Narrowed once, up front: the comprehension this replaces filtered on
+    # `isinstance(existing, Mapping)` per item, after already calling
+    # `.items()` on it, so a non-mapping `existing` raised rather than reading
+    # as empty, and the filter never narrowed the type.
+    merged: dict[str, Mapping[str, object]] = (
+        dict(existing.items()) if isinstance(existing, Mapping) else {}
+    )
     for stage, entry in converted.items():
         current = merged.get(stage)
         if current is None or _stage_timestamp(entry) > _stage_timestamp(current):
