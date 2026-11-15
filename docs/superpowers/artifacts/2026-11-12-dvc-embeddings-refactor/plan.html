@@ -202,8 +202,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td>P3</td>
-<td><code>tests/unit/gui/results_viewer/test_measurement_routes.py</code>: every test whose <code>route</code> fixture store (<code>:100</code>, written with <code>save2zarr(measurement_table=…)</code>) is read through <code>_measurement_source</code>, and <code>test_an_undeclared_column_never_opens_the_parquet</code> (<code>:205</code> unlinks the v1 path)</td>
-<td><code>_gui/results_viewer/_measurement_source.py:107-108</code> stats <code>store / MEASUREMENT_TABLE_RELATIVE_PATH</code>, which a v2 store does not have</td>
+<td><code>tests/unit/gui/results_viewer/test_measurement_routes.py::test_an_undeclared_column_never_opens_the_parquet</code> (<code>:205</code> unlinks the v1 path). The file's other five reds went green at C14d, once the <code>sdk_</code> column readers moved onto the resolver</td>
+<td>the test itself unlinks <code>store / MEASUREMENT_TABLE_RELATIVE_PATH</code>, which a v2 store does not have</td>
 </tr>
 <tr class="odd">
 <td>P3</td>
