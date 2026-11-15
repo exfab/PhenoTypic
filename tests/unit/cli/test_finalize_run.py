@@ -34,7 +34,7 @@ from phenotypic._cli._cli_completion import (
 )
 from phenotypic._cli._cli_finalize_run import finalize_run
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
+    latest_measurement_run,
     STORE_ROOT_JSON,
     DATASET_AGGREGATED_PARQUET,
     DIR_MEASUREMENTS,
@@ -107,11 +107,10 @@ def _snapshot_path(tmp_path: Path) -> Path:
 def _store_snapshot_sha256(store: Path) -> str | None:
     from phenotypic.sdk_.ngff_ import PhenotypicAttr
 
-    root = json.loads((store / STORE_ROOT_JSON).read_text(encoding="utf-8"))
-    block = root["attributes"][PhenotypicAttr.ROOT].get(
-        PhenotypicAttr.METADATA_TABLE
-    )
-    return None if block is None else block.get(PhenotypicAttr.SNAPSHOT_SHA256)
+    # Spec D3: the `metadata_table` block lives in its run entry, not the root.
+    run = latest_measurement_run(store)
+    block = None if run is None else run.descriptor.get(PhenotypicAttr.METADATA_TABLE)
+    return None if not isinstance(block, dict) else block.get(PhenotypicAttr.SNAPSHOT_SHA256)
 
 
 def _master(tmp_path: Path) -> pl.DataFrame:
@@ -773,7 +772,7 @@ def test_the_master_inherits_its_column_order_from_the_embedded_tables(
         metadata_csv=_snapshot_path(tmp_path),
     )
 
-    embedded = pl.read_parquet(stores[0] / MEASUREMENT_TABLE_RELATIVE_PATH)
+    embedded = pl.read_parquet(_table_path(stores[0]))
     master = _master(tmp_path)
     assert embedded.columns, "the embedded table has no columns; vacuous"
 
@@ -897,7 +896,7 @@ def test_an_authorized_metadata_run_does_not_lose_the_join(
     # Precondition 2 -- the stores really are inverted. Without this the
     # assertions below pass on a pre-inversion tree, where the join was
     # already in the embedded table and finalization had nothing to do.
-    embedded = pl.read_parquet(stores[0] / MEASUREMENT_TABLE_RELATIVE_PATH)
+    embedded = pl.read_parquet(_table_path(stores[0]))
     assert "Metadata_Strain" not in embedded.columns, (
         "the embedded measurement table still carries user metadata; this "
         "tree was never inverted and proves nothing about finalization"
@@ -1214,8 +1213,6 @@ def _build_v1_tree(
         prepare_embedded_measurement_table,
     )
     from phenotypic.sdk_ import (
-        PhenotypicAttr,
-        read_phenotypic_attributes,
         replace_embedded_measurement_table,
     )
 
@@ -1233,13 +1230,10 @@ def _build_v1_tree(
     rewritten = 0
     for stem in frames:
         store = zarr_store_path(output_dir, DATASET, stem)
-        descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
-            "measurements"
-        ]
-        baseline = list(descriptor["measurement_columns"])
-        payload = pq.read_table(
-            store / MEASUREMENT_TABLE_RELATIVE_PATH
-        ).to_pandas()
+        run = latest_measurement_run(store)
+        assert run is not None, f"{store} declares no measurements table"
+        baseline = list(run.descriptor["measurements"]["measurement_columns"])
+        payload = pq.read_table(run.measurements_path()).to_pandas()
         replace_embedded_measurement_table(
             store,
             prepare_embedded_measurement_table(
@@ -1259,7 +1253,7 @@ def _build_v1_tree(
             attempt_id="attempt-1",
             lifecycle_epoch="epoch-1",
             artifacts={
-                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "measurements": _table_path(store),
                 "store": store,
             },
         )
@@ -1311,11 +1305,15 @@ def _write_pre_projection_v1_master(output_dir: Path, *, snapshot: str) -> None:
     )
 
 
+def _table_path(store: Path) -> Path:
+    """The store's measurements table: its latest run folder holding one (D6a)."""
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} declares no measurements table"
+    return run.measurements_path()
+
+
 def _embedded_table(output_dir: Path, stem: str) -> pl.DataFrame:
-    return pl.read_parquet(
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    return pl.read_parquet(_table_path(zarr_store_path(output_dir, DATASET, stem)))
 
 
 def _join_status(output_dir: Path, stem: str) -> str:
@@ -1327,8 +1325,7 @@ def _join_status(output_dir: Path, stem: str) -> str:
     )
 
     metadata = pq.read_schema(
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        _table_path(zarr_store_path(output_dir, DATASET, stem))
     ).metadata or {}
     return metadata[keys.JOIN_STATUS.encode()].decode()
 
@@ -1470,11 +1467,14 @@ def _strip_measurement_descriptor(output_dir: Path, stem: str) -> Path:
     from phenotypic.sdk_.ngff_ import MEASUREMENT_TABLE_GROUP, PhenotypicAttr
 
     store = zarr_store_path(output_dir, DATASET, stem)
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} declares no measurements table"
+    table = run.measurements_path()
     root_path = store / STORE_ROOT_JSON
     root = json.loads(root_path.read_text(encoding="utf-8"))
-    root["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES].pop(
-        MEASUREMENT_TABLE_GROUP
-    )
+    root["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES]["runs"][
+        run.run_id
+    ].pop(MEASUREMENT_TABLE_GROUP)
     atomic_write_json(root_path, root)
     publish_image_success(
         output_dir,
@@ -1486,7 +1486,7 @@ def _strip_measurement_descriptor(output_dir: Path, stem: str) -> Path:
         attempt_id="attempt-1",
         lifecycle_epoch="epoch-1",
         artifacts={
-            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "measurements": table,
             "store": store,
         },
     )
@@ -2054,7 +2054,9 @@ def test_a_store_without_a_measurement_descriptor_is_skipped_with_an_advisory(
     # Preconditions: the store is still AUTHORIZED (otherwise the skip is
     # never reached) and the descriptor really is gone.
     sources = authorized_measurement_sources(tmp_path) or {}
-    table = (store / MEASUREMENT_TABLE_RELATIVE_PATH).resolve()
+    # The descriptor is gone, so the resolver no longer names the table;
+    # the record still does, at the run folder it was written in.
+    table = next(store.glob("tables/*/measurements/table.parquet")).resolve()
     assert table in {Path(path).resolve() for path in sources}, (
         "stripping the descriptor de-authorized the store; the skip is unreached"
     )
@@ -2096,9 +2098,12 @@ def test_mixed_embedded_and_legacy_authority_is_still_refused(
     from phenotypic._cli._cli_finalize_run import (
         refuse_mixed_measurement_authority,
     )
+    from phenotypic.sdk_._table_runs import measurement_table_relative_path
 
-    embedded = (
-        zarr_store_path(tmp_path, DATASET, "a") / MEASUREMENT_TABLE_RELATIVE_PATH
+    # Authority is a property of the path shape, so no store is built: a v2
+    # run folder's table path is embedded authority on its own.
+    embedded = zarr_store_path(tmp_path, DATASET, "a") / measurement_table_relative_path(
+        "1-unknown"
     )
     legacy = tmp_path / DIR_RESULTS / DATASET / DIR_MEASUREMENTS / "b.parquet"
 
@@ -2153,12 +2158,9 @@ def test_the_authorized_arm_refuses_a_mixed_authority_tree(
         "the legacy external Parquet did not reach the AUTHORIZED set; the "
         "mixture this test needs was never built"
     )
-    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
-    embedded = [
-        path
-        for path in sources
-        if tuple(Path(path).parts[-len(suffix) :]) == suffix
-    ]
+    from phenotypic._cli._cli_parquet_agg import is_embedded_measurement_table
+
+    embedded = [path for path in sources if is_embedded_measurement_table(path)]
     assert embedded, "no embedded tables in the authorized set"
     assert len(embedded) != len(sources), "the authorized set is not mixed"
 
@@ -2192,10 +2194,7 @@ def test_the_recompile_finalizer_refuses_a_mixed_authority_task(
     )
 
     embedded = [
-        str(
-            zarr_store_path(tmp_path, DATASET, stem)
-            / MEASUREMENT_TABLE_RELATIVE_PATH
-        )
+        str(_table_path(zarr_store_path(tmp_path, DATASET, stem)))
         for stem in ("a", "b")
     ]
     legacy = str(

@@ -23,7 +23,10 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic import Image
-from phenotypic._cli._cli_completion import publish_image_success
+from phenotypic._cli._cli_completion import (
+    image_measurement_artifact,
+    publish_image_success,
+)
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_stage2_token import (
     detector_slot,
@@ -41,10 +44,10 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     ARTIFACT_KIND_FILE,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     atomic_write_json,
     dataset_measurements_dir,
     image_record_path,
+    latest_measurement_run,
     master_measurements_parquet_path,
     metadata_csv_deliverable_path,
     zarr_store_path,
@@ -546,7 +549,6 @@ def legacy_headers_run(
     import json
     import shutil
 
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
     from tests.unit.sdk_._migration_fixtures import (
         make_measurement_headers_legacy,
         refresh_marker_descriptors,
@@ -557,7 +559,7 @@ def legacy_headers_run(
     shutil.copytree(_completed_run_two, output_dir)
     for stem in run_stems(output_dir):
         store = zarr_store_path(output_dir, _MIGRATION_DATASET, stem)
-        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        embedded = latest_measurement_run(store).measurements_path()
         external = (
             dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
             / f"{stem}.parquet"
@@ -737,7 +739,9 @@ def _publish_store(
         attempt_id="attempt-1",
         lifecycle_epoch="epoch-1",
         artifacts={
-            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            # The run folder the forward save wrote (#281 spec D6a), named by
+            # the same resolver the forward workers use.
+            "measurements": image_measurement_artifact(output_dir, DATASET, stem),
             "store": store,
         },
     )
@@ -848,7 +852,9 @@ def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
             attempt_id="attempt-1",
             lifecycle_epoch="epoch-1",
             artifacts={
-                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                # The store holds one run folder (these stores' journals name
+                # no pipeline, so the rewrite replaces their `-unknown` run).
+                "measurements": latest_measurement_run(store).measurements_path(),
                 "store": store,
             },
         )
