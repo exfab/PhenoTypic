@@ -1917,24 +1917,23 @@ def _latest_measurement_descriptor(
 
     The latest run that holds ``measurements``, or, for a store still in the
     v1 flat layout, its one flat table
-    (:func:`~phenotypic.sdk_._table_runs.declared_measurement_tables`, keyed
+    (:func:`~phenotypic.sdk_._table_runs.record_less_measurement_table`, keyed
     on the tables schema). Read-only: a v1 store is read, never written.
 
     Raises:
         KeyError: If the store declares no measurement table.
     """
     from . import ngff_
-    from ._table_runs import declared_measurement_tables
+    from ._table_runs import record_less_measurement_table
 
-    declared = declared_measurement_tables(
+    table = record_less_measurement_table(
         store_path, ngff_.require_readable_store(store_path)
     )
-    if not declared:
+    if table is None:
         raise KeyError(
             f"OME-Zarr store declares no embedded measurement table: "
             f"{store_path}"
         )
-    table = declared[-1]
     return store_path / table.relative_path, dict(table.descriptor)
 
 

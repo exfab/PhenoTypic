@@ -760,16 +760,20 @@ def _certified_tables_entry(
     """
     from pathlib import PurePosixPath
 
-    from ._table_runs import declared_measurement_tables
+    from ._table_runs import (
+        declared_measurement_tables,
+        record_less_measurement_table,
+    )
 
     if block is None:
         return None
     try:
+        if measurements_artifact is None:
+            default = record_less_measurement_table(Path(store_relative), block)
+            return None if default is None else default.entry
         declared = declared_measurement_tables(Path(store_relative), block)
     except ValueError:
         return None
-    if measurements_artifact is None:
-        return declared[-1].entry if declared else None
     certified = PurePosixPath(measurements_artifact)
     for table in declared:
         if PurePosixPath(store_relative) / table.relative_path == certified:

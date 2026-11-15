@@ -13,8 +13,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from phenotypic._cli._cli_failure_tracker import file_sha256
-from phenotypic.sdk_ import latest_table_run, list_table_runs, replace_image_tables
-from phenotypic.sdk_._table_runs import table_run_by_id
+from phenotypic.sdk_ import list_table_runs, replace_image_tables
 from tests._tiny_run import (
     crop_entry,
     other_tables,
@@ -36,7 +35,7 @@ def _markers(run) -> set[str]:
 
 def test_measure_with_a_new_pipeline_adds_a_folder(full_run_store, SHA_B):
     # Review Focus 3
-    first = latest_table_run(full_run_store)
+    first = list_table_runs(full_run_store)[-1]
     before = tree_digest(full_run_store / "tables" / first.run_id)
     run = replace_image_tables(full_run_store, other_tables(full_run_store), pipeline_sha256=SHA_B)
     assert run.order == 2 and len(list_table_runs(full_run_store)) == 2
@@ -46,7 +45,7 @@ def test_measure_with_a_new_pipeline_adds_a_folder(full_run_store, SHA_B):
 
 
 def test_measure_with_the_same_pipeline_twice_keeps_one_folder_and_its_rows(full_run_store):
-    first = latest_table_run(full_run_store)
+    first = list_table_runs(full_run_store)[-1]
     rows = pq.read_table(first.measurements_path()).num_rows
     inode = first.measurements_path().stat().st_ino
     for _ in range(2):
@@ -74,13 +73,15 @@ def test_the_returned_run_is_the_one_the_promoted_root_declares(full_run_store, 
     # The per-image record declares this run's table (D6a), so it must be the
     # root's entry, not a description of an intended write.
     run = replace_image_tables(full_run_store, other_tables(full_run_store), pipeline_sha256=SHA_B)
-    declared = table_run_by_id(full_run_store, run.run_id)
+    declared = next(
+        (r for r in list_table_runs(full_run_store) if r.run_id == run.run_id), None
+    )
     assert declared is not None and dict(declared.descriptor) == dict(run.descriptor)
     assert run.measurements_path().is_file()
 
 
 def test_an_unknown_digest_replaces_the_highest_unknown_folder(full_run_store):
-    first = latest_table_run(full_run_store)
+    first = list_table_runs(full_run_store)[-1]
     for _ in range(2):
         run = replace_image_tables(full_run_store, other_tables(full_run_store), pipeline_sha256=None)
     assert [r.run_id for r in list_table_runs(full_run_store)] == [first.run_id, "2-unknown"]

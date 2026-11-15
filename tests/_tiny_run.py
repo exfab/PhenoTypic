@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from click.testing import Result
 
     from phenotypic import ImagePipeline
+    from phenotypic.sdk_ import TableRun
 
 #: Modes whose invocation takes ``--pipeline`` (see :func:`run_cli`).
 _PIPELINE_MODES = frozenset({"full", "measure", "process"})
@@ -555,6 +556,20 @@ def one_store(out: Path, *, stem: str | None = None) -> Path:
     return stores[0]
 
 
+def owned_table_run(store: Path, pipeline_sha256: str | None) -> TableRun | None:
+    """The run folder *pipeline_sha256* owns in *store*, or ``None``.
+
+    The writer's ownership rule (:func:`~phenotypic.sdk_.owned_table_run_id`)
+    over the store's root, resolved to its :class:`~phenotypic.sdk_.TableRun`.
+    """
+    from phenotypic.sdk_ import list_table_runs, ngff_, owned_table_run_id
+
+    run_id = owned_table_run_id(
+        ngff_.require_readable_store(Path(store)), pipeline_sha256=pipeline_sha256
+    )
+    return next((run for run in list_table_runs(store) if run.run_id == run_id), None)
+
+
 def _journal_run_id(store: Path) -> str:
     import json
 
@@ -739,7 +754,7 @@ def store_with_crop_entry(tmp_path: Path, measured_image) -> Path:
     """
     import numpy as np
 
-    from phenotypic.sdk_ import latest_table_run
+    from phenotypic.sdk_ import list_table_runs
     from phenotypic.sdk_._measurement_tables import (
         _rewrite_store_tables,
         objmap_digest,
@@ -749,7 +764,7 @@ def store_with_crop_entry(tmp_path: Path, measured_image) -> Path:
     store = measured_image.save2zarr(
         tmp_path / "crops.ome.zarr", measurement_table=tables_for(measured_image)
     )
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     objmap = measured_image.objmap[:]
     tables = tables_for(measured_image)
 

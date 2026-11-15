@@ -302,9 +302,9 @@ def _pipeline_table(store: Path, pipeline: Path) -> Path:
     table is found by the pipeline file's digest, never by a fixed path.
     """
     from phenotypic._cli._cli_failure_tracker import file_sha256
-    from phenotypic.sdk_ import table_run_for_pipeline
+    from tests._tiny_run import owned_table_run
 
-    run = table_run_for_pipeline(store, file_sha256(pipeline))
+    run = owned_table_run(store, file_sha256(pipeline))
     assert run is not None, f"{store} has no run folder for {pipeline}"
     return run.measurements_path()
 

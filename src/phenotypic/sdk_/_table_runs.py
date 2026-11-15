@@ -29,6 +29,7 @@ folder takes the next number. :func:`choose_table_run_id` is that rule.
 
 **Which folder a reader uses** (spec D6a): a reader holding a per-image record
 uses the folder the record certifies; a reader without one defaults to
+:func:`record_less_measurement_table`, whose v2 run is
 :func:`latest_measurement_run`.
 """
 
@@ -339,37 +340,25 @@ def list_table_runs(store: Path) -> tuple[TableRun, ...]:
     return table_runs_of_block(store, _read_block(store))
 
 
-def latest_table_run(store: Path) -> TableRun | None:
-    """The run with the highest ``order``, or ``None`` when there is none."""
-    runs = list_table_runs(store)
-    return runs[-1] if runs else None
+def _run_of_block(
+    store: Path, block: Mapping[str, object], run_id: str
+) -> TableRun | None:
+    """The run named *run_id* among *block*'s runs, or ``None``."""
+    return next(
+        (run for run in table_runs_of_block(store, block) if run.run_id == run_id),
+        None,
+    )
 
 
 def latest_measurement_run(store: Path) -> TableRun | None:
     """The highest-``order`` run that holds ``measurements`` (spec D6a).
 
-    The default for a reader without a per-image record. A grid-only process
-    folder holds no ``measurements`` and is skipped.
+    The default for a reader without a per-image record
+    (:func:`record_less_measurement_table`). A grid-only process folder holds
+    no ``measurements`` and is skipped; a v1 flat store has no runs.
     """
-    return next(
-        (run for run in reversed(list_table_runs(store)) if run.has_measurements),
-        None,
-    )
-
-
-def table_run_for_pipeline(store: Path, pipeline_sha256: str) -> TableRun | None:
-    """The run folder *pipeline_sha256* owns in *store*, or ``None``."""
-    matches = [
-        run for run in list_table_runs(store) if run.pipeline_sha256 == pipeline_sha256
-    ]
-    return matches[-1] if matches else None
-
-
-def table_run_by_id(store: Path, run_id: str) -> TableRun | None:
-    """The run folder named *run_id* in *store*, or ``None``."""
-    return next(
-        (run for run in list_table_runs(store) if run.run_id == run_id), None
-    )
+    table = record_less_measurement_table(store, _read_block(store))
+    return None if table is None else table.run
 
 
 @dataclass(frozen=True)
@@ -424,10 +413,11 @@ def declared_measurement_tables(
       GUI and migrate's own planning read unconverted trees;
     - schema 0: none.
 
-    The last element is spec D6a's record-less default (the v2 form of which
-    is :func:`latest_measurement_run`); a reader holding a per-image record
-    picks the element whose :attr:`~DeclaredMeasurementTable.relative_path`
-    the record certifies instead.
+    The last element is spec D6a's record-less default
+    (:func:`record_less_measurement_table`); a reader holding a per-image
+    record picks the element whose
+    :attr:`~DeclaredMeasurementTable.relative_path` the record certifies
+    instead.
 
     Args:
         store: The store the block belongs to.
@@ -472,10 +462,37 @@ def declared_measurement_tables(
     return ()
 
 
+def record_less_measurement_table(
+    store: Path, block: Mapping[str, object]
+) -> DeclaredMeasurementTable | None:
+    """The table a reader with no per-image record uses (spec D6a), in either layout.
+
+    The one owner of that rule: the last element of
+    :func:`declared_measurement_tables` -- a v2 store's highest-numbered run
+    that holds ``measurements``, or a v1 flat store's one table. Every
+    record-less reader (:func:`latest_measurement_run`,
+    :func:`declared_measurement_table_path`, the embedded-descriptor reader,
+    the run-state fallback) delegates here.
+
+    Args:
+        store: The store the block belongs to.
+        block: Its ``attributes.phenotypic`` block.
+
+    Returns:
+        The table, or ``None`` when *block* declares none.
+
+    Raises:
+        ValueError: If the tables descriptor is corrupt or of a version this
+            build does not read.
+    """
+    declared = declared_measurement_tables(store, block)
+    return declared[-1] if declared else None
+
+
 def declared_measurement_table_path(store: Path) -> Path | None:
     """The record-less default measurements table of *store*, in either layout.
 
-    The last element of :func:`declared_measurement_tables`: a v2 store's
+    The payload of :func:`record_less_measurement_table`: a v2 store's
     latest run that holds ``measurements``, or a v1 flat store's one table
     (``--mode migrate`` reads both). The path is where the layout puts the
     table; it may not exist on disk.
@@ -491,10 +508,10 @@ def declared_measurement_table_path(store: Path) -> Path | None:
         block = ngff_.read_phenotypic_attributes(Path(store))
         if not isinstance(block, Mapping):
             return None
-        declared = declared_measurement_tables(Path(store), block)
+        table = record_less_measurement_table(Path(store), block)
     except (OSError, KeyError, ValueError):
         return None
-    return Path(store) / declared[-1].relative_path if declared else None
+    return None if table is None else Path(store) / table.relative_path
 
 
 def _figure_run_recency(run_id: str, entry: Mapping[str, object]) -> tuple[str, str, str]:
@@ -770,9 +787,7 @@ def journal_table_run(store: Path) -> TableRun | None:
         else journal_pipeline_sha256(journal)
     )
     run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
-    if run_id is None:
-        return None
-    return next(run for run in table_runs_of_block(store, block) if run.run_id == run_id)
+    return None if run_id is None else _run_of_block(store, block, run_id)
 
 
 def journal_measurement_table(store: Path) -> Path | None:
@@ -1021,11 +1036,7 @@ def follow_upstream(store: Path, run_id: str, *, input_root: Path) -> TableRun:
     actual = hashlib.sha256(raw).hexdigest()
     if actual != expected:
         raise UpstreamChangedError(run_id, expected, actual)
-    block = _parse_root_bytes(raw) or {}
-    run = next(
-        (run for run in table_runs_of_block(input_store, block) if run.run_id == run_id),
-        None,
-    )
+    run = _run_of_block(input_store, _parse_root_bytes(raw) or {}, run_id)
     if run is None:
         raise ValueError(
             f"upstream input {input_store} is unchanged but declares no table "

@@ -15,7 +15,6 @@ from phenotypic.measure import MeasureSize
 from phenotypic.sdk_ import (
     UpstreamChangedError,
     follow_upstream,
-    latest_table_run,
     list_table_runs,
     upstream_entries_for_input,
 )
@@ -47,7 +46,7 @@ def test_result_store_records_input_runs_and_numbers_after_them(
     result = run_cli(input_store_v2.parent.parent, out, pipeline=pipeline_file_b)
     assert result.exit_code == 0, result.output
     tables = root_tables(one_store(out))
-    assert set(tables["upstream"]) == {latest_table_run(input_store_v2).run_id}  # "1-<A>"
+    assert set(tables["upstream"]) == {list_table_runs(input_store_v2)[-1].run_id}  # "1-<A>"
     assert tables["upstream"][next(iter(tables["upstream"]))]["root_sha256"] == file_sha256(
         input_store_v2 / "zarr.json"
     )
@@ -73,7 +72,7 @@ def test_follow_upstream_detects_a_reprocessed_input(input_store_v2, tmp_path, p
 
 
 def test_an_entry_names_its_source_root_and_pipeline(input_store_v2, pipeline_file_a):
-    run = latest_table_run(input_store_v2)
+    run = list_table_runs(input_store_v2)[-1]
     entries = upstream_entries_for_input(input_store_v2, input_store_v2.parent.parent)
     assert entries == {
         run.run_id: {
@@ -138,7 +137,7 @@ def test_the_inputs_own_upstream_is_merged_transitively(tmp_path, measured_image
         measurement_table=tables_for(measured_image),
         upstream={"1-" + SHA_P[:12]: grandparent},
     )
-    own = latest_table_run(store)
+    own = list_table_runs(store)[-1]
     assert own.order == 2  # numbered after its own upstream entry (D2)
     entries = upstream_entries_for_input(store, tmp_path / "in")
     assert set(entries) == {"1-" + SHA_P[:12], own.run_id}
@@ -158,7 +157,7 @@ def test_a_chained_result_numbers_after_the_whole_chain(tmp_path, measured_image
     assert result.exit_code == 0, result.output
     assert set(root_tables(one_store(out))["upstream"]) == {
         "1-" + SHA_P[:12],
-        latest_table_run(store).run_id,
+        list_table_runs(store)[-1].run_id,
     }
     assert [r.order for r in list_table_runs(one_store(out))] == [3]
 
@@ -220,7 +219,7 @@ def test_a_process_store_records_its_inputs_runs(input_store_v2, tmp_path, pipel
     )
     assert result.exit_code == 0, result.output
     store = process_only_output_path(out, input_store_v2, root, "gray", fmt="zarr")
-    assert set(root_tables(store)["upstream"]) == {latest_table_run(input_store_v2).run_id}
+    assert set(root_tables(store)["upstream"]) == {list_table_runs(input_store_v2)[-1].run_id}
     assert list_table_runs(store) == ()  # a process store measures nothing
 
 
@@ -242,7 +241,7 @@ def test_a_staged_store_records_its_inputs_runs(input_store_v2, tmp_path, monkey
     )
     assert result.exit_code == 0, result.output
     store = one_store(out)
-    assert set(root_tables(store)["upstream"]) == {latest_table_run(input_store_v2).run_id}
+    assert set(root_tables(store)["upstream"]) == {list_table_runs(input_store_v2)[-1].run_id}
     assert [r.run_id for r in list_table_runs(store)] == [f"2-{file_sha256(pipeline)[:12]}"]
 
 

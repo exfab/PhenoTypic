@@ -11,11 +11,7 @@ import zarr
 
 from phenotypic import Image
 from phenotypic._cli._cli_failure_tracker import file_sha256
-from phenotypic.sdk_ import (
-    latest_table_run,
-    list_table_runs,
-    table_run_for_pipeline,
-)
+from phenotypic.sdk_ import list_table_runs
 from phenotypic.sdk_._measurement_tables import (
     _valid_embedded_measurement_contract,
     ngff_feature_table_attrs,
@@ -24,6 +20,7 @@ from phenotypic.sdk_._measurement_tables import (
 )
 from tests._tiny_run import (
     crop_entry,
+    owned_table_run,
     resave_with_objmap,
     resave_with_pipeline,
     tables_for,
@@ -39,7 +36,7 @@ def _root_tables(store):
 
 def test_save_writes_run_folder_and_v2_descriptor(tmp_path, measured_image, pipeline_file_a):
     store = measured_image.save2zarr(tmp_path / "p.ome.zarr", measurement_table=tables_for(measured_image))
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     assert run.run_id == f"1-{file_sha256(pipeline_file_a)[:12]}" and run.measurements_path().is_file()
     root = _root_tables(store)
     assert root["schema_version"] == 2 and list(root["runs"]) == [run.run_id]
@@ -62,7 +59,7 @@ def test_the_root_metadata_table_block_moves_into_its_run(tmp_path, measured_ima
     store = measured_image.save2zarr(tmp_path / "p.ome.zarr", measurement_table=tables)
     phenotypic = json.loads((store / "zarr.json").read_text(encoding="utf-8"))["attributes"]["phenotypic"]
     assert "metadata_table" not in phenotypic
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     assert run.descriptor["metadata_table"] == {"snapshot_sha256": "e" * 64}
 
 
@@ -91,7 +88,7 @@ def test_resave_carries_other_runs_byte_identical(store_with_two_runs, pipeline_
 
 def test_table_less_save_keeps_its_own_folder(store_with_two_runs, pipeline_file_b):
     # Review Focus 2: the initial-checkpoint and Stage-1 saves write no tables
-    own = table_run_for_pipeline(store_with_two_runs, file_sha256(pipeline_file_b))
+    own = owned_table_run(store_with_two_runs, file_sha256(pipeline_file_b))
     before = tree_digest(store_with_two_runs / "tables" / own.run_id)
     resave_with_pipeline(store_with_two_runs, pipeline_file_b, tables=False)
     assert tree_digest(store_with_two_runs / "tables" / own.run_id) == before
@@ -99,10 +96,10 @@ def test_table_less_save_keeps_its_own_folder(store_with_two_runs, pipeline_file
 
 
 def test_the_same_pipeline_replaces_its_folder_with_new_inodes(store_with_two_runs, pipeline_file_b):
-    own = table_run_for_pipeline(store_with_two_runs, file_sha256(pipeline_file_b))
+    own = owned_table_run(store_with_two_runs, file_sha256(pipeline_file_b))
     inode = own.measurements_path().stat().st_ino
     resave_with_pipeline(store_with_two_runs, pipeline_file_b)
-    again = table_run_for_pipeline(store_with_two_runs, file_sha256(pipeline_file_b))
+    again = owned_table_run(store_with_two_runs, file_sha256(pipeline_file_b))
     assert again.run_id == own.run_id and again.measurements_path().stat().st_ino != inode
 
 
@@ -215,7 +212,7 @@ def test_migrate_hdf_to_zarr_passes_the_explicit_replace(monkeypatch, tmp_path):
 def test_the_contract_validator_reads_v2(tmp_path, measured_image):
     store = measured_image.save2zarr(tmp_path / "p.ome.zarr", measurement_table=tables_for(measured_image))
     assert _valid_embedded_measurement_contract(store)
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     run.measurements_path().write_bytes(b"corrupt")
     assert not _valid_embedded_measurement_contract(store)
 
@@ -226,7 +223,7 @@ def test_the_contract_validator_still_reads_v1(v1_store):
 
 def test_independent_reader(tmp_path, measured_image):
     store = measured_image.save2zarr(tmp_path / "p.ome.zarr", measurement_table=tables_for(measured_image))
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     g = zarr.open_group(store, mode="r")
     attrs = dict(g["tables"][run.run_id]["measurements"].attrs)
     assert attrs["type"] == "feature_table"

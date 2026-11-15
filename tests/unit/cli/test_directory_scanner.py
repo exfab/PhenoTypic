@@ -181,7 +181,7 @@ def test_measure_core_embeds_the_table_in_the_bare_stem_store(
         process_single_store_measure_core,
     )
     from phenotypic._cli._cli_failure_tracker import file_sha256
-    from phenotypic.sdk_ import table_run_for_pipeline
+    from tests._tiny_run import owned_table_run
 
     store = _real_store(tmp_path, "ds", "img")
     manager = OutputManager.from_config(tmp_path, ".tiff", save_overlays=False)
@@ -211,7 +211,7 @@ def test_measure_core_embeds_the_table_in_the_bare_stem_store(
     )
 
     # The table lands in the measure pipeline's own run folder (#281 D6).
-    run = table_run_for_pipeline(store, file_sha256(pipeline))
+    run = owned_table_run(store, file_sha256(pipeline))
     assert run is not None and run.measurements_path().is_file()
     assert not (tmp_path / "results" / "ds" / "measurements").exists()
 

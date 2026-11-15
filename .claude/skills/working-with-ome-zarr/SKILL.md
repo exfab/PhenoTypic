@@ -76,7 +76,7 @@ and measure runs must not also publish
   probe (`journal_table_run`) reads a `legacy` last application as the folder
   migrate named (`v1_table_pipeline_sha`), not `-unknown`.
 - **Reach folders through `phenotypic.sdk_._table_runs`** (`list_table_runs`,
-  `latest_measurement_run`, `table_run_for_pipeline`, `TableRun.
+  `latest_measurement_run`, `owned_table_run_id`, `TableRun.
   measurements_path()`), never by joining `tables/...` by hand.
   `MEASUREMENT_TABLE_RELATIVE_PATH` is the **v1** flat path, kept only for
   migrate and legacy reads.
@@ -111,7 +111,9 @@ folder, `index_key: "Object_Label"`).
 A v1 store (flat `tables/measurements/`, no `schema_version` under `tables`)
 is converted by `--mode migrate`, and forward modes refuse it (spec D5, D10).
 Record-less readers still read one read-only, through
-`_table_runs.declared_measurement_tables`, keyed strictly on the tables schema.
+`_table_runs.declared_measurement_tables`, keyed strictly on the tables schema;
+`record_less_measurement_table` is the one owner of which table such a reader
+uses (its last element).
 
 The Parquet schema metadata records the join status (`not_requested`,
 `joined`, or `no_common_keys`), ordered join keys, the metadata snapshot

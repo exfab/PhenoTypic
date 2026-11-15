@@ -484,7 +484,6 @@ from ._table_runs import (  # noqa: E402
     journal_measurement_table,
     journal_table_run,
     latest_measurement_run,
-    latest_table_run,
     list_table_runs,
     next_table_run_order,
     owned_table_run_id,
@@ -492,7 +491,6 @@ from ._table_runs import (  # noqa: E402
     store_tables_schema,
     v1_table_pipeline_sha,
     declared_measurement_table_path,
-    table_run_for_pipeline,
     table_run_id,
     upstream_entries_for_input,
 )
@@ -604,7 +602,6 @@ __all__ = [
     "journal_measurement_table",
     "journal_table_run",
     "latest_measurement_run",
-    "latest_table_run",
     "list_table_runs",
     "next_table_run_order",
     "owned_table_run_id",
@@ -612,7 +609,6 @@ __all__ = [
     "store_tables_schema",
     "v1_table_pipeline_sha",
     "declared_measurement_table_path",
-    "table_run_for_pipeline",
     "table_run_id",
     "upstream_entries_for_input",
     # Run-state readers (spec §5.2). The four frozen types land in P1

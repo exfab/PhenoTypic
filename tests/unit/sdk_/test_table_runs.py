@@ -20,15 +20,13 @@ from phenotypic.sdk_ import (
     journal_measurement_table,
     journal_table_run,
     latest_measurement_run,
-    latest_table_run,
     list_table_runs,
     next_table_run_order,
     store_of_table_path,
     store_tables_schema,
-    table_run_for_pipeline,
     table_run_id,
 )
-from tests._tiny_run import v2_block
+from tests._tiny_run import owned_table_run, v2_block
 
 SHA_A = "a" * 64
 SHA_B = "b" * 64
@@ -150,12 +148,12 @@ def test_the_resolver_orders_runs_and_picks_defaults(tmp_path):
         ),
     )
     assert [run.order for run in list_table_runs(store)] == [1, 2, 3]
-    assert latest_table_run(store).run_id == "3-" + SHA_C[:12]
+    assert list_table_runs(store)[-1].run_id == "3-" + SHA_C[:12]
     latest = latest_measurement_run(store)
     assert latest.run_id == "2-" + SHA_B[:12] and latest.has_measurements
-    assert table_run_for_pipeline(store, SHA_A).order == 1
-    assert table_run_for_pipeline(store, "d" * 64) is None
-    run = table_run_for_pipeline(store, SHA_B)
+    assert owned_table_run(store, SHA_A).order == 1
+    assert owned_table_run(store, "d" * 64) is None
+    run = owned_table_run(store, SHA_B)
     assert run.measurements_path() == store / "tables" / run.run_id / "measurements" / "table.parquet"
     assert run.metadata_path() == store / "tables" / run.run_id / "metadata" / "pht-metadata.parquet"
     assert run.embedding_path("dinov2-vitb14", "crops") == (

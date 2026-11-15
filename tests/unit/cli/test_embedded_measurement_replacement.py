@@ -14,9 +14,9 @@ from phenotypic.sdk_ import (
     PhenotypicAttr,
     list_table_runs,
     read_phenotypic_attributes,
-    table_run_for_pipeline,
     zarr_store_path,
 )
+from tests._tiny_run import owned_table_run
 
 
 def _tree_hashes(root: Path) -> dict[str, str]:
@@ -32,7 +32,7 @@ def _tree_hashes(root: Path) -> dict[str, str]:
 
 def _pipeline_run(store: Path, pipeline: Path):
     """The run folder *pipeline* owns in *store* (#281 spec D6)."""
-    run = table_run_for_pipeline(store, file_sha256(pipeline))
+    run = owned_table_run(store, file_sha256(pipeline))
     assert run is not None, f"{store} has no run folder for {pipeline}"
     return run
 
