@@ -379,7 +379,7 @@ def _patch_fast_migrated_reads(
     monkeypatch.setattr(
         _cli_migrate_image,
         "embedded_measurement_table_matches",
-        lambda path, _prepared: path == task.store_path,
+        lambda path, _prepared, **_kwargs: path == task.store_path,
     )
     monkeypatch.setattr(
         _cli_migrate_image,

@@ -30,6 +30,7 @@ from phenotypic._cli._embedded_measurement_tables import (
 from phenotypic.sdk_ import (
     CommitGuard,
     MEASUREMENT_TABLE_RELATIVE_PATH,
+    PreparedEmbeddedMeasurementTable,
     convert_tables_v1_to_v2,
     declared_measurement_table_path,
     image_completion_marker_path,
@@ -263,22 +264,60 @@ def _certified_run_table(output_dir: Path, task: MigrationImageTask) -> Path | N
     return None if run is None else run.measurements_path()
 
 
+def _import_run_id(store: Path) -> str | None:
+    """The run the legacy-Parquet import owns in v2 *store*, or ``None``.
+
+    :func:`~phenotypic.sdk_._table_runs.import_table_run_id`, the rule
+    ``replace_embedded_measurement_table`` writes by, so migrate's checks of
+    an import judge the run the import writes (review M2). ``None`` for a
+    store that is not (yet) v2, whose one table is the flat one, and for an
+    unreadable root.
+    """
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import (
+        import_table_run_id,
+        tables_schema_of_block,
+    )
+
+    try:
+        block = ngff_.read_phenotypic_attributes(Path(store))
+        if not isinstance(block, dict) or tables_schema_of_block(block) != 2:
+            return None
+        return import_table_run_id(block)
+    except (OSError, KeyError, ValueError):
+        return None
+
+
 def _migration_table_run_id(output_dir: Path, task: MigrationImageTask) -> str | None:
     """The run folder migrate validates and certifies for *task*, or ``None`` (the default).
 
-    The run the image's record certifies, when it certifies one (review C1).
-    ``None`` asks the table contract for its record-less default, the latest
-    run holding ``measurements`` (or a v1 store's flat table).
+    In order:
+
+    1. the run the image's record certifies, when it certifies one of this
+       store (review C1);
+    2. for an image the manifest gave a legacy external Parquet, the run the
+       import of it owns (review M2) -- where the import writes, or already wrote, the
+       Parquet's rows, so validation, exactness and certification all judge
+       one run;
+    3. ``None``: the table contract's record-less default, the latest run
+       holding ``measurements`` (or a v1 store's flat table).
     """
     table = _certified_run_table(output_dir, task)
-    return None if table is None else table.parent.parent.name
+    if table is not None:
+        return table.parent.parent.name
+    # Never stat the source here: a rerun over a valid marker must not touch
+    # retained provenance at all. The manifest names a source only when it
+    # found one.
+    if task.measurement_path is not None:
+        return _import_run_id(task.store_path)
+    return None
 
 
 def _embedded_table_path(output_dir: Path, task: MigrationImageTask) -> Path:
     """The measurement table migrate validates and certifies for *task*.
 
-    The table the image's record certifies, when it certifies a run folder of
-    this store (review C1): a tree measured with A, then B, then A certifies
+    The table of :func:`_migration_table_run_id`'s run. The record's comes
+    first (review C1): a tree measured with A, then B, then A certifies
     folder 1 while folder 2 is the latest, and re-certifying the latest would
     silently move the image to pipeline B. Otherwise the record-less default
     (spec D6a): a v2 store's latest run folder holding ``measurements``, or a
@@ -286,9 +325,14 @@ def _embedded_table_path(output_dir: Path, task: MigrationImageTask) -> Path:
     spec D10). A store that declares none answers the v1 flat path, which is
     only ever probed for existence or named in an error.
     """
+    from phenotypic.sdk_._table_runs import measurement_table_relative_path
+
     certified = _certified_run_table(output_dir, task)
     if certified is not None:
         return certified
+    run_id = _migration_table_run_id(output_dir, task)
+    if run_id is not None:
+        return Path(task.store_path) / measurement_table_relative_path(run_id)
     declared = declared_measurement_table_path(task.store_path)
     return (
         declared
@@ -301,6 +345,15 @@ def _table_contract_holds(output_dir: Path, task: MigrationImageTask) -> bool:
     """Whether the run migrate certifies for *task* passes the table contract."""
     return _valid_embedded_measurement_contract(
         task.store_path, _migration_table_run_id(output_dir, task)
+    )
+
+
+def _source_table_matches(
+    task: MigrationImageTask, prepared: PreparedEmbeddedMeasurementTable
+) -> bool:
+    """Whether the run the import owns holds exactly *prepared* (review M2)."""
+    return embedded_measurement_table_matches(
+        task.store_path, prepared, run_id=_import_run_id(task.store_path)
     )
 
 
@@ -466,20 +519,21 @@ def _table_state(
     ):
         baseline = pd.read_parquet(source)
         prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
-    exact = (
-        prepared is not None
-        and embedded_measurement_table_matches(task.store_path, prepared)
-    )
+    exact = prepared is not None and _source_table_matches(task, prepared)
     if prepared is not None and (not valid or (require_source_equality and not exact)):
-        replace_embedded_measurement_table(
+        written = replace_embedded_measurement_table(
             task.store_path,
             prepared,
             commit_guard=commit_guard,
         )
-        valid = _table_contract_holds(output_dir, task)
-        if not valid:
+        # Judge the run the import wrote, never a newer one of another
+        # pipeline (review M2): a multi-run store otherwise re-imported on
+        # every pass and failed the exactness check each time.
+        if not _valid_embedded_measurement_contract(
+            task.store_path, written.parent.parent.name
+        ) or not _source_table_matches(task, prepared):
             raise RuntimeError("embedded measurement table validation failed")
-        return True, True
+        return _table_contract_holds(output_dir, task), True
     if _embedded_table_path(output_dir, task).exists() and not valid:
         raise RuntimeError("embedded measurement table validation failed")
     return valid, False
@@ -503,7 +557,7 @@ def _certified_source_provenance(
     after = _source_artifact_state(source)
     if after != before:
         raise RuntimeError("measurement source changed during certification")
-    if not embedded_measurement_table_matches(task.store_path, prepared):
+    if not _source_table_matches(task, prepared):
         raise RuntimeError(
             "embedded table does not exactly match the prepared source"
         )
@@ -1059,10 +1113,8 @@ def reclaim_image_sources(
             )
         else:
             if not _valid_embedded_measurement_contract(
-                task.store_path
-            ) or not embedded_measurement_table_matches(
-                task.store_path, prepared
-            ):
+                task.store_path, _import_run_id(task.store_path)
+            ) or not _source_table_matches(task, prepared):
                 reasons.append(
                     "external Parquet embedded table does not exactly match the source"
                 )
@@ -1079,9 +1131,7 @@ def reclaim_image_sources(
                         reasons.append(
                             "external Parquet marker authority changed before unlink"
                         )
-                    elif not embedded_measurement_table_matches(
-                        task.store_path, prepared
-                    ):
+                    elif not _source_table_matches(task, prepared):
                         reasons.append(
                             "embedded table changed before external Parquet unlink"
                         )

@@ -329,3 +329,65 @@ def test_after_migrate_a_staged_continuation_reuses_the_migrated_image(v1_tree):
         markers_required=False,
     )
     assert stage == "complete"
+
+
+# ---------------------------------------------------------------------------
+# M2: the import, its validation and its exactness check judge one run
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def multi_run_tree_with_legacy_parquets(certified_older_than_latest) -> Path:
+    """:func:`certified_older_than_latest` as a legacy tree would reach migrate.
+
+    Every store keeps its two run folders (1-A, and 2-B, the latest), the
+    records are gone, and each image has a legacy external Parquet holding
+    folder 1's rows with one value changed -- so the import has real work,
+    and the run it owns (A's, by the journal) is not the latest.
+    """
+    import shutil
+
+    import pyarrow.parquet as pq
+
+    from phenotypic.sdk_ import dataset_measurements_dir
+
+    out = certified_older_than_latest
+    shutil.rmtree(out / ".phenotypic" / "progress" / "images")
+    target = dataset_measurements_dir(out, "ds")
+    target.mkdir(parents=True, exist_ok=True)
+    for stem in _TINY_STEMS:
+        first, _latest = list_table_runs(one_store(out, stem=stem))
+        frame = pq.read_table(first.measurements_path()).to_pandas()
+        column = next(c for c in frame.columns if c.startswith("Size_"))
+        frame[column] = frame[column] + 1
+        frame.to_parquet(target / f"{stem}.parquet", index=False)
+    return out
+
+
+def test_a_multi_run_store_with_a_legacy_parquet_converges_in_one_pass(
+    multi_run_tree_with_legacy_parquets,
+):
+    import pyarrow.parquet as pq
+
+    from phenotypic.sdk_ import dataset_measurements_dir
+
+    out = multi_run_tree_with_legacy_parquets
+    result = run_cli(None, out, mode="migrate")
+    assert result.exit_code == 0, result.output
+    for stem in _TINY_STEMS:
+        first, latest = list_table_runs(one_store(out, stem=stem))
+        record = read_image_record(out, "ds", stem)
+        assert record is not None
+        # The import's run is certified, not the latest (B's).
+        assert out / record["artifacts"]["measurements"]["path"] == first.measurements_path()
+        source = pq.read_table(dataset_measurements_dir(out, "ds") / f"{stem}.parquet")
+        imported = pq.read_table(first.measurements_path())
+        column = next(c for c in source.column_names if c.startswith("Size_"))
+        assert imported.column(column).to_pylist() == source.column(column).to_pylist()
+        assert latest.measurements_path().is_file()  # B's folder is carried
+    assert resolve_run_state(out, depth="deep").completion == "complete"
+
+    before = _scientific_tree(out)
+    second = run_cli(None, out, mode="migrate")
+    assert second.exit_code == 0, second.output
+    assert _scientific_tree(out) == before

@@ -625,6 +625,27 @@ def choose_table_run_id(
     return table_run_id(next_table_run_order(block), pipeline_sha256)
 
 
+def import_table_run_id(block: Mapping[str, object]) -> str:
+    """The run folder ``--mode migrate``'s legacy-Parquet import owns in *block* (D10).
+
+    :func:`choose_table_run_id` for :func:`v1_table_pipeline_sha`, the rule
+    that names a converted v1 folder, over a v2 *block* (any other layout
+    numbers from scratch, so a v1 store's import lands in ``1-<sha12>``,
+    the folder its conversion would have made). One function, because the
+    import's writer and migrate's checks of what it wrote must name the same
+    run: two rules here are what kept a multi-run store from converging
+    (review M2).
+
+    Raises:
+        ValueError: If the tables descriptor is corrupt or of a version this
+            build does not read.
+    """
+    return choose_table_run_id(
+        block if tables_schema_of_block(block) == 2 else {},
+        pipeline_sha256=v1_table_pipeline_sha(block),
+    )
+
+
 def owned_table_run_id(
     block: Mapping[str, object], *, pipeline_sha256: str | None
 ) -> str | None:

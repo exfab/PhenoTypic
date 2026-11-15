@@ -1701,9 +1701,11 @@ def replace_embedded_measurement_table(
     tree mixed:
 
     - the run is the one the store's pipeline owns
-      (:func:`~phenotypic.sdk_._table_runs.choose_table_run_id` for
+      (:func:`~phenotypic.sdk_._table_runs.import_table_run_id`:
+      :func:`~phenotypic.sdk_._table_runs.choose_table_run_id` for
       :func:`~phenotypic.sdk_._table_runs.v1_table_pipeline_sha`, the rule
-      that names a converted v1 folder). An existing folder for it has its
+      that names a converted v1 folder). Migrate's checks of the import ask
+      the same function, so they judge the run it wrote (review M2). An existing folder for it has its
       ``measurements/`` rewritten as new inodes and keeps everything else;
       otherwise a new folder takes the next number. Every other run folder,
       and the ``upstream`` block, is carried byte for byte;
@@ -1713,7 +1715,8 @@ def replace_embedded_measurement_table(
       of the flat ones.
 
     Returns:
-        The written measurements Parquet path.
+        The written measurements Parquet path: the run it wrote, at
+        ``tables/<run>/measurements/table.parquet``.
     """
     from . import ngff_
     from ._table_runs import (
@@ -1722,7 +1725,7 @@ def replace_embedded_measurement_table(
         RUNS_KEY,
         TABLE_RUN_ID_RE,
         UPSTREAM_KEY,
-        choose_table_run_id,
+        import_table_run_id,
         measurement_table_relative_path,
         tables_schema_of_block,
         v1_table_pipeline_sha,
@@ -1742,9 +1745,7 @@ def replace_embedded_measurement_table(
             selected["clear"] = None
         else:
             sha = v1_table_pipeline_sha(phenotypic)
-            run_id = choose_table_run_id(
-                phenotypic if schema == 2 else {}, pipeline_sha256=sha
-            )
+            run_id = import_table_run_id(phenotypic)
             tables_block = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
             if schema == 2 and isinstance(tables_block, Mapping):
                 kept = {
