@@ -2062,7 +2062,7 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
-        pipeline_sha256: str | None = None,
+        pipeline_sha256: str | None,
         figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
@@ -2086,6 +2086,8 @@ class OutputManager:
                 Its run folder is replaced when the store has one, otherwise
                 added beside the others. ``None`` (no known digest) replaces
                 the store's highest-numbered ``-unknown`` folder, or adds one.
+                Required, with no default: a forgotten digest would silently
+                write an ``-unknown`` folder beside the forward run's.
             figures: This run's per-image figures, written as one run folder
                 beside the store's others; ``None`` adds no run and touches
                 no figure (spec 2026-09-22 §1a). See
