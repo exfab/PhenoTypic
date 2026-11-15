@@ -26,6 +26,10 @@ from typing import Any as _Any
 _LAZY_ATTRS: dict[str, str] = {
     "colourspace": ".colourspace",
     "HDF": ".hdf_",
+    "EmbeddingPayload": "._embedding_tables",
+    "EmbeddingTableUnreadableError": "._embedding_tables",
+    "read_embedding_table": "._embedding_tables",
+    "write_embedding_tables": "._embedding_tables",
     "PreparedEmbeddedMeasurementTable": "._measurement_tables",
     "PreparedImageTables": "._measurement_tables",
     "build_measurement_table_descriptor": "._measurement_tables",
@@ -85,6 +89,12 @@ def __dir__() -> list[str]:
 
 if _TYPE_CHECKING:
     from . import colourspace
+    from ._embedding_tables import (
+        EmbeddingPayload,
+        EmbeddingTableUnreadableError,
+        read_embedding_table,
+        write_embedding_tables,
+    )
     from ._measurement_tables import (
         PreparedEmbeddedMeasurementTable,
         PreparedImageTables,
@@ -547,6 +557,10 @@ __all__ = [
     "write_embedded_measurement_table",
     "write_image_tables",
     "write_metadata_table",
+    "EmbeddingPayload",
+    "EmbeddingTableUnreadableError",
+    "read_embedding_table",
+    "write_embedding_tables",
     "canonical_metadata_order",
     "colourspace",
     "constants_",

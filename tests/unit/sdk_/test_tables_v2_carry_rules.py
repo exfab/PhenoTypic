@@ -4,8 +4,9 @@
   what it read just now, so an entry the input no longer has does not linger;
   a run that shares an id or an order with an upstream entry is logged.
 - **M7.** ``--restart`` keeps another pipeline's run folder byte for byte, and
-  a same-pipeline ``replace_image_tables`` drops that run's embedding entry
-  (intended until P4 adds ``embeddings=``).
+  a same-pipeline ``replace_image_tables`` rewrites that run's folder as a
+  total description of the write: given ``embeddings=``, it writes them;
+  given none, the run keeps none (#281 P4 T2).
 """
 
 from __future__ import annotations
@@ -145,15 +146,18 @@ def test_restart_keeps_another_pipelines_folder_byte_identical(
     assert root_tables(store)["runs"][other.run_id] == dict(other.descriptor)
 
 
-def test_a_same_pipeline_replace_image_tables_drops_that_runs_embeddings(
+def test_a_same_pipeline_replace_image_tables_without_embeddings_drops_that_runs_embeddings(
     store_with_crop_entry,
 ):
-    """Intended until P4 adds ``embeddings=`` to ``replace_image_tables``.
+    """``embeddings=None`` means "this write has no embeddings" (#281 P4 T2).
 
-    The measure rewrite owns its pipeline's whole run folder and writes only
-    ``measurements`` and ``metadata``, so the crop-embedding entry of that run
-    is not carried. P4 adds an ``embeddings=`` argument that carries or
-    rewrites it; this test pins today's behaviour so that change is visible.
+    The measure rewrite owns its pipeline's whole run folder, and the folder
+    it writes is a total description of the write (spec D6: no row of the
+    previous write survives). So a rewrite given no embeddings leaves the run
+    with none -- as a measurer dropped from the pipeline drops its columns.
+    ``--mode measure`` passes its pipeline's ``embed()`` payloads, so a
+    pipeline that embeds keeps (and rewrites) its embeddings; that case is
+    ``test_replace_image_tables_writes_the_given_embeddings``.
     """
     from phenotypic.sdk_ import replace_image_tables
 
@@ -171,3 +175,30 @@ def test_a_same_pipeline_replace_image_tables_drops_that_runs_embeddings(
     assert after.run_id == run.run_id
     assert not after.descriptor.get("embeddings")
     assert not (after.folder / "embeddings").exists()
+
+
+def test_another_pipelines_replace_with_embeddings_leaves_the_first_folder_byte_identical(
+    store_with_crop_entry, pipeline_file_b, toy_embedder
+):
+    """A rewrite by pipeline B adds B's folder, embeddings included, and carries A's whole."""
+    from phenotypic import ImagePipeline
+    from phenotypic.sdk_ import replace_image_tables
+
+    store = store_with_crop_entry
+    (first,) = list_table_runs(store)
+    before = tree_digest(first.folder)
+    entry_before = dict(first.descriptor)
+    image = _load_store(store)
+    written = replace_image_tables(
+        store,
+        tables_for(image),
+        pipeline_sha256=file_sha256(pipeline_file_b),
+        embeddings=ImagePipeline(meas={"emb": toy_embedder}).embed(image),
+        durable=False,
+    )
+    runs = list_table_runs(store)
+    assert [run.run_id for run in runs] == [first.run_id, written.run_id]
+    assert tree_digest(first.folder) == before
+    assert root_tables(store)["runs"][first.run_id] == entry_before
+    assert set(runs[1].descriptor["embeddings"]) == {"toy-v1/crops"}
+    assert runs[1].descriptor["embeddings"]["toy-v1/crops"]["stale"] is False

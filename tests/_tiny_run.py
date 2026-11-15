@@ -1038,3 +1038,88 @@ def toy_grid_embedder():
             row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# P4 T2 (C17): embedding tables in the store (spec D1, D3, D7, D9)
+# ---------------------------------------------------------------------------
+
+#: Payloads computed for an image by the fixtures below, keyed by ``id(image)``.
+#: An ``Image`` defines ``__eq__`` and so is unhashable; the image is held in
+#: the value, so its id cannot be reused while the entry lives, and each
+#: fixture removes its entry on teardown.
+_IMAGE_PAYLOADS: dict[int, tuple[object, dict]] = {}
+
+
+def payloads_of(image) -> dict:
+    """The ``{"<model>/<region>": EmbeddingPayload}`` a fixture computed for *image*."""
+    return _IMAGE_PAYLOADS[id(image)][1]
+
+
+def _with_cli_payloads(image, pipeline_file: Path, embedders: Mapping[str, object]):
+    """Open a ``full`` CLI application of *pipeline_file* on *image* and embed it.
+
+    The payloads are what ``ImagePipeline(meas=embedders).embed(image)``
+    returns, recorded for :func:`payloads_of` / :func:`save_with_payload`.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic._core._provenance import initialize_cli_provenance
+
+    initialize_cli_provenance(
+        image, pipeline_file, kind="full", input_filename="plate.tif"
+    )
+    payloads = ImagePipeline(meas=dict(embedders)).embed(image)
+    _IMAGE_PAYLOADS[id(image)] = (image, payloads)
+    return image
+
+
+@pytest.fixture
+def image_with_crop_payload(detected_plate, pipeline_file_a: Path, toy_embedder):
+    """:func:`detected_plate` as a ``full`` application of A, with one ``toy-v1/crops`` payload."""
+    image = _with_cli_payloads(detected_plate, pipeline_file_a, {"emb": toy_embedder})
+    yield image
+    _IMAGE_PAYLOADS.pop(id(image), None)
+
+
+@pytest.fixture
+def image_with_two_models(detected_plate, pipeline_file_a: Path, toy_embedder):
+    """:func:`detected_plate` with payloads ``toy-v1/crops`` and ``toy-v2/crops``."""
+    second = toy_embedder_class()(token="toy-v2")
+    image = _with_cli_payloads(
+        detected_plate, pipeline_file_a, {"v1": toy_embedder, "v2": second}
+    )
+    yield image
+    _IMAGE_PAYLOADS.pop(id(image), None)
+
+
+@pytest.fixture
+def image_with_grid_payload(detected_plate, pipeline_file_a: Path, toy_grid_embedder):
+    """:func:`detected_plate` with one ``toy-v1/grid`` payload over the 2 x 2 toy grid."""
+    image = _with_cli_payloads(
+        detected_plate, pipeline_file_a, {"grid": toy_grid_embedder}
+    )
+    yield image
+    _IMAGE_PAYLOADS.pop(id(image), None)
+
+
+def save_with_payload(directory: Path, image) -> Path:
+    """``save2zarr`` *image* into *directory* with its tables and its payloads.
+
+    The tables are :func:`tables_for`'s; the payloads :func:`payloads_of`'s.
+
+    Returns:
+        The promoted store, ``<directory>/payload.ome.zarr``.
+    """
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    return image.save2zarr(
+        Path(directory) / "payload.ome.zarr",
+        measurement_table=tables_for(image),
+        embeddings=payloads_of(image),
+    )
+
+
+def run_entry(store: Path) -> dict:
+    """The latest run's descriptor entry in *store*'s root."""
+    from phenotypic.sdk_ import list_table_runs
+
+    return dict(list_table_runs(store)[-1].descriptor)

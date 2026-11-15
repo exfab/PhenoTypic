@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
     from phenotypic.sdk_._image_figures import StoredFigures
     from phenotypic.sdk_._measurement_tables import (
         PreparedImageTables,
@@ -1151,6 +1152,7 @@ class ImageIOHandler(ImageColorSpace):
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
         replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -1192,6 +1194,15 @@ class ImageIOHandler(ImageColorSpace):
                 refused (``ValueError``), because the root may declare other
                 pipelines' table runs. Only ``--mode migrate``'s rebuild of an
                 invalid store from its HDF source passes it.
+            embeddings: This save's embedding tables,
+                ``{"<model>/<crops|grid>": EmbeddingPayload}`` as
+                :meth:`ImagePipeline.embed` returns them. They are written
+                into the same run folder as *measurement_table*, under
+                ``embeddings/<model>/<region>/`` (#281 spec D1). A save with
+                either writes that folder whole, so the folder holds exactly
+                this save's tables and embeddings; a save with neither carries
+                it unchanged. Each entry's ``stale`` is computed from the
+                objmap and arrays this save writes (spec D7).
 
         Returns:
             The promoted store path.
@@ -1228,6 +1239,7 @@ class ImageIOHandler(ImageColorSpace):
             figures=figures,
             upstream=upstream,
             replace_unreadable=replace_unreadable,
+            embeddings=embeddings,
         )
 
     def _save_store(
@@ -1247,6 +1259,7 @@ class ImageIOHandler(ImageColorSpace):
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
         replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -1295,6 +1308,7 @@ class ImageIOHandler(ImageColorSpace):
             upstream: The input's table runs, recorded under
                 ``tables.upstream`` (see :meth:`save2zarr`).
             replace_unreadable: See :meth:`save2zarr`.
+            embeddings: This save's embedding tables (see :meth:`save2zarr`).
 
         Returns:
             The promoted store path.
@@ -1324,6 +1338,7 @@ class ImageIOHandler(ImageColorSpace):
                 figures=figures,
                 upstream=upstream,
                 replace_unreadable=replace_unreadable,
+                embeddings=embeddings,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1347,6 +1362,7 @@ class ImageIOHandler(ImageColorSpace):
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
         replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Populate one allocated part and promote it to its final path.
 
@@ -1505,6 +1521,7 @@ class ImageIOHandler(ImageColorSpace):
             part,
             final,
             measurement_table=measurement_table,
+            embeddings=embeddings,
             upstream=upstream,
             primary=primary,
             objmap=objmap,
@@ -1582,6 +1599,7 @@ class ImageIOHandler(ImageColorSpace):
         objmap: np.ndarray | None,
         arrays: Mapping[str, np.ndarray],
         replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> tuple[dict[str, dict], dict[str, dict]]:
         """Carry the store's table run folders into *part* and write this save's own.
 
@@ -1595,10 +1613,12 @@ class ImageIOHandler(ImageColorSpace):
           ``upstream`` block; ``None`` carries it (review M1). New folders are
           numbered past both the carried and the given entries, so a number
           is never reused.
-        - A save that writes tables excludes its own folder from the carry and
-          writes it fresh, every file a new inode. A **table-less** save (the
-          initial-checkpoint save, Stage 1) carries **every** folder, its own
-          pipeline's included -- the rule figures follow.
+        - A save that writes tables -- *measurement_table*, *embeddings* or
+          both -- excludes its own folder from the carry and writes it fresh,
+          every file a new inode, holding exactly what this save gives. A
+          **table-less** save (the initial-checkpoint save, Stage 1) carries
+          **every** folder, its own pipeline's included -- the rule figures
+          follow.
         - Every carried and written embedding entry's ``stale`` is recomputed
           from the objmap and arrays being written, never latched.
 
@@ -1617,6 +1637,7 @@ class ImageIOHandler(ImageColorSpace):
             write_run_entry,
         )
         from phenotypic.sdk_._table_runs import (
+            EMBEDDINGS_KEY,
             RUNS_KEY,
             TABLE_RUN_ID_RE,
             UPSTREAM_KEY,
@@ -1624,7 +1645,7 @@ class ImageIOHandler(ImageColorSpace):
         )
 
         pipeline_sha256 = current_pipeline_sha256(cast("Image", self))
-        writes_own = measurement_table is not None
+        writes_own = measurement_table is not None or bool(embeddings)
         run_id: str | None = None
         if writes_own:
             # The same read the carry makes, so the folder is numbered after
@@ -1658,8 +1679,22 @@ class ImageIOHandler(ImageColorSpace):
             if upstream is not None
             else carried[UPSTREAM_KEY]
         )
+        # The digests of what this save writes, taken once: every carried
+        # entry and every new payload is compared against them (D7). Only the
+        # series some grid entry binds are digested.
+        new_payloads = {
+            "": {EMBEDDINGS_KEY: {
+                key: payload.descriptor for key, payload in (embeddings or {}).items()
+            }}
+        }
+        objmap_sha256 = objmap_digest(objmap) if objmap is not None else None
+        array_sha256 = {
+            series: array_digest(arrays[series])
+            for series in grid_bound_series(runs) | grid_bound_series(new_payloads)
+            if series in arrays
+        }
         if writes_own:
-            assert run_id is not None and measurement_table is not None
+            assert run_id is not None
             match = TABLE_RUN_ID_RE.match(run_id)
             assert match is not None
             runs[run_id] = write_run_entry(
@@ -1669,15 +1704,12 @@ class ImageIOHandler(ImageColorSpace):
                 pipeline_sha256=pipeline_sha256,
                 measurements=measurement_table,
                 objmap_target=ngff_.objmap_path(primary),
+                embeddings=embeddings,
+                objmap_sha256=objmap_sha256,
+                array_sha256=array_sha256,
             )
         refresh_embedding_staleness(
-            runs,
-            objmap_sha256=objmap_digest(objmap) if objmap is not None else None,
-            array_sha256={
-                series: array_digest(arrays[series])
-                for series in grid_bound_series(runs)
-                if series in arrays
-            },
+            runs, objmap_sha256=objmap_sha256, array_sha256=array_sha256
         )
         return runs, recorded_upstream
 

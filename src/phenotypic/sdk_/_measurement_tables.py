@@ -24,6 +24,7 @@ from ._atomic_io import (
 if TYPE_CHECKING:
     import numpy as np
 
+    from ._embedding_tables import EmbeddingPayload
     from ._image_figures import StoredFigures
     from ._table_runs import TableRun
 
@@ -609,7 +610,7 @@ def write_run_entry(
     pipeline_sha256: str | None,
     measurements: PreparedImageTables | None = None,
     objmap_target: str | None = None,
-    embeddings: Mapping[str, Mapping] | None = None,
+    embeddings: Mapping[str, EmbeddingPayload | Mapping] | None = None,
     objmap_sha256: str | None = None,
     array_sha256: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
@@ -633,12 +634,17 @@ def write_run_entry(
         measurements: The run's measurement and metadata tables, or ``None``.
         objmap_target: Store-relative objmap label path; required with
             *measurements*.
-        embeddings: Already-written embedding entries, keyed
-            ``"<model>/<region>"``. Their files must already be in *part*
-            under this run's folder. (#281 P4 adds the payload writer.)
+        embeddings: The run's embedding tables, keyed ``"<model>/<region>"``.
+            An :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload`
+            is written through
+            :func:`~phenotypic.sdk_._embedding_tables.write_embedding_tables`;
+            a plain mapping is an already-written entry whose files are
+            already in *part* under this run's folder (the raw seam a test
+            or the migrate import uses).
         objmap_sha256: :func:`objmap_digest` of the objmap this write
             certifies; with *array_sha256*, recomputes each embedding's
-            ``stale`` (D7). Both ``None`` leaves ``stale`` as given.
+            ``stale`` (D7). Both ``None`` leaves ``stale`` as given (``false``
+            for a payload written here).
         array_sha256: :func:`array_digest` of each level-0 series written,
             keyed by series name.
 
@@ -687,8 +693,24 @@ def write_run_entry(
             )
         )
     if embeddings:
+        from ._embedding_tables import EmbeddingPayload, write_embedding_tables
+
+        written = write_embedding_tables(
+            part,
+            run_id,
+            {
+                key: value
+                for key, value in embeddings.items()
+                if isinstance(value, EmbeddingPayload)
+            },
+            objmap_sha256=objmap_sha256,
+            array_sha256=array_sha256,
+        )
         entry[EMBEDDINGS_KEY] = {
-            key: deepcopy(dict(value)) for key, value in embeddings.items()
+            key: written[key]
+            if isinstance(value, EmbeddingPayload)
+            else deepcopy(dict(value))
+            for key, value in embeddings.items()
         }
         if objmap_sha256 is not None or array_sha256 is not None:
             refresh_embedding_staleness(
@@ -1364,6 +1386,7 @@ def replace_image_tables(
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
+    embeddings: Mapping[str, EmbeddingPayload] | None = None,
 ) -> TableRun:
     """Refresh the measurement AND metadata tables of one pipeline's run folder.
 
@@ -1382,11 +1405,20 @@ def replace_image_tables(
     other run folder, and the ``upstream`` block, is carried as hard links
     (spec D5), byte for byte.
 
+    **The replaced run's entry is a total description of this write** --
+    *tables* and *embeddings*, nothing else -- as
+    :func:`build_image_tables_attributes` states for the tables (spec D6: no
+    row from the previous write survives). So ``embeddings=None`` means
+    "this write has no embeddings": an embedding table the run held before is
+    dropped with its entry, exactly as a measurer dropped from the pipeline
+    drops its columns. ``--mode measure`` passes the pipeline's
+    :meth:`ImagePipeline.embed` payloads, so a pipeline that embeds keeps (and
+    rewrites) its embeddings.
+
     The rewrite writes no objmap, so it recomputes no embedding's ``stale``
-    flag (spec D7): a carried run keeps its entry exactly. The replaced run's
-    entry is rebuilt from *tables* alone -- a **total** description, as
-    :func:`build_image_tables_attributes` states -- so an embedding entry it
-    held is not carried into the rewrite. (#281 P4 adds ``embeddings=`` here.)
+    flag (spec D7): a carried run keeps its entry exactly, and this run's new
+    entries are written ``stale: false``, bound to the image the caller
+    embedded -- the store's own image, which measure mode loaded.
 
     A store still in the **v1 flat** layout is rewritten whole: its flat
     files go, and the new folder, numbered 1, is the store's only one.
@@ -1410,6 +1442,9 @@ def replace_image_tables(
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
         commit_guard: Publication guard, checked at the commit point.
+        embeddings: The pipeline's embedding tables for this image
+            (:meth:`ImagePipeline.embed`), written into the run folder beside
+            *tables*. ``None`` (or empty) writes none, and the run keeps none.
 
     Returns:
         The run folder written, as the promoted root declares it. Its
@@ -1473,6 +1508,7 @@ def replace_image_tables(
                 pipeline_sha256=pipeline_sha256,
                 measurements=tables,
                 objmap_target=target,
+                embeddings=embeddings,
             )
             apply_image_tables_attributes(
                 phenotypic, {**kept, run_id: own}, upstream=upstream
