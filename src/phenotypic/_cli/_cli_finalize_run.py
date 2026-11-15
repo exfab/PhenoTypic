@@ -449,6 +449,36 @@ def _aggregated_pipeline_digests(
     return digests
 
 
+def _warn_on_mixed_pipelines(digests: Sequence[str | None]) -> None:
+    """Advise when the aggregated tables come from more than one pipeline.
+
+    Review OQ4, decided as **warn, not refuse**. Spec D6a has finalize
+    aggregate, per image, the run folder that image's record certifies; after
+    ``--mode measure`` with pipeline B, a plain continuation with A that adds
+    images certifies B's folder for the old images and A's for the new ones.
+    The master then mixes columns, which is what D6a asks for -- so this is an
+    advisory naming the pipelines, never a gate. ``metrics.json``'s
+    ``pipeline_sha256`` is ``null`` for the same run, which says the same
+    thing in the file.
+
+    Args:
+        digests: One producing-pipeline digest per aggregated table, ``None``
+            where none is recorded (those are not counted as a pipeline).
+    """
+    known = sorted({digest for digest in digests if digest is not None})
+    if len(known) > 1:
+        counts = {sha: sum(1 for d in digests if d == sha) for sha in known}
+        logger.warning(
+            "The aggregated measurement tables come from %d pipelines: %s. "
+            "Each image's table is the run folder its record certifies (the "
+            "pipeline that last measured it), so the master mixes their "
+            "columns. Re-measure every image with one pipeline "
+            "(--mode measure) for a single-pipeline master.",
+            len(known),
+            ", ".join(f"{sha[:12]} ({counts[sha]} table(s))" for sha in known),
+        )
+
+
 def _accepted_work_ids(output_dir: Path) -> set[str] | None:
     """Return the run's accepted inventory, or ``None`` when no state names one."""
     from ._cli_state_management import load_processing_state
@@ -621,12 +651,12 @@ def publish_run_summaries(
 
     import phenotypic
 
+    digests = _aggregated_pipeline_digests(aggregated_sources)
+    _warn_on_mixed_pipelines(digests)
     metrics = build_run_metrics(
         phenotypic_version=phenotypic.__version__,
         # The certified run folders' shared digest (spec C4, D6a).
-        pipeline_sha256=shared_pipeline_sha256(
-            _aggregated_pipeline_digests(aggregated_sources)
-        ),
+        pipeline_sha256=shared_pipeline_sha256(digests),
         accepted=accepted,
         succeeded=succeeded,
         failed=failed,
