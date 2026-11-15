@@ -181,6 +181,39 @@ def test_staged_completeness_reads_the_journals_run_not_the_latest(store_with_tw
     assert _complete() is False
 
 
+def test_staged_completeness_ignores_a_newer_run_the_journal_did_not_write(
+    store_with_two_runs, tmp_path, pipeline_file_a
+):
+    """The journal names A (run 1) while B's run 2 is the latest: run 2 cannot stand in.
+
+    A table-less save by A (a Stage-1 shape) carries both folders and makes A
+    the journal's pipeline again. With A's own table gone the image is not
+    complete, however complete the newer B folder is.
+    """
+    import shutil
+
+    from phenotypic.sdk_ import zarr_store_path
+    from phenotypic.sdk_._run_state import staged_image_is_complete
+    from tests._tiny_run import resave_with_pipeline
+
+    target = zarr_store_path(tmp_path / "out", "ds", "plate")
+    target.parent.mkdir(parents=True)
+    shutil.copytree(store_with_two_runs, target)
+    resave_with_pipeline(target, pipeline_file_a, tables=False)
+    first, second = list_table_runs(target)
+    assert latest_measurement_run(target) == second
+
+    def _complete() -> bool:
+        return staged_image_is_complete(
+            tmp_path / "out", "ds", "plate", markers_required=False, resume=True
+        )
+
+    assert _complete() is True
+    first.measurements_path().unlink()
+    assert second.measurements_path().is_file()
+    assert _complete() is False
+
+
 def test_staged_completeness_is_false_for_a_corrupt_descriptor(tmp_path, store_with_two_runs):
     """A probe must degrade, never raise: a corrupt root routes the image back."""
     import shutil
