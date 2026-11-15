@@ -17,7 +17,7 @@ views agree.
 | OME semantics | `OME/zarr.json` and `OME/METADATA.ome.xml` |
 | Original pixels | A normal root-level multiscale image group, listed in `OME/zarr.json` → `ome.series` |
 | Scale metadata | Each multiscales dataset path and its array `dimension_names` describe the same axes |
-| Object measurements | `tables/measurements/table.parquet`, described by root `attributes.phenotypic.tables.measurements` |
+| Object measurements | `tables/<n>-<sha12>/measurements/table.parquet`, one folder per measuring pipeline, described by root `attributes.phenotypic.tables.runs.<n>-<sha12>.measurements` (tables `schema_version: 2`) |
 | Per-image figures | `figures/<run_id>/<binding>/<page>.<ext>`, described by root `attributes.phenotypic.figures.runs`; optional, and not listed in `ome.series` |
 
 `attributes.ome` is reserved OME-Zarr metadata. Never put PhenoTypic-specific
@@ -32,31 +32,78 @@ paths, axes, and array dimension names mutually consistent.
 `OME/METADATA.ome.xml` is the collection's semantic projection for OME-aware
 readers. It may describe images, channels, axes, and acquisition semantics; it
 is not a processing journal. Store execution logs, resumability state, and
-arbitrary provenance only in the application namespace or other explicitly
-owned project artifacts.
+arbitrar## Embedded measurement table
 
-## Embedded measurement table
-
-A measured image has two Zarr v3 groups and one non-Zarr payload:
+Tables live in one folder per pipeline that measured the store (#281 spec
+D1-D7):
 
 ```text
 tables/zarr.json
-tables/measurements/zarr.json
-tables/measurements/table.parquet
+tables/<n>-<sha12>/zarr.json
+tables/<n>-<sha12>/measurements/zarr.json
+tables/<n>-<sha12>/measurements/table.parquet
+tables/<n>-<sha12>/metadata/pht-metadata.parquet       (when metadata was joined)
+tables/<n>-<sha12>/embeddings/<model>/{crops,grid}/    (optional)
 ```
 
-Both `zarr.json` files declare a Zarr v3 group. The Parquet is the authoritative
-per-image object table; forward, staged Stage 3, and measure runs must not also
-publish `results/<dataset>/measurements/<stem>.parquet`.
+Every level is a Zarr v3 group document; every subtable is optional. The
+Parquet is the authoritative per-image object table; forward, staged Stage 3,
+and measure runs must not also publish
+`results/<dataset>/measurements/<stem>.parquet`.
 
-The root descriptor at
-`attributes.phenotypic.tables.measurements` is stable and has:
+- **Folder name.** `<n>` is a store-local call-order counter: a new folder
+  takes 1 + the highest number among the store's runs and `upstream` entries,
+  and numbers are never reused. `<sha12>` is the first 12 hex of the pipeline
+  file's sha256 the journal records; `<n>-unknown` (with
+  `pipeline_sha256: null`) when none is known. Never fabricate a digest.
+- **Which folder a writer owns.** The folder with its pipeline's sha256 is
+  replaced, keeping its number, with every file a new inode; otherwise a new
+  folder is added. An unknown sha replaces the highest `-unknown` folder.
+  Every writer (save2zarr, process `_save_store`, the measure rewrite) carries
+  every other folder unchanged; a write with no tables of its own carries all
+  of them. Only `--overwrite` deletes folders.
+- **Which folder a reader uses.** Finalize, recompile and measure read the
+  folder the image's record certifies (its `measurements` artifact path).
+  A reader without a record reads `latest_measurement_run(store)`: the
+  highest-numbered folder that holds `measurements`.
+- **Reach folders through `phenotypic.sdk_._table_runs`** (`list_table_runs`,
+  `latest_measurement_run`, `table_run_for_pipeline`, `TableRun.
+  measurements_path()`), never by joining `tables/...` by hand.
+  `MEASUREMENT_TABLE_RELATIVE_PATH` is the **v1** flat path, kept only for
+  migrate and legacy reads.
+
+The root descriptor `attributes.phenotypic.tables` is:
+
+```json
+{"schema_version": 2,
+ "runs": {"<n>-<sha12>": {"order": n, "pipeline_sha256": "<64 hex> | null",
+                          "measurements": {...}, "metadata": {...},
+                          "metadata_table": {"snapshot_sha256": "..."},
+                          "embeddings": {"<model>/<region>": {...}}}},
+ "upstream": {"<n>-<sha12>": {"source": "...", "root_sha256": "...",
+                              "pipeline_sha256": "..."}}}
+```
+
+The root-level `metadata_table` block of v1 moved into each run entry. Each
+run's `measurements` descriptor has:
 
 - `schema_version: 1`
 - `type: "object_measurements"`
 - `format: "parquet"`
-- `path: "tables/measurements/table.parquet"`
+- `path: "tables/<n>-<sha12>/measurements/table.parquet"`
 - `measurement_columns`: ordered columns before external metadata is joined
+- `target.column: "Object_Label"`
+- `target.path`: the store's objmap label path
+
+Each `measurements/` group's `zarr.json` carries ngio's feature-table
+attributes (`type: "feature_table"`, `region.path` relative to the run
+folder, `index_key: "Object_Label"`).
+
+A v1 store (flat `tables/measurements/`, no `schema_version` under `tables`)
+is converted by `--mode migrate`, and forward modes refuse it (spec D5, D10;
+lands with #281 P3 Task 5).
+
+ is joined
 - `target.column: "Object_Label"`
 - `target.path`: the store's objmap label path
 
