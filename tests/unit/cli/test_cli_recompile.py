@@ -473,10 +473,10 @@ def test_local_recompile_restores_deleted_overlay_marker_and_master(
     )
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
         master_measurements_parquet_path,
     )
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -487,8 +487,7 @@ def test_local_recompile_restores_deleted_overlay_marker_and_master(
     shutil.copytree(_completed_run_two, output_dir)
     stems = run_stems(output_dir)
     tables = {
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        journal_table_path(zarr_store_path(output_dir, DATASET, stem))
         for stem in stems
     }
     expected_rows = sum(pl.read_parquet(table).height for table in tables)
@@ -578,10 +577,8 @@ def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
     """Recovery compares non-overlay artifacts again immediately before publish."""
     from phenotypic._cli._cli_completion import valid_image_success
     from phenotypic._cli._cli_output_manager import OutputManager
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_overlays_dir,
-    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -592,7 +589,7 @@ def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
     original_save = OutputManager.save_overlay
@@ -635,10 +632,8 @@ def test_local_overlay_recovery_rejects_publish_window_table_change(
 
     from phenotypic._cli import _cli_completion
     from phenotypic._cli._cli_completion import valid_image_success
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_overlays_dir,
-    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -649,7 +644,7 @@ def test_local_overlay_recovery_rejects_publish_window_table_change(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
     original_publish = _cli_completion.publish_image_success
@@ -687,10 +682,10 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     import json
 
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
         image_record_path,
     )
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
     output_dir = tmp_path / "process-only"
@@ -706,7 +701,7 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     record["mode"] = "process"
     record["artifacts"].pop("measurements")
     record_path.write_text(json.dumps(record), encoding="utf-8")
-    (store / MEASUREMENT_TABLE_RELATIVE_PATH).unlink()
+    journal_table_path(store).unlink()
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
 

@@ -25,6 +25,7 @@ from phenotypic.sdk_ import (
     zarr_store_path,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE
+from tests._tiny_run import journal_table_path
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -920,8 +921,8 @@ def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
         build_recompile_tasks,
     )
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
+        store_of_table_path,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
@@ -948,14 +949,10 @@ def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
         for path in task["files"]
     }
     assert measurement_files == {
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        journal_table_path(zarr_store_path(output_dir, DATASET, stem))
         for stem in stems
     }
-    table = (
-        zarr_store_path(output_dir, DATASET, missing_stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    table = journal_table_path(zarr_store_path(output_dir, DATASET, missing_stem))
     measurement_task = next(
         task
         for task in tasks
@@ -965,14 +962,14 @@ def test_slurm_recompile_schedules_table_bound_to_missing_overlay(
     assert measurement_task["overlay_repairs"] == [
         {
             "dataset_name": DATASET,
-            "store_path": str(table.parents[2]),
+            "store_path": str(store_of_table_path(table)),
             "table_path": str(table),
             "overlay_alpha": 0.3,
         }
     ]
     assert not any(
         task["task_type"] == TASK_OVERLAY
-        and task.get("store_path") == str(table.parents[2])
+        and task.get("store_path") == str(store_of_table_path(table))
         for task in tasks
     )
 
@@ -994,7 +991,6 @@ def test_slurm_overlay_worker_restores_marker_authority(
     )
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
     )
     from tests.unit.sdk_._migration_fixtures import (
@@ -1042,7 +1038,7 @@ def test_slurm_overlay_worker_restores_marker_authority(
     )
     sources = authorized_measurement_sources(output_dir)
     assert sources is not None
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     assert table in sources
 
     # A changed non-overlay artifact must never be re-fingerprinted as valid.
@@ -1137,7 +1133,6 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
     """SLURM shards preserve the identity of each fixed-name embedded table."""
     from phenotypic._cli._cli_recompile_worker import main
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
 
     output_dir = tmp_path / "out"
     generation = "embedded-name-worker"
@@ -1180,11 +1175,11 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
             attempt_id="attempt-1",
             lifecycle_epoch=generation,
             artifacts={
-                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "measurements": journal_table_path(store),
                 "store": store,
             },
         )
-        tables.append(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+        tables.append(journal_table_path(store))
     manifest_path = (
         progress_dir(output_dir)
         / "recompile"
@@ -1420,7 +1415,6 @@ def test_missing_overlay_recovery_rejects_other_corrupt_artifact(
         build_recompile_tasks,
     )
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
@@ -1429,7 +1423,7 @@ def test_missing_overlay_recovery_rejects_other_corrupt_artifact(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
     if corrupt_artifact == "measurements":
         import pyarrow.parquet as pq
@@ -1494,7 +1488,6 @@ def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
     from phenotypic._cli._cli_recompile_worker import main
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
         image_record_path,
     )
@@ -1507,10 +1500,7 @@ def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
     output_dir = tmp_path / "completed"
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
-    table = (
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    table = journal_table_path(zarr_store_path(output_dir, DATASET, stem))
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
     generation = "actual-slurm-worker-generation"
@@ -1589,7 +1579,6 @@ def test_recoverable_overlay_and_table_share_one_slurm_task(
         build_recompile_tasks,
     )
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
@@ -1598,7 +1587,7 @@ def test_recoverable_overlay_and_table_share_one_slurm_task(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
 
     tasks = build_recompile_tasks(
@@ -1639,16 +1628,12 @@ def test_retry_refuses_unjournaled_invalid_measurement_table(
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         build_recompile_tasks,
     )
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
     output_dir = tmp_path / "completed"
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
-    table = (
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    table = journal_table_path(zarr_store_path(output_dir, DATASET, stem))
     pl.read_parquet(table).with_columns(
         pl.lit("arbitrary").alias("Metadata_Unjournaled")
     ).write_parquet(table)
@@ -1675,7 +1660,6 @@ def test_slurm_recompile_rejects_nonrecoverable_measurement_overlay(
         build_recompile_tasks,
     )
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
@@ -1684,7 +1668,7 @@ def test_slurm_recompile_rejects_nonrecoverable_measurement_overlay(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     (dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png").unlink()
     pl.read_parquet(table).with_columns(
         pl.lit("changed").alias("Metadata_OtherInvalidity")
@@ -2003,7 +1987,9 @@ def _strip_measurement_descriptor(store: Path) -> None:
     root_path = store / STORE_ROOT_JSON
     root = json.loads(root_path.read_text(encoding="utf-8"))
     tables = root["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES]
-    del tables["measurements"]
+    # v2 (#281 spec D1): the block lives in each run folder's entry.
+    for entry in tables["runs"].values():
+        del entry["measurements"]
     root_path.write_text(json.dumps(root), encoding="utf-8")
 
 
@@ -2014,7 +2000,6 @@ def _publish_shard_store(
     import pandas as pd
 
     from phenotypic._cli._cli_completion import publish_image_success
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
 
     from .conftest import _image, _manager
 
@@ -2038,7 +2023,7 @@ def _publish_shard_store(
         attempt_id="attempt-1",
         lifecycle_epoch=generation,
         artifacts={
-            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "measurements": journal_table_path(store),
             "store": store,
         },
     )
@@ -2109,7 +2094,6 @@ def test_a_shard_whose_stores_are_all_excluded_writes_an_empty_shard(
     to swallow; only "the projection excluded everything" is now benign.
     """
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
 
     output_dir = tmp_path / "out"
     generation = "all-excluded-shard"
@@ -2117,7 +2101,7 @@ def test_a_shard_whose_stores_are_all_excluded_writes_an_empty_shard(
         output_dir, generation=generation, mode="recompile"
     )
     store = _publish_shard_store(output_dir, "plate_a", "img1", 10, generation)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     _strip_measurement_descriptor(store)
 
     # STANDING RULE: the store must really be excluded, or an ordinary shard
@@ -2164,7 +2148,6 @@ def test_a_shard_reports_only_the_stores_it_actually_merged(
     markers, which name **both**.
     """
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
 
     output_dir = tmp_path / "out"
     generation = "partly-excluded-shard"
@@ -2175,8 +2158,8 @@ def test_a_shard_reports_only_the_stores_it_actually_merged(
     bad = _publish_shard_store(output_dir, "plate_a", "bad", 20, generation)
     _strip_measurement_descriptor(bad)
     tables = [
-        good / MEASUREMENT_TABLE_RELATIVE_PATH,
-        bad / MEASUREMENT_TABLE_RELATIVE_PATH,
+        journal_table_path(good),
+        journal_table_path(bad),
     ]
 
     result, manifest_path = _run_measurement_shard(
