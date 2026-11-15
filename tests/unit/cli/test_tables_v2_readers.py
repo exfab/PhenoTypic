@@ -226,9 +226,6 @@ def test_metrics_pipeline_sha_is_null_when_certified_runs_differ(store_with_two_
 #: The two stores :func:`finished_tiny_run` writes.
 _TINY_STEMS = ("plate_1", "plate_2")
 
-#: The refusal ``--mode recompile`` gives while its readers use the v1 flat path (C14c).
-_C14C_RECOMPILE_REFUSAL = "Cannot safely restore measurement authority"
-
 
 def _master_height(out: Path) -> int:
     import polars as pl
@@ -280,14 +277,142 @@ def test_measure_with_another_pipeline_adds_a_folder_and_recompile_keeps_it(
     metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
     assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_b)
     result = run_cli(None, out, mode="recompile")
-    if result.exit_code != 0 and _C14C_RECOMPILE_REFUSAL in result.output:
-        # Expected red until C14c (#281 P3 T4, recompile): the authority check
-        # `assert_no_unrecoverable_measurement_authority` still joins the v1
-        # flat path (`_cli_recompile_recovery.py:468`), finds no table there,
-        # and refuses a store whose record claims authority. Only THAT
-        # refusal is tolerated; any other recompile failure fails the test,
-        # and the measure half above is enforced. C14c deletes this branch.
-        pytest.xfail("recompile reads the v1 flat path until C14c (#281 P3 T4)")
     assert result.exit_code == 0, result.output
     metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
     assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_b)    # I17: B's folder, not A's
+
+
+# ---------------------------------------------------------------------------
+# C14c: recompile reads the run folder each record certifies (spec D6a)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def certified_older_than_latest(finished_tiny_run, pipeline_file_b) -> Path:
+    """A finished run whose records certify folder 1 while folder 2 is the latest.
+
+    Forward A writes folder 1; ``--mode measure`` with B adds folder 2 and
+    moves the records to it; ``--mode measure`` with A again replaces folder
+    1 and moves the records back. So the store's latest measurement folder
+    (B's, the only one with shape columns) is not the one any record
+    certifies, which is the case a "latest folder" reader gets wrong.
+    """
+    out = finished_tiny_run
+    pipeline_a = out.parent / "tiny_run.pht-pipe.json"
+    for pipeline in (pipeline_file_b, pipeline_a):
+        result = run_cli(None, out, mode="measure", pipeline=pipeline)
+        assert result.exit_code == 0, result.output
+    for stem in _TINY_STEMS:
+        store = one_store(out, stem=stem)
+        first, latest = list_table_runs(store)
+        assert latest.pipeline_sha256 == file_sha256(pipeline_file_b)
+        assert _record_measurements(out, "ds", stem) == first.measurements_path()
+    return out
+
+
+def _store_digests(out: Path) -> dict[str, str]:
+    from tests._tiny_run import tree_digest
+
+    return {stem: tree_digest(one_store(out, stem=stem)) for stem in _TINY_STEMS}
+
+
+def test_recompile_reads_the_certified_folder_not_the_latest(certified_older_than_latest):
+    import json
+
+    import polars as pl
+
+    from phenotypic.schema import SHAPE
+    from phenotypic.sdk_ import master_measurements_parquet_path, metrics_json_path
+
+    out = certified_older_than_latest
+    before = _store_digests(out)
+    result = run_cli(None, out, mode="recompile")
+    assert result.exit_code == 0, result.output
+    master = pl.read_parquet(master_measurements_parquet_path(out))
+    # Only B measures shape, and B's folder is the latest but certified by none.
+    assert str(SHAPE.CIRCULARITY) not in master.columns
+    metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
+    assert metrics["pipeline_sha256"] == file_sha256(out.parent / "tiny_run.pht-pipe.json")
+    # Recompile writes no store byte: both run folders survive byte for byte.
+    assert _store_digests(out) == before
+
+
+def test_local_recompile_repairs_an_overlay_bound_to_the_certified_folder(
+    certified_older_than_latest,
+):
+    from phenotypic.sdk_ import dataset_overlays_dir
+
+    out = certified_older_than_latest
+    overlay = dataset_overlays_dir(out, "ds") / "plate_1.png"
+    overlay.unlink()
+    before = _store_digests(out)
+    result = run_cli(None, out, mode="recompile")
+    assert result.exit_code == 0, result.output
+    assert overlay.is_file()
+    store = one_store(out, stem="plate_1")
+    assert _record_measurements(out, "ds", "plate_1") == list_table_runs(store)[0].measurements_path()
+    assert _store_digests(out) == before
+
+
+def test_slurm_recompile_worker_aggregates_and_repairs_the_certified_folder(
+    certified_older_than_latest, monkeypatch
+):
+    import json
+
+    import polars as pl
+
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+        recompile_attempt_dir,
+    )
+    from phenotypic._cli._cli_recompile_worker import main
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic.schema import SHAPE
+    from phenotypic.sdk_ import (
+        DIR_RECOMPILE_SHARDS,
+        RECOMPILE_TASK_MANIFEST_JSON,
+        dataset_overlays_dir,
+        shard_parquet_filename,
+    )
+
+    out = certified_older_than_latest
+    certified = {
+        stem: list_table_runs(one_store(out, stem=stem))[0].measurements_path()
+        for stem in _TINY_STEMS
+    }
+    overlay = dataset_overlays_dir(out, "ds") / "plate_1.png"
+    overlay.unlink()
+    before = _store_digests(out)
+    generation = "c14c-recompile-generation"
+    initialize_slurm_lifecycle(out, generation=generation, mode="recompile")
+
+    tasks = build_recompile_tasks(
+        out, ["ds"], include_dataset_column=True, overlay_alpha=0.3,
+        shard_size=10, attempt_id=generation,
+    )
+    [task] = [item for item in tasks if item["task_type"] == TASK_MEASUREMENTS]
+    assert sorted(Path(path) for path in task["files"]) == sorted(certified.values())
+    [repair] = task["overlay_repairs"]
+    assert Path(repair["table_path"]) == certified["plate_1"]
+
+    manifest = recompile_attempt_dir(out, generation) / RECOMPILE_TASK_MANIFEST_JSON
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(json.dumps({"tasks": [task]}), encoding="utf-8")
+    monkeypatch.setenv("SLURM_JOB_ID", "987654")
+    result = CliRunner().invoke(
+        main,
+        [
+            "--output-dir", str(out), "--task-manifest", str(manifest),
+            "--task-index", "0", "--slurm-generation", generation,
+            "--attempt-id", generation,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    shard = pl.read_parquet(
+        manifest.parent / DIR_RECOMPILE_SHARDS / shard_parquet_filename(int(task["shard_id"]))
+    )
+    assert shard.height > 0 and str(SHAPE.CIRCULARITY) not in shard.columns
+    assert overlay.is_file()
+    assert _record_measurements(out, "ds", "plate_1") == certified["plate_1"]
+    assert _store_digests(out) == before

@@ -4261,42 +4261,51 @@ def _regenerate_missing_overlays(
         return
 
     from phenotypic._cli._cli_recompile_recovery import (
+        certified_measurement_table,
         marker_claims_measurement_authority,
+        store_holds_measurement_table,
     )
     from phenotypic._cli._cli_recompile_slurm_scripts import (
         _marker_binds_overlay_and_table,
         repair_overlay_marker_authority,
     )
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        image_completion_marker_path,
-    )
+    from phenotypic.sdk_ import image_completion_marker_path
 
     if not work:
         console.print("[green]All overlays present; nothing to regenerate")
         return
-    restore_required: dict[Path, bool] = {}
+    # The table each repair binds -- the run folder the image's record
+    # certifies (#281 spec D6a) -- or None when the overlay is rendered
+    # without restoring marker authority.
+    restore_table: dict[Path, Path | None] = {}
     for item in work:
-        table_path = item.store / MEASUREMENT_TABLE_RELATIVE_PATH
-        requires_marker_restore = _marker_binds_overlay_and_table(
-            output_dir,
-            item.dataset,
-            item.stem,
-            item.overlay,
-            table_path,
+        table_path = certified_measurement_table(
+            output_dir, item.dataset, item.stem
+        )
+        requires_marker_restore = (
+            table_path is not None
+            and _marker_binds_overlay_and_table(
+                output_dir,
+                item.dataset,
+                item.stem,
+                item.overlay,
+                table_path,
+            )
         )
         marker_path = image_completion_marker_path(
             output_dir, item.dataset, item.stem
         )
         if not requires_marker_restore and (
-            table_path.exists()
+            store_holds_measurement_table(item.store)
             or marker_claims_measurement_authority(marker_path)
         ):
             raise RuntimeError(
                 "Cannot safely restore marker authority for "
                 f"{item.dataset}/{item.stem}"
             )
-        restore_required[item.overlay] = requires_marker_restore
+        restore_table[item.overlay] = (
+            table_path if requires_marker_restore else None
+        )
 
     def _render_one(item: OverlayWork, manager: OutputManager) -> None:
         image = load_image_from_store(item.store)
@@ -4309,13 +4318,15 @@ def _regenerate_missing_overlays(
                 commit_guard=render_guard,
             )
 
-        if restore_required[item.overlay]:
+        bound_table = restore_table[item.overlay]
+        if bound_table is not None:
             restored = repair_overlay_marker_authority(
                 output_dir,
                 item.dataset,
                 item.stem,
                 item.store,
                 _render,
+                table_path=bound_table,
             )
             if not restored:
                 raise RuntimeError(
@@ -4337,7 +4348,7 @@ def _regenerate_missing_overlays(
     for overlay, reason in result.failures:
         logger.warning("Failed to regenerate overlay %s: %s", overlay, reason)
     authority_failures = sum(
-        restore_required.get(overlay, False) for overlay, _ in result.failures
+        restore_table.get(overlay) is not None for overlay, _ in result.failures
     )
 
     if authority_failures:

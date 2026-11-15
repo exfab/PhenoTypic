@@ -30,6 +30,7 @@ from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     DIR_RECOMPILE_SHARDS,
     DIR_RESULTS,
+    DIR_ZARR,
     JobMetadataKey,
     PARQUET_WRITE_OPTIONS,
     RECOMPILE_TASK_MANIFEST_JSON,
@@ -356,7 +357,10 @@ def _run_measurement_task(
         ``refuse_mixed_measurement_authority`` is already retiring.
     """
 
-    from ._cli_parquet_agg import aggregate_measurement_sources
+    from ._cli_parquet_agg import (
+        aggregate_measurement_sources,
+        is_embedded_measurement_table,
+    )
 
     files = [Path(path) for path in task.get("files", [])]
 
@@ -371,11 +375,9 @@ def _run_measurement_task(
         repairs_by_table[repair_table] = raw_repair
 
     for table_path in files:
-        if tuple(table_path.parts[-3:]) == (
-            "tables",
-            "measurements",
-            "table.parquet",
-        ):
+        # Each file is the run-folder table an image's record certifies
+        # (spec D6a); a repair is keyed by that same table.
+        if is_embedded_measurement_table(table_path):
             repair = repairs_by_table.get(table_path)
             if repair is not None:
                 _repair_measurement_overlay(
@@ -441,8 +443,6 @@ def _run_measurement_task(
             lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
-    from ._cli_parquet_agg import is_embedded_measurement_table
-
     if not all(is_embedded_measurement_table(path) for path in merged):
         return None
     return sorted(_merged_source_work_ids(output_dir, merged))
@@ -478,14 +478,14 @@ def _merged_source_work_ids(
         RuntimeError: A source has no readable authority payload, or the
             payload carries no ``work_id``.
     """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from phenotypic.sdk_ import store_of_table_path
 
     from ._cli_recompile_recovery import image_authority_payload
 
-    depth = len(MEASUREMENT_TABLE_RELATIVE_PATH.parts)
     work_ids: list[str] = []
     for source, dataset in sources.items():
-        store = Path(source).parents[depth - 1]
+        # At any depth: a v2 run folder's table, or a v1 flat one.
+        store = store_of_table_path(Path(source))
         stem = store_stem(store)
         try:
             _path, payload, _version = image_authority_payload(
@@ -515,10 +515,12 @@ def _repair_measurement_overlay(
     """Repair a marker-bound overlay before the same task rewrites its table."""
     from ._cli_output_manager import OutputManager
 
+    from ._cli_recompile_recovery import table_lies_in_store
+
     dataset_name = str(repair["dataset_name"])
     store_path = Path(str(repair["store_path"]))
-    expected_table = store_path / "tables" / "measurements" / "table.parquet"
-    if Path(str(repair["table_path"])) != expected_table:
+    table_path = Path(str(repair["table_path"]))
+    if not table_lies_in_store(table_path, store_path):
         raise ValueError("Overlay repair table does not belong to its store")
     image = load_image_from_store(store_path)
     stem = store_stem(store_path)
@@ -548,6 +550,7 @@ def _repair_measurement_overlay(
         commit_guard=lambda: generation_publication_guard(
             output_dir, slurm_generation
         ),
+        table_path=table_path,
     ):
         raise RuntimeError(
             "Could not restore marker authority after overlay repair"
@@ -572,7 +575,14 @@ def _sort_measurement_shard(shard_df: Any) -> Any:
 
 
 def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
-    """Derive dataset name from ``results/<dataset>/measurements`` path."""
+    """Derive dataset name from a measurement source path.
+
+    Either a legacy ``results/<dataset>/measurements/<stem>.parquet`` or an
+    embedded table, ``results/<dataset>/zarr/<stem>.ome.zarr/tables/...``,
+    at a v2 run folder's depth or the v1 flat one.
+    """
+    from ._cli_parquet_agg import is_embedded_measurement_table
+
     try:
         relative = path.resolve().relative_to(output_dir.resolve())
     except ValueError:
@@ -587,8 +597,8 @@ def _dataset_name_from_measurement_path(output_dir: Path, path: Path) -> str:
     if (
         len(parts) >= 7
         and parts[0] == DIR_RESULTS
-        and parts[2] == "zarr"
-        and tuple(parts[-3:]) == ("tables", "measurements", "table.parquet")
+        and parts[2] == DIR_ZARR
+        and is_embedded_measurement_table(path)
     ):
         return parts[1]
     if path.parent.name == DIR_MEASUREMENTS:
@@ -639,6 +649,7 @@ def _run_overlay_task(
                 commit_guard=lambda: generation_publication_guard(
                     output_dir, slurm_generation
                 ),
+                table_path=_planned_table(task),
             ):
                 raise RuntimeError(
                     "Could not restore marker authority after overlay repair"
@@ -664,6 +675,17 @@ def _run_overlay_task(
         }
 
     return {"status": "completed", "overlay_failed": False}
+
+
+def _planned_table(task: dict[str, Any]) -> Path | None:
+    """The certified table an overlay repair was planned against, if recorded.
+
+    ``build_recompile_tasks`` records it as ``table_path`` (spec D6a). A
+    task without one (a manifest an older submitter wrote) binds the table
+    the record certifies when the repair runs.
+    """
+    raw = task.get("table_path")
+    return None if raw is None else Path(str(raw))
 
 
 def _restore_overlay_marker_authority(
@@ -704,6 +726,7 @@ def _restore_overlay_marker_authority(
             dataset_name,
             store_stem(store_path),
             store_path,
+            table_path=_planned_table(repair),
             lifecycle_epoch=slurm_generation,
             commit_guard=(
                 (

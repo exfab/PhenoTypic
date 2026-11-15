@@ -367,6 +367,79 @@ def certified_table_run(output_root: Path, marker_path: Path) -> "TableRun | Non
         return None
 
 
+def certified_measurement_table(
+    output_root: Path, dataset_name: str, stem: str
+) -> Path | None:
+    """The table one image's authority certifies, resolved, or ``None``.
+
+    The ``measurements`` artifact of the image's record (or legacy marker,
+    :func:`image_authority_path`) -- the table recompile aggregates and
+    binds an overlay repair to (spec D6a). In a v2 store that is one run
+    folder's ``tables/<n>-<sha12>/measurements/table.parquet``; it is never
+    found by joining a fixed path onto the store, because after
+    ``--mode measure`` with another pipeline the store holds several, and
+    neither the latest folder nor the run config's pipeline names the
+    certified one. A v1 store's flat table is accepted too, as the legacy
+    read for a tree ``--mode migrate`` has not converted.
+
+    Returns:
+        The resolved in-tree table, or ``None`` when the image has no
+        authority, the authority is malformed or names a path outside
+        *output_root*, or the path is not an embedded measurement table's
+        shape (:func:`~phenotypic._cli._cli_parquet_agg.is_embedded_measurement_table`).
+    """
+    from ._cli_parquet_agg import is_embedded_measurement_table
+
+    output_root = Path(output_root).resolve()
+    source = _marker_measurement_source(
+        output_root, image_authority_path(output_root, dataset_name, stem)
+    )
+    if source is None or not is_embedded_measurement_table(source):
+        return None
+    return source
+
+
+def table_lies_in_store(table_path: Path, store: Path) -> bool:
+    """Whether *table_path* is a table of *store* (both compared resolved)."""
+    from phenotypic.sdk_ import store_of_table_path
+
+    try:
+        return (
+            store_of_table_path(Path(table_path)).resolve()
+            == Path(store).resolve()
+        )
+    except (OSError, ValueError):
+        return False
+
+
+def store_holds_measurement_table(store: Path) -> bool:
+    """Whether *store* holds any embedded measurement table on disk.
+
+    Any run folder's ``measurements`` table counts, not only the one a
+    record certifies: the question is whether the store carries
+    measurement authority that something must account for. A v1 store's
+    flat table counts too (legacy read, until ``--mode migrate`` converts
+    it). Fails closed: a store whose tables descriptor is corrupt or of an
+    unreadable version answers ``True``.
+    """
+    from phenotypic.sdk_ import list_table_runs
+
+    # LEGACY READ: the v1 flat layout of a tree `--mode migrate` has not
+    # converted (#281 P3 Task 5 refuses or converts these).
+    if (Path(store) / MEASUREMENT_TABLE_RELATIVE_PATH).is_file():
+        return True
+    try:
+        runs = list_table_runs(Path(store))
+    except (FileNotFoundError, KeyError):
+        return False
+    except (OSError, ValueError):
+        return True
+    return any(
+        run.has_measurements and run.measurements_path().is_file()
+        for run in runs
+    )
+
+
 def recoverable_recompile_table_transition(
     output_dir: Path,
     dataset_name: str,
@@ -389,10 +462,19 @@ def recoverable_recompile_table_transition(
             canonical_store = zarr_store_path(
                 output_root, dataset_name, stem
             ).resolve(strict=True)
-            table = store / MEASUREMENT_TABLE_RELATIVE_PATH
             marker_path, marker, authority_version = image_authority_payload(
                 output_root, dataset_name, stem
             )
+            # The table the authority certifies (spec D6a), never a fixed
+            # join onto the store. Receipts were written only by releases
+            # that wrote the v1 flat layout, so on such a tree this is the
+            # flat table, exactly as before.
+            certified = certified_measurement_table(
+                output_root, dataset_name, stem
+            )
+            if certified is None or not table_lies_in_store(certified, store):
+                return False
+            table = certified
             prior_table_size, prior_table_sha256 = (
                 _marker_measurement_fingerprint(
                     output_root,
@@ -465,10 +547,7 @@ def assert_no_unrecoverable_measurement_authority(
             if not store.is_dir() or store.name.startswith("."):
                 continue
             stem = store.name[: -len(STORE_SUFFIX)]
-            table = store / MEASUREMENT_TABLE_RELATIVE_PATH
             marker_path = image_authority_path(output_root, dataset_name, stem)
-            if table.resolve() in accepted:
-                continue
             marker_source = _marker_measurement_source(
                 output_root, marker_path
             )
@@ -484,9 +563,18 @@ def assert_no_unrecoverable_measurement_authority(
                     "Legacy external measurement Parquets require --mode "
                     "migrate before recompile"
                 )
-            if table.is_file() or marker_claims_measurement_authority(
-                marker_path
+            # The store's accepted table is the one its authority certifies
+            # (spec D6a): one run folder of several, which no fixed join
+            # onto the store can name.
+            if (
+                marker_source is not None
+                and marker_source in accepted
+                and table_lies_in_store(marker_source, store)
             ):
+                continue
+            if store_holds_measurement_table(
+                store
+            ) or marker_claims_measurement_authority(marker_path):
                 raise RuntimeError(
                     "Cannot safely restore measurement authority for "
                     f"{dataset_name}/{stem}"
@@ -522,7 +610,11 @@ def recoverable_recompile_measurement_sources(
             if recoverable_recompile_table_transition(
                 output_root, dataset_name, stem, store
             ):
-                sources[store / MEASUREMENT_TABLE_RELATIVE_PATH] = dataset_name
+                table = certified_measurement_table(
+                    output_root, dataset_name, stem
+                )
+                if table is not None:
+                    sources[table] = dataset_name
     return sources
 
 
@@ -594,9 +686,13 @@ def _marker_allows_table_transition(
 
 __all__ = [
     "assert_no_unrecoverable_measurement_authority",
+    "certified_measurement_table",
+    "certified_table_run",
     "marker_claims_measurement_authority",
     "recoverable_recompile_measurement_sources",
     "recoverable_recompile_table_transition",
     "recompile_store_lock_path",
     "recompile_table_transition_path",
+    "store_holds_measurement_table",
+    "table_lies_in_store",
 ]
