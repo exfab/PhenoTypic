@@ -125,8 +125,18 @@ recorded as an alternative.
 An automated review flagged that `revision` accepts any ref, including
 community PR refs, whose pickle weights `from_pretrained` would unpickle.
 
-- **Fix, assigned to C18:** `use_safetensors=True` in `load_dino_backbone`
-  (shared with the detectors), with `trust_remote_code` never passed, plus a
-  test.
+- **Fixed in `342479e63`:** `load_dino_backbone` (shared with the detectors)
+  passes `use_safetensors=True`, and neither load passes `trust_remote_code`.
+  - `test_load_dino_backbone_loads_safetensors_only_and_no_remote_code` runs
+    with revision `None` and `refs/pr/1`. It uses a fake `transformers`, so it
+    needs no torch and runs in the shared env.
+  - On the old loader it failed 2 of 2 (`KeyError: 'use_safetensors'`).
+  - Every checkpoint the measurer offers ships `model.safetensors`, per the
+    hub's public file listing: `facebook/dinov2-{small,base,large}` and the
+    gated `facebook/dinov3-vit{s,b,l}16-pretrain-lvd1689m`.
+  - Pass lines:
+    - foundation venv: test_dino_support `32 passed`, the new measurer file
+      `51 passed`;
+    - shared env: test_dino_support plus nn preflight `46 passed, 4 skipped`.
 - `revision` keeps accepting any ref, as spec E3 says. The entry records the
   resolved commit, so provenance holds.
