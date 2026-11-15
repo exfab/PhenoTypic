@@ -305,6 +305,7 @@ def test_unstorable_metadata_still_publishes_the_store_in_every_mode(
     replace_image_tables(
         store,
         prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None),
+        pipeline_sha256=None,
         objmap_target=ngff_.objmap_path("rgb"),
         figures=stored,
     )

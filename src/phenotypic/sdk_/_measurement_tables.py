@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from ._image_figures import StoredFigures
+    from ._table_runs import TableRun
 
 logger = logging.getLogger(__name__)
 
@@ -1334,12 +1335,13 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
+    pipeline_sha256: str | None,
     figures: StoredFigures | None = None,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
-) -> Path:
-    """Refresh one store's measurement AND metadata tables together.
+) -> TableRun:
+    """Refresh the measurement AND metadata tables of one pipeline's run folder.
 
     The ``--mode measure`` analogue of the promote-time writer: both tables
     and the run's ``metadata_table`` block move as one root-last
@@ -1347,15 +1349,34 @@ def replace_image_tables(
     snapshot it was not built against. When *figures* is given, its run
     folder is written in the same transaction.
 
-    Only one table run folder is rewritten, as new inodes; every other run
-    folder is carried as hard links (spec D5). **Interim (#281 P3 Task 2):**
-    the run rewritten is the store's latest run holding measurements, keeping
-    its number and digest, or a new ``-unknown`` folder when it has none.
-    Task 3 selects it by the measure pipeline's digest instead.
+    **Which folder** (spec D6): the one *pipeline_sha256* owns, chosen by
+    :func:`~phenotypic.sdk_._table_runs.choose_table_run_id`. A store that
+    already has a folder for this pipeline gets it replaced, keeping its
+    number, its files rewritten as new inodes and no row of the previous
+    write surviving. Otherwise a new folder takes the next number. ``None``
+    replaces the highest-numbered ``-unknown`` folder, or adds one. Every
+    other run folder, and the ``upstream`` block, is carried as hard links
+    (spec D5), byte for byte.
+
+    The rewrite writes no objmap, so it recomputes no embedding's ``stale``
+    flag (spec D7): a carried run keeps its entry exactly. The replaced run's
+    entry is rebuilt from *tables* alone -- a **total** description, as
+    :func:`build_image_tables_attributes` states -- so an embedding entry it
+    held is not carried into the rewrite. (#281 P4 adds ``embeddings=`` here.)
+
+    A store still in the **v1 flat** layout is rewritten whole: its flat
+    files go, and the new folder, numbered 1, is the store's only one.
+    Forward CLI modes refuse such a store before they reach here (#281 P3
+    Task 5).
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
+        pipeline_sha256: The sha256 of the pipeline file whose measurers
+            produced *tables* -- for ``--mode measure``, the file measure
+            mode runs, **not** the one the store's journal names (measure
+            mode opens no journal application). ``None`` when no digest is
+            known; one is never fabricated (spec D2).
         figures: One run's per-image figures. They replace that run's folder
             and descriptor entry only; every other run is carried across
             unchanged (spec 2026-09-22 §1a). ``None`` adds no run and
@@ -1367,10 +1388,13 @@ def replace_image_tables(
         commit_guard: Publication guard, checked at the commit point.
 
     Returns:
-        The store path.
+        The run folder written, as the promoted root declares it. Its
+        :meth:`~phenotypic.sdk_.TableRun.measurements_path` is the table a
+        per-image record certifies after the rewrite (spec D6a).
 
     Raises:
-        ValueError: If the store declares no objmap target.
+        ValueError: If the store declares no objmap target, or its tables
+            descriptor is corrupt or a version this build does not read.
     """
 
     from . import ngff_
@@ -1378,33 +1402,21 @@ def replace_image_tables(
         RUNS_KEY,
         UPSTREAM_KEY,
         TABLE_RUN_ID_RE,
+        TableRun,
         choose_table_run_id,
-        table_runs_of_block,
         tables_schema_of_block,
     )
 
-    selected: dict[str, str | None] = {}
+    selected: dict[str, object] = {}
 
     def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
         target = _resolve_objmap_target(phenotypic, objmap_target)
         schema = tables_schema_of_block(phenotypic)
-        runs = table_runs_of_block(Path(store_path), phenotypic)
-        # INTERIM (#281 P3 Task 2): rewrite the latest run that holds
-        # measurements, keeping its number and digest; a store with none gets
-        # a new `-unknown` folder. Task 3 replaces this with the measure
-        # pipeline's own digest through `choose_table_run_id`.
-        current = next((run for run in reversed(runs) if run.has_measurements), None)
-        if current is not None:
-            run_id, pipeline_sha256 = current.run_id, current.pipeline_sha256
-        else:
-            run_id, pipeline_sha256 = (
-                choose_table_run_id(
-                    phenotypic if schema == 2 else {}, pipeline_sha256=None
-                ),
-                None,
-            )
-        # A v1 flat store is rewritten whole: its flat files go, and the new
-        # run is the store's only one.
+        # A v1 flat store numbers as an empty one: its flat tables are not
+        # run folders, and the rewrite replaces them whole.
+        run_id = choose_table_run_id(
+            phenotypic if schema == 2 else {}, pipeline_sha256=pipeline_sha256
+        )
         selected["clear"] = run_id if schema == 2 else None
         tables_block = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
         kept = (
@@ -1423,6 +1435,7 @@ def replace_image_tables(
         )
         match = TABLE_RUN_ID_RE.match(run_id)
         assert match is not None
+        order = int(match["order"])
 
         def _populate(part: Path) -> None:
             # `write_run_entry` returns the entry describing exactly the files
@@ -1432,13 +1445,20 @@ def replace_image_tables(
             own = write_run_entry(
                 part,
                 run_id,
-                order=int(match["order"]),
+                order=order,
                 pipeline_sha256=pipeline_sha256,
                 measurements=tables,
                 objmap_target=target,
             )
             apply_image_tables_attributes(
                 phenotypic, {**kept, run_id: own}, upstream=upstream
+            )
+            selected["run"] = TableRun(
+                store=Path(store_path),
+                run_id=run_id,
+                order=order,
+                pipeline_sha256=pipeline_sha256,
+                descriptor=deepcopy(own),
             )
             if figures is None:
                 return
@@ -1468,14 +1488,22 @@ def replace_image_tables(
             )
             figures = None
 
-    return _rewrite_store_tables(
+    def _clear() -> str | None:
+        clear = selected["clear"]
+        assert clear is None or isinstance(clear, str)
+        return clear
+
+    _rewrite_store_tables(
         store_path,
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
         clear_figure_run=figures.run.run_id if figures is not None else None,
-        clear_table_run=lambda: selected["clear"],
+        clear_table_run=_clear,
     )
+    run = selected["run"]
+    assert isinstance(run, TableRun)
+    return run
 
 
 def replace_embedded_measurement_table(

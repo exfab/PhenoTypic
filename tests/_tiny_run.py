@@ -805,3 +805,46 @@ def crop_entry(store: Path) -> dict:
         if CROP_ENTRY_KEY in embeddings:
             return dict(embeddings[CROP_ENTRY_KEY])
     raise KeyError(f"{store} has no {CROP_ENTRY_KEY} entry")
+
+
+# ---------------------------------------------------------------------------
+# P3 T3 (C13): the ``--mode measure`` rewrite (spec D5-D7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def full_run_store(tmp_path: Path, measured_image) -> Path:
+    """:func:`measured_image` saved with A's tables: one run folder, ``1-<A>``."""
+    return measured_image.save2zarr(
+        tmp_path / "full_run.ome.zarr", measurement_table=tables_for(measured_image)
+    )
+
+
+def _stored_tables(store: Path, *, marker: str | None):
+    """The tables :func:`tables_for` builds for *store*'s own image, optionally re-marked."""
+    from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
+    from phenotypic._core._provenance import current_pipeline_sha256
+
+    image = _load_store(store)
+    journal_marker, pipeline = _pipeline_for_sha(current_pipeline_sha256(image))
+    frame = pipeline.measure(image)
+    frame["Pipeline_Marker"] = journal_marker if marker is None else marker
+    return prepare_image_tables(frame, None)
+
+
+def tables_for_store(store: Path):
+    """The tables *store*'s forward save wrote, rebuilt from the stored image.
+
+    Same rows as the store's own run folder, and the ``Pipeline_Marker`` of
+    the pipeline its journal names.
+    """
+    return _stored_tables(store, marker=None)
+
+
+def other_tables(store: Path):
+    """:func:`tables_for_store` with ``Pipeline_Marker`` ``"other"``.
+
+    The stand-in for another pipeline's measurements, so a reader can tell
+    a row of the new run folder from one of the folder it sits beside.
+    """
+    return _stored_tables(store, marker="other")

@@ -111,7 +111,7 @@ def test_a_measure_rewrite_adds_its_run_and_keeps_the_others(tmp_path, plate):
     )
     pixel_inode = pixel.stat().st_ino
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"),
         figures=_figures(b"new", "kept", LATER),
     )
     assert _snapshot(store, RUN) == earlier
@@ -124,12 +124,12 @@ def test_a_measure_rewrite_adds_its_run_and_keeps_the_others(tmp_path, plate):
 def test_the_same_run_id_replaces_only_that_folder(tmp_path, plate):
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"later", "x", LATER))
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"),
         figures=_figures(b"old", "gone"),
     )
     other = _snapshot(store, LATER)
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"),
         figures=_figures(b"new", "kept"),
     )
     assert not (store / _at("gone")).exists()
@@ -148,7 +148,7 @@ def test_a_same_name_rebuild_never_writes_through_into_the_live_store(tmp_path, 
     held = os.open(store / _at("sym/default.plotly.json"), os.O_RDONLY)
     try:
         replace_image_tables(
-            store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+            store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"),
             figures=_figures(b"new-bytes", "sym"),
         )
         os.lseek(held, 0, os.SEEK_SET)
@@ -164,9 +164,9 @@ def test_no_new_run_touches_no_figure(tmp_path, plate):
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
     files_before = _snapshot(store, RUN)
     descriptor_before = read_image_figures_descriptor(store)
-    replace_image_tables(store, _tables(), objmap_target=ngff_.objmap_path("rgb"))
+    replace_image_tables(store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"))
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=None
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"), figures=None
     )
     assert _snapshot(store, RUN) == files_before
     assert read_image_figures_descriptor(store) == descriptor_before
@@ -297,7 +297,7 @@ def test_a_measure_rewrite_leaves_an_unknown_figures_schema_untouched(tmp_path, 
     newer = _relabel_as_newer(store)
     before = _without_inodes(_figures_tree(store))
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=_figures(b"new")
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"), figures=_figures(b"new")
     )
     assert read_image_figures_descriptor(store) == newer
     assert _without_inodes(_figures_tree(store)) == before
@@ -325,7 +325,7 @@ def test_a_measure_rewrite_adds_a_v2_run_to_a_v1_store(tmp_path, plate):
     v1_runs = _relabel_as_v1(store)
     before = _snapshot(store, RUN)
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"),
         figures=_figures(b"new", run=LATER),
     )
     descriptor = read_image_figures_descriptor(store)
@@ -416,7 +416,7 @@ def test_measure_rebuild_writes_figures_before_the_root_is_promoted(
 
     monkeypatch.setattr(ngff_, "promote_store", _spy)
     replace_image_tables(
-        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=_figures()
+        store, _tables(), pipeline_sha256=None, objmap_target=ngff_.objmap_path("rgb"), figures=_figures()
     )
     assert seen == {"match": True}
 
