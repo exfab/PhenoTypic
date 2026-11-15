@@ -423,7 +423,10 @@ def test_master_reads_the_folder_the_record_certifies(store_with_two_runs, tmp_p
 def test_a_full_rerun_with_an_edited_pipeline_numbers_folders_1_and_2(tiny_inputs, tmp_path, pipeline_file_b):
     out = tmp_path / "out"
     run_cli(tiny_inputs, out)
-    run_cli(tiny_inputs, out, pipeline=pipeline_file_b)
+    # A plain continuation refuses a changed pipeline
+    # (_cli_state_management.validate_resume_compatibility); --restart is the
+    # forward re-run D6 describes. --overwrite would delete folder 1.
+    run_cli(tiny_inputs, out, pipeline=pipeline_file_b, extra=["--restart"])
     assert [r.order for r in list_table_runs(one_store(out))] == [1, 2]
     master = pl.read_parquet(out / "deliverables" / "master_measurements.parquet")
     assert str(SHAPE.CIRCULARITY) in master.columns          # only pipeline B measures shape
