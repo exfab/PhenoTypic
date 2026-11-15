@@ -298,16 +298,91 @@ def test_vectors_do_not_depend_on_the_batch_size(stub_backbone, detected_plate):
 
 
 @requires_torch
-def test_cls_and_mean_pooling_read_the_same_tokens(stub_backbone, detected_plate):
-    cls = MeasureDinoEmbedding(pooling="crop_cls", crop_px=112).measure(detected_plate)
-    mean = MeasureDinoEmbedding(pooling="crop_mean", crop_px=112).measure(detected_plate)
-    # The stub's CLS is the mean of its patch tokens, so the two agree to
-    # float16 rounding: the paths read the same tokens, with CLS dropped.
-    np.testing.assert_allclose(
-        np.stack(cls["embedding"]).astype(np.float32),
-        np.stack(mean["embedding"]).astype(np.float32),
-        rtol=1e-2, atol=1e-2,
-    )
+def test_each_pooling_reads_its_own_tokens(stub_backbone, detected_plate):
+    """``crop_cls`` is the CLS, ``crop_mean`` the patch mean, ``masked_dense``
+    the plate's patches under the mask: three different vectors per colony.
+
+    The stub's CLS is the patches' maximum, not their mean (review T2), so a
+    measurer that ignored ``pooling`` (review T1's first mutant) fails here.
+    The patch mean is checked against the crop's tokens directly.
+    """
+    from phenotypic.detect.nn._helper._dino_support import embed_crops
+    from tests._tiny_run import _build_stub_dino
+
+    vectors = {
+        pooling: np.stack(
+            MeasureDinoEmbedding(pooling=pooling, crop_px=112)
+            .measure(detected_plate)["embedding"]
+        ).astype(np.float32)
+        for pooling in ("crop_cls", "crop_mean", "masked_dense")
+    }
+    for a, b in (("crop_cls", "crop_mean"), ("crop_cls", "masked_dense"),
+                 ("crop_mean", "masked_dense")):
+        assert np.abs(vectors[a] - vectors[b]).max() > 1e-2, (a, b)
+    # Per colony, the CLS (max) bounds the mean from above, component-wise.
+    assert (vectors["crop_cls"] >= vectors["crop_mean"] - 1e-2).all()
+    model, processor = _build_stub_dino()
+    crops = np.random.default_rng(1).integers(0, 256, (2, 112, 112, 3), dtype=np.uint8)
+    mean = embed_crops(model, processor, crops, pooling="crop_mean", device="cpu", batch_size=2)
+    cls = embed_crops(model, processor, crops, pooling="crop_cls", device="cpu", batch_size=2)
+    assert not np.allclose(mean, cls)
+
+
+@requires_torch
+@pytest.mark.parametrize("pooling", ["crop_mean", "masked_dense"])
+def test_register_tokens_never_reach_a_pooled_vector(monkeypatch, detected_plate, pooling):
+    """A backbone with four register tokens of 1000 gives the vectors of one
+    with none: ``crop_mean`` and ``masked_dense`` drop them (review T3)."""
+    from phenotypic.measure import _measure_dino_embedding as module
+    from tests._tiny_run import install_stub_backbone
+
+    def embed() -> np.ndarray:
+        frame = MeasureDinoEmbedding(pooling=pooling, crop_px=112).measure(detected_plate)
+        return np.stack(frame["embedding"]).astype(np.float32)
+
+    install_stub_backbone(monkeypatch)
+    plain = embed()
+    install_stub_backbone(monkeypatch, num_register_tokens=4)
+    with_registers = embed()
+    module._cached_backbone.cache_clear()
+    assert np.abs(with_registers).max() < 100          # no 1000 leaked in
+    np.testing.assert_array_equal(with_registers, plain)
+
+
+@requires_torch
+def test_masked_dense_pools_the_colony_mask_not_its_box(stub_backbone):
+    """A colony shaped like an L leaves one patch of its bounding box outside
+    its mask. Changing that patch's pixels must not move the colony's vector
+    (review T1's second mutant pools the whole box)."""
+    patch = 14
+
+    def embed(corner_value: float) -> np.ndarray:
+        rgb = np.full((112, 112, 3), 0.3)
+        objmap = np.zeros((112, 112), dtype=np.uint16)
+        objmap[patch:3 * patch, patch:3 * patch] = 1          # a 2 x 2-patch square
+        objmap[2 * patch:3 * patch, 2 * patch:3 * patch] = 0  # minus one patch: an L
+        rgb[objmap == 1] = 0.9
+        rgb[2 * patch:3 * patch, 2 * patch:3 * patch] = corner_value
+        image = Image(rgb)
+        image.objmap[:] = objmap
+        frame = MeasureDinoEmbedding(pooling="masked_dense", crop_px=112).measure(image)
+        return np.stack(frame["embedding"]).astype(np.float32)
+
+    np.testing.assert_array_equal(embed(0.3), embed(0.0))
+
+
+@requires_torch
+def test_a_grid_cell_is_cropped_exactly_not_padded_or_squared(stub_backbone, monkeypatch):
+    """A 100 x 50 white cell on grey becomes an all-white crop: no padding
+    and no squaring, which would pull grey in (review T1's third mutant)."""
+    crops = _spy_on_crops(monkeypatch)
+    rgb = np.full((300, 300, 3), 0.5)
+    rgb[50:150, 100:150] = 1.0
+    grid = ManualGridFinder(row_edges=[50, 150], col_edges=[100, 150])
+    MeasureDinoEmbedding(regions="grid", grid=grid, crop_px=112).measure(Image(rgb))
+    (crop,) = crops[0]
+    assert crop.shape == (112, 112, 3)
+    assert (crop >= 250).all()
 
 
 @requires_torch

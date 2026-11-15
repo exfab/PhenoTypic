@@ -1135,15 +1135,26 @@ STUB_HIDDEN_SIZE = 8
 STUB_COMMIT = "0" * 40
 
 
-def _build_stub_dino():
+#: The value of every register token a :func:`_build_stub_dino` with
+#: registers emits: loud, so a pooling that reads one is visibly wrong.
+STUB_REGISTER_VALUE = 1000.0
+
+
+def _build_stub_dino(num_register_tokens: int = 0):
     """A deterministic stand-in for a DINOv2 ``(model, processor)``; needs torch.
 
     The model average-pools each ``14 x 14`` patch of the normalized pixels
     to its three channel means and spreads them over :data:`STUB_HIDDEN_SIZE`
-    dimensions (the means, their squares, the first two again). The CLS token
-    is the mean of the patch tokens. So a vector depends on the pixels it was
-    computed from, and a test can tell regions apart without real weights.
-    The processor is callable (the dense path) and carries the normalization
+    dimensions (the means, their squares, the first two again). So a vector
+    depends on the pixels it was computed from, and a test can tell regions
+    apart without real weights.
+
+    The CLS token is the patch tokens' **maximum**, not their mean, so
+    ``crop_cls`` and ``crop_mean`` give different vectors (review T2). With
+    *num_register_tokens*, that many tokens of :data:`STUB_REGISTER_VALUE`
+    sit between the CLS and the patches, as DINOv2-with-registers lays them
+    out, so a pooling that reads one is visibly wrong (review T3). The
+    processor is callable (the dense path) and carries the normalization
     constants the batched crop path reads.
     """
     from types import SimpleNamespace
@@ -1157,7 +1168,7 @@ def _build_stub_dino():
             self.config = SimpleNamespace(
                 patch_size=STUB_PATCH_SIZE,
                 hidden_size=STUB_HIDDEN_SIZE,
-                num_register_tokens=0,
+                num_register_tokens=num_register_tokens,
                 _commit_hash=STUB_COMMIT,
             )
 
@@ -1165,8 +1176,15 @@ def _build_stub_dino():
             pooled = torch.nn.functional.avg_pool2d(pixel_values, STUB_PATCH_SIZE)
             tokens = pooled.flatten(2).transpose(1, 2)  # (B, Hp*Wp, 3)
             patches = torch.cat([tokens, tokens**2, tokens[..., :2]], dim=-1)
-            cls = patches.mean(dim=1, keepdim=True)
-            return SimpleNamespace(last_hidden_state=torch.cat([cls, patches], dim=1))
+            cls = patches.amax(dim=1, keepdim=True)
+            registers = torch.full(
+                (patches.shape[0], num_register_tokens, patches.shape[-1]),
+                STUB_REGISTER_VALUE,
+                dtype=patches.dtype,
+            )
+            return SimpleNamespace(
+                last_hidden_state=torch.cat([cls, registers, patches], dim=1)
+            )
 
     class _StubInputs(dict):
         def to(self, device):
@@ -1207,6 +1225,24 @@ def stub_backbone(monkeypatch):
 
     from phenotypic.measure import _measure_dino_embedding as module
 
+    calls = install_stub_backbone(monkeypatch)
+    yield SimpleNamespace(load_calls=calls)
+    module._cached_backbone.cache_clear()
+
+
+def install_stub_backbone(monkeypatch, *, num_register_tokens: int = 0) -> list[dict]:
+    """Patch ``MeasureDinoEmbedding``'s loader with :func:`_build_stub_dino`.
+
+    Clears the measurer's backbone cache first, so the next measure loads
+    this stub. :func:`stub_backbone` is this with no registers; a test that
+    compares two stubs calls it twice.
+
+    Returns:
+        The list each load appends its ``{dino_version, dino_size, device,
+        revision}`` to.
+    """
+    from phenotypic.measure import _measure_dino_embedding as module
+
     calls: list[dict] = []
 
     def _stub_load(dino_version, dino_size, device, *, revision=None):
@@ -1218,12 +1254,11 @@ def stub_backbone(monkeypatch):
                 "revision": revision,
             }
         )
-        return _build_stub_dino()
+        return _build_stub_dino(num_register_tokens)
 
     module._cached_backbone.cache_clear()
     monkeypatch.setattr(module, "load_dino_backbone", _stub_load)
-    yield SimpleNamespace(load_calls=calls)
-    module._cached_backbone.cache_clear()
+    return calls
 
 
 # ---------------------------------------------------------------------------
@@ -1263,18 +1298,72 @@ def with_dino_crops(directory: Path) -> Path:
     return path
 
 
+#: The grid entry :func:`with_dino_crops_and_grid` adds, and its 2 x 2 grid.
+DINO_GRID_KEY = "dinov2-vitb14/grid"
+
+
+def with_dino_crops_and_grid(directory: Path) -> Path:
+    """:func:`with_dino_crops` plus ``meas["grid"]``: a 2 x 2 grid embedder.
+
+    Two entry keys, ``dinov2-vitb14/crops`` then ``dinov2-vitb14/grid``, so a
+    finalization publishes two tables. The cells are
+    :data:`TOY_GRID_ROW_EDGES` x :data:`TOY_GRID_COL_EDGES`.
+
+    Returns:
+        ``<directory>/dino_crops_grid.pht-pipe.json``.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.grid import ManualGridFinder
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+
+    grid = ManualGridFinder(
+        row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+    )
+    pipeline = ImagePipeline(
+        name="tiny-pipeline-dino-grid",
+        ops=[OtsuDetector()],
+        meas={
+            "size": MeasureSize(),
+            "emb": MeasureDinoEmbedding(device="cpu"),
+            "grid": MeasureDinoEmbedding(regions="grid", grid=grid, device="cpu"),
+        },
+    )
+    path = Path(directory) / "dino_crops_grid.pht-pipe.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(pipeline.to_json() or "", encoding="utf-8")
+    return path
+
+
+def differentiate_plate_2(inputs: Path) -> None:
+    """Replace ``ds/plate_2.tif`` under *inputs* with the plate mirrored left to right.
+
+    The same colonies at other positions, so plate_2's crops, labels and
+    vectors differ from plate_1's and a row attributed to the wrong store is
+    visible (review T4).
+    """
+    import numpy as np
+    from PIL import Image as PILImage
+
+    path = Path(inputs) / "ds" / "plate_2.tif"
+    pixels = np.asarray(PILImage.open(path))
+    PILImage.fromarray(np.ascontiguousarray(pixels[:, ::-1])).save(path)
+
+
 @pytest.fixture
 def finished_tiny_run_with_embeddings(
     tmp_path: Path, tiny_inputs: Path, stub_backbone
 ) -> Path:
     """A finished local full run of :func:`with_dino_crops` over :func:`tiny_inputs`.
 
-    The backbone is :func:`stub_backbone`'s, so this needs torch. The
-    pipeline file is ``<tmp>/dino_crops.pht-pipe.json``.
+    ``plate_2`` is mirrored (:func:`differentiate_plate_2`), so the two
+    stores' vectors differ. The backbone is :func:`stub_backbone`'s, so this
+    needs torch. The pipeline file is ``<tmp>/dino_crops.pht-pipe.json``.
 
     Returns:
         The output root (``<tmp>/out``).
     """
+    differentiate_plate_2(tiny_inputs)
     out = tmp_path / "out"
     result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path))
     assert result.exit_code == 0, result.output
