@@ -54,9 +54,27 @@ def _republish_table_marker(
     *,
     commit_guard: CommitGuard | None,
     lifecycle_epoch: str | None = None,
+    measurements: Path | None = None,
 ) -> None:
-    """Rehash all existing artifacts and publish the marker last."""
+    """Rehash all existing artifacts and publish the marker last.
+
+    Args:
+        output_dir: Run output root.
+        marker_path: The image's record.
+        commit_guard: Publication guard, checked at the commit point.
+        lifecycle_epoch: The epoch to stamp; ``None`` keeps the record's.
+        measurements: The table the republished record declares as its
+            ``measurements`` artifact, replacing the one it declared. The
+            ``--mode measure`` rewrite passes the run folder it wrote
+            (#281 spec D6a): a measure with a new pipeline adds a folder, so
+            the record's old path still exists, still verifies, and would
+            certify the previous pipeline's table. ``None`` rehashes the
+            declared table in place.
+    """
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    artifacts = _marker_artifacts(output_dir, marker)
+    if measurements is not None:
+        artifacts["measurements"] = Path(measurements)
     publish_image_success(
         output_dir,
         work_id=str(marker["work_id"]),
@@ -70,6 +88,6 @@ def _republish_table_marker(
             if lifecycle_epoch is not None
             else str(marker["lifecycle_epoch"])
         ),
-        artifacts=_marker_artifacts(output_dir, marker),
+        artifacts=artifacts,
         commit_guard=commit_guard,
     )

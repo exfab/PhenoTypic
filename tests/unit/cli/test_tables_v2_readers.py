@@ -217,3 +217,77 @@ def test_metrics_pipeline_sha_is_null_when_certified_runs_differ(store_with_two_
     assert shared_pipeline_sha256(_aggregated_pipeline_digests(same)) == first.pipeline_sha256
     mixed = {first.measurements_path(): "ds", latest.measurements_path(): "ds"}
     assert shared_pipeline_sha256(_aggregated_pipeline_digests(mixed)) is None
+
+
+# ---------------------------------------------------------------------------
+# C13 (Task 3, Review Focus 3): ``--mode measure`` over the v2 layout
+# ---------------------------------------------------------------------------
+
+#: The two stores :func:`finished_tiny_run` writes.
+_TINY_STEMS = ("plate_1", "plate_2")
+
+#: The refusal ``--mode recompile`` gives while its readers use the v1 flat path (C14c).
+_C14C_RECOMPILE_REFUSAL = "Cannot safely restore measurement authority"
+
+
+def _master_height(out: Path) -> int:
+    import polars as pl
+
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    return pl.read_parquet(master_measurements_parquet_path(out)).height
+
+
+def test_measure_twice_with_the_same_pipeline_keeps_one_folder_and_row_count(finished_tiny_run):
+    out = finished_tiny_run
+    # The forward run's own pipeline file, so the measure digest is its digest.
+    pipeline = out.parent / "tiny_run.pht-pipe.json"
+    rows = _master_height(out)
+    for _ in range(2):
+        result = run_cli(None, out, mode="measure", pipeline=pipeline)
+        assert result.exit_code == 0, result.output
+    for stem in _TINY_STEMS:
+        store = one_store(out, stem=stem)
+        [run] = list_table_runs(store)
+        assert run.pipeline_sha256 == file_sha256(pipeline)
+        assert _record_measurements(out, "ds", stem) == run.measurements_path()
+    assert _master_height(out) == rows
+
+
+def test_measure_with_another_pipeline_adds_a_folder_and_recompile_keeps_it(
+    finished_tiny_run, pipeline_file_b
+):
+    import json
+
+    from phenotypic.sdk_ import metrics_json_path
+    from tests._tiny_run import tree_digest
+
+    out = finished_tiny_run
+    firsts = {stem: list_table_runs(one_store(out, stem=stem))[0] for stem in _TINY_STEMS}
+    before = {stem: tree_digest(run.folder) for stem, run in firsts.items()}
+    result = run_cli(None, out, mode="measure", pipeline=pipeline_file_b)
+    assert result.exit_code == 0, result.output
+    for stem, first in firsts.items():
+        store = one_store(out, stem=stem)
+        runs = list_table_runs(store)
+        assert [run.order for run in runs] == [1, 2]
+        assert tree_digest(first.folder) == before[stem]
+        # D6a: the record certifies the folder measure mode wrote, not the
+        # one the store's journal (still the forward run's) names.
+        own = table_run_for_pipeline(store, file_sha256(pipeline_file_b))
+        assert own is not None and own.order == 2
+        assert _record_measurements(out, "ds", stem) == own.measurements_path()
+    metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
+    assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_b)
+    result = run_cli(None, out, mode="recompile")
+    if result.exit_code != 0 and _C14C_RECOMPILE_REFUSAL in result.output:
+        # Expected red until C14c (#281 P3 T4, recompile): the authority check
+        # `assert_no_unrecoverable_measurement_authority` still joins the v1
+        # flat path (`_cli_recompile_recovery.py:468`), finds no table there,
+        # and refuses a store whose record claims authority. Only THAT
+        # refusal is tolerated; any other recompile failure fails the test,
+        # and the measure half above is enforced. C14c deletes this branch.
+        pytest.xfail("recompile reads the v1 flat path until C14c (#281 P3 T4)")
+    assert result.exit_code == 0, result.output
+    metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
+    assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_b)    # I17: B's folder, not A's

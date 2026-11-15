@@ -2062,12 +2062,13 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
+        pipeline_sha256: str | None = None,
         figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
     ) -> Path:
         """Replace an existing store's authoritative measurement and metadata
-        tables.
+        tables, in the run folder of the pipeline that measured them.
 
         Both move together, through the same producer the forward writer uses.
         Feeding this path the joined producer instead would silently
@@ -2079,6 +2080,12 @@ class OutputManager:
             store_path: A promoted ``*.ome.zarr`` store.
             measurements: The image's per-object measurements.
             dataset_name: Dataset name.
+            pipeline_sha256: sha256 of the pipeline file whose measurers
+                produced *measurements* -- for ``--mode measure``, the file
+                measure mode runs, never the store journal's (#281 spec D6).
+                Its run folder is replaced when the store has one, otherwise
+                added beside the others. ``None`` (no known digest) replaces
+                the store's highest-numbered ``-unknown`` folder, or adds one.
             figures: This run's per-image figures, written as one run folder
                 beside the store's others; ``None`` adds no run and touches
                 no figure (spec 2026-09-22 §1a). See
@@ -2088,12 +2095,12 @@ class OutputManager:
             commit_guard: Publication guard, checked at the commit point.
 
         Returns:
-            The store's embedded measurement table path.
+            The ``measurements/table.parquet`` of the run folder written, the
+            path the image's republished record must declare (spec D6a).
+            It is not the folder :func:`~phenotypic.sdk_.journal_table_run`
+            names: measure mode adds no journal application.
         """
-        from phenotypic.sdk_ import (
-            MEASUREMENT_TABLE_RELATIVE_PATH,
-            replace_image_tables,
-        )
+        from phenotypic.sdk_ import replace_image_tables
 
         baseline = measurements.copy()
         if (
@@ -2108,14 +2115,15 @@ class OutputManager:
         tables = prepare_image_tables(
             baseline, resolve_metadata_snapshot_path(self.base_dir)
         )
-        replace_image_tables(
+        run = replace_image_tables(
             store_path,
             tables,
+            pipeline_sha256=pipeline_sha256,
             figures=figures,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
         )
-        return Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
+        return run.measurements_path()
 
     def aggregate_master_csv(
         self,

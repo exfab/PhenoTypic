@@ -5,11 +5,13 @@ These tests exercise the full CLI via :mod:`click.testing.CliRunner`:
 
 * Forward runs write exactly one OME-Zarr **store directory** per image under
   ``results/<dataset>/zarr/<stem>.ome.zarr/``, with its Parquet table at
-  ``tables/measurements/table.parquet`` inside that store — and nothing else
+  ``tables/<n>-<sha12>/measurements/table.parquet`` inside that store, in the
+  run folder of the pipeline that measured it — and nothing else
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders,
   and no ``hdf/``).
 * Forward runs always write a PNG overlay per image alongside the store.
-* Schema-3 outputs support ``--mode measure`` by replacing embedded tables,
+* Schema-3 outputs support ``--mode measure`` by replacing embedded tables
+  (the same pipeline's run folder, or a new folder for another pipeline),
   refreshing per-image markers last, and rebuilding aggregate publications.
 * ``--mode measure`` rejects incompatible flags with a clear error message.
 
@@ -39,7 +41,6 @@ from phenotypic._cli._cli_completion import (
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     image_record_path,
     manifest_json_path,
@@ -144,7 +145,7 @@ class TestForwardRunStoreLayout:
 
         dataset_dir = output_dir / "results" / "plates"
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        table_file = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        table_file = _pipeline_table(store, temp_pipeline)
         overlay_file = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
         # A store is a DIRECTORY with a root `zarr.json`. `.exists()` alone
@@ -294,6 +295,26 @@ class TestOverlayAlwaysOn:
 # ---------------------------------------------------------------------------
 
 
+def _pipeline_table(store: Path, pipeline: Path) -> Path:
+    """The ``measurements`` table of the run folder *pipeline* owns in *store*.
+
+    A store holds one folder per measuring pipeline (#281 spec D1, D6), so a
+    table is found by the pipeline file's digest, never by a fixed path.
+    """
+    from phenotypic._cli._cli_failure_tracker import file_sha256
+    from phenotypic.sdk_ import table_run_for_pipeline
+
+    run = table_run_for_pipeline(store, file_sha256(pipeline))
+    assert run is not None, f"{store} has no run folder for {pipeline}"
+    return run.measurements_path()
+
+
+def _record_table(output_dir: Path, marker_path: Path) -> Path:
+    """The ``measurements`` artifact the image's record declares."""
+    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    return output_dir / marker["artifacts"]["measurements"]["path"]
+
+
 class TestMeasureRerun:
     """Schema-3 marker-authorized outputs support transactional remeasurement."""
 
@@ -325,7 +346,7 @@ class TestMeasureRerun:
         )
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        table_path = _pipeline_table(store, temp_pipeline)
         marker_path = image_record_path(
             output_dir, "plates", "plate_001"
         )
@@ -342,6 +363,7 @@ class TestMeasureRerun:
         before_columns = pd.read_parquet(table_path).columns.tolist()
         assert any(column.startswith("Shape_") for column in before_columns)
         marker_before = marker_path.read_bytes()
+        table_bytes_before = table_path.read_bytes()
         overlay_mtime_before = overlay_path.stat().st_mtime_ns
 
         replacement_pipeline = tmp_path / "measure-size.json"
@@ -366,7 +388,14 @@ class TestMeasureRerun:
         )
 
         assert measure.exit_code == 0, measure.output
-        after = pd.read_parquet(table_path)
+        # Another pipeline adds a run folder beside the forward run's, which
+        # is carried byte for byte (#281 spec D5, D6) -- and the record now
+        # certifies the new folder's table (D6a).
+        after_path = _pipeline_table(store, replacement_pipeline)
+        assert after_path != table_path
+        assert table_path.read_bytes() == table_bytes_before
+        assert _record_table(output_dir, marker_path) == after_path
+        after = pd.read_parquet(after_path)
         assert "Size_Area" in after.columns
         assert not any(column.startswith("Shape_") for column in after.columns)
         assert marker_path.read_bytes() != marker_before
@@ -452,7 +481,11 @@ class TestMeasureRerun:
         )
 
         assert measure.exit_code == 0, measure.output
-        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        # The same pipeline replaces its own folder rather than adding one.
+        from phenotypic.sdk_ import list_table_runs
+
+        assert len(list_table_runs(store)) == 1
+        table_path = _pipeline_table(store, temp_pipeline)
         frame = pd.read_parquet(table_path)
         assert not frame.empty
         assert any(column.startswith("Shape_") for column in frame.columns)
@@ -461,6 +494,7 @@ class TestMeasureRerun:
             output_dir, "plates", "plate_001"
         )
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        assert _record_table(output_dir, marker_path) == table_path
         assert valid_image_success(
             output_dir,
             dataset="plates",
@@ -495,7 +529,7 @@ class TestMeasureRerun:
         assert first.exit_code == 0, f"First forward run failed:\n{first.output}"
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
-        table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        table_path = _pipeline_table(store, temp_pipeline)
         assert table_path.is_file()
         assert not (output_dir / "results" / "plates" / "measurements").exists()
         table_mtime_before = table_path.stat().st_mtime_ns

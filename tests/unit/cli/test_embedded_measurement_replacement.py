@@ -8,11 +8,13 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
+from phenotypic._cli._cli_failure_tracker import file_sha256
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     PhenotypicAttr,
+    list_table_runs,
     read_phenotypic_attributes,
+    table_run_for_pipeline,
     zarr_store_path,
 )
 
@@ -26,6 +28,13 @@ def _tree_hashes(root: Path) -> dict[str, str]:
         for path in sorted(root.rglob("*"))
         if path.is_file()
     }
+
+
+def _pipeline_run(store: Path, pipeline: Path):
+    """The run folder *pipeline* owns in *store* (#281 spec D6)."""
+    run = table_run_for_pipeline(store, file_sha256(pipeline))
+    assert run is not None, f"{store} has no run folder for {pipeline}"
+    return run
 
 
 def _write_test_image_and_pipelines(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -79,7 +88,9 @@ def test_measure_only_atomically_replaces_table_without_rewriting_pixels(
     )
     store = zarr_store_path(output, "ds", "plate")
     before_pixels = _tree_hashes(store / "rgb")
-    before_table = pq.read_table(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+    forward = _pipeline_run(store, initial_pipeline)
+    before_forward_folder = _tree_hashes(forward.folder)
+    before_table = pq.read_table(forward.measurements_path())
     assert "Size_Area" in before_table.column_names
 
     process_single_store_measure_core(
@@ -91,12 +102,21 @@ def test_measure_only_atomically_replaces_table_without_rewriting_pixels(
         manager,
     )
 
-    after_table = pq.read_table(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+    # Another pipeline adds a folder; the forward run's is carried unchanged
+    # (#281 spec D5, D6).
+    replaced = _pipeline_run(store, replacement_pipeline)
+    assert [run.run_id for run in list_table_runs(store)] == [
+        forward.run_id,
+        replaced.run_id,
+    ]
+    assert replaced.order == forward.order + 1
+    assert _tree_hashes(forward.folder) == before_forward_folder
+    after_table = pq.read_table(replaced.measurements_path())
     assert "Shape_Circularity" in after_table.column_names
     assert "Size_Area" not in after_table.column_names
     assert _tree_hashes(store / "rgb") == before_pixels
     attrs = read_phenotypic_attributes(store)
-    descriptor = attrs[PhenotypicAttr.TABLES]["measurements"]
+    descriptor = attrs[PhenotypicAttr.TABLES]["runs"][replaced.run_id]["measurements"]
     assert descriptor["measurement_columns"] == after_table.column_names
     assert not (output / "results" / "ds" / "measurements").exists()
 
@@ -130,7 +150,7 @@ def test_measure_failure_before_final_marker_leaves_new_table_unauthorized(
         manager,
     )
     store = zarr_store_path(output, "ds", "plate")
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = _pipeline_run(store, initial_pipeline).measurements_path()
     publish_image_success(
         output,
         work_id="measure-order-work",
@@ -214,7 +234,7 @@ def test_measure_on_slurm_republishes_under_the_live_generation(
         manager,
     )
     store = zarr_store_path(output, "ds", "plate")
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = _pipeline_run(store, initial_pipeline).measurements_path()
     publish_image_success(
         output,
         work_id="remeasure-work",

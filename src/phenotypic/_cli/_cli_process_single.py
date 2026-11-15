@@ -544,10 +544,16 @@ def process_single_store_measure_core(
     # rewrote a promoted store's Parquet without refreshing the root, so the
     # per-image proof went on certifying content that had changed underneath
     # it (CAN-3).
-    output_manager.replace_image_store_measurements(
+    # The run folder is the one THIS pipeline file owns (spec D6): the same
+    # pipeline replaces its folder, another adds one beside it. The record
+    # must declare the table returned here -- not `journal_table_run`'s,
+    # since measure mode opens no journal application, so the journal still
+    # names the forward run's pipeline.
+    measurement_table = output_manager.replace_image_store_measurements(
         store_path,
         measurements,
         dataset_name,
+        pipeline_sha256=pipeline_sha256,
         commit_guard=commit_guard,
         figures=figures,
     )
@@ -620,6 +626,7 @@ def process_single_store_measure_core(
             record_path,
             commit_guard=commit_guard,
             lifecycle_epoch=slurm_generation or None,
+            measurements=measurement_table,
         )
 
     return True
