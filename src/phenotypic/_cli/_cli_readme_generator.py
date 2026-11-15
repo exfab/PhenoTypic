@@ -128,7 +128,7 @@ output_folder/
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results
 {dataset_list}
-|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + grid state, plus the authoritative object measurements at tables/measurements/table.parquet)
+|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + grid state, plus the authoritative object measurements at tables/<n>-<sha12>/measurements/table.parquet, one folder per measuring pipeline)
 |       +-- measurements/             # Legacy per-image Parquets — only in a tree written by an older release, never created by this run
 +-- .phenotypic/                      # Hidden machine-state cache
 |   +-- processing_state.json         # Continuation/state tracking
@@ -172,7 +172,7 @@ Each dataset directory contains the following:
 | Path | Format | Description |
 |------|--------|-------------|
 | `zarr/` | OME-Zarr (NGFF 0.5) | Processed image (layers + `objmap` label image + metadata + grid state) saved as a single `<stem>.ome.zarr` store directory per input image, reloadable via `Image.load_zarr` / `GridImage.load_zarr`. |
-| `zarr/<stem>.ome.zarr/tables/measurements/table.parquet` | Parquet | Authoritative per-object measurements for that image, embedded in its store and described by the store's root `attributes.phenotypic.tables.measurements`. This run writes no separate per-image `measurements/` folder. |
+| `zarr/<stem>.ome.zarr/tables/<n>-<sha12>/measurements/table.parquet` | Parquet | Authoritative per-object measurements for that image, embedded in its store: one `<n>-<sha12>/` folder per pipeline that measured the store, numbered in the order the pipelines ran and named by the first 12 hex of the pipeline file's sha256 (`<n>-unknown` when no digest is known). Each folder is described by its entry in the store's root `attributes.phenotypic.tables.runs`. Re-running a pipeline replaces its own folder; another pipeline adds a folder beside it. This run writes no separate per-image `measurements/` folder. |
 
 Each `.ome.zarr` store is a standard OME-NGFF image: **napari, QuPath, and
 Vizarr open it directly, with no PhenoTypic install** — drag the store
