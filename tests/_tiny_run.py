@@ -848,3 +848,41 @@ def other_tables(store: Path):
     a row of the new run folder from one of the folder it sits beside.
     """
     return _stored_tables(store, marker="other")
+
+
+# ---------------------------------------------------------------------------
+# P3 T6 (C16): the upstream reference (spec D2, D8)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def input_store_v2(tmp_path: Path, measured_image) -> Path:
+    """:func:`measured_image` saved with A's tables as ``<tmp>/in/ds/plate.ome.zarr``.
+
+    It holds one run folder, ``1-<A>``, and is a complete store a forward
+    run can take as ``--input <tmp>/in`` (dataset ``ds``). The application is
+    closed first, as a finished CLI run leaves it.
+    """
+    _close_open_application(measured_image)
+    return measured_image.save2zarr(
+        tmp_path / "in" / "ds" / "plate.ome.zarr",
+        measurement_table=tables_for(measured_image),
+    )
+
+
+def root_tables(store: Path) -> dict:
+    """The store's ``attributes.phenotypic.tables`` block, read from its root ``zarr.json``."""
+    import json
+
+    root = json.loads((Path(store) / "zarr.json").read_text(encoding="utf-8"))
+    return root["attributes"]["phenotypic"]["tables"]
+
+
+def touch_root(store: Path) -> None:
+    """Rewrite *store*'s root ``zarr.json`` with one more byte of whitespace.
+
+    The parsed document is unchanged; only its bytes, and so its sha256,
+    move -- the stand-in for an input reprocessed in place.
+    """
+    root = Path(store) / "zarr.json"
+    root.write_bytes(root.read_bytes() + b" ")

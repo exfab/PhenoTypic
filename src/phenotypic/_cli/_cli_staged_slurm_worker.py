@@ -120,6 +120,26 @@ def _reference_pin(item: StagedManifestEntry) -> ReferencePin:
     return ReferencePin(item.stem, item.reference_digest)
 
 
+def _input_root(item: StagedManifestEntry) -> Path | None:
+    """The ``--input`` root the submitter resolved *item*'s relative path against.
+
+    The manifest records the input's absolute path and its input-relative
+    path (``staged_manifest_entry``), not the root, so the root is the input
+    path with the relative path's parts removed. Stage 1 hands it to
+    ``upstream_entries_for_input``, which re-derives exactly that relative
+    path as the upstream ``source`` (#281 spec D8). ``None`` -- an entry with
+    no relative path, or one the input path does not end with -- records the
+    input's file name instead.
+    """
+    if not item.relative_image_path:
+        return None
+    relative = Path(item.relative_image_path).parts
+    source = Path(item.input_path).parts
+    if not relative or len(relative) >= len(source) or source[-len(relative):] != relative:
+        return None
+    return Path(*source[: -len(relative)])
+
+
 def _active_check(output_dir: Path, epoch: str | None):
     """Return a publication fence callback for a staged worker."""
     if epoch is None:
@@ -277,6 +297,7 @@ def run_stage1_step(
                 pipeline_identity=pipeline_identity,
                 drop_originals=drop_originals,
                 reference_pin=_reference_pin(item),
+                input_root=_input_root(item),
             )
     except Exception as exc:
         _record_terminal_scientific_failure(

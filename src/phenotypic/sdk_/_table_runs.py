@@ -629,3 +629,220 @@ def store_of_table_path(path: Path) -> Path:
         if ancestor.name.endswith(ngff_.STORE_SUFFIX):
             return ancestor
     raise ValueError(f"{path} does not lie inside an OME-Zarr store")
+
+
+# ---------------------------------------------------------------------------
+# The upstream reference (spec D2, D8)
+# ---------------------------------------------------------------------------
+
+#: Keys of one ``upstream`` entry (spec D3).
+SOURCE_KEY: Final[str] = "source"
+ROOT_SHA256_KEY: Final[str] = "root_sha256"
+
+
+class UpstreamChangedError(RuntimeError):
+    """An upstream reference no longer matches the input it was recorded from (D8).
+
+    The input's root ``zarr.json`` has a different sha256 from the one the
+    result store recorded when it read that input -- for example after
+    AutoConvertRaw-GC reprocessed it in place. The run the reference names
+    may still exist, but it is no longer the run the result was derived from.
+
+    Attributes:
+        run_id: The upstream run id that was followed.
+        expected: The ``root_sha256`` the result store recorded.
+        actual: The sha256 of the input's root ``zarr.json`` now.
+    """
+
+    def __init__(self, run_id: str, expected: str, actual: str) -> None:
+        self.run_id = run_id
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f"upstream changed: table run {run_id!r} was recorded from an input "
+            f"whose root zarr.json had sha256 {expected}, and it now has {actual}"
+        )
+
+
+def _upstream_of_block(block: Mapping[str, object]) -> dict[str, dict]:
+    """The ``upstream`` entries of a v2 *block*; ``{}`` for v0/v1 or none."""
+    if tables_schema_of_block(block) != 2:
+        return {}
+    _upstream_orders(block)  # validates the keys
+    tables = _tables_block(block)
+    assert tables is not None
+    upstream = tables.get(UPSTREAM_KEY, {})
+    assert isinstance(upstream, Mapping)
+    return {str(key): dict(value) for key, value in upstream.items()}
+
+
+def _input_relative_source(input_path: Path, input_root: Path | None) -> str:
+    """*input_path* relative to *input_root*, as the CLI's work identity spells it.
+
+    The same rule as the work id's relative path: the file name when there is
+    no root, when the root is a file, when the paths are unrelated, or when
+    the input is its own root (a direct store input).
+    """
+    source = Path(input_path)
+    if input_root is None or Path(input_root).is_file():
+        return source.name
+    try:
+        relative = source.relative_to(Path(input_root))
+    except ValueError:
+        return source.name
+    return source.name if relative == Path(".") else relative.as_posix()
+
+
+def _parse_root_bytes(raw: bytes) -> Mapping[str, object] | None:
+    """The ``attributes.phenotypic`` block of root bytes *raw*, or ``None`` when absent."""
+    import json
+
+    from . import ngff_
+
+    payload = json.loads(raw.decode("utf-8"))
+    attributes = payload.get("attributes") if isinstance(payload, Mapping) else None
+    block = (
+        attributes.get(ngff_.PhenotypicAttr.ROOT)
+        if isinstance(attributes, Mapping)
+        else None
+    )
+    return block if isinstance(block, Mapping) else None
+
+
+def upstream_entries_for_input(
+    input_path: Path, input_root: Path | None
+) -> dict[str, dict]:
+    """The ``upstream`` entries a store derived from *input_path* records (spec D8).
+
+    When the input is a PhenoTypic store with a v2 ``tables`` descriptor, each
+    of its run folders becomes one entry::
+
+        {run_id: {"source": <input path relative to input_root>,
+                  "root_sha256": <sha256 of the input's root zarr.json>,
+                  "pipeline_sha256": <the run's pipeline digest, or None>}}
+
+    merged with the input's own ``upstream`` entries, so the chain is complete.
+    An inherited entry is kept **verbatim**: its ``source`` and
+    ``root_sha256`` name the store that holds that run, relative to the
+    ``--input`` of the run that first recorded it, not to *input_root*.
+    Nothing is copied; the caller passes the result to the store write as
+    ``upstream=``, which also counts it when numbering a new folder (D2).
+
+    The digest and the descriptor come from **one** read of the root, so
+    ``root_sha256`` certifies exactly the runs recorded beside it.
+
+    Args:
+        input_path: The image the result store is derived from: a store
+            directory, or any other image file.
+        input_root: The run's ``--input``. ``None`` (a worker given no input
+            root) records the input's file name as ``source``.
+
+    Returns:
+        The entries, or ``{}`` for a non-store input, a store with no
+        PhenoTypic block (a third-party OME-Zarr), and a store whose tables
+        are absent or in the v1 flat layout.
+
+    Raises:
+        ValueError: If the input's tables descriptor is corrupt or a version
+            this build does not read.
+    """
+    import hashlib
+
+    from . import ngff_
+
+    store = Path(input_path)
+    root = store / ngff_.STORE_ROOT_JSON
+    if not store.name.endswith(ngff_.STORE_SUFFIX) or not root.is_file():
+        return {}
+    raw = root.read_bytes()
+    block = _parse_root_bytes(raw)
+    if block is None or tables_schema_of_block(block) != 2:
+        return {}
+    entries = _upstream_of_block(block)
+    runs = table_runs_of_block(store, block)
+    if not runs:
+        return entries
+    source = _input_relative_source(store, input_root)
+    root_sha256 = hashlib.sha256(raw).hexdigest()
+    for run in runs:
+        entries[run.run_id] = {
+            SOURCE_KEY: source,
+            ROOT_SHA256_KEY: root_sha256,
+            PIPELINE_SHA256_KEY: run.pipeline_sha256,
+        }
+    return entries
+
+
+def _resolve_upstream_source(input_root: Path, source: str) -> Path:
+    """The store an upstream ``source`` names under *input_root*.
+
+    ``input_root / source``; or *input_root* itself when it is the store
+    (a direct store input records its own name as ``source``).
+
+    Raises:
+        FileNotFoundError: If neither is a store with a root ``zarr.json``.
+    """
+    from . import ngff_
+
+    root = Path(input_root)
+    candidate = root / PurePosixPath(source)
+    if (candidate / ngff_.STORE_ROOT_JSON).is_file():
+        return candidate
+    if root.name == source and (root / ngff_.STORE_ROOT_JSON).is_file():
+        return root
+    raise FileNotFoundError(
+        f"upstream input {source!r} is not reachable under {root}: "
+        f"no store root at {candidate / ngff_.STORE_ROOT_JSON}"
+    )
+
+
+def follow_upstream(store: Path, run_id: str, *, input_root: Path) -> TableRun:
+    """Follow *store*'s upstream reference *run_id* to the input run it names (D8).
+
+    Args:
+        store: The result store holding the reference.
+        run_id: A key of its ``tables.upstream``.
+        input_root: The ``--input`` the reference's ``source`` is relative
+            to: the result run's own for an entry it recorded, or the earlier
+            run's for an entry inherited through the chain.
+
+    Returns:
+        The input's run folder.
+
+    Raises:
+        KeyError: If *store* records no upstream entry *run_id*.
+        FileNotFoundError: If the input is unreachable, or *store* has no
+            root ``zarr.json``.
+        UpstreamChangedError: If the input's root ``zarr.json`` no longer has
+            the recorded ``root_sha256``.
+        ValueError: If the entry is malformed, or the unchanged input does not
+            declare *run_id* (a corrupt reference).
+    """
+    import hashlib
+
+    from . import ngff_
+
+    entry = _upstream_of_block(_read_block(store)).get(run_id)
+    if entry is None:
+        raise KeyError(f"{store} records no upstream table run {run_id!r}")
+    source = entry.get(SOURCE_KEY)
+    expected = entry.get(ROOT_SHA256_KEY)
+    if not isinstance(source, str) or not source or not _is_sha256(expected):
+        raise ValueError(f"upstream entry {run_id!r} of {store} is malformed: {entry!r}")
+    assert isinstance(expected, str)
+    input_store = _resolve_upstream_source(Path(input_root), source)
+    raw = (input_store / ngff_.STORE_ROOT_JSON).read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    if actual != expected:
+        raise UpstreamChangedError(run_id, expected, actual)
+    block = _parse_root_bytes(raw) or {}
+    run = next(
+        (run for run in table_runs_of_block(input_store, block) if run.run_id == run_id),
+        None,
+    )
+    if run is None:
+        raise ValueError(
+            f"upstream input {input_store} is unchanged but declares no table "
+            f"run {run_id!r}: the reference in {store} is corrupt"
+        )
+    return run

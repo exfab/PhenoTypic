@@ -1965,6 +1965,7 @@ class OutputManager:
         commit_guard: CommitGuard | None = None,
         measurements: pd.DataFrame | None = None,
         figures: StoredFigures | None = None,
+        upstream: Mapping[str, Mapping] | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1996,6 +1997,11 @@ class OutputManager:
                 transaction (spec 2026-09-22 §3); they replace that run's
                 folder only. ``None`` adds no run. Either way, every other
                 run already in the store is carried across (§1a).
+            upstream: The input's table runs
+                (:func:`~phenotypic.sdk_.upstream_entries_for_input`), recorded
+                under the store's ``tables.upstream`` and counted when
+                numbering its own folder (#281 spec D2, D8). ``None`` records
+                none; the store's existing ``upstream`` is carried either way.
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -2035,6 +2041,8 @@ class OutputManager:
                 save_kwargs["measurement_table"] = table
             if figures is not None:
                 save_kwargs["figures"] = figures
+            if upstream:
+                save_kwargs["upstream"] = upstream
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
                 "Saved OME-Zarr store for %s/%s", dataset_name, image_stem

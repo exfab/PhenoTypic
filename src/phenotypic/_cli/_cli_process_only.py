@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
 import click
 
@@ -19,6 +19,7 @@ from phenotypic.sdk_ import (
     CommitGuard,
     atomic_write_with_writer,
     source_image_stem,
+    upstream_entries_for_input,
 )
 from phenotypic._core._provenance import (
     continuing_provenance_application,
@@ -165,6 +166,7 @@ def write_process_only_layer(
     fmt: ProcessFormat = "tiff",
     commit_guard: CommitGuard | None = None,
     figures: StoredFigures | None = None,
+    upstream: Mapping[str, Mapping] | None = None,
 ) -> None:
     """Write one image layer, as a flat file or as a single-series store.
 
@@ -192,6 +194,13 @@ def write_process_only_layer(
 
     *figures* are the per-image figures to write inside the store's
     transaction (spec 2026-09-22 §3); only the ``zarr`` branch writes them.
+
+    *upstream* is the input's table runs
+    (:func:`~phenotypic.sdk_.upstream_entries_for_input`), recorded under the
+    store's ``tables.upstream`` (#281 spec D8); only the ``zarr`` branch
+    records them, since a flat file has no descriptor. The entries are a pure
+    function of the input's root bytes and its input-relative path, so a
+    re-derived store stays byte-identical.
     """
     if fmt == "zarr":
         from phenotypic.sdk_ import ngff_
@@ -246,6 +255,7 @@ def write_process_only_layer(
             # rewritten in place.
             consolidate=True,
             figures=figures,
+            upstream=upstream,
         )
         return
 
@@ -300,6 +310,7 @@ def process_single_apply_only_core(
     image: Image | None = None
     provenance_application_opened = False
     figures: StoredFigures | None = None
+    upstream: dict[str, dict] = {}
 
     def _mark_provenance_failed() -> None:
         if image is None or not provenance_application_opened:
@@ -326,6 +337,10 @@ def process_single_apply_only_core(
         )
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
+        # The input's table runs, referenced rather than copied (spec D8). A
+        # flat export has no descriptor to record them in.
+        if process_format == "zarr":
+            upstream = upstream_entries_for_input(image_path, input_root)
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
 
@@ -407,5 +422,6 @@ def process_single_apply_only_core(
         fmt=process_format,
         commit_guard=commit_guard,
         figures=figures,
+        upstream=upstream,
     )
     return True

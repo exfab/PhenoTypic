@@ -476,7 +476,9 @@ from .ngff_ import (  # noqa: E402
 from ._table_runs import (  # noqa: E402
     TABLE_RUN_ID_RE,
     TableRun,
+    UpstreamChangedError,
     choose_table_run_id,
+    follow_upstream,
     journal_measurement_table,
     journal_table_run,
     latest_measurement_run,
@@ -488,6 +490,7 @@ from ._table_runs import (  # noqa: E402
     store_tables_schema,
     table_run_for_pipeline,
     table_run_id,
+    upstream_entries_for_input,
 )
 from .typing_ import InputLayer, NormOut, ProcessOnlyLayer  # noqa: E402
 
@@ -590,7 +593,9 @@ __all__ = [
     # Per-pipeline table runs (#281 P3, spec D1-D6a)
     "TABLE_RUN_ID_RE",
     "TableRun",
+    "UpstreamChangedError",
     "choose_table_run_id",
+    "follow_upstream",
     "journal_measurement_table",
     "journal_table_run",
     "latest_measurement_run",
@@ -602,6 +607,7 @@ __all__ = [
     "store_tables_schema",
     "table_run_for_pipeline",
     "table_run_id",
+    "upstream_entries_for_input",
     # Run-state readers (spec §5.2). The four frozen types land in P1
     # Task 2, clear_verification_cache in Task 3, the identity readers in
     # Task 4 and resolve_run_state in Task 5 -- each exported by the task

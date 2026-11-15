@@ -223,6 +223,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ),
                         drop_originals=cfg.drop_originals,
                         reference_pin=_reference_pin(img, identity),
+                        input_root=cfg.input_path,
                     )
             except Exception as exc:
                 _record_local_terminal_failure(

@@ -568,6 +568,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 reference_pin=ReferencePin(
                     source_image_stem(image_path), identity.reference_digest
                 ),
+                input_root=self.config.input_path,
             )
 
             _publish_local_image_success(

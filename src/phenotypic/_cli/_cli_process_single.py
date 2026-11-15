@@ -80,6 +80,7 @@ from phenotypic.sdk_ import (
     progress_dir,
     source_image_stem,
     store_stem,
+    upstream_entries_for_input,
     zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import (
@@ -208,6 +209,7 @@ def process_single_image_core(
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
     reference_pin: ReferencePin | None = None,
+    input_root: Path | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -232,6 +234,10 @@ def process_single_image_core(
             filesystem commit point.
         reference_pin: The reference digest ``work_id`` was computed from;
             the apply refuses a manifest that has since re-planned the image.
+        input_root: The run's ``--input``. When *image_path* is a PhenoTypic
+            store with table runs, the result store records them as its
+            ``tables.upstream``, with ``source`` relative to this root
+            (#281 spec D8). ``None`` records the input's name.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -290,6 +296,8 @@ def process_single_image_core(
         )
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
+        # The input's table runs, referenced rather than copied (spec D8).
+        upstream = upstream_entries_for_input(image_path, input_root)
         resolved_pipeline_identity = (
             pipeline_source_identity(pipeline_path)
             if pipeline_identity is None
@@ -334,6 +342,7 @@ def process_single_image_core(
                 image_stem,
                 work_id=work_id,
                 commit_guard=commit_guard,
+                upstream=upstream,
             )
             if saved_store is None:
                 raise RuntimeError(
@@ -386,6 +395,7 @@ def process_single_image_core(
             commit_guard=commit_guard,
             measurements=measurements,
             figures=figures,
+            upstream=upstream,
         )
         if saved_store is None:
             raise RuntimeError(
@@ -1084,6 +1094,7 @@ def main(
                 active_check=active_check,
                 commit_guard=commit_guard,
                 reference_pin=reference_pin,
+                input_root=input_root,
             )
             # The same resolver the local strategy and the staged SLURM
             # worker use. It is what keeps this site from certifying a `.h5`
