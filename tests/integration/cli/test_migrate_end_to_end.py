@@ -34,7 +34,7 @@ from phenotypic._cli._cli_migrate_manifest import (
 from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
+    declared_measurement_table_path,
     dataset_measurements_dir,
     dataset_overlays_dir,
     datasets_needing_migration,
@@ -191,7 +191,7 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
             stem: _tree_digest(store) for stem, store in stores.items()
         },
         "embedded_tables": {
-            stem: _digest(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+            stem: _digest(declared_measurement_table_path(store))
             for stem, store in stores.items()
         },
         "overlays": {

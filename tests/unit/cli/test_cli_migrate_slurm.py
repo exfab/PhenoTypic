@@ -294,7 +294,6 @@ def test_state_free_archive_completes_the_real_slurm_worker_chain(
     )
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         processing_state_path,
         replace_embedded_measurement_table,
     )
@@ -361,8 +360,9 @@ def test_state_free_archive_completes_the_real_slurm_worker_chain(
             ),
             encoding="utf-8",
         )
-        embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-        replace_embedded_measurement_table(
+        # The import writes a per-pipeline run folder (#281 P3) and returns
+        # its table, which is what the record certifies.
+        embedded = replace_embedded_measurement_table(
             task.store_path,
             prepare_embedded_measurement_table(
                 pd.DataFrame(

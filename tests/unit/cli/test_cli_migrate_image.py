@@ -55,6 +55,21 @@ _HDF_FIXTURE = (
 )
 
 
+def _embedded_table(task: MigrationImageTask) -> Path:
+    """The measurement table the task's store declares, in either tables layout.
+
+    Migration writes a per-pipeline run folder (#281 P3), so a real migrated
+    store keeps its table at ``tables/<n>-<sha12>/measurements/``. A store
+    that declares none (the fast fixture's stub root) answers the v1 flat
+    path, which is where that fixture plants its payload.
+    """
+    from phenotypic.sdk_ import declared_measurement_table_path
+
+    return declared_measurement_table_path(task.store_path) or (
+        task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+
+
 def _record_path(task: MigrationImageTask) -> Path:
     """Return the RECORD the migrator publishes for one task.
 
@@ -410,7 +425,7 @@ def test_hdf_only_zero_object_image_completes_without_inventing_a_table(
     assert result.overlay_rendered is True
     assert result.skipped is False
     assert len(result.marker_digest) == 64
-    assert not (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH).exists()
+    assert not (_embedded_table(task)).exists()
     marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
     assert set(marker["artifacts"]) == {"overlay", "store"}
     assert valid_image_success(
@@ -466,7 +481,7 @@ def test_legacy_only_marker_is_republished_with_complete_migrated_artifacts(
         task.overlay_path.relative_to(output_dir).as_posix()
     )
     assert marker["artifacts"]["measurements"]["path"] == (
-        (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH)
+        (_embedded_table(task))
         .relative_to(output_dir)
         .as_posix()
     )
@@ -496,7 +511,7 @@ def test_valid_table_with_missing_overlay_renders_only_overlay_and_marker(
     _install_store(task)
     _install_table(task)
     root_before = (task.store_path / "zarr.json").read_bytes()
-    table_before = (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH).read_bytes()
+    table_before = (_embedded_table(task)).read_bytes()
 
     result = _complete_image(output_dir, task)
 
@@ -505,7 +520,7 @@ def test_valid_table_with_missing_overlay_renders_only_overlay_and_marker(
     assert result.overlay_rendered is True
     assert (task.store_path / "zarr.json").read_bytes() == root_before
     assert (
-        task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+        _embedded_table(task)
     ).read_bytes() == table_before
 
 
@@ -545,7 +560,7 @@ def test_complete_artifacts_republish_only_missing_or_invalid_marker(
     output_dir, task = _migration_task(tmp_path)
     first = _complete_image(output_dir, task)
     store_before = (task.store_path / "zarr.json").read_bytes()
-    table_before = (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH).read_bytes()
+    table_before = (_embedded_table(task)).read_bytes()
     overlay_before = task.overlay_path.read_bytes()
     if marker_state == "missing":
         _record_path(task).unlink()
@@ -563,7 +578,7 @@ def test_complete_artifacts_republish_only_missing_or_invalid_marker(
     assert repaired.skipped is False
     assert (task.store_path / "zarr.json").read_bytes() == store_before
     assert (
-        task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+        _embedded_table(task)
     ).read_bytes() == table_before
     assert task.overlay_path.read_bytes() == overlay_before
 
@@ -587,7 +602,7 @@ def test_retained_external_parquet_bytes_are_provenance_not_migration_targets(
     result = _complete_image(output_dir, task)
 
     embedded = pd.read_parquet(
-        task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+        _embedded_table(task)
     )
     assert result.table_installed is True
     assert task.measurement_path.read_bytes() == source_before
@@ -606,7 +621,7 @@ def test_valid_marker_ignores_later_retained_parquet_scientific_drift(
     output_dir, task = _migration_task(tmp_path)
     first = _complete_image(output_dir, task)
     assert task.measurement_path is not None
-    embedded_path = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    embedded_path = _embedded_table(task)
     embedded_before = embedded_path.read_bytes()
     marker_before = _record_path(task).read_bytes()
     changed = pd.read_parquet(task.measurement_path)
@@ -712,7 +727,7 @@ def test_conflicting_marker_work_id_is_repaired_with_processing_state_authority(
     output_dir, task = _migration_task(tmp_path)
     image = _install_fast_migrated_artifacts(task)
     _save_canonical_work_id(output_dir, "canonical-work-id")
-    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+    embedded = _embedded_table(task)
     publish_image_success(
         output_dir,
         work_id="stale-work-id",
@@ -758,7 +773,7 @@ def test_complete_image_is_a_byte_preserving_no_op(tmp_path: Path) -> None:
         path: path.read_bytes()
         for path in (
             task.store_path / "zarr.json",
-            task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+            _embedded_table(task),
             task.overlay_path,
             _record_path(task),
         )
@@ -866,7 +881,7 @@ def test_revoked_generation_cannot_publish_or_report_stage_success(
 
     guarded_before = {
         "store": task.store_path / "zarr.json",
-        "table": task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+        "table": _embedded_table(task),
         "overlay": task.overlay_path,
         "marker": _record_path(task),
         "result": _record_path(task),

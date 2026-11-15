@@ -1806,7 +1806,7 @@ def test_running_migrate_twice_converts_zero_and_migrates_zero_headers(
     import polars as pl
 
     from phenotypic._cli._cli_migrate import run_migrate
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+    from phenotypic.sdk_ import declared_measurement_table_path, zarr_store_path
 
     source = legacy_run / "results" / "ds" / "measurements" / "img.parquet"
     source_bytes = source.read_bytes()
@@ -1819,8 +1819,7 @@ def test_running_migrate_twice_converts_zero_and_migrates_zero_headers(
     assert first.headers_migrated == 0
     assert first.tables_migrated > 0
     embedded_columns = pl.read_parquet(
-        zarr_store_path(legacy_run, "ds", "img")
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        declared_measurement_table_path(zarr_store_path(legacy_run, "ds", "img"))
     ).columns
     assert "MetadataGenetic_Strain" not in embedded_columns
     assert "Metadata_Strain" in embedded_columns
@@ -1840,8 +1839,8 @@ def test_pass_three_embeds_canonical_measurement_headers_without_rewriting_sourc
     import polars as pl
 
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_measurements_dir,
+        declared_measurement_table_path,
         zarr_store_path,
     )
     from phenotypic._cli._cli_migrate import run_migrate
@@ -1861,8 +1860,9 @@ def test_pass_three_embeds_canonical_measurement_headers_without_rewriting_sourc
     assert source.read_bytes() == source_bytes
     embedded_columns = set(
         pl.read_parquet(
-            zarr_store_path(legacy_run, "ds", source.stem)
-            / MEASUREMENT_TABLE_RELATIVE_PATH
+            declared_measurement_table_path(
+                zarr_store_path(legacy_run, "ds", source.stem)
+            )
         ).columns
     )
     assert "MetadataGenetic_Strain" not in embedded_columns
