@@ -529,6 +529,104 @@ def tree_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def one_store(out: Path, *, stem: str | None = None) -> Path:
+    """The single ``*.ome.zarr`` store under ``<out>/results``.
+
+    Args:
+        out: A run's output root.
+        stem: Select the store of this image stem, for a run with several.
+
+    Raises:
+        AssertionError: Unless exactly one store matches.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    pattern = f"{stem}{ngff_.STORE_SUFFIX}" if stem is not None else f"*{ngff_.STORE_SUFFIX}"
+    stores = sorted((Path(out) / "results").glob(f"*/zarr/{pattern}"))
+    assert len(stores) == 1, f"expected one store matching {pattern}, found {stores}"
+    return stores[0]
+
+
+def _journal_run_id(store: Path) -> str:
+    import json
+
+    from phenotypic._core._provenance import journal_pipeline_sha256
+    from phenotypic.sdk_ import choose_table_run_id
+
+    root = Path(store) / "zarr.json"
+    block = (
+        json.loads(root.read_text(encoding="utf-8"))["attributes"]["phenotypic"]
+        if root.is_file()
+        else {}
+    )
+    return choose_table_run_id(
+        block, pipeline_sha256=journal_pipeline_sha256(block.get("provenance"))
+    )
+
+
+def journal_table_path(store: Path) -> Path:
+    """Where *store*'s journal-owned run folder keeps ``measurements/table.parquet``.
+
+    The folder a forward save of the store's journal would own (spec D6):
+    the existing folder for the journal's pipeline digest, else the next
+    number. A store with no root yet is numbered as an empty one, so this
+    names ``tables/1-<sha12|unknown>/...`` for a store about to be created.
+    """
+    from phenotypic.sdk_._table_runs import measurement_table_relative_path
+
+    return Path(store) / measurement_table_relative_path(_journal_run_id(store))
+
+
+def plant_measurement_table(store: Path, payload: bytes = b"measurements") -> Path:
+    """Write *payload* as *store*'s own measurements table, in the v2 layout.
+
+    The stand-in for "the forward save embedded a table" in resume and
+    classification tests, which care that the table exists, not what it
+    holds. The bytes go to :func:`journal_table_path`, and when the store has
+    a root its ``tables`` descriptor gains (or keeps) that run with a
+    ``measurements`` block, so the resolver finds it exactly as it finds a
+    real save's. A store with no root gets the file only: nothing can declare
+    it, which is the state a reader must treat as "no table".
+
+    Returns:
+        The table path.
+    """
+    import json
+
+    from phenotypic._core._provenance import journal_pipeline_sha256
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import TABLE_RUN_ID_RE
+
+    from phenotypic.sdk_._table_runs import measurement_table_relative_path
+
+    run_id = _journal_run_id(store)
+    table = Path(store) / measurement_table_relative_path(run_id)
+    table.parent.mkdir(parents=True, exist_ok=True)
+    table.write_bytes(payload)
+    root_path = Path(store) / "zarr.json"
+    if root_path.is_file():
+        match = TABLE_RUN_ID_RE.match(run_id)
+        assert match is not None, run_id
+        root = json.loads(root_path.read_text(encoding="utf-8"))
+        block = root["attributes"]["phenotypic"]
+        tables = block.get(ngff_.PhenotypicAttr.TABLES)
+        if not isinstance(tables, dict) or "schema_version" not in tables:
+            tables = {"schema_version": ngff_.TABLES_SCHEMA_VERSION, "runs": {}, "upstream": {}}
+        entry = tables["runs"].setdefault(
+            run_id,
+            {
+                "order": int(match["order"]),
+                "pipeline_sha256": journal_pipeline_sha256(block.get("provenance")),
+            },
+        )
+        entry["measurements"] = {
+            "path": table.relative_to(store).as_posix(),
+        }
+        block[ngff_.PhenotypicAttr.TABLES] = tables
+        root_path.write_text(json.dumps(root), encoding="utf-8")
+    return table
+
+
 def _load_store(store: Path):
     """Load *store* with the class its root names (``GridImage`` or ``Image``)."""
     import phenotypic

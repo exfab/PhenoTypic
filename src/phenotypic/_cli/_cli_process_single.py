@@ -44,7 +44,11 @@ from ._cli_process_only import (
     process_single_apply_only_core,
     resolve_process_format,
 )
-from ._cli_completion import image_data_artifact, publish_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    image_measurement_artifact,
+    publish_image_success,
+)
 from ._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
     SLURM_GENERATION_ENV_VAR,
@@ -72,7 +76,6 @@ from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extens
 from phenotypic.sdk_ import (
     CommitGuard,
     EnvVar,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     load_image_from_store,
     progress_dir,
     source_image_stem,
@@ -1087,7 +1090,9 @@ def main(
                 source_image_stem(image),
             )
             artifacts = {
-                "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "measurements": image_measurement_artifact(
+                    output_dir, dataset_name, source_image_stem(image)
+                ),
                 data_key: data_path,
             }
             if save_overlays:

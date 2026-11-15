@@ -59,13 +59,16 @@ from ._cli_failure_tracker import (
     work_identity_for_image,
 )
 from ._cli_reference import ReferencePin
-from ._cli_completion import image_data_artifact, publish_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    image_measurement_artifact,
+    publish_image_success,
+)
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dashboard_html_path,
     event_log_path,
     atomic_write_bytes,
@@ -180,7 +183,9 @@ def _publish_local_image_success(
             source_image_stem(image_path),
         )
         artifacts = {
-            "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "measurements": image_measurement_artifact(
+                output_dir, dataset, source_image_stem(image_path)
+            ),
             data_key: data_path,
         }
         if output_manager.save_overlays:

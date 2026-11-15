@@ -172,6 +172,47 @@ def image_data_artifact(
     )
 
 
+def image_measurement_artifact(
+    output_dir: Path, dataset: str, image_stem: str
+) -> Path:
+    """Return the ``measurements`` artifact a **forward** per-image record certifies.
+
+    It is the ``measurements/table.parquet`` of the run folder the forward
+    save wrote, ``tables/<n>-<sha12>/`` (#281 spec D1, D6a), found through
+    the resolver (:func:`phenotypic.sdk_.journal_table_run`) and never by
+    joining a path: the folder name depends on the store's other runs.
+    Full mode, staged Stage 3 and their resume paths call this; ``--mode
+    measure`` declares the run its own rewrite returns instead, because its
+    pipeline is not the one the store's journal names.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        image_stem: Image stem.
+
+    Returns:
+        The table path, which exists.
+
+    Raises:
+        FileNotFoundError: If the store holds no measurements table for its
+            journal's pipeline -- the same outcome ``publish_image_success``'s
+            ``strict=True`` resolve would give, with the reason spelled out.
+    """
+    from phenotypic.sdk_ import journal_table_run, zarr_store_path
+
+    store = zarr_store_path(output_dir, dataset, image_stem)
+    run = journal_table_run(store)
+    if run is None or not run.has_measurements:
+        raise FileNotFoundError(
+            f"{store} holds no measurements table for the pipeline its journal "
+            "records; the image's forward save did not write one"
+        )
+    path = run.measurements_path()
+    if not path.is_file():
+        raise FileNotFoundError(f"declared measurements table is missing: {path}")
+    return path
+
+
 def publish_image_success(
     output_dir: Path,
     *,
