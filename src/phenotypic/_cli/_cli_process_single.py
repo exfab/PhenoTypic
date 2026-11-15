@@ -357,6 +357,9 @@ def process_single_image_core(
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
+            # Beside measure(), never inside it: the embedding tables go into
+            # the same run folder as the measurements (#281 spec E2).
+            embeddings = pipeline.embed(image)
         if output_manager.save_overlays:
             _check_active(active_check)
             output_manager.save_overlay(
@@ -396,6 +399,7 @@ def process_single_image_core(
             measurements=measurements,
             figures=figures,
             upstream=upstream,
+            embeddings=embeddings,
         )
         if saved_store is None:
             raise RuntimeError(
@@ -473,8 +477,9 @@ def process_single_store_measure_core(
     Loads ``store_path`` as :class:`Image` or :class:`GridImage` — dispatched
     from the store's own ``phenotypic.image_class``, with ``image_type`` as the
     fallback for a block that carries none — runs
-    :meth:`ImagePipeline.measure` only (no apply / no detection), and rewrites
-    the embedded measurement table. Does not regenerate overlays or pixel arrays.
+    :meth:`ImagePipeline.measure` and :meth:`ImagePipeline.embed` only (no
+    apply / no detection), and rewrites the pipeline's run folder: its
+    measurement table and its embedding tables. Does not regenerate overlays or pixel arrays.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
@@ -505,6 +510,10 @@ def process_single_store_measure_core(
     # Measurement only — no apply / detection. apply_post=False matches
     # the forward path so store re-measure parquets are also post-free.
     measurements = pipeline.measure(image, apply_post=False)
+    # The run folder's entry describes this write whole, so the embeddings
+    # must be passed or the same-pipeline rewrite drops them (review OQ5,
+    # #281 spec E2). The store's own objmap is what they are bound to.
+    embeddings = pipeline.embed(image)
 
     # ``store_stem``, never ``Path.stem``: ``.ome.zarr`` is a double suffix,
     # so ``.stem`` would name the parquet ``<stem>.ome.parquet`` and key the
@@ -566,6 +575,7 @@ def process_single_store_measure_core(
         pipeline_sha256=pipeline_sha256,
         commit_guard=commit_guard,
         figures=figures,
+        embeddings=embeddings,
     )
     PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
         store_path,

@@ -653,6 +653,9 @@ def stage3_merge_measure_core(
             output_dir, dataset_name, pin=reference_pin
         ):
             measurements = replay_pipeline.measure(image, apply_post=False)
+            # Beside measure(), into the same run folder (#281 spec E2). The
+            # objmap is the replayed one, so Stage 1's zeros never bind them.
+            embeddings = replay_pipeline.embed(image)
 
         if output_manager.save_overlays:
             _check_active(active_check)
@@ -703,6 +706,7 @@ def stage3_merge_measure_core(
             commit_guard=commit_guard,
             measurements=measurements,
             figures=figures,
+            embeddings=embeddings,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(

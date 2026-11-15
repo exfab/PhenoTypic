@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 from ._cli_types import Dataset
@@ -531,8 +532,14 @@ def _collect_feature_headers(
         (e.g. ``"MeasureSize" → ["Size_Area", "Size_IntegratedIntensity", ...]``).
         Keys with no discoverable headers are omitted.
     """
+    from phenotypic.abc_ import MeasureEmbedding
+
     headers_by_key: Dict[str, List[str]] = {}
     for key, measurer in pipeline._meas.items():
+        if isinstance(measurer, MeasureEmbedding):
+            # An embedder writes its own tables, never a master column, so
+            # it gets no by-feature split (#281 spec E5).
+            continue
         infoclasses = []
         single = getattr(measurer, "_measurement_infoclass", None)
         if single is not None:
@@ -1966,6 +1973,7 @@ class OutputManager:
         measurements: pd.DataFrame | None = None,
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -2004,6 +2012,10 @@ class OutputManager:
                 empty), it replaces the store's existing ``upstream`` block,
                 since this save read its input just now; ``None`` carries the
                 existing block (review M1).
+            embeddings: The pipeline's embedding tables for this image
+                (:meth:`~phenotypic.ImagePipeline.embed`), written into the
+                same run folder as *measurements* (#281 spec D1, E2). ``None``
+                writes none.
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -2045,6 +2057,8 @@ class OutputManager:
                 save_kwargs["figures"] = figures
             if upstream is not None:
                 save_kwargs["upstream"] = upstream
+            if embeddings:
+                save_kwargs["embeddings"] = embeddings
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
                 "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
@@ -2076,6 +2090,7 @@ class OutputManager:
         figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Replace an existing store's authoritative measurement and metadata
         tables, in the run folder of the pipeline that measured them.
@@ -2105,6 +2120,11 @@ class OutputManager:
             durable: ``fsync`` before promoting. ``None`` defers to
                 :attr:`durable_writes`.
             commit_guard: Publication guard, checked at the commit point.
+            embeddings: The pipeline's embedding tables for this image
+                (:meth:`~phenotypic.ImagePipeline.embed`). The run folder's
+                entry describes this write whole, so ``None`` **drops** the
+                folder's embeddings (review OQ5): ``--mode measure`` passes
+                its pipeline's payloads, so a pipeline that embeds keeps them.
 
         Returns:
             The ``measurements/table.parquet`` of the run folder written, the
@@ -2134,6 +2154,7 @@ class OutputManager:
             figures=figures,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
+            embeddings=embeddings,
         )
         return run.measurements_path()
 
