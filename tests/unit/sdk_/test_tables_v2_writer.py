@@ -157,15 +157,59 @@ def test_objmap_digest_is_of_the_labels_as_stored():
     assert objmap_digest(np.asfortranarray(labels)) == objmap_digest(labels)
 
 
-@pytest.mark.parametrize("root", ['{"zarr_format": 3, "node_type": "group", "attributes": {}}', "{not json"])
-def test_a_save_replaces_a_store_with_no_phenotypic_block(tmp_path, measured_image, root):
+def test_a_save_replaces_a_store_with_no_phenotypic_block(tmp_path, measured_image):
     # C12 gate: `--mode migrate` rebuilds an invalid store from its HDF source
     # with save2zarr; a root with no `phenotypic` block carries nothing.
     target = tmp_path / "p.ome.zarr"
     target.mkdir()
-    (target / "zarr.json").write_text(root, encoding="utf-8")
+    (target / "zarr.json").write_text(
+        '{"zarr_format": 3, "node_type": "group", "attributes": {}}', encoding="utf-8"
+    )
     store = measured_image.save2zarr(target, measurement_table=tables_for(measured_image))
     assert [r.order for r in list_table_runs(store)] == [1]
+
+
+def test_an_ordinary_save_refuses_a_store_whose_root_cannot_be_parsed(
+    tmp_path, measured_image
+):
+    """Review M4: the root may declare other pipelines' folders; never drop them."""
+    target = tmp_path / "p.ome.zarr"
+    (target / "tables" / "1-unknown").mkdir(parents=True)
+    (target / "zarr.json").write_text("{not json", encoding="utf-8")
+    with pytest.raises(ValueError, match="cannot be read"):
+        measured_image.save2zarr(target, measurement_table=tables_for(measured_image))
+    with pytest.raises(ValueError, match="cannot be read"):
+        measured_image.save2zarr(target)  # a table-less save reads the root too
+    assert (target / "zarr.json").read_text(encoding="utf-8") == "{not json"
+    assert (target / "tables" / "1-unknown").is_dir()
+
+
+def test_the_hdf_rebuild_replaces_an_unparseable_store_whole(tmp_path, measured_image):
+    """The one explicit exception: migrate's replace-from-HDF carries nothing."""
+    target = tmp_path / "p.ome.zarr"
+    target.mkdir()
+    (target / "zarr.json").write_text("{not json", encoding="utf-8")
+    store = measured_image.save2zarr(
+        target, measurement_table=tables_for(measured_image), replace_unreadable=True
+    )
+    assert [r.order for r in list_table_runs(store)] == [1]
+
+
+def test_migrate_hdf_to_zarr_passes_the_explicit_replace(monkeypatch, tmp_path):
+    """The HDF rebuild opts in by keyword, never by sniffing the root."""
+    from phenotypic.sdk_ import _hdf_to_zarr
+
+    seen: dict = {}
+
+    class _FakeImage:
+        def save2zarr(self, target, **kwargs):
+            seen.update(kwargs)
+            return target
+
+    monkeypatch.setattr(_hdf_to_zarr, "_load_for_migration", lambda _src: _FakeImage())
+    monkeypatch.setattr(_hdf_to_zarr, "_stored_work_id", lambda _src: None)
+    _hdf_to_zarr.migrate_hdf_to_zarr(tmp_path / "x.h5", tmp_path / "x.ome.zarr")
+    assert seen["replace_unreadable"] is True
 
 
 def test_the_contract_validator_reads_v2(tmp_path, measured_image):

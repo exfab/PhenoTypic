@@ -336,6 +336,9 @@ def migrate_hdf_to_zarr(
         target,
         work_id=_stored_work_id(src),
         commit_guard=commit_guard,
+        # Migrate rebuilds an invalid store whole from its HDF source, root
+        # unreadable or not; it carries nothing (#281 P3 review M4).
+        replace_unreadable=True,
     )
     if not keep_source:
         if not _conversion_is_faithful(src, store):

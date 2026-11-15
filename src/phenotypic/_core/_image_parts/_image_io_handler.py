@@ -1124,6 +1124,7 @@ class ImageIOHandler(ImageColorSpace):
         measurement_table: PreparedImageTables | None = None,
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -1157,6 +1158,11 @@ class ImageIOHandler(ImageColorSpace):
                 ``{run_id: {"source", "root_sha256", "pipeline_sha256"}}``,
                 recorded under ``tables.upstream`` and counted when numbering
                 a new folder (spec D2, D8). Nothing is copied.
+            replace_unreadable: Replace a store at *path* whose root cannot be
+                parsed whole, carrying nothing. By default such a save is
+                refused (``ValueError``), because the root may declare other
+                pipelines' table runs. Only ``--mode migrate``'s rebuild of an
+                invalid store from its HDF source passes it.
 
         Returns:
             The promoted store path.
@@ -1192,6 +1198,7 @@ class ImageIOHandler(ImageColorSpace):
             measurement_table=measurement_table,
             figures=figures,
             upstream=upstream,
+            replace_unreadable=replace_unreadable,
         )
 
     def _save_store(
@@ -1210,6 +1217,7 @@ class ImageIOHandler(ImageColorSpace):
         reproducible_provenance: bool = False,
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -1257,6 +1265,7 @@ class ImageIOHandler(ImageColorSpace):
                 run already at *path* is carried across.
             upstream: The input's table runs, recorded under
                 ``tables.upstream`` (see :meth:`save2zarr`).
+            replace_unreadable: See :meth:`save2zarr`.
 
         Returns:
             The promoted store path.
@@ -1285,6 +1294,7 @@ class ImageIOHandler(ImageColorSpace):
                 reproducible_provenance=reproducible_provenance,
                 figures=figures,
                 upstream=upstream,
+                replace_unreadable=replace_unreadable,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1307,6 +1317,7 @@ class ImageIOHandler(ImageColorSpace):
         reproducible_provenance: bool = False,
         figures: StoredFigures | None = None,
         upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
     ) -> Path:
         """Populate one allocated part and promote it to its final path.
 
@@ -1474,6 +1485,7 @@ class ImageIOHandler(ImageColorSpace):
             primary=primary,
             objmap=objmap,
             arrays=arrays,
+            replace_unreadable=replace_unreadable,
         )
 
         # Figures land in THIS part too, before the root, for the same reason
@@ -1545,6 +1557,7 @@ class ImageIOHandler(ImageColorSpace):
         primary: str,
         objmap: np.ndarray | None,
         arrays: Mapping[str, np.ndarray],
+        replace_unreadable: bool = False,
     ) -> tuple[dict[str, dict], dict[str, dict]]:
         """Carry the store's table run folders into *part* and write this save's own.
 
@@ -1588,7 +1601,9 @@ class ImageIOHandler(ImageColorSpace):
         if writes_own:
             # The same read the carry makes, so the folder is numbered after
             # exactly the runs that are carried.
-            live = _replaced_store_block(final)
+            live = _replaced_store_block(
+                final, replace_unreadable=replace_unreadable
+            )
             selection = dict(deepcopy(live)) if live is not None else {}
             if upstream:
                 tables = selection.get(ngff_.PhenotypicAttr.TABLES)
@@ -1601,7 +1616,9 @@ class ImageIOHandler(ImageColorSpace):
                 selection[ngff_.PhenotypicAttr.TABLES] = tables
             run_id = choose_table_run_id(selection, pipeline_sha256=pipeline_sha256)
 
-        carried = carry_table_runs(final, part, exclude=run_id)
+        carried = carry_table_runs(
+            final, part, exclude=run_id, replace_unreadable=replace_unreadable
+        )
         runs: dict[str, dict] = carried[RUNS_KEY]
         merged_upstream: dict[str, dict] = {
             **carried[UPSTREAM_KEY],

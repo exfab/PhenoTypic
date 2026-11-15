@@ -804,14 +804,29 @@ def _link_tree(source: Path, target: Path) -> None:
             )
 
 
-def _replaced_store_block(final: Path) -> Mapping[str, object] | None:
+def _replaced_store_block(
+    final: Path, *, replace_unreadable: bool = False
+) -> Mapping[str, object] | None:
     """The ``attributes.phenotypic`` block of the store a save replaces, or ``None``.
 
     ``None`` -- nothing to carry, and nothing to number a new folder after --
-    when there is no store at *final*, when its root is unparseable (logged),
-    or when the root has no ``phenotypic`` block: a third-party or half-built
-    store that a save (``--mode migrate`` rebuilding an invalid store from its
-    HDF source, say) replaces whole, as it always has.
+    when there is no store at *final*, or when its root has no ``phenotypic``
+    block: a third-party or half-built store that a save replaces whole, as it
+    always has.
+
+    **A root that exists but cannot be parsed is refused** (#281 P3 review
+    M4): it may describe other pipelines' run folders, and a save that read
+    it as "nothing to carry" would drop every one of them, against
+    :func:`carry_table_runs`' own rule that a store is never rewritten over a
+    descriptor it cannot interpret. The one exception is explicit:
+    ``--mode migrate`` rebuilding an invalid store from its HDF source
+    (``migrate_hdf_to_zarr``) passes *replace_unreadable* and replaces it
+    whole, carrying nothing, as it always has.
+
+    Raises:
+        ValueError: If the root exists but is not readable JSON, or is a
+            store version this build does not read, and *replace_unreadable*
+            is false.
     """
     from . import ngff_
 
@@ -820,13 +835,23 @@ def _replaced_store_block(final: Path) -> Mapping[str, object] | None:
     except (FileNotFoundError, NotADirectoryError, KeyError):
         return None
     except ValueError as exc:  # json.JSONDecodeError included
-        logger.warning("Cannot carry tables from %s: %s", final, exc)
+        if not replace_unreadable:
+            raise ValueError(
+                f"Refusing to rewrite {final}: its root zarr.json cannot be "
+                f"read ({exc}), so the table run folders it may declare "
+                "cannot be carried. Repair or remove the store first."
+            ) from exc
+        logger.warning("Replacing %s whole; its root is unreadable: %s", final, exc)
         return None
     return block if isinstance(block, Mapping) else None
 
 
 def carry_table_runs(
-    final: Path, part: Path, *, exclude: str | None
+    final: Path,
+    part: Path,
+    *,
+    exclude: str | None,
+    replace_unreadable: bool = False,
 ) -> dict[str, dict[str, dict[str, object]]]:
     """Carry every run folder of *final* but *exclude* into *part* (spec D5).
 
@@ -851,17 +876,22 @@ def carry_table_runs(
     behaves like (a save never carried v1 tables).
 
     Args:
-        final: The store being replaced. Absent or unreadable carries nothing.
+        final: The store being replaced. Absent, or with no ``phenotypic``
+            block, carries nothing.
         part: The unpromoted part being written.
         exclude: The run folder the caller writes itself, or ``None``.
+        replace_unreadable: Carry nothing from a root that cannot be parsed,
+            instead of refusing (:func:`_replaced_store_block`). Only
+            ``--mode migrate``'s rebuild from HDF passes it.
 
     Returns:
         ``{"runs": {run_id: entry}, "upstream": {...}}`` of what was carried.
 
     Raises:
-        ValueError: If *final*'s tables descriptor is corrupt or a version
-            this build does not read. A store is never rewritten over a
-            descriptor it cannot interpret.
+        ValueError: If *final*'s root cannot be parsed (unless
+            *replace_unreadable*), or its tables descriptor is corrupt or a
+            version this build does not read. A store is never rewritten over
+            a descriptor it cannot interpret.
     """
     from . import ngff_
     from ._table_runs import (
@@ -875,7 +905,7 @@ def carry_table_runs(
         RUNS_KEY: {},
         UPSTREAM_KEY: {},
     }
-    block = _replaced_store_block(final)
+    block = _replaced_store_block(final, replace_unreadable=replace_unreadable)
     if block is None:
         return carried
     schema = tables_schema_of_block(block)
