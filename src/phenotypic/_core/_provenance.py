@@ -953,7 +953,23 @@ def current_pipeline_sha256(image: "Image") -> str | None:
     Returns:
         The 64-hex digest, or ``None``.
     """
-    journal = image._metadata.provenance_journal
+    return journal_pipeline_sha256(image._metadata.provenance_journal)
+
+
+def journal_pipeline_sha256(journal: object) -> str | None:
+    """:func:`current_pipeline_sha256` over a journal *mapping* rather than an image.
+
+    The one rule, shared by the writer (which reads the in-memory journal) and
+    by a reader of a promoted store's ``attributes.phenotypic.provenance``
+    (which reads the journal the writer persisted), so the two can never
+    disagree on which run folder a save owned.
+
+    Args:
+        journal: A provenance journal, or anything else (which has no digest).
+
+    Returns:
+        The 64-hex digest, or ``None``.
+    """
     applications = journal.get("applications") if isinstance(journal, Mapping) else None
     if not isinstance(applications, list) or not applications:
         return None

@@ -420,6 +420,21 @@ def choose_table_run_id(
     Returns:
         The run id.
     """
+    owned = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
+    if owned is not None:
+        return owned
+    return table_run_id(next_table_run_order(block), pipeline_sha256)
+
+
+def owned_table_run_id(
+    block: Mapping[str, object], *, pipeline_sha256: str | None
+) -> str | None:
+    """The existing run folder *pipeline_sha256* owns in *block*, or ``None``.
+
+    Rules 1 and 2 of :func:`choose_table_run_id`, without rule 3's new
+    folder: the highest-numbered run with this digest, or, for ``None``, the
+    highest-numbered ``-unknown`` run.
+    """
     runs = _parse_runs(block)
     if pipeline_sha256 is not None:
         owned = [run_id for run_id, _o, sha, _e in runs if sha == pipeline_sha256]
@@ -429,9 +444,67 @@ def choose_table_run_id(
             for run_id, _o, sha, _e in runs
             if sha is None and run_id.endswith(f"-{UNKNOWN_PIPELINE}")
         ]
-    if owned:
-        return owned[-1]
-    return table_run_id(next_table_run_order(block), pipeline_sha256)
+    return owned[-1] if owned else None
+
+
+def journal_table_run(store: Path) -> TableRun | None:
+    """The run folder a forward save of *store*'s own journal wrote (spec D6, D6a).
+
+    The writer picks its folder with :func:`choose_table_run_id` for the
+    digest of the image's last journal application
+    (:func:`~phenotypic._core._provenance.current_pipeline_sha256`), and
+    persists that same journal in the root it writes last. So reading the
+    digest back from the promoted root and applying the same ownership rule
+    names exactly the folder the save wrote -- which is what a forward
+    per-image record (full mode, staged Stage 3) certifies, and what its
+    resume probes ask about. A reader holding a record uses the record
+    instead; a reader with neither uses :func:`latest_measurement_run`.
+
+    It is **not** the folder a ``--mode measure`` rewrite wrote: measure mode
+    opens no journal application, so its pipeline is not the journal's. That
+    rewrite returns the run it wrote, and its record declares that.
+
+    Raises:
+        FileNotFoundError: If the store has no root ``zarr.json``.
+        KeyError: If the root carries no ``phenotypic`` block.
+        ValueError: If the store or its tables descriptor is unreadable.
+
+    Returns:
+        The run, or ``None`` when the store holds no folder for that digest
+        (no tables yet, or the flat v1 layout).
+    """
+    from phenotypic._core._provenance import journal_pipeline_sha256
+
+    from . import ngff_
+
+    block = _read_block(store)
+    run_id = owned_table_run_id(
+        block,
+        pipeline_sha256=journal_pipeline_sha256(
+            block.get(ngff_.PhenotypicAttr.PROVENANCE)
+        ),
+    )
+    if run_id is None:
+        return None
+    return next(run for run in table_runs_of_block(store, block) if run.run_id == run_id)
+
+
+def journal_measurement_table(store: Path) -> Path | None:
+    """The measurements table of :func:`journal_table_run`, if it is on disk.
+
+    The probe form for resume classification, which must degrade rather than
+    raise: an absent or unreadable store, a run without ``measurements`` and
+    a missing file all answer ``None`` -- "this image has no table of its
+    own yet", which routes it back through processing.
+    """
+    try:
+        run = journal_table_run(store)
+    except (FileNotFoundError, KeyError, ValueError):
+        return None
+    if run is None or not run.has_measurements:
+        return None
+    path = run.measurements_path()
+    return path if path.is_file() else None
 
 
 def store_of_table_path(path: Path) -> Path:

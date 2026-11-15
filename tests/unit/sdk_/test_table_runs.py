@@ -17,6 +17,8 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_ import (
     TABLE_RUN_ID_RE,
     choose_table_run_id,
+    journal_measurement_table,
+    journal_table_run,
     latest_measurement_run,
     latest_table_run,
     list_table_runs,
@@ -194,3 +196,51 @@ def test_the_v1_fixtures_are_v1(v1_store, v1_store_legacy_null_pipeline):
 
 def test_a_store_without_tables_is_schema_0(tmp_path):
     assert store_tables_schema(write_root_block(tmp_path, {"store_schema_version": 3})) == 0
+
+
+def _journal(sha: str | None, *, kind: str = "full") -> dict:
+    pipeline = None if sha is None else {"source_path": "p.json", "sha256": sha}
+    return {"schema_version": 2, "applications": [{"kind": kind, "pipeline": pipeline}]}
+
+
+def _measured(order: int, sha: str | None) -> tuple[str, dict]:
+    run_id = table_run_id(order, sha)
+    return run_id, {"order": order, "pipeline_sha256": sha, "measurements": {}}
+
+
+def _store_with_journal(tmp_path: Path, journal: dict, *runs: tuple[str, dict]) -> Path:
+    block = v2_block(runs=dict(runs))
+    block["provenance"] = journal
+    return write_root_block(tmp_path, block)
+
+
+def test_the_journal_run_is_the_journals_pipeline_folder_not_the_latest(tmp_path):
+    # A re-run of A after B: folder 1 is A's, the latest folder is B's.
+    store = _store_with_journal(tmp_path, _journal(SHA_A), _measured(1, SHA_A), _measured(2, SHA_B))
+    assert journal_table_run(store).run_id == table_run_id(1, SHA_A)
+    assert latest_measurement_run(store).run_id == table_run_id(2, SHA_B)
+
+
+@pytest.mark.parametrize("journal", [_journal(None), _journal(SHA_A, kind="programmatic"), {}])
+def test_a_journal_without_a_digest_owns_the_highest_unknown_folder(tmp_path, journal):
+    store = _store_with_journal(
+        tmp_path, journal, _measured(1, None), _measured(2, SHA_A), _measured(3, None)
+    )
+    assert journal_table_run(store).run_id == "3-unknown"
+
+
+def test_a_journal_whose_pipeline_owns_no_folder_has_no_run(tmp_path):
+    store = _store_with_journal(tmp_path, _journal(SHA_C), _measured(1, SHA_A))
+    assert journal_table_run(store) is None
+    assert journal_measurement_table(store) is None
+
+
+def test_the_journal_probe_degrades_to_none(tmp_path):
+    assert journal_measurement_table(tmp_path / "absent.ome.zarr") is None
+    store = _store_with_journal(tmp_path, _journal(SHA_A), _measured(1, SHA_A))
+    assert journal_table_run(store) is not None
+    assert journal_measurement_table(store) is None  # declared, but no file on disk
+    table = journal_table_run(store).measurements_path()
+    table.parent.mkdir(parents=True)
+    table.write_bytes(b"")
+    assert journal_measurement_table(store) == table
