@@ -329,10 +329,9 @@ No measurements configured in this pipeline."""
             "grid) and `embedding`, a fixed-length float16 vector. Join a "
             "crop row to `master_measurements.parquet` on `Metadata_Dataset`, "
             "`Metadata_ImageName` and `Object_Label`. These files are never "
-            "joined to metadata. An image whose objects changed since its "
-            "vectors were computed is left out and listed in "
-            f"`{root}/{EMBEDDINGS_MANIFEST_JSON}`, with each file's row count, "
-            "sha256 and model descriptor.",
+            "joined to metadata. "
+            f"`{root}/{EMBEDDINGS_MANIFEST_JSON}` records each file's path, "
+            "row count, sha256, store count and model descriptor.",
             "",
             "| Embedder | File |",
             "|----------|------|",

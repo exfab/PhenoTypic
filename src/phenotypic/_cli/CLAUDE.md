@@ -1358,17 +1358,28 @@ declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
 `embeddings/<model>/<crops|grid>.parquet` and `embeddings/manifest.json`
-(#281 spec E5: `aggregate_embedding_tables` in `_cli_embedding_deliverables.py`,
-run by `finalize_run` after the splits and before `metrics.json`, in the
-finalizer task itself, never in the `0-K` aggregate shards. It streams each
-image's **certified** run folder, one row group per store, skips a `stale`
-entry with a warning and counts it, and **raises** on a non-stale entry it
-cannot read, failing finalization like the master; the image stays
-`verified` (D9), so the remedy is a same-pipeline `--mode measure`. Parquet
-only, never joined to metadata, and the whole folder is removed when no
-certified folder holds an embedding. Every per-image writer passes
-`pipeline.embed(image)` beside `measure()`, measure mode included:
-`replace_image_tables(embeddings=None)` drops the run's embeddings),
+(#281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
+itself, never in the `0-K` aggregate shards. **Two phases, so a failure
+changes no deliverable** (P4 review I1): `stage_embedding_deliverables`
+runs *before the master is written*, reads every non-stale entry of each
+image's **certified** run folder once (present, its sha256, its type, one
+schema per key) and streams each key to a hidden temporary, one row group
+per store; `promote` runs after the splits and before `metrics.json`,
+replacing each target and writing `manifest.json` last. A `stale` entry
+(`stale is not False`, the one predicate) is skipped with a warning and
+counted; a non-stale entry it cannot read **raises**, failing finalization
+like the master, and the image stays `verified` (D9), so the remedy is a
+same-pipeline `--mode measure`. On the `shard_paths` branch only the
+sources the projection kept contribute. Paths are compared unresolved, so a
+symlinked `results/` and a DVC symlink cache work. Parquet only, never
+joined to metadata. The aggregate proof declares `manifest.json` and each
+published table (no GUI writer touches them). A finalization deletes only
+the `*.parquet` and `manifest.json` a previous one wrote and it does not,
+then empty directories. Every per-image writer passes `pipeline.embed(image)`
+beside `measure()`, measure mode included:
+`replace_image_tables(embeddings=None)` drops the run's embeddings; an
+embedder's `MemoryError` or torch `OutOfMemoryError` propagates unwrapped,
+so it is never a terminal failure),
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),

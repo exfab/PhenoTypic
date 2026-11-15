@@ -13,20 +13,32 @@ so a row joins to the master on ``(Metadata_Dataset, Metadata_ImageName,
 Object_Label)``. These files are Parquet only: never joined to metadata,
 never in the master, the mirror, a split or any TSV (spec E5).
 
-**Streamed**, one ``pq.ParquetWriter`` per output file and one row group
-per store, so memory holds one store's table at a time: over a 33k-store run
-the vectors alone are about 5 GB of float16.
+**Two phases, so a failure changes no deliverable** (review I1).
+:func:`stage_embedding_deliverables` runs **before** finalization writes
+anything, the master included. It reads every non-stale entry once --
+present, inside its store, the bytes its sha256 records, a
+``FixedSizeList<float16>[dim]`` table, one schema per key -- and streams each
+key into a hidden temporary file beside its target, one
+``pq.ParquetWriter`` per key and one row group per store, so memory holds one
+store's table at a time (about 5 GB of float16 over a 33k-store run
+otherwise). Any failure deletes every temporary and raises.
+:meth:`StagedEmbeddingDeliverables.promote` runs after the master and the
+mirror: each staged file replaces its target, then ``manifest.json`` is
+written **last**, then the files a previous finalization wrote and this one
+does not are removed. :func:`aggregate_embedding_tables` is the two in one.
 
 **Two failure rules, and why they differ** (spec D7, D9, E5):
 
-- A **stale** entry -- its store no longer holds the objmap or array its
-  vectors were computed from -- is skipped with a warning naming the store,
-  and counted. It describes nothing the run certifies, so leaving it out is
-  the correct output rather than a degraded one.
-- An entry that is **not stale but cannot be read** (its file missing, or
-  not the bytes its sha256 records) fails finalization, as a master that
-  cannot be built does. It never revokes measurement authority: the image's
-  record still verifies and ``resolve_run_state`` still reads it
+- A **stale** entry -- its ``stale`` is anything but ``False``
+  (:func:`~phenotypic.sdk_._embedding_tables.embedding_entry_is_stale`) -- is
+  skipped with a warning naming the store, and counted. It describes nothing
+  the run certifies, so leaving it out is the correct output rather than a
+  degraded one. No forward CLI path brings one to finalization (a write that
+  changes the objmap rewrites the root, which voids the image's record), so
+  this is a defence, not a state users see.
+- An entry that is **not stale but cannot be read** fails finalization, as a
+  master that cannot be built does. It never revokes measurement authority:
+  the image's record still verifies and ``resolve_run_state`` still reads it
   ``verified`` (D9), so the remedy is a same-pipeline ``--mode measure``,
   which rewrites the embeddings without detecting again.
 """
@@ -36,8 +48,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import shutil
+import os
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -50,6 +63,10 @@ logger = logging.getLogger(__name__)
 
 #: ``deliverables/embeddings/manifest.json``'s own format version.
 EMBEDDINGS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
+
+#: The aggregate proof's ``required_outputs`` name of ``manifest.json``; each
+#: published table is ``embeddings/<model>/<region>`` (review M1a).
+EMBEDDINGS_MANIFEST_PROOF_NAME: Final[str] = "embeddings_manifest"
 
 #: Entry fields that describe one store's file rather than the table's kind;
 #: the manifest's ``descriptors`` leave them out (spec D3).
@@ -64,6 +81,23 @@ def _entries(run: "TableRun") -> Mapping[str, object]:
     return block if isinstance(block, Mapping) else {}
 
 
+def _relative_to_output(output_dir: Path, store: Path) -> Path:
+    """*store* relative to *output_dir*, on the **unresolved** paths (review I3).
+
+    Never through ``Path.resolve``: a ``results/`` that is a symlink to
+    another disk resolves outside the output, though the store is the run's.
+    The resolved output root is tried as well, because a record's artifact
+    path is joined onto it.
+    """
+    absolute = Path(os.path.abspath(store))
+    for base in (Path(os.path.abspath(output_dir)), Path(output_dir).resolve()):
+        try:
+            return absolute.relative_to(base)
+        except ValueError:
+            continue
+    raise ValueError(f"{store} is not under the output {output_dir}")
+
+
 def _store_identity(output_dir: Path, store: Path) -> tuple[str, str, str]:
     """``(store relative to output_dir, dataset, image name)`` of a run's store.
 
@@ -76,11 +110,15 @@ def _store_identity(output_dir: Path, store: Path) -> tuple[str, str, str]:
     """
     from phenotypic.sdk_ import store_stem, zarr_store_path
 
-    resolved = Path(store).resolve()
-    relative = resolved.relative_to(Path(output_dir).resolve())
-    stem = store_stem(resolved)
+    relative = _relative_to_output(output_dir, store)
+    stem = store_stem(Path(store))
     dataset = relative.parts[1] if len(relative.parts) == 4 else ""
-    if not dataset or zarr_store_path(output_dir, dataset, stem).resolve() != resolved:
+    expected = zarr_store_path(output_dir, dataset, stem) if dataset else None
+    if (
+        expected is None
+        or _relative_to_output(output_dir, expected) != relative
+        or not os.path.samefile(expected, store)
+    ):
         raise ValueError(
             f"{store} is not a store of this run: expected "
             "results/<dataset>/zarr/<stem>.ome.zarr under the output"
@@ -121,130 +159,317 @@ def _unreadable(exc: Exception, key: str, relative: str) -> RuntimeError:
     return RuntimeError(
         f"{exc}. Measurement authority is unaffected (embeddings are additive), "
         f"but finalization cannot publish deliverables/embeddings/{key}.parquet "
-        f"without {relative}. Re-measure the image with the same pipeline "
-        "(--mode measure) to rewrite its embeddings, then finalize again."
+        f"without {relative}, so it published nothing. Re-measure the image "
+        "with the same pipeline (--mode measure) to rewrite its embeddings, "
+        "then finalize again."
     )
 
 
-def _publish_key(
-    output_dir: Path,
-    key: str,
-    runs: Sequence["TableRun"],
-    identities: Mapping[Path, tuple[str, str, str]],
-    *,
-    commit_guard: "CommitGuard | None",
-) -> tuple[dict[str, int], dict[str, object], Path | None]:
-    """Stream entry *key* of every run into its deliverable.
-
-    Returns:
-        ``({"rows", "stale_skipped"}, manifest entry, published path or None)``.
-    """
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
-
-    from phenotypic.sdk_ import embeddings_dir, read_embedding_table
-    from phenotypic.sdk_._atomic_io import PARQUET_WRITE_OPTIONS, atomic_write_with_writer
-    from phenotypic.sdk_._embedding_tables import EmbeddingTableUnreadableError
+def _target(output_dir: Path, key: str) -> Path:
+    from phenotypic.sdk_ import embeddings_dir
 
     model, _, region = key.partition("/")
-    target = embeddings_dir(output_dir) / model / f"{region}.parquet"
-    readable: list["TableRun"] = []
-    stale: list[str] = []
-    descriptors: dict[str, object] = {}
+    return embeddings_dir(output_dir) / model / f"{region}.parquet"
+
+
+@dataclass
+class _KeyPlan:
+    """What one entry key will publish: its readable runs and its stale stores."""
+
+    key: str
+    readable: list["TableRun"] = field(default_factory=list)
+    stale: list[str] = field(default_factory=list)
+    #: canonical JSON -> each distinct shared descriptor (no per-store fields).
+    descriptors: dict[str, Mapping[str, object]] = field(default_factory=dict)
+    #: store relative path -> its canonical shared descriptor.
+    descriptor_of: dict[str, str] = field(default_factory=dict)
+
+
+def _plan_keys(
+    runs: Sequence["TableRun"], identities: Mapping[Path, tuple[str, str, str]]
+) -> list[_KeyPlan]:
+    """Split each key's entries into readable runs and stale stores, in run order."""
+    from phenotypic.sdk_._embedding_tables import embedding_entry_is_stale
+
+    plans: dict[str, _KeyPlan] = {}
     for run in runs:
-        entry = _entries(run).get(key)
-        if not isinstance(entry, Mapping):
-            continue
-        relative = identities[run.store][0]
-        if entry.get("stale") is True:
-            logger.warning(
-                "Skipping the stale embedding table %r of %s: the store no "
-                "longer holds the objmap or array its vectors were computed "
-                "from (spec D7). Re-measure the image to refresh it.",
-                key,
-                relative,
-            )
-            stale.append(relative)
-            continue
-        readable.append(run)
-        shared = {name: value for name, value in entry.items() if name not in _PER_STORE_FIELDS}
-        descriptors[_canonical(shared)] = shared
+        for raw_key, entry in _entries(run).items():
+            key = str(raw_key)
+            plan = plans.setdefault(key, _KeyPlan(key))
+            relative = identities[run.store][0]
+            if isinstance(entry, Mapping) and embedding_entry_is_stale(entry):
+                logger.warning(
+                    "Skipping the stale embedding table %r of %s: the store no "
+                    "longer holds the objmap or array its vectors were computed "
+                    "from (spec D7). Re-measure the image to refresh it.",
+                    key,
+                    relative,
+                )
+                plan.stale.append(relative)
+                continue
+            plan.readable.append(run)
+            if isinstance(entry, Mapping):
+                shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
+                canonical = _canonical(shared)
+                plan.descriptors[canonical] = shared
+                plan.descriptor_of[relative] = canonical
+    return [plans[key] for key in sorted(plans)]
 
-    rows = 0
 
-    def _write(temp_path: str) -> None:
-        nonlocal rows
-        writer: pq.ParquetWriter | None = None
+def _check_key_plan(plan: _KeyPlan) -> None:
+    """The per-key policy checks, run before any file is staged.
+
+    Today a key may carry several distinct descriptors (another revision,
+    pooling or device), and the manifest lists them all. A policy on that
+    (review I2, user question Q1) goes **here**: it sees every readable
+    store's descriptor (:attr:`_KeyPlan.descriptor_of`) before a byte is
+    written, so a refusal leaves every deliverable as it was.
+    """
+
+
+@dataclass
+class StagedEmbeddingDeliverables:
+    """Embedding deliverables validated and written to temporaries, not yet published.
+
+    Attributes:
+        output_dir: Run output root.
+        counts: ``{key: {"rows", "stale_skipped"}}``, sorted by key; what
+            ``build_run_metrics(embeddings=)`` takes. Empty when no run embeds.
+        staged: Each published target and the temporary that will replace it.
+        manifest: The ``manifest.json`` document, or ``None`` when no run
+            embeds.
+    """
+
+    output_dir: Path
+    counts: dict[str, dict[str, int]]
+    staged: dict[Path, Path]
+    manifest: dict[str, object] | None
+    _done: bool = False
+
+    def promote(self, *, commit_guard: "CommitGuard | None" = None) -> None:
+        """Publish: each staged file over its target, ``manifest.json`` last, then prune.
+
+        Files under ``deliverables/embeddings/`` that a previous finalization
+        wrote (``*.parquet`` and ``manifest.json``) and this one does not are
+        deleted, and directories left empty are removed. Any other file there
+        is left alone (review M8).
+        """
+        from phenotypic.sdk_ import embeddings_manifest_path
+        from phenotypic.sdk_._atomic_io import publication_commit
+        from phenotypic.sdk_._run_metrics import write_canonical_json
+
+        if self._done:
+            raise RuntimeError("embedding deliverables already promoted or discarded")
+        published: set[Path] = set()
         try:
-            for run in readable:
-                relative, dataset, image = identities[run.store]
-                try:
-                    table = read_embedding_table(run.store, key, run_id=run.run_id)
-                except EmbeddingTableUnreadableError as exc:
-                    raise _unreadable(exc, key, relative) from exc
-                table = _with_identity(table, dataset, image)
-                if writer is None:
-                    writer = pq.ParquetWriter(
-                        temp_path,
-                        table.schema,
-                        compression=PARQUET_WRITE_OPTIONS["compression"],
-                        compression_level=PARQUET_WRITE_OPTIONS["compression_level"],
-                    )
-                elif not table.schema.equals(writer.schema, check_metadata=False):
-                    raise RuntimeError(
-                        f"embedding table {key!r} of {relative} has schema "
-                        f"{table.schema}, unlike the other stores' {writer.schema}; "
-                        "one deliverable cannot hold both"
-                    )
-                # One row group per store: memory is one store's table.
-                writer.write_table(table, row_group_size=max(table.num_rows, 1))
-                rows += table.num_rows
+            for target, temp in sorted(self.staged.items()):
+                with open(temp, "r+b") as handle:
+                    os.fsync(handle.fileno())
+                with publication_commit(commit_guard):
+                    os.replace(temp, target)
+                published.add(target)
+            if self.manifest is not None:
+                manifest_path = embeddings_manifest_path(self.output_dir)
+                write_canonical_json(manifest_path, self.manifest, commit_guard=commit_guard)
+                published.add(manifest_path)
+            _remove_unpublished(self.output_dir, published, commit_guard=commit_guard)
         finally:
-            if writer is not None:
-                writer.close()
+            self.discard()
 
-    published: Path | None = None
-    if readable:
-        atomic_write_with_writer(
-            target, _write, commit_guard=commit_guard, temp_suffix=".parquet.tmp"
-        )
-        published = target
-    manifest_entry: dict[str, object] = {
-        "path": (
-            published.relative_to(embeddings_dir(output_dir).parent).as_posix()
-            if published is not None
-            else None
-        ),
-        "rows": rows,
-        "sha256": _file_sha256(published) if published is not None else None,
-        "stores": len(readable),
-        "stale_skipped": sorted(stale),
-        "descriptors": [descriptors[name] for name in sorted(descriptors)],
-    }
-    return {"rows": rows, "stale_skipped": len(stale)}, manifest_entry, published
+    def discard(self) -> None:
+        """Delete every temporary not yet promoted, and any directory left empty."""
+        if self._done:
+            return
+        self._done = True
+        for temp in self.staged.values():
+            try:
+                os.unlink(temp)
+            except FileNotFoundError:
+                pass
+        _prune_empty_directories(self.output_dir)
+
+
+def _prune_empty_directories(output_dir: Path) -> None:
+    from phenotypic.sdk_ import embeddings_dir
+
+    root = embeddings_dir(output_dir)
+    if not root.is_dir():
+        return
+    for directory in sorted(
+        (p for p in root.rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)
+    ):
+        if not any(directory.iterdir()):
+            directory.rmdir()
+    if not any(root.iterdir()):
+        root.rmdir()
 
 
 def _remove_unpublished(
     output_dir: Path, published: set[Path], *, commit_guard: "CommitGuard | None"
 ) -> None:
-    """Delete a previous finalization's deliverables this one did not publish."""
-    from phenotypic.sdk_ import embeddings_dir
+    """Delete the finalization-written files this finalization did not publish."""
+    from phenotypic.sdk_ import embeddings_dir, embeddings_manifest_path
     from phenotypic.sdk_._atomic_io import publication_commit
 
     root = embeddings_dir(output_dir)
     if not root.is_dir():
         return
+    ours = [*root.glob("*/*.parquet"), embeddings_manifest_path(output_dir)]
     with publication_commit(commit_guard):
-        if not published:
-            shutil.rmtree(root)
-            return
-        for path in sorted(root.rglob("*.parquet")):
-            if path not in published:
+        for path in sorted(ours):
+            if path not in published and path.is_file():
                 path.unlink()
-        for directory in sorted(
-            (p for p in root.rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)
-        ):
-            if not any(directory.iterdir()):
-                directory.rmdir()
+        _prune_empty_directories(output_dir)
+
+
+def _stage_key(
+    output_dir: Path,
+    plan: _KeyPlan,
+    identities: Mapping[Path, tuple[str, str, str]],
+) -> tuple[Path, Path, int]:
+    """Stream *plan*'s readable tables into a temporary beside the key's target.
+
+    Returns:
+        ``(target, temporary, rows)``.
+
+    Raises:
+        RuntimeError: If an entry cannot be read (naming the store and the
+            remedy) or two stores' tables differ in schema. The temporary is
+            removed first.
+    """
+    import tempfile
+
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from phenotypic.sdk_._atomic_io import PARQUET_WRITE_OPTIONS
+    from phenotypic.sdk_._embedding_tables import (
+        EmbeddingTableUnreadableError,
+        read_embedding_entry,
+    )
+
+    target = _target(output_dir, plan.key)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle = tempfile.NamedTemporaryFile(
+        dir=target.parent, prefix=f".{target.name}.", suffix=".tmp", delete=False
+    )
+    temp = Path(handle.name)
+    handle.close()
+    rows = 0
+    writer: pq.ParquetWriter | None = None
+    try:
+        for run in plan.readable:
+            relative, dataset, image = identities[run.store]
+            try:
+                table = read_embedding_entry(run.store, plan.key, _entries(run).get(plan.key))
+            except EmbeddingTableUnreadableError as exc:
+                raise _unreadable(exc, plan.key, relative) from exc
+            table = _with_identity(table, dataset, image)
+            if writer is None:
+                writer = pq.ParquetWriter(
+                    temp,
+                    table.schema,
+                    compression=PARQUET_WRITE_OPTIONS["compression"],
+                    compression_level=PARQUET_WRITE_OPTIONS["compression_level"],
+                )
+            elif not table.schema.equals(writer.schema, check_metadata=False):
+                raise RuntimeError(
+                    f"embedding table {plan.key!r} of {relative} has schema "
+                    f"{table.schema}, unlike the other stores' {writer.schema}; "
+                    "one deliverable cannot hold both, so finalization "
+                    "published nothing"
+                )
+            # One row group per store: memory is one store's table.
+            writer.write_table(table, row_group_size=max(table.num_rows, 1))
+            rows += table.num_rows
+        if writer is not None:
+            writer.close()
+            writer = None
+    except BaseException:
+        if writer is not None:
+            writer.close()
+        temp.unlink(missing_ok=True)
+        raise
+    return target, temp, rows
+
+
+def stage_embedding_deliverables(
+    output_dir: Path, runs: Sequence["TableRun"]
+) -> StagedEmbeddingDeliverables:
+    """Validate and stage ``deliverables/embeddings/`` from each image's certified run.
+
+    Phase one of :func:`aggregate_embedding_tables`; ``finalize_run`` calls
+    it **before** it writes the master. Nothing under ``deliverables/`` is
+    replaced or removed here: every key goes to a hidden temporary beside
+    its target, and on any failure every temporary is deleted before the
+    error propagates.
+
+    For each entry key any run declares, the rows of every readable run's
+    table are streamed, store by store in store-path order, with
+    ``Metadata_Dataset`` and ``Metadata_ImageName`` prepended. The manifest
+    records, per key, the file's path, row count and sha256, how many stores
+    it holds, the stores skipped as stale, and the distinct entry
+    descriptors (each store's ``binds``, ``files`` and ``stale`` left out).
+    No wall-clock value is written, so identical runs give identical bytes
+    (spec C11).
+
+    Args:
+        output_dir: Run output root.
+        runs: Each image's certified run folder (spec D6a): the run its record
+            certifies, **never** one chosen by pipeline sha. A run without
+            embeddings contributes nothing.
+
+    Returns:
+        The staged deliverables; publish them with
+        :meth:`StagedEmbeddingDeliverables.promote` or drop them with
+        :meth:`~StagedEmbeddingDeliverables.discard`.
+
+    Raises:
+        RuntimeError: If a non-stale entry cannot be read (its message names
+            the store and the ``--mode measure`` remedy), or two stores'
+            tables for one key have different schemas.
+        ValueError: If a run's store is not a store of this run.
+    """
+    output_dir = Path(output_dir)
+    with_embeddings = [run for run in runs if _entries(run)]
+    identities = {run.store: _store_identity(output_dir, run.store) for run in with_embeddings}
+    ordered = sorted(with_embeddings, key=lambda run: identities[run.store][0])
+    plans = _plan_keys(ordered, identities)
+    for plan in plans:
+        _check_key_plan(plan)
+
+    staged = StagedEmbeddingDeliverables(output_dir, {}, {}, None)
+    entries: dict[str, object] = {}
+    try:
+        for plan in plans:
+            published: Path | None = None
+            rows = 0
+            if plan.readable:
+                published, temp, rows = _stage_key(output_dir, plan, identities)
+                staged.staged[published] = temp
+            staged.counts[plan.key] = {"rows": rows, "stale_skipped": len(plan.stale)}
+            entries[plan.key] = {
+                "path": (
+                    published.relative_to(published.parents[2]).as_posix()
+                    if published is not None
+                    else None
+                ),
+                "rows": rows,
+                "sha256": (
+                    _file_sha256(staged.staged[published]) if published is not None else None
+                ),
+                "stores": len(plan.readable),
+                "stale_skipped": sorted(plan.stale),
+                "descriptors": [plan.descriptors[name] for name in sorted(plan.descriptors)],
+            }
+    except BaseException:
+        staged.discard()
+        raise
+    if plans:
+        staged.manifest = {
+            "schema_version": EMBEDDINGS_MANIFEST_SCHEMA_VERSION,
+            "entries": entries,
+        }
+    return staged
 
 
 def aggregate_embedding_tables(
@@ -253,78 +478,62 @@ def aggregate_embedding_tables(
     *,
     commit_guard: "CommitGuard | None" = None,
 ) -> dict[str, dict[str, int]]:
-    """Publish ``deliverables/embeddings/`` from each image's certified run (spec E5).
+    """Stage and publish ``deliverables/embeddings/`` in one call (spec E5).
 
-    For each entry key any run declares, the rows of every run's table are
-    streamed, store by store in store-path order, into
-    ``deliverables/embeddings/<model>/<crops|grid>.parquet`` with
-    ``Metadata_Dataset`` and ``Metadata_ImageName`` prepended. Then
-    ``manifest.json`` records, per key, the file's path, row count and
-    sha256, how many stores it holds, the stores skipped as stale, and the
-    distinct entry descriptors (each store's ``binds``, ``files`` and
-    ``stale`` left out). No wall-clock value is written, so identical runs
-    give identical bytes (spec C11).
-
-    A previous finalization's files that this one does not publish are
-    deleted, and with no entry at all the folder goes, so the deliverables
-    always describe the folders this finalization certifies (D6a).
-
-    Args:
-        output_dir: Run output root.
-        runs: Each image's certified run folder (spec D6a): the run its record
-            certifies, **never** one chosen by pipeline sha. A run without
-            embeddings contributes nothing.
-        commit_guard: Publication guard threaded to every write and delete.
+    :func:`stage_embedding_deliverables`, then
+    :meth:`StagedEmbeddingDeliverables.promote`. ``finalize_run`` calls the
+    two phases separately, so that the validation runs before the master is
+    written; this is the one-call form for anything else.
 
     Returns:
-        ``{key: {"rows": n, "stale_skipped": k}}``, sorted by key: what
-        :func:`~phenotypic.sdk_._run_metrics.build_run_metrics` takes as
-        ``embeddings``. Empty when no run has embeddings.
+        ``{key: {"rows": n, "stale_skipped": k}}``, sorted by key. Empty when
+        no run has embeddings.
 
     Raises:
-        RuntimeError: If a non-stale entry cannot be read (its message names
-            the store and the ``--mode measure`` remedy), or two stores'
-            tables for one key have different schemas.
-        ValueError: If a run's store is not a store of this run.
+        RuntimeError, ValueError: As :func:`stage_embedding_deliverables`; no
+            deliverable has changed when either propagates.
     """
-    from phenotypic.sdk_ import embeddings_manifest_path
-    from phenotypic.sdk_._run_metrics import write_canonical_json
+    staged = stage_embedding_deliverables(output_dir, runs)
+    staged.promote(commit_guard=commit_guard)
+    return staged.counts
 
-    output_dir = Path(output_dir)
-    with_embeddings = [run for run in runs if _entries(run)]
-    identities = {run.store: _store_identity(output_dir, run.store) for run in with_embeddings}
-    ordered = sorted(with_embeddings, key=lambda run: identities[run.store][0])
-    keys = sorted({str(key) for run in ordered for key in _entries(run)})
 
-    counts: dict[str, dict[str, int]] = {}
-    manifest: dict[str, object] = {}
-    published: set[Path] = set()
-    for key in keys:
-        counts[key], manifest[key], path = _publish_key(
-            output_dir, key, ordered, identities, commit_guard=commit_guard
-        )
-        if path is not None:
-            published.add(path)
-    if keys:
-        write_canonical_json(
-            embeddings_manifest_path(output_dir),
-            {"schema_version": EMBEDDINGS_MANIFEST_SCHEMA_VERSION, "entries": manifest},
-            commit_guard=commit_guard,
-        )
-        published.add(embeddings_manifest_path(output_dir))
-        _remove_unpublished(output_dir, published, commit_guard=commit_guard)
-    else:
-        _remove_unpublished(output_dir, set(), commit_guard=commit_guard)
-    return counts
+def published_embedding_files(output_dir: Path) -> dict[str, Path]:
+    """The embedding deliverables a finalization published, for the aggregate proof.
+
+    ``manifest.json`` under :data:`EMBEDDINGS_MANIFEST_PROOF_NAME`, and each
+    table the manifest lists under ``embeddings/<model>/<region>`` (review
+    M1a). Empty when there is no manifest: a run that embeds nothing
+    declares nothing. No GUI writer touches these files, so the proof
+    enforces them.
+
+    Raises:
+        ValueError: If the manifest is not a manifest this build writes.
+    """
+    from phenotypic.sdk_ import deliverables_dir, embeddings_manifest_path
+
+    manifest_path = embeddings_manifest_path(output_dir)
+    if not manifest_path.is_file():
+        return {}
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entries = manifest.get("entries") if isinstance(manifest, dict) else None
+    if not isinstance(entries, dict):
+        raise ValueError(f"{manifest_path} lists no entries")
+    files = {EMBEDDINGS_MANIFEST_PROOF_NAME: manifest_path}
+    for key, entry in sorted(entries.items()):
+        path = entry.get("path") if isinstance(entry, dict) else None
+        if isinstance(path, str):
+            files[f"embeddings/{key}"] = deliverables_dir(output_dir) / path
+    return files
 
 
 def embedding_table_schemas(output_dir: Path) -> dict[str, dict[str, object]]:
     """Describe each published embedding deliverable for ``schema.json`` (spec C12).
 
-    Read back from what :func:`aggregate_embedding_tables` just published:
-    the manifest names the files and their producer, and each file's footer
-    gives its columns. Key and identity columns are rendered as polars
-    dtypes, as every other ``schema.json`` table is.
+    Read back from what :meth:`StagedEmbeddingDeliverables.promote` just
+    published: the manifest names the files and their producer, and each
+    file's footer gives its columns. Key and identity columns are rendered
+    as polars dtypes, as every other ``schema.json`` table is.
 
     Returns:
         ``{"embeddings/<model>/<region>": {"columns", "dim", "model",
@@ -365,7 +574,11 @@ def embedding_table_schemas(output_dir: Path) -> dict[str, dict[str, object]]:
 
 
 __all__ = [
+    "EMBEDDINGS_MANIFEST_PROOF_NAME",
     "EMBEDDINGS_MANIFEST_SCHEMA_VERSION",
+    "StagedEmbeddingDeliverables",
     "aggregate_embedding_tables",
     "embedding_table_schemas",
+    "published_embedding_files",
+    "stage_embedding_deliverables",
 ]

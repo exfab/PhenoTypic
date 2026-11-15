@@ -1218,6 +1218,13 @@ def publish_aggregate_snapshot(
     ):
         if require_run_summaries or path.is_file():
             required_paths[name] = path
+    # #281 spec E5, review M1a: the embedding deliverables the same
+    # finalization published -- manifest.json and each table it lists --
+    # and nothing when no run embeds (finalization then removes the folder).
+    # No GUI writer touches them, so they are enforced like the summaries.
+    from ._cli_embedding_deliverables import published_embedding_files
+
+    required_paths.update(published_embedding_files(output_dir))
     output_root = output_dir.resolve()
     descriptors: dict[str, dict[str, object]] = {}
     for name, path in required_paths.items():
