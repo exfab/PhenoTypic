@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 
 from phenotypic.abc_ import MeasureEmbedding, MeasureFeatures
+from phenotypic.abc_._measure_embedding import GridCellOutsideImageError
 from phenotypic.schema import GRID, OBJECT
 from phenotypic.sdk_.exceptions_ import OperationFailedError
 from tests._tiny_run import TOY_DIM, TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES
@@ -91,8 +92,11 @@ def test_a_cell_outside_the_image_fails_naming_the_cell_and_the_size(plate):
         regions="grid",
         grid=ManualGridFinder(row_edges=[0, 300, 700], col_edges=[0, 400]),
     )
-    with pytest.raises(OperationFailedError, match=r"row 1.*col 0.*600 x 800"):
+    with pytest.raises(
+        OperationFailedError, match=r"cell \(1, 0\).*image is 600 x 800"
+    ) as excinfo:
         embedder.measure(plate)
+    assert excinfo.value.err_type is GridCellOutsideImageError
 
 
 def test_a_grid_embedder_needs_a_grid_and_an_object_embedder_refuses_one():

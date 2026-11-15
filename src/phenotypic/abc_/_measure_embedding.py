@@ -43,6 +43,31 @@ _ENTRY_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
 )
 
 
+class GridCellOutsideImageError(ValueError):
+    """A grid cell is empty or not inside the image (#281 spec E3a).
+
+    The cell is never clipped: a rig's grid that does not fit an image means
+    the image is not the plate the grid was drawn for, so that image fails.
+    ``MeasureEmbedding.measure`` wraps it in an ``OperationFailedError``
+    whose ``err_type`` is this class.
+    """
+
+    def __init__(
+        self, row: int, col: int, rows: tuple[int, int], cols: tuple[int, int],
+        shape: tuple[int, int],
+    ) -> None:
+        self.row, self.col, self.rows, self.cols, self.shape = row, col, rows, cols, shape
+        super().__init__(
+            f"grid cell ({row}, {col}) spans rows {rows[0]}:{rows[1]} and columns "
+            f"{cols[0]}:{cols[1]}, which is not inside the image; the image is "
+            f"{shape[0]} x {shape[1]}"
+        )
+
+    def __reduce__(self):
+        """Rebuild from the constructor's arguments (pickling across workers)."""
+        return (type(self), (self.row, self.col, self.rows, self.cols, self.shape))
+
+
 class MeasureEmbedding(MeasureFeatures, ABC):
     """Embed detected colonies, or the cells of a fixed grid, as feature vectors.
 
@@ -255,8 +280,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """The ``Grid_*`` keys of every cell, row-major, and its box.
 
         Raises:
-            ValueError: Naming the first cell that is empty or not inside the
-                image, and the image size. It is never clipped (spec E3a).
+            GridCellOutsideImageError: Naming the first cell that is empty or
+                not inside the image, and the image size. It is never clipped
+                (spec E3a).
         """
         row_edges, col_edges = self._grid_edges(image)
         height, width = (int(n) for n in image.shape[:2])
@@ -267,10 +293,8 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             for col in range(ncols):
                 c0, c1 = int(col_edges[col]), int(col_edges[col + 1])
                 if not (0 <= r0 < r1 <= height and 0 <= c0 < c1 <= width):
-                    raise ValueError(
-                        f"grid cell (row {row}, col {col}) spans rows {r0}:{r1} "
-                        f"and columns {c0}:{c1}, which is not inside the "
-                        f"{height} x {width} image"
+                    raise GridCellOutsideImageError(
+                        row, col, (r0, r1), (c0, c1), (height, width)
                     )
                 rows.append((row * ncols + col, row, col, r0, r1, c0, c1))
         keys = pd.DataFrame(
