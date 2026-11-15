@@ -340,9 +340,6 @@ def read_embedding_table(
             is not the table the entry describes. Embeddings are additive, so
             this never touches the run's measurements (spec D9).
     """
-    import pyarrow as pa  # type: ignore[import-untyped]
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
-
     from ._table_runs import EMBEDDINGS_KEY, list_table_runs
 
     store = Path(store)
@@ -356,10 +353,74 @@ def read_embedding_table(
     if not runs:
         where = f"run {run_id!r} of {store}" if run_id is not None else str(store)
         raise KeyError(f"{where} declares no embedding table {key!r}")
-    entry = runs[-1].descriptor[EMBEDDINGS_KEY][key]  # type: ignore[index]
+    return read_embedding_entry(
+        store, key, runs[-1].descriptor[EMBEDDINGS_KEY][key]  # type: ignore[index]
+    )
+
+
+def embedding_entry_is_stale(entry: Mapping[str, object]) -> bool:
+    """Whether an embedding entry is stale: its ``stale`` is anything but ``False``.
+
+    The one predicate (spec D7). A writer records ``stale: false`` or
+    ``stale: true``, so an entry with no ``stale`` key, or a ``null``, was
+    not written by this build's writer and describes nothing a reader can
+    trust: it reads as stale, the same answer :func:`read_embedding_entry`
+    and the deliverables aggregation both give.
+    """
+    return entry.get("stale") is not False
+
+
+def _entry_file_path(store: Path, relative: str) -> Path | None:
+    """*store* joined with *relative*, or ``None`` when it would leave the store.
+
+    The check is **lexical**, on the unresolved paths, never through
+    ``Path.resolve``: a store under a symlinked ``results/`` is still inside
+    itself, and a file that is a symlink out of the store (DVC's
+    ``cache.type=symlink``) is still that store's file. Only an absolute
+    *relative* or one that climbs out with ``..`` is refused.
+    """
+    import os
+
+    if os.path.isabs(relative):
+        return None
+    joined = os.path.normpath(os.path.join(os.path.abspath(store), relative))
+    root = os.path.normpath(os.path.abspath(store))
+    if os.path.commonpath([root, joined]) != root or joined == root:
+        return None
+    return Path(joined)
+
+
+def read_embedding_entry(
+    store: Path, key: str, entry: object
+) -> pa.Table:
+    """Read the table *entry* describes, verified, with one read of its bytes.
+
+    :func:`read_embedding_table` once it has found the entry, and the
+    deliverables aggregation, which holds each certified run's entry already.
+    The file is read once, hashed, and parsed from those bytes, so the table
+    returned is the one whose sha256 was checked.
+
+    Args:
+        store: A promoted ``*.ome.zarr`` store.
+        key: The entry's ``"<model>/<region>"`` key, for messages.
+        entry: The entry, from the store root's ``embeddings`` block.
+
+    Returns:
+        The table, whose ``embedding`` column is ``FixedSizeList<float16>[dim]``.
+
+    Raises:
+        EmbeddingTableUnreadableError: If the entry is not a mapping or is
+            stale (:func:`embedding_entry_is_stale`), its file is missing or
+            outside the store, its bytes do not match the recorded sha256,
+            or the file is not the table the entry describes.
+    """
+    import pyarrow as pa  # type: ignore[import-untyped]
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    store = Path(store)
     if not isinstance(entry, Mapping):
         raise EmbeddingTableUnreadableError(store, key, "its entry is not a mapping")
-    if entry.get("stale") is not False:
+    if embedding_entry_is_stale(entry):
         raise EmbeddingTableUnreadableError(
             store, key,
             "the entry is stale: the store no longer holds the objmap or array "
@@ -375,15 +436,23 @@ def read_embedding_table(
     ):
         raise EmbeddingTableUnreadableError(store, key, "the entry lists no file")
     relative = str(files[0]["path"])
-    path = store / relative
-    if not path.resolve().is_relative_to(store.resolve()) or not path.is_file():
-        raise EmbeddingTableUnreadableError(store, key, f"its file {relative} is missing")
-    if _file_sha256(path) != files[0]["sha256"]:
+    path = _entry_file_path(store, relative)
+    if path is None:
+        raise EmbeddingTableUnreadableError(
+            store, key, f"its file {relative} lies outside the store"
+        )
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise EmbeddingTableUnreadableError(
+            store, key, f"its file {relative} is missing ({exc.strerror or exc})"
+        ) from exc
+    if hashlib.sha256(data).hexdigest() != files[0]["sha256"]:
         raise EmbeddingTableUnreadableError(
             store, key, f"{relative} does not match its recorded sha256"
         )
     try:
-        table = pq.read_table(path)
+        table = pq.read_table(pa.BufferReader(data))
     except (pa.ArrowException, OSError) as exc:
         raise EmbeddingTableUnreadableError(store, key, f"{relative}: {exc}") from exc
     dim = entry.get("dim")
