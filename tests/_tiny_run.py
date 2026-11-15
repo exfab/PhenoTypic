@@ -886,3 +886,39 @@ def touch_root(store: Path) -> None:
     """
     root = Path(store) / "zarr.json"
     root.write_bytes(root.read_bytes() + b" ")
+
+
+@pytest.fixture
+def certified_older_than_latest(finished_tiny_run: Path, pipeline_file_b: Path) -> Path:
+    """A finished run whose records certify folder 1 while folder 2 is the latest.
+
+    Forward A writes folder 1; ``--mode measure`` with B adds folder 2 and
+    moves the records to it; ``--mode measure`` with A again replaces folder
+    1 and moves the records back. So the store's latest measurement folder
+    (B's, the only one with shape columns) is not the one any record
+    certifies, which is the case a "latest folder" reader gets wrong.
+
+    Returns the output root.
+    """
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_failure_tracker import file_sha256
+    from phenotypic.sdk_ import list_table_runs
+    from phenotypic.sdk_._image_record import read_image_record
+
+    out = finished_tiny_run
+    pipeline_a = out.parent / "tiny_run.pht-pipe.json"
+    for pipeline in (pipeline_file_b, pipeline_a):
+        result = run_cli(None, out, mode="measure", pipeline=pipeline)
+        assert result.exit_code == 0, result.output
+    for stem in ("plate_1", "plate_2"):
+        store = one_store(out, stem=stem)
+        first, latest = list_table_runs(store)
+        assert latest.pipeline_sha256 == file_sha256(pipeline_file_b)
+        record = read_image_record(out, "ds", stem)
+        assert record is not None
+        assert valid_image_success(
+            out, dataset="ds", image_stem=stem, work_id=str(record["work_id"])
+        )
+        certified = out / record["artifacts"]["measurements"]["path"]
+        assert certified == first.measurements_path()
+    return out

@@ -19,6 +19,7 @@ from tests._support.xdist_workers import resolve_xdist_auto_workers
 # Shared #281 plan fixtures, re-exported by name so any test can request them.
 from tests._tiny_run import (  # noqa: F401
     all_bad_inputs,
+    certified_older_than_latest,
     finished_tiny_run,
     full_run_store,
     input_store_v2,

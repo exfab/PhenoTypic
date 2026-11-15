@@ -183,23 +183,74 @@ def _existing_marker_identity(
     return defaults
 
 
-def _embedded_table_path(store: Path) -> Path:
-    """The measurement table *store* declares, in either tables layout.
+def _certified_run_table(output_dir: Path, task: MigrationImageTask) -> Path | None:
+    """The v2 run table the image's record certifies in *task*'s store, or ``None``.
 
-    A v2 store's latest run folder holding ``measurements``, or a v1 flat
-    store's one table (migrate reads a tree before converting it; #281 spec
-    D10). A store that declares none answers the v1 flat path, which is only
-    ever probed for existence or named in an error.
+    ``None`` when the image has no record, when its record (or legacy marker)
+    certifies the v1 flat path -- a tree migrate has not converted, or one a
+    crash left between the conversion and its republish -- or a table that no
+    run of this store declares. Only then does migrate fall back to the
+    record-less default (review C1, spec D6a).
     """
-    declared = declared_measurement_table_path(store)
+    from ._cli_parquet_agg import measurement_table_run
+    from ._cli_recompile_recovery import (
+        certified_measurement_table,
+        table_lies_in_store,
+    )
+
+    certified = certified_measurement_table(output_dir, task.dataset, task.stem)
+    if certified is None or not table_lies_in_store(certified, task.store_path):
+        return None
+    try:
+        run = measurement_table_run(certified)
+    except (OSError, KeyError, ValueError):
+        return None
+    return None if run is None else run.measurements_path()
+
+
+def _migration_table_run_id(output_dir: Path, task: MigrationImageTask) -> str | None:
+    """The run folder migrate validates and certifies for *task*, or ``None`` (the default).
+
+    The run the image's record certifies, when it certifies one (review C1).
+    ``None`` asks the table contract for its record-less default, the latest
+    run holding ``measurements`` (or a v1 store's flat table).
+    """
+    table = _certified_run_table(output_dir, task)
+    return None if table is None else table.parent.parent.name
+
+
+def _embedded_table_path(output_dir: Path, task: MigrationImageTask) -> Path:
+    """The measurement table migrate validates and certifies for *task*.
+
+    The table the image's record certifies, when it certifies a run folder of
+    this store (review C1): a tree measured with A, then B, then A certifies
+    folder 1 while folder 2 is the latest, and re-certifying the latest would
+    silently move the image to pipeline B. Otherwise the record-less default
+    (spec D6a): a v2 store's latest run folder holding ``measurements``, or a
+    v1 flat store's one table (migrate reads a tree before converting it;
+    spec D10). A store that declares none answers the v1 flat path, which is
+    only ever probed for existence or named in an error.
+    """
+    certified = _certified_run_table(output_dir, task)
+    if certified is not None:
+        return certified
+    declared = declared_measurement_table_path(task.store_path)
     return (
         declared
         if declared is not None
-        else Path(store) / MEASUREMENT_TABLE_RELATIVE_PATH
+        else Path(task.store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+
+
+def _table_contract_holds(output_dir: Path, task: MigrationImageTask) -> bool:
+    """Whether the run migrate certifies for *task* passes the table contract."""
+    return _valid_embedded_measurement_contract(
+        task.store_path, _migration_table_run_id(output_dir, task)
     )
 
 
 def _migration_marker_artifacts(
+    output_dir: Path,
     task: MigrationImageTask,
     *,
     table_authoritative: bool,
@@ -210,7 +261,7 @@ def _migration_marker_artifacts(
         "overlay": task.overlay_path,
     }
     if table_authoritative:
-        artifacts["measurements"] = _embedded_table_path(task.store_path)
+        artifacts["measurements"] = _embedded_table_path(output_dir, task)
     return artifacts
 
 
@@ -298,8 +349,9 @@ def _valid_migration_marker(
     stopped borrowing an input path to find an output.
     """
     if table_authoritative is None:
-        table_authoritative = _embedded_table_path(task.store_path).is_file()
+        table_authoritative = _embedded_table_path(output_dir, task).is_file()
     expected = _migration_marker_artifacts(
+        output_dir,
         task,
         table_authoritative=table_authoritative,
     )
@@ -341,6 +393,7 @@ def _image_plane_shape(image: object) -> tuple[int, ...]:
 
 
 def _table_state(
+    output_dir: Path,
     task: MigrationImageTask,
     *,
     metadata_csv: Path | None,
@@ -348,7 +401,7 @@ def _table_state(
     require_source_equality: bool = False,
 ) -> tuple[bool, bool]:
     """Repair and return ``(valid, installed)`` for one embedded table."""
-    valid = _valid_embedded_measurement_contract(task.store_path)
+    valid = _table_contract_holds(output_dir, task)
     source = task.measurement_path
     prepared = None
     if (
@@ -368,11 +421,11 @@ def _table_state(
             prepared,
             commit_guard=commit_guard,
         )
-        valid = _valid_embedded_measurement_contract(task.store_path)
+        valid = _table_contract_holds(output_dir, task)
         if not valid:
             raise RuntimeError("embedded measurement table validation failed")
         return True, True
-    if _embedded_table_path(task.store_path).exists() and not valid:
+    if _embedded_table_path(output_dir, task).exists() and not valid:
         raise RuntimeError("embedded measurement table validation failed")
     return valid, False
 
@@ -425,9 +478,7 @@ def _dry_run_result(
                 f"No legacy HDF source exists for {task.dataset}/{task.stem}"
             )
         image = _load_for_migration(task.hdf_path)
-    table_valid = store_valid and _valid_embedded_measurement_contract(
-        task.store_path
-    )
+    table_valid = store_valid and _table_contract_holds(output_dir, task)
     table_needed = (
         not table_valid
         and task.measurement_path is not None
@@ -585,9 +636,7 @@ def migrate_image_task(
             overlay_rendered=overlay_rendered,
         ) from exc
 
-    table_was_authoritative = _valid_embedded_measurement_contract(
-        task.store_path
-    )
+    table_was_authoritative = _table_contract_holds(output_dir, task)
     marker_was_valid = _valid_migration_marker(
         output_dir,
         task,
@@ -597,6 +646,7 @@ def migrate_image_task(
 
     try:
         table_valid, table_installed = _table_state(
+            output_dir,
             task,
             metadata_csv=metadata_csv,
             commit_guard=commit_guard,
@@ -611,7 +661,7 @@ def migrate_image_task(
             stage="table",
             target=(
                 task.measurement_path
-                or _embedded_table_path(task.store_path)
+                or _embedded_table_path(output_dir, task)
             ),
             cause=exc,
             converted=converted,
@@ -634,7 +684,7 @@ def migrate_image_task(
             task,
             work_id,
             stage="table",
-            target=_embedded_table_path(task.store_path),
+            target=_embedded_table_path(output_dir, task),
             cause=exc,
             converted=converted,
             table_installed=table_installed,
@@ -680,6 +730,7 @@ def migrate_image_task(
                 output_dir, task.dataset, task.stem, work_id
             )
             artifacts = _migration_marker_artifacts(
+                output_dir,
                 task,
                 table_authoritative=table_valid,
             )
@@ -728,7 +779,7 @@ def migrate_image_task(
         with publication_commit(commit_guard):
             if not valid_staged_store(task.store_path):
                 raise RuntimeError("migrated image store validation failed")
-            if table_valid != _valid_embedded_measurement_contract(task.store_path):
+            if table_valid != _table_contract_holds(output_dir, task):
                 raise RuntimeError("embedded measurement table validation failed")
             if not valid_migration_overlay(task.overlay_path, expected_shape):
                 raise RuntimeError("migrated overlay validation failed")

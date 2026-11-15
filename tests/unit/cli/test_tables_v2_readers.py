@@ -287,27 +287,8 @@ def test_measure_with_another_pipeline_adds_a_folder_and_recompile_keeps_it(
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def certified_older_than_latest(finished_tiny_run, pipeline_file_b) -> Path:
-    """A finished run whose records certify folder 1 while folder 2 is the latest.
-
-    Forward A writes folder 1; ``--mode measure`` with B adds folder 2 and
-    moves the records to it; ``--mode measure`` with A again replaces folder
-    1 and moves the records back. So the store's latest measurement folder
-    (B's, the only one with shape columns) is not the one any record
-    certifies, which is the case a "latest folder" reader gets wrong.
-    """
-    out = finished_tiny_run
-    pipeline_a = out.parent / "tiny_run.pht-pipe.json"
-    for pipeline in (pipeline_file_b, pipeline_a):
-        result = run_cli(None, out, mode="measure", pipeline=pipeline)
-        assert result.exit_code == 0, result.output
-    for stem in _TINY_STEMS:
-        store = one_store(out, stem=stem)
-        first, latest = list_table_runs(store)
-        assert latest.pipeline_sha256 == file_sha256(pipeline_file_b)
-        assert _record_measurements(out, "ds", stem) == first.measurements_path()
-    return out
+# `certified_older_than_latest` lives in `tests/_tiny_run.py` (shared with the
+# migrate re-run tests).
 
 
 def _store_digests(out: Path) -> dict[str, str]:
