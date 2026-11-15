@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
 
 import pandas as pd
 from typing import Dict, List, Tuple
@@ -29,7 +30,12 @@ import inspect
 import time
 import sys
 
-from phenotypic.abc_ import MeasureFeatures, BaseOperation, ImageOperation
+from phenotypic.abc_ import (
+    BaseOperation,
+    ImageOperation,
+    MeasureEmbedding,
+    MeasureFeatures,
+)
 from phenotypic.abc_._post_measurement import PostMeasurement
 from phenotypic._core._pipeline_parts._step_order_check import step_order_checked
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
@@ -331,6 +337,32 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             raise TypeError(
                 f"plots must be a list of plot objects or bindings, got {type(value)}"
             )
+        return value
+
+    @field_validator("meas")
+    @classmethod
+    def _refuse_shared_embedding_keys(
+            cls, value: Dict[str, MeasureFeatures]
+    ) -> Dict[str, MeasureFeatures]:
+        """Refuse two embedders that would write one embedding table (#281 spec E2).
+
+        A run folder holds one table per ``"<model>/<crops|grid>"`` key, so
+        two embedders of one model and region -- even with different pooling
+        -- would overwrite each other's table. Give them different models, or
+        keep one.
+        """
+        owners: Dict[str, str] = {}
+        for key, measurer in value.items():
+            if not isinstance(measurer, MeasureEmbedding):
+                continue
+            payload_key = measurer.payload_key()
+            if payload_key in owners:
+                raise ValueError(
+                    f"measurers {owners[payload_key]!r} and {key!r} would both "
+                    f"write the embedding table {payload_key!r}; a run folder "
+                    "holds one table per model and region, so keep one of them"
+                )
+            owners[payload_key] = key
         return value
 
     @model_validator(mode="after")
@@ -1149,6 +1181,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         logging of the measurement process is displayed. A progress bar is used to track progress
         if the tqdm library is available.
 
+        **Embedders are not run here.** A
+        :class:`~phenotypic.abc_.MeasureEmbedding` in ``meas`` writes its own
+        table rather than columns of this frame, so ``measure()`` skips it and
+        its output never has an ``embedding`` column; :meth:`embed` runs it.
+        A CLI per-image writer calls both and writes one run folder.
+
         .. versionchanged:: 0.21.0
            Raises :class:`~phenotypic.sdk_.exceptions_.MeasurementConflictError`
            when two measurement tables give a colony different values for a
@@ -1199,7 +1237,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self._measurement_memory = {}
             self._measurement_rss = {}
 
-        meas_to_run: Dict[str, MeasureFeatures] = self._build_measurement_run_order()
+        meas_to_run: Dict[str, MeasureFeatures] = {
+            key: measurement
+            for key, measurement in self._build_measurement_run_order().items()
+            if not isinstance(measurement, MeasureEmbedding)
+        }
 
         # Print message if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
@@ -1328,6 +1370,56 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 df = post_op.apply(df)
 
         return df
+
+    def embed(self, image: Image) -> Dict[str, "EmbeddingPayload"]:
+        """Run the pipeline's embedders on *image* and return their tables.
+
+        The counterpart of :meth:`measure`, which skips every
+        :class:`~phenotypic.abc_.MeasureEmbedding` in ``meas``: this runs
+        **only** those, in ``meas`` order. Each returns one table, which a
+        store writer puts in the pipeline's run folder as
+        ``tables/<run>/embeddings/<model>/<crops|grid>/table.parquet``
+        (#281 spec D1). A CLI per-image writer calls both methods and writes
+        one run folder. Post-measurement ops never see embeddings.
+
+        Args:
+            image: The image after :meth:`apply`. A crop embedder needs its
+                objmap; a grid embedder does not.
+
+        Returns:
+            ``{"<model>/<crops|grid>": EmbeddingPayload}``, one per embedder;
+            empty when the pipeline has none. Two embedders never share a key
+            (refused when the pipeline is built).
+
+        Raises:
+            RuntimeError: Naming the embedder and its ``meas`` key, when it
+                fails.
+
+        Examples:
+            >>> from phenotypic import ImagePipeline
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> from phenotypic.measure import MeasureSize
+            >>> pipe = ImagePipeline(meas={"size": MeasureSize()})
+            >>> pipe.embed(load_synth_yeast_plate())
+            {}
+        """
+        payloads: Dict[str, EmbeddingPayload] = {}
+        embedders = [
+            (key, measurement)
+            for key, measurement in self._meas.items()
+            if isinstance(measurement, MeasureEmbedding)
+        ]
+        for i, (key, embedder) in enumerate(embedders):
+            logger.debug("Running embedder [%d/%d]: %s", i + 1, len(embedders), key)
+            try:
+                payload = embedder.payload(image)
+            except Exception as exc:
+                raise RuntimeError(
+                        f"[{type(embedder).__name__}] (embedder {i + 1}/"
+                        f"{len(embedders)}, key='{key}'): {exc}"
+                ) from exc
+            payloads[payload.key] = payload
+        return payloads
 
     @staticmethod
     def _get_image_info(image: Image, include_metadata: bool) -> pd.DataFrame:

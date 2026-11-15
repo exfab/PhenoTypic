@@ -937,3 +937,104 @@ def certified_older_than_latest(finished_tiny_run: Path, pipeline_file_b: Path) 
         certified = out / record["artifacts"]["measurements"]["path"]
         assert certified == first.measurements_path()
     return out
+
+
+# ---------------------------------------------------------------------------
+# P4 T1 (C17): ``MeasureEmbedding`` and pipeline routing (spec E1, E2)
+# ---------------------------------------------------------------------------
+
+
+#: Vector length of the toy embedders.
+TOY_DIM = 4
+
+_TOY_EMBEDDER: type | None = None
+
+
+def toy_embedder_class() -> type:
+    """The toy :class:`~phenotypic.abc_.MeasureEmbedding`, built once per process.
+
+    Defined lazily rather than at module scope, because this module must
+    import without ``phenotypic``, and cached so every fixture shares one
+    class. Its vectors are ``boxes.sum(1)`` repeated :data:`TOY_DIM` times, so
+    a test can tell which box a row came from without a model. ``token`` is
+    the model token, so two "models" can sit side by side in one run.
+    """
+    global _TOY_EMBEDDER
+    if _TOY_EMBEDDER is not None:
+        return _TOY_EMBEDDER
+
+    import numpy as np
+
+    from phenotypic.abc_ import MeasureEmbedding
+
+    class ToyEmbedder(MeasureEmbedding):
+        """A model-free embedder for tests.
+
+        Args:
+            token: The model token this embedder reports.
+        """
+
+        token: str = "toy-v1"
+
+        def model_token(self) -> str:
+            return self.token
+
+        def entry_descriptor(self) -> dict:
+            return {
+                "model": {
+                    "family": "toy",
+                    "hf_id": None,
+                    "revision": None,
+                    "patch_size": None,
+                },
+                "dim": TOY_DIM,
+                "dtype": "float16",
+                "pooling": "box_sum",
+            }
+
+        def _embed_boxes(self, image, boxes):
+            sums = boxes.sum(axis=1).astype(np.float32)
+            return np.repeat(sums[:, None], TOY_DIM, axis=1)
+
+    _TOY_EMBEDDER = ToyEmbedder
+    return ToyEmbedder
+
+
+@pytest.fixture
+def plate():
+    """``load_synth_yeast_plate()``: a 96-colony ``GridImage`` with its objmap set."""
+    from phenotypic.data import load_synth_yeast_plate
+
+    return load_synth_yeast_plate()
+
+
+@pytest.fixture
+def detected_plate(plate):
+    """:func:`plate` with ``OtsuDetector`` applied."""
+    from phenotypic.detect import OtsuDetector
+
+    return OtsuDetector().apply(plate)
+
+
+@pytest.fixture
+def toy_embedder():
+    """A crop embedder: ``model_token() == "toy-v1"``, ``regions="objects"``."""
+    return toy_embedder_class()()
+
+
+#: The 2 x 2 grid :func:`toy_grid_embedder` embeds, in pixels of the synth plate.
+TOY_GRID_ROW_EDGES = (0, 100, 200)
+TOY_GRID_COL_EDGES = (0, 150, 300)
+
+
+@pytest.fixture
+def toy_grid_embedder():
+    """A grid embedder: ``regions="grid"`` over a 2 x 2 ``ManualGridFinder``."""
+    from phenotypic.grid import ManualGridFinder
+
+    return toy_embedder_class()(
+        regions="grid",
+        grid=ManualGridFinder(
+            row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+        ),
+    )

@@ -1,0 +1,79 @@
+"""``ImagePipeline.measure()`` skips embedders; ``embed()`` runs them (#281 P4 T1, spec E2)."""
+
+from __future__ import annotations
+
+import pytest
+
+from phenotypic import ImagePipeline
+from phenotypic.detect import OtsuDetector
+from phenotypic.measure import MeasureSize
+from phenotypic.schema import OBJECT
+from phenotypic.sdk_._embedding_tables import EmbeddingPayload
+
+
+def test_measure_skips_and_embed_runs(toy_embedder, plate):
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas={"size": MeasureSize(), "emb": toy_embedder})
+    img = pipe.apply(plate)
+    assert not any("embedding" in c for c in pipe.measure(img).columns)
+    payloads = pipe.embed(img)
+    assert list(payloads) == ["toy-v1/crops"]
+    assert len(payloads["toy-v1/crops"].frame) == img.num_objects
+
+
+def test_two_embedders_with_one_payload_key_are_refused(toy_embedder):
+    twin = toy_embedder.model_copy()                  # same model and region, e.g. another pooling
+    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/crops"):
+        ImagePipeline(ops=[OtsuDetector()], meas={"emb_a": toy_embedder, "emb_b": twin})
+
+
+def test_a_crop_and_a_grid_embedder_of_one_model_coexist(toy_embedder, toy_grid_embedder, plate):
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas={"crops": toy_embedder, "grid": toy_grid_embedder})
+    payloads = pipe.embed(pipe.apply(plate))
+    assert list(payloads) == ["toy-v1/crops", "toy-v1/grid"]
+
+
+def test_measure_without_any_plain_measurer_returns_the_info_block(toy_embedder, plate):
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas={"emb": toy_embedder})
+    frame = pipe.measure(pipe.apply(plate))
+    assert str(OBJECT.LABEL) in frame.columns
+    assert "embedding" not in frame.columns
+
+
+def test_a_pipeline_without_embedders_embeds_nothing(plate):
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas={"size": MeasureSize()})
+    assert pipe.embed(pipe.apply(plate)) == {}
+
+
+def test_assigning_a_duplicate_embedder_later_is_refused(toy_embedder):
+    pipe = ImagePipeline(ops=[OtsuDetector()], meas={"emb_a": toy_embedder})
+    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/crops"):
+        pipe.set_meas({"emb_a": toy_embedder, "emb_b": toy_embedder.model_copy()})
+
+
+def test_the_crop_payload_descriptor_binds_the_objmap(toy_embedder, detected_plate):
+    from phenotypic.sdk_._measurement_tables import objmap_digest
+
+    payload = ImagePipeline(meas={"emb": toy_embedder}).embed(detected_plate)["toy-v1/crops"]
+    assert isinstance(payload, EmbeddingPayload)
+    descriptor = payload.descriptor
+    assert descriptor["key"] == str(OBJECT.LABEL)
+    assert descriptor["dim"] == 4
+    assert descriptor["input"] == {"series": "rgb", "level": 0}
+    assert descriptor["producer"]["class"] == type(toy_embedder).__name__
+    assert len(descriptor["producer"]["params_sha256"]) == 64
+    assert descriptor["binds"] == {
+        "objmap_path": "rgb/labels/objmap",
+        "objmap_sha256": objmap_digest(detected_plate.objmap[:]),
+    }
+
+
+def test_the_grid_payload_descriptor_binds_the_level0_array(toy_grid_embedder, plate):
+    import numpy as np
+
+    from phenotypic.sdk_._measurement_tables import array_digest
+
+    payload = ImagePipeline(meas={"g": toy_grid_embedder}).embed(plate)["toy-v1/grid"]
+    binds = payload.descriptor["binds"]
+    assert set(binds) == {"array_sha256", "grid_sha256"}
+    assert binds["array_sha256"] == array_digest(np.moveaxis(plate.rgb[:], -1, 0))
+    assert payload.descriptor["key"] == "Grid_RowMajorIdx"

@@ -66,6 +66,12 @@ DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "
 #: no Enum partner, mirroring ``DetectMode`` / ``ExecutionMode``.
 InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
 
+#: What a ``MeasureEmbedding`` embeds (#281 spec E1): ``"objects"`` crops each
+#: detected colony's bounding box and writes ``embeddings/<model>/crops/``;
+#: ``"grid"`` crops each cell of a user-set grid and writes
+#: ``embeddings/<model>/grid/``. Literal-only, like ``InputLayer``.
+EmbeddingRegions: TypeAlias = Literal["objects", "grid"]
+
 #: Output-range policy for operations that guard ``detect_mat``'s [0, 1]
 #: contract. ``"clip"`` saturates, ``"rescale"`` normalizes the full
 #: histogram, ``None`` passes values through untouched (the escape hatch

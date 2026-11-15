@@ -967,6 +967,32 @@ class ImageIOHandler(ImageColorSpace):
             if name != "rgb" or not self.rgb.isempty()
         ]
 
+    def _store_series_array(self, name: str) -> np.ndarray:
+        """The level-0 array of series *name* exactly as a store writes it.
+
+        ``rgb`` is planar, ``(c, y, x)``, because NGFF has no RGB type (its
+        channel axis comes before the space axes); ``gray`` and
+        ``detect_mat`` are written as they are. The one definition of that
+        form: the store writer uses it, and so does a grid embedding's
+        ``binds.array_sha256`` (#281 spec D7), which must digest the array the
+        store will hold.
+
+        Args:
+            name: ``"rgb"``, ``"gray"`` or ``"detect_mat"``.
+
+        Returns:
+            The array (a view where the layout allows one).
+        """
+        # ``np.asarray`` returns the accessor's ndarray itself (no copy); it
+        # only narrows the accessors' ndarray-or-scalar return type.
+        if name == "rgb":
+            return np.moveaxis(np.asarray(self.rgb[:]), -1, 0)  # (H,W,C)->(c,y,x)
+        if name == "gray":
+            return np.asarray(self.gray[:])
+        if name == "detect_mat":
+            return np.asarray(self.detect_mat[:])
+        raise ValueError(f"not a stored image series: {name!r}")
+
     def _write_series(
         self,
         part: Path,
@@ -1353,13 +1379,8 @@ class ImageIOHandler(ImageColorSpace):
 
         # Only the requested layers are materialised: a preview store must not
         # pay for a `detect_mat` the node never touched.
-        loaders = {
-            "rgb": lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
-            "gray": lambda: self.gray[:],
-            "detect_mat": lambda: self.detect_mat[:],
-        }
         arrays: dict[str, np.ndarray] = {
-            name: loaders[name]() for name in series
+            name: self._store_series_array(name) for name in series
         }
         if original_axis is not None and self._original is not None:
             arrays["original"] = (
