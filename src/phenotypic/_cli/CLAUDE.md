@@ -851,6 +851,18 @@ only an explicit known terminal scheduler state permits interrupted
 terminalization. Every active/held/requeue/signaling state preserves the attempt,
 and an unknown state fails closed.
 
+**Tables v1 -> v2 (#281 spec D10).** Migrate converts a store still in the v1
+flat tables layout into run folder `tables/1-<sha12>/` (`1-unknown` when no
+digest is known; `v1_table_pipeline_sha`: latest figure run, else latest
+`full`/`legacy` journal application) with `convert_tables_v1_to_v2`. The step
+runs in the per-image task (`_cli_migrate_image`, local and SLURM image array)
+after the table stage, and republishes a record that was current before it via
+`_republish_table_marker`; the run proof follows at finalization. A
+provenance-only target gets it in its store array
+(`convert_provenance_store_tables`). The legacy-Parquet import,
+`replace_embedded_measurement_table`, writes v2 directly, so no tree is left
+mixed.
+
 ## Per-image figures
 
 Every `PlotImage` binding's figures are written **into the image's store**, in
@@ -1325,8 +1337,12 @@ dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
 `/analysis/` app for interactive exploration. Each per-image **OME-Zarr store** stays at
 `results/<ds>/zarr/<stem>.ome.zarr/`. Its authoritative object measurements
-are embedded at `tables/measurements/table.parquet`, described by
-`attributes.phenotypic.tables.measurements` in the store root. Forward,
+are embedded per measuring pipeline, at
+`tables/<n>-<sha12>/measurements/table.parquet`, described by
+`attributes.phenotypic.tables.runs.<n>-<sha12>.measurements` in the store
+root (#281 spec D1-D3). A store written before that layout keeps one flat
+`tables/measurements/table.parquet`; every mode but migrate refuses such a
+tree (`_cli_tables_v1.first_v1_store`), and `--mode migrate` converts it. Forward,
 staged Stage 3, and measure runs do not create
 `results/<ds>/measurements/<stem>.parquet`; that directory is legacy migration
 input only. There is no per-image `.h5` on any forward path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
@@ -1353,9 +1369,10 @@ replaced described the pre-inversion contract in every particular, and each
 particular is now false.)*
 
 Each embedded table carries **measurements alone**; the image's own rows of the
-run's metadata snapshot sit beside it at `tables/metadata/pht-metadata.parquet`,
-and the store root records which snapshot it was built against in
-`attributes.phenotypic.metadata_table.snapshot_sha256`.
+run's metadata snapshot sit beside it in the same run folder, at
+`tables/<n>-<sha12>/metadata/pht-metadata.parquet`, and the run's entry in
+the store root records which snapshot it was built against in
+`tables.runs.<n>-<sha12>.metadata_table.snapshot_sha256`.
 `master_measurements.parquet` is the pre-post concatenation of
 marker-authorized embedded tables, each **projected onto its own store's
 descriptor** first, so it is **un-joined**: intrinsic identity

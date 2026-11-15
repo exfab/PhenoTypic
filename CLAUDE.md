@@ -576,8 +576,11 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
   the durable QC + curation state under `deliverables/qc/`); per-image image
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
-  object measurements at `tables/measurements/table.parquet` inside each
-  store. Forward runs do not create external per-image measurement Parquets.
+  object measurements at `tables/<n>-<sha12>/measurements/table.parquet`
+  inside each store, one folder per measuring pipeline (the v1 flat
+  `tables/measurements/` is converted by `--mode migrate` and refused by
+  every other mode). Forward runs do not create external per-image
+  measurement Parquets.
   `master_measurements.parquet` is the pre-post concatenation of authorized
   embedded tables, each **projected onto its own store's recorded
   `measurement_columns`** first: **un-joined**, carrying intrinsic identity

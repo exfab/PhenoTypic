@@ -187,9 +187,11 @@ upgrade root provenance and have no legacy image source to reclaim.
 ## What a converted full run contains
 
 - **Stores.** Each image becomes `results/<ds>/zarr/<stem>.ome.zarr`, and its
-  external Parquet is embedded at `tables/measurements/table.parquet`. When the
+  external Parquet is embedded at
+  `tables/<n>-<sha12>/measurements/table.parquet`, the run folder of the
+  pipeline that measured it (see *Per-pipeline table folders* below). When the
   run has a `deliverables/metadata.csv`, that table is written in the older,
-  metadata-joined shape and the store has no separate `tables/metadata/` table.
+  metadata-joined shape and the store has no separate `metadata/` table.
   The store's descriptor still lists only the measured columns, in
   `measurement_columns`.
 - **Master.** Migration finalizes the run again. Each embedded table is cut back
@@ -210,6 +212,33 @@ upgrade root provenance and have no legacy image source to reclaim.
   header-normalized view is written beside it as `metadata.canonical.csv`.
 - **Sources.** `.h5` files and external Parquets stay unless you passed
   `--delete-sources`.
+
+## Per-pipeline table folders
+
+Each store keeps one table folder per pipeline that measured it,
+`tables/<n>-<sha12>/`, holding `measurements/table.parquet` and, when the run
+had metadata, `metadata/pht-metadata.parquet`. `<n>` counts the pipelines that
+have written to the store, and `<sha12>` is the first 12 hex digits of the
+pipeline file's sha256.
+
+Stores written before this layout keep one table at
+`tables/measurements/table.parquet`. Every mode except migrate refuses a tree
+that still holds such a store, names the store, and points at this command.
+Migrate converts each one:
+
+- `tables/measurements/` and `tables/metadata/` move into `tables/1-<sha12>/`.
+  The Parquet files are hard-linked, not rewritten, and no pixel array is
+  touched.
+- The digest is taken from the store's most recent figure run, since a table
+  that `--mode measure` rewrote was never recorded in the journal. Without a
+  figure run it comes from the latest journal application that measured. When
+  neither names a pipeline, the folder is `1-unknown`. A digest is never made
+  up.
+- The conversion rewrites the store root, so migrate republishes the image's
+  record, pointing it at the new table, and then the run proof. A run that was
+  complete before migrating is still complete afterwards.
+- A direct-store target is converted the same way. It has no record to
+  republish.
 
 ## Check the result
 
