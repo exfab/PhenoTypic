@@ -43,6 +43,31 @@ _ENTRY_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
 )
 
 
+def is_out_of_memory(exc: BaseException) -> bool:
+    """Whether *exc* is a host or GPU out-of-memory error (review M7).
+
+    ``MemoryError``, or torch's ``OutOfMemoryError`` (``torch.OutOfMemoryError``,
+    and ``torch.cuda.OutOfMemoryError`` on a torch that has only that).
+    torch is looked up in ``sys.modules``, never imported: an error raised
+    by torch means torch is loaded already. An embedder is the step most
+    likely to run out of memory, and running out is the node's state, not
+    the image's, so these are re-raised unwrapped: the CLI's failure tracker
+    then records no terminal failure, and the next run retries the image.
+    """
+    import sys
+
+    if isinstance(exc, MemoryError):
+        return True
+    torch = sys.modules.get("torch")
+    if torch is None:
+        return False
+    for owner in (torch, getattr(torch, "cuda", None)):
+        oom = getattr(owner, "OutOfMemoryError", None)
+        if isinstance(oom, type) and isinstance(exc, oom):
+            return True
+    return False
+
+
 class GridCellOutsideImageError(ValueError):
     """A grid cell is empty or not inside the image (#281 spec E3a).
 
@@ -291,12 +316,17 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             ValueError: If *include_meta* is true.
             OperationFailedError: If embedding fails, a grid cell falls
                 outside the image, or the vectors have the wrong shape.
+            MemoryError: Re-raised unwrapped, as is torch's
+                ``OutOfMemoryError`` (:func:`is_out_of_memory`): running out
+                of memory is the node's state, not the image's.
         """
         if include_meta:
             raise ValueError("an embedding table carries no metadata (include_meta)")
         try:
             return self._operate(image)
         except Exception as exc:
+            if is_out_of_memory(exc):
+                raise
             raise OperationFailedError(
                 operation=type(self).__name__,
                 image_name=image.name,

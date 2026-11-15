@@ -36,6 +36,7 @@ from phenotypic.abc_ import (
     MeasureEmbedding,
     MeasureFeatures,
 )
+from phenotypic.abc_._measure_embedding import is_out_of_memory
 from phenotypic.abc_._post_measurement import PostMeasurement
 from phenotypic._core._pipeline_parts._step_order_check import step_order_checked
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
@@ -1394,6 +1395,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Raises:
             RuntimeError: Naming the embedder and its ``meas`` key, when it
                 fails.
+            MemoryError: Re-raised unwrapped, as is torch's
+                ``OutOfMemoryError``: running out of memory is the node's
+                state, not the image's, so the CLI does not record the image
+                as a terminal failure.
 
         Examples:
             >>> from phenotypic import ImagePipeline
@@ -1414,6 +1419,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             try:
                 payload = embedder.payload(image)
             except Exception as exc:
+                # Out of memory is the node's state, not the image's: never
+                # wrapped, so the CLI records no terminal failure (review M7).
+                if is_out_of_memory(exc):
+                    raise
                 raise RuntimeError(
                         f"[{type(embedder).__name__}] (embedder {i + 1}/"
                         f"{len(embedders)}, key='{key}'): {exc}"
