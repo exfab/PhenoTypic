@@ -254,7 +254,8 @@ def _declared_measurement_descriptor(
     store measure different columns, and projecting one run's table onto
     another's list would raise or drop columns. For a v1 store (the legacy
     read) it is the flat ``tables.measurements`` descriptor, and only for the
-    flat path.
+    flat path. Both come from
+    :func:`~phenotypic.sdk_._table_runs.declared_measurement_tables`.
 
     Raises:
         KeyError: If the store's root carries no ``phenotypic`` block.
@@ -262,22 +263,15 @@ def _declared_measurement_descriptor(
         ValueError: If the store's schema, or its tables descriptor, is a
             version this build does not read, or is corrupt.
     """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, ngff_
-    from phenotypic.sdk_._table_runs import tables_schema_of_block
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import declared_measurement_tables
 
     block = ngff_.require_readable_store(store)
-    schema = tables_schema_of_block(block)
-    descriptor: object = None
-    if schema == 1:
-        if table_path == store / MEASUREMENT_TABLE_RELATIVE_PATH:
-            tables = block.get(ngff_.PhenotypicAttr.TABLES)
-            if isinstance(tables, dict):
-                descriptor = tables.get(ngff_.MEASUREMENT_TABLE_GROUP)
-    elif schema == 2:
-        run = _run_declaring(store, block, table_path)
-        if run is not None:
-            descriptor = run.descriptor.get(ngff_.MEASUREMENT_TABLE_GROUP)
-    return descriptor if isinstance(descriptor, dict) else None
+    for table in declared_measurement_tables(store, block):
+        if store / table.relative_path == table_path:
+            descriptor = table.descriptor
+            return descriptor if isinstance(descriptor, dict) else None
+    return None
 
 
 def project_embedded_measurement_table(
