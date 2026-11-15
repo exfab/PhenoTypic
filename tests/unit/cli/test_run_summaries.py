@@ -63,11 +63,15 @@ def test_metrics_counts_a_clean_run(finished_tiny_run):
     assert "embeddings" not in metrics
 
 
-def test_metrics_pipeline_sha_is_null_while_v1_tables_name_no_pipeline(finished_tiny_run):
-    # Spec C4: the sha every aggregated table shares, never the run config's.
-    # A v1 table records no producing pipeline (spec D10), so nothing is shared
-    # until P3 T4 feeds the certified run folders' digests.
-    assert _json(metrics_json_path(finished_tiny_run))["pipeline_sha256"] is None
+def test_metrics_pipeline_sha_is_the_certified_run_folders_shared_digest(
+    finished_tiny_run, pipeline_file_a
+):
+    # Spec C4, D6a: the sha every aggregated table's certified run folder
+    # shares, never the run config's. The default run_cli pipeline is A's bytes.
+    from phenotypic._cli._cli_failure_tracker import file_sha256
+
+    metrics = _json(metrics_json_path(finished_tiny_run))
+    assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_a)
 
 
 def test_metrics_counts_a_terminal_failure(tiny_inputs_one_bad, tmp_path):

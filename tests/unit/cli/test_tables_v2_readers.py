@@ -108,3 +108,112 @@ def test_a_local_staged_run_certifies_the_run_folder_it_wrote(tmp_path, _fake_gp
     run = table_run_for_pipeline(store, file_sha256(pipeline))
     assert run is not None and run.run_id == f"1-{file_sha256(pipeline)[:12]}"
     assert _record_measurements(out, images.name, "img") == run.measurements_path()
+
+
+# ---------------------------------------------------------------------------
+# C14a: the finalizer and aggregation readers (spec D6a, C4)
+# ---------------------------------------------------------------------------
+
+
+def write_marker_certifying(output_root: Path, run) -> Path:
+    """Write a completion marker whose ``measurements`` artifact is *run*'s table."""
+    import json
+
+    relative = run.measurements_path().resolve().relative_to(output_root.resolve())
+    marker = output_root / "marker.json"
+    marker.write_text(
+        json.dumps({"artifacts": {"measurements": {"path": relative.as_posix()}}}),
+        encoding="utf-8",
+    )
+    return marker
+
+
+def test_master_reads_the_folder_the_record_certifies(store_with_two_runs, tmp_path):
+    from phenotypic._cli._cli_parquet_agg import project_embedded_measurement_table
+    from phenotypic._cli._cli_recompile_recovery import certified_table_run
+
+    first, latest = list_table_runs(store_with_two_runs)
+    marker = write_marker_certifying(tmp_path, first)
+    run = certified_table_run(tmp_path, marker)
+    assert run is not None and run.run_id == first.run_id
+    frame = project_embedded_measurement_table(run.measurements_path())
+    assert frame is not None
+    assert set(frame["Pipeline_Marker"]) == {"A"}
+    # Projected onto the CERTIFIED run's own column list, not the latest
+    # run's: B measures shape, so B's list names columns A's table lacks.
+    own = list(first.descriptor["measurements"]["measurement_columns"])
+    assert frame.columns == own
+    assert own != list(latest.descriptor["measurements"]["measurement_columns"])
+
+
+def test_a_marker_naming_no_declared_run_certifies_nothing(store_with_two_runs, tmp_path):
+    from phenotypic._cli._cli_recompile_recovery import certified_table_run
+
+    first = list_table_runs(store_with_two_runs)[0]
+    marker = write_marker_certifying(tmp_path, first)
+    marker.write_text(
+        marker.read_text(encoding="utf-8").replace(first.run_id, "9-unknown"),
+        encoding="utf-8",
+    )
+    assert certified_table_run(tmp_path, marker) is None
+
+
+def test_v2_table_paths_are_embedded_authority(store_with_two_runs):
+    from phenotypic._cli._cli_chunk_writer import _chunk_state_key
+    from phenotypic._cli._cli_parquet_agg import is_embedded_measurement_table
+
+    store = store_with_two_runs
+    for run in list_table_runs(store):
+        assert is_embedded_measurement_table(run.measurements_path())
+    # The v1 flat shape stays recognised (migrate's legacy read, until C15).
+    assert is_embedded_measurement_table(store / "tables/measurements/table.parquet")
+    assert not is_embedded_measurement_table(
+        store / "tables/1-unknown/embeddings/m/crops/table.parquet"
+    )
+    assert not is_embedded_measurement_table(
+        store / "tables/0-abc/measurements/table.parquet"
+    )
+    relative = list_table_runs(store)[1].measurements_path().relative_to(store)
+    placed = store.parent / "out/results/ds/zarr/plate_1.ome.zarr" / relative
+    assert _chunk_state_key(placed) == "ds/plate_1.parquet"
+
+
+def test_a_one_image_local_full_run_finalizes(tmp_path, pipeline_file_a):
+    import json
+
+    import polars as pl
+    from PIL import Image as PILImage
+
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_ import master_measurements_parquet_path, metrics_json_path
+
+    inputs = tmp_path / "in"
+    (inputs / "ds").mkdir(parents=True)
+    PILImage.fromarray(load_synth_yeast_plate().rgb[:].astype("uint8")).save(
+        inputs / "ds" / "plate_1.tif"
+    )
+    out = tmp_path / "out"
+    result = run_cli(inputs, out, pipeline=pipeline_file_a)
+    assert result.exit_code == 0, result.output
+
+    run = table_run_for_pipeline(one_store(out), file_sha256(pipeline_file_a))
+    assert run is not None
+    master = pl.read_parquet(master_measurements_parquet_path(out))
+    assert master.height == pl.read_parquet(run.measurements_path()).height > 0
+    # Identity comes from the v2 run-folder path, not the file stem "table".
+    assert set(master[str(IMAGE.IMAGE_NAME)]) == {"plate_1"}
+    metrics = json.loads(metrics_json_path(out).read_text(encoding="utf-8"))
+    assert metrics["pipeline_sha256"] == file_sha256(pipeline_file_a)
+
+
+def test_metrics_pipeline_sha_is_null_when_certified_runs_differ(store_with_two_runs):
+    from phenotypic._cli._cli_finalize_run import _aggregated_pipeline_digests
+    from phenotypic.sdk_._run_metrics import shared_pipeline_sha256
+
+    first, latest = list_table_runs(store_with_two_runs)
+    same = {first.measurements_path(): "ds"}
+    assert _aggregated_pipeline_digests(same) == [first.pipeline_sha256]
+    assert shared_pipeline_sha256(_aggregated_pipeline_digests(same)) == first.pipeline_sha256
+    mixed = {first.measurements_path(): "ds", latest.measurements_path(): "ds"}
+    assert shared_pipeline_sha256(_aggregated_pipeline_digests(mixed)) is None

@@ -30,7 +30,13 @@ def _build_tiny_pipeline() -> "ImagePipeline":
     from phenotypic.detect import OtsuDetector
     from phenotypic.measure import MeasureSize
 
-    return ImagePipeline(ops=[OtsuDetector()], meas={"size": MeasureSize()})
+    # A fixed ``name``: the default is a fresh uuid, which gives every
+    # serialization different bytes (and sha), so ``pipeline_file_a`` would not
+    # be byte-identical to ``run_cli``'s default and ``tables_for`` could never
+    # recognise a journal's digest as A's.
+    return ImagePipeline(
+        name="tiny-pipeline-A", ops=[OtsuDetector()], meas={"size": MeasureSize()}
+    )
 
 
 def _build_pipeline_b() -> "ImagePipeline":
@@ -40,7 +46,9 @@ def _build_pipeline_b() -> "ImagePipeline":
     from phenotypic.measure import MeasureShape, MeasureSize
 
     return ImagePipeline(
-        ops=[OtsuDetector()], meas={"size": MeasureSize(), "shape": MeasureShape()}
+        name="tiny-pipeline-B",
+        ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), "shape": MeasureShape()},
     )
 
 

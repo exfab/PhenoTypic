@@ -411,19 +411,25 @@ def _aggregated_pipeline_digests(
 ) -> list[str | None]:
     """Return the producing pipeline's digest for each aggregated table.
 
-    **Every entry is** ``None`` **for a v1 flat table**, deliberately. A v1
-    store's ``tables/measurements/table.parquet`` records no producing
-    pipeline: the record names only the path, the descriptor has no pipeline
-    field, and a table rewritten by ``--mode measure`` was never journaled
-    (spec D10). The run config's digest is not a substitute -- it still names
-    the full run's pipeline after ``--mode measure`` (spec C4, D6a) -- and
-    neither is the finalizing invocation's own pipeline, which a continuation
-    or a recompile did not measure every aggregated table with.
-
-    P3 T4 replaces the body with ``certified_table_run(...).pipeline_sha256``
-    per source, the run folder each image's record certifies (spec D6a);
+    Each authorized source **is** the ``measurements`` artifact its image's
+    record certifies (``authorized_measurement_sources``), so the run folder
+    holding it is the one
+    :func:`~phenotypic._cli._cli_recompile_recovery.certified_table_run`
+    names, and its ``pipeline_sha256`` is the digest of the pipeline that
+    wrote that table (spec D6a). Resolving the source path directly gives the
+    same run without re-reading every record.
     :func:`~phenotypic.sdk_._run_metrics.shared_pipeline_sha256` then reports
-    the digest they share.
+    the digest they share, or ``None`` when they differ.
+
+    **An entry is** ``None`` where no digest is recorded: a ``<n>-unknown``
+    run, a legacy external Parquet, an unreadable store, or a v1 flat table,
+    which records no producing pipeline (the record names only the path, the
+    descriptor has no pipeline field, and a table rewritten by ``--mode
+    measure`` was never journaled, spec D10). The run config's digest is
+    never a substitute -- it still names the full run's pipeline after
+    ``--mode measure`` (spec C4, D6a) -- and neither is the finalizing
+    invocation's own pipeline, which a continuation or a recompile did not
+    measure every aggregated table with.
 
     Args:
         aggregated_sources: The sources the master was built from.
@@ -431,7 +437,16 @@ def _aggregated_pipeline_digests(
     Returns:
         One digest per source, ``None`` where it is not recorded.
     """
-    return [None for _ in aggregated_sources]
+    from ._cli_parquet_agg import measurement_table_run
+
+    digests: list[str | None] = []
+    for source in aggregated_sources:
+        try:
+            run = measurement_table_run(source)
+        except (OSError, KeyError, ValueError):
+            run = None
+        digests.append(None if run is None else run.pipeline_sha256)
+    return digests
 
 
 def _accepted_work_ids(output_dir: Path) -> set[str] | None:
@@ -608,7 +623,7 @@ def publish_run_summaries(
 
     metrics = build_run_metrics(
         phenotypic_version=phenotypic.__version__,
-        # P3 T4 feeds certified_table_run(...).pipeline_sha256 here
+        # The certified run folders' shared digest (spec C4, D6a).
         pipeline_sha256=shared_pipeline_sha256(
             _aggregated_pipeline_digests(aggregated_sources)
         ),
