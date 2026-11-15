@@ -55,9 +55,9 @@ from phenotypic._cli._cli_update_state import (
     parse_event_line,
 )
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_overlays_dir,
     event_log_path,
+    latest_measurement_run,
     manifest_json_path,
     zarr_store_path,
 )
@@ -154,9 +154,19 @@ def test_the_fixture_slot_is_the_slot_the_staged_engine_derives():
 
 
 def _measurement_table(out, dataset, stem):
-    return (
-        zarr_store_path(out, dataset, stem) / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    """The store's measurements table, through the v2 resolver (#281 D6a).
+
+    The store's run folder is ``tables/<n>-<sha12>/``; a reader without a
+    record reads the latest run that holds ``measurements``.
+    """
+    run = latest_measurement_run(zarr_store_path(out, dataset, stem))
+    assert run is not None, f"{dataset}/{stem} has no measurement run"
+    return run.measurements_path()
+
+
+def _has_measurement_table(out, dataset, stem):
+    run = latest_measurement_run(zarr_store_path(out, dataset, stem))
+    return run is not None and run.measurements_path().is_file()
 
 
 def _stamp_store_work_id(store, work_id):
@@ -230,7 +240,7 @@ def test_staged_strategy_runs_all_stages(tmp_path, monkeypatch):
     results = strat.execute([Dataset("ds", [image_path], tmp_path, out)], out)
 
     assert results.total_completed == 1
-    assert _measurement_table(out, "ds", "img").is_file()
+    assert _has_measurement_table(out, "ds", "img")
     assert (dataset_overlays_dir(out, "ds") / "img.png").is_file()
     assert _stage2_signal_absent(out, "ds", "img")
     manifest = json.loads(manifest_json_path(out).read_text(encoding="utf-8"))
@@ -481,7 +491,7 @@ def test_plain_resume_reuses_stage1_store_after_stage2_failure(
     ).execute(datasets, out)
 
     assert resumed.total_completed == 1
-    assert _measurement_table(out, "ds", "img").is_file()
+    assert _has_measurement_table(out, "ds", "img")
     assert stage3_completion_exists(out, "ds", "img")
 
 
@@ -845,7 +855,7 @@ def test_stage3_partial_publication_keeps_stage2_signal_and_is_resumable(
 
     # The table is part of the atomic store publication. A failed promotion
     # cannot expose a new table inside the still-staged destination store.
-    assert not _measurement_table(out, "ds", "img").is_file()
+    assert not _has_measurement_table(out, "ds", "img")
     assert _stage2_done(out, "ds", "img")
     assert not stage3_completion_exists(out, "ds", "img")
     resume_plan = build_staged_resume_plan(
@@ -1154,7 +1164,7 @@ def test_stage3_refuses_a_token_whose_raw_array_is_gone(tmp_path):
     # the pair is whole again and Stage 3 published rather than failing.
     events = event_log_path(out).read_text(encoding="utf-8")
     assert "FileNotFoundError" not in events
-    assert _measurement_table(out, "ds", "img").is_file()
+    assert _has_measurement_table(out, "ds", "img")
 
 
 def test_the_slurm_stage3_worker_reports_a_raw_less_token_as_a_prereq(

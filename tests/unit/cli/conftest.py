@@ -57,6 +57,7 @@ from phenotypic.sdk_._image_record import (
 from tests._legacy_staged_resume import (
     classify_staged_image as legacy_classify_staged_image,
 )
+from tests._tiny_run import journal_table_path, plant_measurement_table
 from tests._legacy_staged_resume import (
     legacy_hdf_path,
     legacy_sidecar_path,
@@ -260,7 +261,12 @@ class ArtifactWorld:
         if stage2_signal:
             self._write_stage2_signal()
         parquet_path = self._parquet_path()
-        if parquet:
+        if parquet and self.kind == "zarr":
+            # In the store's own v2 run folder, declared in its root (#281 P3).
+            parquet_path = plant_measurement_table(
+                zarr_store_path(self.root, self.DATASET, self.STEM)
+            )
+        elif parquet:
             parquet_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path.write_bytes(b"measurements")
         if stage3_marker:
@@ -350,11 +356,8 @@ class ArtifactWorld:
 
     def _parquet_path(self) -> Path:
         if self.kind == "zarr":
-            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-
-            return (
+            return journal_table_path(
                 zarr_store_path(self.root, self.DATASET, self.STEM)
-                / MEASUREMENT_TABLE_RELATIVE_PATH
             )
         return (
             dataset_measurements_dir(self.root, self.DATASET)

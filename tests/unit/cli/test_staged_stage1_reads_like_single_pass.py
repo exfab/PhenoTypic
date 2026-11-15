@@ -40,8 +40,8 @@ from phenotypic.data._synthetic_data import make_synthetic_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    latest_measurement_run,
     zarr_store_path,
 )
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
@@ -105,8 +105,10 @@ def _reference(pipeline_file: Path, image_path: Path, **read) -> tuple[GridImage
 
 
 def _store_table(out: Path) -> pd.DataFrame:
-    path = zarr_store_path(out, DATASET, STEM) / MEASUREMENT_TABLE_RELATIVE_PATH
-    return pd.read_parquet(path)
+    # Through the v2 resolver: the table lives in a run folder (#281 D6a).
+    run = latest_measurement_run(zarr_store_path(out, DATASET, STEM))
+    assert run is not None, "the store has no measurement run"
+    return pd.read_parquet(run.measurements_path())
 
 
 def _comparable(table: pd.DataFrame) -> pd.DataFrame:

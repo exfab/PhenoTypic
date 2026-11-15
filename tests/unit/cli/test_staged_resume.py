@@ -22,10 +22,10 @@ from phenotypic._cli._cli_staged_resume import (
 )
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
     zarr_store_path,
 )
+from tests._tiny_run import plant_measurement_table
 from tests.unit.cli.conftest import STAGE2_SLOT
 
 
@@ -210,12 +210,9 @@ def test_markerless_embedded_table_is_backfilled_with_terminal_marker(
     output_dir = tmp_path / "out"
     dataset = _dataset(tmp_path, ["legacy.tif"])
     _valid_store(output_dir, "legacy")
-    table = (
-        zarr_store_path(output_dir, "plate", "legacy")
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+    plant_measurement_table(
+        zarr_store_path(output_dir, "plate", "legacy"), b"embedded measurements"
     )
-    table.parent.mkdir(parents=True, exist_ok=True)
-    table.write_bytes(b"embedded measurements")
 
     legacy_plan = build_staged_resume_plan(
         datasets=[dataset],
