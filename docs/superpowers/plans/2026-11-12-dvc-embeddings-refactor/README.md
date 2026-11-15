@@ -106,6 +106,31 @@ test in those files reads a store through the v1 path. A test in those files
 that stays green is fine. A red test anywhere else in `tests/unit/gui`, `tests/integration/gui` or
 `tests/gui` is a real failure.
 
+### Intra-P3 red outside the GUI (closed within P3)
+
+P3 T2 moves the writer to `tables/<n>-<sha12>/` before T3–T5 move the readers,
+so between T2 and the end of T5 these go red. They are **not** accepted at the
+P3 phase gate: each must be green again by the end of T5. The C12 gate on
+`1a634df93` measured 351 of them (job `32076656`; every name is in
+`/bigdata/exfab/anguy344/gate-results/c12-p3-t1t2/tagged.tsv`).
+
+| Closed by | What goes red | Why |
+|---|---|---|
+| C14b (T4, per-image writers) | every test whose forward CLI run must complete an image: 316 reds across `tests/unit/cli`, `tests/integration/cli`, `tests/unit/sdk_` (exit `3`, `fixture run failed`, `Failed: N`), plus the staged runs (`STAGED FINALIZATION FAILED`, `completed=0`) | the per-image record declares the v1 table as its `measurements` artifact (`_cli_process_single.py:1090`, `_cli_execution_strategies.py:183`; staged `_cli_staged_strategy.py:113-117`, `_cli_staged_resume.py:292-297,406`, `_cli_staged_slurm_worker.py:342,433,565`), and `publish_image_success` resolves it `strict=True` |
+| C14a (T4, finalizer/aggregation) | `test_finalize_run` (35), `test_finalize_fanout` (19), `test_run_summaries`, `test_embedded_measurement_checkpoint`, `test_completion_split` | `_cli_parquet_agg.py:171-240`, `_cli_finalize_fanout.py:520-526`, `_cli_chunk_writer.py:321-327` read the flat path |
+| C14c (T4, recompile) | `test_cli_recompile_slurm` (19), `test_cli_recompile`, `test_recompile_no_store_writes`, `test_recompile_no_longer_migrates`, `test_embedded_measurement_recompile` | `_cli_recompile_*` read the flat path |
+| C14d (T4, state) | `tests/unit/sdk_/test_run_state.py` (7) | `_run_state.py:673-678` and the root-level `metadata_table` reader |
+| C13 (T3, measure rewrite) | `test_embedded_measurement_replacement`, `test_cli_store_output.py::TestMeasureRerun`, `test_directory_scanner::test_measure_core_embeds_the_table_in_the_bare_stem_store` | measure mode's rewrite and its marker still name the flat path |
+| C15 (T5, migrate) | `test_cli_migrate_mode` (48), `test_embedded_measurement_migration` (16), `tests/integration/cli/test_migrate_end_to_end.py` (13), `test_migration_republishes_state`, `test_migration_predicate`, `test_hdf_to_zarr` | migrate's readers use the flat path, and `replace_embedded_measurement_table` (v1 until T5) refuses a v2 store |
+
+The C14b sites are the keystone: until they move, no CLI run completes an
+image, so the other clusters' gates cannot separate their own reds from C14b's.
+Several of these tests also read or write the flat path in their own helpers
+(`test_staged_store_stages`, `test_staged_nested_equivalence`,
+`test_run_state`). The sweep moves those helpers onto the resolver too, as T2
+did for `test_embedded_measurement_tables.py` and
+`test_embedded_table_inversion.py`.
+
 Checked and expected to stay green:
 - `tests/unit/gui/tune/test_setup_authoring.py:60`, because the GUI writes the
   literal `.setup.json.pht-tune` (`_setup_authoring.py:535`).

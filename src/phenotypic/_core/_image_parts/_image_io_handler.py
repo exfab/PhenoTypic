@@ -1567,6 +1567,7 @@ class ImageIOHandler(ImageColorSpace):
         from phenotypic._core._provenance import current_pipeline_sha256
         from phenotypic.sdk_ import ngff_
         from phenotypic.sdk_._measurement_tables import (
+            _replaced_store_block,
             array_digest,
             carry_table_runs,
             grid_bound_series,
@@ -1585,11 +1586,10 @@ class ImageIOHandler(ImageColorSpace):
         writes_own = measurement_table is not None
         run_id: str | None = None
         if writes_own:
-            try:
-                live = ngff_.read_phenotypic_attributes(final)
-            except (FileNotFoundError, NotADirectoryError):
-                live = {}
-            selection = deepcopy(live) if isinstance(live, dict) else {}
+            # The same read the carry makes, so the folder is numbered after
+            # exactly the runs that are carried.
+            live = _replaced_store_block(final)
+            selection = dict(deepcopy(live)) if live is not None else {}
             if upstream:
                 tables = selection.get(ngff_.PhenotypicAttr.TABLES)
                 if not isinstance(tables, dict) or "schema_version" not in tables:

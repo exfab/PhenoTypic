@@ -822,6 +822,27 @@ def _link_tree(source: Path, target: Path) -> None:
             )
 
 
+def _replaced_store_block(final: Path) -> Mapping[str, object] | None:
+    """The ``attributes.phenotypic`` block of the store a save replaces, or ``None``.
+
+    ``None`` -- nothing to carry, and nothing to number a new folder after --
+    when there is no store at *final*, when its root is unparseable (logged),
+    or when the root has no ``phenotypic`` block: a third-party or half-built
+    store that a save (``--mode migrate`` rebuilding an invalid store from its
+    HDF source, say) replaces whole, as it always has.
+    """
+    from . import ngff_
+
+    try:
+        block = ngff_.read_phenotypic_attributes(Path(final))
+    except (FileNotFoundError, NotADirectoryError, KeyError):
+        return None
+    except ValueError as exc:  # json.JSONDecodeError included
+        logger.warning("Cannot carry tables from %s: %s", final, exc)
+        return None
+    return block if isinstance(block, Mapping) else None
+
+
 def carry_table_runs(
     final: Path, part: Path, *, exclude: str | None
 ) -> dict[str, dict[str, dict[str, object]]]:
@@ -872,14 +893,8 @@ def carry_table_runs(
         RUNS_KEY: {},
         UPSTREAM_KEY: {},
     }
-    try:
-        block = ngff_.read_phenotypic_attributes(Path(final))
-    except (FileNotFoundError, NotADirectoryError):
-        return carried
-    except ValueError as exc:  # json.JSONDecodeError included
-        logger.warning("Cannot carry tables from %s: %s", final, exc)
-        return carried
-    if not isinstance(block, Mapping):
+    block = _replaced_store_block(final)
+    if block is None:
         return carried
     schema = tables_schema_of_block(block)
     if schema == 1:

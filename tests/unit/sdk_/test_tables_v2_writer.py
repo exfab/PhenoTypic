@@ -6,6 +6,7 @@ import json
 
 import numpy as np
 import pyarrow.parquet as pq
+import pytest
 import zarr
 
 from phenotypic import Image
@@ -154,6 +155,17 @@ def test_objmap_digest_is_of_the_labels_as_stored():
     assert objmap_digest(labels) != objmap_digest(labels.astype(np.uint32))
     assert objmap_digest(labels) != objmap_digest(labels.reshape(4, 3))
     assert objmap_digest(np.asfortranarray(labels)) == objmap_digest(labels)
+
+
+@pytest.mark.parametrize("root", ['{"zarr_format": 3, "node_type": "group", "attributes": {}}', "{not json"])
+def test_a_save_replaces_a_store_with_no_phenotypic_block(tmp_path, measured_image, root):
+    # C12 gate: `--mode migrate` rebuilds an invalid store from its HDF source
+    # with save2zarr; a root with no `phenotypic` block carries nothing.
+    target = tmp_path / "p.ome.zarr"
+    target.mkdir()
+    (target / "zarr.json").write_text(root, encoding="utf-8")
+    store = measured_image.save2zarr(target, measurement_table=tables_for(measured_image))
+    assert [r.order for r in list_table_runs(store)] == [1]
 
 
 def test_the_contract_validator_reads_v2(tmp_path, measured_image):

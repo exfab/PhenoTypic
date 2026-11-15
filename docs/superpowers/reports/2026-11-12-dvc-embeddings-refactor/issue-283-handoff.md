@@ -72,3 +72,33 @@ table is the authoritative list of red tests; this file collects everything else
   launch check treats the tree as running until the next CLI run, whose
   `retire_dead_lifecycle_fence` closes it (C10, `f62e895c6`). The GUI should either ask
   the scheduler (as `_refuse_live_slurm_run` does) or call the same retirement.
+
+## From P3 (per-pipeline tables)
+
+- A store's tables now live one folder per measuring pipeline,
+  `tables/<n>-<sha12>/{measurements,metadata}/` (spec D1, P3 T2 `1a634df93`).
+  `_gui/results_viewer/_measurement_source.py:107-108` stats
+  `store / MEASUREMENT_TABLE_RELATIVE_PATH`, the v1 flat path, which no new
+  store has. The colour-by-measurement picker and the measurement routes find
+  no table. These are the README's P3 rows: `test_measurement_routes` (6 red at
+  the C12 gate) and `test_measurement_source` (5 red). Replace the stat with
+  `phenotypic.sdk_.latest_measurement_run(store)` and its
+  `.measurements_path()` (spec D6a's default for a reader without a per-image
+  record). `MEASUREMENT_TABLE_RELATIVE_PATH` stays defined as the v1 path, for
+  migrate and for this code until it moves.
+- `read_embedded_measurement_descriptor`, `embedded_measurement_columns` and
+  `read_embedded_measurement_column` keep their names and signatures, and T4
+  points them at `latest_measurement_run`. A GUI caller of those three needs
+  no change once T4 lands. Between P3 T2 and T4 they raise `KeyError` on a v2
+  store.
+- The root-level `attributes.phenotypic.metadata_table` block moved into each
+  run entry, `tables.runs.<run>.metadata_table` (spec D3). Any GUI code that
+  reads the recorded metadata snapshot from the root must read it from the
+  run instead. T4 moves `_run_state`'s reader.
+- A store may hold several measuring runs. A GUI that shows "the" measurements
+  of a store needs a run choice, or at least has to say which run it shows
+  (the highest-numbered one with `measurements`, `<n>-unknown` when the
+  pipeline digest is unknown).
+- `tests/unit/gui/results_viewer/test_measurement_join_migration_run.py` (also a
+  README P3 row) **skipped** at the C12 gate: the live migrated run it reads
+  was absent or mid-republish. Its red/green state under v2 is unverified.
