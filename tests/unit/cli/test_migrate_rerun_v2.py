@@ -167,3 +167,81 @@ def test_the_measure_republish_keeps_provenance(
         after = read_image_record(out, "ds", stem)
         assert after is not None
         _assert_identity_kept(before[stem], after, epoch=True)
+
+
+# ---------------------------------------------------------------------------
+# I2: the marker stage reads the record before the legacy marker
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("provenance", "source"), _PROVENANCES)
+def test_a_crash_before_the_tables_v2_republish_keeps_identity(
+    v1_tree, provenance, source
+):
+    """Convert, die before the republish, re-run migrate.
+
+    The re-run finds a v2 store and a record naming the flat path that no
+    longer exists, so the record no longer verifies and the marker stage
+    republishes it. It must republish the record's identity, not defaults.
+    """
+    from phenotypic.sdk_ import convert_tables_v1_to_v2
+
+    before = _set_record_fields(
+        v1_tree, "plate", provenance=provenance, source_provenance=source
+    )
+    store = one_store(v1_tree)
+    convert_tables_v1_to_v2(store, durable=False)  # the process died here
+    assert resolve_run_state(v1_tree, depth="deep").completion == "incomplete"
+
+    result = run_cli(None, v1_tree, mode="migrate")
+    assert result.exit_code == 0, result.output
+    after = read_image_record(v1_tree, "ds", "plate")
+    assert after is not None
+    _assert_identity_kept(before, after, epoch=False)
+    (run,) = list_table_runs(store)
+    assert v1_tree / after["artifacts"]["measurements"]["path"] == run.measurements_path()
+    assert resolve_run_state(v1_tree, depth="deep").completion == "complete"
+
+
+def test_the_crash_path_and_the_clean_path_publish_the_same_identity(tmp_path, v1_tree):
+    """Everything but the timestamp and the migration's own generation agrees."""
+    import shutil
+
+    from phenotypic.sdk_ import convert_tables_v1_to_v2
+
+    clean = tmp_path / "clean"
+    shutil.copytree(v1_tree, clean, symlinks=True)
+    assert run_cli(None, clean, mode="migrate").exit_code == 0
+    convert_tables_v1_to_v2(one_store(v1_tree), durable=False)
+    assert run_cli(None, v1_tree, mode="migrate").exit_code == 0
+
+    def _identity(out: Path) -> dict:
+        record = read_image_record(out, "ds", "plate")
+        assert record is not None
+        return {
+            key: record.get(key)
+            for key in _IDENTITY + ("provenance", "source_provenance")
+        } | {"measurements": record["artifacts"]["measurements"]["path"]}
+
+    assert _identity(v1_tree) == _identity(clean)
+
+
+def test_a_record_for_another_work_id_is_not_borrowed(tmp_path):
+    """A forward record written for another work_id gives default identity."""
+    from phenotypic._cli._cli_image_record import publish_image_record
+    from phenotypic._cli._cli_migrate_image import _existing_marker_identity
+
+    out = tmp_path / "out"
+    artifact = out / "artifact.bin"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"x")
+    publish_image_record(
+        out, work_id="a" * 64, dataset="ds", image_stem="img",
+        relative_image_path="ds/img.tif", mode="full", stages={},
+        artifacts={"x": artifact}, attempt_id="attempt", lifecycle_epoch="epoch",
+    )
+    identity = _existing_marker_identity(out, "ds", "img", "b" * 64)
+    assert identity["work_id"] == "b" * 64
+    assert identity["attempt_id"] == "migration"
+    kept = _existing_marker_identity(out, "ds", "img", "a" * 64)
+    assert kept["attempt_id"] == "attempt" and kept["relative_image_path"] == "ds/img.tif"

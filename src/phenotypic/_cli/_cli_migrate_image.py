@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -146,16 +147,82 @@ def _configured_work_id(output_dir: Path, dataset: str, stem: str) -> str:
 
 def _existing_marker_identity(
     output_dir: Path, dataset: str, stem: str, work_id: str
-) -> dict[str, str]:
-    """Return preserved identity fields from an existing image marker."""
+) -> dict[str, Any]:
+    """Return the identity a migrated image's record is (re)published with.
+
+    **The record first** (``images/<ds>/<stem>.json``), and the legacy
+    ``image_complete/`` marker only when no record carries an identity (no
+    record, or a partial one written by ``record_stage`` with no
+    ``work_id``). Reading only the legacy marker gave every record-era tree
+    default identity whenever its record stopped verifying -- for example
+    after a crash between the ``tables_v2`` conversion and its republish
+    (#281 P3 review I2).
+
+    A record is used when it names this dataset and stem and either carries
+    the configured *work_id* or is ``"migrated"``, whose ``work_id`` is never
+    compared (U-10). Its ``work_id``, ``relative_image_path``, ``mode``,
+    ``attempt_id``, ``provenance`` and ``source_provenance`` are kept
+    verbatim. A record for another image or another ``work_id`` is not this
+    image's identity, and the defaults are used rather than the legacy
+    marker's.
+
+    ``lifecycle_epoch`` is the one field that is not kept when a migration
+    generation is live: the record is published under that generation, and
+    under SLURM ``publish_image_success`` refuses any other epoch.
+
+    Returns:
+        ``work_id``, ``relative_image_path``, ``mode``, ``attempt_id``,
+        ``lifecycle_epoch``, ``provenance`` and ``source_provenance`` (a
+        mapping or ``None``).
+    """
+    from phenotypic.sdk_._image_record import (
+        PROVENANCE_FORWARD,
+        PROVENANCE_MIGRATED,
+        read_image_record,
+        record_provenance,
+    )
+
     active_generation = _active_migration_generation(output_dir)
-    defaults = {
+    defaults: dict[str, Any] = {
         "work_id": work_id,
         "relative_image_path": f"{dataset}/{stem}",
         "mode": "full",
         "attempt_id": "migration",
         "lifecycle_epoch": active_generation or "migration",
+        "provenance": PROVENANCE_FORWARD,
+        "source_provenance": None,
     }
+
+    def _keep_string_fields(source: dict[str, Any]) -> None:
+        for field in (
+            "relative_image_path",
+            "mode",
+            "attempt_id",
+            "lifecycle_epoch",
+        ):
+            value = source.get(field)
+            if (
+                isinstance(value, str)
+                and value
+                and not (field == "lifecycle_epoch" and active_generation is not None)
+            ):
+                defaults[field] = value
+
+    record = read_image_record(output_dir, dataset, stem)
+    if record is not None and isinstance(record.get("work_id"), str):
+        if record.get("dataset") != dataset or record.get("image_stem") != stem:
+            return defaults
+        provenance = record_provenance(record)
+        if provenance != PROVENANCE_MIGRATED and record["work_id"] != work_id:
+            return defaults
+        defaults["work_id"] = record["work_id"]
+        defaults["provenance"] = provenance
+        source_provenance = record.get("source_provenance")
+        if isinstance(source_provenance, dict):
+            defaults["source_provenance"] = dict(source_provenance)
+        _keep_string_fields(record)
+        return defaults
+
     marker_path = image_completion_marker_path(output_dir, dataset, stem)
     try:
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
@@ -167,19 +234,7 @@ def _existing_marker_identity(
         "image_stem"
     ) not in {None, stem}:
         return defaults
-    for field in (
-        "relative_image_path",
-        "mode",
-        "attempt_id",
-        "lifecycle_epoch",
-    ):
-        value = marker.get(field)
-        if (
-            isinstance(value, str)
-            and value
-            and not (field == "lifecycle_epoch" and active_generation is not None)
-        ):
-            defaults[field] = value
+    _keep_string_fields(marker)
     return defaults
 
 
@@ -750,7 +805,14 @@ def migrate_image_task(
                     attempt_id=identity["attempt_id"],
                     lifecycle_epoch=identity["lifecycle_epoch"],
                     artifacts=artifacts,
-                    source_provenance=source_provenance,
+                    provenance=identity["provenance"],
+                    # A source this pass certified is the current evidence;
+                    # otherwise the record's own bookkeeping is kept.
+                    source_provenance=(
+                        source_provenance
+                        if source_provenance is not None
+                        else identity["source_provenance"]
+                    ),
                     commit_guard=None,
                 )
                 # The publisher's canonical path is the RECORD's, not
