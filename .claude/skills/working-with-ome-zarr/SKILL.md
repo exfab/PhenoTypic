@@ -100,20 +100,20 @@ attributes (`type: "feature_table"`, `region.path` relative to the run
 folder, `index_key: "Object_Label"`).
 
 A v1 store (flat `tables/measurements/`, no `schema_version` under `tables`)
-is converted by `--mode migrate`, and forward modes refuse it (spec D5, D10;
-lands with #281 P3 Task 5).
+is converted by `--mode migrate`, and forward modes refuse it (spec D5, D10).
+Record-less readers still read one read-only, through
+`_table_runs.declared_measurement_tables`, keyed strictly on the tables schema.
 
- is joined
-- `target.column: "Object_Label"`
-- `target.path`: the store's objmap label path
-
-The Parquet schema metadata records the join status
-(`not_requested`, `joined`, or `no_common_keys`), right-join direction
-(metadata left, measurements right), ordered join keys, metadata snapshot
-SHA-256, and the ordered baseline measurement columns. Preserve every measured
-row, exclude metadata-only rows from the embedded table, retain duplicate
-metadata-key fan-out with a warning, and leave measurements unchanged with a
-warning when no key is shared.
+The Parquet schema metadata records the join status (`not_requested`,
+`joined`, or `no_common_keys`), ordered join keys, the metadata snapshot
+SHA-256 and the ordered baseline measurement columns. A forward store's
+measurement table is **un-joined**: measured rows and `measurement_columns`
+only, with the run's metadata in `tables/<run>/metadata/pht-metadata.parquet`
+beside it (`TableRun.metadata_path()`). A
+pre-inversion (migrated) table may still carry joined metadata; aggregation
+projects every table onto its descriptor's `measurement_columns` at read
+(`project_embedded_measurement_table`), which is the identity for an un-joined
+one.
 
 ## Per-image figures
 
@@ -150,13 +150,14 @@ descriptor, and OME projection in a unique sibling `.part` directory. Validate
 the temporary Parquet, write root `zarr.json` last, promote the directory, and
 publish the image completion marker last.
 
-A measure or recompile update also uses the root-last store transaction: the
-part rewrites that one run folder as new inodes and carries every other folder.
-There is no in-place payload replacement; nothing writes into a promoted store
-without rewriting its root last. Do not recompute or rewrite pixel arrays.
-Recompile projects the old table to the descriptor's baseline columns before
-joining the effective metadata snapshot, replaces each table, and refreshes
-that image's marker before aggregate publication.
+A measure update also uses the root-last store transaction: the part rewrites
+that one run folder as new inodes and carries every other folder. There is no
+in-place payload replacement; nothing writes into a promoted store without
+rewriting its root last. Do not recompute or rewrite pixel arrays. Measure mode
+then republishes the image's record so it certifies the folder it wrote.
+`--mode recompile` is aggregate and finalize only and writes **no** store byte
+(`tests/unit/cli/test_recompile_no_store_writes.py`); it reads the folder each
+record certifies.
 
 A completion marker binds both the store root and embedded Parquet hashes.
 Missing, unreadable, or changed table bytes invalidate measurement authority.
@@ -167,10 +168,12 @@ they are provenance, not input.
 
 ## Aggregation and migration
 
-`deliverables/master_measurements.*` is the exact concatenation of authorized
-embedded tables: joined measured rows only, before post operations. The mirror
-`deliverables/measurements.*` appends the external metadata anti-join once
-using the recorded keys, sets `QC_MetadataOnly=false` on measured rows and
+`deliverables/master_measurements.parquet` is the concatenation of the
+authorized embedded tables, each projected onto its own descriptor's
+`measurement_columns`: **un-joined**, intrinsic identity only, before post
+operations. The mirror `deliverables/measurements.*` joins the metadata once,
+globally, on the columns the master and the metadata table share, appends the
+metadata-only phantoms, sets `QC_MetadataOnly=false` on measured rows and
 `true` on phantoms, then applies post operations.
 
 `--mode migrate` imports legacy external per-image Parquets after their image
