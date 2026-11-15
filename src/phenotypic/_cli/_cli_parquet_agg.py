@@ -17,7 +17,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import polars as pl
+
+    from phenotypic.sdk_._table_runs import TableRun
 
 from phenotypic.schema import EXPERIMENT
 
@@ -165,13 +169,115 @@ def _finish_aggregate(
 def is_embedded_measurement_table(path: Path | str) -> bool:
     """Return whether *path* names a store's embedded measurement table.
 
-    Authority is a property of the path shape --
-    ``<store>/tables/measurements/table.parquet`` -- so this opens nothing.
-    """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    Authority is a property of the path shape, so this opens nothing. Two
+    shapes qualify:
 
-    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
-    return tuple(Path(path).parts[-len(suffix) :]) == suffix
+    * a v2 run folder's ``<store>/tables/<n>-<sha12>/measurements/table.parquet``
+      (#281 spec D1), the only shape a forward run writes;
+    * the v1 flat ``<store>/tables/measurements/table.parquet``, kept as a
+      **legacy read** for a tree ``--mode migrate`` has not converted yet.
+
+    An embedding table (``tables/<run>/embeddings/<model>/<region>/table.parquet``)
+    is neither.
+    """
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, ngff_
+    from phenotypic.sdk_._table_runs import TABLE_RUN_ID_RE
+
+    parts = Path(path).parts
+    flat = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    if tuple(parts[-len(flat) :]) == flat:
+        return True
+    return (
+        len(parts) >= len(flat) + 1
+        and tuple(parts[-2:]) == flat[1:]
+        and parts[-4] == ngff_.TABLES_GROUP
+        and TABLE_RUN_ID_RE.match(parts[-3]) is not None
+    )
+
+
+def measurement_table_run(
+    table_path: Path | str,
+) -> "TableRun | None":
+    """The v2 run folder whose declared ``measurements`` table *table_path* is.
+
+    The bridge from a path a per-image record certifies to the run folder
+    that holds it (spec D6a): the store is found by
+    :func:`~phenotypic.sdk_._table_runs.store_of_table_path`, at any depth,
+    and the run is the one whose descriptor declares ``measurements`` at
+    exactly this path. It never falls back to another folder of the store --
+    a path that no run declares certifies nothing.
+
+    Args:
+        table_path: A store's ``tables/<run>/measurements/table.parquet``.
+
+    Returns:
+        The run, or ``None`` when no run of a v2 store declares this table
+        (including a v1 flat path, which belongs to no run).
+
+    Raises:
+        ValueError: If *table_path* lies in no store, or the store's tables
+            descriptor is corrupt or a version this build does not read.
+        FileNotFoundError: If the store has no root ``zarr.json``.
+        KeyError: If the root carries no ``phenotypic`` block.
+    """
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import store_of_table_path
+
+    path = Path(table_path)
+    store = store_of_table_path(path)
+    return _run_declaring(store, ngff_.require_readable_store(store), path)
+
+
+def _run_declaring(
+    store: Path, block: "Mapping[str, object]", table_path: Path
+) -> "TableRun | None":
+    """The run of *store*'s v2 *block* that declares ``measurements`` at *table_path*."""
+    from phenotypic.sdk_._table_runs import table_runs_of_block
+
+    return next(
+        (
+            run
+            for run in table_runs_of_block(store, block)
+            if run.has_measurements and run.measurements_path() == table_path
+        ),
+        None,
+    )
+
+
+def _declared_measurement_descriptor(
+    store: Path, table_path: Path
+) -> "dict[str, object] | None":
+    """The ``measurements`` descriptor *store* declares for *table_path*, or ``None``.
+
+    For a v2 store it is the descriptor of the run that holds *table_path*
+    (:func:`measurement_table_run`), never the latest run's: two runs of one
+    store measure different columns, and projecting one run's table onto
+    another's list would raise or drop columns. For a v1 store (the legacy
+    read) it is the flat ``tables.measurements`` descriptor, and only for the
+    flat path.
+
+    Raises:
+        KeyError: If the store's root carries no ``phenotypic`` block.
+        FileNotFoundError: If the store has no root ``zarr.json``.
+        ValueError: If the store's schema, or its tables descriptor, is a
+            version this build does not read, or is corrupt.
+    """
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, ngff_
+    from phenotypic.sdk_._table_runs import tables_schema_of_block
+
+    block = ngff_.require_readable_store(store)
+    schema = tables_schema_of_block(block)
+    descriptor: object = None
+    if schema == 1:
+        if table_path == store / MEASUREMENT_TABLE_RELATIVE_PATH:
+            tables = block.get(ngff_.PhenotypicAttr.TABLES)
+            if isinstance(tables, dict):
+                descriptor = tables.get(ngff_.MEASUREMENT_TABLE_GROUP)
+    elif schema == 2:
+        run = _run_declaring(store, block, table_path)
+        if run is not None:
+            descriptor = run.descriptor.get(ngff_.MEASUREMENT_TABLE_GROUP)
+    return descriptor if isinstance(descriptor, dict) else None
 
 
 def project_embedded_measurement_table(
@@ -211,8 +317,13 @@ def project_embedded_measurement_table(
     ``incomplete`` rather than certifying an image it does not carry.
 
     Args:
-        table_path: The store's ``tables/measurements/table.parquet``. The
-            store root, and so its descriptor, is derived from it.
+        table_path: The ``measurements/table.parquet`` of one of the store's
+            run folders, ``tables/<n>-<sha12>/`` -- the one the image's record
+            certifies (spec D6a) -- or a v1 store's flat
+            ``tables/measurements/table.parquet`` (legacy read). The store,
+            and the descriptor of the run holding this table, are derived
+            from it; the table is projected onto **that** run's column list,
+            never the latest run's.
         read_path: Where to read the Parquet bytes from when a staged copy
             stands in for *table_path*. The descriptor is always read from
             the store itself.
@@ -230,25 +341,25 @@ def project_embedded_measurement_table(
     import polars as pl
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-    from phenotypic.sdk_._measurement_tables import (
-        read_embedded_measurement_descriptor,
-    )
+    from phenotypic.sdk_._table_runs import store_of_table_path
     from phenotypic.sdk_.ngff_ import EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
 
     table_path = Path(table_path)
-    store = table_path.parents[len(MEASUREMENT_TABLE_RELATIVE_PATH.parts) - 1]
+    store = store_of_table_path(table_path)
     payload = table_path if read_path is None else Path(read_path)
 
     try:
-        descriptor = read_embedded_measurement_descriptor(store)
+        descriptor = _declared_measurement_descriptor(store, table_path)
     except KeyError:
+        descriptor = None
+    if descriptor is None:
         logger.warning(
             "Excluding %s from the master: the store declares no embedded "
-            "measurement table, so there is no column list to project its "
-            "table onto. The run reads as incomplete until the store is "
+            "measurement table at %s, so there is no column list to project "
+            "it onto. The run reads as incomplete until the store is "
             "re-measured.",
             store,
+            table_path,
         )
         return None
     # The same list `embedded_measurement_columns` returns, read from the

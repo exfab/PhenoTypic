@@ -19,8 +19,10 @@ import json
 import re
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
+if TYPE_CHECKING:
+    from phenotypic.sdk_._table_runs import TableRun
 
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -332,6 +334,37 @@ def _marker_measurement_source(
     ):
         return None
     return source
+
+
+def certified_table_run(output_root: Path, marker_path: Path) -> "TableRun | None":
+    """Return the run folder an image's record certifies (#281 spec D6a).
+
+    The record (or legacy marker) at *marker_path* names, as its
+    ``measurements`` artifact, the ``tables/<n>-<sha12>/measurements/table.parquet``
+    the image's last table write produced. That run folder -- not the
+    store's latest, and never the one the run config's pipeline sha names,
+    which still names the full run's pipeline after ``--mode measure`` -- is
+    the one finalize, recompile and measure aggregate for the image.
+
+    Args:
+        output_root: Run output root; the artifact path is relative to it.
+        marker_path: The per-image record or completion marker.
+
+    Returns:
+        The certified run, or ``None`` when the marker is malformed, names a
+        path outside *output_root*, or names a table no run of the store
+        declares (including a v1 flat table, which belongs to no run), or the
+        store's descriptor cannot be read.
+    """
+    from ._cli_parquet_agg import measurement_table_run
+
+    source = _marker_measurement_source(Path(output_root).resolve(), marker_path)
+    if source is None:
+        return None
+    try:
+        return measurement_table_run(source)
+    except (OSError, KeyError, ValueError):
+        return None
 
 
 def recoverable_recompile_table_transition(

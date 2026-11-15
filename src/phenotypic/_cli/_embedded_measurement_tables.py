@@ -239,19 +239,33 @@ def embedded_measurement_table_matches(
     values, null placement, and row count. The latter is what makes duplicate
     metadata-key fan-out part of reclaim authority rather than an incidental
     property of a readable Parquet payload.
+
+    The table compared is the store's record-less default (spec D6a): the
+    latest run folder holding ``measurements``, or, for a store migrate has
+    not converted yet, the v1 flat ``tables/measurements/table.parquet``.
     """
     import pyarrow as pa  # type: ignore[import-untyped]
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
     from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from phenotypic.sdk_._table_runs import (
+        latest_measurement_run,
+        store_tables_schema,
+    )
 
     try:
+        store = Path(store_path)
+        if store_tables_schema(store) == 1:
+            table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        else:
+            run = latest_measurement_run(store)
+            if run is None:
+                return False
+            table = run.measurements_path()
         expected = pa.Table.from_pandas(
             prepared.frame, preserve_index=False
         ).replace_schema_metadata(prepared.parquet_metadata())
-        actual = pq.read_table(
-            Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
-        )
+        actual = pq.read_table(table)
     except Exception:  # noqa: BLE001 - inability to compare refuses deletion
         return False
     return actual.equals(expected, check_metadata=True)
