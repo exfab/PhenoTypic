@@ -469,7 +469,84 @@ def _table_schema(table: object) -> Mapping[str, object]:
     )
 
 
-def build_output_schema(tables: Mapping[str, object]) -> dict[str, object]:
+def embedding_vector_member(producer: str) -> MeasurementInfo | None:
+    """The schema member of producer class *producer*'s ``embedding`` column.
+
+    An embedding table's vector column is named ``embedding`` in every table
+    (#281 spec D1), not by its member's prefixed header, so it is resolved
+    through the producer that wrote it: the member of the producer's schemas
+    whose :meth:`MeasurementProducer.output_header` is ``embedding``.
+
+    Args:
+        producer: The producing class's name, as an embedding entry records
+            it under ``producer.class`` (``"MeasureDinoEmbedding"``).
+
+    Returns:
+        The member, or ``None`` when no public producer of that name declares
+        one.
+
+    Examples:
+        >>> from phenotypic.util._measurement_outputs import embedding_vector_member
+        >>> embedding_vector_member("MeasureDinoEmbedding").name
+        'EMBEDDING'
+    """
+    from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
+
+    for candidate in _discover_measurement_producers():
+        if candidate.output_key != producer:
+            continue
+        for info in candidate.primary_infos:
+            for member in info:
+                if candidate.output_header(member) == EMBEDDING_COLUMN:
+                    return member
+    return None
+
+
+def _schema_row(
+    column: str, dtype: str, member: MeasurementInfo | None, producer: str | None
+) -> dict[str, object]:
+    """One ``schema.json`` column row (#281 spec C12)."""
+    unit = member.unit if member is not None else None
+    return {
+        "name": column,
+        "dtype": dtype,
+        "unit": str(unit) if unit is not None else None,
+        "producer": producer,
+        "member": _member_id(member) if member is not None else None,
+        "desc": member.desc if member is not None else None,
+    }
+
+
+def _embedding_rows(embedding: Mapping[str, object]) -> list[dict[str, object]]:
+    """The ``schema.json`` rows of one embedding table (#281 spec C12, E5)."""
+    from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
+
+    producer = str(embedding["producer"])
+    columns = embedding["columns"]
+    assert isinstance(columns, Mapping)
+    rows: list[dict[str, object]] = []
+    for raw_column, dtype in columns.items():
+        column = str(raw_column)
+        if column != EMBEDDING_COLUMN:
+            # A key or identity column: written as a key, not measured.
+            rows.append(_schema_row(column, str(dtype), _member_for_column(column), None))
+            continue
+        row = _schema_row(
+            column,
+            f"FixedSizeList<float16>[{int(embedding['dim'])}]",  # type: ignore[call-overload]
+            embedding_vector_member(producer),
+            producer,
+        )
+        row["model"] = str(embedding["model"])
+        rows.append(row)
+    return rows
+
+
+def build_output_schema(
+    tables: Mapping[str, object],
+    *,
+    embedding_tables: Mapping[str, Mapping[str, object]] | None = None,
+) -> dict[str, object]:
     """Describe every column of each published table, for ``deliverables/schema.json``.
 
     Each column gets its name, its dtype, and -- when a public schema enum
@@ -492,10 +569,22 @@ def build_output_schema(tables: Mapping[str, object]) -> dict[str, object]:
     Columns keep each table's own order and tables are keyed by name, so a
     canonical JSON dump of the result is byte-stable for identical tables.
 
+    **Embedding tables** (#281 spec E5) come from *embedding_tables*. Their
+    ``embedding`` column has the same name in every table, so no header
+    decodes to its member: it is resolved through the producer that wrote it
+    (:func:`embedding_vector_member`), its dtype is
+    ``FixedSizeList<float16>[D]``, and its row also carries ``model``, the
+    model folder. Their key and identity columns resolve as any column does,
+    with ``producer: None``, because the embedder writes them as keys.
+
     Args:
         tables: Table name -> the table, as a polars or pandas frame, or as a
             ``column -> dtype`` mapping (a Parquet footer read with
             ``pl.read_parquet_schema``). ``dtype`` is rendered with ``str``.
+        embedding_tables: Table name (``embeddings/<model>/<crops|grid>``) ->
+            ``{"columns": {column: dtype}, "dim", "model", "producer"}``,
+            where ``producer`` is the writing class's name. ``None`` lists
+            none.
 
     Returns:
         ``{"schema_version": 1, "tables": {name: [{"name", "dtype", "unit",
@@ -519,22 +608,17 @@ def build_output_schema(tables: Mapping[str, object]) -> dict[str, object]:
         for producer, owned in _producer_column_groups(columns).items():
             for column in owned:
                 producer_of.setdefault(column, producer)
-        rows: list[dict[str, object]] = []
-        for raw_column, dtype in schema.items():
-            column = str(raw_column)
-            member = _member_for_column(column)
-            unit = member.unit if member is not None else None
-            rows.append(
-                {
-                    "name": column,
-                    "dtype": str(dtype),
-                    "unit": str(unit) if unit is not None else None,
-                    "producer": producer_of.get(column),
-                    "member": _member_id(member) if member is not None else None,
-                    "desc": member.desc if member is not None else None,
-                }
+        described[str(name)] = [
+            _schema_row(
+                str(column),
+                str(dtype),
+                _member_for_column(str(column)),
+                producer_of.get(str(column)),
             )
-        described[str(name)] = rows
+            for column, dtype in schema.items()
+        ]
+    for name, embedding in (embedding_tables or {}).items():
+        described[str(name)] = _embedding_rows(embedding)
     return {"schema_version": OUTPUT_SCHEMA_VERSION, "tables": described}
 
 
