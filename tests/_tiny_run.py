@@ -1224,3 +1224,98 @@ def stub_backbone(monkeypatch):
     monkeypatch.setattr(module, "load_dino_backbone", _stub_load)
     yield SimpleNamespace(load_calls=calls)
     module._cached_backbone.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# P4 T4 (C19): CLI wiring and the embedding deliverables (spec E2, E5)
+# ---------------------------------------------------------------------------
+
+#: The crop entry a default ``MeasureDinoEmbedding()`` (DINOv2-base) writes.
+DINO_CROPS_KEY = "dinov2-vitb14/crops"
+
+
+def with_dino_crops(directory: Path) -> Path:
+    """A pipeline file: :func:`tiny_pipeline`'s ops and ``meas``, plus ``meas["emb"]``.
+
+    ``meas["emb"]`` is ``MeasureDinoEmbedding(device="cpu")``, otherwise the
+    defaults: crop embeddings under :data:`DINO_CROPS_KEY`. ``device="cpu"``
+    keeps the stub backbone off a GPU the test node may have. Run it under
+    :func:`stub_backbone`, which needs torch.
+
+    Args:
+        directory: Where to write ``dino_crops.pht-pipe.json``.
+
+    Returns:
+        The pipeline file.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+
+    pipeline = ImagePipeline(
+        name="tiny-pipeline-dino",
+        ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(device="cpu")},
+    )
+    path = Path(directory) / "dino_crops.pht-pipe.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(pipeline.to_json() or "", encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def finished_tiny_run_with_embeddings(
+    tmp_path: Path, tiny_inputs: Path, stub_backbone
+) -> Path:
+    """A finished local full run of :func:`with_dino_crops` over :func:`tiny_inputs`.
+
+    The backbone is :func:`stub_backbone`'s, so this needs torch. The
+    pipeline file is ``<tmp>/dino_crops.pht-pipe.json``.
+
+    Returns:
+        The output root (``<tmp>/out``).
+    """
+    out = tmp_path / "out"
+    result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path))
+    assert result.exit_code == 0, result.output
+    return out
+
+
+@pytest.fixture
+def tree_with_one_stale_store(tmp_path: Path, tiny_inputs: Path, stub_backbone):
+    """A finished :func:`with_dino_crops` run over three plates, one crop entry stale.
+
+    ``plate_3``'s store is re-saved table-less with an all-zeros objmap
+    (:func:`resave_with_objmap`), so its crop entry is recomputed
+    ``stale: true`` (spec D7) while its folder is carried.
+
+    Yields:
+        ``(out, runs)``: the output root and each image's certified
+        :class:`~phenotypic.sdk_.TableRun`, read from its record through
+        :func:`~phenotypic._cli._cli_recompile_recovery.certified_table_run`.
+    """
+    from phenotypic._cli._cli_recompile_recovery import (
+        certified_table_run,
+        image_authority_path,
+    )
+
+    good = (tiny_inputs / "ds" / "plate_1.tif").read_bytes()
+    (tiny_inputs / "ds" / "plate_3.tif").write_bytes(good)
+    out = tmp_path / "out"
+    result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path))
+    assert result.exit_code == 0, result.output
+    resave_with_objmap(one_store(out, stem="plate_3"), zeros=True)
+    runs = []
+    for stem in ("plate_1", "plate_2", "plate_3"):
+        run = certified_table_run(out, image_authority_path(out, "ds", stem))
+        assert run is not None, stem
+        runs.append(run)
+    yield out, runs
+
+
+def rows_in(run: "TableRun") -> int:
+    """The row count of *run*'s :data:`DINO_CROPS_KEY` table, from its footer."""
+    import pyarrow.parquet as pq
+
+    model, _, region = DINO_CROPS_KEY.partition("/")
+    return pq.read_metadata(run.embedding_path(model, region)).num_rows  # type: ignore[arg-type]
