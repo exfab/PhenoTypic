@@ -589,6 +589,17 @@ METRICS_JSON: Final[str] = "metrics.json"
 #: never read back. See :func:`schema_json_path`.
 SCHEMA_JSON: Final[str] = "schema.json"
 
+#: The run's embedding deliverables (#281 spec E5), under
+#: :data:`DIR_DELIVERABLES`: one ``<model>/<crops|grid>.parquet`` per entry
+#: key, plus :data:`EMBEDDINGS_MANIFEST_JSON`. Parquet only, never joined to
+#: metadata. See :func:`embeddings_dir`.
+DIR_EMBEDDINGS: Final[str] = "embeddings"
+
+#: Each embedding deliverable's descriptor, row count, sha256 and the stores
+#: skipped as stale (#281 spec E5). Byte-stable, never read back. See
+#: :func:`embeddings_manifest_path`.
+EMBEDDINGS_MANIFEST_JSON: Final[str] = "manifest.json"
+
 #: The resolved tuning spec echoed by ``python -m phenotypic.tune``
 #: into :data:`DIR_DELIVERABLES` — the self-contained, re-runnable recipe.
 TUNING_SPEC_JSON: Final[str] = f"tuning_spec{CONFIG_SUFFIX_TUNING}"
@@ -2784,6 +2795,16 @@ def metrics_json_path(output_dir: Path) -> Path:
 def schema_json_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/schema.json``."""
     return deliverables_dir(output_dir) / SCHEMA_JSON
+
+
+def embeddings_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/embeddings/``."""
+    return deliverables_dir(output_dir) / DIR_EMBEDDINGS
+
+
+def embeddings_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/embeddings/manifest.json``."""
+    return embeddings_dir(output_dir) / EMBEDDINGS_MANIFEST_JSON
 
 
 def analysis_full_parquet_path(progress_dir_: Path) -> Path:
