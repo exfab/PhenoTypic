@@ -867,7 +867,8 @@ so a record-era tree would get default identity (`attempt_id="migration"`,
 a rebuilt `relative_image_path`). Spec D10 needs only conversion, then the
 record, then the run proof. Every forward mode refuses a v1 tree before
 `--overwrite` clears it and before `--dry-run` exits (pinned in
-`test_migrate_tables_v2.py`). A
+`test_migrate_tables_v2.py`). `--overwrite` does not bypass it; migrate or
+delete the tree (parity with the `.h5` refusal). A
 provenance-only target gets it in its store array
 (`convert_provenance_store_tables`). The legacy-Parquet import,
 `replace_embedded_measurement_table`, writes v2 directly, so no tree is left

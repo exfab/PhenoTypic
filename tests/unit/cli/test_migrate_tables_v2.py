@@ -110,6 +110,14 @@ def test_the_refusal_fires_before_a_dry_run_exits(v1_tree, tiny_inputs):
     assert tree_digest(v1_tree) == before
 
 
+def test_restart_over_a_v1_tree_is_refused(v1_tree, tiny_inputs):
+    before = tree_digest(v1_tree)
+    result = run_cli(tiny_inputs, v1_tree, extra=["--restart"])
+    assert result.exit_code == 2, result.output
+    assert "--mode migrate" in result.output and "Traceback" not in result.output
+    assert tree_digest(v1_tree) == before
+
+
 @pytest.mark.parametrize("mode", ["measure", "recompile"])
 def test_every_forward_mode_refuses_a_v1_store(v1_tree, mode):
     before = tree_digest(v1_tree)

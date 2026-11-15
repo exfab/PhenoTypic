@@ -224,6 +224,7 @@ pipeline file's sha256.
 Stores written before this layout keep one table at
 `tables/measurements/table.parquet`. Every mode except migrate refuses a tree
 that still holds such a store, names the store, and points at this command.
+`--overwrite` does not bypass it; migrate or delete the tree.
 Migrate converts each one:
 
 - `tables/measurements/` and `tables/metadata/` move into `tables/1-<sha12>/`.
