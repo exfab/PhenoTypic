@@ -289,8 +289,10 @@ verdict *and* re-derives the same advisory.
 
 `project_embedded_measurement_table` excludes a store for four reasons. The
 naming clause covers the two that are visible in the store's root document: no
-`tables.measurements` descriptor, and a descriptor whose `measurement_columns`
-is not a list of strings.
+`measurements` descriptor for the run folder the record certifies
+(`tables.runs.<n>-<sha12>.measurements`, or `tables.measurements` in a v1
+flat store), and a descriptor whose `measurement_columns` is not a list of
+strings.
 
 The other two are properties of the Parquet payload — a metadata-joined table
 that repeats rows while declaring no `target.column`, and one whose same-label
@@ -412,13 +414,16 @@ the difference is the code path, not the mode:
 |---|---|---|
 | Converting an existing marker into a record | `_cli_migrate_state.py:350` | `migrated` |
 | Minting a record from outputs (MIG-11) | `_cli_migrate_state.py:1080` via `publish_image_record` | `migrated` |
-| Migrating the image artifact itself | `_cli_migrate_image.py:589` via `publish_image_success` | **`forward`** |
+| Migrating the image artifact itself | `_cli_migrate_image.py` (`migrate_image_task`) via `publish_image_success` | the existing record's, when it carries an identity for this image (`_existing_marker_identity`); otherwise **`forward`** |
+| Republishing after a table rewrite (migrate's `tables_v2` step, `--mode measure`) | `_cli_recompile_tables._republish_table_marker` via `publish_image_success` | the record's own, kept verbatim |
 
-`publish_image_success` has **no `provenance` parameter**, so records it writes
-take `publish_image_record`'s `PROVENANCE_FORWARD` default. This is why
-`_cli_migrate_state.py`'s mint path calls `publish_image_record` directly and
-its docstring says `publish_image_success` is *"the wrong entry despite being
-the forward one"*.
+`publish_image_success` takes a `provenance` parameter that defaults to
+`PROVENANCE_FORWARD`. Only the two paths that keep an existing record's
+identity pass anything else (#281 P3 review I1, I2): a republish that kept a
+migrated `work_id` but wrote `forward` would fence the record on an identity it
+was never minted for. A record migrate builds from the legacy marker or from
+defaults is still `forward`, which is why `_cli_migrate_state.py`'s mint path
+calls `publish_image_record` directly.
 
 **Do not use record provenance to ask whether a tree was migrated.** Use the
 migration manifest.

@@ -61,11 +61,20 @@ and measure runs must not also publish
   folder is added. An unknown sha replaces the highest `-unknown` folder.
   Every writer (save2zarr, process `_save_store`, the measure rewrite) carries
   every other folder unchanged; a write with no tables of its own carries all
-  of them. Only `--overwrite` deletes folders.
-- **Which folder a reader uses.** Finalize, recompile and measure read the
-  folder the image's record certifies (its `measurements` artifact path).
+  of them. Only `--overwrite` deletes folders. A save over a store whose root
+  exists but cannot be parsed is **refused** rather than carrying nothing; only
+  migrate's rebuild from HDF passes `save2zarr(replace_unreadable=True)`.
+- **`upstream` is replaced, not merged.** A writer that read its input
+  (`upstream=` given, even `{}`) records exactly that input's runs; Stage 3
+  and the measure rewrite pass none and carry the block. A run id or order
+  shared between `runs` and `upstream` is logged, never renumbered.
+- **Which folder a reader uses.** Finalize, recompile, measure and migrate
+  read the folder the image's record certifies (its `measurements` artifact
+  path); finalize logs a warning when those folders span several pipelines.
   A reader without a record reads `latest_measurement_run(store)`: the
-  highest-numbered folder that holds `measurements`.
+  highest-numbered folder that holds `measurements`. The journal-keyed resume
+  probe (`journal_table_run`) reads a `legacy` last application as the folder
+  migrate named (`v1_table_pipeline_sha`), not `-unknown`.
 - **Reach folders through `phenotypic.sdk_._table_runs`** (`list_table_runs`,
   `latest_measurement_run`, `table_run_for_pipeline`, `TableRun.
   measurements_path()`), never by joining `tables/...` by hand.

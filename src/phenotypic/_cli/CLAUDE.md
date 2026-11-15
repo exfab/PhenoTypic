@@ -860,12 +860,35 @@ after the table stage, and republishes a record that was current before it via
 `_republish_table_marker`; the run proof follows at finalization. **Why
 in the image task, not a separate pass after it:** the conversion rewrites the
 store root, so the record stops verifying. Inside the task it is republished
-*before* the marker stage re-validates it, with its identity kept verbatim. A
-later pass would find a stale record, and the marker stage's fallback
-(`_existing_marker_identity`) reads only the legacy `image_complete/` marker,
-so a record-era tree would get default identity (`attempt_id="migration"`,
-a rebuilt `relative_image_path`). Spec D10 needs only conversion, then the
-record, then the run proof. Every forward mode refuses a v1 tree before
+*before* the marker stage re-validates it, with its identity kept verbatim.
+
+**"Identity verbatim" means these fields, and it holds by construction on
+both paths** (#281 P3 review I1, I2). `_republish_table_marker` re-reads the
+record and passes back its `work_id`, `relative_image_path`, `mode`,
+`attempt_id`, `provenance` and `source_provenance`
+(`publish_image_success(provenance=...)`; before the fix it had no such
+parameter, and a `"migrated"` record came back `"forward"`). When the record
+is *not* current -- a crash between the conversion and its republish leaves
+a v2 store and a record naming the vanished flat path -- the marker stage
+republishes it from `_existing_marker_identity`, which reads **the record
+first** and the legacy `image_complete/` marker only when no record carries
+an identity; it keeps the same fields, and borrows nothing from a record for
+another image or another non-migrated `work_id`. The one field not kept is
+`lifecycle_epoch`: both paths stamp the live migration generation, because
+under SLURM `publish_image_success` refuses any other epoch. Pinned by
+`tests/unit/cli/test_migrate_rerun_v2.py`, which also checks that the crash
+path and the clean path publish the same identity.
+
+**Which table migrate certifies** (review C1, M2): the run folder the image's
+record certifies, when it certifies one of this store; otherwise, for an
+image with a legacy external Parquet, the run its import owns
+(`import_table_run_id`, the one rule the importer
+`replace_embedded_measurement_table` and migrate's contract and exactness
+checks share); otherwise the record-less default, the latest run holding
+`measurements`. Re-certifying the latest instead silently moved a tree
+measured A, B, A to pipeline B, and judging the latest while importing into
+A's folder kept a multi-run store from ever converging. Spec D10 needs only
+conversion, then the record, then the run proof. Every forward mode refuses a v1 tree before
 `--overwrite` clears it and before `--dry-run` exits (pinned in
 `test_migrate_tables_v2.py`). `--overwrite` does not bypass it; migrate or
 delete the tree (parity with the `.h5` refusal). A
@@ -1182,10 +1205,10 @@ otherwise.
 - **Not every record written during a migration carries `"migrated"`**, and the
   difference is the code path rather than the mode: the state migrator stamps
   it (`_cli_migrate_state.py:350`, `:1080`), while migrating the image artifact
-  itself goes through `publish_image_success` (`_cli_migrate_image.py:589`),
-  which has **no `provenance` parameter** and so takes `publish_image_record`'s
-  `PROVENANCE_FORWARD` default. **Do not use record provenance to ask whether a
-  tree was migrated** — `_output_was_migrated` keys on the migration manifest
+  itself goes through `publish_image_success` (`migrate_image_task`), whose
+  `provenance` defaults to `PROVENANCE_FORWARD`: it keeps an existing record's
+  provenance (review I2) and is otherwise `forward`. **Do not use record
+  provenance to ask whether a tree was migrated** — `_output_was_migrated` keys on the migration manifest
   for exactly this reason. Full table in
   [`tracked_state.md`](../../../docs/source/contrib_guide/tracked_state.md)
   under *Provenance has two writers*.

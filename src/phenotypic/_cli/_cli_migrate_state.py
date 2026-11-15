@@ -1052,9 +1052,10 @@ def apply_process_output_records(
     cannot exist unless its output does" true of these records too.
 
     ``publish_image_success`` is the wrong entry despite being the forward
-    process path's: it takes no ``provenance``, so it would stamp these
-    ``forward`` and the ``work_id`` fence would then be applied to an identity
-    that was never minted.
+    process path's: its ``provenance`` defaults to ``forward`` (the parameter
+    exists so a republish can keep a record's own, #281 P3 review I1), and a
+    record stamped ``forward`` would have the ``work_id`` fence applied to an
+    identity that was never minted.
 
     ``work_id`` is :data:`WORK_ID_UNRECOVERABLE`. It is never compared --
     ``record_rejection`` skips that check for migrated records -- and U-10
