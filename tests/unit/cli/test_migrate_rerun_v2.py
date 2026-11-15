@@ -36,11 +36,26 @@ def _records(out: Path) -> dict[str, bytes]:
     }
 
 
-def _scientific_tree(out: Path) -> dict[str, str]:
+def _deliverables_digest(out: Path) -> dict[str, bytes]:
+    """Every deliverable's bytes, except ``rembi.yaml``.
+
+    ``rembi.yaml`` lists the images in an order that varies between two
+    finalizations of the same mirror (a pre-existing nondeterminism, reported
+    separately), so a byte comparison of it says nothing about migrate.
+    """
+    root = out / "deliverables"
+    return {
+        file.relative_to(root).as_posix(): file.read_bytes()
+        for file in sorted(root.rglob("*"))
+        if file.is_file() and file.name != "rembi.yaml"
+    }
+
+
+def _scientific_tree(out: Path) -> dict[str, object]:
     """Digests of everything a migrate pass could rewrite for an image."""
     return {
         "results": tree_digest(out / "results"),
-        "deliverables": tree_digest(out / "deliverables"),
+        "deliverables": _deliverables_digest(out),
         "images": tree_digest(out / ".phenotypic" / "progress" / "images"),
     }
 
@@ -245,3 +260,72 @@ def test_a_record_for_another_work_id_is_not_borrowed(tmp_path):
     assert identity["attempt_id"] == "migration"
     kept = _existing_marker_identity(out, "ds", "img", "a" * 64)
     assert kept["attempt_id"] == "attempt" and kept["relative_image_path"] == "ds/img.tif"
+
+
+# ---------------------------------------------------------------------------
+# OQ3: readers resolve a `legacy` last application to D10's folder
+# ---------------------------------------------------------------------------
+
+#: The digest the committed v1 fixture's journal records.
+_V1_FIXTURE_SHA = "ae2757956880293d6534d21cebb9358ca7a309b95e92e704ac174e619750747f"
+
+
+def _make_journal_legacy(store: Path) -> None:
+    """Relabel the store's one journal application ``legacy``, digest kept.
+
+    The shape ``--mode migrate`` leaves an HDF-era store in: pass 5 converts
+    its v1 journal into one ``legacy`` application that still names the
+    pipeline's digest.
+    """
+    root_path = store / "zarr.json"
+    root = json.loads(root_path.read_text(encoding="utf-8"))
+    applications = root["attributes"]["phenotypic"]["provenance"]["applications"]
+    applications[-1]["kind"] = "legacy"
+    root_path.write_text(json.dumps(root), encoding="utf-8")
+
+
+def test_a_legacy_journal_resolves_to_the_folder_migrate_named(v1_store):
+    from phenotypic._core._provenance import journal_pipeline_sha256
+    from phenotypic.sdk_ import (
+        convert_tables_v1_to_v2,
+        journal_measurement_table,
+        journal_table_run,
+        ngff_,
+    )
+
+    _make_journal_legacy(v1_store)
+    run = convert_tables_v1_to_v2(v1_store, durable=False)
+    assert run is not None and run.run_id == f"1-{_V1_FIXTURE_SHA[:12]}"
+    resolved = journal_table_run(v1_store)
+    assert resolved is not None and resolved.run_id == run.run_id
+    assert journal_measurement_table(v1_store) == run.measurements_path()
+    # D2's writer rule is unchanged: a save over this journal knows no digest.
+    journal = ngff_.read_phenotypic_attributes(v1_store)["provenance"]
+    assert journal_pipeline_sha256(journal) is None
+
+
+def test_after_migrate_a_staged_continuation_reuses_the_migrated_image(v1_tree):
+    """The staged resume classifier reads the migrated table as the image's own.
+
+    With Stage-3 markers off, the embedded table is the whole completeness
+    evidence; before OQ3 the probe asked for ``1-unknown`` and sent every
+    migrated image back through Stage 2.
+    """
+    from phenotypic._cli._cli_staged_resume import classify_staged_image
+    from phenotypic.sdk_._run_state import staged_image_is_complete
+
+    _make_journal_legacy(one_store(v1_tree))
+    assert run_cli(None, v1_tree, mode="migrate").exit_code == 0
+    assert staged_image_is_complete(
+        v1_tree, "ds", "plate", markers_required=False, resume=True
+    )
+    stage = classify_staged_image(
+        output_dir=v1_tree,
+        dataset="ds",
+        image=Path("plate.tif"),
+        slot="slot",
+        input_root=v1_tree,
+        process_only_layer=None,
+        markers_required=False,
+    )
+    assert stage == "complete"

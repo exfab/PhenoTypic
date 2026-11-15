@@ -646,6 +646,17 @@ def owned_table_run_id(
     return owned[-1] if owned else None
 
 
+def _last_application_is_legacy(journal: object) -> bool:
+    """Whether *journal*'s last application is a converted ``legacy`` one."""
+    applications = journal.get("applications") if isinstance(journal, Mapping) else None
+    return (
+        isinstance(applications, list)
+        and bool(applications)
+        and isinstance(applications[-1], Mapping)
+        and applications[-1].get("kind") == "legacy"
+    )
+
+
 def journal_table_run(store: Path) -> TableRun | None:
     """The run folder a forward save of *store*'s own journal wrote (spec D6, D6a).
 
@@ -663,6 +674,18 @@ def journal_table_run(store: Path) -> TableRun | None:
     opens no journal application, so its pipeline is not the journal's. That
     rewrite returns the run it wrote, and its record declares that.
 
+    **A ``legacy`` last application reads the folder spec D10 labelled.**
+    ``--mode migrate`` converts a v1 store's tables into ``1-<sha12>`` for
+    :func:`v1_table_pipeline_sha` (the latest figure run, else the latest
+    ``full``/``legacy`` application's digest), while the writer's rule
+    (:func:`~phenotypic._core._provenance.journal_pipeline_sha256`, spec D2)
+    treats a ``legacy`` application as unknown. Applying the writer's rule
+    here would name ``-unknown`` for a folder migrate named after a digest,
+    so the staged and full resume probes would read a migrated image as
+    having no table of its own and re-derive it. The writer's rule is
+    unchanged: a save over a ``legacy`` journal still owns ``-unknown``
+    (review OQ3).
+
     Raises:
         FileNotFoundError: If the store has no root ``zarr.json``.
         KeyError: If the root carries no ``phenotypic`` block.
@@ -677,12 +700,13 @@ def journal_table_run(store: Path) -> TableRun | None:
     from . import ngff_
 
     block = _read_block(store)
-    run_id = owned_table_run_id(
-        block,
-        pipeline_sha256=journal_pipeline_sha256(
-            block.get(ngff_.PhenotypicAttr.PROVENANCE)
-        ),
+    journal = block.get(ngff_.PhenotypicAttr.PROVENANCE)
+    pipeline_sha256 = (
+        v1_table_pipeline_sha(block)
+        if _last_application_is_legacy(journal)
+        else journal_pipeline_sha256(journal)
     )
+    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
     if run_id is None:
         return None
     return next(run for run in table_runs_of_block(store, block) if run.run_id == run_id)
