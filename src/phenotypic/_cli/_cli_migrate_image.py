@@ -29,6 +29,8 @@ from phenotypic._cli._embedded_measurement_tables import (
 from phenotypic.sdk_ import (
     CommitGuard,
     MEASUREMENT_TABLE_RELATIVE_PATH,
+    convert_tables_v1_to_v2,
+    declared_measurement_table_path,
     image_completion_marker_path,
     image_record_path,
     load_image_from_store,
@@ -146,16 +148,7 @@ def _existing_marker_identity(
     output_dir: Path, dataset: str, stem: str, work_id: str
 ) -> dict[str, str]:
     """Return preserved identity fields from an existing image marker."""
-    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
-
-    lifecycle = load_slurm_lifecycle(output_dir)
-    active_generation = (
-        str(lifecycle["generation"])
-        if lifecycle is not None
-        and lifecycle.get("active") is True
-        and lifecycle.get("mode") == "migrate"
-        else None
-    )
+    active_generation = _active_migration_generation(output_dir)
     defaults = {
         "work_id": work_id,
         "relative_image_path": f"{dataset}/{stem}",
@@ -190,6 +183,22 @@ def _existing_marker_identity(
     return defaults
 
 
+def _embedded_table_path(store: Path) -> Path:
+    """The measurement table *store* declares, in either tables layout.
+
+    A v2 store's latest run folder holding ``measurements``, or a v1 flat
+    store's one table (migrate reads a tree before converting it; #281 spec
+    D10). A store that declares none answers the v1 flat path, which is only
+    ever probed for existence or named in an error.
+    """
+    declared = declared_measurement_table_path(store)
+    return (
+        declared
+        if declared is not None
+        else Path(store) / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+
+
 def _migration_marker_artifacts(
     task: MigrationImageTask,
     *,
@@ -201,10 +210,70 @@ def _migration_marker_artifacts(
         "overlay": task.overlay_path,
     }
     if table_authoritative:
-        artifacts["measurements"] = (
-            task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-        )
+        artifacts["measurements"] = _embedded_table_path(task.store_path)
     return artifacts
+
+
+def _active_migration_generation(output_dir: Path) -> str | None:
+    """The live ``--mode migrate`` generation, or ``None`` when there is none."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if (
+        lifecycle is not None
+        and lifecycle.get("active") is True
+        and lifecycle.get("mode") == "migrate"
+    ):
+        return str(lifecycle["generation"])
+    return None
+
+
+def _convert_store_tables(
+    output_dir: Path,
+    task: MigrationImageTask,
+    *,
+    record_was_current: bool,
+    commit_guard: CommitGuard | None,
+) -> bool:
+    """Convert one v1 flat store's tables to a run folder (#281 spec D10).
+
+    The ``tables_v2`` step of the image task. It runs after every step of the
+    task that can write the store's tables (the legacy-Parquet import writes
+    v2 directly), so it converts only a store a forward release left in the
+    v1 layout, and is a no-op on any other.
+
+    Converting rewrites the store root, so the image's record no longer
+    verifies. A record that was current just before is republished here,
+    exactly as ``--mode measure`` republishes after its rewrite: every
+    artifact rehashed, identity kept, and the measurements artifact moved to
+    the run folder. A record that was not current is left to the marker
+    stage, which publishes one from the migration's own evidence. The run
+    proof follows at finalization.
+
+    Returns:
+        Whether the store was converted.
+    """
+    from phenotypic._cli._cli_recompile_tables import _republish_table_marker
+
+    if not _holds_v1_tables(task.store_path):
+        return False
+    run = convert_tables_v1_to_v2(
+        task.store_path, durable=None, commit_guard=commit_guard
+    )
+    if run is None:
+        return False
+    record_path = image_record_path(output_dir, task.dataset, task.stem)
+    if record_was_current and record_path.is_file():
+        _republish_table_marker(
+            output_dir,
+            record_path,
+            commit_guard=commit_guard,
+            lifecycle_epoch=_active_migration_generation(output_dir),
+            measurements=(
+                run.measurements_path() if run.has_measurements else None
+            ),
+        )
+    return True
 
 
 def _valid_migration_marker(
@@ -228,9 +297,8 @@ def _valid_migration_marker(
     JSON round-trip all keep using it. Nothing was renamed; four read-backs
     stopped borrowing an input path to find an output.
     """
-    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
     if table_authoritative is None:
-        table_authoritative = embedded.is_file()
+        table_authoritative = _embedded_table_path(task.store_path).is_file()
     expected = _migration_marker_artifacts(
         task,
         table_authoritative=table_authoritative,
@@ -304,8 +372,7 @@ def _table_state(
         if not valid:
             raise RuntimeError("embedded measurement table validation failed")
         return True, True
-    embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-    if embedded.exists() and not valid:
+    if _embedded_table_path(task.store_path).exists() and not valid:
         raise RuntimeError("embedded measurement table validation failed")
     return valid, False
 
@@ -403,8 +470,20 @@ def _dry_run_result(
         table_installed=table_needed,
         overlay_rendered=not overlay_valid,
         marker_digest=marker_digest,
-        skipped=marker_valid,
+        # A v1 flat store is converted (#281 spec D10) even when its record
+        # is current, so it is work, not a skip.
+        skipped=marker_valid and not _holds_v1_tables(task.store_path),
     )
+
+
+def _holds_v1_tables(store: Path) -> bool:
+    """Whether *store* still keeps its tables in the v1 flat layout."""
+    from phenotypic.sdk_ import store_tables_schema
+
+    try:
+        return store_tables_schema(store) == 1
+    except (OSError, KeyError, ValueError):
+        return False
 
 
 def _partial_image_result(
@@ -532,8 +611,30 @@ def migrate_image_task(
             stage="table",
             target=(
                 task.measurement_path
-                or task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
+                or _embedded_table_path(task.store_path)
             ),
+            cause=exc,
+            converted=converted,
+            table_installed=table_installed,
+            overlay_rendered=overlay_rendered,
+        ) from exc
+
+    # The `tables_v2` step (#281 spec D10), after every table write above.
+    try:
+        # The marker stage re-checks the table contract against `table_valid`
+        # inside its commit, so a conversion that broke the table fails there.
+        tables_converted = _convert_store_tables(
+            output_dir,
+            task,
+            record_was_current=marker_was_valid,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:
+        raise _stage_error(
+            task,
+            work_id,
+            stage="table",
+            target=_embedded_table_path(task.store_path),
             cause=exc,
             converted=converted,
             table_installed=table_installed,
@@ -667,6 +768,7 @@ def migrate_image_task(
                 skipped=not (
                     converted
                     or table_installed
+                    or tables_converted
                     or overlay_rendered
                     or not marker_valid
                 ),

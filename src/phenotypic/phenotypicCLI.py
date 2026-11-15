@@ -574,7 +574,7 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
     itself is exempt: it is the remedy, and guarding it with its own
     predicate makes the tree unmigratable (ledger MIG-19).
 
-    Two independent reasons, one call site so the severities cannot drift:
+    Three independent reasons, one call site so the severities cannot drift:
 
     1. **Per-image format** -- a dataset still holds ``.h5`` results with no
        valid store. The predicate is shared with the viewer, so the two cannot
@@ -584,6 +584,9 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
        record and identity schema (spec D1, §11.1). See
        :mod:`phenotypic._cli._cli_schema_gate`, which owns the detection and
        stays inert until P3 arms it.
+    3. **Tables layout** -- a store still keeps its measurement tables in the
+       v1 flat layout (#281 spec D5), found by
+       :func:`~phenotypic._cli._cli_tables_v1.first_v1_store`.
 
     Format conversion rewrites the entire results tree, so it is typed
     deliberately rather than triggered as a side effect of an unrelated run.
@@ -610,6 +613,20 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
             f"--output {output_dir}"
         )
     refuse_unconverted_schema(output_dir, mode=mode)
+    # 3. Per-image tables layout (#281 spec D5): a store still in the v1 flat
+    # layout. CLI-only, and deliberately not part of
+    # `datasets_needing_migration`, which every `resolve_run_state` poll runs.
+    from phenotypic._cli._cli_tables_v1 import first_v1_store
+
+    v1_store = first_v1_store(output_dir)
+    if v1_store is not None:
+        raise click.UsageError(
+            f"--mode {mode} cannot read this output: {v1_store} still holds "
+            "its measurement tables in the v1 flat layout "
+            "(tables/measurements/). Convert the tree to per-pipeline table "
+            f"folders first with:\n"
+            f"  python -m phenotypic {MIGRATION_REMEDY} --output {output_dir}"
+        )
 
 
 def _refuse_run_inputs_the_run_would_delete(

@@ -125,6 +125,7 @@ from phenotypic.sdk_ import (
     STORE_SUFFIX,
     aggregate_publication_marker_path,
     atomic_write_json,
+    declared_measurement_table_path,
     deliverables_dir,
     image_completion_marker_path,
     load_image_from_store,
@@ -1068,9 +1069,14 @@ def _publish_migration_aggregate(
         no_qc=True,
         commit_guard=commit_guard,
     )
+    # Through the resolver (#281 spec D10): a v2 store keeps its table in a
+    # run folder, where the old flat glob found nothing, and this guard
+    # stopped firing.
     embedded_tables_exist = any(
-        (output_dir / "results").glob(
-            "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+        table is not None and table.is_file()
+        for table in (
+            declared_measurement_table_path(store)
+            for store in (output_dir / "results").glob(f"*/zarr/*{STORE_SUFFIX}")
         )
     )
     if aggregate_path is None and embedded_tables_exist:
@@ -1381,7 +1387,9 @@ def migrate_legacy_measurement_tables(
         dataset = source.parent.parent.name
         stem = source.stem
         store = zarr_store_path(output_dir, dataset, stem)
-        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        embedded = declared_measurement_table_path(store) or (
+            store / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
         if dry_run:
             if embedded.is_file():
                 skipped += 1
@@ -1481,7 +1489,9 @@ def publish_migrated_image_markers(
                     raise FileNotFoundError(
                         f"Missing migrated overlay: {overlay}"
                     )
-                embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+                embedded = declared_measurement_table_path(store) or (
+                    store / MEASUREMENT_TABLE_RELATIVE_PATH
+                )
                 table_valid = _valid_embedded_measurement_contract(store)
                 if embedded.exists() and not table_valid:
                     raise RuntimeError(

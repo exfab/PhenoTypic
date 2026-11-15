@@ -19,6 +19,7 @@ from ._cli_migrate import (
 from ._cli_migrate_manifest import validate_migration_generation
 from ._cli_migrate_provenance import (
     ProvenanceMigrationTarget,
+    convert_provenance_store_tables,
     provenance_migration_lifecycle_root,
     target_kind_owns_machine_state,
     upgrade_store_provenance,
@@ -156,6 +157,13 @@ def _run_store_worker(config: _ProvenanceWorkerConfig, index: int) -> int:
             expected_control_root=config.control_root,
         )
         result = upgrade_store_provenance(
+            task.store_path,
+            dry_run=config.dry_run,
+            commit_guard=_commit_guard(config),
+        )
+        # The `tables_v2` step (#281 spec D10): after the journal upgrade it
+        # names its folder from, and before the status that seals the store.
+        convert_provenance_store_tables(
             task.store_path,
             dry_run=config.dry_run,
             commit_guard=_commit_guard(config),
