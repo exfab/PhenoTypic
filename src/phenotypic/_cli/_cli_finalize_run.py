@@ -18,6 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     import polars as pl
 
     from phenotypic import ImagePipeline
+    from phenotypic.sdk_ import TableRun
     from phenotypic.sdk_._publication_guard import CommitGuard
 
 logger = logging.getLogger(__name__)
@@ -406,18 +407,47 @@ def _invalidate_finalization_intermediates(
 # ---------------------------------------------------------------------------
 
 
-def _aggregated_pipeline_digests(
-    aggregated_sources: "dict[Path, str]",
-) -> list[str | None]:
-    """Return the producing pipeline's digest for each aggregated table.
+def aggregated_table_runs(
+    aggregated_sources: "Mapping[Path, str]",
+) -> "list[TableRun | None]":
+    """Return the certified run folder of each aggregated table (spec D6a).
 
     Each authorized source **is** the ``measurements`` artifact its image's
     record certifies (``authorized_measurement_sources``), so the run folder
-    holding it is the one
+    declaring it is the one
     :func:`~phenotypic._cli._cli_recompile_recovery.certified_table_run`
-    names, and its ``pipeline_sha256`` is the digest of the pipeline that
-    wrote that table (spec D6a). Resolving the source path directly gives the
-    same run without re-reading every record.
+    returns for that record. Resolving the source path directly gives the
+    same run without re-reading every record. It is never a folder chosen
+    by pipeline sha, which after ``--mode measure`` names the wrong one.
+
+    Args:
+        aggregated_sources: The sources the master was built from.
+
+    Returns:
+        One run per source, in source order; ``None`` where the source lies
+        in no v2 run (a legacy external Parquet, a v1 flat table) or its
+        store cannot be read.
+    """
+    from ._cli_parquet_agg import measurement_table_run
+
+    runs: "list[TableRun | None]" = []
+    for source in aggregated_sources:
+        try:
+            runs.append(measurement_table_run(source))
+        except (OSError, KeyError, ValueError):
+            runs.append(None)
+    return runs
+
+
+def _aggregated_pipeline_digests(
+    aggregated_sources: "Mapping[Path, str]",
+    table_runs: "Sequence[TableRun | None] | None" = None,
+) -> list[str | None]:
+    """Return the producing pipeline's digest for each aggregated table.
+
+    The run folder holding each source is its certified run
+    (:func:`aggregated_table_runs`), and its ``pipeline_sha256`` is the
+    digest of the pipeline that wrote that table (spec D6a).
     :func:`~phenotypic.sdk_._run_metrics.shared_pipeline_sha256` then reports
     the digest they share, or ``None`` when they differ.
 
@@ -433,20 +463,15 @@ def _aggregated_pipeline_digests(
 
     Args:
         aggregated_sources: The sources the master was built from.
+        table_runs: Their certified runs, when the caller already resolved
+            them; ``None`` resolves them here.
 
     Returns:
         One digest per source, ``None`` where it is not recorded.
     """
-    from ._cli_parquet_agg import measurement_table_run
-
-    digests: list[str | None] = []
-    for source in aggregated_sources:
-        try:
-            run = measurement_table_run(source)
-        except (OSError, KeyError, ValueError):
-            run = None
-        digests.append(None if run is None else run.pipeline_sha256)
-    return digests
+    if table_runs is None:
+        table_runs = aggregated_table_runs(aggregated_sources)
+    return [None if run is None else run.pipeline_sha256 for run in table_runs]
 
 
 def _warn_on_mixed_pipelines(digests: Sequence[str | None]) -> None:
@@ -564,6 +589,7 @@ def publish_run_summaries(
     commit_guard: "CommitGuard | None" = None,
     embeddings: "Mapping[str, Mapping[str, int]] | None" = None,
     measure_failed: int = 0,
+    table_runs: "Sequence[TableRun | None] | None" = None,
 ) -> tuple[Path, Path]:
     """Write ``deliverables/metrics.json`` and ``deliverables/schema.json``.
 
@@ -604,10 +630,14 @@ def publish_run_summaries(
         source_work_ids: Their work ids, on the authorized arm; ``None`` on
             the legacy arm, where the sources are counted instead.
         commit_guard: Publication guard threaded to both writes.
-        embeddings: Per embedding entry id, ``{"rows", "stale_skipped"}``.
-            The P4 embedding deliverables pass it; ``None`` omits the key.
+        embeddings: Per embedding entry id, ``{"rows", "stale_skipped"}``,
+            from :func:`~phenotypic._cli._cli_embedding_deliverables.aggregate_embedding_tables`;
+            ``None`` (or empty) omits the key. Given, ``schema.json`` also
+            lists each published ``embeddings/<model>/<region>`` table.
         measure_failed: How many images' ``--mode measure`` re-measure
             failed in this finalization's invocation; ``0`` for any other run.
+        table_runs: The aggregated sources' certified runs
+            (:func:`aggregated_table_runs`), when already resolved.
 
     Returns:
         ``(metrics_path, schema_path)``.
@@ -651,7 +681,9 @@ def publish_run_summaries(
 
     import phenotypic
 
-    digests = _aggregated_pipeline_digests(aggregated_sources)
+    from ._cli_embedding_deliverables import embedding_table_schemas
+
+    digests = _aggregated_pipeline_digests(aggregated_sources, table_runs)
     _warn_on_mixed_pipelines(digests)
     metrics = build_run_metrics(
         phenotypic_version=phenotypic.__version__,
@@ -662,12 +694,13 @@ def publish_run_summaries(
         failed=failed,
         measured_objects=master_df.height,
         metadata_phantoms=phantoms,
-        embeddings=embeddings,
+        embeddings=embeddings or None,
     )
     schema = build_output_schema(
         _published_table_schemas(
             output_dir, master_df=master_df, mirror_df=mirror_df
-        )
+        ),
+        embedding_tables=embedding_table_schemas(output_dir) if embeddings else None,
     )
 
     metrics_path = metrics_json_path(output_dir)
@@ -706,6 +739,9 @@ def finalize_run(
     3. join metadata + append metadata-only phantoms + apply post ops
     4. write  ->  ``deliverables/measurements.{parquet,csv}``
     5. persist ``pipeline.json``, analysis outputs, per-feature splits
+       5a. ``deliverables/embeddings/`` from each image's certified run
+       folder (:func:`~phenotypic._cli._cli_embedding_deliverables.aggregate_embedding_tables`,
+       #281 spec E5); an unreadable, non-stale entry raises
     6. write ``deliverables/metrics.json`` and ``deliverables/schema.json``
        (:func:`publish_run_summaries`, #281 spec C4/C12)
     7. publish the aggregate proof, which declares the files of steps 2-6
@@ -856,6 +892,21 @@ def finalize_run(
             commit_guard=commit_guard,
         )
 
+    # #281 spec E5: the embedding deliverables, from the same certified run
+    # folders the master came from (D6a). In this one task, never in the
+    # fan-out shards: it streams one store at a time and has no merge. An
+    # unreadable, non-stale entry raises here and fails the finalization,
+    # like a master that cannot be built; the images stay verified (D9).
+    from ._cli_embedding_deliverables import aggregate_embedding_tables
+
+    with logged_step(logger, "finalize_run: publish embedding deliverables"):
+        table_runs = aggregated_table_runs(aggregated_sources)
+        embedding_counts = aggregate_embedding_tables(
+            output_dir,
+            [run for run in table_runs if run is not None],
+            commit_guard=commit_guard,
+        )
+
     source_work_ids: list[str] | None = None
     if authorized:
         from ._cli_finalize_fanout import _work_ids_for_sources
@@ -894,7 +945,9 @@ def finalize_run(
             aggregated_sources=aggregated_sources,
             source_work_ids=source_work_ids,
             commit_guard=commit_guard,
+            embeddings=embedding_counts,
             measure_failed=measure_failed or 0,
+            table_runs=table_runs,
         )
 
     if authorized:

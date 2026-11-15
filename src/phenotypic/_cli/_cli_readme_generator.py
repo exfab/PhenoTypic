@@ -57,6 +57,7 @@ class READMEGenerator:
             self._generate_layers_section(),
             self._generate_measurements_section(),
             self._generate_categories_section(),
+            self._generate_embeddings_section(),
             self._generate_model_section(),
             self._generate_footer(),
         ]
@@ -192,7 +193,7 @@ exploration."""
         Iterates through pipeline._meas to find MeasureFeatures instances
         and generates tables for each using MeasurementInfo metadata.
         """
-        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.abc_ import MeasureEmbedding, MeasureFeatures
 
         if not self.pipeline._meas:
             return """## Measurements
@@ -227,7 +228,11 @@ No measurements configured in this pipeline."""
                 sections.append(grid_table)
 
         for meas_name, measurer in self.pipeline._meas.items():
-            if not isinstance(measurer, MeasureFeatures):
+            # An embedder publishes no mirror column; its tables are
+            # documented in their own section (#281 spec E5).
+            if not isinstance(measurer, MeasureFeatures) or isinstance(
+                measurer, MeasureEmbedding
+            ):
                 continue
 
             # Get measurement info class if defined on the measurer
@@ -253,13 +258,14 @@ No measurements configured in this pipeline."""
         category whose members all come from an unconfigured measurer is
         omitted. Returns ``""`` when no category applies.
         """
-        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.abc_ import MeasureEmbedding, MeasureFeatures
         from phenotypic.schema import CATEGORIES
 
         infos = [
             info
             for measurer in (self.pipeline._meas or {}).values()
             if isinstance(measurer, MeasureFeatures)
+            and not isinstance(measurer, MeasureEmbedding)
             for info in self._get_measurement_infoclasses(measurer)
         ]
         # One malformed info must cost only its own columns, not the README,
@@ -291,6 +297,57 @@ No measurements configured in this pipeline."""
         if not blocks:
             return ""
         return "## Measurement Categories\n\n" + "\n\n".join(blocks)
+
+    def _generate_embeddings_section(self) -> str:
+        """Document the embedding deliverables, one table per embedder (#281 spec E5).
+
+        An embedder writes no column of the measurement tables, so the
+        measurements section leaves it out; its vectors are published as
+        ``deliverables/embeddings/<model>/<crops|grid>.parquet``. Returns
+        ``""`` when the pipeline has no embedder. Reads only the embedder's
+        fields, never its weights.
+        """
+        from phenotypic.abc_ import MeasureEmbedding
+        from phenotypic.sdk_ import DIR_DELIVERABLES, DIR_EMBEDDINGS, EMBEDDINGS_MANIFEST_JSON
+        from phenotypic.util._measurement_outputs import embedding_vector_member
+
+        embedders = [
+            (name, measurer)
+            for name, measurer in (self.pipeline._meas or {}).items()
+            if isinstance(measurer, MeasureEmbedding)
+        ]
+        if not embedders:
+            return ""
+        root = f"{DIR_DELIVERABLES}/{DIR_EMBEDDINGS}"
+        lines = [
+            "## Embeddings",
+            "",
+            "Each embedder writes one Parquet file of feature vectors, never "
+            "columns of the measurement tables. A row carries "
+            "`Metadata_Dataset`, `Metadata_ImageName`, the table's key "
+            "(`Object_Label` for colony crops, the `Grid_*` cell keys for a "
+            "grid) and `embedding`, a fixed-length float16 vector. Join a "
+            "crop row to `master_measurements.parquet` on `Metadata_Dataset`, "
+            "`Metadata_ImageName` and `Object_Label`. These files are never "
+            "joined to metadata. An image whose objects changed since its "
+            "vectors were computed is left out and listed in "
+            f"`{root}/{EMBEDDINGS_MANIFEST_JSON}`, with each file's row count, "
+            "sha256 and model descriptor.",
+            "",
+            "| Embedder | File |",
+            "|----------|------|",
+        ]
+        descs: dict[str, str] = {}
+        for name, embedder in embedders:
+            key = embedder.payload_key()
+            lines.append(f"| `{name}` ({type(embedder).__name__}) | `{root}/{key}.parquet` |")
+            member = embedding_vector_member(type(embedder).__name__)
+            if member is not None and member.desc:
+                descs.setdefault(type(embedder).__name__, member.desc)
+        for producer, desc in descs.items():
+            text = desc.replace("|", "\\|").replace("\n", " ")
+            lines += ["", f"`embedding` ({producer}): {text}"]
+        return "\n".join(lines)
 
     def _get_measurement_infoclasses(self, measurer) -> list[type[MeasurementInfo]]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.

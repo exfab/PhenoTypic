@@ -1357,6 +1357,18 @@ column schema of every published table, written by `finalize_run`'s
 declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
+`embeddings/<model>/<crops|grid>.parquet` and `embeddings/manifest.json`
+(#281 spec E5: `aggregate_embedding_tables` in `_cli_embedding_deliverables.py`,
+run by `finalize_run` after the splits and before `metrics.json`, in the
+finalizer task itself, never in the `0-K` aggregate shards. It streams each
+image's **certified** run folder, one row group per store, skips a `stale`
+entry with a warning and counts it, and **raises** on a non-stale entry it
+cannot read, failing finalization like the master; the image stays
+`verified` (D9), so the remedy is a same-pipeline `--mode measure`. Parquet
+only, never joined to metadata, and the whole folder is removed when no
+certified folder holds an embedding. Every per-image writer passes
+`pipeline.embed(image)` beside `measure()`, measure mode included:
+`replace_image_tables(embeddings=None)` drops the run's embeddings),
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
