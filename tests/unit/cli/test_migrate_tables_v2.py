@@ -91,6 +91,25 @@ def test_forward_run_refuses_a_v1_store(v1_tree, tiny_inputs):
     assert tree_digest(v1_tree) == before  # refused before anything is written
 
 
+def test_the_refusal_fires_before_overwrite_clears_the_output(v1_tree, tiny_inputs):
+    """A late catch would already have deleted the run it points at migrate."""
+    before = tree_digest(v1_tree)
+    result = run_cli(tiny_inputs, v1_tree, extra=["--overwrite"])
+    assert result.exit_code == 2, result.output
+    assert "--mode migrate" in result.output and "Traceback" not in result.output
+    assert tree_digest(v1_tree) == before
+    assert one_store(v1_tree).is_dir()
+
+
+def test_the_refusal_fires_before_a_dry_run_exits(v1_tree, tiny_inputs):
+    """``--dry-run`` (the GUI's Validate) reports the refusal, not a plan."""
+    before = tree_digest(v1_tree)
+    result = run_cli(tiny_inputs, v1_tree, extra=["--dry-run"])
+    assert result.exit_code == 2, result.output
+    assert "--mode migrate" in result.output and "Traceback" not in result.output
+    assert tree_digest(v1_tree) == before
+
+
 @pytest.mark.parametrize("mode", ["measure", "recompile"])
 def test_every_forward_mode_refuses_a_v1_store(v1_tree, mode):
     before = tree_digest(v1_tree)

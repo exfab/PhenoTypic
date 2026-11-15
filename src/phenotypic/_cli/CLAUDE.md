@@ -857,7 +857,17 @@ digest is known; `v1_table_pipeline_sha`: latest figure run, else latest
 `full`/`legacy` journal application) with `convert_tables_v1_to_v2`. The step
 runs in the per-image task (`_cli_migrate_image`, local and SLURM image array)
 after the table stage, and republishes a record that was current before it via
-`_republish_table_marker`; the run proof follows at finalization. A
+`_republish_table_marker`; the run proof follows at finalization. **Why
+in the image task, not a separate pass after it:** the conversion rewrites the
+store root, so the record stops verifying. Inside the task it is republished
+*before* the marker stage re-validates it, with its identity kept verbatim. A
+later pass would find a stale record, and the marker stage's fallback
+(`_existing_marker_identity`) reads only the legacy `image_complete/` marker,
+so a record-era tree would get default identity (`attempt_id="migration"`,
+a rebuilt `relative_image_path`). Spec D10 needs only conversion, then the
+record, then the run proof. Every forward mode refuses a v1 tree before
+`--overwrite` clears it and before `--dry-run` exits (pinned in
+`test_migrate_tables_v2.py`). A
 provenance-only target gets it in its store array
 (`convert_provenance_store_tables`). The legacy-Parquet import,
 `replace_embedded_measurement_table`, writes v2 directly, so no tree is left
