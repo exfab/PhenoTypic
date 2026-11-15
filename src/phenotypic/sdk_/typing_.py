@@ -72,6 +72,21 @@ InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
 #: ``embeddings/<model>/grid/``. Literal-only, like ``InputLayer``.
 EmbeddingRegions: TypeAlias = Literal["objects", "grid"]
 
+#: How ``MeasureDinoEmbedding`` turns a region into one vector (#281 spec E3):
+#: ``"crop_cls"`` and ``"crop_mean"`` take the CLS token or the mean patch
+#: token of the region's resized crop; ``"masked_dense"`` averages the
+#: patch tokens of one tiled pass over the plate under the region's mask.
+EmbeddingPooling: TypeAlias = Literal["crop_cls", "crop_mean", "masked_dense"]
+
+#: The stored type of an embedding vector. Only ``"float16"``: every
+#: embedding table's vector column is ``FixedSizeList<float16>[D]`` (#281
+#: spec D1). A wider type would be a widening of this alias.
+EmbeddingDType: TypeAlias = Literal["float16"]
+
+#: Where ``MeasureDinoEmbedding`` runs its backbone. ``"auto"`` takes CUDA
+#: when it is available and the CPU otherwise.
+EmbeddingDevice: TypeAlias = Literal["auto", "cpu", "cuda"]
+
 #: Output-range policy for operations that guard ``detect_mat``'s [0, 1]
 #: contract. ``"clip"`` saturates, ``"rescale"`` normalizes the full
 #: histogram, ``None`` passes values through untouched (the escape hatch

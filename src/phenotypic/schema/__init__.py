@@ -58,6 +58,7 @@ from ._measure._color_hsv import ColorHSV
 from ._measure._color_lab import ColorLab
 from ._measure._color_xy import Colorxy
 from ._measure._color_xyz import ColorXYZ
+from ._measure._dino_embedding import DINO_EMBEDDING
 from ._analysis._edge_correction import EDGE_CORRECTION
 from ._shared._grid import GRID
 from ._measure._grid_linreg_stats import GRID_LINREG_STATS
@@ -122,6 +123,7 @@ __all__ = [
     "Colorxy",
     "ColorXYZ",
     "CURATION",
+    "DINO_EMBEDDING",
     "LINEAR_CAP_AND_LAG_MODEL",
     "EDGE_CORRECTION",
     "ErrorCategory",

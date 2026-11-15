@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Final, Union
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Union
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,7 @@ from pydantic import model_validator
 from phenotypic.schema import GRID, OBJECT
 from phenotypic.sdk_.exceptions_ import OperationFailedError
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
-from phenotypic.sdk_.typing_ import EmbeddingRegions, OperationField
+from phenotypic.sdk_.typing_ import EmbeddingRegions, OperationField, TuneSpec
 
 from ._measure_features import MeasureFeatures
 
@@ -96,6 +96,11 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     - :meth:`model_token` names the model folder (``"dinov2-vitb14"``);
     - :meth:`entry_descriptor` describes the model and the vectors.
 
+    Override :meth:`_embed_object_boxes` as well when a colony's crop needs
+    its own pixels (a background mask, a masked pool), and list the fields
+    that name the model in ``_leading_fields`` to put them before
+    ``regions`` and ``grid`` in the field order.
+
     Args:
         regions: ``"objects"`` to embed detected colonies, ``"grid"`` to
             embed the cells of ``grid``.
@@ -126,8 +131,39 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         (True, dtype('float16'))
     """
 
-    regions: EmbeddingRegions = "objects"
-    grid: Union[OperationField, None] = None  # type: ignore[valid-type]
+    regions: Annotated[EmbeddingRegions, TuneSpec(tunable=False)] = "objects"
+    grid: Annotated[  # type: ignore[valid-type]
+        Union[OperationField, None], TuneSpec(tunable=False)
+    ] = None
+
+    #: Subclass fields placed before ``regions`` and ``grid``, in this order:
+    #: the ones that name the model (``size``, ``version``, ...), which a
+    #: reader of a pipeline file looks for first. Empty keeps pydantic's
+    #: order, the ABC's fields first.
+    _leading_fields: ClassVar[tuple[str, ...]] = ()
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Move ``_leading_fields`` to the front of the subclass's field order.
+
+        Pydantic puts inherited fields first, so without this every
+        embedder's own model fields would follow ``regions`` and ``grid``.
+        The same forced-rebuild pattern as the field-append mixins
+        (``sdk_/mixin/_input_layer_mixin.py``); ``TuneSpec`` metadata and the
+        docstring descriptions survive it.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        leading = cls._leading_fields
+        fields = cls.__pydantic_fields__
+        unknown = [name for name in leading if name not in fields]
+        if unknown:
+            raise TypeError(f"{cls.__name__}._leading_fields names no field {unknown}")
+        order = [*leading, *(name for name in fields if name not in leading)]
+        if list(fields) != order:
+            reordered = {name: fields[name] for name in order}
+            fields.clear()
+            fields.update(reordered)
+            cls.model_rebuild(force=True)
 
     @model_validator(mode="after")
     def _check_grid_matches_regions(self) -> "MeasureEmbedding":
@@ -168,6 +204,25 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         Returns:
             An ``(N, D)`` float array, ``D == entry_descriptor()["dim"]``.
         """
+
+    def _embed_object_boxes(
+        self, image: Image, boxes: np.ndarray, labels: np.ndarray
+    ) -> np.ndarray:
+        """Embed each detected object's box, knowing which object it is.
+
+        ``regions="objects"`` calls this; ``regions="grid"`` calls
+        :meth:`_embed_boxes`. The default ignores *labels*. Override it when
+        a crop needs the colony's own pixels, ``image.objmap[...] == label``.
+
+        Args:
+            image: The image being measured.
+            boxes: As :meth:`_embed_boxes`.
+            labels: ``(N,)`` int64, the ``Object_Label`` of each box.
+
+        Returns:
+            As :meth:`_embed_boxes`.
+        """
+        return self._embed_boxes(image, boxes)
 
     @abstractmethod
     def model_token(self) -> str:
@@ -250,11 +305,13 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             ) from exc
 
     def _operate(self, image: Image) -> pd.DataFrame:  # type: ignore[override]
+        labels: np.ndarray | None = None
         if self.regions == "objects":
             keys, boxes = self._object_boxes(image)
+            labels = keys[str(OBJECT.LABEL)].to_numpy(dtype=np.int64)
         else:
             keys, boxes = self._grid_cells(image)
-        vectors = self._embed_vectors(image, boxes)
+        vectors = self._embed_vectors(image, boxes, labels)
         frame = keys.reset_index(drop=True)
         frame["embedding"] = list(vectors)
         return frame
@@ -311,12 +368,21 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         ].to_numpy(dtype=np.int64)
         return keys, boxes
 
-    def _embed_vectors(self, image: Image, boxes: np.ndarray) -> np.ndarray:
-        """:meth:`_embed_boxes`, checked for shape and cast to ``float16``."""
+    def _embed_vectors(
+        self, image: Image, boxes: np.ndarray, labels: np.ndarray | None = None
+    ) -> np.ndarray:
+        """Embed *boxes*, checked for shape and cast to ``float16``.
+
+        :meth:`_embed_object_boxes` when *labels* are given (objects), else
+        :meth:`_embed_boxes` (grid cells).
+        """
         dim = self._dim()
         if len(boxes) == 0:
             return np.zeros((0, dim), dtype=np.float16)
-        vectors = np.asarray(self._embed_boxes(image, boxes))
+        if labels is None:
+            vectors = np.asarray(self._embed_boxes(image, boxes))
+        else:
+            vectors = np.asarray(self._embed_object_boxes(image, boxes, labels))
         if vectors.ndim != 2 or vectors.shape != (len(boxes), dim):
             raise ValueError(
                 f"_embed_boxes returned shape {vectors.shape} for {len(boxes)} "

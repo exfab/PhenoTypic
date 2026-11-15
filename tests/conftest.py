@@ -34,6 +34,7 @@ from tests._tiny_run import (  # noqa: F401
     pipeline_file_b,
     plate,
     store_with_crop_entry,
+    stub_backbone,
     store_with_two_runs,
     tiny_inputs,
     tiny_inputs_one_bad,

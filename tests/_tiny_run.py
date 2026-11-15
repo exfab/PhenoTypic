@@ -1123,3 +1123,104 @@ def run_entry(store: Path) -> dict:
     from phenotypic.sdk_ import list_table_runs
 
     return dict(list_table_runs(store)[-1].descriptor)
+
+
+# ---------------------------------------------------------------------------
+# P4 T3 (C18): ``MeasureDinoEmbedding`` without a download (spec E3)
+# ---------------------------------------------------------------------------
+
+#: The stub backbone's geometry: DINOv2's patch, a tiny hidden size.
+STUB_PATCH_SIZE = 14
+STUB_HIDDEN_SIZE = 8
+STUB_COMMIT = "0" * 40
+
+
+def _build_stub_dino():
+    """A deterministic stand-in for a DINOv2 ``(model, processor)``; needs torch.
+
+    The model average-pools each ``14 x 14`` patch of the normalized pixels
+    to its three channel means and spreads them over :data:`STUB_HIDDEN_SIZE`
+    dimensions (the means, their squares, the first two again). The CLS token
+    is the mean of the patch tokens. So a vector depends on the pixels it was
+    computed from, and a test can tell regions apart without real weights.
+    The processor is callable (the dense path) and carries the normalization
+    constants the batched crop path reads.
+    """
+    from types import SimpleNamespace
+
+    import numpy as np
+    import torch
+
+    class _StubDinoModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.config = SimpleNamespace(
+                patch_size=STUB_PATCH_SIZE,
+                hidden_size=STUB_HIDDEN_SIZE,
+                num_register_tokens=0,
+                _commit_hash=STUB_COMMIT,
+            )
+
+        def forward(self, pixel_values):
+            pooled = torch.nn.functional.avg_pool2d(pixel_values, STUB_PATCH_SIZE)
+            tokens = pooled.flatten(2).transpose(1, 2)  # (B, Hp*Wp, 3)
+            patches = torch.cat([tokens, tokens**2, tokens[..., :2]], dim=-1)
+            cls = patches.mean(dim=1, keepdim=True)
+            return SimpleNamespace(last_hidden_state=torch.cat([cls, patches], dim=1))
+
+    class _StubInputs(dict):
+        def to(self, device):
+            return _StubInputs({key: value.to(device) for key, value in self.items()})
+
+    class _StubProcessor:
+        image_mean = [0.485, 0.456, 0.406]
+        image_std = [0.229, 0.224, 0.225]
+        rescale_factor = 1 / 255
+
+        def __call__(self, images, return_tensors="pt", **kwargs):
+            arr = np.asarray(images, dtype=np.float32) * self.rescale_factor
+            arr = (arr - np.asarray(self.image_mean, np.float32)) / np.asarray(
+                self.image_std, np.float32
+            )
+            pixels = torch.from_numpy(np.ascontiguousarray(arr.transpose(2, 0, 1)))
+            return _StubInputs(pixel_values=pixels[None])
+
+    return _StubDinoModel().eval(), _StubProcessor()
+
+
+@pytest.fixture
+def stub_backbone(monkeypatch):
+    """Patch ``MeasureDinoEmbedding``'s backbone loader with a tiny stub.
+
+    No download and no GPU. ``load_dino_backbone`` in the measurer's module
+    is replaced by a loader that records each call's arguments in
+    ``load_calls`` and returns :func:`_build_stub_dino`'s model and
+    processor. torch is imported only when the stub is loaded, so a test
+    refused before loading runs without it. The module's backbone cache is
+    cleared before and after, so no model leaks between tests.
+
+    Yields:
+        A namespace whose ``load_calls`` is a list of
+        ``{dino_version, dino_size, device, revision}`` dicts, one per load.
+    """
+    from types import SimpleNamespace
+
+    from phenotypic.measure import _measure_dino_embedding as module
+
+    calls: list[dict] = []
+
+    def _stub_load(dino_version, dino_size, device, *, revision=None):
+        calls.append(
+            {
+                "dino_version": dino_version,
+                "dino_size": dino_size,
+                "device": device,
+                "revision": revision,
+            }
+        )
+        return _build_stub_dino()
+
+    module._cached_backbone.cache_clear()
+    monkeypatch.setattr(module, "load_dino_backbone", _stub_load)
+    yield SimpleNamespace(load_calls=calls)
+    module._cached_backbone.cache_clear()
