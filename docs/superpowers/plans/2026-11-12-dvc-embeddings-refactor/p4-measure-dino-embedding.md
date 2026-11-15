@@ -202,7 +202,9 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
   7. `crop_px: int = 224`
   8. `crop_pad_frac: float = 0.25`
   9. `mask_background: bool = False`
-  10. `dtype: Literal["float16", "float32"] = "float16"`
+  10. `dtype: Literal["float16"] = "float16"` (spec E3: vectors are always
+      stored as `FixedSizeList<float16>[D]`; a float32 path would be a later
+      widening of the Literal)
   11. `batch_size: int = 64`
   12. `device: Literal["auto", "cpu", "cuda"] = "auto"`
 
@@ -230,9 +232,17 @@ def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
   Tune annotations:
   - `TuneSpec(tunable=False)` on `size`, `version`, `revision`, `regions`, `grid`, `dtype`,
     `batch_size` and `device`;
-  - `crop_px` over the choices `112, 224, 336, 448`, the multiples of both 14
-    and 16 in range, so every value is valid for DINOv2 and DINOv3;
-  - `crop_pad_frac` over 0.0–1.0.
+  - `crop_px` over the choices `112, 224, 336, 448`: the common multiples of
+    14 and 16 (lcm 112) from 112 to 448, at or above both models' smallest
+    training crop and below DINOv2's 518 training resolution, so every value
+    is valid for DINOv2 and DINOv3 and DINOv2's position embeddings are only
+    interpolated down. Larger crops only upsample colony-sized boxes at
+    quadratic attention cost;
+  - `crop_pad_frac` over 0.0–0.5. It is **per side**, a fraction of each bbox
+    dimension: crop side = (1 + 2f) × box side. 0.5 is a 2× crop; the default
+    0.25 is ViLD's 1.5×. Above that, crops on dense plates take in
+    neighbouring colonies. (Corrected from 0.0–1.0 by the fact-check,
+    `reports/.../p4-tune-ranges-factcheck.md`.)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -281,15 +291,25 @@ def test_dinov3_requires_license_acceptance(monkeypatch, stub_backbone, detected
     assert excinfo.value.err_type is RuntimeError
     assert len(stub_backbone.load_calls) == 0                     # refused before loading
 
-@pytest.mark.parametrize("crop_px", [112, 224, 336, 448])
-def test_every_tunable_crop_px_fits_both_patch_sizes(crop_px):
-    assert crop_px % 14 == 0 and crop_px % 16 == 0
+def test_every_tunable_crop_px_fits_both_patch_sizes():
+    choices = tune_choices(MeasureDinoEmbedding.model_fields["crop_px"])   # read from the TuneSpec
+    assert choices == [112, 224, 336, 448]
+    assert all(c % 14 == 0 and c % 16 == 0 for c in choices)
+
+def test_crop_pad_frac_tunes_per_side_up_to_half():
+    assert tune_bounds(MeasureDinoEmbedding.model_fields["crop_pad_frac"]) == (0.0, 0.5)
+
+def test_an_elongated_colony_is_not_stretched(stub_backbone):
+    ...  # the crop is squared to the box's longer side before resizing
 ```
 
 - [ ] **Step 2: Run them and confirm they fail.**
 - [ ] **Step 3: Implement.**
-  - **Crop modes:** pad the bbox by `crop_pad_frac`, clip to the image (objects
-    only), and resize to `crop_px`. With `mask_background`, zero pixels outside
+  - **Crop modes:** pad the bbox by `crop_pad_frac` per side, square it to its
+    longer side (centred), clip to the image (objects only), zero-pad a
+    clipped box back to square rather than stretching it, and resize to
+    `crop_px`. Squaring keeps irregular and filamentous colonies from being
+    distorted (orchestrator's call; the spec is silent). With `mask_background`, zero pixels outside
     the colony. Then `embed_crops`.
   - **Grid:** a cell is cropped from its rectangle exactly as an object is from
     its bbox. A cell outside the image raises `GridCellOutsideImageError`

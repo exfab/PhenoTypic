@@ -2396,7 +2396,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>crop_px: int = 224</code></li>
 <li><code>crop_pad_frac: float = 0.25</code></li>
 <li><code>mask_background: bool = False</code></li>
-<li><code>dtype: Literal["float16", "float32"] = "float16"</code></li>
+<li><code>dtype: Literal["float16"] = "float16"</code> (spec E3: vectors are always stored as <code>FixedSizeList&lt;float16&gt;[D]</code>; a float32 path would be a later widening of the Literal)</li>
 <li><code>batch_size: int = 64</code></li>
 <li><code>device: Literal["auto", "cpu", "cuda"] = "auto"</code></li>
 </ol>
@@ -2417,8 +2417,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>Tune annotations:</p>
 <ul>
 <li><code>TuneSpec(tunable=False)</code> on <code>size</code>, <code>version</code>, <code>revision</code>, <code>regions</code>, <code>grid</code>, <code>dtype</code>, <code>batch_size</code> and <code>device</code>;</li>
-<li><code>crop_px</code> over the choices <code>112, 224, 336, 448</code>, the multiples of both 14 and 16 in range, so every value is valid for DINOv2 and DINOv3;</li>
-<li><code>crop_pad_frac</code> over 0.0–1.0.</li>
+<li><code>crop_px</code> over the choices <code>112, 224, 336, 448</code>: the common multiples of 14 and 16 (lcm 112) from 112 to 448, at or above both models' smallest training crop and below DINOv2's 518 training resolution, so every value is valid for DINOv2 and DINOv3 and DINOv2's position embeddings are only interpolated down. Larger crops only upsample colony-sized boxes at quadratic attention cost;</li>
+<li><code>crop_pad_frac</code> over 0.0–0.5. It is <strong>per side</strong>, a fraction of each bbox dimension: crop side = (1 + 2f) × box side. 0.5 is a 2× crop; the default 0.25 is ViLD's 1.5×. Above that, crops on dense plates take in neighbouring colonies. (Corrected from 0.0–1.0 by the fact-check, <code>reports/.../p4-tune-ranges-factcheck.md</code>.)</li>
 </ul></li>
 </ul>
 <ul class="task-list">
@@ -2469,15 +2469,22 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d5-cb3-42"><a href="#d5-cb3-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> excinfo.value.err_type <span class="kw">is</span> <span class="pp">RuntimeError</span></span>
 <span id="d5-cb3-43"><a href="#d5-cb3-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">len</span>(stub_backbone.load_calls) <span class="op">==</span> <span class="dv">0</span>                     <span class="co"># refused before loading</span></span>
 <span id="d5-cb3-44"><a href="#d5-cb3-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d5-cb3-45"><a href="#d5-cb3-45" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;crop_px&quot;</span>, [<span class="dv">112</span>, <span class="dv">224</span>, <span class="dv">336</span>, <span class="dv">448</span>])</span>
-<span id="d5-cb3-46"><a href="#d5-cb3-46" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_every_tunable_crop_px_fits_both_patch_sizes(crop_px):</span>
-<span id="d5-cb3-47"><a href="#d5-cb3-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> crop_px <span class="op">%</span> <span class="dv">14</span> <span class="op">==</span> <span class="dv">0</span> <span class="kw">and</span> crop_px <span class="op">%</span> <span class="dv">16</span> <span class="op">==</span> <span class="dv">0</span></span></code></pre></div>
+<span id="d5-cb3-45"><a href="#d5-cb3-45" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_every_tunable_crop_px_fits_both_patch_sizes():</span>
+<span id="d5-cb3-46"><a href="#d5-cb3-46" aria-hidden="true" tabindex="-1"></a>    choices <span class="op">=</span> tune_choices(MeasureDinoEmbedding.model_fields[<span class="st">&quot;crop_px&quot;</span>])   <span class="co"># read from the TuneSpec</span></span>
+<span id="d5-cb3-47"><a href="#d5-cb3-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> choices <span class="op">==</span> [<span class="dv">112</span>, <span class="dv">224</span>, <span class="dv">336</span>, <span class="dv">448</span>]</span>
+<span id="d5-cb3-48"><a href="#d5-cb3-48" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">all</span>(c <span class="op">%</span> <span class="dv">14</span> <span class="op">==</span> <span class="dv">0</span> <span class="kw">and</span> c <span class="op">%</span> <span class="dv">16</span> <span class="op">==</span> <span class="dv">0</span> <span class="cf">for</span> c <span class="kw">in</span> choices)</span>
+<span id="d5-cb3-49"><a href="#d5-cb3-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-50"><a href="#d5-cb3-50" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_crop_pad_frac_tunes_per_side_up_to_half():</span>
+<span id="d5-cb3-51"><a href="#d5-cb3-51" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> tune_bounds(MeasureDinoEmbedding.model_fields[<span class="st">&quot;crop_pad_frac&quot;</span>]) <span class="op">==</span> (<span class="fl">0.0</span>, <span class="fl">0.5</span>)</span>
+<span id="d5-cb3-52"><a href="#d5-cb3-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d5-cb3-53"><a href="#d5-cb3-53" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_elongated_colony_is_not_stretched(stub_backbone):</span>
+<span id="d5-cb3-54"><a href="#d5-cb3-54" aria-hidden="true" tabindex="-1"></a>    ...  <span class="co"># the crop is squared to the box&#39;s longer side before resizing</span></span></code></pre></div>
 <ul class="task-list">
 <li><input type="checkbox" disabled="" />
 <strong>Step 2: Run them and confirm they fail.</strong></li>
 <li><input type="checkbox" disabled="" />
 <strong>Step 3: Implement.</strong><ul>
-<li><strong>Crop modes:</strong> pad the bbox by <code>crop_pad_frac</code>, clip to the image (objects only), and resize to <code>crop_px</code>. With <code>mask_background</code>, zero pixels outside the colony. Then <code>embed_crops</code>.</li>
+<li><strong>Crop modes:</strong> pad the bbox by <code>crop_pad_frac</code> per side, square it to its longer side (centred), clip to the image (objects only), zero-pad a clipped box back to square rather than stretching it, and resize to <code>crop_px</code>. Squaring keeps irregular and filamentous colonies from being distorted (orchestrator's call; the spec is silent). With <code>mask_background</code>, zero pixels outside the colony. Then <code>embed_crops</code>.</li>
 <li><strong>Grid:</strong> a cell is cropped from its rectangle exactly as an object is from its bbox. A cell outside the image raises <code>GridCellOutsideImageError</code> naming the cell and the image size; it is never clipped.</li>
 <li><strong><code>masked_dense</code>:</strong> one tiled pass over the plate with <code>extract_patch_features</code>, then the patch tokens are averaged under each region's mask, resized with <code>resize_mask_to_grid</code>.</li>
 <li><strong><code>preflight_requirements()</code></strong> declares <code>torch</code> and <code>transformers</code>.</li>
