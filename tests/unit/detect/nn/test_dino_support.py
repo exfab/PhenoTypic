@@ -486,3 +486,48 @@ class TestBackbonePatchSize:
             backbone_patch_size(types.SimpleNamespace(config=types.SimpleNamespace()))
         with pytest.raises(ValueError, match="patch_size"):
             backbone_patch_size(types.SimpleNamespace())
+
+
+# ---------------------------------------------------------------------------
+# Loading: safetensors only, never remote code (#281 P4 T3 security)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("revision", [None, "refs/pr/1"])
+def test_load_dino_backbone_loads_safetensors_only_and_no_remote_code(monkeypatch, revision):
+    """Any ref may hold pickle ``.bin`` weights, so the model loads with
+    ``use_safetensors=True`` and neither load trusts remote code."""
+    import sys
+    import types
+
+    from phenotypic.detect.nn._helper._dino_support import load_dino_backbone
+
+    calls: list[tuple[str, str, dict]] = []
+
+    class _Model:
+        def to(self, device):
+            return self
+
+        def eval(self):
+            return self
+
+    def _recorder(kind, result):
+        def from_pretrained(repo_id, **kwargs):
+            calls.append((kind, repo_id, kwargs))
+            return result
+        return types.SimpleNamespace(from_pretrained=from_pretrained)
+
+    fake = types.ModuleType("transformers")
+    fake.AutoModel = _recorder("model", _Model())
+    fake.AutoImageProcessor = _recorder("processor", object())
+    monkeypatch.setitem(sys.modules, "transformers", fake)
+
+    load_dino_backbone(2, "small", "cpu", revision=revision)
+
+    (model_kind, model_repo, model_kwargs), (proc_kind, _, proc_kwargs) = calls
+    assert (model_kind, proc_kind) == ("model", "processor")
+    assert model_repo == "facebook/dinov2-small"
+    assert model_kwargs["use_safetensors"] is True
+    assert model_kwargs["revision"] == revision == proc_kwargs["revision"]
+    assert not model_kwargs.get("trust_remote_code")
+    assert not proc_kwargs.get("trust_remote_code")

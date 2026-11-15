@@ -212,7 +212,9 @@ def load_dino_backbone(
         revision: The Hugging Face revision (a commit, branch or tag) to load,
             passed to both ``from_pretrained`` calls. ``None`` loads the hub's
             default branch. :func:`resolved_revision` reports the commit that
-            was actually loaded.
+            was actually loaded. Weights load from ``.safetensors`` only,
+            whatever the revision, so a ref holding only pickle weights is
+            refused rather than unpickled.
 
     Returns:
         ``(model, processor)`` — an ``AutoModel`` on ``device`` (eval mode) and
@@ -241,7 +243,12 @@ def load_dino_backbone(
         Dinov3CheckpointManager(size=dino_size).download(interactive=False)
 
     dino_id = hf_dino_id(dino_version, dino_size)
-    model = AutoModel.from_pretrained(dino_id, revision=revision).to(device)
+    # safetensors only: any ref (a community refs/pr/N, say) may carry pickle
+    # .bin weights, and unpickling runs code. Every facebook/dinov2-* and
+    # dinov3-*-lvd1689m repo ships model.safetensors. Never trust_remote_code.
+    model = AutoModel.from_pretrained(
+        dino_id, revision=revision, use_safetensors=True
+    ).to(device)
     model.eval()
     processor = AutoImageProcessor.from_pretrained(dino_id, revision=revision)
     return model, processor
