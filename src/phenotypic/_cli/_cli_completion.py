@@ -38,6 +38,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._digests import canonical_digest
 from phenotypic.sdk_._image_record import (
+    PROVENANCE_FORWARD,
     STAGE_MEASURED,
     read_image_record,
     record_rejection,
@@ -228,9 +229,17 @@ def publish_image_success(
         Mapping[str, Mapping[str, object]] | None
     ) = None,
     source_provenance: Mapping[str, object] | None = None,
+    provenance: str = PROVENANCE_FORWARD,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Validate artifacts and atomically publish the image marker last."""
+    """Validate artifacts and atomically publish the image marker last.
+
+    *provenance* and *source_provenance* go to the record verbatim. A
+    republish that keeps an existing record's identity (the table-marker
+    refresh after ``--mode measure`` or migrate's ``tables_v2`` step) passes
+    the record's own, so a ``"migrated"`` record stays migrated (#281 P3
+    review I1); every other caller takes the ``"forward"`` default.
+    """
     if os.environ.get("SLURM_JOB_ID"):
         from ._cli_slurm_lifecycle import load_slurm_lifecycle
 
@@ -319,6 +328,7 @@ def publish_image_success(
         artifacts=artifacts,
         attempt_id=attempt_id,
         lifecycle_epoch=lifecycle_epoch,
+        provenance=provenance,
         source_provenance=source_provenance,
         pre_replace=(
             _validate_expected_artifacts

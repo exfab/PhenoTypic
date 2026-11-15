@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 
 from phenotypic.sdk_ import CommitGuard
+from phenotypic.sdk_._image_record import record_provenance
 
 from ._cli_completion import publish_image_success
 
@@ -58,6 +59,13 @@ def _republish_table_marker(
 ) -> None:
     """Rehash all existing artifacts and publish the marker last.
 
+    The record's identity is kept verbatim -- ``work_id``, dataset, stem,
+    ``relative_image_path``, ``mode``, ``attempt_id``, ``provenance`` and
+    ``source_provenance`` -- and only ``lifecycle_epoch`` may be replaced.
+    Dropping ``provenance`` would turn a ``"migrated"`` record into a forward
+    one, which is then fenced on a ``work_id`` it was never minted for
+    (#281 P3 review I1).
+
     Args:
         output_dir: Run output root.
         marker_path: The image's record.
@@ -75,6 +83,7 @@ def _republish_table_marker(
     artifacts = _marker_artifacts(output_dir, marker)
     if measurements is not None:
         artifacts["measurements"] = Path(measurements)
+    source_provenance = marker.get("source_provenance")
     publish_image_success(
         output_dir,
         work_id=str(marker["work_id"]),
@@ -89,5 +98,9 @@ def _republish_table_marker(
             else str(marker["lifecycle_epoch"])
         ),
         artifacts=artifacts,
+        provenance=record_provenance(marker),
+        source_provenance=(
+            source_provenance if isinstance(source_provenance, dict) else None
+        ),
         commit_guard=commit_guard,
     )
