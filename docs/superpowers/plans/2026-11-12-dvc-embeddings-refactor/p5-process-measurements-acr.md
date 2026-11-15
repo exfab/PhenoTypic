@@ -122,7 +122,7 @@ def test_process_store_has_grid_table_and_stays_consolidated(tmp_path, tiny_inpu
     out = tmp_path / "out"
     run_cli(tiny_inputs, out, mode="process", pipeline=grid_process_pipeline(), extra=ZARR_RGB)
     store = next(out.rglob("*.ome.zarr"))
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     assert run.run_id.startswith("1-") and not run.has_measurements
     assert run.embedding_path("dinov2-vitb14", "grid").is_file()
     nodes = json.loads((store / "zarr.json").read_text(encoding="utf-8"))["consolidated_metadata"]["metadata"]
@@ -238,7 +238,7 @@ links and are never rewritten. It is for pipelines that detect nothing.
     with the root `zarr.json`, `tables/` and `figures/` left out, so the bytes
     an in-place run writes never change its own work id.
   - Continuation: an image whose store already holds this pipeline's folder
-    (`table_run_for_pipeline`) with every entry `stale: false` does no work.
+    (`owned_table_run_id`) with every entry `stale: false` does no work.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -250,7 +250,7 @@ def in_place(tree, pipeline, extra=ZARR_RGB):
 
 def test_in_place_adds_folder_2_and_leaves_folder_1_byte_identical(process_store_tree, stub_backbone):
     store = next(process_store_tree.rglob("*.ome.zarr"))
-    first = latest_table_run(store)
+    first = list_table_runs(store)[-1]
     before = tree_digest(store / "tables" / first.run_id)
     assert in_place(process_store_tree, grid_process_pipeline(pooling="crop_mean")).exit_code == 0
     assert [r.order for r in list_table_runs(store)] == [1, 2]
@@ -265,7 +265,7 @@ def test_pixel_arrays_are_never_rewritten(process_store_tree, stub_backbone):
 def test_an_independent_reader_sees_the_new_folder(process_store_tree, stub_backbone):
     in_place(process_store_tree, grid_process_pipeline(pooling="crop_mean"))
     store = next(process_store_tree.rglob("*.ome.zarr"))
-    run = latest_table_run(store)
+    run = list_table_runs(store)[-1]
     group = zarr.open_consolidated(store, mode="r")
     assert f"tables/{run.run_id}/embeddings/dinov2-vitb14/grid" in dict(group.members(max_depth=None))
     assert pq.read_table(run.embedding_path("dinov2-vitb14", "grid")).num_rows == 4

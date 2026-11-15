@@ -72,6 +72,9 @@ path.
     `()` for schema 0 or 1. Two runs with one `order` raise `ValueError`: the
     counter makes that state unreachable, so it means a corrupt descriptor.
   - `latest_table_run(store) -> TableRun | None`: the highest `order`
+    (removed by the P3 simplify pass, `0542525fc`, with `table_run_for_pipeline`
+    and `table_run_by_id`: use `list_table_runs(store)[-1]` and
+    `owned_table_run_id`)
   - `latest_measurement_run(store) -> TableRun | None`: the highest `order`
     with `has_measurements` (the record-less reader default, D6a)
   - `table_run_for_pipeline(store, pipeline_sha256: str) -> TableRun | None`

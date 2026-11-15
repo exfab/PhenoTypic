@@ -121,7 +121,7 @@ def test_two_embedders_with_one_payload_key_are_refused(toy_embedder):
 ```python
 def test_vectors_are_fixed_size_float16(tmp_path, image_with_crop_payload):
     store = save_with_payload(tmp_path, image_with_crop_payload)
-    t = pq.read_table(latest_table_run(store).embedding_path("toy-v1", "crops"))
+    t = pq.read_table(list_table_runs(store)[-1].embedding_path("toy-v1", "crops"))
     assert t.schema.field("embedding").type == pa.list_(pa.float16(), 4)
 
 def test_entry_binds_objmap_and_lists_file_hash(tmp_path, image_with_crop_payload):
@@ -136,7 +136,7 @@ def test_two_models_coexist(tmp_path, image_with_two_models):
 
 def test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):
     store = save_with_payload(tmp_path, image_with_crop_payload)
-    latest_table_run(store).embedding_path("toy-v1", "crops").write_bytes(b"corrupt")
+    list_table_runs(store)[-1].embedding_path("toy-v1", "crops").write_bytes(b"corrupt")
     with pytest.raises(EmbeddingTableUnreadableError):
         read_embedding_table(store, "toy-v1/crops")
 ```

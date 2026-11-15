@@ -1786,7 +1786,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><code>store_tables_schema(store: Path) -&gt; Literal[0, 1, 2]</code>: 0 means no tables</li>
 <li><code>list_table_runs(store: Path) -&gt; tuple[TableRun, ...]</code>, ascending <code>order</code>; <code>()</code> for schema 0 or 1. Two runs with one <code>order</code> raise <code>ValueError</code>: the counter makes that state unreachable, so it means a corrupt descriptor.</li>
-<li><code>latest_table_run(store) -&gt; TableRun | None</code>: the highest <code>order</code></li>
+<li><code>latest_table_run(store) -&gt; TableRun | None</code>: the highest <code>order</code> (removed by the P3 simplify pass, <code>0542525fc</code>, with <code>table_run_for_pipeline</code> and <code>table_run_by_id</code>: use <code>list_table_runs(store)[-1]</code> and <code>owned_table_run_id</code>)</li>
 <li><code>latest_measurement_run(store) -&gt; TableRun | None</code>: the highest <code>order</code> with <code>has_measurements</code> (the record-less reader default, D6a)</li>
 <li><code>table_run_for_pipeline(store, pipeline_sha256: str) -&gt; TableRun | None</code></li>
 <li><code>next_table_run_order(block: Mapping) -&gt; int</code>: <code>1 +</code> the highest order among <code>runs</code> and the <code>&lt;n&gt;</code> of each <code>upstream</code> key; <code>1</code> when there are none</li>
@@ -2330,7 +2330,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <div class="sourceCode" id="d5-cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="d5-cb2-1"><a href="#d5-cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_vectors_are_fixed_size_float16(tmp_path, image_with_crop_payload):</span>
 <span id="d5-cb2-2"><a href="#d5-cb2-2" aria-hidden="true" tabindex="-1"></a>    store <span class="op">=</span> save_with_payload(tmp_path, image_with_crop_payload)</span>
-<span id="d5-cb2-3"><a href="#d5-cb2-3" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> pq.read_table(latest_table_run(store).embedding_path(<span class="st">&quot;toy-v1&quot;</span>, <span class="st">&quot;crops&quot;</span>))</span>
+<span id="d5-cb2-3"><a href="#d5-cb2-3" aria-hidden="true" tabindex="-1"></a>    t <span class="op">=</span> pq.read_table(list_table_runs(store)[<span class="op">-</span><span class="dv">1</span>].embedding_path(<span class="st">&quot;toy-v1&quot;</span>, <span class="st">&quot;crops&quot;</span>))</span>
 <span id="d5-cb2-4"><a href="#d5-cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> t.schema.field(<span class="st">&quot;embedding&quot;</span>).<span class="bu">type</span> <span class="op">==</span> pa.list_(pa.float16(), <span class="dv">4</span>)</span>
 <span id="d5-cb2-5"><a href="#d5-cb2-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d5-cb2-6"><a href="#d5-cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_entry_binds_objmap_and_lists_file_hash(tmp_path, image_with_crop_payload):</span>
@@ -2345,7 +2345,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d5-cb2-15"><a href="#d5-cb2-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d5-cb2-16"><a href="#d5-cb2-16" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_corrupt_file_is_unreadable(tmp_path, image_with_crop_payload):</span>
 <span id="d5-cb2-17"><a href="#d5-cb2-17" aria-hidden="true" tabindex="-1"></a>    store <span class="op">=</span> save_with_payload(tmp_path, image_with_crop_payload)</span>
-<span id="d5-cb2-18"><a href="#d5-cb2-18" aria-hidden="true" tabindex="-1"></a>    latest_table_run(store).embedding_path(<span class="st">&quot;toy-v1&quot;</span>, <span class="st">&quot;crops&quot;</span>).write_bytes(<span class="st">b&quot;corrupt&quot;</span>)</span>
+<span id="d5-cb2-18"><a href="#d5-cb2-18" aria-hidden="true" tabindex="-1"></a>    list_table_runs(store)[<span class="op">-</span><span class="dv">1</span>].embedding_path(<span class="st">&quot;toy-v1&quot;</span>, <span class="st">&quot;crops&quot;</span>).write_bytes(<span class="st">b&quot;corrupt&quot;</span>)</span>
 <span id="d5-cb2-19"><a href="#d5-cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(EmbeddingTableUnreadableError):</span>
 <span id="d5-cb2-20"><a href="#d5-cb2-20" aria-hidden="true" tabindex="-1"></a>        read_embedding_table(store, <span class="st">&quot;toy-v1/crops&quot;</span>)</span></code></pre></div>
 <ul class="task-list">
@@ -2659,7 +2659,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d6-cb2-4"><a href="#d6-cb2-4" aria-hidden="true" tabindex="-1"></a>    out <span class="op">=</span> tmp_path <span class="op">/</span> <span class="st">&quot;out&quot;</span></span>
 <span id="d6-cb2-5"><a href="#d6-cb2-5" aria-hidden="true" tabindex="-1"></a>    run_cli(tiny_inputs, out, mode<span class="op">=</span><span class="st">&quot;process&quot;</span>, pipeline<span class="op">=</span>grid_process_pipeline(), extra<span class="op">=</span>ZARR_RGB)</span>
 <span id="d6-cb2-6"><a href="#d6-cb2-6" aria-hidden="true" tabindex="-1"></a>    store <span class="op">=</span> <span class="bu">next</span>(out.rglob(<span class="st">&quot;*.ome.zarr&quot;</span>))</span>
-<span id="d6-cb2-7"><a href="#d6-cb2-7" aria-hidden="true" tabindex="-1"></a>    run <span class="op">=</span> latest_table_run(store)</span>
+<span id="d6-cb2-7"><a href="#d6-cb2-7" aria-hidden="true" tabindex="-1"></a>    run <span class="op">=</span> list_table_runs(store)[<span class="op">-</span><span class="dv">1</span>]</span>
 <span id="d6-cb2-8"><a href="#d6-cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run.run_id.startswith(<span class="st">&quot;1-&quot;</span>) <span class="kw">and</span> <span class="kw">not</span> run.has_measurements</span>
 <span id="d6-cb2-9"><a href="#d6-cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> run.embedding_path(<span class="st">&quot;dinov2-vitb14&quot;</span>, <span class="st">&quot;grid&quot;</span>).is_file()</span>
 <span id="d6-cb2-10"><a href="#d6-cb2-10" aria-hidden="true" tabindex="-1"></a>    nodes <span class="op">=</span> json.loads((store <span class="op">/</span> <span class="st">&quot;zarr.json&quot;</span>).read_text(encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>))[<span class="st">&quot;consolidated_metadata&quot;</span>][<span class="st">&quot;metadata&quot;</span>]</span>
@@ -2731,7 +2731,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ol></li>
 <li><p><code>level0_digest(array: np.ndarray) -&gt; str</code>: sha256 over dtype, shape and C-order bytes, the <code>objmap_digest</code> recipe (P3 T2), applied to the store's stored level-0 array and to the exported layer cast to the stored dtype.</p></li>
 <li><p><code>in_place_input_digest(store: Path) -&gt; str</code>: the <code>file_sha256</code> tree digest with the root <code>zarr.json</code>, <code>tables/</code> and <code>figures/</code> left out, so the bytes an in-place run writes never change its own work id.</p></li>
-<li><p>Continuation: an image whose store already holds this pipeline's folder (<code>table_run_for_pipeline</code>) with every entry <code>stale: false</code> does no work.</p></li>
+<li><p>Continuation: an image whose store already holds this pipeline's folder (<code>owned_table_run_id</code>) with every entry <code>stale: false</code> does no work.</p></li>
 </ul></li>
 </ul>
 <ul class="task-list">
@@ -2745,7 +2745,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d6-cb3-5"><a href="#d6-cb3-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d6-cb3-6"><a href="#d6-cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_in_place_adds_folder_2_and_leaves_folder_1_byte_identical(process_store_tree, stub_backbone):</span>
 <span id="d6-cb3-7"><a href="#d6-cb3-7" aria-hidden="true" tabindex="-1"></a>    store <span class="op">=</span> <span class="bu">next</span>(process_store_tree.rglob(<span class="st">&quot;*.ome.zarr&quot;</span>))</span>
-<span id="d6-cb3-8"><a href="#d6-cb3-8" aria-hidden="true" tabindex="-1"></a>    first <span class="op">=</span> latest_table_run(store)</span>
+<span id="d6-cb3-8"><a href="#d6-cb3-8" aria-hidden="true" tabindex="-1"></a>    first <span class="op">=</span> list_table_runs(store)[<span class="op">-</span><span class="dv">1</span>]</span>
 <span id="d6-cb3-9"><a href="#d6-cb3-9" aria-hidden="true" tabindex="-1"></a>    before <span class="op">=</span> tree_digest(store <span class="op">/</span> <span class="st">&quot;tables&quot;</span> <span class="op">/</span> first.run_id)</span>
 <span id="d6-cb3-10"><a href="#d6-cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> in_place(process_store_tree, grid_process_pipeline(pooling<span class="op">=</span><span class="st">&quot;crop_mean&quot;</span>)).exit_code <span class="op">==</span> <span class="dv">0</span></span>
 <span id="d6-cb3-11"><a href="#d6-cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> [r.order <span class="cf">for</span> r <span class="kw">in</span> list_table_runs(store)] <span class="op">==</span> [<span class="dv">1</span>, <span class="dv">2</span>]</span>
@@ -2760,7 +2760,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d6-cb3-20"><a href="#d6-cb3-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_an_independent_reader_sees_the_new_folder(process_store_tree, stub_backbone):</span>
 <span id="d6-cb3-21"><a href="#d6-cb3-21" aria-hidden="true" tabindex="-1"></a>    in_place(process_store_tree, grid_process_pipeline(pooling<span class="op">=</span><span class="st">&quot;crop_mean&quot;</span>))</span>
 <span id="d6-cb3-22"><a href="#d6-cb3-22" aria-hidden="true" tabindex="-1"></a>    store <span class="op">=</span> <span class="bu">next</span>(process_store_tree.rglob(<span class="st">&quot;*.ome.zarr&quot;</span>))</span>
-<span id="d6-cb3-23"><a href="#d6-cb3-23" aria-hidden="true" tabindex="-1"></a>    run <span class="op">=</span> latest_table_run(store)</span>
+<span id="d6-cb3-23"><a href="#d6-cb3-23" aria-hidden="true" tabindex="-1"></a>    run <span class="op">=</span> list_table_runs(store)[<span class="op">-</span><span class="dv">1</span>]</span>
 <span id="d6-cb3-24"><a href="#d6-cb3-24" aria-hidden="true" tabindex="-1"></a>    group <span class="op">=</span> zarr.open_consolidated(store, mode<span class="op">=</span><span class="st">&quot;r&quot;</span>)</span>
 <span id="d6-cb3-25"><a href="#d6-cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="ss">f&quot;tables/</span><span class="sc">{</span>run<span class="sc">.</span>run_id<span class="sc">}</span><span class="ss">/embeddings/dinov2-vitb14/grid&quot;</span> <span class="kw">in</span> <span class="bu">dict</span>(group.members(max_depth<span class="op">=</span><span class="va">None</span>))</span>
 <span id="d6-cb3-26"><a href="#d6-cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> pq.read_table(run.embedding_path(<span class="st">&quot;dinov2-vitb14&quot;</span>, <span class="st">&quot;grid&quot;</span>)).num_rows <span class="op">==</span> <span class="dv">4</span></span>
