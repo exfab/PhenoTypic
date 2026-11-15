@@ -110,7 +110,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     ``dinov{version}-vit{s|b|l}{patch}`` (``dinov2-vitb14``), the folder its
     tables go in, and by ``revision``. Each table's entry records the
     Hugging Face commit actually loaded, pinned or not. The backbone loads
-    once per process. DINOv3 weights are gated: the run refuses unless
+    once per process, and each process holds its own copy: a local run with
+    ``--njobs N`` holds N, about 90 MB each for ViT-S, 350 MB for ViT-B and
+    1.2 GB for ViT-L in float32, on top of each worker's images. DINOv3
+    weights are gated: the run refuses unless
     ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` lists ``dinov3``, and never prompts.
 
     Args:
@@ -145,10 +148,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         mask_background: Zero the pixels of a colony's crop outside the
             colony, so only the colony is embedded. Objects only.
         dtype: The stored vector type. Only ``"float16"``.
-        batch_size: Crops per forward pass. Changes speed and memory, never
-            the vectors.
+        batch_size: Crops per forward pass. Changes speed and memory. On the
+            CPU the vectors do not depend on it; on a GPU, batched kernels may
+            round the last float16 bits differently.
         device: ``"auto"`` (CUDA when available, else the CPU), ``"cpu"`` or
-            ``"cuda"``.
+            ``"cuda"``. Set ``"cpu"`` for reproducible vectors: identical
+            runs give byte-identical embedding deliverables only on the same
+            device and the same BLAS path, and ``"auto"`` picks CUDA on some
+            nodes and the CPU on others without changing the pipeline file.
 
     Examples:
         Construction needs no weights; the backbone loads on the first

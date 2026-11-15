@@ -343,7 +343,10 @@ def extract_patch_features(
     inputs = processor(
         images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
     ).to(device)
-    with torch.no_grad():
+    # inference_mode, as spec E3 asks of the embedder: every caller (the
+    # embedder's masked_dense, DinoSam2, InSID3) takes the features as numpy,
+    # so none needs autograd.
+    with torch.inference_mode():
         outputs = model(**inputs)
     tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
 

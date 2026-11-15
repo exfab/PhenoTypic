@@ -102,6 +102,9 @@ Execution Options
 
 ``--njobs N``
    Number of parallel jobs for local execution. Default: ``-1`` (all cores).
+   Each worker is its own process and loads its own copy of any model the
+   pipeline runs: a ``MeasureDinoEmbedding`` with ``size="base"`` holds about
+   350 MB per worker (90 MB for ``small``, 1.2 GB for ``large``).
 
 ``--force-local``
    Run locally even if SLURM is available.

@@ -38,7 +38,9 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --out
 python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ --njobs 4
 ```
 
-Omit `--njobs` to use all available CPU cores.
+Omit `--njobs` to use all available CPU cores. Each worker loads its own
+copy of any model the pipeline runs, so memory grows with `--njobs`: a
+`MeasureDinoEmbedding(size="base")` is about 350 MB per worker.
 
 ## Continue After Interruption
 
