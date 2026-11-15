@@ -248,20 +248,18 @@ def _certified_run_table(output_dir: Path, task: MigrationImageTask) -> Path | N
     run of this store declares. Only then does migrate fall back to the
     record-less default (review C1, spec D6a).
     """
-    from ._cli_parquet_agg import measurement_table_run
     from ._cli_recompile_recovery import (
-        certified_measurement_table,
+        certified_table_run,
+        image_authority_path,
         table_lies_in_store,
     )
 
-    certified = certified_measurement_table(output_dir, task.dataset, task.stem)
-    if certified is None or not table_lies_in_store(certified, task.store_path):
+    run = certified_table_run(
+        output_dir, image_authority_path(output_dir, task.dataset, task.stem)
+    )
+    if run is None or not table_lies_in_store(run.measurements_path(), task.store_path):
         return None
-    try:
-        run = measurement_table_run(certified)
-    except (OSError, KeyError, ValueError):
-        return None
-    return None if run is None else run.measurements_path()
+    return run.measurements_path()
 
 
 def _import_run_id(store: Path) -> str | None:
