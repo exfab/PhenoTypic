@@ -150,17 +150,20 @@ descriptor, and OME projection in a unique sibling `.part` directory. Validate
 the temporary Parquet, write root `zarr.json` last, promote the directory, and
 publish the image completion marker last.
 
-For a descriptor-compatible measure or recompile update, validate a
-same-directory temporary Parquet and atomically replace the payload. If the
-descriptor changes, use the root-last store transaction. Do not recompute or
-rewrite pixel arrays. Recompile projects the old table to the descriptor's
-baseline columns before joining the effective metadata snapshot, replaces each
-table, and refreshes that image's marker before aggregate publication.
+A measure or recompile update also uses the root-last store transaction: the
+part rewrites that one run folder as new inodes and carries every other folder.
+There is no in-place payload replacement; nothing writes into a promoted store
+without rewriting its root last. Do not recompute or rewrite pixel arrays.
+Recompile projects the old table to the descriptor's baseline columns before
+joining the effective metadata snapshot, replaces each table, and refreshes
+that image's marker before aggregate publication.
 
 A completion marker binds both the store root and embedded Parquet hashes.
 Missing, unreadable, or changed table bytes invalidate measurement authority.
-Finalization must reject a mixture of metadata snapshot digests or ordered join
-keys.
+Finalization refuses a tree mixing embedded tables with legacy external
+Parquets. Mixed metadata snapshot digests or per-store join keys are not
+refused: rolling input produces them on purpose and the join is global, so
+they are provenance, not input.
 
 ## Aggregation and migration
 
