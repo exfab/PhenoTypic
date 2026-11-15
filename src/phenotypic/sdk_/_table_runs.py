@@ -472,6 +472,105 @@ def declared_measurement_tables(
     return ()
 
 
+def declared_measurement_table_path(store: Path) -> Path | None:
+    """The record-less default measurements table of *store*, in either layout.
+
+    The last element of :func:`declared_measurement_tables`: a v2 store's
+    latest run that holds ``measurements``, or a v1 flat store's one table
+    (``--mode migrate`` reads both). The path is where the layout puts the
+    table; it may not exist on disk.
+
+    Returns:
+        The payload path, or ``None`` when the store has no root, no
+        ``phenotypic`` block, an unreadable tables descriptor, or declares no
+        measurement table.
+    """
+    from . import ngff_
+
+    try:
+        block = ngff_.read_phenotypic_attributes(Path(store))
+        if not isinstance(block, Mapping):
+            return None
+        declared = declared_measurement_tables(Path(store), block)
+    except (OSError, KeyError, ValueError):
+        return None
+    return Path(store) / declared[-1].relative_path if declared else None
+
+
+def _figure_run_recency(run_id: str, entry: Mapping[str, object]) -> tuple[str, str, str]:
+    """Sort key for a figure run: its date, then its initiating call's time, then its id."""
+    date = entry.get("date")
+    if not isinstance(date, str):
+        # The run folder is named `<YYYY-MM-DD>-<sha12>`.
+        date = run_id[:10]
+    initiated = entry.get("initiated_at_utc")
+    return (date, initiated if isinstance(initiated, str) else "", run_id)
+
+
+def v1_table_pipeline_sha(block: Mapping[str, object]) -> str | None:
+    """The pipeline digest a v1 flat store's tables belong to (spec D10).
+
+    ``--mode migrate`` names the converted folder ``1-<sha12>`` after it:
+
+    1. the most recent figure run's ``pipeline_sha256``, when the figures
+       descriptor has one. A v1 table rewritten by ``--mode measure`` was
+       never journaled (measure mode opens no application), so only its
+       figure run names its pipeline. Recency is the run's ``date``, then its
+       ``initiated_at_utc``, then its folder name;
+    2. otherwise the latest journal application of kind ``full`` or
+       ``legacy`` that carries a pipeline digest (a schema-1 journal's own
+       ``pipeline`` counts as its one application);
+    3. otherwise ``None``: the folder is ``1-unknown``. A digest is never
+       fabricated (spec D2).
+
+    Pure parsing of an ``attributes.phenotypic`` *block*.
+
+    Examples:
+        >>> sha = "b" * 64
+        >>> v1_table_pipeline_sha(
+        ...     {"figures": {"runs": {"2026-11-01-" + sha[:12]: {"pipeline_sha256": sha}}}}
+        ... ) == sha
+        True
+        >>> v1_table_pipeline_sha({}) is None
+        True
+    """
+    from . import ngff_
+
+    figures = block.get(ngff_.PhenotypicAttr.FIGURES)
+    runs = figures.get("runs") if isinstance(figures, Mapping) else None
+    if isinstance(runs, Mapping):
+        candidates = sorted(
+            (
+                _figure_run_recency(str(run_id), entry),
+                entry[PIPELINE_SHA256_KEY],
+            )
+            for run_id, entry in runs.items()
+            if isinstance(entry, Mapping)
+            and _is_sha256(entry.get(PIPELINE_SHA256_KEY))
+        )
+        if candidates:
+            return str(candidates[-1][1])
+
+    journal = block.get(ngff_.PhenotypicAttr.PROVENANCE)
+    if not isinstance(journal, Mapping):
+        return None
+    applications = journal.get("applications")
+    if not isinstance(applications, list):
+        # A schema-1 journal: one implicit application, its own `pipeline`.
+        applications = [{"kind": "legacy", "pipeline": journal.get("pipeline")}]
+    for application in reversed(applications):
+        if not isinstance(application, Mapping) or application.get("kind") not in {
+            "full",
+            "legacy",
+        }:
+            continue
+        pipeline = application.get("pipeline")
+        digest = pipeline.get("sha256") if isinstance(pipeline, Mapping) else None
+        if _is_sha256(digest):
+            return str(digest)
+    return None
+
+
 def _upstream_orders(block: Mapping[str, object]) -> list[int]:
     tables = _tables_block(block)
     if tables is None or tables_schema_of_block(block) != 2:
