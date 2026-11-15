@@ -587,6 +587,48 @@ def _upstream_orders(block: Mapping[str, object]) -> list[int]:
     return orders
 
 
+def run_upstream_collisions(
+    runs: Mapping[str, object], upstream: Mapping[str, object]
+) -> list[str]:
+    """Where *runs* and *upstream* share a run id or an order (spec D2), as sentences.
+
+    D2 numbers a new folder past every run and upstream entry, so a store
+    never makes a collision itself. It can still inherit one: a run keeps its
+    number when its pipeline re-saves (D6) while the input it references has
+    since grown a run of the same number, or one id lands in both blocks.
+    Readers key runs and upstream entries separately, so nothing breaks; the
+    writer logs it (review M1) rather than renumbering a folder a record may
+    certify.
+
+    Args:
+        runs: The descriptor's ``runs`` (run id -> entry).
+        upstream: The descriptor's ``upstream`` (run id -> entry).
+
+    Returns:
+        One sentence per collision; ``[]`` when there is none.
+    """
+    def _orders(ids: Mapping[str, object]) -> dict[int, str]:
+        found: dict[int, str] = {}
+        for run_id in ids:
+            match = TABLE_RUN_ID_RE.match(str(run_id))
+            if match is not None:
+                found.setdefault(int(match["order"]), str(run_id))
+        return found
+
+    collisions = [
+        f"run {run_id!r} is also an upstream entry"
+        for run_id in sorted(set(map(str, runs)) & set(map(str, upstream)))
+    ]
+    upstream_orders = _orders(upstream)
+    for order, run_id in sorted(_orders(runs).items()):
+        other = upstream_orders.get(order)
+        if other is not None and other != run_id:
+            collisions.append(
+                f"run {run_id!r} shares order {order} with upstream entry {other!r}"
+            )
+    return collisions
+
+
 def next_table_run_order(block: Mapping[str, object]) -> int:
     """``1 +`` the highest order among *block*'s runs and upstream entries (D2).
 

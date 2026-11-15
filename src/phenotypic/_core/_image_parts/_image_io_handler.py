@@ -1157,7 +1157,10 @@ class ImageIOHandler(ImageColorSpace):
             upstream: Table runs of the input this image was read from,
                 ``{run_id: {"source", "root_sha256", "pipeline_sha256"}}``,
                 recorded under ``tables.upstream`` and counted when numbering
-                a new folder (spec D2, D8). Nothing is copied.
+                a new folder (spec D2, D8). Nothing is copied. Given (even
+                empty), it **replaces** the store's existing ``upstream``
+                block: the caller read this input just now, so an entry it no
+                longer names is stale (review M1). ``None`` keeps the block.
             replace_unreadable: Replace a store at *path* whose root cannot be
                 parsed whole, carrying nothing. By default such a save is
                 refused (``ValueError``), because the root may declare other
@@ -1567,6 +1570,10 @@ class ImageIOHandler(ImageColorSpace):
           over the live store's block (when *final* exists) merged with
           *upstream*, for the pipeline digest the image's journal records
           (:func:`~phenotypic._core._provenance.current_pipeline_sha256`).
+        - *upstream*, when given (even empty), replaces the store's
+          ``upstream`` block; ``None`` carries it (review M1). New folders are
+          numbered past both the carried and the given entries, so a number
+          is never reused.
         - A save that writes tables excludes its own folder from the carry and
           writes it fresh, every file a new inode. A **table-less** save (the
           initial-checkpoint save, Stage 1) carries **every** folder, its own
@@ -1620,10 +1627,16 @@ class ImageIOHandler(ImageColorSpace):
             final, part, exclude=run_id, replace_unreadable=replace_unreadable
         )
         runs: dict[str, dict] = carried[RUNS_KEY]
-        merged_upstream: dict[str, dict] = {
-            **carried[UPSTREAM_KEY],
-            **{key: dict(value) for key, value in (upstream or {}).items()},
-        }
+        # A writer that knows its input (``upstream`` given, even empty)
+        # REPLACES the block with what it read just now: merging kept an entry
+        # the input no longer has for ever (review M1). Stage 3 passes none
+        # and so carries the block Stage 1 recorded, which describes the input
+        # its pixels came from.
+        recorded_upstream: dict[str, dict] = (
+            {key: dict(value) for key, value in upstream.items()}
+            if upstream is not None
+            else carried[UPSTREAM_KEY]
+        )
         if writes_own:
             assert run_id is not None and measurement_table is not None
             match = TABLE_RUN_ID_RE.match(run_id)
@@ -1645,7 +1658,7 @@ class ImageIOHandler(ImageColorSpace):
                 if series in arrays
             },
         )
-        return runs, merged_upstream
+        return runs, recorded_upstream
 
     def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:
         """Save only *layers* as a single-level OME-Zarr store.

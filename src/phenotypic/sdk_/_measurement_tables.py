@@ -757,7 +757,9 @@ def apply_image_tables_attributes(
     ``tables`` key is removed too, so a table-less store declares nothing.
 
     Runs are emitted by ascending ``order`` so two identical writes produce
-    byte-identical roots.
+    byte-identical roots. A run id or order that *runs* and *upstream* share
+    is logged as a warning (:func:`~phenotypic.sdk_._table_runs.run_upstream_collisions`,
+    review M1).
     """
     from . import ngff_
     from ._table_runs import (
@@ -769,6 +771,15 @@ def apply_image_tables_attributes(
 
     phenotypic.pop(ngff_.PhenotypicAttr.METADATA_TABLE, None)
     upstream = dict(upstream or {})
+    from ._table_runs import run_upstream_collisions
+
+    for collision in run_upstream_collisions(runs, upstream):
+        logger.warning(
+            "Table run numbering collides with the input's upstream runs: %s. "
+            "Readers keep the two apart; re-run with --restart over a fresh "
+            "output to renumber",
+            collision,
+        )
     if not runs and not upstream:
         phenotypic.pop(ngff_.PhenotypicAttr.TABLES, None)
         return

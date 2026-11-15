@@ -2000,8 +2000,10 @@ class OutputManager:
             upstream: The input's table runs
                 (:func:`~phenotypic.sdk_.upstream_entries_for_input`), recorded
                 under the store's ``tables.upstream`` and counted when
-                numbering its own folder (#281 spec D2, D8). ``None`` records
-                none; the store's existing ``upstream`` is carried either way.
+                numbering its own folder (#281 spec D2, D8). Given (even
+                empty), it replaces the store's existing ``upstream`` block,
+                since this save read its input just now; ``None`` carries the
+                existing block (review M1).
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -2041,7 +2043,7 @@ class OutputManager:
                 save_kwargs["measurement_table"] = table
             if figures is not None:
                 save_kwargs["figures"] = figures
-            if upstream:
+            if upstream is not None:
                 save_kwargs["upstream"] = upstream
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
