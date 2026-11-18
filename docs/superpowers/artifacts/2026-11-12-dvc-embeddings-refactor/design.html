@@ -671,7 +671,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><p><strong>E1 <code>MeasureEmbedding</code> ABC</strong> (<code>abc_/</code>), a <code>MeasureFeatures</code> subclass with <code>regions: Literal["objects", "grid"]</code>:</p>
 <ul>
-<li><code>objects</code> requires a non-empty objmap and writes <code>crops/</code>.</li>
+<li><code>objects</code> reads the objmap and writes <code>crops/</code>. An empty objmap gives an empty table, not an error (user decision 2026-11-18, P4 review Q3).</li>
 <li><code>grid</code> requires a grid definition, not an objmap, and writes <code>grid/</code>.</li>
 </ul>
 <p>A whole-image embedding is a 1 × 1 grid, so there is no separate image scope. <code>measure(image)</code> returns the table's frame directly, for notebook use.</p></li>

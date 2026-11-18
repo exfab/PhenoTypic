@@ -708,7 +708,8 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 
 - **E1 `MeasureEmbedding` ABC** (`abc_/`), a `MeasureFeatures` subclass with
   `regions: Literal["objects", "grid"]`:
-  - `objects` requires a non-empty objmap and writes `crops/`.
+  - `objects` reads the objmap and writes `crops/`. An empty objmap gives an
+    empty table, not an error (user decision 2026-11-18, P4 review Q3).
   - `grid` requires a grid definition, not an objmap, and writes `grid/`.
 
   A whole-image embedding is a 1 × 1 grid, so there is no separate image scope.

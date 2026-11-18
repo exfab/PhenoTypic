@@ -171,5 +171,16 @@ Fixed in the review-fix cluster (C19r) within the spec:
   then re-finalization, and the I1 re-run. SLURM `shard_paths` is covered at
   unit level through the M1b fix.
 
-Waiting on the user: Q1 (I2's policy, and the `revision=None` warning), Q2 and
-Q3.
+## User decisions (2026-11-18)
+
+- **Q1: warn, and tag rows.** A key whose certified folders carry more than one
+  descriptor publishes with a warning naming the descriptors and their stores.
+  Each row carries a `descriptor_index` into the manifest's `descriptors` list.
+  A run step's preflight also warns when a `MeasureDinoEmbedding` leaves
+  `revision` unpinned.
+- **Q2: a whole-tree re-measure is the remedy.** No scoped option. The
+  finalization error and the `phenotypic-wait` exit-5 text point at the
+  finalizer log and name the store.
+- **Q3: amend the spec.** E1 now reads "An empty objmap gives an empty table,
+  not an error".
+- **P3 review OQ1 (ngio):** the user approved running the check.
