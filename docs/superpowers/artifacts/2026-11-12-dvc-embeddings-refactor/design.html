@@ -572,7 +572,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tbody>
 <tr class="odd">
 <td><code>model</code></td>
-<td><code>{family, hf_id, revision, patch_size}</code>, where <code>revision</code> is the resolved hub commit</td>
+<td><code>{family, hf_id, revision, patch_size, device}</code>, where <code>revision</code> is the resolved hub commit and <code>device</code> (<code>"cuda"</code> or <code>"cpu"</code>) is the one that ran (P4 review Q1)</td>
 </tr>
 <tr class="even">
 <td><code>dim</code>, <code>dtype</code></td>

@@ -608,7 +608,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 
   | Field | Contents |
   |---|---|
-  | `model` | `{family, hf_id, revision, patch_size}`, where `revision` is the resolved hub commit |
+  | `model` | `{family, hf_id, revision, patch_size, device}`, where `revision` is the resolved hub commit and `device` (`"cuda"` or `"cpu"`) is the one that ran (P4 review Q1) |
   | `dim`, `dtype` | vector length and stored type |
   | `pooling` | the pooling mode used |
   | `key` | `Object_Label` for crops, `Grid_RowMajorIdx` for grid |
