@@ -2595,10 +2595,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Produces:
 <ul>
 <li><code>object_measurers_in_process_mode(pipeline) -&gt; list[str]</code>: the slot paths (<code>meas:&lt;key&gt;</code>) of entries whose <code>requires_objects</code> is true</li>
-<li><code>process_meas_refusal(pipeline, *, layer: str, process_format: str) -&gt; str | None</code>: one line naming the problem, or <code>None</code>. It refuses:
+<li><code>process_meas_refusal(pipeline, *, layer: str, process_format: str) -&gt; str | None</code>: one line naming the problem, or <code>None</code>. <strong>Revised 2026-11-18 (user decision, spec E4): run what fits, skip the rest.</strong>
 <ul>
-<li>any object measurer: "process mode stores no objects", naming each slot;</li>
-<li>any <code>meas</code> entry when the output is not a store (<code>--process-format tiff</code>, <code>--layer objmap</code>, <code>--layer detect_mat</code>), which writes a flat file with nowhere to put a table (<code>_cli_process_only.py:252-264</code>).</li>
+<li>It refuses only a runnable <code>meas</code> entry (<code>requires_objects</code> false) when the output is not a store (<code>--process-format tiff</code>, <code>--layer objmap</code>, <code>--layer detect_mat</code>), which writes a flat file with nowhere to put a table (<code>_cli_process_only.py:252-264</code>).</li>
+<li>Object measurers are <strong>skipped</strong>, not refused. One warning line names each slot from <code>object_measurers_in_process_mode</code>: "process mode stores no objects".</li>
+<li>The plan's tests below change to match. <code>test_process_refuses_a_size_measurer</code> becomes "skipped with that warning, exit 0, no measurements table", and the core test uses the flat-output case.</li>
 </ul></li>
 </ul></li>
 </ul>

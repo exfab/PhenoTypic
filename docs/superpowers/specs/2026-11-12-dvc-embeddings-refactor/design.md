@@ -779,14 +779,25 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   - `process_single_apply_only_core` runs `measure()` and `embed()` after
     `apply()`, and writes the run folder into the `.part` before consolidation.
     The store stays write-once.
-  - A process store holds no objmap (`write_objmap=False`). So a measurer that
-    needs objects is refused in the read-only half, with one usage-error line
-    naming it, rather than writing a table keyed on labels the store can't
-    resolve.
-  - `meas` is refused unless the output is a store (`--layer rgb`/`gray` with
-    zarr format). A flat TIFF or PNG export has nowhere to put a table.
-  - The same two checks also run in `process_single_apply_only_core`, because
+  - A process store holds no objmap (`write_objmap=False`). **Run what fits,
+    skip the rest** (user decision 2026-11-18, P5 C20): each `meas` entry
+    declares `requires_objects` (`MeasureFeatures`: true;
+    `MeasureEmbedding`: true for `regions="objects"`, false for `"grid"`).
+    - Process mode runs the entries whose `requires_objects` is false and
+      stores their tables in the run folder.
+    - It skips the others, as before this change, with one warning line
+      naming each `meas:<key>` ("process mode stores no objects"). That way
+      it never writes a table keyed on labels the store can't resolve.
+    - Existing process runs over full pipelines, and measurer-backed
+      per-image figures, keep working.
+  - A runnable entry (one needing no objects) is refused unless the output
+    is a store (`--layer rgb`/`gray` with zarr format): a flat TIFF or PNG
+    export has nowhere to put its table. The refusal is one usage-error line
+    in the read-only half.
+  - `process_single_apply_only_core` applies the same rule, because
     AutoConvertRaw-GC calls it directly and never passes the CLI's refusal.
+    It raises `ValueError` for the flat-output case and warns for skipped
+    object measurers.
   - **Bump `PROCESS_LAYER_SEMANTICS_REVISION` 4 → 5.** Process mode used to ignore
     `meas`, so a process tree whose pipeline already had measurers would otherwise
     resume onto stores that lack the tables it now writes.

@@ -779,9 +779,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><code>MODE_SLOTS["process"]</code> becomes <code>ops</code> + <code>meas</code>, and the preflight's mode walk follows. <code>post</code>/<code>filters</code>/<code>model</code> still don't run, and no deliverables are built.</li>
 <li><code>process_single_apply_only_core</code> runs <code>measure()</code> and <code>embed()</code> after <code>apply()</code>, and writes the run folder into the <code>.part</code> before consolidation. The store stays write-once.</li>
-<li>A process store holds no objmap (<code>write_objmap=False</code>). So a measurer that needs objects is refused in the read-only half, with one usage-error line naming it, rather than writing a table keyed on labels the store can't resolve.</li>
-<li><code>meas</code> is refused unless the output is a store (<code>--layer rgb</code>/<code>gray</code> with zarr format). A flat TIFF or PNG export has nowhere to put a table.</li>
-<li>The same two checks also run in <code>process_single_apply_only_core</code>, because AutoConvertRaw-GC calls it directly and never passes the CLI's refusal.</li>
+<li>A process store holds no objmap (<code>write_objmap=False</code>). <strong>Run what fits, skip the rest</strong> (user decision 2026-11-18, P5 C20): each <code>meas</code> entry declares <code>requires_objects</code> (<code>MeasureFeatures</code>: true; <code>MeasureEmbedding</code>: true for <code>regions="objects"</code>, false for <code>"grid"</code>).
+<ul>
+<li>Process mode runs the entries whose <code>requires_objects</code> is false and stores their tables in the run folder.</li>
+<li>It skips the others, as before this change, with one warning line naming each <code>meas:&lt;key&gt;</code> ("process mode stores no objects"). That way it never writes a table keyed on labels the store can't resolve.</li>
+<li>Existing process runs over full pipelines, and measurer-backed per-image figures, keep working.</li>
+</ul></li>
+<li>A runnable entry (one needing no objects) is refused unless the output is a store (<code>--layer rgb</code>/<code>gray</code> with zarr format): a flat TIFF or PNG export has nowhere to put its table. The refusal is one usage-error line in the read-only half.</li>
+<li><code>process_single_apply_only_core</code> applies the same rule, because AutoConvertRaw-GC calls it directly and never passes the CLI's refusal. It raises <code>ValueError</code> for the flat-output case and warns for skipped object measurers.</li>
 <li><strong>Bump <code>PROCESS_LAYER_SEMANTICS_REVISION</code> 4 → 5.</strong> Process mode used to ignore <code>meas</code>, so a process tree whose pipeline already had measurers would otherwise resume onto stores that lack the tables it now writes.</li>
 </ul></li>
 <li><p><strong>E5 Deliverables.</strong> The finalizer aggregates <strong>its own</strong> run folder, chosen per image by D6a:</p>

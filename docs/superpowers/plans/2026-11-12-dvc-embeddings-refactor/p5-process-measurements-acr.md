@@ -45,11 +45,18 @@ embeddings right after calibration and denoising.
   - `object_measurers_in_process_mode(pipeline) -> list[str]`: the slot paths
     (`meas:<key>`) of entries whose `requires_objects` is true
   - `process_meas_refusal(pipeline, *, layer: str, process_format: str) -> str | None`:
-    one line naming the problem, or `None`. It refuses:
-    - any object measurer: "process mode stores no objects", naming each slot;
-    - any `meas` entry when the output is not a store (`--process-format tiff`,
-      `--layer objmap`, `--layer detect_mat`), which writes a flat file with
-      nowhere to put a table (`_cli_process_only.py:252-264`).
+    one line naming the problem, or `None`. **Revised 2026-11-18 (user
+    decision, spec E4): run what fits, skip the rest.**
+    - It refuses only a runnable `meas` entry (`requires_objects` false) when
+      the output is not a store (`--process-format tiff`, `--layer objmap`,
+      `--layer detect_mat`), which writes a flat file with nowhere to put a
+      table (`_cli_process_only.py:252-264`).
+    - Object measurers are **skipped**, not refused. One warning line names
+      each slot from `object_measurers_in_process_mode`: "process mode stores
+      no objects".
+    - The plan's tests below change to match. `test_process_refuses_a_size_measurer`
+      becomes "skipped with that warning, exit 0, no measurements table", and
+      the core test uses the flat-output case.
 
 - [ ] **Step 1: Write the failing tests**
 
