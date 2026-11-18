@@ -108,6 +108,18 @@ Each `measurements/` group's `zarr.json` carries ngio's feature-table
 attributes (`type: "feature_table"`, `region.path` relative to the run
 folder, `index_key: "Object_Label"`).
 
+**What ngio actually reads** (ngio 1.1.5, measured 2026-11-18; check and result
+in `docs/superpowers/plans/2026-11-12-dvc-embeddings-refactor/ngio_check/`):
+- `ngio.open_table("<store>/tables/<run>/measurements")` returns a
+  `FeatureTableV1`, and its `reference_label` resolves to `objmap`.
+- ngio does **not** discover the tables. Opening the `rgb` image lists
+  `tables: []`, because ngio looks under the image group for a `tables` list
+  attribute. Opening the store root fails, because ngio expects a single image
+  there, not a collection.
+
+This is the limit spec D4 anticipated: keep the attributes and do not flatten
+the layout to suit ngio. Point an ngio user at the run's `measurements` group.
+
 A v1 store (flat `tables/measurements/`, no `schema_version` under `tables`)
 is converted by `--mode migrate`, and forward modes refuse it (spec D5, D10).
 Record-less readers still read one read-only, through

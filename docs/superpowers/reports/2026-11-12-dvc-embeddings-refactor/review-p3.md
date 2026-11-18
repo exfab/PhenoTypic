@@ -131,4 +131,13 @@ questions 3 and 4, decided within the spec as follows.
 - **OQ2:** recorded as a limit (undetectable from the store).
 - **OQ5:** P4's brief carries it. **OQ6:** already in the #283 handoff.
 - **M3:** the simplify pass. **M5:** recorded; no change.
-- **OQ1** (ngio) remains with the user.
+- **OQ1** (ngio): the user approved the check, and it ran on 2026-11-18 (job
+  `32167242`, ngio 1.1.5, a store from the shipped CLI at `8b344a2bc`). The
+  check and its output are in `plans/2026-11-12-dvc-embeddings-refactor/ngio_check/`.
+  - Direct open works: `open_table` on `tables/<run>/measurements` gives a
+    `FeatureTableV1` with 552 rows, 33 columns and `reference_label=objmap`,
+    so the region path resolves.
+  - Discovery does not. The `rgb` image's container lists no tables, and the
+    store root is not an ngio image.
+  - Recorded as the D4 limit; the attributes stay and the layout is
+    unchanged.
