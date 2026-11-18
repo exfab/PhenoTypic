@@ -795,9 +795,24 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   - the master comes from `measurements/`, exactly as today;
   - each embedding table goes to
     `deliverables/embeddings/<model>/<crops|grid>.parquet`, with the master's
-    intrinsic identity columns plus the table's key and `embedding`;
-  - `deliverables/embeddings/manifest.json` holds each entry's descriptor, row
+    intrinsic identity columns plus the table's key, `descriptor_index` and
+    `embedding`;
+  - `deliverables/embeddings/manifest.json` holds each key's distinct entry
+    descriptors (in first-appearance order over the sorted stores), row
     count, sha256 and the stores skipped as stale.
+  - **Mixed descriptors** (user decision 2026-11-18, P4 review Q1). Two stores
+    of one key can carry different descriptors: an unpinned `revision`, a
+    different device (the entry's `model.device` records the one that ran), or
+    a partial re-measure. Finalization publishes all of them with one warning
+    per key naming each descriptor and its stores. Each row's int16
+    `descriptor_index` points into that key's `descriptors` list, and is `0`
+    on every row when there is one. The run preflight warns
+    (`PF-EMBED-REVISION-UNPINNED`) when an in-scope DINO embedder leaves
+    `revision` unpinned.
+  - **Remedy for an unreadable embedding** (user decision 2026-11-18, Q2):
+    finalization fails, names every such store, and points at a same-pipeline
+    `--mode measure` over the run, which re-embeds every image. There is no
+    scoped re-embed in v1.
 
   Rules:
   - These files are Parquet only. They are never joined to metadata, and never in
