@@ -783,8 +783,12 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     skip the rest** (user decision 2026-11-18, P5 C20): each `meas` entry
     declares `requires_objects` (`MeasureFeatures`: true;
     `MeasureEmbedding`: true for `regions="objects"`, false for `"grid"`).
-    - Process mode runs the entries whose `requires_objects` is false and
-      stores their tables in the run folder.
+    - Process mode runs the **embedders** whose `requires_objects` is false
+      (today, grid embedders) and stores their tables in the run folder. In
+      v1 it calls no `measure()`, so a process store carries embedding tables
+      only. A non-embedder entry with `requires_objects` false is skipped and
+      named in the warning ("process mode stores only embedding tables"),
+      never dropped silently.
     - It skips the others, as before this change, with one warning line
       naming each `meas:<key>` ("process mode stores no objects"). That way
       it never writes a table keyed on labels the store can't resolve.

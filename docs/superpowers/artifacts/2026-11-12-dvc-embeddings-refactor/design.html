@@ -781,7 +781,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>process_single_apply_only_core</code> runs <code>measure()</code> and <code>embed()</code> after <code>apply()</code>, and writes the run folder into the <code>.part</code> before consolidation. The store stays write-once.</li>
 <li>A process store holds no objmap (<code>write_objmap=False</code>). <strong>Run what fits, skip the rest</strong> (user decision 2026-11-18, P5 C20): each <code>meas</code> entry declares <code>requires_objects</code> (<code>MeasureFeatures</code>: true; <code>MeasureEmbedding</code>: true for <code>regions="objects"</code>, false for <code>"grid"</code>).
 <ul>
-<li>Process mode runs the entries whose <code>requires_objects</code> is false and stores their tables in the run folder.</li>
+<li>Process mode runs the <strong>embedders</strong> whose <code>requires_objects</code> is false (today, grid embedders) and stores their tables in the run folder. In v1 it calls no <code>measure()</code>, so a process store carries embedding tables only. A non-embedder entry with <code>requires_objects</code> false is skipped and named in the warning ("process mode stores only embedding tables"), never dropped silently.</li>
 <li>It skips the others, as before this change, with one warning line naming each <code>meas:&lt;key&gt;</code> ("process mode stores no objects"). That way it never writes a table keyed on labels the store can't resolve.</li>
 <li>Existing process runs over full pipelines, and measurer-backed per-image figures, keep working.</li>
 </ul></li>
