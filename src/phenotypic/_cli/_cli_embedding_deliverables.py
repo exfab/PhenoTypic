@@ -180,14 +180,6 @@ def _canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for block in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 @dataclass(frozen=True)
 class _Unreadable:
     """One non-stale entry staging could not read."""
@@ -254,7 +246,11 @@ def _plan_keys(
             key = str(raw_key)
             plan = plans.setdefault(key, _KeyPlan(key))
             relative = identities[run.store][0]
-            if isinstance(entry, Mapping) and embedding_entry_is_stale(entry):
+            if not isinstance(entry, Mapping):
+                # Not stale, but not readable either: staging names it unreadable.
+                plan.readable.append(run)
+                continue
+            if embedding_entry_is_stale(entry):
                 logger.warning(
                     "Skipping the stale embedding table %r of %s: the store no "
                     "longer holds the objmap or array its vectors were computed "
@@ -265,11 +261,10 @@ def _plan_keys(
                 plan.stale.append(relative)
                 continue
             plan.readable.append(run)
-            if isinstance(entry, Mapping):
-                shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
-                canonical = _canonical(shared)
-                plan.descriptors.setdefault(canonical, shared)
-                plan.descriptor_of[relative] = canonical
+            shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
+            canonical = _canonical(shared)
+            plan.descriptors.setdefault(canonical, shared)
+            plan.descriptor_of[relative] = canonical
     return [plans[key] for key in sorted(plans)]
 
 
@@ -554,6 +549,8 @@ def stage_embedding_deliverables(
             schemas.
         ValueError: If a run's store is not a store of this run.
     """
+    from phenotypic.sdk_._embedding_tables import _file_sha256
+
     output_dir = Path(output_dir)
     with_embeddings = [run for run in runs if _entries(run)]
     identities = {run.store: _store_identity(output_dir, run.store) for run in with_embeddings}
@@ -567,22 +564,20 @@ def stage_embedding_deliverables(
     unreadable: list[_Unreadable] = []
     try:
         for plan in plans:
-            published: Path | None = None
+            # A key whose every entry is stale publishes no file.
+            path: str | None = None
+            sha256: str | None = None
             rows = 0
             if plan.readable:
-                published, temp, rows = _stage_key(output_dir, plan, identities, unreadable)
-                staged.staged[published] = temp
+                target, temp, rows = _stage_key(output_dir, plan, identities, unreadable)
+                staged.staged[target] = temp
+                path = target.relative_to(target.parents[2]).as_posix()
+                sha256 = _file_sha256(temp)
             staged.counts[plan.key] = {"rows": rows, "stale_skipped": len(plan.stale)}
             entries[plan.key] = {
-                "path": (
-                    published.relative_to(published.parents[2]).as_posix()
-                    if published is not None
-                    else None
-                ),
+                "path": path,
                 "rows": rows,
-                "sha256": (
-                    _file_sha256(staged.staged[published]) if published is not None else None
-                ),
+                "sha256": sha256,
                 "stores": len(plan.readable),
                 "stale_skipped": sorted(plan.stale),
                 "descriptors": list(plan.descriptors.values()),
