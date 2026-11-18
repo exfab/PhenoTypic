@@ -259,8 +259,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
         Returns:
             A dict with at least ``model`` (``{family, hf_id, revision,
-            patch_size}``), ``dim`` (the vector length), ``dtype`` (the stored
-            type) and ``pooling`` (the pooling mode).
+            patch_size}``, plus ``device``, the device that ran, when the
+            embedder can resolve one), ``dim`` (the vector length), ``dtype``
+            (the stored type) and ``pooling`` (the pooling mode).
         """
 
     # ------------------------------------------------------------------ #

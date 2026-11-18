@@ -629,6 +629,68 @@ def test_the_readme_explains_the_descriptor_index():
     assert "`descriptors`" in section
 
 
+def test_stores_differing_only_in_device_get_two_descriptors(
+    tmp_path, image_with_crop_payload, pipeline_file_a, caplog
+):
+    """Q1 follow-up: ``device="auto"`` picks CUDA on a GPU node and the CPU
+    elsewhere with the same pipeline, so the entry's ``model.device`` is the
+    only difference, and it must still split the key's descriptors."""
+    import logging
+
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    # One class and one parameter set for both stores: only the device the
+    # (pretend) backbone resolved differs, as with device="auto".
+    ran_on = {"device": "cpu"}
+
+    class Placed(toy_embedder_class()):
+        def entry_descriptor(self) -> dict:
+            base = super().entry_descriptor()
+            return {**base, "model": {**base["model"], "device": ran_on["device"]}}
+
+    out = tmp_path / "out"
+    mirrored = _mirrored_plate(pipeline_file_a)
+    on_cpu = _embed(image_with_crop_payload, Placed())
+    ran_on["device"] = "cuda"
+    on_gpu = _embed(mirrored, Placed())
+    cpu_entry, gpu_entry = (dict(p[KEY].descriptor) for p in (on_cpu, on_gpu))
+    differing = {n for n in cpu_entry if cpu_entry[n] != gpu_entry[n]} - {"binds"}
+    assert differing == {"model"}
+    assert {k for k in cpu_entry["model"] if cpu_entry["model"][k] != gpu_entry["model"][k]} == {
+        "device"
+    }
+
+    runs = [
+        _latest(_store(out, "p1", image_with_crop_payload, on_cpu)),
+        _latest(_store(out, "p2", mirrored, on_gpu)),
+    ]
+    with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
+        aggregate_embedding_tables(out, runs)
+    (warning,) = [r.getMessage() for r in caplog.records if "descriptor" in r.getMessage()]
+    assert "[0] revision none, device cpu" in warning
+    assert "[1] revision none, device cuda" in warning
+    manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
+    assert [d["model"]["device"] for d in manifest["entries"][KEY]["descriptors"]] == ["cpu", "cuda"]
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/crops.parquet")
+    for stem, index in (("p1", 0), ("p2", 1)):
+        rows = table.filter(pc.equal(table["Metadata_ImageName"], stem))
+        assert set(rows.column("descriptor_index").to_pylist()) == {index}, stem
+
+
+def test_the_readme_names_the_device_as_a_cause():
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+    from tests.unit.cli._preflight_support import make_config
+
+    pipeline = ImagePipeline(meas={"emb": toy_embedder_class()()})
+    section = READMEGenerator(make_config(), pipeline)._generate_embeddings_section()
+    assert 'device="auto"' in section
+
+
 # ---------------------------------------------------------------------------
 # P4 review Q2: the remedy is a whole-tree --mode measure
 # ---------------------------------------------------------------------------

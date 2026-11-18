@@ -522,7 +522,8 @@ def _schema_row(
 DESCRIPTOR_INDEX_DESC = (
     "Which model descriptor produced this row's vector: a 0-based index into "
     "this table's descriptors list in deliverables/embeddings/manifest.json "
-    "(model id and revision, vector length, pooling, producer parameters). "
+    "(model id, revision and device, vector length, pooling, producer "
+    "parameters). "
     "0 on every row when all stores share one descriptor; compare vectors "
     "only within one index."
 )

@@ -17,8 +17,10 @@ split or any TSV (spec E5).
 **One key, several descriptors** (review I2, user decision Q1). A key's
 stores may disagree on the entry descriptor -- the entry minus ``binds``,
 ``files`` and ``stale``: another resolved revision (``revision=None``
-resolves the hub's latest per process), another pooling or producer
-parameter set (a partly re-measured tree). Finalization still publishes,
+resolves the hub's latest per process), another device (``device="auto"``
+runs on CUDA on a GPU node and on the CPU elsewhere, and the entry records
+which), another pooling or producer parameter set (a partly re-measured
+tree). Finalization still publishes,
 logs one warning per such key naming each descriptor with its store count
 and a few stores, and tags every row with ``descriptor_index``, an
 ``int16`` index into the key's manifest ``descriptors`` list. That list is
@@ -277,22 +279,28 @@ def _short(value: object) -> str:
 
 
 def _descriptor_summary(descriptor: Mapping[str, object]) -> str:
-    """``revision <sha8>, pooling <p>, params <sha8>``: one descriptor, briefly."""
+    """``revision <sha8>, device <d>, pooling <p>, params <sha8>``: one descriptor, briefly.
+
+    ``device`` is left out for an entry that records none (an embedder other
+    than ``MeasureDinoEmbedding``, or one written before it was recorded).
+    """
     model = descriptor.get("model")
     producer = descriptor.get("producer")
     revision = model.get("revision") if isinstance(model, Mapping) else None
+    device = model.get("device") if isinstance(model, Mapping) else None
     params = producer.get("params_sha256") if isinstance(producer, Mapping) else None
     return (
-        f"revision {_short(revision)}, pooling {descriptor.get('pooling')}, "
-        f"params {_short(params)}"
+        f"revision {_short(revision)}"
+        + (f", device {device}" if device else "")
+        + f", pooling {descriptor.get('pooling')}, params {_short(params)}"
     )
 
 
 def _warn_on_mixed_descriptors(plan: _KeyPlan) -> None:
     """Log one warning when *plan*'s stores carry more than one descriptor (Q1).
 
-    Names each descriptor by its manifest index, briefly (revision, pooling,
-    producer parameter digest; plus a digest of the whole descriptor when
+    Names each descriptor by its manifest index, briefly (revision, device,
+    pooling, producer parameter digest; plus a digest of the whole descriptor when
     two would otherwise read alike), with its store count and the first few
     stores. Publication goes on: every row's ``descriptor_index`` says which
     descriptor its vector came from.
@@ -329,7 +337,8 @@ def _warn_on_mixed_descriptors(plan: _KeyPlan) -> None:
         "Embedding key %r mixes %d entry descriptors across its stores, so its "
         "vectors are not all comparable. Publishing all of them; each row's "
         "descriptor_index names its descriptor in manifest.json: %s. Pin "
-        "the embedder's revision to a commit for one descriptor per run.",
+        "the embedder's revision to a commit and set its device explicitly "
+        "('cpu' for reproducible vectors) for one descriptor per run.",
         plan.key,
         len(plan.descriptors),
         "; ".join(parts),

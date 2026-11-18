@@ -486,17 +486,35 @@ def test_no_objects_gives_an_empty_table(stub_backbone, plate):
 
 @requires_torch
 def test_the_pipeline_payload_carries_the_model_entry(stub_backbone, detected_plate):
-    pipe = ImagePipeline(ops=[], meas={"emb": MeasureDinoEmbedding(size="small", crop_px=112)})
+    pipe = ImagePipeline(
+        ops=[], meas={"emb": MeasureDinoEmbedding(size="small", crop_px=112, device="cpu")}
+    )
     payloads = pipe.embed(detected_plate)
     assert list(payloads) == ["dinov2-vits14/crops"]
     descriptor = payloads["dinov2-vits14/crops"].descriptor
     assert descriptor["model"] == {
         "family": "dinov2", "hf_id": "facebook/dinov2-small",
-        "revision": STUB_COMMIT, "patch_size": 14,
+        "revision": STUB_COMMIT, "patch_size": 14, "device": "cpu",
     }
     assert (descriptor["dim"], descriptor["dtype"], descriptor["pooling"]) == (
         STUB_HIDDEN_SIZE, "float16", "crop_cls")
     assert descriptor["producer"]["class"] == "MeasureDinoEmbedding"
+
+
+@requires_torch
+@pytest.mark.parametrize("cuda", [False, True])
+def test_an_auto_embedder_records_the_device_that_ran(stub_backbone, monkeypatch, cuda):
+    """#281 P4 review Q1 follow-up: ``device="auto"`` is the same field value
+    on a GPU node and a CPU node, so the entry records the device
+    ``resolve_backbone_device`` resolved, the one the backbone was loaded on.
+    No forward pass runs, so the stub is never moved to a GPU."""
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
+    m = MeasureDinoEmbedding(size="small", device="auto")
+    expected = "cuda" if cuda else "cpu"
+    assert m.entry_descriptor()["model"]["device"] == expected
+    assert stub_backbone.load_calls[-1]["device"] == expected
 
 
 @requires_torch

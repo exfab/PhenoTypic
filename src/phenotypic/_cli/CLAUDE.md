@@ -1374,7 +1374,9 @@ which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,
 `phenotypic-wait`'s exit `5` points at `slurm_logs_dir`, where the
 finalizer's log says this). A key whose stores carry **different entry
 descriptors** (entry minus `binds`/`files`/`stale`: an unpinned `revision`
-resolving to different commits, a partly re-measured tree) still publishes,
+resolving to different commits, `device="auto"` running on CUDA on some
+nodes and the CPU on others, since `MeasureDinoEmbedding` records the
+resolved `model.device`, a partly re-measured tree) still publishes,
 with one warning per key, and every row carries an `int16`
 `descriptor_index` into the key's manifest `descriptors`, listed in order
 of first appearance over the sorted stores, so bytes stay stable; it is

@@ -162,6 +162,9 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             runs give byte-identical embedding deliverables only on the same
             device and the same BLAS path, and ``"auto"`` picks CUDA on some
             nodes and the CPU on others without changing the pipeline file.
+            Each table's entry records the device that ran (``"cuda"`` or
+            ``"cpu"``), so such a run's deliverable rows carry two
+            ``descriptor_index`` values.
 
     Examples:
         Construction needs no weights; the backbone loads on the first
@@ -266,12 +269,17 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     def entry_descriptor(self) -> dict:
         """The model, vector length, stored type and pooling of the table's entry.
 
-        Loads the backbone (cached), because the vector length and the
-        resolved revision are properties of the weights actually loaded.
+        Loads the backbone (cached), because the vector length, the resolved
+        revision and the device are properties of the weights actually
+        loaded.
 
         Returns:
-            ``{model: {family, hf_id, revision, patch_size}, dim, dtype,
-            pooling}``, where ``revision`` is the commit loaded.
+            ``{model: {family, hf_id, revision, patch_size, device}, dim,
+            dtype, pooling}``, where ``revision`` is the commit loaded and
+            ``device`` (``"cuda"`` or ``"cpu"``) the device it ran on: with
+            ``device="auto"`` the field value is the same on a GPU node and a
+            CPU node, so only this tells their vectors apart (#281 P4 review
+            Q1).
         """
         from phenotypic.detect.nn._helper._dino_support import (
             backbone_patch_size,
@@ -279,13 +287,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             resolved_revision,
         )
 
-        model, _, _ = self._backbone()
+        model, _, device = self._backbone()
         return {
             "model": {
                 "family": f"dinov{int(self.version)}",
                 "hf_id": hf_dino_id(self.version, self.size),
                 "revision": resolved_revision(model),
                 "patch_size": backbone_patch_size(model),
+                "device": device,
             },
             "dim": int(model.config.hidden_size),
             "dtype": self.dtype,
