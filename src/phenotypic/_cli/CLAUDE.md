@@ -1367,7 +1367,9 @@ schema per key) and streams each key to a hidden temporary, one row group
 per store; `promote` runs after the splits and before `metrics.json`,
 replacing each target and writing `manifest.json` last. A `stale` entry
 (`stale is not False`, the one predicate) is skipped with a warning and
-counted; a non-stale entry it cannot read **raises**, failing finalization
+counted; a non-stale entry it cannot read, or any entry whose key is not
+`<model>/<crops|grid>` (`split_embedding_key`, the rule `EmbeddingPayload`
+refuses on), **raises**, failing finalization
 like the master, naming every such store, and the image stays `verified`
 (D9), so the remedy is a same-pipeline `--mode measure` over the whole run,
 which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,

@@ -83,11 +83,9 @@ class EmbeddingPayload:
     descriptor: Mapping[str, object]
 
     def __post_init__(self) -> None:
-        from ._table_runs import embedding_table_relative_path
+        from ._table_runs import split_embedding_key
 
-        model, _, region = self.key.partition("/")
-        # Validates both halves: the region is crops or grid, the model one segment.
-        embedding_table_relative_path("1-unknown", model, region)  # type: ignore[arg-type]
+        split_embedding_key(self.key)
         missing = PAYLOAD_DESCRIPTOR_FIELDS - set(self.descriptor)
         if missing:
             raise ValueError(

@@ -53,7 +53,11 @@ does not are removed. :func:`aggregate_embedding_tables` is the two in one.
   this is a defence, not a state users see.
 - An entry that is **not stale but cannot be read** fails finalization, as a
   master that cannot be built does. Every such store is named in the one
-  error, not only the first. It never revokes measurement authority: the
+  error, not only the first. So does an entry whose key is not
+  ``"<model>/<crops|grid>"`` (a store root edited by hand), stale or not:
+  the key names the deliverable's file, and it is the rule an
+  ``EmbeddingPayload`` is refused on when built
+  (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`). It never revokes measurement authority: the
   image's record still verifies and ``resolve_run_state`` still reads it
   ``verified`` (D9), so the remedy is a same-pipeline ``--mode measure``
   over the whole run, which re-embeds (and re-measures) every image without
@@ -236,16 +240,36 @@ class _KeyPlan:
 
 def _plan_keys(
     runs: Sequence["TableRun"], identities: Mapping[Path, tuple[str, str, str]]
-) -> list[_KeyPlan]:
-    """Split each key's entries into readable runs and stale stores, in run order."""
+) -> tuple[list[_KeyPlan], list[_Unreadable]]:
+    """Split each key's entries into readable runs and stale stores, in run order.
+
+    A key that is not ``"<model>/<crops|grid>"``
+    (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`, the rule an
+    ``EmbeddingPayload`` is refused on when built) gets no plan: it names the
+    deliverable's file, so each of its entries, stale or not, is returned as
+    unreadable instead.
+
+    Returns:
+        ``(plans, unreadable)``: the plans, sorted by key, and the entries
+        whose key is refused, in run order.
+    """
     from phenotypic.sdk_._embedding_tables import embedding_entry_is_stale
+    from phenotypic.sdk_._table_runs import split_embedding_key
 
     plans: dict[str, _KeyPlan] = {}
+    unreadable: list[_Unreadable] = []
     for run in runs:
         for raw_key, entry in _entries(run).items():
             key = str(raw_key)
-            plan = plans.setdefault(key, _KeyPlan(key))
             relative = identities[run.store][0]
+            try:
+                split_embedding_key(key)
+            except ValueError as exc:
+                unreadable.append(
+                    _Unreadable(relative, key, f"its key is not <model>/<crops|grid>: {exc}")
+                )
+                continue
+            plan = plans.setdefault(key, _KeyPlan(key))
             if not isinstance(entry, Mapping):
                 # Not stale, but not readable either: staging names it unreadable.
                 plan.readable.append(run)
@@ -265,7 +289,7 @@ def _plan_keys(
             canonical = _canonical(shared)
             plan.descriptors.setdefault(canonical, shared)
             plan.descriptor_of[relative] = canonical
-    return [plans[key] for key in sorted(plans)]
+    return [plans[key] for key in sorted(plans)], unreadable
 
 
 def _short(value: object) -> str:
@@ -543,10 +567,10 @@ def stage_embedding_deliverables(
         :meth:`~StagedEmbeddingDeliverables.discard`.
 
     Raises:
-        RuntimeError: If any non-stale entry cannot be read (its message
-            names every such store and the whole-run ``--mode measure``
-            remedy), or two stores' tables for one key have different
-            schemas.
+        RuntimeError: If any non-stale entry cannot be read, or any entry's
+            key is not ``"<model>/<crops|grid>"`` (its message names every
+            such store and the whole-run ``--mode measure`` remedy), or two
+            stores' tables for one key have different schemas.
         ValueError: If a run's store is not a store of this run.
     """
     from phenotypic.sdk_._embedding_tables import _file_sha256
@@ -555,13 +579,14 @@ def stage_embedding_deliverables(
     with_embeddings = [run for run in runs if _entries(run)]
     identities = {run.store: _store_identity(output_dir, run.store) for run in with_embeddings}
     ordered = sorted(with_embeddings, key=lambda run: identities[run.store][0])
-    plans = _plan_keys(ordered, identities)
+    # Entries under a refused key are unreadable from the start; the other
+    # keys are still staged, so the one error names every unreadable store.
+    plans, unreadable = _plan_keys(ordered, identities)
     for plan in plans:
         _warn_on_mixed_descriptors(plan)
 
     staged = StagedEmbeddingDeliverables(output_dir, {}, {}, None)
     entries: dict[str, object] = {}
-    unreadable: list[_Unreadable] = []
     try:
         for plan in plans:
             # A key whose every entry is stale publishes no file.

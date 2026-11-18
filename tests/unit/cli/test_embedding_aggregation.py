@@ -219,6 +219,45 @@ def test_a_failure_in_a_later_key_leaves_every_deliverable_as_it_was(two_key_sto
     assert not list((out / "deliverables").rglob("*.tmp"))
 
 
+def _rename_root_embedding_key(store: Path, old: str, new: str) -> None:
+    """Rename embedding entry *old* to *new* in every run of *store*'s root, by hand."""
+    root = store / "zarr.json"
+    document = json.loads(root.read_text(encoding="utf-8"))
+    runs = document["attributes"]["phenotypic"]["tables"]["runs"]
+    for entry in runs.values():
+        embeddings = entry.get("embeddings") or {}
+        if old in embeddings:
+            embeddings[new] = embeddings.pop(old)
+    root.write_text(json.dumps(document), encoding="utf-8")
+
+
+def test_a_hand_edited_key_that_is_not_model_and_region_fails_and_changes_nothing(
+    two_key_stores,
+):
+    """#281 P4 simplify, key validation. The key names the deliverable's file,
+    so ``a/b/c`` (a region of ``b/c``) would publish ``embeddings/a/b/c.parquet``
+    and a manifest path the proof cannot find. It is the rule a payload is
+    refused on when built, so the entry is unreadable: finalization fails
+    naming the store and the reason, and no deliverable changes."""
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    out, runs = two_key_stores
+    _rename_root_embedding_key(runs[1].store, "toy-v2/crops", "a/b/c")
+    edited = [_latest(run.store) for run in runs]
+    assert "a/b/c" in edited[1].descriptor["embeddings"]
+    before = _snapshot(out)
+
+    with pytest.raises(RuntimeError) as raised:
+        aggregate_embedding_tables(out, edited)
+
+    message = str(raised.value)
+    assert "results/ds/zarr/p2.ome.zarr (a/b/c)" in message
+    assert "crops or grid" in message and "--mode measure" in message
+    assert _snapshot(out) == before
+    assert not (out / "deliverables" / "embeddings" / "a").exists()
+    assert not list((out / "deliverables").rglob("*.tmp"))
+
+
 def test_staging_writes_no_deliverable_until_promoted(three_stores):
     from phenotypic._cli._cli_embedding_deliverables import stage_embedding_deliverables
 

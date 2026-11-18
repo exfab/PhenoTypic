@@ -156,6 +156,35 @@ def test_a_payload_key_must_match_its_mapping_key(tmp_path, image_with_crop_payl
         )
 
 
+@pytest.mark.parametrize(
+    "key", ["a/b/c", "toy-v1", "toy-v1/", "/crops", "../crops", "a\\b/grid", "toy-v1/tiles"]
+)
+def test_a_payload_and_a_read_entry_refuse_a_key_by_one_rule(key):
+    """#281 P4 simplify, key validation: ``split_embedding_key`` is the rule
+    ``EmbeddingPayload`` refuses a key on, word for word, so the deliverables
+    aggregation (which calls it on a store's entry keys) cannot drift from it."""
+    import pandas as pd
+
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
+    from phenotypic.sdk_._table_runs import split_embedding_key
+
+    with pytest.raises(ValueError) as split:
+        split_embedding_key(key)
+    with pytest.raises(ValueError) as built:
+        EmbeddingPayload(key=key, frame=pd.DataFrame(), descriptor={})
+    assert str(built.value) == str(split.value)
+
+
+@pytest.mark.parametrize(
+    ("key", "parts"),
+    [("toy-v1/crops", ("toy-v1", "crops")), ("dinov2-vitb14/grid", ("dinov2-vitb14", "grid"))],
+)
+def test_a_model_and_region_key_splits_into_its_folders(key, parts):
+    from phenotypic.sdk_._table_runs import split_embedding_key
+
+    assert split_embedding_key(key) == parts
+
+
 # ---------------------------------------------------------------------------
 # Staleness is recomputed on every write (D7), and readers refuse it
 # ---------------------------------------------------------------------------

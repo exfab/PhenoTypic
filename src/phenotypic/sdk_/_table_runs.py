@@ -130,6 +130,33 @@ def metadata_table_relative_path(run_id: str) -> PurePosixPath:
     )
 
 
+def _check_embedding_folders(model: str, region: str) -> None:
+    """Refuse a region other than crops or grid, or a model that is not one path segment."""
+    if region not in _EMBEDDING_REGIONS:
+        raise ValueError(f"embedding region must be crops or grid, got {region!r}")
+    if not model or "/" in model or "\\" in model or model in {".", ".."}:
+        raise ValueError(f"embedding model must be one path segment, got {model!r}")
+
+
+def split_embedding_key(key: str) -> tuple[str, EmbeddingRegion]:
+    """``(model, region)`` of an embedding entry key, ``"<model>/<crops|grid>"``.
+
+    The one rule for a key: an
+    :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload` is refused
+    on it when built, and the run's embedding deliverables refuse a store
+    entry on it when finalization reads one (a store root edited by hand,
+    say), because the key names the deliverable's file.
+
+    Raises:
+        ValueError: If the part after the first ``/`` is not ``"crops"`` or
+            ``"grid"`` (so ``"a/b/c"`` is refused), or the part before it is
+            not one path segment.
+    """
+    model, _, region = key.partition("/")
+    _check_embedding_folders(model, region)
+    return model, region  # type: ignore[return-value]
+
+
 def embedding_table_relative_path(
     run_id: str, model: str, region: EmbeddingRegion
 ) -> PurePosixPath:
@@ -141,10 +168,7 @@ def embedding_table_relative_path(
     """
     from . import ngff_
 
-    if region not in _EMBEDDING_REGIONS:
-        raise ValueError(f"embedding region must be crops or grid, got {region!r}")
-    if not model or "/" in model or "\\" in model or model in {".", ".."}:
-        raise ValueError(f"embedding model must be one path segment, got {model!r}")
+    _check_embedding_folders(model, region)
     return (
         table_run_relative_path(run_id)
         / ngff_.EMBEDDINGS_TABLE_GROUP
