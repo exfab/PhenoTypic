@@ -258,8 +258,10 @@ def reference_operations_in_scope(
 
     The preflight's mode walk (:func:`~._cli_preflight.operations_run_in_mode`),
     kept to operations that read at least one column: a ``SubtractBlank``
-    inside a measurer never runs in ``process`` mode, so a process run never
-    needs the column it reads.
+    inside a measurer that needs objects never runs in ``process`` mode,
+    which skips such measurers, so a process run never needs the column it
+    reads. One inside a ``meas`` entry process mode runs (an embedder that
+    needs no objects, #281 spec E4) is in scope there too.
     """
     return [op for _, op in reference_operations_with_paths(pipeline, mode)]
 

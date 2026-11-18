@@ -47,8 +47,26 @@ def test_a_pinned_revision_is_silent(mode) -> None:
 
 
 def test_an_embedder_process_mode_never_runs_is_silent() -> None:
-    """``process`` mode applies ``ops`` only, so its ``meas`` embedder never loads."""
+    """``process`` mode skips a crop embedder, which needs objects, so it never loads."""
     assert check_embedding_revision_pinned(make_context(_pipeline(None), "process")) == []
+
+
+def test_an_unpinned_grid_embedder_warns_in_process_mode() -> None:
+    """``process`` mode runs a grid embedder (#281 P5, spec E4), so it is in scope."""
+    from phenotypic.grid import ManualGridFinder
+
+    pipeline = ImagePipeline(
+        meas={
+            "grid": MeasureDinoEmbedding(
+                size="small",
+                regions="grid",
+                grid=ManualGridFinder(row_edges=[0, 100, 200], col_edges=[0, 150, 300]),
+            )
+        },
+    )
+    findings = check_embedding_revision_pinned(make_context(pipeline, "process"))
+    assert [f.code for f in findings] == ["PF-EMBED-REVISION-UNPINNED"]
+    assert "meas:grid" in findings[0].message
 
 
 def test_the_check_is_registered() -> None:

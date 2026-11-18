@@ -272,12 +272,14 @@ SUBJECT_DISPLAY_LIMIT = 20
 
 #: The pipeline slots each mode executes at the ROOT pipeline (spec §0,
 #: "Checks are scoped to what the mode runs"). ``full`` applies ``ops`` and
-#: then measures; ``process`` only applies ``ops``; ``measure`` only measures a
-#: stored image. A pipeline nested in ``ops`` is applied, not measured, so only
+#: then measures; ``process`` applies ``ops`` and runs the ``meas`` entries a
+#: process store can hold (#281 spec E4: those that need no objects; the walk
+#: drops the others, which process mode skips), never ``post``/``filters``/
+#: ``model``; ``measure`` only measures a stored image. A pipeline nested in ``ops`` is applied, not measured, so only
 #: its own ``ops`` ever run -- see :func:`operations_in_scope`.
 MODE_SLOTS: dict[str, frozenset[str]] = {
     "full": frozenset({"ops", "meas", "post", "filters", "model"}),
-    "process": frozenset({"ops"}),
+    "process": frozenset({"ops", "meas"}),
     "measure": frozenset({"meas", "post", "filters", "model"}),
 }
 
@@ -649,8 +651,8 @@ def check_embedding_revision_pinned(context: PreflightContext) -> list[Preflight
     hub's latest commit, so two runs, or two workers of one run, may embed
     with different weights though the pipeline file is the same. A warning,
     never an error: the run publishes, and finalization tags each row with
-    its descriptor. Only in-scope embedders count (``process`` mode never
-    runs ``meas``).
+    its descriptor. Only in-scope embedders count, ``process`` mode's
+    included (#281 spec E4).
     """
     from phenotypic.measure import MeasureDinoEmbedding
 
@@ -1772,6 +1774,8 @@ def operations_run_in_mode(
     root_slots = MODE_SLOTS[mode]
     in_scope: list[tuple[tuple[str, ...], Any]] = []
     for path, operation in walk_operations(pipeline):
+        if mode == "process" and path and _skipped_in_process_mode(pipeline, path[0]):
+            continue
         if all(
             _segment_runs(
                 get_at_path(pipeline, path[:depth]),
@@ -1783,6 +1787,24 @@ def operations_run_in_mode(
         ):
             in_scope.append((path, operation))
     return in_scope
+
+
+def _skipped_in_process_mode(pipeline: "ImagePipeline", segment: str) -> bool:
+    """Whether root *segment* is a ``meas`` entry process mode skips (#281 E4).
+
+    Process mode runs only the ``meas`` entries that need no objects
+    (:func:`~._cli_process_meas.runs_in_process_mode`) and skips the rest, so
+    the walk leaves the rest out: a skipped measurer, and everything nested in
+    it, is no more in scope than ``post``. The slot is decided against the
+    live pipeline, never by parsing the segment.
+    """
+    from phenotypic.sdk_._operation_tree import get_at_path, pipeline_slot_of
+
+    from ._cli_process_meas import runs_in_process_mode
+
+    if pipeline_slot_of(pipeline, segment) != "meas":
+        return False
+    return not runs_in_process_mode(get_at_path(pipeline, (segment,)))
 
 
 def _segment_runs(

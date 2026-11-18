@@ -770,7 +770,10 @@ def _refuse_grid_preset_unlike_cli_grid(
 
     A pipeline that cannot be loaded is left to the pipeline validation, which
     reports it in its own words. Other modes are not checked: ``process`` never
-    measures, and ``measure`` re-measures stores whose grid the forward run
+    calls ``measure()`` (it runs only embedders that need no objects, which
+    carry their own grid; see :func:`_refuse_process_meas_it_would_lose`),
+    and ``measure``
+    re-measures stores whose grid the forward run
     recorded, which a per-image ``MeasurementConflictError`` reports.
 
     Raises:
@@ -811,6 +814,56 @@ def _refuse_grid_preset_unlike_cli_grid(
         f"--nrows {preset[0]} --ncols {preset[1]}, or remove nrows and ncols "
         "from the pipeline file so measure() uses the images' grid."
     )
+
+
+def _refuse_process_meas_it_would_lose(
+    *,
+    pipeline_json: Optional[Path],
+    layer: Optional[str],
+    process_format: str,
+) -> None:
+    """Refuse a ``--mode process`` that would lose a ``meas`` table; warn on skips.
+
+    Process mode runs the ``meas`` entries a store can hold (#281 spec E4,
+    user decision 2026-11-18): those whose ``requires_objects`` is false,
+    today a grid embedder. With a flat output (``--process-format tiff``,
+    ``--layer objmap``/``detect_mat``) such an entry's table would be lost,
+    so it is refused here, un-skippable and before anything under
+    ``--output`` changes. Entries that need objects are skipped, as process
+    mode always skipped ``meas``, and named in one warning line. The check
+    is :func:`~phenotypic._cli._cli_process_meas.process_meas_refusal`, the
+    one the per-image core also runs. A pipeline that cannot be loaded is
+    left to the pipeline validation, which reports it in its own words.
+
+    Args:
+        pipeline_json: The ``--pipeline`` file.
+        layer: The ``--layer``; ``None`` outside process mode, which returns.
+        process_format: The resolved ``--process-format``.
+
+    Raises:
+        click.UsageError: Naming each runnable ``meas`` slot whose table the
+            output would lose.
+    """
+    if pipeline_json is None or layer is None:
+        return
+    from phenotypic._cli._cli_process_meas import (
+        process_meas_refusal,
+        skipped_measurers_warning,
+    )
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_json)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return
+    refusal = process_meas_refusal(
+        pipeline, layer=layer, process_format=process_format
+    )
+    if refusal is not None:
+        raise click.UsageError(refusal)
+    skipped = skipped_measurers_warning(pipeline)
+    if skipped is not None:
+        click.echo(f"Warning: {skipped}.", err=True)
 
 
 def _refuse_unusable_reference_table(
@@ -3007,6 +3060,13 @@ def phenotypic_cli(
             image_type=narrowed_image_type,
             nrows=nrows,
             ncols=ncols,
+        )
+        # The same placement, for the same reason: a flat export has nowhere
+        # to put the table of a meas entry process mode runs.
+        _refuse_process_meas_it_would_lose(
+            pipeline_json=pipeline_json,
+            layer=process_only_layer,
+            process_format=resolved_process_format,
         )
         manifest_snapshot = None
         if image_manifest is not None:

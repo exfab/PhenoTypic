@@ -440,6 +440,23 @@ class MeasureFeatures(BaseOperation, ABC):
                 infos.append(candidate)
         return tuple(infos)
 
+    @property
+    def requires_objects(self) -> bool:
+        """Whether this measurer needs detected objects: ``True`` for every measurer.
+
+        Every measurement here is keyed on ``Object_Label`` and reads the
+        image's object map. ``--mode process`` writes a store without an
+        object map, so it refuses a measurer for which this is ``True``
+        (#281 spec E4). :class:`~phenotypic.abc_.MeasureEmbedding` overrides
+        it: a grid embedder embeds fixed cells and needs no objects.
+
+        Examples:
+            >>> from phenotypic.measure import MeasureSize
+            >>> MeasureSize().requires_objects
+            True
+        """
+        return True
+
     @validate_measure_integrity()
     def measure(self, image: Image, include_meta: bool = False) -> pd.DataFrame:
         """Execute the measurement operation on a detected-object image.

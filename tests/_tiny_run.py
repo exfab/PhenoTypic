@@ -1408,3 +1408,124 @@ def rows_in(run: "TableRun") -> int:
 
     model, _, region = DINO_CROPS_KEY.partition("/")
     return pq.read_metadata(run.embedding_path(model, region)).num_rows  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# P5 T1, T2 (C20): process mode runs ``meas`` (spec E4)
+# ---------------------------------------------------------------------------
+
+
+def _write_pipeline_file(directory: Path, stem: str, pipeline: "ImagePipeline") -> Path:
+    """Write *pipeline* to ``<directory>/<stem>-<sha8>.pht-pipe.json``.
+
+    The name carries 8 hex of the bytes, so two different pipelines written
+    into one directory never overwrite each other, and the same pipeline
+    always lands on the same file (the journal records the file's basename,
+    so a byte-reproducible store needs both).
+    """
+    import hashlib
+
+    text = pipeline.to_json() or ""
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+    path = Path(directory) / f"{stem}-{digest}.pht-pipe.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def with_meas(directory: Path, /, **measurers) -> Path:
+    """A pipeline file: ``ops=[BlurGauss(sigma=1.0)]`` and *measurers* in ``meas``.
+
+    No detector, so the shape a process run can store: ops that keep the
+    pixels' geometry, and measurers keyed by their keyword.
+
+    Args:
+        directory: Where to write the file.
+        **measurers: ``meas`` entries, ``key=measurer``.
+
+    Returns:
+        ``<directory>/process_meas-<sha8>.pht-pipe.json``.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.enhance import BlurGauss
+
+    pipeline = ImagePipeline(
+        name="tiny-process-meas", ops=[BlurGauss(sigma=1.0)], meas=dict(measurers)
+    )
+    return _write_pipeline_file(directory, "process_meas", pipeline)
+
+
+def grid_embedder(**kw):
+    """``MeasureDinoEmbedding(regions="grid")`` over the 2 x 2 toy grid, on the CPU.
+
+    The cells are :data:`TOY_GRID_ROW_EDGES` x :data:`TOY_GRID_COL_EDGES`,
+    inside the synth plate. ``device="cpu"`` keeps a byte-equality test off a
+    GPU the node may have. Building it needs no torch; running it needs
+    :func:`stub_backbone`, which does.
+
+    Args:
+        **kw: Further ``MeasureDinoEmbedding`` fields, overriding the above.
+    """
+    from phenotypic.grid import ManualGridFinder
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    fields = {
+        "regions": "grid",
+        "grid": ManualGridFinder(
+            row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+        ),
+        "device": "cpu",
+        **kw,
+    }
+    return MeasureDinoEmbedding(**fields)
+
+
+def grid_process_pipeline(directory: Path, /, **kw) -> Path:
+    """:func:`with_meas` with ``meas["grid_embedding"] = grid_embedder(**kw)``.
+
+    The AutoConvertRaw-GC shape (spec E6): ops that keep geometry, then one
+    grid embedding, stored under :data:`DINO_GRID_KEY`. Needs torch to run.
+    """
+    return with_meas(directory, grid_embedding=grid_embedder(**kw))
+
+
+#: The model token of :func:`toy_grid_process_pipeline`'s embedder.
+TOY_GRID_KEY = "toy-v1/grid"
+
+
+@pytest.fixture
+def registered_toy_embedder(monkeypatch):
+    """Make :func:`toy_embedder_class` resolvable by ``ImagePipeline.from_json``.
+
+    A pipeline file names an operation by class; one defined outside
+    ``phenotypic`` resolves once it is attached to the ``phenotypic``
+    namespace (what a ``PHENOTYPIC_PRELOAD_MODULES`` module does). Only an
+    in-process CLI run (``run_cli``, ``--njobs 1``) sees the attribute, which
+    is every test that uses it. Torch-free.
+
+    Returns:
+        The toy embedder class.
+    """
+    import phenotypic
+
+    cls = toy_embedder_class()
+    monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
+    return cls
+
+
+def toy_grid_process_pipeline(directory: Path) -> Path:
+    """:func:`grid_process_pipeline` with the toy embedder: torch-free.
+
+    ``meas["grid_embedding"]`` is the toy embedder over the 2 x 2 toy grid,
+    stored under :data:`TOY_GRID_KEY`. Run it under
+    :func:`registered_toy_embedder`.
+    """
+    from phenotypic.grid import ManualGridFinder
+
+    embedder = toy_embedder_class()(
+        regions="grid",
+        grid=ManualGridFinder(
+            row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+        ),
+    )
+    return with_meas(directory, grid_embedding=embedder)

@@ -376,3 +376,30 @@ def test_process_mode_ignores_metadata_in_the_refusal(
 
     assert "lies inside --output" not in result.output, result.output
     assert metadata.exists()
+
+
+@pytest.mark.parametrize("flag", ["--overwrite", "--restart"])
+def test_a_process_table_it_would_lose_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, flag: str
+) -> None:
+    """#281 P5 T1: a grid embedder into a flat export is refused above every mutation.
+
+    ``--restart`` clears ``.phenotypic/`` and ``--overwrite`` deletes the run;
+    the refusal must leave both untouched. Torch-free: nothing loads a model.
+    """
+    from tests._tiny_run import grid_embedder, with_meas
+
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+
+    result = _invoke(
+        "--mode", "process", "--layer", "rgb", "--process-format", "tiff",
+        "--pipeline", str(with_meas(tmp_path, grid=grid_embedder())),
+        "--input", str(image_tree), "--output", str(previous_run), flag,
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "meas:grid" in result.output and "would be lost" in result.output
+    assert (previous_run / PREVIOUS).read_text(encoding="utf-8") == "keep me"
+    assert state.read_text(encoding="utf-8") == "{}"
