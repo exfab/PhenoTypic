@@ -4,12 +4,17 @@ Process mode runs a pipeline's ``ops`` and, since #281 P5, the ``meas`` entries
 a process store can hold, writing their tables into each store's own
 transaction. User decision 2026-11-18: **run what fits, skip the rest.**
 
-- An entry whose ``requires_objects`` is false (today only a grid embedder)
-  **runs**, and its table goes into the store's run folder.
-- An entry whose ``requires_objects`` is true is **skipped**, as process mode
-  always skipped ``meas``, with one warning naming each slot: a process store
-  holds no object map (``write_objmap=False``), so a table keyed on
-  ``Object_Label`` would point at labels the store cannot resolve.
+- An **embedder** whose ``requires_objects`` is false (a grid embedder)
+  **runs**, and its table goes into the store's run folder. In v1 nothing
+  else runs: a process store holds embedding tables only.
+- Every other entry is **skipped**, as process mode always skipped ``meas``,
+  and named in one warning line, never dropped silently:
+
+  - one that needs objects (``requires_objects`` true): a process store holds
+    no object map (``write_objmap=False``), so a table keyed on
+    ``Object_Label`` would point at labels the store cannot resolve;
+  - one that needs no objects but is not an embedder: ``measure()`` is never
+    called in process mode, so it has no table to go into.
 - A runnable entry with a flat output (``--process-format tiff``, ``--layer
   objmap``, ``--layer detect_mat``) is **refused**: its table would be lost.
 
@@ -31,6 +36,9 @@ if TYPE_CHECKING:
 #: Why an object measurer is skipped, for the warning and its readers.
 PROCESS_STORES_NO_OBJECTS = "process mode stores no objects"
 
+#: Why a no-objects entry that is not an embedder is skipped (v1).
+PROCESS_STORES_ONLY_EMBEDDINGS = "process mode stores only embedding tables"
+
 
 class ProcessMeasRefusedError(ValueError):
     """A process run would lose a ``meas`` table: a runnable entry, a flat output.
@@ -42,17 +50,25 @@ class ProcessMeasRefusedError(ValueError):
     """
 
 
-def runs_in_process_mode(measurer: Any) -> bool:
-    """Whether process mode runs this ``meas`` entry: it needs no objects.
+def _needs_objects(measurer: Any) -> bool:
+    """``requires_objects``; an entry without the property is taken to need them."""
+    return bool(getattr(measurer, "requires_objects", True))
 
-    Duck-typed on ``requires_objects``; an entry without the property (no
-    ``MeasureFeatures``) is treated as needing objects, so it is skipped.
+
+def runs_in_process_mode(measurer: Any) -> bool:
+    """Whether process mode runs this ``meas`` entry: a no-objects embedder.
+
+    v1 runs only :class:`~phenotypic.abc_.MeasureEmbedding` entries that need
+    no objects (a grid embedder). Every other entry is skipped and named by
+    :func:`skipped_measurers_warning`.
     """
-    return not getattr(measurer, "requires_objects", True)
+    from phenotypic.abc_ import MeasureEmbedding
+
+    return isinstance(measurer, MeasureEmbedding) and not _needs_objects(measurer)
 
 
 def object_measurers_in_process_mode(pipeline: "ImagePipeline") -> list[str]:
-    """The ``meas`` entries process mode skips, as slot paths.
+    """The ``meas`` entries process mode skips because they need objects.
 
     Only the root pipeline's ``meas`` runs in process mode: a pipeline nested
     in ``ops`` is applied, never measured.
@@ -76,12 +92,12 @@ def object_measurers_in_process_mode(pipeline: "ImagePipeline") -> list[str]:
     return [
         f"meas:{key}"
         for key, measurer in pipeline.get_meas().items()
-        if not runs_in_process_mode(measurer)
+        if _needs_objects(measurer)
     ]
 
 
 def process_mode_measurers(pipeline: "ImagePipeline") -> dict[str, Any]:
-    """The ``meas`` entries process mode runs, keyed as in ``meas``."""
+    """The ``meas`` entries process mode runs (no-objects embedders), keyed as in ``meas``."""
     return {
         key: measurer
         for key, measurer in pipeline.get_meas().items()
@@ -90,11 +106,16 @@ def process_mode_measurers(pipeline: "ImagePipeline") -> dict[str, Any]:
 
 
 def skipped_measurers_warning(pipeline: "ImagePipeline") -> str | None:
-    """The one warning line naming the ``meas`` entries process mode skips.
+    """The one warning line naming every ``meas`` entry process mode skips.
+
+    Each entry not :func:`runs_in_process_mode` is named with its reason:
+    :data:`PROCESS_STORES_NO_OBJECTS` when it needs objects,
+    :data:`PROCESS_STORES_ONLY_EMBEDDINGS` when it needs none but is not an
+    embedder. Both groups share the line, separated by ``"; "``.
 
     Returns:
-        ``"meas:size, meas:shape skipped: process mode stores no objects"``,
-        or ``None`` when nothing is skipped.
+        e.g. ``"meas:size, meas:shape skipped: process mode stores no
+        objects"``, or ``None`` when nothing is skipped.
 
     Examples:
         >>> from phenotypic import ImagePipeline
@@ -103,10 +124,25 @@ def skipped_measurers_warning(pipeline: "ImagePipeline") -> str | None:
         >>> skipped_measurers_warning(ImagePipeline(meas={"size": MeasureSize()}))
         'meas:size skipped: process mode stores no objects'
     """
-    skipped = object_measurers_in_process_mode(pipeline)
-    if not skipped:
-        return None
-    return f"{', '.join(skipped)} skipped: {PROCESS_STORES_NO_OBJECTS}"
+    groups: dict[str, list[str]] = {
+        PROCESS_STORES_NO_OBJECTS: [],
+        PROCESS_STORES_ONLY_EMBEDDINGS: [],
+    }
+    for key, measurer in pipeline.get_meas().items():
+        if runs_in_process_mode(measurer):
+            continue
+        reason = (
+            PROCESS_STORES_NO_OBJECTS
+            if _needs_objects(measurer)
+            else PROCESS_STORES_ONLY_EMBEDDINGS
+        )
+        groups[reason].append(f"meas:{key}")
+    parts = [
+        f"{', '.join(slots)} skipped: {reason}"
+        for reason, slots in groups.items()
+        if slots
+    ]
+    return "; ".join(parts) or None
 
 
 def process_meas_refusal(
@@ -162,17 +198,12 @@ def embed_in_process_mode(
     return an empty table keyed on labels the store does not hold.
 
     Returns:
-        ``{"<model>/<crops|grid>": EmbeddingPayload}``; empty when no
-        runnable entry is an embedder.
+        ``{"<model>/<crops|grid>": EmbeddingPayload}``; empty when the
+        pipeline has no no-objects embedder.
     """
     from phenotypic import ImagePipeline
-    from phenotypic.abc_ import MeasureEmbedding
 
-    embedders = {
-        key: measurer
-        for key, measurer in process_mode_measurers(pipeline).items()
-        if isinstance(measurer, MeasureEmbedding)
-    }
+    embedders = process_mode_measurers(pipeline)
     if not embedders:
         return {}
     return ImagePipeline(meas=embedders).embed(image)

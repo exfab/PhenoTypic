@@ -89,8 +89,8 @@ and a row in the table in `docs/source/tutorials/pages/cli_batch_processing.md`;
 never the whole operation tree: `MODE_SLOTS` says which root slots each mode
 executes (`full`: all; `process`: `ops`, `meas`; `measure`: `meas`, `post`,
 `filters`, `model`), and a pipeline nested in `ops` contributes only its own
-`ops`. In `process` mode the walk also drops each root `meas` entry whose
-`requires_objects` is true (`_skipped_in_process_mode`), because process mode
+`ops`. In `process` mode the walk also drops each root `meas` entry that is
+not a no-objects embedder (`_skipped_in_process_mode`), because process mode
 skips it: the walk is what runs. Walking everything would refuse a `process`
 run over a measurer it never runs.
 
@@ -105,22 +105,29 @@ the checks.
 rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
 `post`/`filters`/`model` or builds deliverables.
 
-- **Runs:** each `meas` entry whose `requires_objects` is false. Today that is
-  only a grid embedder (`MeasureEmbedding(regions="grid")`).
+- **Runs (v1: embedders only):** each `meas` entry that is a
+  `MeasureEmbedding` with `requires_objects` false, i.e. a grid embedder
+  (`regions="grid"`), per `runs_in_process_mode`.
   `MeasureFeatures.requires_objects` is `True`; `MeasureEmbedding` overrides
   it. `process_single_apply_only_core` calls `embed_in_process_mode` after
   `apply()`, inside the same provenance and reference context. It passes the
   payloads through `write_process_only_layer(embeddings=)` to `_save_store`,
   so the run folder lands in the `.part` before `_consolidate_store_part` and
   the store stays write-once and consolidated. `upstream=` is passed as
-  before. `measure()` is never called, because every entry it would run
-  needs objects.
-- **Skipped, with one warning line:** each entry that needs objects,
-  including a crop embedder. This is what process mode always did with
-  `meas`. A process store holds no object map, so a table keyed on
-  `Object_Label` would point at labels the store cannot resolve. The CLI
-  prints `Warning: meas:size, meas:shape skipped: process mode stores no
-  objects.` once, in the read-only half; the core logs the same line.
+  before. `measure()` is never called.
+- **Skipped, never silently:** every other entry, which is what process mode
+  always did with `meas`. One warning line names each, with its reason:
+  - it needs objects (an ordinary measurer, a crop embedder): `meas:size
+    skipped: process mode stores no objects`. A process store holds no
+    object map, so a table keyed on `Object_Label` would point at labels the
+    store cannot resolve;
+  - it needs no objects but is not an embedder: `meas:foo skipped: process
+    mode stores only embedding tables`. `measure()` is never called in
+    process mode, so it has nowhere to go. None ships today; the wording
+    keeps a future one from being dropped silently.
+
+  Both groups share one line, separated by `; `. The CLI prints it once, in
+  the read-only half, as `Warning: <line>.`; the core logs it per image.
   Measurer-backed `PlotImage` figures in a process store still work, because
   the figure binding recomputes in `inspect()`.
 - **Refused:** a runnable entry with a flat output (`--process-format tiff`,

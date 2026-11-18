@@ -825,12 +825,13 @@ def _refuse_process_meas_it_would_lose(
     """Refuse a ``--mode process`` that would lose a ``meas`` table; warn on skips.
 
     Process mode runs the ``meas`` entries a store can hold (#281 spec E4,
-    user decision 2026-11-18): those whose ``requires_objects`` is false,
-    today a grid embedder. With a flat output (``--process-format tiff``,
+    user decision 2026-11-18): in v1, the embedders whose
+    ``requires_objects`` is false (a grid embedder). With a flat output (``--process-format tiff``,
     ``--layer objmap``/``detect_mat``) such an entry's table would be lost,
     so it is refused here, un-skippable and before anything under
-    ``--output`` changes. Entries that need objects are skipped, as process
-    mode always skipped ``meas``, and named in one warning line. The check
+    ``--output`` changes. Every other entry is skipped, as process mode
+    always skipped ``meas``, and named in one warning line with its reason
+    (it needs objects, or it is not an embedder). The check
     is :func:`~phenotypic._cli._cli_process_meas.process_meas_refusal`, the
     one the per-image core also runs. A pipeline that cannot be loaded is
     left to the pipeline validation, which reports it in its own words.

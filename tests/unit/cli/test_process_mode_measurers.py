@@ -398,3 +398,94 @@ def test_process_accepts_grid_embedding(tmp_path, tiny_inputs, stub_backbone):
     )
     assert result.exit_code == 0, result.output
     assert len(list((tmp_path / "out").rglob("*.ome.zarr"))) == 2
+
+
+# ---------------------------------------------------------------------------
+# v1 runs embedders only: a no-objects measurer that is not one is named
+# ---------------------------------------------------------------------------
+
+_NO_OBJECTS_MEASURER: type | None = None
+
+
+def _no_objects_measurer_class() -> type:
+    """A bare ``MeasureFeatures`` that needs no objects: not an embedder.
+
+    Built lazily and once, so the subclass exists only in a process that runs
+    these tests.
+    """
+    global _NO_OBJECTS_MEASURER
+    if _NO_OBJECTS_MEASURER is None:
+        import pandas as pd
+
+        from phenotypic.abc_ import MeasureFeatures
+
+        class NoObjectsMeasurer(MeasureFeatures):
+            """A test double: claims to need no objects, emits one column."""
+
+            @property
+            def requires_objects(self) -> bool:
+                return False
+
+            def _operate(self, image):
+                return pd.DataFrame({"NoObjects_Value": [1.0]})
+
+        _NO_OBJECTS_MEASURER = NoObjectsMeasurer
+    return _NO_OBJECTS_MEASURER
+
+
+@pytest.fixture
+def registered_no_objects_measurer(monkeypatch):
+    """Make ``NoObjectsMeasurer`` resolvable by ``ImagePipeline.from_json``."""
+    import phenotypic
+
+    cls = _no_objects_measurer_class()
+    monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
+    return cls
+
+
+def test_a_no_objects_measurer_that_is_no_embedder_is_skipped_by_name():
+    from phenotypic import ImagePipeline
+
+    from phenotypic._cli._cli_process_meas import (
+        PROCESS_STORES_ONLY_EMBEDDINGS,
+        runs_in_process_mode,
+    )
+
+    foo = _no_objects_measurer_class()()
+    assert foo.requires_objects is False and not runs_in_process_mode(foo)
+    pipeline = ImagePipeline(
+        meas={"size": MeasureSize(), "foo": foo, "grid": grid_embedder()}
+    )
+    assert skipped_measurers_warning(pipeline) == (
+        f"meas:size skipped: {PROCESS_STORES_NO_OBJECTS}; "
+        f"meas:foo skipped: {PROCESS_STORES_ONLY_EMBEDDINGS}"
+    )
+    # It does not run, so a flat output loses nothing and is not refused.
+    only_foo = ImagePipeline(meas={"foo": foo})
+    assert process_meas_refusal(only_foo, layer="rgb", process_format="tiff") is None
+    # The walk is what runs: it is left out of the process scope.
+    roots = {path[0] for path, _ in operations_run_in_mode(pipeline, "process")}
+    assert "meas:foo" not in roots and "meas:grid" in roots
+
+
+def test_process_skips_a_no_objects_measurer_with_the_embeddings_wording(
+    tmp_path, tiny_inputs, registered_no_objects_measurer
+):
+    from phenotypic._cli._cli_process_meas import PROCESS_STORES_ONLY_EMBEDDINGS
+
+    out = tmp_path / "out"
+    result = run_cli(
+        tiny_inputs, out, mode="process",
+        pipeline=with_meas(tmp_path, foo=registered_no_objects_measurer()),
+        extra=ZARR_RGB,
+    )
+    assert result.exit_code == 0, result.output
+    warnings = [
+        line for line in result.output.splitlines()
+        if line.startswith("Warning:") and "skipped" in line
+    ]
+    assert warnings == [f"Warning: meas:foo skipped: {PROCESS_STORES_ONLY_EMBEDDINGS}."]
+    stores = sorted(out.rglob("*.ome.zarr"))
+    assert len(stores) == 2
+    for store in stores:
+        assert not (store / "tables").exists(), "a skipped measurer stores no table"

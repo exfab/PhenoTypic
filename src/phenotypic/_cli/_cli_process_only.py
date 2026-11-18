@@ -324,14 +324,15 @@ def process_single_apply_only_core(
     :func:`process_single_image_core`.
 
     **The ``meas`` entries a process store can hold run too** (#281 spec E4,
-    user decision 2026-11-18: run what fits, skip the rest). An entry whose
+    user decision 2026-11-18: run what fits, skip the rest). An embedder whose
     ``requires_objects`` is false (a grid embedder) runs after ``apply()``,
     through :func:`~._cli_process_meas.embed_in_process_mode`, and its table
-    goes into the store's own transaction as the pipeline's run folder. An
-    entry that needs objects is skipped, as process mode always skipped
-    ``meas``, with one logged warning: a process store holds no object map.
-    ``measure()`` is never called, because every entry it would run needs
-    objects. A runnable entry with a flat output would lose its table, so it
+    goes into the store's own transaction as the pipeline's run folder. In v1
+    nothing else runs: every other entry is skipped, as process mode always
+    skipped ``meas``, and named in one logged warning, either because it
+    needs objects (a process store holds no object map) or because it is not
+    an embedder (a process store holds only embedding tables). ``measure()``
+    is never called. A runnable entry with a flat output would lose its table, so it
     raises :class:`~._cli_process_meas.ProcessMeasRefusedError` (a
     ``ValueError``) before the image is read. The core checks this itself,
     with the check the CLI runs in its read-only half

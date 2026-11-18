@@ -273,7 +273,7 @@ SUBJECT_DISPLAY_LIMIT = 20
 #: The pipeline slots each mode executes at the ROOT pipeline (spec §0,
 #: "Checks are scoped to what the mode runs"). ``full`` applies ``ops`` and
 #: then measures; ``process`` applies ``ops`` and runs the ``meas`` entries a
-#: process store can hold (#281 spec E4: those that need no objects; the walk
+#: process store can hold (#281 spec E4: embedders that need no objects; the walk
 #: drops the others, which process mode skips), never ``post``/``filters``/
 #: ``model``; ``measure`` only measures a stored image. A pipeline nested in ``ops`` is applied, not measured, so only
 #: its own ``ops`` ever run -- see :func:`operations_in_scope`.
@@ -1792,7 +1792,7 @@ def operations_run_in_mode(
 def _skipped_in_process_mode(pipeline: "ImagePipeline", segment: str) -> bool:
     """Whether root *segment* is a ``meas`` entry process mode skips (#281 E4).
 
-    Process mode runs only the ``meas`` entries that need no objects
+    Process mode runs only the ``meas`` embedders that need no objects
     (:func:`~._cli_process_meas.runs_in_process_mode`) and skips the rest, so
     the walk leaves the rest out: a skipped measurer, and everything nested in
     it, is no more in scope than ``post``. The slot is decided against the
