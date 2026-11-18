@@ -26,7 +26,7 @@ import shlex
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence, TypeVar, cast
 
-from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
+from phenotypic.sdk_ import slurm_logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     SLURM_PYTHONPATH_BOOTSTRAP_BASH,
     SlurmArrayScriptSpec,
@@ -182,7 +182,7 @@ class SlurmExecutor:
         """
         script_dir = self._script_dir()
         script_dir.mkdir(parents=True, exist_ok=True)
-        log_dir = logs_dir(self.output_dir) / "slurm"
+        log_dir = slurm_logs_dir(self.output_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "tune_worker_%A_%a.log"
 
@@ -219,7 +219,7 @@ class SlurmExecutor:
             raise ValueError("a terminal finalizer requires a lifecycle generation")
         script_dir = self._script_dir()
         script_dir.mkdir(parents=True, exist_ok=True)
-        log_dir = logs_dir(self.output_dir) / "slurm"
+        log_dir = slurm_logs_dir(self.output_dir)
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "tune_finalizer_%j.log"
         directives = format_sbatch_directives(
@@ -283,7 +283,7 @@ set -u
             if self.lifecycle_generation is not None
             else None
         )
-        log_dir = logs_dir(self.output_dir) / "slurm"
+        log_dir = slurm_logs_dir(self.output_dir)
         # A single array job → the chain is empty; submit_drip_feed_start still
         # submits the one array script (and no dispatcher).
         dispatchers = generate_dispatcher_chain(

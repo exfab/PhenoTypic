@@ -4597,13 +4597,13 @@ def _handle_recompile_slurm(
             f"[green]Dashboard: {dashboard_html_path(output_dir)}[/green]"
         )
 
-    from phenotypic.sdk_ import logs_dir
+    from phenotypic.sdk_ import slurm_logs_dir
 
     click.echo("\nRecompile jobs submitted. Monitor progress with:")
     click.echo(f"  Open: {dashboard_html_path(output_dir)}")
     click.echo("  squeue -u $USER --array")
     click.echo(
-        f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log"
+        f"  tail -f {slurm_logs_dir(output_dir) / 'recompile'}/*.log"
     )
     return RunExitCode.SUBMITTED
 

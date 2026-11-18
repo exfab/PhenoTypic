@@ -20,7 +20,7 @@ from ._cli_update_state import (
     SLURM_GENERATION_ENV_VAR,
 )
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
+from phenotypic.sdk_ import event_log_path, slurm_logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
     write_slurm_array_script,
@@ -202,7 +202,7 @@ def generate_array_job_script(
         script_name = f"array_job_chunk{chunk_id}.sh"
 
     # Generate log paths (using SLURM placeholders)
-    log_dir = logs_dir(output_dir) / "slurm" / dataset.name
+    log_dir = slurm_logs_dir(output_dir) / dataset.name
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{dataset.name}_%A_%a.log"
 
@@ -545,7 +545,7 @@ else
     {shard_command}
 fi"""
     script_path = slurm_scripts_dir(output_dir) / f"{finalizer_name}.sh"
-    log_path = logs_dir(output_dir) / "slurm" / f"{finalizer_name}_%A_%a.log"
+    log_path = slurm_logs_dir(output_dir) / f"{finalizer_name}_%A_%a.log"
     prelude = SLURM_THREAD_PIN_BASH
     if config.processing_generation:
         prelude += (

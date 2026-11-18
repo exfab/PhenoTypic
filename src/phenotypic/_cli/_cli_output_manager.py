@@ -63,6 +63,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     measurements_tsv_path,
     logs_dir,
+    slurm_logs_dir,
     pipeline_config_candidates,
     pipeline_publication_lock,
     publication_commit,
@@ -1792,7 +1793,7 @@ class OutputManager:
 
         # Create logs directory in the hidden machine-state cache.
         self.logs_dir.mkdir(parents=True, exist_ok=True)
-        (self.logs_dir / "slurm").mkdir(parents=True, exist_ok=True)
+        slurm_logs_dir(self.base_dir).mkdir(parents=True, exist_ok=True)
 
         # Create dataset folders with subdirectories under results/
         for dataset in datasets:

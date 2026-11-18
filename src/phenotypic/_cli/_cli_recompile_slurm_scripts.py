@@ -36,7 +36,7 @@ from phenotypic.sdk_ import (
     dataset_overlays_dir,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
-    logs_dir,
+    slurm_logs_dir,
     progress_dir,
     recompile_dir,
     slurm_scripts_dir,
@@ -266,7 +266,7 @@ def generate_recompile_slurm_scripts(
     if attempt_id is not None:
         script_dir = script_dir / attempt_id
     script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = logs_dir(output_dir) / "slurm" / "recompile"
+    log_dir = slurm_logs_dir(output_dir) / "recompile"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     scripts: list[Path] = []
