@@ -133,9 +133,13 @@ def test_embeddings_get_no_split_and_no_mirror_section(finished_tiny_run_with_em
     assert vector["dtype"] == "FixedSizeList<float16>[8]"  # the stub's hidden size
     assert vector["model"] == "dinov2-vitb14"
     assert vector["producer"] == "MeasureDinoEmbedding"
+    # P4 review Q1: the per-row descriptor index, 0 for a one-descriptor run.
+    index = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/crops"] if c["name"] == "descriptor_index")
+    assert index["dtype"] == "Int16" and "descriptors" in index["desc"]
     readme = (d / "README.md").read_text(encoding="utf-8")
     assert "DinoEmbedding_Embedding" not in readme
     assert "deliverables/embeddings/dinov2-vitb14/crops.parquet" in readme
+    assert "`descriptor_index`" in readme
 
 
 def test_the_aggregate_proof_declares_and_enforces_the_embedding_files(
@@ -238,7 +242,7 @@ def test_a_corrupt_embedding_fails_finalization_and_changes_no_deliverable(two_k
     assert result.exit_code != 0, result.output
     text = result.output + repr(result.exception)
     assert "plate_2.ome.zarr" in text
-    assert "--mode measure" in text
+    assert "--mode measure" in text and "every image" in text  # review Q2
     after = _deliverable_snapshot(out)
     assert after.keys() == before.keys()
     changed = [name for name in before if after[name] != before[name]]

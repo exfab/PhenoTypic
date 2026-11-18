@@ -105,7 +105,7 @@ def test_rows_stream_one_row_group_per_store_and_stale_is_skipped(three_stores):
     assert metadata.num_row_groups == 2
     table = pq.read_table(path)
     assert table.column_names == [
-        "Metadata_Dataset", "Metadata_ImageName", "Object_Label", "embedding",
+        "Metadata_Dataset", "Metadata_ImageName", "Object_Label", "descriptor_index", "embedding",
     ]
     assert table.schema.field("embedding").type == pa.list_(pa.float16(), TOY_DIM)
     assert set(table.column("Metadata_ImageName").to_pylist()) == {"p1", "p2"}
@@ -491,3 +491,160 @@ def test_an_embedder_that_runs_out_of_memory_records_no_terminal_failure(
     result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path), extra=["--skip-validation"])
     assert result.exit_code != 0
     assert terminal_failure_index(out) == {}
+
+
+# ---------------------------------------------------------------------------
+# P4 review Q1: a key with several descriptors publishes, warns, tags rows
+# ---------------------------------------------------------------------------
+
+#: A pinned revision whose canonical JSON sorts BEFORE the toy's ``null``, so
+#: an order by canonical JSON and the first-appearance order disagree.
+_PINNED = "0123456789abcdef0123456789abcdef01234567"
+
+
+def _repinned_embedder():
+    """The toy embedder with another revision and pooling: a second descriptor."""
+
+    class Repinned(toy_embedder_class()):
+        def entry_descriptor(self) -> dict:
+            base = super().entry_descriptor()
+            return {**base, "model": {**base["model"], "revision": _PINNED}, "pooling": "box_mean"}
+
+    return Repinned()
+
+
+@pytest.fixture
+def mixed_descriptor_stores(tmp_path, image_with_crop_payload, pipeline_file_a):
+    """``p1`` and ``p3`` carry the toy descriptor; ``p2`` (a mirrored plate) another."""
+    out = tmp_path / "out"
+    mirrored = _mirrored_plate(pipeline_file_a)
+    stores = [
+        _store(out, "p1", image_with_crop_payload),
+        _store(out, "p2", mirrored, _embed(mirrored, _repinned_embedder())),
+        _store(out, "p3", image_with_crop_payload),
+    ]
+    return out, [_latest(store) for store in stores]
+
+
+def test_a_two_descriptor_key_publishes_warns_and_tags_each_row(mixed_descriptor_stores, caplog):
+    import logging
+
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    out, runs = mixed_descriptor_stores
+    with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
+        counts = aggregate_embedding_tables(out, runs)
+    assert counts[KEY]["stale_skipped"] == 0
+
+    (warning,) = [r.getMessage() for r in caplog.records if "descriptor" in r.getMessage()]
+    assert KEY in warning
+    assert "[0]" in warning and "[1]" in warning
+    assert "pooling box_sum" in warning and "pooling box_mean" in warning
+    assert f"revision {_PINNED[:8]}" in warning
+    assert "2 stores" in warning and "1 store" in warning
+    assert "results/ds/zarr/p2.ome.zarr" in warning
+
+    manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
+    descriptors = manifest["entries"][KEY]["descriptors"]
+    # First appearance in sorted store order: p1's descriptor, then p2's.
+    assert [d["pooling"] for d in descriptors] == ["box_sum", "box_mean"]
+    assert descriptors[1]["model"]["revision"] == _PINNED
+
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/crops.parquet")
+    assert table.schema.field("descriptor_index").type == pa.int16()
+    assert not table.schema.field("descriptor_index").nullable
+    for stem, index in (("p1", 0), ("p2", 1), ("p3", 0)):
+        rows = table.filter(pc.equal(table["Metadata_ImageName"], stem))
+        assert rows.num_rows > 0
+        assert set(rows.column("descriptor_index").to_pylist()) == {index}, stem
+        assert descriptors[index]["pooling"] == runs[int(stem[1]) - 1].descriptor[
+            "embeddings"][KEY]["pooling"]
+
+
+def test_a_mixed_descriptor_deliverable_is_byte_stable(mixed_descriptor_stores):
+    """The descriptor order and the indices come from the sorted store order,
+    never from the order the runs are handed in."""
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    out, runs = mixed_descriptor_stores
+    root = out / "deliverables/embeddings"
+    aggregate_embedding_tables(out, runs)
+    first = {p.name: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    aggregate_embedding_tables(out, list(reversed(runs)))
+    second = {p.name: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    assert first == second and set(first) == {"crops.parquet", "manifest.json"}
+
+
+def test_a_single_descriptor_key_tags_every_row_zero(three_stores, caplog):
+    import logging
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    out, runs = three_stores
+    with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
+        aggregate_embedding_tables(out, runs)
+    assert not [r for r in caplog.records if "descriptors" in r.getMessage()]
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/crops.parquet")
+    assert table.schema.field("descriptor_index").type == pa.int16()
+    assert set(table.column("descriptor_index").to_pylist()) == {0}
+    manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
+    assert len(manifest["entries"][KEY]["descriptors"]) == 1
+
+
+def test_schema_json_describes_the_descriptor_index(three_stores):
+    from phenotypic._cli._cli_embedding_deliverables import (
+        aggregate_embedding_tables,
+        embedding_table_schemas,
+    )
+    from phenotypic.util._measurement_outputs import build_output_schema
+
+    out, runs = three_stores
+    aggregate_embedding_tables(out, runs)
+    schema = build_output_schema({}, embedding_tables=embedding_table_schemas(out))
+    rows = {row["name"]: row for row in schema["tables"][f"embeddings/{KEY}"]}
+    assert list(rows) == [
+        "Metadata_Dataset", "Metadata_ImageName", "Object_Label", "descriptor_index", "embedding",
+    ]
+    assert rows["descriptor_index"]["dtype"] == "Int16"
+    assert "manifest.json" in rows["descriptor_index"]["desc"]
+    assert "descriptors" in rows["descriptor_index"]["desc"]
+
+
+def test_the_readme_explains_the_descriptor_index():
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_readme_generator import READMEGenerator
+
+    from tests.unit.cli._preflight_support import make_config
+
+    pipeline = ImagePipeline(meas={"emb": toy_embedder_class()()})
+    section = READMEGenerator(make_config(), pipeline)._generate_embeddings_section()
+    assert "`descriptor_index`" in section
+    assert "`descriptors`" in section
+
+
+# ---------------------------------------------------------------------------
+# P4 review Q2: the remedy is a whole-tree --mode measure
+# ---------------------------------------------------------------------------
+
+
+def test_every_unreadable_store_is_named_with_the_whole_tree_remedy(three_stores):
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    out, runs = three_stores
+    for run in runs[:2]:
+        run.embedding_path("toy-v1", "crops").write_bytes(b"corrupt")
+    with pytest.raises(RuntimeError) as raised:
+        aggregate_embedding_tables(out, runs)
+    message = str(raised.value)
+    assert "results/ds/zarr/p1.ome.zarr" in message
+    assert "results/ds/zarr/p2.ome.zarr" in message
+    assert "--mode measure" in message and f"--output {out}" in message
+    assert "every image" in message
+    assert not (out / "deliverables" / "embeddings").exists()

@@ -35,6 +35,12 @@ if TYPE_CHECKING:
 #: The vector column of every embedding table (spec D1, E5).
 EMBEDDING_COLUMN: Final[str] = "embedding"
 
+#: The ``int16`` column of a run's embedding deliverable naming each row's
+#: entry descriptor: a 0-based index into that key's ``descriptors`` list in
+#: ``deliverables/embeddings/manifest.json`` (#281 P4 review Q1). Never in a
+#: store's own table.
+DESCRIPTOR_INDEX_COLUMN: Final[str] = "descriptor_index"
+
 #: ``files[].media_type`` of an embedding table (spec D3).
 PARQUET_MEDIA_TYPE: Final[str] = "application/vnd.apache.parquet"
 

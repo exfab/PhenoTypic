@@ -331,7 +331,17 @@ No measurements configured in this pipeline."""
             "`Metadata_ImageName` and `Object_Label`. These files are never "
             "joined to metadata. "
             f"`{root}/{EMBEDDINGS_MANIFEST_JSON}` records each file's path, "
-            "row count, sha256, store count and model descriptor.",
+            "row count, sha256, store count and model descriptors.",
+            "",
+            "Each row also carries `descriptor_index` (int16), its 0-based "
+            "position in that file's `descriptors` list in the manifest: the "
+            "model id and revision, vector length, pooling and parameters "
+            "that produced the vector. It is 0 on every row when all stores "
+            "share one descriptor. Stores can differ when `revision` is left "
+            "unpinned (each process loads the hub's latest weights) or when "
+            "part of the run was re-measured with other settings; "
+            "finalization then logs a warning. Compare vectors only within "
+            "one `descriptor_index`.",
             "",
             "| Embedder | File |",
             "|----------|------|",

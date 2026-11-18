@@ -8,10 +8,23 @@ its measurement table, from **the run folder the image's record certifies**
     deliverables/embeddings/manifest.json
 
 Each file holds the master's intrinsic identity (``Metadata_Dataset``,
-``Metadata_ImageName``) plus the table's own key columns and ``embedding``,
-so a row joins to the master on ``(Metadata_Dataset, Metadata_ImageName,
-Object_Label)``. These files are Parquet only: never joined to metadata,
-never in the master, the mirror, a split or any TSV (spec E5).
+``Metadata_ImageName``) plus the table's own key columns,
+``descriptor_index`` and ``embedding``, so a row joins to the master on
+``(Metadata_Dataset, Metadata_ImageName, Object_Label)``. These files are
+Parquet only: never joined to metadata, never in the master, the mirror, a
+split or any TSV (spec E5).
+
+**One key, several descriptors** (review I2, user decision Q1). A key's
+stores may disagree on the entry descriptor -- the entry minus ``binds``,
+``files`` and ``stale``: another resolved revision (``revision=None``
+resolves the hub's latest per process), another pooling or producer
+parameter set (a partly re-measured tree). Finalization still publishes,
+logs one warning per such key naming each descriptor with its store count
+and a few stores, and tags every row with ``descriptor_index``, an
+``int16`` index into the key's manifest ``descriptors`` list. That list is
+in order of first appearance over the sorted store paths, so it and the
+indices are byte-stable. The column is there with a single descriptor too
+(``0`` everywhere), so the schema never depends on the data.
 
 **Two phases, so a failure changes no deliverable** (review I1).
 :func:`stage_embedding_deliverables` runs **before** finalization writes
@@ -37,10 +50,12 @@ does not are removed. :func:`aggregate_embedding_tables` is the two in one.
   changes the objmap rewrites the root, which voids the image's record), so
   this is a defence, not a state users see.
 - An entry that is **not stale but cannot be read** fails finalization, as a
-  master that cannot be built does. It never revokes measurement authority:
-  the image's record still verifies and ``resolve_run_state`` still reads it
-  ``verified`` (D9), so the remedy is a same-pipeline ``--mode measure``,
-  which rewrites the embeddings without detecting again.
+  master that cannot be built does. Every such store is named in the one
+  error, not only the first. It never revokes measurement authority: the
+  image's record still verifies and ``resolve_run_state`` still reads it
+  ``verified`` (D9), so the remedy is a same-pipeline ``--mode measure``
+  over the whole run, which re-embeds (and re-measures) every image without
+  detecting again (user decision Q2: there is no scoped remedy).
 """
 
 from __future__ import annotations
@@ -71,6 +86,13 @@ EMBEDDINGS_MANIFEST_PROOF_NAME: Final[str] = "embeddings_manifest"
 #: Entry fields that describe one store's file rather than the table's kind;
 #: the manifest's ``descriptors`` leave them out (spec D3).
 _PER_STORE_FIELDS: Final[frozenset[str]] = frozenset({"binds", "files", "stale"})
+
+#: The largest ``descriptor_index`` an ``int16`` holds.
+_MAX_DESCRIPTOR_INDEX: Final[int] = 2**15 - 1
+
+#: How many stores a warning or an error names before summarizing the rest.
+_EXAMPLE_STORES: Final[int] = 3
+_NAMED_UNREADABLE: Final[int] = 10
 
 
 def _entries(run: "TableRun") -> Mapping[str, object]:
@@ -126,14 +148,23 @@ def _store_identity(output_dir: Path, store: Path) -> tuple[str, str, str]:
     return relative.as_posix(), dataset, stem
 
 
-def _with_identity(table: "pa.Table", dataset: str, image: str) -> "pa.Table":
-    """Prepend ``Metadata_Dataset`` and ``Metadata_ImageName`` to *table*."""
+def _with_identity(
+    table: "pa.Table", dataset: str, image: str, descriptor_index: int
+) -> "pa.Table":
+    """Prepend ``Metadata_Dataset`` and ``Metadata_ImageName`` to *table*, and
+    insert ``descriptor_index`` just before ``embedding``."""
     import pyarrow as pa  # type: ignore[import-untyped]
 
     from phenotypic.schema import EXPERIMENT, IMAGE
+    from phenotypic.sdk_._embedding_tables import DESCRIPTOR_INDEX_COLUMN, EMBEDDING_COLUMN
 
     table = table.replace_schema_metadata(None)
     rows = table.num_rows
+    table = table.add_column(
+        table.schema.get_field_index(EMBEDDING_COLUMN),
+        pa.field(DESCRIPTOR_INDEX_COLUMN, pa.int16(), nullable=False),
+        pa.array([descriptor_index] * rows, type=pa.int16()),
+    )
     for name, value in ((str(IMAGE.IMAGE_NAME), image), (str(EXPERIMENT.DATASET), dataset)):
         table = table.add_column(
             0,
@@ -155,13 +186,31 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _unreadable(exc: Exception, key: str, relative: str) -> RuntimeError:
+@dataclass(frozen=True)
+class _Unreadable:
+    """One non-stale entry staging could not read."""
+
+    relative: str
+    key: str
+    reason: str
+
+
+def _unreadable_error(output_dir: Path, failures: Sequence[_Unreadable]) -> RuntimeError:
+    """The finalization error naming every unreadable store and the remedy (Q2)."""
+    named = "; ".join(
+        f"{failure.relative} ({failure.key}): {failure.reason}"
+        for failure in failures[:_NAMED_UNREADABLE]
+    )
+    if len(failures) > _NAMED_UNREADABLE:
+        named += f"; and {len(failures) - _NAMED_UNREADABLE} more"
     return RuntimeError(
-        f"{exc}. Measurement authority is unaffected (embeddings are additive), "
-        f"but finalization cannot publish deliverables/embeddings/{key}.parquet "
-        f"without {relative}, so it published nothing. Re-measure the image "
-        "with the same pipeline (--mode measure) to rewrite its embeddings, "
-        "then finalize again."
+        f"{len(failures)} embedding table(s) cannot be read: {named}. "
+        "Measurement authority is unaffected (embeddings are additive), but "
+        "finalization cannot publish deliverables/embeddings/ without them, "
+        "so it published nothing. To rewrite them, re-run the same pipeline "
+        f"with --mode measure --output {output_dir}: that re-embeds and "
+        "re-measures every image of the run (it never detects again), then "
+        "finalizes."
     )
 
 
@@ -179,10 +228,16 @@ class _KeyPlan:
     key: str
     readable: list["TableRun"] = field(default_factory=list)
     stale: list[str] = field(default_factory=list)
-    #: canonical JSON -> each distinct shared descriptor (no per-store fields).
+    #: canonical JSON -> each distinct shared descriptor (no per-store fields),
+    #: in order of first appearance over the sorted stores: the manifest's
+    #: ``descriptors`` order, which ``descriptor_index`` indexes.
     descriptors: dict[str, Mapping[str, object]] = field(default_factory=dict)
     #: store relative path -> its canonical shared descriptor.
     descriptor_of: dict[str, str] = field(default_factory=dict)
+
+    def descriptor_index(self, relative: str) -> int:
+        """The position of *relative*'s descriptor in :attr:`descriptors`."""
+        return list(self.descriptors).index(self.descriptor_of[relative])
 
 
 def _plan_keys(
@@ -211,20 +266,74 @@ def _plan_keys(
             if isinstance(entry, Mapping):
                 shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
                 canonical = _canonical(shared)
-                plan.descriptors[canonical] = shared
+                plan.descriptors.setdefault(canonical, shared)
                 plan.descriptor_of[relative] = canonical
     return [plans[key] for key in sorted(plans)]
 
 
-def _check_key_plan(plan: _KeyPlan) -> None:
-    """The per-key policy checks, run before any file is staged.
+def _short(value: object) -> str:
+    """The first 8 characters of a digest or revision, or ``none``."""
+    return str(value)[:8] if value else "none"
 
-    Today a key may carry several distinct descriptors (another revision,
-    pooling or device), and the manifest lists them all. A policy on that
-    (review I2, user question Q1) goes **here**: it sees every readable
-    store's descriptor (:attr:`_KeyPlan.descriptor_of`) before a byte is
-    written, so a refusal leaves every deliverable as it was.
+
+def _descriptor_summary(descriptor: Mapping[str, object]) -> str:
+    """``revision <sha8>, pooling <p>, params <sha8>``: one descriptor, briefly."""
+    model = descriptor.get("model")
+    producer = descriptor.get("producer")
+    revision = model.get("revision") if isinstance(model, Mapping) else None
+    params = producer.get("params_sha256") if isinstance(producer, Mapping) else None
+    return (
+        f"revision {_short(revision)}, pooling {descriptor.get('pooling')}, "
+        f"params {_short(params)}"
+    )
+
+
+def _warn_on_mixed_descriptors(plan: _KeyPlan) -> None:
+    """Log one warning when *plan*'s stores carry more than one descriptor (Q1).
+
+    Names each descriptor by its manifest index, briefly (revision, pooling,
+    producer parameter digest; plus a digest of the whole descriptor when
+    two would otherwise read alike), with its store count and the first few
+    stores. Publication goes on: every row's ``descriptor_index`` says which
+    descriptor its vector came from.
+
+    Raises:
+        RuntimeError: If the key has more descriptors than an ``int16``
+            index can name.
     """
+    if len(plan.descriptors) <= 1:
+        return
+    if len(plan.descriptors) > _MAX_DESCRIPTOR_INDEX + 1:
+        raise RuntimeError(
+            f"embedding key {plan.key!r} has {len(plan.descriptors)} distinct "
+            "descriptors, more than descriptor_index (int16) can name"
+        )
+    stores: dict[str, list[str]] = {canonical: [] for canonical in plan.descriptors}
+    for relative, canonical in plan.descriptor_of.items():
+        stores[canonical].append(relative)
+    summaries = [_descriptor_summary(d) for d in plan.descriptors.values()]
+    if len(set(summaries)) < len(summaries):
+        summaries = [
+            f"{summary}, descriptor {hashlib.sha256(canonical.encode()).hexdigest()[:8]}"
+            for summary, canonical in zip(summaries, plan.descriptors)
+        ]
+    parts = []
+    for index, (canonical, summary) in enumerate(zip(plan.descriptors, summaries)):
+        held = sorted(stores[canonical])
+        examples = ", ".join(held[:_EXAMPLE_STORES]) + (
+            ", ..." if len(held) > _EXAMPLE_STORES else ""
+        )
+        noun = "store" if len(held) == 1 else "stores"
+        parts.append(f"[{index}] {summary}: {len(held)} {noun} ({examples})")
+    logger.warning(
+        "Embedding key %r mixes %d entry descriptors across its stores, so its "
+        "vectors are not all comparable. Publishing all of them; each row's "
+        "descriptor_index names its descriptor in manifest.json: %s. Pin "
+        "the embedder's revision to a commit for one descriptor per run.",
+        plan.key,
+        len(plan.descriptors),
+        "; ".join(parts),
+    )
 
 
 @dataclass
@@ -326,16 +435,19 @@ def _stage_key(
     output_dir: Path,
     plan: _KeyPlan,
     identities: Mapping[Path, tuple[str, str, str]],
+    unreadable: list[_Unreadable],
 ) -> tuple[Path, Path, int]:
     """Stream *plan*'s readable tables into a temporary beside the key's target.
+
+    An entry that cannot be read is appended to *unreadable* and skipped, so
+    the caller can name every such store at once and then publish nothing.
 
     Returns:
         ``(target, temporary, rows)``.
 
     Raises:
-        RuntimeError: If an entry cannot be read (naming the store and the
-            remedy) or two stores' tables differ in schema. The temporary is
-            removed first.
+        RuntimeError: If two stores' tables differ in schema. The temporary
+            is removed first.
     """
     import tempfile
 
@@ -362,8 +474,9 @@ def _stage_key(
             try:
                 table = read_embedding_entry(run.store, plan.key, _entries(run).get(plan.key))
             except EmbeddingTableUnreadableError as exc:
-                raise _unreadable(exc, plan.key, relative) from exc
-            table = _with_identity(table, dataset, image)
+                unreadable.append(_Unreadable(relative, plan.key, exc.reason))
+                continue
+            table = _with_identity(table, dataset, image, plan.descriptor_index(relative))
             if writer is None:
                 writer = pq.ParquetWriter(
                     temp,
@@ -405,12 +518,14 @@ def stage_embedding_deliverables(
 
     For each entry key any run declares, the rows of every readable run's
     table are streamed, store by store in store-path order, with
-    ``Metadata_Dataset`` and ``Metadata_ImageName`` prepended. The manifest
-    records, per key, the file's path, row count and sha256, how many stores
-    it holds, the stores skipped as stale, and the distinct entry
-    descriptors (each store's ``binds``, ``files`` and ``stale`` left out).
-    No wall-clock value is written, so identical runs give identical bytes
-    (spec C11).
+    ``Metadata_Dataset`` and ``Metadata_ImageName`` prepended and
+    ``descriptor_index`` before ``embedding``. The manifest records, per key,
+    the file's path, row count and sha256, how many stores it holds, the
+    stores skipped as stale, and the distinct entry descriptors (each store's
+    ``binds``, ``files`` and ``stale`` left out) in order of first
+    appearance, the order ``descriptor_index`` indexes. A key with more than
+    one descriptor is published with a warning (review Q1). No wall-clock
+    value is written, so identical runs give identical bytes (spec C11).
 
     Args:
         output_dir: Run output root.
@@ -424,9 +539,10 @@ def stage_embedding_deliverables(
         :meth:`~StagedEmbeddingDeliverables.discard`.
 
     Raises:
-        RuntimeError: If a non-stale entry cannot be read (its message names
-            the store and the ``--mode measure`` remedy), or two stores'
-            tables for one key have different schemas.
+        RuntimeError: If any non-stale entry cannot be read (its message
+            names every such store and the whole-run ``--mode measure``
+            remedy), or two stores' tables for one key have different
+            schemas.
         ValueError: If a run's store is not a store of this run.
     """
     output_dir = Path(output_dir)
@@ -435,16 +551,17 @@ def stage_embedding_deliverables(
     ordered = sorted(with_embeddings, key=lambda run: identities[run.store][0])
     plans = _plan_keys(ordered, identities)
     for plan in plans:
-        _check_key_plan(plan)
+        _warn_on_mixed_descriptors(plan)
 
     staged = StagedEmbeddingDeliverables(output_dir, {}, {}, None)
     entries: dict[str, object] = {}
+    unreadable: list[_Unreadable] = []
     try:
         for plan in plans:
             published: Path | None = None
             rows = 0
             if plan.readable:
-                published, temp, rows = _stage_key(output_dir, plan, identities)
+                published, temp, rows = _stage_key(output_dir, plan, identities, unreadable)
                 staged.staged[published] = temp
             staged.counts[plan.key] = {"rows": rows, "stale_skipped": len(plan.stale)}
             entries[plan.key] = {
@@ -459,8 +576,10 @@ def stage_embedding_deliverables(
                 ),
                 "stores": len(plan.readable),
                 "stale_skipped": sorted(plan.stale),
-                "descriptors": [plan.descriptors[name] for name in sorted(plan.descriptors)],
+                "descriptors": list(plan.descriptors.values()),
             }
+        if unreadable:
+            raise _unreadable_error(output_dir, unreadable)
     except BaseException:
         staged.discard()
         raise

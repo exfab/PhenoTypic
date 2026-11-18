@@ -1368,8 +1368,19 @@ per store; `promote` runs after the splits and before `metrics.json`,
 replacing each target and writing `manifest.json` last. A `stale` entry
 (`stale is not False`, the one predicate) is skipped with a warning and
 counted; a non-stale entry it cannot read **raises**, failing finalization
-like the master, and the image stays `verified` (D9), so the remedy is a
-same-pipeline `--mode measure`. On the `shard_paths` branch only the
+like the master, naming every such store, and the image stays `verified`
+(D9), so the remedy is a same-pipeline `--mode measure` over the whole run,
+which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,
+`phenotypic-wait`'s exit `5` points at `slurm_logs_dir`, where the
+finalizer's log says this). A key whose stores carry **different entry
+descriptors** (entry minus `binds`/`files`/`stale`: an unpinned `revision`
+resolving to different commits, a partly re-measured tree) still publishes,
+with one warning per key, and every row carries an `int16`
+`descriptor_index` into the key's manifest `descriptors`, listed in order
+of first appearance over the sorted stores, so bytes stay stable; it is
+`0` everywhere for one descriptor, so the schema never depends on the
+data (Q1). The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
+in-scope `MeasureDinoEmbedding(revision=None)`. On the `shard_paths` branch only the
 sources the projection kept contribute. Paths are compared unresolved, so a
 symlinked `results/` and a DVC symlink cache work. Parquet only, never
 joined to metadata. The aggregate proof declares `manifest.json` and each

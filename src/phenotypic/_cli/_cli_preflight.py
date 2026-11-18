@@ -55,6 +55,7 @@ FindingCode = Literal[
     "PF-MISSING-MODULE",
     "PF-LICENSE",
     "PF-WEIGHTS-UNCACHED",
+    "PF-EMBED-REVISION-UNPINNED",
     "PF-SBATCH-REJECTED",
     "PF-SBATCH-UNAVAILABLE",
     "PF-TIME-OVER-PARTITION",
@@ -120,6 +121,13 @@ HINTS: dict[str, str] = {
         "Read the model's license, then accept it for this run, e.g. "
         "`export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` (comma-separate "
         "several). Gated Hugging Face models also need `uv run hf auth login`."
+    ),
+    "PF-EMBED-REVISION-UNPINNED": (
+        "Pin the embedder's `revision` to a Hugging Face commit hash in the "
+        "pipeline file (the commit each run loaded is recorded in "
+        "deliverables/embeddings/manifest.json). Unpinned, the run still "
+        "publishes, and finalization tags each row with the descriptor_index "
+        "of the weights it was embedded with."
     ),
     "PF-WEIGHTS-UNCACHED": (
         "The weights will be downloaded by the first worker that needs them, "
@@ -632,6 +640,33 @@ def check_model_weights_cached(context: PreflightContext) -> list[PreflightFindi
                 )
             )
     return findings
+
+
+def check_embedding_revision_pinned(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-EMBED-REVISION-UNPINNED``: a DINO embedder that loads the hub's latest weights.
+
+    #281 P4 review Q1. With ``revision=None`` every process resolves the
+    hub's latest commit, so two runs, or two workers of one run, may embed
+    with different weights though the pipeline file is the same. A warning,
+    never an error: the run publishes, and finalization tags each row with
+    its descriptor. Only in-scope embedders count (``process`` mode never
+    runs ``meas``).
+    """
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    return [
+        PreflightFinding(
+            code="PF-EMBED-REVISION-UNPINNED",
+            severity="warning",
+            message=(
+                f"{'/'.join(path)} ({type(operation).__name__}) sets no "
+                "revision: weights not pinned; vectors may change between "
+                "runs or workers"
+            ),
+        )
+        for path, operation in operations_in_scope(context)
+        if isinstance(operation, MeasureDinoEmbedding) and operation.revision is None
+    ]
 
 
 def _severity_for(affected: int, total: int) -> Severity:
@@ -1657,6 +1692,7 @@ CHECKS: tuple[Check, ...] = (
     check_optional_modules,
     check_model_licenses,
     check_model_weights_cached,
+    check_embedding_revision_pinned,
     check_slurm_profiles,
     check_partition_time,
     check_staged_slurm_limits,

@@ -122,8 +122,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         version: DINO version, ``2`` (DINOv2, patch 14, ungated) or ``3``
             (DINOv3, patch 16, gated by the DINOv3 License).
         revision: The weights' Hugging Face revision, a commit hash, branch
-            or tag. ``None`` loads the hub's latest. A pin lives in the
-            pipeline file, so changing it changes the pipeline's hash.
+            or tag. Pin it to a commit for reproducible vectors. ``None``
+            loads the hub's latest in each process, so two runs, or two
+            workers of one run, may embed with different weights while the
+            pipeline file stays the same; the run preflight warns
+            (``PF-EMBED-REVISION-UNPINNED``), and finalization tags each
+            deliverable row with the ``descriptor_index`` of the weights it
+            came from. A pin lives in the pipeline file, so changing it
+            changes the pipeline's hash.
         regions: ``"objects"`` embeds each detected colony; ``"grid"``
             embeds each cell of ``grid`` and needs no detection.
         grid: A :class:`~phenotypic.grid.ManualGridFinder` with the rig's

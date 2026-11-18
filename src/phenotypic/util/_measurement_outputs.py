@@ -517,9 +517,20 @@ def _schema_row(
     }
 
 
+#: ``schema.json``'s ``desc`` of an embedding deliverable's ``descriptor_index``
+#: column, which no schema member owns (#281 P4 review Q1).
+DESCRIPTOR_INDEX_DESC = (
+    "Which model descriptor produced this row's vector: a 0-based index into "
+    "this table's descriptors list in deliverables/embeddings/manifest.json "
+    "(model id and revision, vector length, pooling, producer parameters). "
+    "0 on every row when all stores share one descriptor; compare vectors "
+    "only within one index."
+)
+
+
 def _embedding_rows(embedding: Mapping[str, object]) -> list[dict[str, object]]:
     """The ``schema.json`` rows of one embedding table (#281 spec C12, E5)."""
-    from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
+    from phenotypic.sdk_._embedding_tables import DESCRIPTOR_INDEX_COLUMN, EMBEDDING_COLUMN
 
     producer = str(embedding["producer"])
     columns = embedding["columns"]
@@ -527,6 +538,12 @@ def _embedding_rows(embedding: Mapping[str, object]) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for raw_column, dtype in columns.items():
         column = str(raw_column)
+        if column == DESCRIPTOR_INDEX_COLUMN:
+            # Written by finalization, not by the embedder; no member owns it.
+            row = _schema_row(column, str(dtype), None, None)
+            row["desc"] = DESCRIPTOR_INDEX_DESC
+            rows.append(row)
+            continue
         if column != EMBEDDING_COLUMN:
             # A key or identity column: written as a key, not measured.
             rows.append(_schema_row(column, str(dtype), _member_for_column(column), None))
@@ -576,6 +593,8 @@ def build_output_schema(
     ``FixedSizeList<float16>[D]``, and its row also carries ``model``, the
     model folder. Their key and identity columns resolve as any column does,
     with ``producer: None``, because the embedder writes them as keys.
+    ``descriptor_index`` (``Int16``) has no member; its ``desc`` says it
+    indexes the manifest's ``descriptors`` list.
 
     Args:
         tables: Table name -> the table, as a polars or pandas frame, or as a

@@ -113,6 +113,7 @@ Earlier releases read any suffix in `--mode full`, so a comma-separated
 | `PF-MISSING-MODULE` | An operation needs a package that is not installed | error | Install the extra the message names |
 | `PF-LICENSE` | A detector needs gated weights whose license the run has not accepted | error | `export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` |
 | `PF-WEIGHTS-UNCACHED` | A detector's weights are not in the local cache | warning | Pre-download them on a node with network access |
+| `PF-EMBED-REVISION-UNPINNED` | A `MeasureDinoEmbedding` the mode runs sets no `revision`, so each process loads the hub's latest weights and vectors may change between runs or workers | warning | Pin `revision` to a commit hash |
 | `PF-SBATCH-REJECTED` | `sbatch --test-only` names a configuration fault in a profile the run submits: an invalid partition, account, QoS, GRES or option | error | Fix the option `sbatch` names |
 | `PF-SBATCH-UNAVAILABLE` | A profile could not be confirmed: no `sbatch`, a timeout, a controller fault, or a failure a real submission may queue through (e.g. every node of the partition drained) | warning | Read `sbatch`'s message; a real submission still reports real failures |
 | `PF-TIME-OVER-PARTITION` | The requested time exceeds the partition's `MaxTime` (for a partition list, per the cluster's `EnforcePartLimits`) | warning | Lower the time, or choose another partition |
