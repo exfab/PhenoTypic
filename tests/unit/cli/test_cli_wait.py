@@ -1571,3 +1571,36 @@ def test_m6_an_active_or_unknown_answer_is_asked_again(
     _cli_wait._live_jobs(tmp_path)
     _cli_wait._live_jobs(tmp_path)
     assert asked == ["999", "999"]
+
+
+# ---------------------------------------------------------------------------
+# #281 P4 review Q2: an unpublished end points at the finalizer log
+# ---------------------------------------------------------------------------
+
+
+def test_an_unpublished_end_points_at_the_finalizer_log(monkeypatch, tmp_path):
+    """The run state cannot say why the finalizer failed (a corrupt
+    embedding, an out-of-memory kill), so the waiter names where its log is."""
+    from phenotypic.sdk_ import slurm_logs_dir
+
+    _patch_seams(monkeypatch, completion="complete", jobs=[NONE], published=lambda d, g: False)
+    lines = []
+    assert (
+        wait_for_run(tmp_path, sleep=lambda s: None, echo=lines.append)
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+    (hint,) = [line for line in lines if "finalizer" in line]
+    assert str(slurm_logs_dir(tmp_path)) in hint
+    assert "published nothing" in hint
+
+
+def test_a_cancelled_end_does_not_blame_the_finalizer(monkeypatch, tmp_path):
+    _patch_seams(monkeypatch, completion="complete", jobs=[NONE], published=lambda d, g: False)
+    monkeypatch.setattr(_cli_wait, "_cancelled", lambda d, g: True)
+    lines = []
+    assert (
+        wait_for_run(tmp_path, sleep=lambda s: None, echo=lines.append)
+        is RunExitCode.ENDED_UNPUBLISHED
+    )
+    assert not [line for line in lines if "finalizer log" in line]
+    assert any("cancelled" in line for line in lines)

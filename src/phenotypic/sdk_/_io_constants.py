@@ -967,6 +967,10 @@ DIR_MEASUREMENTS_BY_CATEGORY: Final[str] = "measurements_by_category"
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
 
+#: Subdirectory of :data:`DIR_LOGS` holding every SLURM job's log, the
+#: finalizer's included: ``<output>/.phenotypic/logs/slurm/``.
+DIR_SLURM_LOGS: Final[str] = "slurm"
+
 #: HDF5 image-state subdirectory of a LEGACY run: ``<output>/results/<ds>/hdf/``.
 #: Module-private since Phase 6. The only thing here that still needs it is
 #: :func:`datasets_needing_migration`, the predicate that refuses an
@@ -2638,6 +2642,16 @@ def measurements_by_category_dir(output_dir: Path) -> Path:
 def logs_dir(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/logs/``."""
     return phenotypic_cache_dir(output_dir) / DIR_LOGS
+
+
+def slurm_logs_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/logs/slurm/``, where SLURM jobs write their logs.
+
+    The per-image arrays, the dispatchers and the finalizer of an ordinary or
+    staged run write directly into it (a recompile's into its ``recompile/``
+    subfolder).
+    """
+    return logs_dir(output_dir) / DIR_SLURM_LOGS
 
 
 def chunks_dir(progress_dir_: Path) -> Path:

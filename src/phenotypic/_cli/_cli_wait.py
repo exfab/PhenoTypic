@@ -13,8 +13,10 @@ returned locally (spec C10):
   terminal failure record). ``--accept-failures`` maps a final ``3`` to ``0``;
 * ``5`` (``ENDED_UNPUBLISHED``) when no job is alive and the run ended without
   finishing: this submission published nothing (a finalizer killed for running
-  out of memory), or some images were never attempted. Re-run the same
-  command;
+  out of memory, or one that refused an unreadable embedding), or some images
+  were never attempted. The run state cannot say why a finalizer failed, so
+  the waiter names the folder of its log (``slurm_logs_dir``). Re-run the
+  same command once the cause is fixed;
 * ``6`` (``WAIT_TIMEOUT``) after ``--timeout-seconds``;
 * ``1`` (``ERROR``) when polling itself kept failing, and ``130`` when the
   waiter is interrupted. Neither cancels anything.
@@ -399,6 +401,29 @@ def _accepted_failures_line(count: int | None) -> str:
     )
 
 
+def _unpublished_line(output_dir: Path, *, cancelled: bool) -> str:
+    """Why an ``ENDED_UNPUBLISHED`` run with every image resolved ended.
+
+    The run state records **that** the finalizer did not publish, never
+    **why**: a non-stale embedding it could not read, a finalizer killed for
+    running out of memory or time. So the line names where the finalizer's
+    log is (#281 P4 review Q2), unless the submission was cancelled.
+    """
+    if cancelled:
+        return (
+            "phenotypic-wait: this submission was cancelled before it "
+            "published. Re-run the same command to finish the run."
+        )
+    from phenotypic.sdk_ import slurm_logs_dir
+
+    return (
+        "phenotypic-wait: no job is alive and this submission published "
+        "nothing, so its finalizer failed or never ran; see the finalizer "
+        f"log under {slurm_logs_dir(output_dir)} for why. Re-run the same "
+        "command once that cause is fixed."
+    )
+
+
 def _report_outcome(
     outcome: RunExitCode,
     snapshot: RunSnapshot,
@@ -406,6 +431,8 @@ def _report_outcome(
     *,
     accept_failures: bool,
     echo: Callable[[str], object],
+    output_dir: Path,
+    cancelled: bool = False,
 ) -> RunExitCode:
     """Print why the wait ended, apply ``--accept-failures``, return the code."""
     if outcome is RunExitCode.COMPLETE_WITH_FAILURES:
@@ -424,6 +451,8 @@ def _report_outcome(
             "neither a success nor a terminal failure record, so the run "
             "did not finish. Re-run the same command to process them."
         )
+    elif outcome is RunExitCode.ENDED_UNPUBLISHED:
+        echo(_unpublished_line(output_dir, cancelled=cancelled))
     echo(f"phenotypic-wait: {outcome.name} (exit {int(outcome)})")
     return outcome
 
@@ -486,8 +515,10 @@ def wait_for_run(
             live = _live_jobs(output_dir)
             snapshot = _run_snapshot(output_dir)
             failures = 0
+            cancelled = False
             if not live:
                 failures = _generation_failures(output_dir, generation)
+                cancelled = _cancelled(output_dir, generation)
                 outcome = decide_wait_outcome(
                     snapshot.completion,
                     live,
@@ -495,7 +526,7 @@ def wait_for_run(
                     process_run=_is_process_run(output_dir),
                     unresolved=snapshot.unresolved,
                     generation_failures=failures,
-                    cancelled=_cancelled(output_dir, generation),
+                    cancelled=cancelled,
                 )
         except Exception as exc:  # noqa: BLE001 -- every poll error is retried
             errors += 1
@@ -528,6 +559,8 @@ def wait_for_run(
                     failures,
                     accept_failures=accept_failures,
                     echo=echo,
+                    output_dir=output_dir,
+                    cancelled=cancelled,
                 )
         if timeout_seconds is not None and elapsed >= timeout_seconds:
             echo(
