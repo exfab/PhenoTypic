@@ -43,9 +43,11 @@ details that are load-bearing rather than incidental:
   reach for `set_provenance_status(image, "in_progress")` — that status is also
   non-terminal and raises the very error it looks like it prevents.
 - The change of meaning is fenced in the work id:
-  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `4`;
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `5`;
   2 → 3 is the per-image figures, see **Per-image figures** below; 3 → 4 is
-  single-channel integer inputs normalised to float32 `[0, 1]` at construction)
+  single-channel integer inputs normalised to float32 `[0, 1]` at construction;
+  4 → 5 is process mode running `meas` into the store, see **Process mode runs
+  `meas`** below)
   rides beside `process_format` in the process-only branch of
   `processing_configuration_digest_from_values`, **not** in the base payload —
   a base placement would cold-start every in-flight `full` and `measure`
@@ -60,7 +62,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 **`phenotypic_cli` has a read-only half and a mutating half, in that order.**
 The read-only half parses and validates options, scans the inputs, runs the
 refusals that cannot be skipped (the GPU placement refusal, the grid-preset
-refusal, the refusal of a
+refusal, the process-mode lost-table refusal in **Process mode runs `meas`**
+below, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
 `--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
 reference-metadata refusals in **Reference metadata** below), loads the pipeline,
@@ -84,14 +87,57 @@ and a row in the table in `docs/source/tutorials/pages/cli_batch_processing.md`;
 
 **Mode scoping.** A requirement check iterates `operations_in_scope(context)`,
 never the whole operation tree: `MODE_SLOTS` says which root slots each mode
-executes (`full`: all; `process`: `ops`; `measure`: `meas`, `post`, `filters`,
-`model`), and a pipeline nested in `ops` contributes only its own `ops`.
-Walking everything would refuse a `process` run over a measurer it never runs.
+executes (`full`: all; `process`: `ops`, `meas`; `measure`: `meas`, `post`,
+`filters`, `model`), and a pipeline nested in `ops` contributes only its own
+`ops`. In `process` mode the walk also drops each root `meas` entry whose
+`requires_objects` is true (`_skipped_in_process_mode`), because process mode
+skips it: the walk is what runs. Walking everything would refuse a `process`
+run over a measurer it never runs.
 
 **Operations declare their own requirements** through
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## Process mode runs `meas` (`_cli_process_meas.py`)
+
+#281 spec E4, user decision 2026-11-18: **run what fits in a store, skip the
+rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
+`post`/`filters`/`model` or builds deliverables.
+
+- **Runs:** each `meas` entry whose `requires_objects` is false. Today that is
+  only a grid embedder (`MeasureEmbedding(regions="grid")`).
+  `MeasureFeatures.requires_objects` is `True`; `MeasureEmbedding` overrides
+  it. `process_single_apply_only_core` calls `embed_in_process_mode` after
+  `apply()`, inside the same provenance and reference context. It passes the
+  payloads through `write_process_only_layer(embeddings=)` to `_save_store`,
+  so the run folder lands in the `.part` before `_consolidate_store_part` and
+  the store stays write-once and consolidated. `upstream=` is passed as
+  before. `measure()` is never called, because every entry it would run
+  needs objects.
+- **Skipped, with one warning line:** each entry that needs objects,
+  including a crop embedder. This is what process mode always did with
+  `meas`. A process store holds no object map, so a table keyed on
+  `Object_Label` would point at labels the store cannot resolve. The CLI
+  prints `Warning: meas:size, meas:shape skipped: process mode stores no
+  objects.` once, in the read-only half; the core logs the same line.
+  Measurer-backed `PlotImage` figures in a process store still work, because
+  the figure binding recomputes in `inspect()`.
+- **Refused:** a runnable entry with a flat output (`--process-format tiff`,
+  `--layer objmap`, `--layer detect_mat`), because its table would be lost.
+  `_refuse_process_meas_it_would_lose` (`phenotypicCLI.py`) raises it as a
+  `click.UsageError` (exit 2), beside the grid-preset refusal: un-skippable,
+  above `--restart`, `--overwrite`, `mint_run_identity` and `--dry-run`.
+  `process_single_apply_only_core` runs the same check,
+  `process_meas_refusal`, before it reads the image, and raises
+  `ProcessMeasRefusedError` (a `ValueError`, never wrapped as a per-image
+  failure), because AutoConvertRaw-GC calls the core directly.
+  `write_process_only_layer` refuses `embeddings=` with a flat format too.
+- **Continuation:** `PROCESS_LAYER_SEMANTICS_REVISION` went 4 → 5, so a
+  process tree resumed across the change re-derives its stores rather than
+  reusing stores that lack the tables it now writes.
+- Pinned by `tests/unit/cli/test_process_mode_measurers.py` and
+  `tests/unit/cli/test_process_store_tables.py`.
 
 ## The grid-preset refusal (`_refuse_grid_preset_unlike_cli_grid`)
 
@@ -120,8 +166,10 @@ table as an argument; they read a run-level plan.
 
 - **Only the operations the mode runs count.** `reference_operations_in_scope`
   is the preflight's mode walk (`operations_run_in_mode`, the function behind
-  `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
-  in `full` mode and not in `process` mode.
+  `operations_in_scope`). A `SubtractBlank` inside a measurer that needs
+  objects needs the table in `full` mode and not in `process` mode, which
+  skips such measurers. One inside a `meas` entry process mode runs (an
+  embedder that needs no objects, #281 P5) needs it in both.
 - **Process mode uses `--metadata` only when those operations exist.** It is
   then snapshotted byte-for-byte to `.phenotypic/reference_metadata.<ext>`
   (the table's own suffix, `.csv` or `.tsv`)
@@ -916,7 +964,7 @@ straight to `deliverables/` any more.
 | Staged Stage 1 | only the bindings `split_pipeline_at_gpu` gave to `pre_pipeline`, after the pre-GPU ops | Stage 1's `save_image_store(figures=)` | no; Stage 3 publishes |
 | Staged Stage 3 | `keep_image_figures` for Stage 1's bindings, merged with `build_image_figures(post_pipeline, keep_from=<Stage-1 store>)` | `save_image_store(figures=)` | yes |
 | Measure | after `measure()` and **before** the table replace | `replace_image_tables(figures=)`: the same root-last transaction as the tables | yes |
-| Process, `--process-format zarr` | after `pipeline.apply`, before the provenance status is closed | `write_process_only_layer(figures=)` | no `deliverables/` |
+| Process, `--process-format zarr` | after `pipeline.apply` (and `embed`), before the provenance status is closed | `write_process_only_layer(figures=, embeddings=)` | no `deliverables/` |
 | Process, `tiff` (and the `--layer objmap` PNG) | none for the exported file | none | none |
 
 - **Copy-out runs after the store is promoted and before anything marks the

@@ -133,8 +133,12 @@ isolation before attributing it — most of them pass.
   journal, and each process/full/programmatic invocation appends a separately
   typed application with its own pipeline identity. Process output is therefore
   valid input to the normal CLI and browse GUI without losing the process
-  pipeline. A tree of stores is valid `--input`. Skips
-  measurement/deliverables/QC/
+  pipeline. A tree of stores is valid `--input`. Runs the `meas` entries
+  that need no objects (a grid embedder) and stores their tables in each
+  store's run folder; skips object measurers with one warning, and refuses a
+  runnable entry with a flat output (its table would be lost) — see
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) "Process mode runs `meas`".
+  Skips post/deliverables/QC/
   dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
   continuation reuse; switching `--process-format` invalidates continuation
   rather than reusing outputs of the other kind. So does a change in what an
@@ -143,7 +147,9 @@ isolation before attributing it — most of them pass.
   when `--layer objmap` began applying the post-detector op chain, to `3`
   when process stores began carrying figures, and to `4` when single-channel
   integer inputs began to be normalised to float32 `[0, 1]` at construction
-  (their `gray` export changed dtype), so a tree
+  (their `gray` export changed dtype), and to `5` when process mode began
+  running the pipeline's `meas` and writing its tables into each store's run
+  folder (#281 P5), so a tree
   processed under the old semantics is re-derived rather than reused. The
   revision is one integer shared by every layer, so a bump invalidates
   in-flight `--layer gray` continuations too — deliberate; invalidating too much
