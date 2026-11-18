@@ -216,7 +216,12 @@ def file_sha256(path: Path) -> str:
 #:         -> float32) and its ``detect_mat``/``objmap`` exports change values.
 #:         RGB inputs are byte-identical; their continuations are invalidated
 #:         too, which is safe.
-PROCESS_LAYER_SEMANTICS_REVISION = 4
+#: 4 -> 5: process mode runs the pipeline's ``meas`` and writes its tables
+#:         into each store's run folder (#281 spec E4). It used to ignore
+#:         ``meas``, so a tree whose pipeline already had a grid embedder
+#:         would otherwise resume onto stores that lack the tables it now
+#:         writes.
+PROCESS_LAYER_SEMANTICS_REVISION = 5
 
 #: What decoding a camera-RAW input means. Revision 1 is implicit: before spec
 #: 2026-09-24-cli-preflight §10.1, RAW suffixes were routed to skimage/Pillow,
