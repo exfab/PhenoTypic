@@ -1410,15 +1410,15 @@ def _rewrite_store_tables(
         # rewritten must get new inodes (spec D5/D6). These are hard links
         # into the promoted store, so unlinking them in the part leaves the
         # live store untouched. Only that one run folder goes; every other
-        # run is carried as it is.
-        if clear_tables and clear_table_run is None:
-            shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
-        elif clear_tables:
-            assert clear_table_run is not None
-            shutil.rmtree(
-                ngff_.long_path(part / ngff_.TABLES_GROUP / clear_table_run),
-                ignore_errors=True,
-            )
+        # run is carried as it is. Without *clear_tables* nothing goes.
+        if clear_tables:
+            if clear_table_run is None:
+                shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
+            else:
+                shutil.rmtree(
+                    ngff_.long_path(part / ngff_.TABLES_GROUP / clear_table_run),
+                    ignore_errors=True,
+                )
         if clear_figure_run is not None:
             # The copied figure files are HARD LINKS into the live store, like
             # everything copytree cloned above. Removing this run's folder
