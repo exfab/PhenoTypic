@@ -527,7 +527,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 ├── &lt;n&gt;-&lt;sha12&gt;/                         one folder per measuring pipeline
 │   ├── measurements/table.parquet       scalar measurements (was tables/measurements/)
 │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
-│   └── embeddings/&lt;model&gt;/              e.g. dinov2-vitb14
+│   └── embeddings/&lt;model&gt;/&lt;layer&gt;/      e.g. dinov2-vitb14/rgb (or gray)
 │       ├── objects/table.parquet        Object_Label | embedding
 │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
 │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
@@ -536,7 +536,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><code>embedding</code> is <code>FixedSizeList&lt;float16&gt;[D]</code>.</li>
 <li>Every level is a Zarr v3 group document.</li>
-<li>Every subtable is optional. AutoConvertRaw-GC's folder holds only <code>embeddings/&lt;model&gt;/grid-wells/</code> and <code>embeddings/&lt;model&gt;/grid-agar/</code> (E6).</li>
+<li>Every subtable is optional. AutoConvertRaw-GC's folder holds only its named grids under <code>embeddings/&lt;model&gt;/&lt;layer&gt;/</code> (E6).</li>
+<li><code>&lt;layer&gt;</code> is the pixel layer the embedder read (<code>rgb</code>, or <code>gray</code> stacked to three channels), so rgb and gray tables of one embedder never collide (user decision 2026-11-19). An embedding key is <code>&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;</code>.</li>
 <li><code>&lt;model&gt;</code> names the model, so a second model is a sibling folder, never extra columns.</li>
 <li>Nothing goes in <code>ome.series</code> or <code>attributes.ome</code>.</li>
 </ul></li>
@@ -557,7 +558,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span>     <span class="fu">{</span> <span class="dt">&quot;…today&#39;s metadata descriptor…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata_table&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;snapshot_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span><span class="fu">,</span> <span class="dt">&quot;join_keys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;…&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;join_kind&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;embeddings&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/objects&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/rgb/objects&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/grid&quot;</span><span class="fu">:</span>  <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">},</span></span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;upstream&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;1-3f9c2a1b7d04&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;input path relative to --input&gt;&quot;</span><span class="fu">,</span></span>
@@ -726,7 +727,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="odd">
 <td><code>layer</code></td>
 <td><code>"rgb"</code></td>
-<td><code>rgb</code>, or <code>gray</code> stacked to three channels; two copies with different names embed both (user decision 2026-11-19)</td>
+<td><code>rgb</code>, or <code>gray</code> stacked to three channels; the layer is a folder level, so an rgb and a gray copy coexist with the same name (user decision 2026-11-19)</td>
 </tr>
 <tr class="even">
 <td><code>pooling</code></td>
@@ -803,7 +804,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>E5 Deliverables.</strong> The finalizer aggregates <strong>its own</strong> run folder, chosen per image by D6a:</p>
 <ul>
 <li>the master comes from <code>measurements/</code>, exactly as today;</li>
-<li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key, <code>descriptor_index</code> and <code>embedding</code>;</li>
+<li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key, <code>descriptor_index</code> and <code>embedding</code>;</li>
 <li><code>deliverables/embeddings/manifest.json</code> holds each key's distinct entry descriptors (in first-appearance order over the sorted stores), row count, sha256 and the stores skipped as stale.</li>
 <li><strong>Mixed descriptors</strong> (user decision 2026-11-18, P4 review Q1). Two stores of one key can carry different descriptors: an unpinned <code>revision</code>, a different device (the entry's <code>model.device</code> records the one that ran), or a partial re-measure. Finalization publishes all of them with one warning per key naming each descriptor and its stores. Each row's int16 <code>descriptor_index</code> points into that key's <code>descriptors</code> list, and is <code>0</code> on every row when there is one. The run preflight warns (<code>PF-EMBED-REVISION-UNPINNED</code>) when an in-scope DINO embedder leaves <code>revision</code> unpinned.</li>
 <li><strong>Remedy for an unreadable embedding</strong> (user decision 2026-11-18, Q2): finalization fails, names every such store, and points at a same-pipeline <code>--mode measure</code> over the run, which re-embeds every image. There is no scoped re-embed in v1.</li>
@@ -815,7 +816,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
 <li>A <code>MeasureEmbedding</code> gets no by-feature split and no column section in the deliverables README, which document mirror columns. The README documents the embedding deliverables separately. The vector column is named <code>embedding</code>, and <code>schema.json</code> lists it under each embedding table (C12).</li>
 </ul></li>
-<li><p><strong>Named embedders</strong> (user decision 2026-11-19). <code>MeasureEmbedding</code> takes an optional <code>name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>), for either region. The region string is <code>objects</code> or <code>grid</code> without a name and <code>objects-&lt;name&gt;</code> or <code>grid-&lt;name&gt;</code> with one, so a named table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;region&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>. One pipeline can therefore carry several embedders of one model (two copies with different names), and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
+<li><p><strong>Named embedders</strong> (user decision 2026-11-19). <code>MeasureEmbedding</code> takes an optional <code>name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>), for either region. The region string is <code>objects</code> or <code>grid</code> without a name and <code>objects-&lt;name&gt;</code> or <code>grid-&lt;name&gt;</code> with one, so a named table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;.parquet</code>. One pipeline can therefore carry several embedders of one model (copies with different names, or the same name on different layers), and two embedders sharing a key (model, layer and region) are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
 <li>add two embedders to the pipeline's <code>meas</code>, both <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid")</code> (user decisions 2026-11-19; edges derived from 80 rig1 images and approved on overlays):

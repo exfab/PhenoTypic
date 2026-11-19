@@ -555,7 +555,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   ├── <n>-<sha12>/                         one folder per measuring pipeline
   │   ├── measurements/table.parquet       scalar measurements (was tables/measurements/)
   │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
-  │   └── embeddings/<model>/              e.g. dinov2-vitb14
+  │   └── embeddings/<model>/<layer>/      e.g. dinov2-vitb14/rgb (or gray)
   │       ├── objects/table.parquet        Object_Label | embedding
   │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
   │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
@@ -565,8 +565,11 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 
   - `embedding` is `FixedSizeList<float16>[D]`.
   - Every level is a Zarr v3 group document.
-  - Every subtable is optional. AutoConvertRaw-GC's folder holds only
-    `embeddings/<model>/grid-wells/` and `embeddings/<model>/grid-agar/` (E6).
+  - Every subtable is optional. AutoConvertRaw-GC's folder holds only its
+    named grids under `embeddings/<model>/<layer>/` (E6).
+  - `<layer>` is the pixel layer the embedder read (`rgb`, or `gray` stacked to
+    three channels), so rgb and gray tables of one embedder never collide
+    (user decision 2026-11-19). An embedding key is `<model>/<layer>/<region>`.
   - `<model>` names the model, so a second model is a sibling folder, never extra
     columns.
   - Nothing goes in `ome.series` or `attributes.ome`.
@@ -597,7 +600,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
         "metadata":     { "…today's metadata descriptor…" },
         "metadata_table": { "snapshot_sha256": "…", "join_keys": ["…"], "join_kind": "…" },
         "embeddings": {
-          "dinov2-vitb14/objects": { "…entry…" },
+          "dinov2-vitb14/rgb/objects": { "…entry…" },
           "dinov2-vitb14/grid":  { "…entry…" } } } },
     "upstream": {
       "1-3f9c2a1b7d04": { "source": "<input path relative to --input>",
@@ -733,7 +736,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   | `regions` | `"objects"` | |
   | `grid` | `ManualGridFinder` (an `OperationField`) | required when `regions="grid"`, refused otherwise; the rig's cell edges in pixels (E3a) |
   | `name` | `None` | optional slug; names the table `<region>-<name>` so one pipeline can hold several copies (user decision 2026-11-19) |
-  | `layer` | `"rgb"` | `rgb`, or `gray` stacked to three channels; two copies with different names embed both (user decision 2026-11-19) |
+  | `layer` | `"rgb"` | `rgb`, or `gray` stacked to three channels; the layer is a folder level, so an rgb and a gray copy coexist with the same name (user decision 2026-11-19) |
   | `pooling` | `"crop_cls"` | `crop_cls`, `crop_mean` or `masked_dense`; a grid cell is cropped from its rectangle exactly as an object is from its bbox |
   | `crop_px` | `224` | validated as a multiple of the loaded patch size |
   | `crop_pad_frac` | `0.25` | objects only |
@@ -812,7 +815,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   per image by D6a:
   - the master comes from `measurements/`, exactly as today;
   - each embedding table goes to
-    `deliverables/embeddings/<model>/<region>.parquet`, with the master's
+    `deliverables/embeddings/<model>/<layer>/<region>.parquet`, with the master's
     intrinsic identity columns plus the table's key, `descriptor_index` and
     `embedding`;
   - `deliverables/embeddings/manifest.json` holds each key's distinct entry
@@ -846,10 +849,11 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   optional `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`), for either
   region. The region string is `objects` or `grid` without a name and
   `objects-<name>` or `grid-<name>` with one, so a named table is
-  `tables/<run>/embeddings/<model>/<region>/` and its deliverable
-  `deliverables/embeddings/<model>/<region>.parquet`. One pipeline can
-  therefore carry several embedders of one model (two copies with different
-  names), and two embedders sharing a payload key are still refused.
+  `tables/<run>/embeddings/<model>/<layer>/<region>/` and its deliverable
+  `deliverables/embeddings/<model>/<layer>/<region>.parquet`. One pipeline can
+  therefore carry several embedders of one model (copies with different
+  names, or the same name on different layers), and two embedders sharing a
+  key (model, layer and region) are still refused.
   `split_embedding_key` is the one rule for valid regions.
 - **E6 AutoConvertRaw-GC rollout** (after the new wheel is built):
   - add two embedders to the pipeline's `meas`, both
