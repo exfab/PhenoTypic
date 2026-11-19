@@ -3219,7 +3219,7 @@ def phenotypic_cli(
                             click.echo(f"  - {item.name}")
                         if len(contents) > 10:
                             click.echo(f"  ... and {len(contents) - 10} more")
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
 
             resume_state = load_processing_state(output_dir)
             if resume_state is None:
@@ -3227,7 +3227,7 @@ def phenotypic_cli(
                     f"Error: Could not read processing state in {output_dir}",
                     err=True,
                 )
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
             if resume_state.config.get("success_markers_required", False):
                 is_compatible, compatibility_error = (
                     validate_resume_compatibility(resume_state, config)
@@ -3247,7 +3247,7 @@ def phenotypic_cli(
                             "every store keeps its run folders and pixels.",
                             err=True,
                         )
-                    sys.exit(1)
+                    sys.exit(RunExitCode.ERROR)
 
             click.echo(f"✓ Continuing from {output_dir}")
 
@@ -3326,7 +3326,7 @@ def phenotypic_cli(
                         "or choose a different output directory.",
                         err=True,
                     )
-                    sys.exit(1)
+                    sys.exit(RunExitCode.ERROR)
 
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
@@ -3337,7 +3337,7 @@ def phenotypic_cli(
                 datasets = scan_store_outputs(output_dir)
             except ValueError as e:
                 click.echo(f"Error: {e}", err=True)
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
         else:
             # Not measure_only → input_path already validated as non-None.
             assert input_path is not None
@@ -3366,7 +3366,7 @@ def phenotypic_cli(
                 )
             except (FileNotFoundError, ValueError) as e:
                 click.echo(f"Error: {e}", err=True)
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
 
         total_images = sum(len(d.images) for d in datasets)
         click.echo(
@@ -3393,7 +3393,7 @@ def phenotypic_cli(
                     style="bold red",
                 )
                 console.print(f"  - {config_error}", style="red")
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
             console.print("[green]✓ Execution configuration validated")
 
             # Step 2: Load the pipeline once, for validation and the run
@@ -3422,7 +3422,7 @@ def phenotypic_cli(
                 # (PF-CUSTOM-OP, PF-PIPELINE-LOAD), in the one report format.
                 for line in PreflightReport((load_finding,)).render_lines():
                     console.print(line, highlight=False, markup=False)
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
             console.print("[green]✓ Pipeline loaded successfully")
 
             # Step 3: The run preflight -- read-only checks over the pipeline,
@@ -3447,7 +3447,7 @@ def phenotypic_cli(
                     "error(s); nothing under --output was changed.",
                     style="bold red",
                 )
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
             console.print("[green]✓ Preflight checks passed")
 
             console.print()  # Add blank line after validation
@@ -3465,7 +3465,7 @@ def phenotypic_cli(
             import traceback
 
             traceback.print_exc()
-            sys.exit(1)
+            sys.exit(RunExitCode.ERROR)
 
         # Handle dry-run mode. Everything above this line is read-only; every
         # mutation of --output (restart clear, overwrite delete, identity
@@ -3608,7 +3608,7 @@ def phenotypic_cli(
                     f"Error: No processing state found in {output_dir}",
                     err=True,
                 )
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
 
             # Validate compatibility
             is_compatible, error = validate_resume_compatibility(
@@ -3622,7 +3622,7 @@ def phenotypic_cli(
                     "pipeline and compatible settings.",
                     err=True,
                 )
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
 
             # Validate input image set hasn't changed
             images_valid, image_error = _validate_resume_input_images(
@@ -3663,7 +3663,7 @@ def phenotypic_cli(
                         "images.",
                         err=True,
                     )
-                sys.exit(1)
+                sys.exit(RunExitCode.ERROR)
 
             try:
                 metadata_snapshot_changed, migrated_failures = (
@@ -4414,7 +4414,7 @@ def phenotypic_cli(
         import traceback
 
         traceback.print_exc()
-        sys.exit(1)
+        sys.exit(RunExitCode.ERROR)
 
 
 def _regenerate_missing_overlays(
