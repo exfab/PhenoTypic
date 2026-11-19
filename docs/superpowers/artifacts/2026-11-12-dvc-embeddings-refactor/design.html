@@ -531,7 +531,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 │       ├── crops/table.parquet          Object_Label | embedding
 │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
 │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
-│       └── grid-&lt;name&gt;/table.parquet    a named grid (E3), same columns
+│       └── &lt;region&gt;-&lt;name&gt;/table.parquet  a named embedder (E3), same columns
 └── …</code></pre>
 <ul>
 <li><code>embedding</code> is <code>FixedSizeList&lt;float16&gt;[D]</code>.</li>
@@ -805,13 +805,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
 <li>A <code>MeasureEmbedding</code> gets no by-feature split and no column section in the deliverables README, which document mirror columns. The README documents the embedding deliverables separately. The vector column is named <code>embedding</code>, and <code>schema.json</code> lists it under each embedding table (C12).</li>
 </ul></li>
-<li><p><strong>Named grid regions</strong> (user decision 2026-11-19). A grid embedder takes an optional <code>grid_name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>; refused for <code>regions="objects"</code>). Its region string is <code>grid</code> without a name and <code>grid-&lt;name&gt;</code> with one, so its table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/grid-&lt;name&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/grid-&lt;name&gt;.parquet</code>; crops stay <code>crops</code>. One pipeline can therefore carry several grids of one model, and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
+<li><p><strong>Named embedders</strong> (user decision 2026-11-19). <code>MeasureEmbedding</code> takes an optional <code>name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>), for either region. The region string is <code>crops</code> or <code>grid</code> without a name and <code>crops-&lt;name&gt;</code> or <code>grid-&lt;name&gt;</code> with one, so a named table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;region&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>. One pipeline can therefore carry several embedders of one model (two copies with different names), and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
 <li>add two embedders to the pipeline's <code>meas</code>, both <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid")</code> (user decisions 2026-11-19; edges derived from 80 rig1 images and approved on overlays):
 <ul>
-<li><code>grid_name="wells"</code>: the rig's 8×12 well lattice, for <strong>every</strong> plate format (a 6×12 plate uses its middle six rows, and the empty wells' agar is embedded too): <code>row_edges=[393, 796, 1199, 1602, 2005, 2408, 2811, 3214, 3617]</code>, <code>col_edges=[574, 977, 1380, 1783, 2186, 2589, 2992, 3395, 3798, 4201, 4604, 5007, 5410]</code> (pitch 403 px, about 9 mm);</li>
-<li><code>grid_name="agar"</code>: one whole-agar cell, the lattice's outer box, <code>row_edges=[393, 3617]</code>, <code>col_edges=[574, 5410]</code>, clear of the walls, the meniscus and wall overgrowth;</li>
+<li><code>name="wells"</code>: the rig's 8×12 well lattice, for <strong>every</strong> plate format (a 6×12 plate uses its middle six rows, and the empty wells' agar is embedded too): <code>row_edges=[393, 796, 1199, 1602, 2005, 2408, 2811, 3214, 3617]</code>, <code>col_edges=[574, 977, 1380, 1783, 2186, 2589, 2992, 3395, 3798, 4201, 4604, 5007, 5410]</code> (pitch 403 px, about 9 mm);</li>
+<li><code>name="agar"</code>: one whole-agar cell, the lattice's outer box, <code>row_edges=[393, 3617]</code>, <code>col_edges=[574, 5410]</code>, clear of the walls, the meniscus and wall overgrowth;</li>
 </ul></li>
 <li>vendor the new wheel;</li>
 <li>install the <code>foundation</code> extra in the <code>Dockerfile</code> with CPU torch, bake in the pinned weights, and set <code>HF_HUB_OFFLINE=1</code>;</li>

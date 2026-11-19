@@ -559,7 +559,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   │       ├── crops/table.parquet          Object_Label | embedding
   │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
   │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
-  │       └── grid-<name>/table.parquet    a named grid (E3), same columns
+  │       └── <region>-<name>/table.parquet  a named embedder (E3), same columns
   └── …
   ```
 
@@ -840,26 +840,26 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     deliverables README, which document mirror columns. The README documents
     the embedding deliverables separately. The vector column is named
     `embedding`, and `schema.json` lists it under each embedding table (C12).
-- **Named grid regions** (user decision 2026-11-19). A grid embedder takes an
-  optional `grid_name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`;
-  refused for `regions="objects"`). Its region string is `grid` without a
-  name and `grid-<name>` with one, so its table is
-  `tables/<run>/embeddings/<model>/grid-<name>/` and its deliverable
-  `deliverables/embeddings/<model>/grid-<name>.parquet`; crops stay `crops`.
-  One pipeline can therefore carry several grids of one model, and two
-  embedders sharing a payload key are still refused. `split_embedding_key` is
-  the one rule for valid regions.
+- **Named embedders** (user decision 2026-11-19). `MeasureEmbedding` takes an
+  optional `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`), for either
+  region. The region string is `crops` or `grid` without a name and
+  `crops-<name>` or `grid-<name>` with one, so a named table is
+  `tables/<run>/embeddings/<model>/<region>/` and its deliverable
+  `deliverables/embeddings/<model>/<region>.parquet`. One pipeline can
+  therefore carry several embedders of one model (two copies with different
+  names), and two embedders sharing a payload key are still refused.
+  `split_embedding_key` is the one rule for valid regions.
 - **E6 AutoConvertRaw-GC rollout** (after the new wheel is built):
   - add two embedders to the pipeline's `meas`, both
     `MeasureDinoEmbedding(size="base", revision=<pinned commit>, regions="grid")`
     (user decisions 2026-11-19; edges derived from 80 rig1 images and approved
     on overlays):
-    - `grid_name="wells"`: the rig's 8×12 well lattice, for **every** plate
+    - `name="wells"`: the rig's 8×12 well lattice, for **every** plate
       format (a 6×12 plate uses its middle six rows, and the empty wells'
       agar is embedded too): `row_edges=[393, 796, 1199, 1602, 2005, 2408,
       2811, 3214, 3617]`, `col_edges=[574, 977, 1380, 1783, 2186, 2589,
       2992, 3395, 3798, 4201, 4604, 5007, 5410]` (pitch 403 px, about 9 mm);
-    - `grid_name="agar"`: one whole-agar cell, the lattice's outer box,
+    - `name="agar"`: one whole-agar cell, the lattice's outer box,
       `row_edges=[393, 3617]`, `col_edges=[574, 5410]`, clear of the walls,
       the meniscus and wall overgrowth;
   - vendor the new wheel;
