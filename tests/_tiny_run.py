@@ -1513,19 +1513,69 @@ def registered_toy_embedder(monkeypatch):
     return cls
 
 
-def toy_grid_process_pipeline(directory: Path) -> Path:
-    """:func:`grid_process_pipeline` with the toy embedder: torch-free.
-
-    ``meas["grid_embedding"]`` is the toy embedder over the 2 x 2 toy grid,
-    stored under :data:`TOY_GRID_KEY`. Run it under
-    :func:`registered_toy_embedder`.
-    """
+def toy_grid_embedder_of(**kw):
+    """The toy embedder over the 2 x 2 toy grid; *kw* overrides its fields (``token``)."""
     from phenotypic.grid import ManualGridFinder
 
-    embedder = toy_embedder_class()(
+    return toy_embedder_class()(
         regions="grid",
         grid=ManualGridFinder(
             row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
         ),
+        **kw,
     )
-    return with_meas(directory, grid_embedding=embedder)
+
+
+def toy_grid_process_pipeline(directory: Path, /, **kw) -> Path:
+    """:func:`grid_process_pipeline` with the toy embedder: torch-free.
+
+    ``meas["grid_embedding"]`` is the toy embedder over the 2 x 2 toy grid,
+    stored under :data:`TOY_GRID_KEY` (or ``<token>/grid`` for another
+    ``token=``). Run it under :func:`registered_toy_embedder`.
+
+    Args:
+        directory: Where to write the file.
+        **kw: Toy embedder fields, e.g. ``token="toy-v2"`` for another
+            pipeline with another model key.
+    """
+    return with_meas(directory, grid_embedding=toy_grid_embedder_of(**kw))
+
+
+# ---------------------------------------------------------------------------
+# P5 T3 (C21): in-place process runs (spec E7)
+# ---------------------------------------------------------------------------
+
+#: ``--layer rgb --process-format zarr``: the export an in-place run writes into.
+ZARR_RGB = ("--layer", "rgb", "--process-format", "zarr")
+
+
+def _process_store_tree(tmp_path: Path, tiny_inputs: Path, pipeline: Path) -> Path:
+    """A copy process run's output tree, one ``1-<sha>`` folder per store.
+
+    The shape AutoConvertRaw-GC publishes: rgb stores holding one grid
+    embedding run. The copy run's machine state is removed, as a published
+    tree has none (an AutoConvertRaw-GC store is written by calling the core
+    directly).
+    """
+    import shutil
+
+    out = tmp_path / "stores"
+    result = run_cli(tiny_inputs, out, mode="process", pipeline=pipeline, extra=ZARR_RGB)
+    assert result.exit_code == 0, result.output
+    shutil.rmtree(out / ".phenotypic")
+    return out
+
+
+@pytest.fixture
+def process_store_tree(tmp_path: Path, tiny_inputs: Path, stub_backbone) -> Path:
+    """Two process stores, each holding :func:`grid_process_pipeline`'s ``1-<sha>``.
+
+    ``<tmp>/stores/ds/plate_{1,2}.ome.zarr``; the DINO stub, so it needs torch.
+    """
+    return _process_store_tree(tmp_path, tiny_inputs, grid_process_pipeline(tmp_path))
+
+
+@pytest.fixture
+def toy_process_store_tree(tmp_path: Path, tiny_inputs: Path, registered_toy_embedder) -> Path:
+    """:func:`process_store_tree` with :func:`toy_grid_process_pipeline`: torch-free."""
+    return _process_store_tree(tmp_path, tiny_inputs, toy_grid_process_pipeline(tmp_path))

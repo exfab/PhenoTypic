@@ -302,6 +302,88 @@ def write_process_only_layer(
     )
 
 
+def read_process_input(
+    pipeline: ImagePipeline,
+    image_path: Path,
+    *,
+    image_type: ImageTypeName,
+    read_kwargs: Mapping[str, Any],
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
+) -> Image:
+    """Read one process-mode input as every process core reads it.
+
+    The caller's ``input_read_settings`` kwargs, completed by
+    :func:`~._cli_utils.image_read_kwargs` (a ``GridImage``'s shape from the
+    flags, then the pipeline's preset), then ``imread``; a ``detect_mode``
+    other than ``gray`` is applied after the read. Shared by the copy core
+    and the in-place core (#281 spec E7), so the two read an input alike.
+
+    Args:
+        pipeline: The loaded pipeline (for a ``GridImage`` preset).
+        image_path: A flat image file or a ``*.ome.zarr`` store.
+        image_type: ``"Image"`` or ``"GridImage"``.
+        read_kwargs: From ``input_read_settings``.
+        cli_nrows: ``--nrows``, or ``None``.
+        cli_ncols: ``--ncols``, or ``None``.
+
+    Returns:
+        The image.
+    """
+    from ._cli_utils import image_read_kwargs
+
+    image_cls = GridImage if image_type == "GridImage" else Image
+    kwargs = image_read_kwargs(
+        read_kwargs,
+        image_type=image_type,
+        cli_nrows=cli_nrows,
+        cli_ncols=cli_ncols,
+        pipeline=pipeline,
+    )
+    detect_mode = kwargs.pop("detect_mode", "gray")
+    image = image_cls.imread(image_path, **kwargs)
+    if detect_mode != "gray":
+        image.set_detect_mode(detect_mode)
+    return image
+
+
+def build_process_store_figures(
+    pipeline: ImagePipeline,
+    image: Image,
+    *,
+    run_initiation: RunInitiation | None,
+    image_path: Path,
+) -> StoredFigures | None:
+    """The per-image figures a process store holds, or ``None``.
+
+    The run folder is dated by *run_initiation*'s date only: a process store
+    omits the call's timestamp and pid, like the journal's wall-clock times
+    (spec §1a). There is no deliverables tree, so a run that cannot be named
+    is only logged. Measurer-backed bindings recompute inside ``inspect()``,
+    because ``apply()`` never filled their cache (spec §3, process mode).
+
+    Args:
+        pipeline: The loaded pipeline.
+        image: The image after ``apply()``.
+        run_initiation: The run's initial call, or ``None`` (today, UTC).
+        image_path: The input, whose name keys the run's failure lines.
+    """
+    from phenotypic.plotting._pipeline._store_figures import (
+        build_image_figures,
+        name_figure_run,
+    )
+
+    run = name_figure_run(
+        pipeline.get_plots(),
+        image,
+        date=run_initiation.date if run_initiation is not None else None,
+        image_stem=image_path.name,
+    )
+    if run is None:
+        return None
+    return build_image_figures(pipeline, image, run=run)
+
+
 def process_single_apply_only_core(
     pipeline_path: Path,
     image_path: Path,
@@ -378,25 +460,18 @@ def process_single_apply_only_core(
         skipped = skipped_measurers_warning(pipeline)
         if skipped is not None:
             logger.warning(skipped)
-        image_cls = GridImage if image_type == "GridImage" else Image
-
-        from ._cli_utils import image_read_kwargs
-
-        read_kwargs = image_read_kwargs(
-            read_kwargs,
+        image = read_process_input(
+            pipeline,
+            image_path,
             image_type=image_type,
+            read_kwargs=read_kwargs,
             cli_nrows=cli_nrows,
             cli_ncols=cli_ncols,
-            pipeline=pipeline,
         )
-        detect_mode = read_kwargs.pop("detect_mode", "gray")
-        image = image_cls.imread(image_path, **read_kwargs)
         # The input's table runs, referenced rather than copied (spec D8). A
         # flat export has no descriptor to record them in.
         if process_format == "zarr":
             upstream = upstream_entries_for_input(image_path, input_root)
-        if detect_mode != "gray":
-            image.set_detect_mode(detect_mode)
 
         # BEFORE apply, and that ordering is load-bearing:
         # `initialize_cli_provenance` opens with `new_provenance_journal()`
@@ -436,22 +511,9 @@ def process_single_apply_only_core(
         # bindings recompute inside inspect() here, because apply() never
         # filled their cache -- accepted (spec §3 process mode).
         if process_format == "zarr":
-            from phenotypic.plotting._pipeline._store_figures import (
-                build_image_figures,
-                name_figure_run,
+            figures = build_process_store_figures(
+                pipeline, image, run_initiation=run_initiation, image_path=image_path
             )
-
-            # The date only: a process store omits the call's timestamp and
-            # pid, like the journal's wall-clock times (spec §1a). There is no
-            # deliverables tree, so a run that cannot be named is only logged.
-            run = name_figure_run(
-                pipeline.get_plots(),
-                image,
-                date=run_initiation.date if run_initiation is not None else None,
-                image_stem=image_path.name,
-            )
-            if run is not None:
-                figures = build_image_figures(pipeline, image, run=run)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --

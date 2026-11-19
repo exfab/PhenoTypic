@@ -15,8 +15,8 @@ import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, TYPE_CHECKING
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable, Dict, List, NamedTuple, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
@@ -152,45 +152,84 @@ def file_sha256(path: Path) -> str:
             store.
     """
     target = Path(path)
-    digest = hashlib.sha256()
-
-    def _feed(file_path: Path) -> None:
-        """Stream one file into *digest* without retaining its contents."""
-        with file_path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(chunk)
-
     if target.is_dir():
         if not is_zarr_store_name(target):
             raise IsADirectoryError(
                 f"{target} is a directory but not an OME-Zarr store; "
                 f"it has no content fingerprint"
             )
-        members = sorted(
-            target.rglob("*"),
-            key=lambda p: p.relative_to(target).as_posix(),
-        )
-        digest.update(b"phenotypic-store-tree-v2\0")
-        for member in members:
-            if member.is_symlink():
-                raise OSError(f"OME-Zarr store contains a symlink: {member}")
-            member_type = b"d" if member.is_dir() else b"f"
-            if member_type == b"f" and not member.is_file():
-                raise OSError(
-                    f"OME-Zarr store contains a non-regular member: {member}"
-                )
-            relative = member.relative_to(target).as_posix().encode("utf-8")
-            digest.update(member_type)
-            digest.update(len(relative).to_bytes(8, "big"))
-            digest.update(relative)
-            if member_type == b"d":
-                digest.update((0).to_bytes(8, "big"))
-                continue
-            digest.update(member.stat().st_size.to_bytes(8, "big"))
-            _feed(member)
-        return digest.hexdigest()
+        return store_tree_sha256(target, domain=_STORE_TREE_DOMAIN)
 
-    _feed(target)
+    digest = hashlib.sha256()
+    _feed_file(digest, target)
+    return digest.hexdigest()
+
+
+#: Domain tag of :func:`file_sha256` over a store. Changing it changes every
+#: store input's work id.
+_STORE_TREE_DOMAIN = b"phenotypic-store-tree-v2\0"
+
+
+def _feed_file(digest: Any, file_path: Path) -> None:
+    """Stream one file into *digest* without retaining its contents."""
+    with file_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+
+
+def store_tree_sha256(
+    store: Path,
+    *,
+    domain: bytes,
+    skip: "Callable[[PurePosixPath], bool] | None" = None,
+) -> str:
+    """The length-framed tree digest :func:`file_sha256` takes of a store.
+
+    Every member's type, store-relative path, content length and content, in
+    sorted path order, after *domain*. *skip* leaves out each member, file or
+    directory, whose store-relative path it accepts. It is asked of every
+    member, so leaving out a subtree means accepting its root and everything
+    below it. The in-place work id uses it to leave out the bytes an in-place
+    run writes (#281 spec E7). A caller that skips anything passes its own
+    *domain*, so the two digests never coincide.
+
+    Args:
+        store: A ``*.ome.zarr`` directory.
+        domain: The domain-separation tag fed first.
+        skip: Store-relative paths to leave out, or ``None``.
+
+    Returns:
+        The hex digest.
+
+    Raises:
+        OSError: On a symlink or a non-regular member.
+    """
+    digest = hashlib.sha256()
+    members = sorted(
+        store.rglob("*"),
+        key=lambda p: p.relative_to(store).as_posix(),
+    )
+    digest.update(domain)
+    for member in members:
+        relative_path = PurePosixPath(member.relative_to(store).as_posix())
+        if skip is not None and skip(relative_path):
+            continue
+        if member.is_symlink():
+            raise OSError(f"OME-Zarr store contains a symlink: {member}")
+        member_type = b"d" if member.is_dir() else b"f"
+        if member_type == b"f" and not member.is_file():
+            raise OSError(
+                f"OME-Zarr store contains a non-regular member: {member}"
+            )
+        relative = relative_path.as_posix().encode("utf-8")
+        digest.update(member_type)
+        digest.update(len(relative).to_bytes(8, "big"))
+        digest.update(relative)
+        if member_type == b"d":
+            digest.update((0).to_bytes(8, "big"))
+            continue
+        digest.update(member.stat().st_size.to_bytes(8, "big"))
+        _feed_file(digest, member)
     return digest.hexdigest()
 
 
@@ -248,8 +287,15 @@ def processing_configuration_digest_from_values(
     overlay_alpha: float,
     save_overlays: bool,
     drop_originals: bool = False,
+    in_place: bool = False,
 ) -> str:
-    """Hash explicit settings that affect one image's scientific outputs."""
+    """Hash explicit settings that affect one image's scientific outputs.
+
+    *in_place* (``--mode process`` with ``--output`` equal to ``--input``,
+    #281 spec E7) adds ``in_place: true`` to the process-only payload, so an
+    in-place run never reuses a copy run's continuation. It is added only
+    when true, so every copy run's digest is unchanged.
+    """
     payload: dict[str, object] = {
         "image_type": image_type,
         "nrows": nrows,
@@ -287,6 +333,8 @@ def processing_configuration_digest_from_values(
                 ),
             }
         )
+        if in_place:
+            payload["in_place"] = True
     else:
         payload.update(
             {
@@ -313,7 +361,29 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,
         drop_originals=config.drop_originals,
+        in_place=bool(getattr(config, "in_place", False)),
     )
+
+
+def input_sha256_for(image_path: Path, *, in_place: bool) -> str:
+    """The input digest a work id carries: :func:`file_sha256`, or the in-place one.
+
+    An in-place process run (#281 spec E7) writes into its own input, so its
+    work id takes
+    :func:`~phenotypic._cli._cli_process_in_place.in_place_input_digest`,
+    which leaves out the bytes the run writes. Every producer of a work id's
+    input digest calls this, so selection, the SLURM worklist and the SLURM
+    worker cannot disagree.
+
+    Args:
+        image_path: The input image or store.
+        in_place: Whether the run is an in-place process run.
+    """
+    if in_place:
+        from ._cli_process_in_place import in_place_input_digest
+
+        return in_place_input_digest(Path(image_path))
+    return file_sha256(image_path)
 
 
 def compute_work_id(
@@ -466,7 +536,9 @@ def work_identity_for_image(
         compute_work_id(
             dataset=dataset,
             relative_image_path=relative_path.as_posix(),
-            input_sha256=file_sha256(image_path),
+            input_sha256=input_sha256_for(
+                image_path, in_place=bool(getattr(config, "in_place", False))
+            ),
             pipeline_fingerprint=pipeline_fingerprint,
             processing_config_digest=processing_configuration_digest(config),
             mode=mode,

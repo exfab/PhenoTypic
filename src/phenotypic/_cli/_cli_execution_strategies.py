@@ -682,23 +682,43 @@ class LocalParallelStrategy(ExecutionStrategy):
                 self.config, dataset.name, image_path
             )
             work_identity = (identity.work_id, identity.relative_path)
-            process_single_apply_only_core(
-                pipeline_path=self.config.pipeline_json,
-                image_path=image_path,
-                input_root=self.config.input_path,
-                output_dir=output_dir,
-                image_type=self.config.image_type,
-                layer=self.config.process_only_layer,  # type: ignore[arg-type]
-                read_kwargs=read_kwargs,
-                cli_nrows=self.config.nrows,
-                cli_ncols=self.config.ncols,
-                process_format=self.config.process_format,
-                run_initiation=self.config.run_initiation,
-                dataset_name=dataset.name,
-                reference_pin=ReferencePin(
-                    source_image_stem(image_path), identity.reference_digest
-                ),
+            reference_pin = ReferencePin(
+                source_image_stem(image_path), identity.reference_digest
             )
+            if self.config.in_place:
+                # --output equal to --input (#281 spec E7): the run folder is
+                # added to the input store where it is.
+                from ._cli_process_in_place import process_in_place_core
+
+                process_in_place_core(
+                    self.config.pipeline_json,
+                    image_path,
+                    self.config.input_path,
+                    layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=read_kwargs,
+                    image_type=self.config.image_type,
+                    cli_nrows=self.config.nrows,
+                    cli_ncols=self.config.ncols,
+                    run_initiation=self.config.run_initiation,
+                    dataset_name=dataset.name,
+                    reference_pin=reference_pin,
+                )
+            else:
+                process_single_apply_only_core(
+                    pipeline_path=self.config.pipeline_json,
+                    image_path=image_path,
+                    input_root=self.config.input_path,
+                    output_dir=output_dir,
+                    image_type=self.config.image_type,
+                    layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=read_kwargs,
+                    cli_nrows=self.config.nrows,
+                    cli_ncols=self.config.ncols,
+                    process_format=self.config.process_format,
+                    run_initiation=self.config.run_initiation,
+                    dataset_name=dataset.name,
+                    reference_pin=reference_pin,
+                )
             _publish_local_image_success(
                 self.config,
                 self.output_manager,

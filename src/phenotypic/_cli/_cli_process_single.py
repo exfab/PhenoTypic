@@ -63,6 +63,7 @@ from ._cli_failure_tracker import (
     append_terminal_failure,
     compute_work_id,
     file_sha256,
+    input_sha256_for,
     image_reference_digest,
     processing_configuration_digest_from_values,
 )
@@ -72,6 +73,7 @@ from ._cli_slurm_lifecycle import (
     generation_publication_guard,
     slurm_generation_inactive_cause,
 )
+from ._cli_types import is_in_place_process, writes_process_store
 from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extension
 from phenotypic.sdk_ import (
     CommitGuard,
@@ -151,12 +153,15 @@ def _worker_work_identity(
     drop_originals: bool = False,
     mode: str,
     reference_digest: str | None = None,
+    in_place: bool = False,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection.
 
     ``reference_digest`` is the image's entry in the run's reference manifest
     (``image_reference_digest``), read once by the caller so the identity and
-    the context the apply runs in are pinned to the same plan.
+    the context the apply runs in are pinned to the same plan. ``in_place``
+    marks an in-place process run (#281 spec E7): its input digest leaves out
+    the bytes the run writes, and its configuration digest says so.
     """
     relative_path = _normalized_input_relative_path(
         input_root, image
@@ -165,7 +170,7 @@ def _worker_work_identity(
         compute_work_id(
             dataset=dataset_name,
             relative_image_path=relative_path,
-            input_sha256=file_sha256(image),
+            input_sha256=input_sha256_for(image, in_place=in_place),
             pipeline_fingerprint=file_sha256(pipeline),
             processing_config_digest=processing_configuration_digest_from_values(
                 image_type=image_type,
@@ -185,6 +190,7 @@ def _worker_work_identity(
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
+                in_place=in_place,
             ),
             mode=mode,
             reference_digest=reference_digest,
@@ -894,6 +900,15 @@ def main(
             output_dir, dataset_name, image, mode
         )
         reference_pin = ReferencePin(source_image_stem(image), reference_digest)
+        # --output equal to --input (#281 spec E7): the identity leaves out
+        # the bytes the run writes, and the core writes into the input store.
+        in_place = is_in_place_process(
+            input_root=input_root,
+            output_dir=output_dir,
+            process=writes_process_store(
+                process_only_layer, resolved_process_format
+            ),
+        )
 
         def _identity() -> tuple[str, str]:
             return _worker_work_identity(
@@ -915,6 +930,7 @@ def main(
                 drop_originals=drop_originals,
                 mode=mode,
                 reference_digest=reference_digest,
+                in_place=in_place,
             )
 
         work_identity = None if measure_only else _identity()
@@ -927,7 +943,7 @@ def main(
         if any(value is not None for value in expected_identity):
             if not all(value for value in expected_identity):
                 raise RuntimeError("Incomplete immutable SLURM task identity")
-            if file_sha256(image) != expected_input_sha256:
+            if input_sha256_for(image, in_place=in_place) != expected_input_sha256:
                 raise RuntimeError(
                     "Input changed after SLURM worklist creation"
                 )
@@ -964,24 +980,43 @@ def main(
                     work_id=expected_work_id or "",
                 )
             click.echo(
-                f"Processing (apply-only, {process_only_layer}) {image.name}..."
+                f"Processing (apply-only, {process_only_layer}"
+                f"{', in place' if in_place else ''}) {image.name}..."
             )
-            process_single_apply_only_core(
-                pipeline_path=pipeline,
-                image_path=image,
-                input_root=input_root,
-                output_dir=output_dir,
-                image_type=image_type,  # type: ignore[arg-type]
-                layer=process_only_layer,  # type: ignore[arg-type]
-                read_kwargs=process_only_read_kwargs,
-                cli_nrows=nrows,
-                cli_ncols=ncols,
-                commit_guard=commit_guard,
-                process_format=resolved_process_format,
-                run_initiation=run_initiation,
-                dataset_name=dataset_name,
-                reference_pin=reference_pin,
-            )
+            if in_place:
+                from ._cli_process_in_place import process_in_place_core
+
+                process_in_place_core(
+                    pipeline,
+                    image,
+                    input_root,
+                    layer=process_only_layer,
+                    read_kwargs=process_only_read_kwargs,
+                    image_type=image_type,  # type: ignore[arg-type]
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
+                    commit_guard=commit_guard,
+                    run_initiation=run_initiation,
+                    dataset_name=dataset_name,
+                    reference_pin=reference_pin,
+                )
+            else:
+                process_single_apply_only_core(
+                    pipeline_path=pipeline,
+                    image_path=image,
+                    input_root=input_root,
+                    output_dir=output_dir,
+                    image_type=image_type,  # type: ignore[arg-type]
+                    layer=process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=process_only_read_kwargs,
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
+                    commit_guard=commit_guard,
+                    process_format=resolved_process_format,
+                    run_initiation=run_initiation,
+                    dataset_name=dataset_name,
+                    reference_pin=reference_pin,
+                )
             assert work_identity is not None
             work_id, relative_path = work_identity
             publish_image_success(

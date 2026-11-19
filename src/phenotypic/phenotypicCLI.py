@@ -176,7 +176,12 @@ from phenotypic._cli._cli_failure_tracker import (
     work_id_for_image,
 )
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
+from phenotypic._cli._cli_types import (
+    Dataset,
+    DatasetState,
+    ExecutionConfig,
+    is_in_place_process,
+)
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
 )
@@ -865,6 +870,56 @@ def _refuse_process_meas_it_would_lose(
     skipped = skipped_measurers_warning(pipeline)
     if skipped is not None:
         click.echo(f"Warning: {skipped}.", err=True)
+
+
+def _refuse_in_place_run(
+    *,
+    pipeline_json: Optional[Path],
+    input_path: Path,
+    layer: str,
+    process_format: str,
+    overwrite: bool,
+) -> None:
+    """Refuse an in-place process run that would be unsafe (#281 spec E7).
+
+    ``--mode process`` with ``--output`` equal to ``--input`` adds the
+    pipeline's run folder to each input store where it is. The refusals are
+    :func:`~phenotypic._cli._cli_process_in_place.in_place_refusal`'s, in its
+    order, raised as one usage-error line each (exit 2). ``--restart`` is
+    admitted in place: it clears only ``.phenotypic/`` machine state, which
+    :func:`_refuse_run_inputs_the_run_would_delete` then checks as anywhere
+    else. Called in the read-only half, outside ``--skip-validation``, and
+    above ``--restart``/``--overwrite`` handling, ``mint_run_identity`` and the
+    ``--dry-run`` exit, so a refused run leaves the tree byte-identical. A
+    pipeline that cannot be loaded, or an input the scan rejects, is left to
+    the checks that report it in their own words.
+
+    Raises:
+        click.UsageError: The first refusal that applies.
+    """
+    from phenotypic._cli._cli_process_in_place import in_place_refusal
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    if pipeline_json is None:
+        return
+    try:
+        pipeline = ImagePipeline.from_json(pipeline_json)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return
+    try:
+        scanned = scan_directory_structure(input_path)
+    except (FileNotFoundError, ValueError):
+        scanned = {}
+    refusal = in_place_refusal(
+        pipeline=pipeline,
+        input_root=input_path,
+        stores=[path for paths in scanned.values() for path in paths],
+        layer=layer,
+        process_format=process_format,
+        overwrite=overwrite,
+    )
+    if refusal is not None:
+        raise click.UsageError(refusal)
 
 
 def _refuse_unusable_reference_table(
@@ -2587,19 +2642,22 @@ def phenotypic_cli(
         # the input mutates the source tree during publication, while an input
         # below the output can be deleted by ``--overwrite``. Resolve aliases
         # before any output inspection or mutation so symlinked spellings do
-        # not bypass the boundary.
+        # not bypass the boundary. EQUALITY is the one overlap admitted: an
+        # in-place run, which adds a run folder to each input store where it
+        # is (#281 spec E7) and is refused below, by `_refuse_in_place_run`,
+        # for every option and input that would make it unsafe.
         if cli_mode == "process" and input_path is not None:
             canonical_input = Path(input_path).resolve(strict=False)
             canonical_output = Path(output_dir).resolve(strict=False)
-            if (
-                canonical_input == canonical_output
-                or canonical_input.is_relative_to(canonical_output)
+            if canonical_input != canonical_output and (
+                canonical_input.is_relative_to(canonical_output)
                 or canonical_output.is_relative_to(canonical_input)
             ):
                 raise click.UsageError(
                     "--mode process input and output roots must not overlap "
                     "or contain one another. Choose a disjoint --output so "
-                    "the source can never be modified or deleted."
+                    "the source can never be modified or deleted, or the "
+                    "--input itself to add a run folder to its stores in place."
                 )
 
         # Every mode that writes or reprocesses refuses an unconverted tree;
@@ -2917,6 +2975,20 @@ def phenotypic_cli(
                 "(no measurement/aggregation output).",
                 err=True,
             )
+        in_place = is_in_place_process(
+            input_root=input_path,
+            output_dir=output_dir,
+            process=process_only_layer is not None,
+        )
+        if in_place:
+            assert process_only_layer is not None and input_path is not None
+            _refuse_in_place_run(
+                pipeline_json=pipeline_json,
+                input_path=Path(input_path),
+                layer=process_only_layer,
+                process_format=resolved_process_format,
+                overwrite=overwrite,
+            )
         if cli_mode in ("full", "process"):
             _refuse_run_inputs_the_run_would_delete(
                 output_dir=Path(output_dir),
@@ -3123,6 +3195,16 @@ def phenotypic_cli(
                         f"Error: Cannot continue - {compatibility_error}",
                         err=True,
                     )
+                    if config.in_place:
+                        # The usual remedy, and the only one in place, where
+                        # --overwrite is refused (#281 spec E7).
+                        click.echo(
+                            "To start a new in-place run over these stores, "
+                            "run the same command with --restart: it clears "
+                            "only the machine state under .phenotypic/, and "
+                            "every store keeps its run folders and pixels.",
+                            err=True,
+                        )
                     sys.exit(1)
 
             click.echo(f"✓ Continuing from {output_dir}")
@@ -3176,7 +3258,14 @@ def phenotypic_cli(
         # REFUSAL happens here, in the read-only half; the delete itself runs
         # below the --dry-run exit, guarded by ``will_overwrite`` (spec §1).
         will_overwrite = False
-        if not config.resume and not restart and not measure_only:
+        # An in-place run's --output is its --input, which holds the stores
+        # it writes into: never "already contains files" (#281 spec E7).
+        if (
+            not config.resume
+            and not restart
+            and not measure_only
+            and not config.in_place
+        ):
             if output_dir.exists() and any(
                 not _is_ignorable_output_entry(
                     entry, allow_machine_state=False
