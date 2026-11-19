@@ -1240,6 +1240,29 @@ def _valid_embedded_measurement_contract(
         return False
 
 
+#: The root ``zarr.json`` key zarr-python writes consolidated metadata under.
+_CONSOLIDATED_METADATA_KEY = "consolidated_metadata"
+
+
+class StoreRootChangedError(RuntimeError):
+    """A store's root changed while a transaction was being built over it.
+
+    Raised by :func:`_rewrite_store_tables` given ``expected_root_sha256``:
+    the root a write was planned from is no longer the live one (an
+    AutoConvertRaw-GC reprocess, or a second writer). The part is removed and
+    the store is unchanged. Not the image's fault, so never a terminal
+    failure: an in-place process run rebuilds once from the new root, and
+    otherwise fails the image for this invocation only (#281 spec E7).
+    """
+
+    def __init__(self, store: Path) -> None:
+        super().__init__(
+            f"{store}: its root zarr.json changed while this write was being "
+            "built over it; nothing was written"
+        )
+        self.store = Path(store)
+
+
 def _clone_file_without_pixel_rewrite(source: str, target: str) -> str:
     """Hard-link an existing store file, falling back to a byte copy."""
     try:
@@ -1283,6 +1306,9 @@ def _rewrite_store_tables(
     commit_guard: CommitGuard | None,
     clear_figure_run: str | None = None,
     clear_table_run: str | Callable[[], str | None] | None = None,
+    clear_tables: bool = True,
+    expected_root_sha256: str | None = None,
+    consolidate: bool = False,
 ) -> Path:
     """Re-promote one store with refreshed embedded tables, root written last.
 
@@ -1319,12 +1345,46 @@ def _rewrite_store_tables(
     re-promote now runs on **every** ``--mode measure``, not only on a
     descriptor change. If ``--mode measure`` on a large tree becomes slow,
     this is the reason.
+
+    *clear_tables* false keeps every run folder exactly as carried and
+    ignores *clear_table_run*: a write that adds no table run of its own (an
+    in-place process run whose pipeline only draws figures, #281 spec E7).
+
+    *expected_root_sha256* is the sha256 of the root bytes the caller built
+    its write from (an in-place process run, spec E7). The root read here
+    must have it, and the **live** root is read again immediately before
+    :func:`~phenotypic.sdk_.ngff_.promote_store`: either mismatch raises
+    :class:`StoreRootChangedError` and the part is removed, so a root built
+    from stale bytes is never swapped in. ``None`` checks nothing (measure
+    mode, migrate). A writer that changes the root between that last read
+    and the promote's rename is not caught; the output's single-run guard is
+    what keeps a second PhenoTypic run off the tree.
+
+    *consolidate* collapses the part's per-node metadata into its new root
+    (:func:`~phenotypic._core._image_parts._image_io_handler._consolidate_store_part`)
+    after the root is written and before the check above, so a store
+    published consolidated stays consolidated. The store's previous
+    ``consolidated_metadata`` is dropped from the root first, since it
+    describes the old tree. ``False`` (measure mode) writes the root as read.
+
+    Raises:
+        StoreRootChangedError: See *expected_root_sha256*.
     """
+    import hashlib
+
     from . import ngff_
 
     store_path = Path(store_path)
     root_path = store_path / ngff_.STORE_ROOT_JSON
-    root_document = json.loads(root_path.read_text(encoding="utf-8"))
+    root_bytes = root_path.read_bytes()
+    if (
+        expected_root_sha256 is not None
+        and hashlib.sha256(root_bytes).hexdigest() != expected_root_sha256
+    ):
+        raise StoreRootChangedError(store_path)
+    root_document = json.loads(root_bytes.decode("utf-8"))
+    if consolidate:
+        root_document.pop(_CONSOLIDATED_METADATA_KEY, None)
     phenotypic = root_document["attributes"][ngff_.PhenotypicAttr.ROOT]
     populate = plan(phenotypic)
     if callable(clear_table_run):
@@ -1345,9 +1405,10 @@ def _rewrite_store_tables(
         # into the promoted store, so unlinking them in the part leaves the
         # live store untouched. Only that one run folder goes; every other
         # run is carried as it is.
-        if clear_table_run is None:
+        if clear_tables and clear_table_run is None:
             shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
-        else:
+        elif clear_tables:
+            assert clear_table_run is not None
             shutil.rmtree(
                 ngff_.long_path(part / ngff_.TABLES_GROUP / clear_table_run),
                 ignore_errors=True,
@@ -1364,6 +1425,19 @@ def _rewrite_store_tables(
             )
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
+        if consolidate:
+            from phenotypic._core._image_parts._image_io_handler import (
+                _consolidate_store_part,
+            )
+
+            _consolidate_store_part(part)
+        if expected_root_sha256 is not None:
+            # Immediately before the swap: a reprocess or a second writer
+            # that replaced the root while the part was built would
+            # otherwise be overwritten by a root built from its predecessor.
+            live = hashlib.sha256(root_path.read_bytes()).hexdigest()
+            if live != expected_root_sha256:
+                raise StoreRootChangedError(store_path)
         ngff_.promote_store(
             part,
             store_path,
