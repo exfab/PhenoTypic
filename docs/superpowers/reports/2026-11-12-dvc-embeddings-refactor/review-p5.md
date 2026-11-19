@@ -114,3 +114,41 @@ Baseline, the 6 P5-touched test files (job `32202190`):
    before and after `apply()` (supports them), or refuse them.
 4. **Q4 (I2).** Symlinked stores. The options: refuse (recommended), or follow
    the link and write beside the target.
+
+## User decisions (2026-11-18)
+
+- **Q1:** refuse a full run's bundle stores (root `image_class`) in place.
+- **Q2:** refuse in place when a legacy root-level machine-state name exists
+  at the input root.
+- **Q3:** support legacy integer gray stores. The level-0 check compares the
+  exported layer before and after `apply()`.
+- **Q4:** refuse a store that is a symlink or resolves outside `--input`.
+
+Spec E7 is amended to match.
+
+## Orchestrator triage
+
+The review-fix cluster, C21r, fixes the following within the spec:
+
+- **C1, I1, I2:** the refusals above.
+- **I3:** the before/after compare.
+- **I1 independently:** the journal append keeps earlier applications
+  byte-for-byte, and `_rewrite_store_tables` re-consolidates whenever the root
+  it read carried `consolidated_metadata`.
+- **I4:** SLURM in-place tests (the worklist digest, and the worker's
+  in-place dispatch).
+- **I5:** refuse an orphaned `.trash` that has no live store beside it.
+- **M1, M3, M5, M7.**
+- **M6:** a startup warning that lists orphaned in-place `.part` debris.
+- **Test quality:**
+  - a pixel-dependent toy embedder;
+  - a behavioural revision test;
+  - an inode check for the carried folder;
+  - fixture variants (uint16 RGB, a gray store, a bundle store, a tree with a
+    copy run's `.phenotypic/` left in it).
+
+Recorded only:
+- **M2:** closed by I1.
+- **M4:** pre-existing; `--durable-writes` is inert in process mode.
+- **The copy-mode `progress/` dataset name:** pre-existing, and costs only
+  derived output.

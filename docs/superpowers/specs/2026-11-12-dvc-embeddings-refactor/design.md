@@ -884,10 +884,24 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
       image, so a second detecting pipeline would leave the first one's table
       pointing at labels it was not computed from;
     - an `ImageCorrector` anywhere in `ops`, which changes the pixels the store
-      holds.
-  - **Checked per image.** After `apply()`, the exported layer's level-0 digest
-    must equal the store's. Otherwise that image fails without writing. This
-    catches any pixel-changing op the class check misses.
+      holds;
+    - (user decisions 2026-11-18, P5 review Q1, Q2, Q4) a full run's bundle
+      store (its root carries `image_class`): in place is for process stores,
+      and rewriting a bundle store's root would leave the owning run
+      `incomplete`;
+    - a legacy root-level machine-state name at the input root
+      (`progress/`, `processing_state.json`, `processing_events.log`): in
+      place the output is the input tree, so the legacy migration would move
+      a user dataset into `.phenotypic/`, where `--restart` deletes it;
+    - a store that is a symlink or resolves outside `--input`: the
+      transaction would replace the link with a real copy and leave the
+      target unchanged; run in place on the target's own folder.
+  - **Checked per image.** The exported layer's level-0 digest after
+    `apply()` must equal its digest right after the read (user decision
+    2026-11-18, Q3), so any stored dtype, a legacy integer `gray` store
+    included, is supported. Otherwise that image fails without writing. This
+    catches any pixel-changing op the class check misses. The stored array's
+    digest still binds the embedding entry.
   - **Continuation.** Re-running the same command does no work for an image
     whose store already holds this pipeline's folder with every entry
     `stale: false`. The run's own write changes the store's root, so the work id

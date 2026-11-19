@@ -825,9 +825,12 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>an input that is not a PhenoTypic store (a raw image, a third-party OME-Zarr), which has nothing to write into;</li>
 <li>a <code>--layer</code> that is not the store's primary series;</li>
 <li>an <code>ObjectDetector</code> anywhere in the pipeline. A store holds one label image, so a second detecting pipeline would leave the first one's table pointing at labels it was not computed from;</li>
-<li>an <code>ImageCorrector</code> anywhere in <code>ops</code>, which changes the pixels the store holds.</li>
+<li>an <code>ImageCorrector</code> anywhere in <code>ops</code>, which changes the pixels the store holds;</li>
+<li>(user decisions 2026-11-18, P5 review Q1, Q2, Q4) a full run's bundle store (its root carries <code>image_class</code>): in place is for process stores, and rewriting a bundle store's root would leave the owning run <code>incomplete</code>;</li>
+<li>a legacy root-level machine-state name at the input root (<code>progress/</code>, <code>processing_state.json</code>, <code>processing_events.log</code>): in place the output is the input tree, so the legacy migration would move a user dataset into <code>.phenotypic/</code>, where <code>--restart</code> deletes it;</li>
+<li>a store that is a symlink or resolves outside <code>--input</code>: the transaction would replace the link with a real copy and leave the target unchanged; run in place on the target's own folder.</li>
 </ul></li>
-<li><strong>Checked per image.</strong> After <code>apply()</code>, the exported layer's level-0 digest must equal the store's. Otherwise that image fails without writing. This catches any pixel-changing op the class check misses.</li>
+<li><strong>Checked per image.</strong> The exported layer's level-0 digest after <code>apply()</code> must equal its digest right after the read (user decision 2026-11-18, Q3), so any stored dtype, a legacy integer <code>gray</code> store included, is supported. Otherwise that image fails without writing. This catches any pixel-changing op the class check misses. The stored array's digest still binds the embedding entry.</li>
 <li><strong>Continuation.</strong> Re-running the same command does no work for an image whose store already holds this pipeline's folder with every entry <code>stale: false</code>. The run's own write changes the store's root, so the work id must not include the bytes the run writes.</li>
 <li><strong>Where to run it.</strong> An AutoConvertRaw-GC reprocess deletes and re-uploads a store, dropping every folder added in place. So in place runs on a local copy, such as the <code>/bigdata</code> mirror, never on the bucket or the NAS tree AutoConvertRaw-GC publishes. The how-to page says so.</li>
 </ul></li>
