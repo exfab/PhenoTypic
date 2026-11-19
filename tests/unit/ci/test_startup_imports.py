@@ -278,7 +278,7 @@ GUARDED_SUBPACKAGES = (
 #: unchanged list (spec Amendment A P3).
 SUBPACKAGE_EXPECTED_DEFERRALS: dict[str, tuple[str, ...]] = {
     "phenotypic.correction": ("colour",),
-    # Inherited, not a second leak: five of the seven prefab pipelines are built from
+    # Inherited, not a second leak: seven of the eight prefab pipelines are built from
     # ``phenotypic.correction`` operations, so importing the package imports that one.
     "phenotypic.prefab": ("colour",),
 }
