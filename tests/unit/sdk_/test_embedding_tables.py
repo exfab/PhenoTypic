@@ -157,7 +157,14 @@ def test_a_payload_key_must_match_its_mapping_key(tmp_path, image_with_crop_payl
 
 
 @pytest.mark.parametrize(
-    "key", ["a/b/c", "toy-v1", "toy-v1/", "/crops", "../crops", "a\\b/grid", "toy-v1/tiles"]
+    "key",
+    [
+        "a/b/c", "toy-v1", "toy-v1/", "/crops", "../crops", "a\\b/grid", "toy-v1/tiles",
+        # #281 named grid regions: ``grid-<slug>`` and nothing looser.
+        "toy-v1/grid-", "toy-v1/grid-Wells", "toy-v1/grid-wells-a", "toy-v1/grid-_wells",
+        "toy-v1/grid-wells/x", "toy-v1/grid-wells\n", "toy-v1/gridwells", "toy-v1/grid_wells",
+        "toy-v1/crops-wells", "toy-v1/grid-" + "a" * 33,
+    ],
 )
 def test_a_payload_and_a_read_entry_refuse_a_key_by_one_rule(key):
     """#281 P4 simplify, key validation: ``split_embedding_key`` is the rule
@@ -177,7 +184,15 @@ def test_a_payload_and_a_read_entry_refuse_a_key_by_one_rule(key):
 
 @pytest.mark.parametrize(
     ("key", "parts"),
-    [("toy-v1/crops", ("toy-v1", "crops")), ("dinov2-vitb14/grid", ("dinov2-vitb14", "grid"))],
+    [
+        ("toy-v1/crops", ("toy-v1", "crops")),
+        ("dinov2-vitb14/grid", ("dinov2-vitb14", "grid")),
+        ("dinov2-vitb14/grid-wells", ("dinov2-vitb14", "grid-wells")),
+        ("dinov2-vitb14/grid-agar", ("dinov2-vitb14", "grid-agar")),
+        ("toy-v1/grid-0", ("toy-v1", "grid-0")),
+        ("toy-v1/grid-rig1_wells", ("toy-v1", "grid-rig1_wells")),
+        ("toy-v1/grid-" + "a" * 32, ("toy-v1", "grid-" + "a" * 32)),
+    ],
 )
 def test_a_model_and_region_key_splits_into_its_folders(key, parts):
     from phenotypic.sdk_._table_runs import split_embedding_key
@@ -265,3 +280,45 @@ def test_replace_image_tables_writes_the_given_embeddings(tmp_path, image_with_c
     assert read_embedding_table(store, "toy-v1/crops").num_rows == (
         image_with_crop_payload.num_objects
     )
+
+
+def test_two_named_grids_write_two_tables_in_one_run(tmp_path, pipeline_file_a, plate):
+    """#281 named grid regions: ``grid-wells`` and ``grid-agar`` of one model are
+    two tables in one run folder, each holding its own grid's cells."""
+    import pyarrow.parquet as pq
+
+    from phenotypic.schema import GRID
+    from phenotypic.sdk_ import list_table_runs, read_embedding_table
+    from tests._tiny_run import (
+        _IMAGE_PAYLOADS,
+        _with_cli_payloads,
+        named_grid_embedders,
+        save_with_payload,
+        toy_grid_embedder_of,
+    )
+
+    image = _with_cli_payloads(plate, pipeline_file_a, named_grid_embedders(toy_grid_embedder_of))
+    try:
+        store = save_with_payload(tmp_path, image)
+    finally:
+        _IMAGE_PAYLOADS.pop(id(image), None)
+    (run,) = list_table_runs(store)
+    assert list(run.descriptor["embeddings"]) == ["toy-v1/grid-wells", "toy-v1/grid-agar"]
+    for region, cells in (("grid-wells", 4), ("grid-agar", 1)):
+        path = run.embedding_path("toy-v1", region)
+        assert path == store / "tables" / run.run_id / "embeddings/toy-v1" / region / "table.parquet"
+        assert pq.read_metadata(path).num_rows == cells
+        entry = run.descriptor["embeddings"][f"toy-v1/{region}"]
+        assert entry["files"][0]["path"].endswith(f"embeddings/toy-v1/{region}/table.parquet")
+        assert entry["key"] == str(GRID.ROW_MAJOR_IDX)
+    wells = read_embedding_table(store, "toy-v1/grid-wells")
+    agar = read_embedding_table(store, "toy-v1/grid-agar")
+    entries = run.descriptor["embeddings"]
+    assert entries["toy-v1/grid-wells"]["binds"]["grid_sha256"] != (
+        entries["toy-v1/grid-agar"]["binds"]["grid_sha256"]
+    )
+    assert entries["toy-v1/grid-wells"]["producer"]["params_sha256"] != (
+        entries["toy-v1/grid-agar"]["producer"]["params_sha256"]
+    )
+    assert agar.column(str(GRID.ROW_INTERVAL_END)).to_pylist() == [200]
+    assert wells.column(str(GRID.ROW_INTERVAL_END)).to_pylist() == [100, 100, 200, 200]

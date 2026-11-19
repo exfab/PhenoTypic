@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Union
 
 import numpy as np
 import pandas as pd
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 
 from phenotypic.schema import GRID, OBJECT
 from phenotypic.sdk_.exceptions_ import OperationFailedError
+from phenotypic.sdk_._table_runs import CROPS_REGION, check_grid_name, grid_region
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
 from phenotypic.sdk_.typing_ import EmbeddingRegions, OperationField, TuneSpec
 
@@ -21,9 +22,6 @@ from ._measure_features import MeasureFeatures
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic.sdk_._embedding_tables import EmbeddingPayload
-
-#: The run-folder region each ``regions`` value writes (spec D1).
-_REGION_FOLDERS: Final[dict[str, str]] = {"objects": "crops", "grid": "grid"}
 
 #: The key columns of a grid table, in table order (spec D1). The first is the
 #: entry's ``key``.
@@ -99,8 +97,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     An embedder crops image regions and turns each crop into one vector with
     a model (a DINOv2 backbone, say). Unlike every other measurer its output
     is not a set of scalar columns in the measurement table: each embedder
-    writes its own table, ``embeddings/<model>/<crops|grid>/table.parquet``,
-    inside the run folder of the pipeline that produced it.
+    writes its own table, ``embeddings/<model>/<region>/table.parquet``,
+    inside the run folder of the pipeline that produced it. The region is
+    ``crops`` for colonies, ``grid`` for a grid, and ``grid-<grid_name>``
+    for a named grid.
 
     **Which runs which.** :meth:`ImagePipeline.measure` does **not** run
     embedders -- its frame never carries an ``embedding`` column.
@@ -114,6 +114,8 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     ``regions="grid"`` embeds each cell of ``grid``, a
     :class:`~phenotypic.grid.ManualGridFinder` whose pixel edges are set per
     rig, and needs no objects. A whole-image embedding is a 1 x 1 grid.
+    Naming a grid (``grid_name="wells"``) lets one pipeline embed several
+    grids with one model, each in its own table.
 
     To implement one, subclass this and define three methods:
 
@@ -124,7 +126,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     Override :meth:`_embed_object_boxes` as well when a colony's crop needs
     its own pixels (a background mask, a masked pool), and list the fields
     that name the model in ``_leading_fields`` to put them before
-    ``regions`` and ``grid`` in the field order.
+    ``regions``, ``grid`` and ``grid_name`` in the field order.
 
     Args:
         regions: ``"objects"`` to embed detected colonies, ``"grid"`` to
@@ -132,6 +134,12 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         grid: The grid whose cells are embedded, in pixels of the image the
             measurer sees. Required with ``regions="grid"`` and refused
             otherwise. A cell outside the image fails that image.
+        grid_name: A name for ``grid``, so that one pipeline can embed
+            several grids with one model: the table's region becomes
+            ``grid-<grid_name>`` instead of ``grid``. A lowercase slug of 1
+            to 32 characters (``a-z``, ``0-9`` and ``_``, starting with a
+            letter or digit). ``None`` keeps the region ``grid``. Refused
+            with ``regions="objects"``.
 
     Examples:
         A toy embedder whose vector is each box's height and width:
@@ -160,8 +168,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     grid: Annotated[  # type: ignore[valid-type]
         Union[OperationField, None], TuneSpec(tunable=False)
     ] = None
+    grid_name: Annotated[Union[str, None], TuneSpec(tunable=False)] = None
 
-    #: Subclass fields placed before ``regions`` and ``grid``, in this order:
+    #: Subclass fields placed before ``regions``, ``grid`` and ``grid_name``, in this order:
     #: the ones that name the model (``size``, ``version``, ...), which a
     #: reader of a pipeline file looks for first. Empty keeps pydantic's
     #: order, the ABC's fields first.
@@ -172,7 +181,8 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """Move ``_leading_fields`` to the front of the subclass's field order.
 
         Pydantic puts inherited fields first, so without this every
-        embedder's own model fields would follow ``regions`` and ``grid``.
+        embedder's own model fields would follow ``regions``, ``grid`` and
+        ``grid_name``.
         The same forced-rebuild pattern as the field-append mixins
         (``sdk_/mixin/_input_layer_mixin.py``); ``TuneSpec`` metadata and the
         docstring descriptions survive it.
@@ -190,9 +200,15 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             fields.update(reordered)
             cls.model_rebuild(force=True)
 
+    @field_validator("grid_name")
+    @classmethod
+    def _grid_name_is_a_slug(cls, value: str | None) -> str | None:
+        """A grid name is one lowercase path segment (:func:`check_grid_name`)."""
+        return value if value is None else check_grid_name(value)
+
     @model_validator(mode="after")
     def _check_grid_matches_regions(self) -> "MeasureEmbedding":
-        """``grid`` is required with ``regions="grid"`` and refused otherwise."""
+        """``grid`` is required with ``regions="grid"``; it and ``grid_name`` are refused otherwise."""
         if self.regions == "grid":
             from phenotypic.grid import ManualGridFinder
 
@@ -210,6 +226,11 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             raise ValueError(
                 "grid is only used with regions='grid'; drop it, or set "
                 "regions='grid'"
+            )
+        elif self.grid_name is not None:
+            raise ValueError(
+                "grid_name is only used with regions='grid'; drop it, or set "
+                "regions='grid' with a grid"
             )
         return self
 
@@ -273,9 +294,21 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """Whether this embedder needs detected objects: ``regions == "objects"``."""
         return self.regions == "objects"
 
+    @property
+    def region(self) -> str:
+        """The table's region folder: ``crops``, ``grid`` or ``grid-<grid_name>``."""
+        if self.regions == "objects":
+            return CROPS_REGION
+        return grid_region(self.grid_name)
+
     def payload_key(self) -> str:
-        """``"<model_token()>/<crops|grid>"``: the entry's key in its run folder."""
-        return f"{self.model_token()}/{_REGION_FOLDERS[self.regions]}"
+        """``"<model_token()>/<region>"``: the entry's key in its run folder.
+
+        Two embedders of one pipeline must not share it
+        (``ImagePipeline`` refuses them), so two grids of one model need
+        different ``grid_name``.
+        """
+        return f"{self.model_token()}/{self.region}"
 
     def _dim(self) -> int:
         descriptor = self.entry_descriptor()
@@ -432,10 +465,17 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     # ------------------------------------------------------------------ #
 
     def _params_sha256(self) -> str:
-        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``)."""
-        canonical = json.dumps(
-            self.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-        )
+        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``).
+
+        ``grid_name`` is left out while it is ``None``, so an embedder that
+        names no grid has the digest it had before the field existed, and a
+        run continued across the upgrade keeps one descriptor per key
+        (#281 named grid regions). A name is part of the digest.
+        """
+        params = self.model_dump(mode="json")
+        if params.get("grid_name") is None:
+            params.pop("grid_name", None)
+        canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def payload(self, image: Image) -> EmbeddingPayload:

@@ -2,7 +2,7 @@
 
 Since #281 P3 a store's tables live in one folder per measuring pipeline::
 
-    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/{crops,grid}}/
+    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/{crops,grid,grid-<name>}}/
 
 described by ``attributes.phenotypic.tables``::
 
@@ -58,9 +58,23 @@ PIPELINE_SHA256_KEY: Final[str] = "pipeline_sha256"
 SCHEMA_VERSION_KEY: Final[str] = "schema_version"
 EMBEDDINGS_KEY: Final[str] = "embeddings"
 
-#: Embedding regions a run folder may hold (spec D1).
-EmbeddingRegion = Literal["crops", "grid"]
-_EMBEDDING_REGIONS: Final[frozenset[str]] = frozenset({"crops", "grid"})
+#: An embedding region folder of a run (spec D1, E3): ``crops``, ``grid``,
+#: or ``grid-<name>`` for a named grid. :func:`split_embedding_key` is the
+#: one rule for which strings are regions.
+EmbeddingRegion = str
+
+#: The region of a crop embedder (``regions="objects"``).
+CROPS_REGION: Final[str] = "crops"
+#: The region of an unnamed grid embedder; a named one is ``grid-<name>``.
+GRID_REGION: Final[str] = "grid"
+
+#: A grid name (#281 named grid regions, user decision 2026-11-19): a
+#: lowercase slug, safe as one path segment and as a file name.
+_GRID_NAME: Final[str] = r"[a-z0-9][a-z0-9_]{0,31}"
+_GRID_NAME_RE: Final[re.Pattern[str]] = re.compile(_GRID_NAME)
+_EMBEDDING_REGION_RE: Final[re.Pattern[str]] = re.compile(
+    rf"{CROPS_REGION}|{GRID_REGION}(?:-{_GRID_NAME})?"
+)
 
 _SHA_PREFIX_LENGTH: Final[int] = 12
 
@@ -130,16 +144,56 @@ def metadata_table_relative_path(run_id: str) -> PurePosixPath:
     )
 
 
+def check_grid_name(name: str) -> str:
+    """Return *name* if it is a grid name: ``^[a-z0-9][a-z0-9_]{0,31}$``.
+
+    The name a ``MeasureEmbedding``'s ``grid_name`` must be, so its region
+    ``grid-<name>`` passes :func:`split_embedding_key`.
+
+    Raises:
+        ValueError: If *name* is not a lowercase slug of 1 to 32 characters
+            (letters, digits and ``_``, starting with a letter or digit).
+    """
+    if not isinstance(name, str) or _GRID_NAME_RE.fullmatch(name) is None:
+        raise ValueError(
+            "grid_name must be a lowercase slug of 1 to 32 characters "
+            f"(a-z, 0-9 and _, starting with a-z or 0-9), got {name!r}"
+        )
+    return name
+
+
+def grid_region(grid_name: str | None) -> str:
+    """The region folder of a grid embedder: ``grid``, or ``grid-<grid_name>``.
+
+    Raises:
+        ValueError: If *grid_name* is not ``None`` and not a grid name
+            (:func:`check_grid_name`).
+
+    Examples:
+        >>> grid_region(None), grid_region("wells")
+        ('grid', 'grid-wells')
+    """
+    if grid_name is None:
+        return GRID_REGION
+    return f"{GRID_REGION}-{check_grid_name(grid_name)}"
+
+
 def _check_embedding_folders(model: str, region: str) -> None:
-    """Refuse a region other than crops or grid, or a model that is not one path segment."""
-    if region not in _EMBEDDING_REGIONS:
-        raise ValueError(f"embedding region must be crops or grid, got {region!r}")
+    """Refuse a region that is not crops, grid or grid-<name>, or a model that is not one path segment."""
+    if not isinstance(region, str) or _EMBEDDING_REGION_RE.fullmatch(region) is None:
+        raise ValueError(
+            "embedding region must be crops or grid, or grid-<name> with <name> "
+            f"a lowercase slug (^[a-z0-9][a-z0-9_]{{0,31}}$), got {region!r}"
+        )
     if not model or "/" in model or "\\" in model or model in {".", ".."}:
         raise ValueError(f"embedding model must be one path segment, got {model!r}")
 
 
 def split_embedding_key(key: str) -> tuple[str, EmbeddingRegion]:
-    """``(model, region)`` of an embedding entry key, ``"<model>/<crops|grid>"``.
+    """``(model, region)`` of an embedding entry key, ``"<model>/<region>"``.
+
+    The region is ``crops``, ``grid`` or ``grid-<name>``, where ``<name>``
+    is a grid name (:func:`check_grid_name`): ``dinov2-vitb14/grid-wells``.
 
     The one rule for a key: an
     :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload` is refused
@@ -148,9 +202,13 @@ def split_embedding_key(key: str) -> tuple[str, EmbeddingRegion]:
     say), because the key names the deliverable's file.
 
     Raises:
-        ValueError: If the part after the first ``/`` is not ``"crops"`` or
-            ``"grid"`` (so ``"a/b/c"`` is refused), or the part before it is
-            not one path segment.
+        ValueError: If the part after the first ``/`` is not a region (so
+            ``"a/b/c"``, ``"m/grid-"`` and ``"m/grid-Wells"`` are refused),
+            or the part before it is not one path segment.
+
+    Examples:
+        >>> split_embedding_key("dinov2-vitb14/grid-wells")
+        ('dinov2-vitb14', 'grid-wells')
     """
     model, _, region = key.partition("/")
     _check_embedding_folders(model, region)
@@ -163,8 +221,9 @@ def embedding_table_relative_path(
     """``tables/<run_id>/embeddings/<model>/<region>/table.parquet``, store-relative.
 
     Raises:
-        ValueError: If *region* is not ``"crops"`` or ``"grid"``, or *model*
-            is not a single path segment.
+        ValueError: If *region* is not ``"crops"``, ``"grid"`` or
+            ``"grid-<name>"`` (:func:`split_embedding_key`), or *model* is
+            not a single path segment.
     """
     from . import ngff_
 

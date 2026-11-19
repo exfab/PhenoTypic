@@ -4,8 +4,11 @@
 its measurement table, from **the run folder the image's record certifies**
 (spec D6a), into one file per entry key::
 
-    deliverables/embeddings/<model>/<crops|grid>.parquet
+    deliverables/embeddings/<model>/<region>.parquet
     deliverables/embeddings/manifest.json
+
+where ``<region>`` is ``crops``, ``grid`` or ``grid-<name>``
+(:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
 
 Each file holds the master's intrinsic identity (``Metadata_Dataset``,
 ``Metadata_ImageName``) plus the table's own key columns,
@@ -54,7 +57,7 @@ does not are removed. :func:`aggregate_embedding_tables` is the two in one.
 - An entry that is **not stale but cannot be read** fails finalization, as a
   master that cannot be built does. Every such store is named in the one
   error, not only the first. So does an entry whose key is not
-  ``"<model>/<crops|grid>"`` (a store root edited by hand), stale or not:
+  ``"<model>/<region>"`` (a store root edited by hand), stale or not:
   the key names the deliverable's file, and it is the rule an
   ``EmbeddingPayload`` is refused on when built
   (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`). It never revokes measurement authority: the
@@ -243,7 +246,7 @@ def _plan_keys(
 ) -> tuple[list[_KeyPlan], list[_Unreadable]]:
     """Split each key's entries into readable runs and stale stores, in run order.
 
-    A key that is not ``"<model>/<crops|grid>"``
+    A key that is not ``"<model>/<region>"``
     (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`, the rule an
     ``EmbeddingPayload`` is refused on when built) gets no plan: it names the
     deliverable's file, so each of its entries, stale or not, is returned as
@@ -266,7 +269,7 @@ def _plan_keys(
                 split_embedding_key(key)
             except ValueError as exc:
                 unreadable.append(
-                    _Unreadable(relative, key, f"its key is not <model>/<crops|grid>: {exc}")
+                    _Unreadable(relative, key, f"its key is not <model>/<region>: {exc}")
                 )
                 continue
             plan = plans.setdefault(key, _KeyPlan(key))
@@ -568,7 +571,7 @@ def stage_embedding_deliverables(
 
     Raises:
         RuntimeError: If any non-stale entry cannot be read, or any entry's
-            key is not ``"<model>/<crops|grid>"`` (its message names every
+            key is not ``"<model>/<region>"`` (its message names every
             such store and the whole-run ``--mode measure`` remedy), or two
             stores' tables for one key have different schemas.
         ValueError: If a run's store is not a store of this run.

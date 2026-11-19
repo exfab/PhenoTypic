@@ -481,3 +481,22 @@ def test_continuation_refinalizes_with_the_new_images_embeddings(
     assert set(table.column("Metadata_ImageName").to_pylist()) == {
         "plate_1", "plate_2", "plate_3",
     }
+
+
+def test_two_named_dino_grids_publish_two_deliverables(tmp_path, tiny_inputs, stub_backbone):
+    """#281 named grid regions, the DINO twin of the toy run in
+    ``tests/unit/cli/test_embedding_aggregation.py``: rig1's ``wells`` and
+    ``agar`` grids of one model, one backbone load."""
+    from tests._tiny_run import (
+        assert_named_grids_published,
+        differentiate_plate_2,
+        grid_embedder,
+        run_cli,
+        with_named_grids,
+    )
+
+    differentiate_plate_2(tiny_inputs)
+    out = tmp_path / "out"
+    result = run_cli(tiny_inputs, out, pipeline=with_named_grids(tmp_path, grid_embedder))
+    assert result.exit_code == 0, result.output
+    assert_named_grids_published(out, "dinov2-vitb14")

@@ -749,3 +749,24 @@ def test_every_unreadable_store_is_named_with_the_whole_tree_remedy(three_stores
     assert "--mode measure" in message and f"--output {out}" in message
     assert "every image" in message
     assert not (out / "deliverables" / "embeddings").exists()
+
+
+# ---------------------------------------------------------------------------
+# #281 named grid regions: two grids of one model, end to end
+# ---------------------------------------------------------------------------
+
+
+def test_two_named_grids_publish_two_deliverables(tmp_path, tiny_inputs, registered_toy_embedder):
+    from tests._tiny_run import (
+        assert_named_grids_published,
+        differentiate_plate_2,
+        run_cli,
+        toy_grid_embedder_of,
+        with_named_grids,
+    )
+
+    differentiate_plate_2(tiny_inputs)
+    out = tmp_path / "out"
+    result = run_cli(tiny_inputs, out, pipeline=with_named_grids(tmp_path, toy_grid_embedder_of))
+    assert result.exit_code == 0, result.output
+    assert_named_grids_published(out, "toy-v1")

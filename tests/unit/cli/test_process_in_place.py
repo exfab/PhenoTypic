@@ -908,3 +908,33 @@ def test_an_unconsolidated_store_stays_unconsolidated(kit):
     after = json.loads(root.read_text(encoding="utf-8"))
     assert "consolidated_metadata" not in after
     assert after["attributes"] == document["attributes"]
+
+
+# ---------------------------------------------------------------------------
+# #281 named grid regions: rig1's two grids, in place
+# ---------------------------------------------------------------------------
+
+
+def test_two_named_grids_in_place_add_one_folder_holding_both_tables(kit, tmp_path):
+    import pyarrow.parquet as pq
+
+    from phenotypic.schema import GRID
+    from tests._tiny_run import named_grid_embedders, with_meas
+
+    make = toy_grid_embedder_of if kit.model(0).startswith("toy") else grid_embedder
+    pipeline = with_meas(tmp_path, **named_grid_embedders(make))
+    result = in_place(kit.tree, pipeline)
+    assert result.exit_code == 0, result.output
+    model = kit.model(0)
+    for store in _stores(kit.tree):
+        runs = list_table_runs(store)
+        assert [r.order for r in runs] == [1, 2]
+        added = runs[-1]
+        assert list(added.descriptor["embeddings"]) == [f"{model}/grid-wells", f"{model}/grid-agar"]
+        assert "measurements" not in added.descriptor
+        for region, ends in (("grid-wells", [100, 100, 200, 200]), ("grid-agar", [200])):
+            assert added.descriptor["embeddings"][f"{model}/{region}"]["stale"] is False
+            table = pq.read_table(added.embedding_path(model, region))
+            assert table.column(str(GRID.ROW_INTERVAL_END)).to_pylist() == ends
+        tables = store / "tables" / added.run_id / "embeddings" / model
+        assert sorted(p.name for p in tables.iterdir() if p.is_dir()) == ["grid-agar", "grid-wells"]

@@ -1450,6 +1450,73 @@ def _write_pipeline_file(directory: Path, stem: str, pipeline: "ImagePipeline") 
     return path
 
 
+def with_named_grids(directory: Path, make) -> Path:
+    """A full-run pipeline file: ``OtsuDetector``, ``MeasureSize`` and two named grids.
+
+    ``meas`` is ``size`` then :func:`named_grid_embedders` of *make*, so a
+    finalization publishes ``<model>/grid-wells`` and ``<model>/grid-agar``
+    (#281 named grid regions). The toy embedder runs under
+    :func:`registered_toy_embedder`; :func:`grid_embedder` under
+    :func:`stub_backbone`.
+
+    Returns:
+        ``<directory>/named_grids-<sha8>.pht-pipe.json``.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSize
+
+    pipeline = ImagePipeline(
+        name="tiny-pipeline-named-grids",
+        ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), **named_grid_embedders(make)},
+    )
+    return _write_pipeline_file(directory, "named_grids", pipeline)
+
+
+def assert_named_grids_published(out: Path, model: str) -> None:
+    """``<model>/grid-wells`` and ``<model>/grid-agar``: two store tables per
+    image, two deliverables, both manifest keys, and each store's rows are its
+    own table of its own grid. For :func:`with_named_grids` runs over
+    :func:`tiny_inputs` with plate_2 mirrored."""
+    import hashlib
+    import json
+
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    from phenotypic.schema import GRID
+    from phenotypic.sdk_ import read_embedding_table
+
+    deliverables = out / "deliverables"
+    manifest = json.loads(
+        (deliverables / "embeddings" / "manifest.json").read_text(encoding="utf-8")
+    )
+    keys = {f"{model}/grid-wells": 4, f"{model}/grid-agar": 1}
+    assert set(manifest["entries"]) == set(keys)
+    own_vectors = {}
+    for key, cells in keys.items():
+        entry = manifest["entries"][key]
+        assert entry["path"] == f"embeddings/{key}.parquet"
+        path = deliverables / entry["path"]
+        assert entry["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert entry["stores"] == 2 and entry["rows"] == 2 * cells
+        published = pq.read_table(path)
+        for stem in ("plate_1", "plate_2"):
+            store = one_store(out, stem=stem)
+            own = read_embedding_table(store, key)
+            assert own.num_rows == cells
+            rows = published.filter(pc.equal(published["Metadata_ImageName"], stem))
+            assert rows.select(own.column_names).equals(own), (key, stem)
+            own_vectors[key, stem] = own.column("embedding")
+        ends = published.column(str(GRID.ROW_INTERVAL_END)).to_pylist()
+        assert set(ends) == ({100, 200} if cells == 4 else {200}), key
+    for key in keys:
+        assert not own_vectors[key, "plate_1"].equals(own_vectors[key, "plate_2"]), key
+    metrics = json.loads((deliverables / "metrics.json").read_text(encoding="utf-8"))
+    assert set(metrics["embeddings"]) == set(keys)
+
+
 def with_meas(directory: Path, /, **measurers) -> Path:
     """A pipeline file: ``ops=[BlurGauss(sigma=1.0)]`` and *measurers* in ``meas``.
 
@@ -1531,16 +1598,45 @@ def registered_toy_embedder(monkeypatch):
 
 
 def toy_grid_embedder_of(**kw):
-    """The toy embedder over the 2 x 2 toy grid; *kw* overrides its fields (``token``)."""
+    """The toy embedder over the 2 x 2 toy grid; *kw* overrides its fields (``token``, ``grid``)."""
     from phenotypic.grid import ManualGridFinder
 
-    return toy_embedder_class()(
-        regions="grid",
-        grid=ManualGridFinder(
+    fields = {
+        "regions": "grid",
+        "grid": ManualGridFinder(
             row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
         ),
         **kw,
+    }
+    return toy_embedder_class()(**fields)
+
+
+#: The one cell of the ``agar`` grid of :func:`named_grid_embedders`: the
+#: 2 x 2 toy grid's outer box, as AutoConvertRaw-GC's whole-agar cell is its
+#: well lattice's (spec E6).
+TOY_AGAR_ROW_EDGES = (TOY_GRID_ROW_EDGES[0], TOY_GRID_ROW_EDGES[-1])
+TOY_AGAR_COL_EDGES = (TOY_GRID_COL_EDGES[0], TOY_GRID_COL_EDGES[-1])
+
+
+def named_grid_embedders(make, **kw) -> dict:
+    """``{"wells": ..., "agar": ...}``: two named grid embedders of one model (#281).
+
+    The rig1 shape of spec E6 at the toy scale: ``grid_name="wells"`` over
+    the 2 x 2 toy grid and ``grid_name="agar"`` over its one outer cell.
+
+    Args:
+        make: :func:`toy_grid_embedder_of` or :func:`grid_embedder`.
+        **kw: Further fields for both.
+    """
+    from phenotypic.grid import ManualGridFinder
+
+    agar = ManualGridFinder(
+        row_edges=list(TOY_AGAR_ROW_EDGES), col_edges=list(TOY_AGAR_COL_EDGES)
     )
+    return {
+        "wells": make(grid_name="wells", **kw),
+        "agar": make(grid_name="agar", grid=agar, **kw),
+    }
 
 
 def toy_grid_process_pipeline(directory: Path, /, **kw) -> Path:

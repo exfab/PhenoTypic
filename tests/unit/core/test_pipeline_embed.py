@@ -77,3 +77,31 @@ def test_the_grid_payload_descriptor_binds_the_level0_array(toy_grid_embedder, p
     assert set(binds) == {"array_sha256", "grid_sha256"}
     assert binds["array_sha256"] == array_digest(np.moveaxis(plate.rgb[:], -1, 0))
     assert payload.descriptor["key"] == "Grid_RowMajorIdx"
+
+
+def test_two_named_grid_embedders_of_one_model_coexist(plate):
+    """#281 named grid regions: rig1's ``wells`` and ``agar`` grids, one model."""
+    from tests._tiny_run import named_grid_embedders, toy_grid_embedder_of
+
+    pipe = ImagePipeline(meas=named_grid_embedders(toy_grid_embedder_of))
+    payloads = pipe.embed(plate)
+    assert list(payloads) == ["toy-v1/grid-wells", "toy-v1/grid-agar"]
+    assert [len(p.frame) for p in payloads.values()] == [4, 1]
+
+
+def test_a_named_and_an_unnamed_grid_of_one_model_coexist():
+    from tests._tiny_run import toy_grid_embedder_of
+
+    ImagePipeline(meas={"a": toy_grid_embedder_of(), "b": toy_grid_embedder_of(grid_name="wells")})
+
+
+def test_two_grid_embedders_with_one_grid_name_are_refused():
+    from tests._tiny_run import toy_grid_embedder_of
+
+    with pytest.raises(ValueError, match="wells_a.*wells_b.*toy-v1/grid-wells"):
+        ImagePipeline(
+            meas={
+                "wells_a": toy_grid_embedder_of(grid_name="wells"),
+                "wells_b": toy_grid_embedder_of(grid_name="wells", token="toy-v1"),
+            }
+        )

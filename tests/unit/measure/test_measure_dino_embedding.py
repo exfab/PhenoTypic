@@ -170,23 +170,28 @@ def test_a_square_leaving_the_image_is_zero_filled_not_stretched(stub_backbone, 
 # ---------------------------------------------------------------------------
 
 
-def test_the_twelve_fields_in_the_plans_order():
+def test_the_thirteen_fields_in_the_plans_order():
+    """#281 named grid regions put ``grid_name`` right after ``grid``."""
     assert list(MeasureDinoEmbedding.model_fields) == [
-        "size", "version", "revision", "regions", "grid", "pooling", "crop_px",
-        "crop_pad_frac", "mask_background", "dtype", "batch_size", "device",
+        "size", "version", "revision", "regions", "grid", "grid_name", "pooling",
+        "crop_px", "crop_pad_frac", "mask_background", "dtype", "batch_size", "device",
     ]
 
 
 def test_defaults():
     m = MeasureDinoEmbedding()
-    assert (m.size, m.version, m.revision, m.regions, m.grid) == ("base", 2, None, "objects", None)
+    assert (m.size, m.version, m.revision, m.regions, m.grid, m.grid_name) == (
+        "base", 2, None, "objects", None, None
+    )
     assert (m.pooling, m.crop_px, m.crop_pad_frac, m.mask_background) == ("crop_cls", 224, 0.25, False)
     assert (m.dtype, m.batch_size, m.device) == ("float16", 64, "auto")
 
 
 def test_field_order_reaches_the_json_schema_and_the_pipeline_file():
     schema = MeasureDinoEmbedding.model_json_schema()
-    assert list(schema["properties"])[:5] == ["size", "version", "revision", "regions", "grid"]
+    assert list(schema["properties"])[:6] == [
+        "size", "version", "revision", "regions", "grid", "grid_name"
+    ]
     params = json.loads(MeasureDinoEmbedding().to_json())["params"]
     assert list(params)[:4] == ["size", "version", "revision", "regions"]
 
@@ -194,6 +199,7 @@ def test_field_order_reaches_the_json_schema_and_the_pipeline_file():
 def test_field_descriptions_survive_the_reorder():
     assert MeasureDinoEmbedding.model_fields["revision"].description
     assert MeasureDinoEmbedding.model_fields["regions"].description
+    assert MeasureDinoEmbedding.model_fields["grid_name"].description
 
 
 @pytest.mark.parametrize(
@@ -210,6 +216,37 @@ def test_a_grid_embedder_writes_the_grid_folder():
     m = MeasureDinoEmbedding(regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]))
     assert m.payload_key() == "dinov2-vitb14/grid"
     assert m.requires_objects is False
+
+
+def test_a_named_grid_embedder_writes_its_named_folder():
+    """#281 named grid regions: ``grid-<name>``, and the name is grid-only."""
+    m = MeasureDinoEmbedding(
+        regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
+        grid_name="wells",
+    )
+    assert m.payload_key() == "dinov2-vitb14/grid-wells"
+    assert m.requires_objects is False
+    with pytest.raises(ValueError, match="grid_name"):
+        MeasureDinoEmbedding(grid_name="wells")
+    with pytest.raises(ValueError, match="grid_name"):
+        MeasureDinoEmbedding(
+            regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
+            grid_name="Wells",
+        )
+
+
+@requires_torch
+def test_two_named_grids_share_one_backbone_load(stub_backbone, plate):
+    """rig1's ``wells`` and ``agar`` embedders of one model load it once, and
+    each payload holds its own grid's cells."""
+    from tests._tiny_run import grid_embedder, named_grid_embedders
+
+    payloads = ImagePipeline(meas=named_grid_embedders(grid_embedder)).embed(plate)
+    assert list(payloads) == ["dinov2-vitb14/grid-wells", "dinov2-vitb14/grid-agar"]
+    assert [len(p.frame) for p in payloads.values()] == [4, 1]
+    assert len(stub_backbone.load_calls) == 1
+    wells, agar = (p.frame["embedding"] for p in payloads.values())
+    assert not any(np.array_equal(agar[0], cell) for cell in wells)
 
 
 @pytest.mark.parametrize("kwargs", [{"mask_background": True}, {"crop_pad_frac": 0.5}])
@@ -249,7 +286,8 @@ def test_tune_annotations_follow_the_plan():
         return next(meta for meta in MeasureDinoEmbedding.model_fields[name].metadata
                     if isinstance(meta, TuneSpec))
 
-    for name in ("size", "version", "revision", "regions", "grid", "dtype", "batch_size", "device"):
+    for name in ("size", "version", "revision", "regions", "grid", "grid_name", "dtype",
+                 "batch_size", "device"):
         assert spec(name).tunable is False, name
     assert spec("crop_px").categories == (112, 224, 336, 448)
     assert (spec("crop_pad_frac").low, spec("crop_pad_frac").high) == (0.0, 0.5)

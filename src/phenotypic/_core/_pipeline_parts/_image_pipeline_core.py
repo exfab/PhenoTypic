@@ -347,10 +347,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     ) -> Dict[str, MeasureFeatures]:
         """Refuse two embedders that would write one embedding table (#281 spec E2).
 
-        A run folder holds one table per ``"<model>/<crops|grid>"`` key, so
-        two embedders of one model and region -- even with different pooling
-        -- would overwrite each other's table. Give them different models, or
-        keep one.
+        A run folder holds one table per ``"<model>/<region>"`` key, so two
+        embedders of one model and region -- even with different pooling --
+        would overwrite each other's table. Give them different models, give
+        two grids different ``grid_name`` (``grid-wells`` and ``grid-agar``
+        coexist), or keep one.
         """
         owners: Dict[str, str] = {}
         for key, measurer in value.items():
@@ -361,7 +362,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 raise ValueError(
                     f"measurers {owners[payload_key]!r} and {key!r} would both "
                     f"write the embedding table {payload_key!r}; a run folder "
-                    "holds one table per model and region, so keep one of them"
+                    "holds one table per model and region, so keep one of them, "
+                    "or give two grids different grid_name"
                 )
             owners[payload_key] = key
         return value
@@ -1379,7 +1381,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         :class:`~phenotypic.abc_.MeasureEmbedding` in ``meas``: this runs
         **only** those, in ``meas`` order. Each returns one table, which a
         store writer puts in the pipeline's run folder as
-        ``tables/<run>/embeddings/<model>/<crops|grid>/table.parquet``
+        ``tables/<run>/embeddings/<model>/<region>/table.parquet``
         (#281 spec D1). A CLI per-image writer calls both methods and writes
         one run folder. Post-measurement ops never see embeddings.
 
@@ -1388,7 +1390,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 objmap; a grid embedder does not.
 
         Returns:
-            ``{"<model>/<crops|grid>": EmbeddingPayload}``, one per embedder;
+            ``{"<model>/<region>": EmbeddingPayload}``, one per embedder;
             empty when the pipeline has none. Two embedders never share a key
             (refused when the pipeline is built).
 

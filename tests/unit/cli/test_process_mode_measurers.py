@@ -489,3 +489,21 @@ def test_process_skips_a_no_objects_measurer_with_the_embeddings_wording(
     assert len(stores) == 2
     for store in stores:
         assert not (store / "tables").exists(), "a skipped measurer stores no table"
+
+
+# ---------------------------------------------------------------------------
+# #281 named grid regions
+# ---------------------------------------------------------------------------
+
+
+def test_named_grid_embedders_run_in_process_mode():
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_process_meas import process_mode_measurers, runs_in_process_mode
+    from tests._tiny_run import named_grid_embedders, toy_grid_embedder_of
+
+    for make in (toy_grid_embedder_of, grid_embedder):
+        grids = named_grid_embedders(make)
+        assert all(runs_in_process_mode(embedder) for embedder in grids.values())
+        pipeline = ImagePipeline(meas={"size": MeasureSize(), **grids})
+        assert list(process_mode_measurers(pipeline)) == ["wells", "agar"]
+        assert process_meas_refusal(pipeline, layer="rgb", process_format="zarr") is None
