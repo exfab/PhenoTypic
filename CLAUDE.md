@@ -165,8 +165,11 @@ isolation before attributing it — most of them pass.
   read-only half, one usage error each: `--overwrite` (`--restart` is
   allowed: it clears only `.phenotypic/`, and is the remedy for a second
   pipeline over the same stores), a layer or format that writes no store, an `ObjectDetector` anywhere, an
-  `ImageCorrector` in `ops`, a single-store `--input`, a non-PhenoTypic or v1
-  input, a `--layer` that is not the primary series. Only the equal case of
+  `ImageCorrector` in `ops`, a single-store `--input`, a legacy
+  machine-state name (`progress/`, `processing_state.json`,
+  `processing_events.log`) at the input root, an orphaned `.trash`, a
+  symlinked store, a non-PhenoTypic, bundle (`image_class`) or v1 input, a
+  `--layer` that is not the primary series. Only the equal case of
   the overlap refusal is lifted; strict containment stays refused.
   `.phenotypic/` then lives under the input root. Run it on a local copy
   (the `/bigdata` mirror), never on the bucket or the NAS tree

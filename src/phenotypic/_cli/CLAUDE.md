@@ -162,20 +162,28 @@ refused.
   the write was built from, both when the rewrite reads it and again
   immediately before `promote_store`, raising `StoreRootChangedError` and
   removing the part. `consolidate` re-consolidates the part after the root,
-  dropping the stale `consolidated_metadata` first. A third option,
+  dropping the stale `consolidated_metadata` first; a root that already
+  carries `consolidated_metadata` is re-consolidated without being asked,
+  measure mode included, and an unconsolidated one given `False` is written
+  as before (P5 review I1). A third option,
   `clear_tables=False`, keeps every run folder as carried, for a pipeline
   that only draws figures. The plan (`_in_place_plan`) writes this pipeline's
   folder through `write_run_entry` (the next number, or its own folder
-  replaced when stale), the figure run, and the image's journal (the store's
-  own journal plus one `process` application, wall-clock fields dropped).
+  replaced when stale), the figure run, and the journal, append-only
+  (`_appended_journal`): the root's earlier applications byte-for-byte, plus
+  the new `process` application without its wall-clock fields (I1).
   Pixel chunks stay hard links, so they keep their inodes, and every other
   run folder and the `upstream` block are carried byte for byte.
 - **`process_in_place_core`** is what both process callers dispatch to in
   place: `LocalParallelStrategy._process_single_local_apply_only` and the
   SLURM per-image worker (`_cli_process_single.py` `main`). It runs
   `embed_in_process_mode`, never `measure()` (spec E4), and checks the pixels
-  after `apply()`: the exported layer cast to the stored dtype must have the
-  stored level-0 digest (`level0_digest`, the `objmap_digest` recipe).
+  after `apply()`: the exported layer must have the `level0_digest` (the
+  `objmap_digest` recipe) it had right after the read, so a legacy integer
+  `gray` store, which `imread` normalises to float32, is supported (user
+  decision 2026-11-18, Q3). A grid payload bound to the read layer is then
+  re-bound to the stored array's digest (`_bind_to_stored`), which is what
+  the entry certifies.
   Otherwise it raises `InPlacePixelsChangedError`, a terminal failure that
   writes nothing, which catches a pixel-changing op the `ImageCorrector`
   refusal misses. If the root changes before the swap, it rebuilds once from
@@ -183,7 +191,11 @@ refused.
   the image fails this invocation (exit `3`) without a terminal record, and a
   plain re-run retries it.
 - **Continuation.** A store already holding this pipeline's folder with
-  every entry `stale: false` does no work (`_owned_run_is_current`). The work
+  each of its embedders' payload keys present and `stale: false` does no
+  work (`_owned_run_is_current`; an empty folder is not current, M1). A root
+  unreadable at that check is a per-image `PerImageScientificError`, not an
+  error retried for ever (M3). The skip warning is logged once per process
+  (M5). The work
   id's input digest is `in_place_input_digest`: the `file_sha256` tree digest
   (`store_tree_sha256`) minus the root `zarr.json`, `tables/` and `figures/`,
   under its own domain tag, so the run's own write never changes its work id.
@@ -200,10 +212,25 @@ refused.
   `in_place_refusal`, in this order: `--overwrite`; a layer or format that
   writes no store; an `ObjectDetector` anywhere (any slot, any
   depth, via `walk_operations`); an `ImageCorrector` in `ops` at any depth
-  (`ops` only, never a slot); an `--input` naming one store or file; then,
-  per store, reading one root each and stopping at the first failure, a
-  non-PhenoTypic input, a v1 tables layout (pointing at `--mode migrate`),
-  and a `--layer` that is not the primary series. The "already contains
+  (`ops` only, never a slot); an `--input` naming one store or file; a
+  legacy root-level machine-state name at the input root (`progress/`,
+  `processing_state.json`, `processing_events.log`, read from
+  `machine_state_restart_targets`), which the legacy migration would move
+  into `.phenotypic/` for `--restart` to delete (P5 review C1, Q2); an
+  orphaned `.<stem>.ome.zarr.<token>.trash` with no live store beside it,
+  naming the `mv` that restores it (I5, `transaction_debris`); then, per
+  store, reading one root each and stopping at the first failure, a store
+  that is a symlink or resolves outside `--input` (Q4), a non-PhenoTypic
+  input, a full run's bundle store whose root carries `image_class` (Q1), a
+  v1 tables layout (pointing at `--mode migrate`), and a `--layer` that is
+  not the primary series. The per-store checks see the images the run would
+  process, `--image-manifest` applied. Leftover `.part` directories are
+  named in one warning and never deleted (M6).
+- **No mode deletes an input through a restart target.**
+  `_refuse_run_inputs_the_run_would_delete` also scans `--input` when
+  `--restart` has targets, and refuses an image inside one: with `--input`
+  equal to `--output`, a dataset folder named `progress` is the legacy
+  root-level `progress/` although `--input` itself lies in no target (C1). The "already contains
   files" check is skipped in place. Pinned by
   `tests/unit/cli/test_process_in_place.py` and
   `test_an_in_place_refusal_comes_before_the_mutating_half`.

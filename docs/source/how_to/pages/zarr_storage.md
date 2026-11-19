@@ -279,8 +279,12 @@ and its journal gains one `process` application. Nothing else changes:
   keeps its inode and its bytes, and every other run folder stays
   byte-identical.
 - **Each image is checked.** After `apply()`, the exported layer's level-0
-  pixels must equal the store's. If an operation changed them, that image
-  fails and nothing is written to it.
+  pixels must equal what was read from the store. If an operation changed
+  them, that image fails and nothing is written to it. Any stored dtype is
+  supported, a legacy integer `gray` store included.
+- **The journal is only appended to.** Earlier applications stay exactly as
+  the store holds them; only the new `process` application leaves out the
+  wall-clock times.
 - **A root that changes under the write is not overwritten.** Just before the
   swap, the run checks that the store's root is still the one it read. If it
   changed (a reprocess, or another writer), the run rebuilds that image once
@@ -308,14 +312,30 @@ written:
 - an `ImageCorrector` anywhere in `ops`, which changes the pixels the store
   holds;
 - an `--input` that names one store rather than the directory holding stores;
+- a `progress/` folder, `processing_state.json` or `processing_events.log` at
+  the input root. Those are the names of a run's legacy machine state, which a
+  run moves into `.phenotypic/` and `--restart` deletes, so rename yours first;
+- a store moved aside by an interrupted write, `.<stem>.ome.zarr.<id>.trash`,
+  with no `<stem>.ome.zarr` beside it. Restore it by renaming it back, as the
+  message says (`mv .<stem>.ome.zarr.<id>.trash <stem>.ome.zarr`);
+- a store that is a symlink, or that resolves outside `--input`. Run in place
+  on the folder the link points to;
 - an input that is not a PhenoTypic store (a raw image, or a third-party
   OME-Zarr), which has nothing to write into;
+- a full run's store (`results/<dataset>/zarr/`), which carries
+  `image_class`: in place is for process stores, and rewriting a full run's
+  store would leave that run incomplete;
 - a store still in the v1 tables layout. Convert it first with `--mode migrate`;
 - a `--layer` that is not the store's primary series (`rgb` when it has one,
   otherwise `gray`).
 
 An output strictly inside the input, or an input strictly inside the output,
-is still refused. Only the equal case runs in place.
+is still refused. Only the equal case runs in place. With `--image-manifest`,
+the checks apply to the images it selects.
+
+A run that finds `.<stem>.ome.zarr.<id>.part` directories, left by an
+interrupted in-place write, names them in one warning and leaves them alone.
+Delete them once no run is writing to the tree.
 
 **Where to run it: a local copy, never the published tree.** An
 AutoConvertRaw-GC reprocess deletes a store and uploads it again, which drops
