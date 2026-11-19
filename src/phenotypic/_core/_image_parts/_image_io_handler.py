@@ -1195,7 +1195,7 @@ class ImageIOHandler(ImageColorSpace):
                 pipelines' table runs. Only ``--mode migrate``'s rebuild of an
                 invalid store from its HDF source passes it.
             embeddings: This save's embedding tables,
-                ``{"<model>/<crops|grid>": EmbeddingPayload}`` as
+                ``{"<model>/<region>": EmbeddingPayload}`` as
                 :meth:`ImagePipeline.embed` returns them. They are written
                 into the same run folder as *measurement_table*, under
                 ``embeddings/<model>/<region>/`` (#281 spec D1). A save with

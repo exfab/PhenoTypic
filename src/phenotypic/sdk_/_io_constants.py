@@ -590,7 +590,7 @@ METRICS_JSON: Final[str] = "metrics.json"
 SCHEMA_JSON: Final[str] = "schema.json"
 
 #: The run's embedding deliverables (#281 spec E5), under
-#: :data:`DIR_DELIVERABLES`: one ``<model>/<crops|grid>.parquet`` per entry
+#: :data:`DIR_DELIVERABLES`: one ``<model>/<region>.parquet`` per entry
 #: key, plus :data:`EMBEDDINGS_MANIFEST_JSON`. Parquet only, never joined to
 #: metadata. See :func:`embeddings_dir`.
 DIR_EMBEDDINGS: Final[str] = "embeddings"

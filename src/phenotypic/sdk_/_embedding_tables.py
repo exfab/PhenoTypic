@@ -5,6 +5,7 @@ that pipeline's run folder::
 
     tables/<n>-<sha12>/embeddings/<model>/crops/table.parquet   Object_Label | embedding
     tables/<n>-<sha12>/embeddings/<model>/grid/table.parquet    Grid_* keys  | embedding
+    tables/<n>-<sha12>/embeddings/<model>/grid-<name>/table.parquet   a named grid, as grid
 
 :class:`EmbeddingPayload` is what :meth:`ImagePipeline.embed` returns and a
 store writer consumes: one table's frame plus the descriptor fields the
@@ -60,8 +61,9 @@ class EmbeddingPayload:
     """One embedding table a pipeline produced for one image, not yet written.
 
     Attributes:
-        key: ``"<model>/<crops|grid>"``, the entry's key in the run's
-            ``embeddings`` block and its folder under ``embeddings/``.
+        key: ``"<model>/<region>"``, the entry's key in the run's
+            ``embeddings`` block and its folder under ``embeddings/``; the
+            region is ``crops``, ``grid`` or ``grid-<name>``.
         frame: The table: its key columns (``Object_Label`` for crops, the
             ``Grid_*`` keys for a grid) and ``embedding``, one 1-D
             ``float16`` vector per row.
@@ -74,8 +76,9 @@ class EmbeddingPayload:
             were computed from. The writer adds ``stale`` and ``files``.
 
     Raises:
-        ValueError: If *key* is not ``"<model>/<crops|grid>"`` with *model*
-            one path segment, or *descriptor* lacks a required field.
+        ValueError: If *key* is not ``"<model>/<region>"``
+            (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`), or
+            *descriptor* lacks a required field.
     """
 
     key: str
@@ -99,7 +102,7 @@ class EmbeddingPayload:
 
     @property
     def region(self) -> str:
-        """``"crops"`` or ``"grid"``, the region folder of :attr:`key`."""
+        """``"crops"``, ``"grid"`` or ``"grid-<name>"``, the region folder of :attr:`key`."""
         return self.key.partition("/")[2]
 
     @property
@@ -331,7 +334,7 @@ def read_embedding_table(
 
     Args:
         store: A promoted ``*.ome.zarr`` store.
-        key: ``"<model>/<crops|grid>"``.
+        key: ``"<model>/<region>"``.
         run_id: Read this run folder's entry instead of the latest one.
 
     Returns:

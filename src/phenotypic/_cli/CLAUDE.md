@@ -107,7 +107,7 @@ rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
 
 - **Runs (v1: embedders only):** each `meas` entry that is a
   `MeasureEmbedding` with `requires_objects` false, i.e. a grid embedder
-  (`regions="grid"`), per `runs_in_process_mode`.
+  (`regions="grid"`, named or not), per `runs_in_process_mode`.
   `MeasureFeatures.requires_objects` is `True`; `MeasureEmbedding` overrides
   it. `process_single_apply_only_core` calls `embed_in_process_mode` after
   `apply()`, inside the same provenance and reference context. It passes the
@@ -1525,8 +1525,10 @@ column schema of every published table, written by `finalize_run`'s
 declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
-`embeddings/<model>/<crops|grid>.parquet` and `embeddings/manifest.json`
-(#281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
+`embeddings/<model>/<region>.parquet` and `embeddings/manifest.json`
+(the region is `crops`, `grid`, or `grid-<name>` for a grid embedder with a
+`grid_name`, so one pipeline can publish several grids of one model, e.g.
+rig1's `grid-wells` and `grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
 itself, never in the `0-K` aggregate shards. **Two phases, so a failure
 changes no deliverable** (P4 review I1): `stage_embedding_deliverables`
 runs *before the master is written*, reads every non-stale entry of each
@@ -1536,8 +1538,9 @@ per store; `promote` runs after the splits and before `metrics.json`,
 replacing each target and writing `manifest.json` last. A `stale` entry
 (`stale is not False`, the one predicate) is skipped with a warning and
 counted; a non-stale entry it cannot read, or any entry whose key is not
-`<model>/<crops|grid>` (`split_embedding_key`, the rule `EmbeddingPayload`
-refuses on), **raises**, failing finalization
+`<model>/<region>` (`split_embedding_key`, the one rule for regions, which
+`EmbeddingPayload` refuses on; nothing else restates the region set),
+**raises**, failing finalization
 like the master, naming every such store, and the image stays `verified`
 (D9), so the remedy is a same-pipeline `--mode measure` over the whole run,
 which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,

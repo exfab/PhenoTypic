@@ -89,7 +89,8 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     The output is not a set of measurement columns. Each image gets one
     embedding table, ``Object_Label`` (or the ``Grid_*`` keys) plus an
     ``embedding`` vector per row, in its store's run folder, and the run
-    gets ``deliverables/embeddings/<model>/<crops|grid>.parquet``;
+    gets ``deliverables/embeddings/<model>/<region>.parquet``, the region
+    ``crops``, ``grid``, or ``grid-<grid_name>`` for a named grid;
     :class:`~phenotypic.schema.DINO_EMBEDDING` documents the vector.
     :meth:`ImagePipeline.embed` runs it; :meth:`ImagePipeline.measure` does
     not. It runs on the CPU unless CUDA is available.
@@ -136,6 +137,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             cell edges in pixels of the image the measurer sees. Required
             with ``regions="grid"``, refused otherwise. A cell outside the
             image fails that image rather than being clipped.
+        grid_name: Names the grid, so one pipeline can embed several grids
+            with one model -- a rig's well lattice and one whole-agar cell,
+            say. Its table's region is then ``grid-<grid_name>``
+            (``dinov2-vitb14/grid-wells``) instead of ``grid``. A lowercase
+            slug of 1 to 32 characters: ``a-z``, ``0-9`` and ``_``, starting
+            with a letter or digit. ``None`` keeps ``grid``. Refused with
+            ``regions="objects"``. Two embedders of one model need different
+            names; the backbone still loads once for both.
         pooling: How a region becomes one vector: ``"crop_cls"``,
             ``"crop_mean"`` or ``"masked_dense"`` (above).
         crop_px: Side of the square crop fed to the backbone, and the tile
@@ -182,6 +191,21 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         ... )
         >>> whole_plate.payload_key(), whole_plate.requires_objects
         ('dinov2-vitb14/grid', False)
+
+        Two grids of one model, each in its own table: a rig's 2 x 3 well
+        lattice and one cell over the whole agar it covers.
+
+        >>> wells = MeasureDinoEmbedding(
+        ...     regions="grid", grid_name="wells",
+        ...     grid=ManualGridFinder(row_edges=[0, 300, 600], col_edges=[0, 260, 530, 800]),
+        ... )
+        >>> agar = MeasureDinoEmbedding(
+        ...     regions="grid", grid_name="agar",
+        ...     grid=ManualGridFinder(row_edges=[0, 600], col_edges=[0, 800]),
+        ... )
+        >>> wells.payload_key(), agar.payload_key()
+        ('dinov2-vitb14/grid-wells', 'dinov2-vitb14/grid-agar')
+        >>> rig = ImagePipeline(meas={"wells": wells, "agar": agar})
         >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas={"dino": crops})
 
         With the weights available, ``pipe.embed(image)`` returns one

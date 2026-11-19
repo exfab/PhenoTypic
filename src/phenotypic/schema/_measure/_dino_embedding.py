@@ -11,9 +11,10 @@ class DINO_EMBEDDING(DiscriminativeFeature):
     ``MeasureDinoEmbedding`` writes one table per model and region, never
     columns of the measurement table: ``Object_Label`` (or the ``Grid_*``
     cell keys) and one ``embedding`` vector per row, under
-    ``tables/<run>/embeddings/<model>/<crops|grid>/table.parquet`` in each
-    image's store and ``deliverables/embeddings/<model>/<crops|grid>.parquet``
-    for the run.
+    ``tables/<run>/embeddings/<model>/<region>/table.parquet`` in each
+    image's store and ``deliverables/embeddings/<model>/<region>.parquet``
+    for the run. The region is ``crops``, ``grid``, or ``grid-<name>`` for a
+    grid with a ``grid_name``.
     """
 
     @classmethod
