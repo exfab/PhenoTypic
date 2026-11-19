@@ -346,6 +346,16 @@ def processing_configuration_digest_from_values(
     return canonical_digest(payload)
 
 
+def config_in_place(config: Any) -> bool:
+    """Whether *config* describes an in-place process run (#281 spec E7).
+
+    :attr:`~._cli_types.ExecutionConfig.in_place`, read with a ``False``
+    default so a config double without the property hashes as a copy run.
+    The one reading behind every work id's configuration and input digest.
+    """
+    return bool(getattr(config, "in_place", False))
+
+
 def processing_configuration_digest(config: "ExecutionConfig") -> str:
     """Hash settings that affect per-image science or required artifacts."""
     return processing_configuration_digest_from_values(
@@ -361,7 +371,7 @@ def processing_configuration_digest(config: "ExecutionConfig") -> str:
         overlay_alpha=config.overlay_alpha,
         save_overlays=config.save_overlays,
         drop_originals=config.drop_originals,
-        in_place=bool(getattr(config, "in_place", False)),
+        in_place=config_in_place(config),
     )
 
 
@@ -537,7 +547,7 @@ def work_identity_for_image(
             dataset=dataset,
             relative_image_path=relative_path.as_posix(),
             input_sha256=input_sha256_for(
-                image_path, in_place=bool(getattr(config, "in_place", False))
+                image_path, in_place=config_in_place(config)
             ),
             pipeline_fingerprint=pipeline_fingerprint,
             processing_config_digest=processing_configuration_digest(config),

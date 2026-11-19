@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
-from ._cli_failure_tracker import file_sha256, input_sha256_for, work_id_for_image
+from ._cli_failure_tracker import (
+    config_in_place,
+    file_sha256,
+    input_sha256_for,
+    work_id_for_image,
+)
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
@@ -393,16 +398,10 @@ fi"""
                 continue
             image_path = Path(entry)
             work_id, _ = work_id_for_image(config, dataset.name, image_path)
-            identity_rows.append(
-                (
-                    work_id,
-                    input_sha256_for(
-                        image_path,
-                        in_place=bool(getattr(config, "in_place", False)),
-                    ),
-                    uuid4().hex,
-                )
+            input_sha256 = input_sha256_for(
+                image_path, in_place=config_in_place(config)
             )
+            identity_rows.append((work_id, input_sha256, uuid4().hex))
         prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
             f"    {shlex.quote(row[0])}" for row in identity_rows
         ) + "\n)"
