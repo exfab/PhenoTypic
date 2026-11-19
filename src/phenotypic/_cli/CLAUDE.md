@@ -63,7 +63,7 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 The read-only half parses and validates options, scans the inputs, runs the
 refusals that cannot be skipped (the GPU placement refusal, the grid-preset
 refusal, the process-mode lost-table refusal in **Process mode runs `meas`**
-below, the refusal of a
+below, the in-place refusals in **In-place process runs** below, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
 `--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
 reference-metadata refusals in **Reference metadata** below), loads the pipeline,
@@ -145,6 +145,92 @@ rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
   reusing stores that lack the tables it now writes.
 - Pinned by `tests/unit/cli/test_process_mode_measurers.py` and
   `tests/unit/cli/test_process_store_tables.py`.
+
+## In-place process runs (`_cli_process_in_place.py`)
+
+#281 spec E7. `--mode process` with `--output` resolving to the same
+directory as `--input` (`is_in_place_process`, `_cli_types.py`;
+`ExecutionConfig.in_place`) adds the pipeline's run folder to each input
+store where it is. Any other `--output` writes new stores as before. Only the
+**equality** case of the process overlap refusal is lifted: an output
+strictly inside the input, or an input strictly inside the output, stays
+refused.
+
+- **The write is the measure rewrite's transaction**, `_rewrite_store_tables`
+  (`sdk_/_measurement_tables.py`), with two options measure mode never
+  passes. `expected_root_sha256` refuses a root whose bytes are not the ones
+  the write was built from, both when the rewrite reads it and again
+  immediately before `promote_store`, raising `StoreRootChangedError` and
+  removing the part. `consolidate` re-consolidates the part after the root,
+  dropping the stale `consolidated_metadata` first. A third option,
+  `clear_tables=False`, keeps every run folder as carried, for a pipeline
+  that only draws figures. The plan (`_in_place_plan`) writes this pipeline's
+  folder through `write_run_entry` (the next number, or its own folder
+  replaced when stale), the figure run, and the image's journal (the store's
+  own journal plus one `process` application, wall-clock fields dropped).
+  Pixel chunks stay hard links, so they keep their inodes, and every other
+  run folder and the `upstream` block are carried byte for byte.
+- **`process_in_place_core`** is what both process callers dispatch to in
+  place: `LocalParallelStrategy._process_single_local_apply_only` and the
+  SLURM per-image worker (`_cli_process_single.py` `main`). It runs
+  `embed_in_process_mode`, never `measure()` (spec E4), and checks the pixels
+  after `apply()`: the exported layer cast to the stored dtype must have the
+  stored level-0 digest (`level0_digest`, the `objmap_digest` recipe).
+  Otherwise it raises `InPlacePixelsChangedError`, a terminal failure that
+  writes nothing, which catches a pixel-changing op the `ImageCorrector`
+  refusal misses. If the root changes before the swap, it rebuilds once from
+  the new root. A second `StoreRootChangedError` is raised **unwrapped**, so
+  the image fails this invocation (exit `3`) without a terminal record, and a
+  plain re-run retries it.
+- **Continuation.** A store already holding this pipeline's folder with
+  every entry `stale: false` does no work (`_owned_run_is_current`). The work
+  id's input digest is `in_place_input_digest`: the `file_sha256` tree digest
+  (`store_tree_sha256`) minus the root `zarr.json`, `tables/` and `figures/`,
+  under its own domain tag, so the run's own write never changes its work id.
+  `input_sha256_for` is its one dispatcher. Selection, the SLURM worklist
+  (`_cli_slurm_array_scripts.py`) and the SLURM worker's identity and
+  expected-input check all call it. `processing_configuration_digest_from_values`
+  adds `in_place: true` to the process payload, and only when true, so a
+  copy run's digest is unchanged and an in-place run never reuses its
+  continuation.
+- **Refused in the read-only half** by `_refuse_in_place_run`
+  (`phenotypicCLI.py`), above `_refuse_run_inputs_the_run_would_delete`,
+  `--restart`/`--overwrite`, `mint_run_identity` and `--dry-run`, and
+  outside `--skip-validation`. Each refusal is one usage-error line, from
+  `in_place_refusal`, in this order: `--overwrite`; a layer or format that
+  writes no store; an `ObjectDetector` anywhere (any slot, any
+  depth, via `walk_operations`); an `ImageCorrector` in `ops` at any depth
+  (`ops` only, never a slot); an `--input` naming one store or file; then,
+  per store, reading one root each and stopping at the first failure, a
+  non-PhenoTypic input, a v1 tables layout (pointing at `--mode migrate`),
+  and a `--layer` that is not the primary series. The "already contains
+  files" check is skipped in place. Pinned by
+  `tests/unit/cli/test_process_in_place.py` and
+  `test_an_in_place_refusal_comes_before_the_mutating_half`.
+- **`--restart` is allowed in place** (user ruling 2026-11-18). It clears
+  only the non-preserved `.phenotypic/` machine state under the input root,
+  keeps the terminal-failure records, and never touches a store:
+  `machine_state_restart_targets` lists only `.phenotypic/` entries, so
+  `_refuse_run_inputs_the_run_would_delete` admits `--input` there and
+  refuses only a run input stored inside the machine state, as anywhere.
+  It is the remedy for a **different pipeline over the same stores**, which
+  the normal resume check refuses (`Cannot continue - Pipeline contents
+  changed`, exit `1`); in place that message is followed by a line naming
+  `--restart`. Pinned by `test_restart_in_place_touches_no_store` (every
+  store file keeps its inode and bytes) and
+  `test_another_pipeline_in_place_needs_restart`.
+- **Only store exports are in place for a worker.** `ExecutionConfig.in_place`
+  and the SLURM worker also require `writes_process_store` (`--layer
+  rgb|gray --process-format zarr`). The CLI refuses any other export with
+  equal paths before a worker exists, so this changes nothing a CLI run can
+  reach; it keeps a hand-built config with equal paths (the staged objmap
+  tests) on the copy path.
+- **`.phenotypic/` lives under the input root.** `scan_directory_structure`
+  does not skip dot-directories by name. It finds no input there because
+  `.phenotypic/` holds no image file at its top level, and a transaction's
+  `.<stem>.ome.zarr.<uuid>.part` is a dotted name and holds none either.
+  `test_machine_state_lives_under_the_input_root_and_is_not_an_input` pins
+  this.
 
 ## The grid-preset refusal (`_refuse_grid_preset_unlike_cli_grid`)
 

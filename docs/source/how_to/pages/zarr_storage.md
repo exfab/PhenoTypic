@@ -257,6 +257,73 @@ application, including both pipeline identities. Only a migrated `legacy`
 application may have a null `phenotypic_version`, and only when the historical
 version is unavailable; readers must preserve that null.
 
+## Add a run folder to stores in place
+
+`--mode process` with `--output` equal to `--input` adds the pipeline's run
+folder to each input store **where it is**, instead of writing new stores. It
+is for pipelines that detect nothing, such as a grid embedding run over stores
+that AutoConvertRaw-GC has already calibrated and denoised:
+
+```bash
+python -m phenotypic --mode process --layer rgb --process-format zarr \
+    --pipeline grid_embedding.pht-pipe.json \
+    --input /bigdata/.../mirror --output /bigdata/.../mirror
+```
+
+Each store gains one folder, `tables/<n>-<sha12>/embeddings/<model>/grid/`,
+and its journal gains one `process` application. Nothing else changes:
+
+- **Pixels are never rewritten.** The store is hard-linked into a `.part`, the
+  run folder and the run's figure folder are written there, the root is
+  written last and consolidated, and the part is swapped in. Every pixel chunk
+  keeps its inode and its bytes, and every other run folder stays
+  byte-identical.
+- **Each image is checked.** After `apply()`, the exported layer's level-0
+  pixels must equal the store's. If an operation changed them, that image
+  fails and nothing is written to it.
+- **A root that changes under the write is not overwritten.** Just before the
+  swap, the run checks that the store's root is still the one it read. If it
+  changed (a reprocess, or another writer), the run rebuilds that image once
+  from the new root. If it changes again, the image fails for this run only,
+  and a plain re-run retries it.
+- **Re-running the same command does no work** for a store that already holds
+  this pipeline's folder with every entry `stale: false`.
+- **Machine state lives under the input root**, in `.phenotypic/`, as it does
+  under any `--output`. Image discovery skips it.
+- **Another pipeline over the same stores needs `--restart`.** Like any run
+  over an `--output` that already has machine state, a different pipeline is
+  refused with `Cannot continue - Pipeline contents changed`. Run it with
+  `--restart`, which clears only the machine state under `.phenotypic/` (and
+  keeps the terminal-failure records). No store is touched: each one keeps
+  every folder it has and gains the new pipeline's folder.
+
+Each of these is refused, as one usage error (exit `2`), before anything is
+written:
+
+- `--overwrite`, which would delete the inputs (`--restart` is allowed);
+- `--process-format tiff`, or a `--layer` that writes no store;
+- an `ObjectDetector` anywhere in the pipeline. A store holds one label image,
+  so a second detecting pipeline would leave the first one's table pointing at
+  labels it was not computed from;
+- an `ImageCorrector` anywhere in `ops`, which changes the pixels the store
+  holds;
+- an `--input` that names one store rather than the directory holding stores;
+- an input that is not a PhenoTypic store (a raw image, or a third-party
+  OME-Zarr), which has nothing to write into;
+- a store still in the v1 tables layout. Convert it first with `--mode migrate`;
+- a `--layer` that is not the store's primary series (`rgb` when it has one,
+  otherwise `gray`).
+
+An output strictly inside the input, or an input strictly inside the output,
+is still refused. Only the equal case runs in place.
+
+**Where to run it: a local copy, never the published tree.** An
+AutoConvertRaw-GC reprocess deletes a store and uploads it again, which drops
+every folder added in place. So run in place on a local copy that you own,
+such as the `/bigdata` mirror. Never run it on the bucket, or on the NAS tree
+that AutoConvertRaw-GC publishes. An in-place run is not a DVC stage either:
+see [DVC](dvc.md).
+
 ## Invariants, if you are writing code against a store
 
 Three separate subsystems depend on these, and **none of them can detect a

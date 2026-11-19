@@ -158,6 +158,20 @@ isolation before attributing it — most of them pass.
   started before it must be re-run with `--overwrite`, which the
   `.. versionchanged::` notes on `SIZE`, `INTENSITY` and `TEXTURE` say. Run the same command again after an interruption or when new
   compatible inputs appear; there is no `--resume` flag.
+  **In place** (#281 spec E7): `--output` equal to `--input` adds the
+  pipeline's run folder to each input store where it is, through the measure
+  rewrite's root-last transaction, and never rewrites a pixel (chunks keep
+  their inodes). It is for pipelines that detect nothing. Refused in the
+  read-only half, one usage error each: `--overwrite` (`--restart` is
+  allowed: it clears only `.phenotypic/`, and is the remedy for a second
+  pipeline over the same stores), a layer or format that writes no store, an `ObjectDetector` anywhere, an
+  `ImageCorrector` in `ops`, a single-store `--input`, a non-PhenoTypic or v1
+  input, a `--layer` that is not the primary series. Only the equal case of
+  the overlap refusal is lifted; strict containment stays refused.
+  `.phenotypic/` then lives under the input root. Run it on a local copy
+  (the `/bigdata` mirror), never on the bucket or the NAS tree
+  AutoConvertRaw-GC republishes. See
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) "In-place process runs".
 - `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
   migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
   Full runs keep the metadata → image → seal → optional reclaim → finalizer
