@@ -649,6 +649,11 @@ workflow. Each is tuned for a specific imaging scenario.</p>
 <td><p>Pre-tiled sections</p></td>
 <td><p>Per-section processing</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BacterSamPipeline</span></code></p></td>
+<td><p>Bacteria</p></td>
+<td><p>96-well grid</p></td>
+<td><p>SAM2 on a smoothed, flattened image</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -688,6 +693,27 @@ denoising, homomorphic illumination correction, and the specialized
 <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> with Dijkstra reconnection.</p>
 <p><strong>When to choose:</strong> The organism grows as a mycelial network rather
 than a compact round colony. Standard detectors miss the outer hyphae.</p>
+</section>
+<section id="bactersampipeline">
+<h2>BacterSamPipeline<a class="headerlink" href="#bactersampipeline" title="Link to this heading">#</a></h2>
+<p><strong>Best for:</strong> Bacterial colonies pinned in a grid and imaged over a growth
+time course, where a global threshold merges colony edges with agar texture.</p>
+<p><strong>Input assumptions:</strong> Images must already be colour-corrected and denoised.
+The pipeline does neither. Run a pipeline with <code class="docutils literal notranslate"><span class="pre">ColorCorrector</span></code> or
+<code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc</span></code> followed by <code class="docutils literal notranslate"><span class="pre">ColorDenoise</span></code> first, export it with
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">process</span> <span class="pre">--layer</span> <span class="pre">rgb</span></code>, and give the resulting
+OME-Zarr tree to this pipeline as <code class="docutils literal notranslate"><span class="pre">--input</span></code>.</p>
+<p><strong>Pipeline steps:</strong>
+CropImage → BlurGauss → SubtractGaussian → Sam2 → RemoveLowCircularity →
+RemoveBorderObjects → RemoveSmallObjects → KeepSectionLargest</p>
+<p><strong>Measurements:</strong> MeasureNeighborDist, MeasureShape, MeasureSize,
+MeasureIntensity, MeasureColor, and MeasureTexture at 10, 20, 30 and 40 px</p>
+<p><strong>When to choose:</strong> Classical detectors miss small early colonies or split
+large late ones, and a GPU is available. The CLI splits the run into CPU
+preprocessing, GPU detection and CPU measurement on its own. The crop
+defaults fit one imager, so check them against your plates first.</p>
+<p>The GUI pipeline builder cannot load this prefab yet, because it does not
+offer GPU detectors. Use it from Python or the CLI.</p>
 </section>
 <section id="customizing-prefabs">
 <h2>Customizing Prefabs<a class="headerlink" href="#customizing-prefabs" title="Link to this heading">#</a></h2>
@@ -734,6 +760,7 @@ than a compact round colony. Standard detectors miss the outer hyphae.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#heavywatershedpipeline">HeavyWatershedPipeline</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#roundpeakspipeline">RoundPeaksPipeline</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filamentousfungipipeline">FilamentousFungiPipeline</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bactersampipeline">BacterSamPipeline</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#customizing-prefabs">Customizing Prefabs</a></li>
 </ul>
   </nav></div>

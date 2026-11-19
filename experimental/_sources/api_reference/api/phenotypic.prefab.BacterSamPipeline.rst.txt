@@ -1,0 +1,100 @@
+phenotypic.prefab.BacterSamPipeline
+===================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: BacterSamPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BacterSamPipeline.__init__
+      ~BacterSamPipeline.analyze
+      ~BacterSamPipeline.apply
+      ~BacterSamPipeline.apply_and_measure
+      ~BacterSamPipeline.apply_napari
+      ~BacterSamPipeline.apply_with_intermediates
+      ~BacterSamPipeline.benchmark_results
+      ~BacterSamPipeline.construct
+      ~BacterSamPipeline.copy
+      ~BacterSamPipeline.dict
+      ~BacterSamPipeline.from_json
+      ~BacterSamPipeline.from_orm
+      ~BacterSamPipeline.get_filters
+      ~BacterSamPipeline.get_meas
+      ~BacterSamPipeline.get_model
+      ~BacterSamPipeline.get_ops
+      ~BacterSamPipeline.get_plots
+      ~BacterSamPipeline.get_post
+      ~BacterSamPipeline.get_qc
+      ~BacterSamPipeline.json
+      ~BacterSamPipeline.measure
+      ~BacterSamPipeline.model_construct
+      ~BacterSamPipeline.model_copy
+      ~BacterSamPipeline.model_dump
+      ~BacterSamPipeline.model_dump_json
+      ~BacterSamPipeline.model_json_schema
+      ~BacterSamPipeline.model_parametrized_name
+      ~BacterSamPipeline.model_post_init
+      ~BacterSamPipeline.model_rebuild
+      ~BacterSamPipeline.model_validate
+      ~BacterSamPipeline.model_validate_json
+      ~BacterSamPipeline.model_validate_strings
+      ~BacterSamPipeline.parse_file
+      ~BacterSamPipeline.parse_obj
+      ~BacterSamPipeline.parse_raw
+      ~BacterSamPipeline.preflight_requirements
+      ~BacterSamPipeline.reference_columns
+      ~BacterSamPipeline.schema
+      ~BacterSamPipeline.schema_json
+      ~BacterSamPipeline.set_filters
+      ~BacterSamPipeline.set_meas
+      ~BacterSamPipeline.set_model
+      ~BacterSamPipeline.set_ops
+      ~BacterSamPipeline.set_plots
+      ~BacterSamPipeline.set_post
+      ~BacterSamPipeline.set_qc
+      ~BacterSamPipeline.summary
+      ~BacterSamPipeline.to_json
+      ~BacterSamPipeline.update_forward_refs
+      ~BacterSamPipeline.validate
+      ~BacterSamPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BacterSamPipeline.desc
+      ~BacterSamPipeline.model_computed_fields
+      ~BacterSamPipeline.model_config
+      ~BacterSamPipeline.model_extra
+      ~BacterSamPipeline.model_fields
+      ~BacterSamPipeline.model_fields_set
+      ~BacterSamPipeline.name
+      ~BacterSamPipeline.desc_value
+      ~BacterSamPipeline.benchmark
+      ~BacterSamPipeline.verbose
+      ~BacterSamPipeline.reset
+      ~BacterSamPipeline.nrows
+      ~BacterSamPipeline.ncols
+      ~BacterSamPipeline.ops
+      ~BacterSamPipeline.meas
+      ~BacterSamPipeline.post
+      ~BacterSamPipeline.filters
+      ~BacterSamPipeline.model
+      ~BacterSamPipeline.qc
+      ~BacterSamPipeline.plots
+   
+   
