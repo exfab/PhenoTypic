@@ -820,7 +820,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>.phenotypic/</code> lives under the input root, as under any <code>--output</code>.</li>
 <li><strong>Refused in the read-only half</strong>, one usage-error line each, before anything is written:
 <ul>
-<li><code>--overwrite</code> and <code>--restart</code>, which would delete inputs;</li>
+<li><code>--overwrite</code>, which would delete inputs. <code>--restart</code> is <strong>allowed</strong> in place (user decision 2026-11-18, P5 C21): it clears only the non-preserved <code>.phenotypic/</code> machine state under the input root and never touches a store. It is the remedy when a different pipeline runs in place over the same stores, whose recorded state the resume check otherwise refuses;</li>
 <li><code>--process-format tiff</code>, and any layer that writes no store;</li>
 <li>an input that is not a PhenoTypic store (a raw image, a third-party OME-Zarr), which has nothing to write into;</li>
 <li>a <code>--layer</code> that is not the store's primary series;</li>

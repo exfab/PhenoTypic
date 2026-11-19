@@ -211,7 +211,9 @@ links and are never rewritten. It is for pipelines that detect nothing.
   - `in_place_refusal(*, pipeline, input_root: Path, stores: Iterable[Path], layer: str, process_format: str, overwrite: bool, restart: bool) -> str | None`.
     One line for the first refusal that applies, checked in this order, or
     `None`:
-    1. `--overwrite` or `--restart`, which would delete inputs;
+    1. `--overwrite`, which would delete inputs (`--restart` is allowed in
+       place: user decision 2026-11-18, spec E7; it clears only machine
+       state and is the remedy for a second pipeline over the same stores);
     2. `--process-format tiff`, or a layer that writes no store;
     3. a pipeline with an `ObjectDetector` anywhere in its tree, any slot, any
        depth (`walk_operations`, `sdk_/_operation_tree.py:119`). A store holds

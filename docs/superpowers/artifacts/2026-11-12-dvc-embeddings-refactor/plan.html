@@ -2720,7 +2720,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><p><code>in_place_refusal(*, pipeline, input_root: Path, stores: Iterable[Path], layer: str, process_format: str, overwrite: bool, restart: bool) -&gt; str | None</code>. One line for the first refusal that applies, checked in this order, or <code>None</code>:</p>
 <ol type="1">
-<li><code>--overwrite</code> or <code>--restart</code>, which would delete inputs;</li>
+<li><code>--overwrite</code>, which would delete inputs (<code>--restart</code> is allowed in place: user decision 2026-11-18, spec E7; it clears only machine state and is the remedy for a second pipeline over the same stores);</li>
 <li><code>--process-format tiff</code>, or a layer that writes no store;</li>
 <li>a pipeline with an <code>ObjectDetector</code> anywhere in its tree, any slot, any depth (<code>walk_operations</code>, <code>sdk_/_operation_tree.py:119</code>). A store holds one label image, so a second detecting pipeline would leave the first one's table pointing at labels it was not computed from;</li>
 <li>an <code>ImageCorrector</code> anywhere in <code>ops</code>, at any depth, which changes the pixels the store holds;</li>

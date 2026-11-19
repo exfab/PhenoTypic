@@ -870,7 +870,12 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   - `.phenotypic/` lives under the input root, as under any `--output`.
   - **Refused in the read-only half**, one usage-error line each, before
     anything is written:
-    - `--overwrite` and `--restart`, which would delete inputs;
+    - `--overwrite`, which would delete inputs. `--restart` is **allowed** in
+      place (user decision 2026-11-18, P5 C21): it clears only the
+      non-preserved `.phenotypic/` machine state under the input root and
+      never touches a store. It is the remedy when a different pipeline runs
+      in place over the same stores, whose recorded state the resume check
+      otherwise refuses;
     - `--process-format tiff`, and any layer that writes no store;
     - an input that is not a PhenoTypic store (a raw image, a third-party
       OME-Zarr), which has nothing to write into;
