@@ -930,7 +930,8 @@ def test_two_named_grids_in_place_add_one_folder_holding_both_tables(kit, tmp_pa
         runs = list_table_runs(store)
         assert [r.order for r in runs] == [1, 2]
         added = runs[-1]
-        assert list(added.descriptor["embeddings"]) == [f"{model}/grid-wells", f"{model}/grid-agar"]
+        # The rewrite does not keep the payload order, and nothing reads it.
+        assert set(added.descriptor["embeddings"]) == {f"{model}/grid-wells", f"{model}/grid-agar"}
         assert "measurements" not in added.descriptor
         for region, ends in (("grid-wells", [100, 100, 200, 200]), ("grid-agar", [200])):
             assert added.descriptor["embeddings"][f"{model}/{region}"]["stale"] is False
