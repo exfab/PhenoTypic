@@ -529,13 +529,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
 │   └── embeddings/&lt;model&gt;/              e.g. dinov2-vitb14
 │       ├── crops/table.parquet          Object_Label | embedding
-│       └── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
-│                                        Grid_{Row,Col}Interval{Start,End} | embedding
+│       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
+│       │                                Grid_{Row,Col}Interval{Start,End} | embedding
+│       └── grid-&lt;name&gt;/table.parquet    a named grid (E3), same columns
 └── …</code></pre>
 <ul>
 <li><code>embedding</code> is <code>FixedSizeList&lt;float16&gt;[D]</code>.</li>
 <li>Every level is a Zarr v3 group document.</li>
-<li>Every subtable is optional. AutoConvertRaw-GC's folder holds only <code>embeddings/&lt;model&gt;/grid/</code>.</li>
+<li>Every subtable is optional. AutoConvertRaw-GC's folder holds only <code>embeddings/&lt;model&gt;/grid-wells/</code> and <code>embeddings/&lt;model&gt;/grid-agar/</code> (E6).</li>
 <li><code>&lt;model&gt;</code> names the model, so a second model is a sibling folder, never extra columns.</li>
 <li>Nothing goes in <code>ome.series</code> or <code>attributes.ome</code>.</li>
 </ul></li>
@@ -678,7 +679,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>E2 Pipeline routing.</strong></p>
 <ul>
 <li><code>ImagePipeline.measure()</code> keeps its return contract and does not run <code>MeasureEmbedding</code> entries.</li>
-<li>A new <code>ImagePipeline.embed(image) -&gt; dict["&lt;model&gt;/&lt;crops|grid&gt;", EmbeddingPayload]</code> runs them.</li>
+<li>A new <code>ImagePipeline.embed(image) -&gt; dict["&lt;model&gt;/&lt;region&gt;", EmbeddingPayload]</code> runs them.</li>
 <li>The CLI per-image writers call both, then write one run folder (D1). These are the single-pass worker, Stage 3, measure mode and process mode.</li>
 <li>Both docstrings say so.</li>
 </ul></li>
@@ -792,7 +793,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><strong>E5 Deliverables.</strong> The finalizer aggregates <strong>its own</strong> run folder, chosen per image by D6a:</p>
 <ul>
 <li>the master comes from <code>measurements/</code>, exactly as today;</li>
-<li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;crops|grid&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key, <code>descriptor_index</code> and <code>embedding</code>;</li>
+<li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key, <code>descriptor_index</code> and <code>embedding</code>;</li>
 <li><code>deliverables/embeddings/manifest.json</code> holds each key's distinct entry descriptors (in first-appearance order over the sorted stores), row count, sha256 and the stores skipped as stale.</li>
 <li><strong>Mixed descriptors</strong> (user decision 2026-11-18, P4 review Q1). Two stores of one key can carry different descriptors: an unpinned <code>revision</code>, a different device (the entry's <code>model.device</code> records the one that ran), or a partial re-measure. Finalization publishes all of them with one warning per key naming each descriptor and its stores. Each row's int16 <code>descriptor_index</code> points into that key's <code>descriptors</code> list, and is <code>0</code> on every row when there is one. The run preflight warns (<code>PF-EMBED-REVISION-UNPINNED</code>) when an in-scope DINO embedder leaves <code>revision</code> unpinned.</li>
 <li><strong>Remedy for an unreadable embedding</strong> (user decision 2026-11-18, Q2): finalization fails, names every such store, and points at a same-pipeline <code>--mode measure</code> over the run, which re-embeds every image. There is no scoped re-embed in v1.</li>
@@ -804,12 +805,17 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
 <li>A <code>MeasureEmbedding</code> gets no by-feature split and no column section in the deliverables README, which document mirror columns. The README documents the embedding deliverables separately. The vector column is named <code>embedding</code>, and <code>schema.json</code> lists it under each embedding table (C12).</li>
 </ul></li>
+<li><p><strong>Named grid regions</strong> (user decision 2026-11-19). A grid embedder takes an optional <code>grid_name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>; refused for <code>regions="objects"</code>). Its region string is <code>grid</code> without a name and <code>grid-&lt;name&gt;</code> with one, so its table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/grid-&lt;name&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/grid-&lt;name&gt;.parquet</code>; crops stay <code>crops</code>. One pipeline can therefore carry several grids of one model, and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
-<li>add <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid", grid=ManualGridFinder(...))</code> to the pipeline's <code>meas</code>, with rig1's edges supplied by the user;</li>
+<li>add two embedders to the pipeline's <code>meas</code>, both <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid")</code> (user decisions 2026-11-19; edges derived from 80 rig1 images and approved on overlays):
+<ul>
+<li><code>grid_name="wells"</code>: the rig's 8×12 well lattice, for <strong>every</strong> plate format (a 6×12 plate uses its middle six rows, and the empty wells' agar is embedded too): <code>row_edges=[393, 796, 1199, 1602, 2005, 2408, 2811, 3214, 3617]</code>, <code>col_edges=[574, 977, 1380, 1783, 2186, 2589, 2992, 3395, 3798, 4201, 4604, 5007, 5410]</code> (pitch 403 px, about 9 mm);</li>
+<li><code>grid_name="agar"</code>: one whole-agar cell, the lattice's outer box, <code>row_edges=[393, 3617]</code>, <code>col_edges=[574, 5410]</code>, clear of the walls, the meniscus and wall overgrowth;</li>
+</ul></li>
 <li>vendor the new wheel;</li>
 <li>install the <code>foundation</code> extra in the <code>Dockerfile</code> with CPU torch, bake in the pinned weights, and set <code>HF_HUB_OFFLINE=1</code>;</li>
-<li>make <code>verify_store</code> check that the run folder's grid entry exists (an <code>expected_embeddings</code> field in <code>run.json</code>, written by <code>plan.py</code>), the way figures are checked;</li>
+<li>make <code>verify_store</code> check that the run folder's grid entries exist (an <code>expected_embeddings</code> field in <code>run.json</code>, 2 for rig1, written by <code>plan.py</code>), the way figures are checked;</li>
 <li>re-pilot memory and timeout on the smoke configs, never on <code>data/</code>.</li>
 </ul>
 <p>Backfill of done images is an explicit <code>--reprocess-changed</code> decision at rollout. It reruns calibration and BM3D denoise.</p></li>

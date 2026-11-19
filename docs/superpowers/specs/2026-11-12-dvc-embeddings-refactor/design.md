@@ -557,15 +557,16 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
   │   └── embeddings/<model>/              e.g. dinov2-vitb14
   │       ├── crops/table.parquet          Object_Label | embedding
-  │       └── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
-  │                                        Grid_{Row,Col}Interval{Start,End} | embedding
+  │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
+  │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
+  │       └── grid-<name>/table.parquet    a named grid (E3), same columns
   └── …
   ```
 
   - `embedding` is `FixedSizeList<float16>[D]`.
   - Every level is a Zarr v3 group document.
   - Every subtable is optional. AutoConvertRaw-GC's folder holds only
-    `embeddings/<model>/grid/`.
+    `embeddings/<model>/grid-wells/` and `embeddings/<model>/grid-agar/` (E6).
   - `<model>` names the model, so a second model is a sibling folder, never extra
     columns.
   - Nothing goes in `ome.series` or `attributes.ome`.
@@ -717,7 +718,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 - **E2 Pipeline routing.**
   - `ImagePipeline.measure()` keeps its return contract and does not run
     `MeasureEmbedding` entries.
-  - A new `ImagePipeline.embed(image) -> dict["<model>/<crops|grid>", EmbeddingPayload]`
+  - A new `ImagePipeline.embed(image) -> dict["<model>/<region>", EmbeddingPayload]`
     runs them.
   - The CLI per-image writers call both, then write one run folder (D1). These are
     the single-pass worker, Stage 3, measure mode and process mode.
@@ -809,7 +810,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   per image by D6a:
   - the master comes from `measurements/`, exactly as today;
   - each embedding table goes to
-    `deliverables/embeddings/<model>/<crops|grid>.parquet`, with the master's
+    `deliverables/embeddings/<model>/<region>.parquet`, with the master's
     intrinsic identity columns plus the table's key, `descriptor_index` and
     `embedding`;
   - `deliverables/embeddings/manifest.json` holds each key's distinct entry
@@ -839,16 +840,34 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     deliverables README, which document mirror columns. The README documents
     the embedding deliverables separately. The vector column is named
     `embedding`, and `schema.json` lists it under each embedding table (C12).
+- **Named grid regions** (user decision 2026-11-19). A grid embedder takes an
+  optional `grid_name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`;
+  refused for `regions="objects"`). Its region string is `grid` without a
+  name and `grid-<name>` with one, so its table is
+  `tables/<run>/embeddings/<model>/grid-<name>/` and its deliverable
+  `deliverables/embeddings/<model>/grid-<name>.parquet`; crops stay `crops`.
+  One pipeline can therefore carry several grids of one model, and two
+  embedders sharing a payload key are still refused. `split_embedding_key` is
+  the one rule for valid regions.
 - **E6 AutoConvertRaw-GC rollout** (after the new wheel is built):
-  - add `MeasureDinoEmbedding(size="base", revision=<pinned commit>, regions="grid",
-    grid=ManualGridFinder(...))` to the pipeline's `meas`, with rig1's edges
-    supplied by the user;
+  - add two embedders to the pipeline's `meas`, both
+    `MeasureDinoEmbedding(size="base", revision=<pinned commit>, regions="grid")`
+    (user decisions 2026-11-19; edges derived from 80 rig1 images and approved
+    on overlays):
+    - `grid_name="wells"`: the rig's 8×12 well lattice, for **every** plate
+      format (a 6×12 plate uses its middle six rows, and the empty wells'
+      agar is embedded too): `row_edges=[393, 796, 1199, 1602, 2005, 2408,
+      2811, 3214, 3617]`, `col_edges=[574, 977, 1380, 1783, 2186, 2589,
+      2992, 3395, 3798, 4201, 4604, 5007, 5410]` (pitch 403 px, about 9 mm);
+    - `grid_name="agar"`: one whole-agar cell, the lattice's outer box,
+      `row_edges=[393, 3617]`, `col_edges=[574, 5410]`, clear of the walls,
+      the meniscus and wall overgrowth;
   - vendor the new wheel;
   - install the `foundation` extra in the `Dockerfile` with CPU torch, bake in the
     pinned weights, and set `HF_HUB_OFFLINE=1`;
-  - make `verify_store` check that the run folder's grid entry exists (an
-    `expected_embeddings` field in `run.json`, written by `plan.py`), the way
-    figures are checked;
+  - make `verify_store` check that the run folder's grid entries exist (an
+    `expected_embeddings` field in `run.json`, 2 for rig1, written by
+    `plan.py`), the way figures are checked;
   - re-pilot memory and timeout on the smoke configs, never on `data/`.
 
   Backfill of done images is an explicit `--reprocess-changed` decision at
