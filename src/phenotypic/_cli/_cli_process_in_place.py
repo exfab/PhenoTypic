@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from pathlib import Path, PurePosixPath
@@ -53,6 +54,9 @@ _IN_PLACE_TREE_DOMAIN = b"phenotypic-store-tree-in-place-v1\0"
 #: Top-level store members an in-place run writes, left out of its work id.
 _IN_PLACE_WRITTEN_GROUPS = frozenset({"tables", "figures"})
 
+#: The skip warnings this process has logged (P5 review M5: once, not per image).
+_WARNED_SKIPS: set[str] = set()
+
 
 class InPlacePixelsChangedError(ValueError):
     """``apply()`` changed the pixels of the series an in-place run keeps.
@@ -74,10 +78,11 @@ def level0_digest(array: "np.ndarray") -> str:
     """sha256 over an array's dtype, shape and C-order bytes.
 
     The ``objmap_digest`` recipe (#281 P3 T2),
-    :func:`~phenotypic.sdk_._measurement_tables.array_digest`, applied to a
-    store's stored level-0 array and to the exported layer cast to the stored
-    dtype. Two arrays digest alike exactly when they hold the same values in
-    the same shape and dtype, whatever their memory layout.
+    :func:`~phenotypic.sdk_._measurement_tables.array_digest`. An in-place
+    run applies it to the exported layer right after the read and again
+    after ``apply()``, and to the store's stored level-0 array, which binds
+    the grid entries. Two arrays digest alike exactly when they hold the
+    same values in the same shape and dtype, whatever their memory layout.
 
     Examples:
         >>> import numpy as np
@@ -204,25 +209,106 @@ def _image_corrector_path(pipeline: "ImagePipeline") -> str | None:
     return None
 
 
+#: An interrupted transaction's sibling of ``<stem>.ome.zarr``: promote_store's
+#: move-aside (``.trash``) or a part never promoted (``.part``).
+_TRANSACTION_SIBLING_RE = re.compile(
+    r"^\.(?P<store>.+\.ome\.zarr)\.(?P<token>[0-9a-f]+)\.(?P<kind>trash|part)$"
+)
+
+
+def _store_folders(input_root: Path) -> list[Path]:
+    """The folders stores sit in: the input root and its dataset folders (one level)."""
+    from phenotypic.sdk_ import is_zarr_store_name
+
+    root = Path(input_root)
+    folders = [root]
+    for child in sorted(root.iterdir()):
+        if child.is_dir() and not child.name.startswith(".") and not is_zarr_store_name(child):
+            folders.append(child)
+    return folders
+
+
+def transaction_debris(input_root: Path) -> tuple[list[Path], list[Path]]:
+    """Leftovers of an interrupted store transaction under *input_root*.
+
+    Returns:
+        ``(orphaned_trash, parts)``: each ``.<stem>.ome.zarr.<token>.trash``
+        with no live ``<stem>.ome.zarr`` beside it (a crash between
+        ``promote_store``'s two renames left the store only there), and each
+        ``.<stem>.ome.zarr.<token>.part`` (a write that never swapped). A
+        ``.trash`` beside its live store is a finished swap's leftover and is
+        neither. Reads directory entries only.
+    """
+    orphaned: list[Path] = []
+    parts: list[Path] = []
+    for folder in _store_folders(input_root):
+        for child in sorted(folder.iterdir()):
+            match = _TRANSACTION_SIBLING_RE.match(child.name)
+            if match is None or not child.is_dir():
+                continue
+            if match["kind"] == "part":
+                parts.append(child)
+            elif not (folder / match["store"]).exists():
+                orphaned.append(child)
+    return orphaned, parts
+
+
+def _legacy_state_at_root(input_root: Path) -> list[Path]:
+    """Legacy root-level machine-state names at *input_root* (``progress/`` and two files).
+
+    Read from :func:`~phenotypic.sdk_.machine_state_restart_targets`, the one
+    producer of what ``--restart`` deletes: its entries directly under the
+    root are the legacy ones, which the legacy migration would also move into
+    ``.phenotypic/``.
+    """
+    from phenotypic.sdk_ import machine_state_restart_targets
+
+    root = Path(input_root)
+    return [
+        target
+        for target in machine_state_restart_targets(root)
+        if target.parent == root
+    ]
+
+
 def _store_refusal(store: Path, *, layer: str, input_root: Path) -> str | None:
-    """Checks 5-7 of :func:`in_place_refusal` for one input, reading one root."""
+    """The per-store checks of :func:`in_place_refusal`, reading one root."""
     from phenotypic.sdk_ import MIGRATION_REMEDY, is_zarr_store_name, ngff_
     from phenotypic.sdk_._table_runs import tables_schema_of_block
 
+    store = Path(store)
+    resolved_root = Path(input_root).resolve(strict=False)
+    resolved = store.resolve(strict=False)
+    if store.is_symlink() or not (
+        resolved == resolved_root or resolved.is_relative_to(resolved_root)
+    ):
+        return (
+            f"{store} resolves to {resolved}: in place does not follow "
+            "symlinked stores, because the write would replace the link with "
+            "a real copy and leave the target unchanged. Run in place on the "
+            f"target's folder ({resolved.parent})."
+        )
     not_a_store = (
         f"--mode process in place adds a run folder to each input store, and "
         f"{store} is not a PhenoTypic store (a raw image, or an OME-Zarr "
         "without attributes.phenotypic). Choose a different --output to "
         "write new stores."
     )
-    if not (Path(store).is_dir() and is_zarr_store_name(Path(store))):
+    if not (store.is_dir() and is_zarr_store_name(store)):
         return not_a_store
     try:
-        block = ngff_.read_phenotypic_attributes(Path(store))
+        block = ngff_.read_phenotypic_attributes(store)
     except (OSError, KeyError, ValueError):
         return not_a_store
     if not isinstance(block, Mapping):
         return not_a_store
+    if ngff_.PhenotypicAttr.IMAGE_CLASS in block:
+        return (
+            f"{store} is a full run's store (its root carries image_class), and "
+            "in place is for process stores (--mode process output): rewriting "
+            "a full run's store would leave that run incomplete. Measure it "
+            "with --mode measure, or run in place on process stores."
+        )
     if tables_schema_of_block(block) == 1:
         return (
             f"{store} still holds its tables in the v1 flat layout "
@@ -269,14 +355,27 @@ def in_place_refusal(
     4. an ``ImageCorrector`` anywhere in ``ops``, at any depth, which changes
        the pixels the store holds;
     5. ``--input`` naming one store or file rather than the directory holding
-       stores (machine state would land inside it), or an input that is not a
-       PhenoTypic store (no ``attributes.phenotypic``: a raw image, a
-       third-party OME-Zarr);
-    6. an input still in the v1 tables layout, pointing at ``--mode migrate``;
-    7. a ``--layer`` that is not the store's primary series (``rgb`` when
-       present, else ``gray``).
+       stores (machine state would land inside it);
+    6. a legacy root-level machine-state name at the input root
+       (``progress/``, ``processing_state.json``, ``processing_events.log``):
+       in place the legacy migration would move a user dataset into
+       ``.phenotypic/``, where ``--restart`` deletes it (user decision
+       2026-11-18, P5 review Q2);
+    7. an orphaned ``.<stem>.ome.zarr.<token>.trash`` with no live store
+       beside it, which only a crash inside ``promote_store`` leaves (P5
+       review I5); the line says how to restore it;
 
-    Checks 5-7 read one root per store and stop at the first failure.
+    then, per store, reading one root each and stopping at the first failure:
+
+    8. a store that is a symlink or resolves outside ``--input`` (Q4): the
+       transaction would replace the link with a real copy;
+    9. an input that is not a PhenoTypic store (no ``attributes.phenotypic``:
+       a raw image, a third-party OME-Zarr);
+    10. a full run's bundle store, whose root carries ``image_class`` (Q1):
+        in place is for process stores;
+    11. a store still in the v1 tables layout, pointing at ``--mode migrate``;
+    12. a ``--layer`` that is not the store's primary series (``rgb`` when
+        present, else ``gray``).
 
     Args:
         pipeline: The loaded pipeline.
@@ -332,12 +431,34 @@ def in_place_refusal(
             "changes the pixels the store holds, and an in-place run never "
             "rewrites pixels. Choose a different --output."
         )
+    from phenotypic.sdk_ import is_zarr_store_name
+
     root = Path(input_root)
-    if not root.is_dir() or root.name.endswith(".ome.zarr"):
+    if not root.is_dir() or is_zarr_store_name(root):
         return (
             f"--input {input_root} names one image or store; an in-place run "
             "needs the directory that holds the stores, since its machine "
             "state (.phenotypic/) is written under --output."
+        )
+    legacy = _legacy_state_at_root(root)
+    if legacy:
+        return (
+            f"{legacy[0]} is at the input root, where a run's legacy machine "
+            "state lives (progress/, processing_state.json, "
+            "processing_events.log). In place the output is the input tree, "
+            "so the run would move it into .phenotypic/, where --restart "
+            "deletes it: rename it, then run again."
+        )
+    orphaned, _parts = transaction_debris(root)
+    if orphaned:
+        trash = orphaned[0]
+        match = _TRANSACTION_SIBLING_RE.match(trash.name)
+        assert match is not None
+        live = trash.parent / match["store"]
+        return (
+            f"{trash} is a store an interrupted write moved aside, and no "
+            f"{live.name} is beside it. Restore it, then run again: "
+            f"mv {trash} {live}"
         )
     for store in stores:
         refusal = _store_refusal(Path(store), layer=layer, input_root=root)
@@ -351,8 +472,16 @@ def in_place_refusal(
 # ---------------------------------------------------------------------------
 
 
-def _owned_run_is_current(block: Mapping[str, Any], pipeline_sha256: str) -> bool:
-    """Whether *block* holds this pipeline's folder with every entry ``stale: false``."""
+def _owned_run_is_current(
+    block: Mapping[str, Any], pipeline_sha256: str, keys: Iterable[str]
+) -> bool:
+    """Whether *block* holds this pipeline's folder, with each of its *keys* fresh.
+
+    *keys* are the payload keys (``"<model>/<region>"``) the pipeline's
+    process-mode embedders write. Every one must be in the owned folder's
+    ``embeddings`` with ``stale`` exactly ``False``; a folder missing one, or
+    a pipeline with no keys at all, is not current (P5 review M1).
+    """
     from phenotypic.sdk_ import ngff_
     from phenotypic.sdk_._table_runs import (
         EMBEDDINGS_KEY,
@@ -361,7 +490,8 @@ def _owned_run_is_current(block: Mapping[str, Any], pipeline_sha256: str) -> boo
         tables_schema_of_block,
     )
 
-    if tables_schema_of_block(block) != 2:
+    wanted = set(keys)
+    if not wanted or tables_schema_of_block(block) != 2:
         return False
     run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
     if run_id is None:
@@ -369,30 +499,112 @@ def _owned_run_is_current(block: Mapping[str, Any], pipeline_sha256: str) -> boo
     entry = block[ngff_.PhenotypicAttr.TABLES][RUNS_KEY][run_id]
     embeddings = entry.get(EMBEDDINGS_KEY) or {}
     return all(
-        isinstance(value, Mapping) and value.get("stale") is False
-        for value in embeddings.values()
+        isinstance(embeddings.get(key), Mapping)
+        and embeddings[key].get("stale") is False
+        for key in wanted
     )
 
 
-def _verify_pixels_unchanged(store: Path, image: "Image", layer: str) -> str:
-    """Compare the exported layer's level-0 digest with the store's; return it.
+def _check_pixels_unchanged(
+    store: Path, image: "Image", layer: str, *, before: str
+) -> str:
+    """Compare the layer after ``apply()`` with *before*; return the stored digest.
+
+    *before* is :func:`level0_digest` of the exported layer right after the
+    read. Comparing the image with itself, rather than with the stored
+    array, supports any stored dtype: ``imread`` normalises a legacy integer
+    ``gray`` store to float32, which no cast back reproduces (user decision
+    2026-11-18, P5 review Q3). The stored array's digest is what an
+    embedding entry binds, and is returned for it.
 
     Raises:
-        InPlacePixelsChangedError: When they differ.
+        InPlacePixelsChangedError: When the layer changed.
     """
-    stored = _stored_level0(store, layer)
-    expected = level0_digest(stored)
-    exported = image._store_series_array(layer)
-    if exported.shape == stored.shape:
-        exported = exported.astype(stored.dtype, copy=False)
-    del stored
-    if level0_digest(exported) != expected:
+    if level0_digest(image._store_series_array(layer)) != before:
         raise InPlacePixelsChangedError(
             f"apply() changed the {layer!r} pixels of {store}, which an "
             "in-place run never rewrites; nothing was written. Remove the "
             "pixel-changing operation from ops, or choose a different --output."
         )
-    return expected
+    return level0_digest(_stored_level0(store, layer))
+
+
+def _bind_to_stored(
+    embeddings: Mapping[str, "EmbeddingPayload"],
+    *,
+    layer: str,
+    read_sha256: str,
+    stored_sha256: str,
+) -> dict[str, "EmbeddingPayload"]:
+    """Re-bind each grid payload computed from the read layer to the stored array.
+
+    A grid payload binds the level-0 array it was computed from
+    (``binds.array_sha256``, spec D7), which is the array as read. In place
+    the store keeps its own array, so a payload whose binding is exactly the
+    read layer's digest (*read_sha256*) is bound to the stored digest instead:
+    the two differ only by ``imread``'s normalisation (a legacy integer
+    ``gray`` store), and the pixel check has proven the image unchanged. Any
+    other payload is left as it is, and the writer judges it stale.
+    """
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
+
+    bound: dict[str, EmbeddingPayload] = {}
+    for key, payload in embeddings.items():
+        descriptor = deepcopy(dict(payload.descriptor))
+        binds = descriptor.get("binds")
+        source = descriptor.get("input")
+        if (
+            isinstance(binds, dict)
+            and binds.get("array_sha256") == read_sha256
+            and isinstance(source, Mapping)
+            and source.get("series") == layer
+        ):
+            binds["array_sha256"] = stored_sha256
+            payload = EmbeddingPayload(
+                key=payload.key, frame=payload.frame, descriptor=descriptor
+            )
+        bound[key] = payload
+    return bound
+
+
+def _appended_journal(
+    stored: object, journal: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The root's journal plus *journal*'s new last application, and nothing else changed.
+
+    Earlier applications are kept exactly as the root holds them, and only
+    the new one loses its wall-clock fields, as a process store publishes it
+    (P5 review I1). A root whose journal is not a v2 journal *journal*
+    extends by one application gets *journal* itself, stripped as a copy run
+    would publish it.
+    """
+    from phenotypic._core._provenance import (
+        NON_REPRODUCIBLE_OPERATION_FIELDS,
+        strip_non_reproducible_operation_fields,
+        validate_provenance_journal,
+    )
+
+    applications = journal.get("applications")
+    kept = stored.get("applications") if isinstance(stored, Mapping) else None
+    if (
+        not isinstance(kept, list)
+        or not isinstance(applications, list)
+        or len(applications) != len(kept) + 1
+    ):
+        return strip_non_reproducible_operation_fields(deepcopy(dict(journal)))
+    assert isinstance(stored, Mapping)
+    new = deepcopy(applications[-1])
+    for operation in new.get("operations", ()):
+        for name in NON_REPRODUCIBLE_OPERATION_FIELDS:
+            operation.pop(name, None)
+    appended = {
+        **deepcopy(dict(journal)),
+        **{key: deepcopy(value) for key, value in stored.items() if key != "applications"},
+    }
+    appended["status"] = journal.get("status")
+    appended["applications"] = [deepcopy(entry) for entry in kept] + [new]
+    validate_provenance_journal(appended)
+    return appended
 
 
 def _in_place_plan(
@@ -407,15 +619,14 @@ def _in_place_plan(
 ) -> Callable[[dict[str, Any]], Callable[[Path], None]]:
     """The ``plan`` an in-place write hands :func:`_rewrite_store_tables`.
 
-    The plan replaces the root's journal with the image's (the store's own
-    journal plus this process application, wall-clock fields dropped, as a
-    process store publishes it) and returns the writer that adds this
+    The plan appends this process application to the root's journal
+    (:func:`_appended_journal`: earlier applications byte-for-byte, the new
+    one without wall-clock fields) and returns the writer that adds this
     pipeline's run folder through :func:`write_run_entry` and the figure run.
     Every other run folder and the ``upstream`` block are carried as they
     are. *selected* receives ``"run_id"``, the folder written (``None`` when
     the pipeline embeds nothing).
     """
-    from phenotypic._core._provenance import strip_non_reproducible_operation_fields
     from phenotypic.sdk_ import ngff_
     from phenotypic.sdk_._measurement_tables import apply_image_tables_attributes
     from phenotypic.sdk_._table_runs import (
@@ -449,9 +660,10 @@ def _in_place_plan(
             if key != run_id
         }
         upstream = dict(tables.get(UPSTREAM_KEY) or {})
-        journal = deepcopy(image._metadata.provenance_journal)
-        strip_non_reproducible_operation_fields(journal)
-        phenotypic[ngff_.PhenotypicAttr.PROVENANCE] = journal
+        phenotypic[ngff_.PhenotypicAttr.PROVENANCE] = _appended_journal(
+            phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE),
+            image._metadata.provenance_journal,
+        )
 
         def _populate(part: Path) -> None:
             if run_id is not None:
@@ -562,13 +774,21 @@ def _in_place_attempt(
             input_filename=store.name,
             basename_only=True,
         )
+        read_sha256 = level0_digest(image._store_series_array(layer))
         # 2. apply(), then the level-0 check; 3. embed and figures.
         with continuing_provenance_application(image), worker_reference_context(
             input_root, dataset_name, pin=reference_pin
         ):
             pipeline.apply(image, inplace=True)
-            layer_sha256 = _verify_pixels_unchanged(store, image, layer)
-            embeddings = embed_in_process_mode(pipeline, image)
+            layer_sha256 = _check_pixels_unchanged(
+                store, image, layer, before=read_sha256
+            )
+            embeddings = _bind_to_stored(
+                embed_in_process_mode(pipeline, image),
+                layer=layer,
+                read_sha256=read_sha256,
+                stored_sha256=layer_sha256,
+            )
         figures = _known_figures(
             store,
             build_process_store_figures(
@@ -632,9 +852,10 @@ def process_in_place_core(
     1. Read the root's sha256, then ``imread`` the store, which keeps its
        journal.
     2. Open a ``process`` application and ``apply()``, then compare the
-       exported layer's level-0 digest with the store's
-       (:func:`level0_digest`). A mismatch fails the image without writing
-       (:class:`InPlacePixelsChangedError`).
+       exported layer's level-0 digest after ``apply()`` with its digest right
+       after the read (:func:`level0_digest`). A mismatch fails the image
+       without writing (:class:`InPlacePixelsChangedError`). The stored
+       array's digest binds the grid entries.
     3. Embed (:func:`~._cli_process_meas.embed_in_process_mode`: in v1, the
        no-objects embedders only; ``measure()`` is never called) and build
        the figures, as a copy run does.
@@ -646,7 +867,8 @@ def process_in_place_core(
        repeat steps 1-4 once from the new root; a second change is raised.
 
     **Continuation.** A store that already holds this pipeline's folder with
-    every entry ``stale: false`` does no work and is not read. A pipeline
+    each of its embedders' entries ``stale: false`` does no work and is not
+    read. A root that cannot be read there is a per-image failure. A pipeline
     that embeds nothing and draws no figure has nothing to add, and the store
     is left as it is.
 
@@ -682,6 +904,7 @@ def process_in_place_core(
     from ._cli_process_meas import (
         ProcessMeasRefusedError,
         process_meas_refusal,
+        process_mode_measurers,
         skipped_measurers_warning,
     )
 
@@ -691,13 +914,29 @@ def process_in_place_core(
     if refusal is not None:
         raise ProcessMeasRefusedError(refusal)
     skipped = skipped_measurers_warning(pipeline)
-    if skipped is not None:
+    if skipped is not None and skipped not in _WARNED_SKIPS:
+        # Once per process, not per image (P5 review M5): the line names the
+        # pipeline's entries, which are the same for every image.
+        _WARNED_SKIPS.add(skipped)
         logger.warning(skipped)
     pipeline_sha256 = hashlib.sha256(Path(pipeline_path).read_bytes()).hexdigest()
+    keys = [
+        measurer.payload_key()
+        for measurer in process_mode_measurers(pipeline).values()
+    ]
 
     from phenotypic.sdk_ import ngff_
 
-    if _owned_run_is_current(ngff_.read_phenotypic_attributes(store), pipeline_sha256):
+    from ._cli_failure_tracker import PerImageScientificError
+
+    try:
+        block = ngff_.read_phenotypic_attributes(store)
+    except (OSError, KeyError, ValueError) as exc:
+        # A root the startup refusals read but that is unreadable now is this
+        # image's failure, recorded as one, never an error outside the
+        # scientific boundary that every re-run retries (P5 review M3).
+        raise PerImageScientificError("process", exc) from exc
+    if _owned_run_is_current(block, pipeline_sha256, keys):
         logger.info("%s already holds this pipeline's run folder; nothing to do", store)
         return True
 

@@ -662,7 +662,10 @@ def _refuse_run_inputs_the_run_would_delete(
 
     The restart targets come from :func:`machine_state_restart_targets`, the
     same list ``clear_machine_state`` deletes, so the refusal and the delete
-    cannot disagree.
+    cannot disagree. Every image a scan of ``--input`` finds is checked
+    against them too (P5 review C1): with ``--input`` equal to ``--output``
+    a dataset folder named ``progress`` is a legacy restart target although
+    ``--input`` itself lies in none.
 
     Args:
         output_dir: The run's ``--output``.
@@ -692,6 +695,24 @@ def _refuse_run_inputs_the_run_would_delete(
         if restart and Path(output_dir).exists()
         else []
     )
+    # An input image inside a restart target, though --input itself is not:
+    # a dataset folder named like the legacy root-level `progress/` when
+    # --input is --output (P5 review C1). The scan is read-only, and only
+    # paid for when --restart has something to delete.
+    input_root = dict(run_inputs).get("--input")
+    if restart_targets and input_root is not None:
+        try:
+            scanned = scan_directory_structure(Path(input_root))
+        except (FileNotFoundError, ValueError):
+            scanned = {}
+        for image in (path for paths in scanned.values() for path in paths):
+            for target in restart_targets:
+                if inside(image, spellings(target)):
+                    raise click.UsageError(
+                        f"--input image {image} lies inside {target}, which "
+                        "--restart clears as machine state. Rename that "
+                        "folder or file, then run again."
+                    )
     for option, path in run_inputs:
         if path is None:
             continue
@@ -879,6 +900,7 @@ def _refuse_in_place_run(
     layer: str,
     process_format: str,
     overwrite: bool,
+    image_manifest: Optional[Path] = None,
 ) -> None:
     """Refuse an in-place process run that would be unsafe (#281 spec E7).
 
@@ -891,13 +913,19 @@ def _refuse_in_place_run(
     else. Called in the read-only half, outside ``--skip-validation``, and
     above ``--restart``/``--overwrite`` handling, ``mint_run_identity`` and the
     ``--dry-run`` exit, so a refused run leaves the tree byte-identical. A
-    pipeline that cannot be loaded, or an input the scan rejects, is left to
-    the checks that report it in their own words.
+    pipeline that cannot be loaded, or an input the scan or the
+    ``--image-manifest`` rejects, is left to the checks that report it in
+    their own words. The per-store checks see exactly the images the run
+    would process. Leftover ``.part`` directories of interrupted in-place
+    writes are listed in one warning line and left alone.
 
     Raises:
         click.UsageError: The first refusal that applies.
     """
-    from phenotypic._cli._cli_process_in_place import in_place_refusal
+    from phenotypic._cli._cli_process_in_place import (
+        in_place_refusal,
+        transaction_debris,
+    )
     from phenotypic._core._image_pipeline import ImagePipeline
 
     if pipeline_json is None:
@@ -906,9 +934,13 @@ def _refuse_in_place_run(
         pipeline = ImagePipeline.from_json(pipeline_json)
     except Exception:  # noqa: BLE001 - reported by the pipeline validation
         return
+    # The images the run would process: the same scan and --image-manifest
+    # selection as below (P5 review M7), so an unselected file is not blamed.
     try:
         scanned = scan_directory_structure(input_path)
-    except (FileNotFoundError, ValueError):
+        if image_manifest is not None:
+            scanned = apply_image_manifest(scanned, image_manifest, input_path)
+    except (FileNotFoundError, ValueError, ImageManifestError):
         scanned = {}
     refusal = in_place_refusal(
         pipeline=pipeline,
@@ -920,6 +952,15 @@ def _refuse_in_place_run(
     )
     if refusal is not None:
         raise click.UsageError(refusal)
+    _orphaned, parts = transaction_debris(input_path)
+    if parts:
+        # Named, never deleted: the tree is the user's (P5 review M6).
+        click.echo(
+            "Warning: leftover parts of interrupted in-place writes, not "
+            "touched: " + ", ".join(str(part) for part in parts) + ". Delete "
+            "them once no run is writing here.",
+            err=True,
+        )
 
 
 def _refuse_unusable_reference_table(
@@ -2988,6 +3029,7 @@ def phenotypic_cli(
                 layer=process_only_layer,
                 process_format=resolved_process_format,
                 overwrite=overwrite,
+                image_manifest=image_manifest,
             )
         if cli_mode in ("full", "process"):
             _refuse_run_inputs_the_run_would_delete(

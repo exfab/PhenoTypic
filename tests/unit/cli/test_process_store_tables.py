@@ -75,6 +75,35 @@ def test_revision_bump_invalidates_old_process_continuation():
     assert PROCESS_LAYER_SEMANTICS_REVISION == 5
 
 
+def test_a_revision_4_work_id_no_longer_matches(monkeypatch):
+    """Behavioural, not only the constant: the same image's work id moves 4 -> 5."""
+    from phenotypic._cli import _cli_failure_tracker as tracker
+
+    values = dict(
+        image_type="Image", nrows=None, ncols=None, bit_depth=None, detect_mode="gray",
+        process_only_layer="rgb", ext=".tiff", process_format="zarr",
+        include_dataset_column=True, overlay_alpha=0.2, save_overlays=True,
+    )
+
+    def work_id() -> str:
+        return tracker.compute_work_id(
+            dataset="ds",
+            relative_image_path="ds/plate_1.tif",
+            input_sha256="0" * 64,
+            pipeline_fingerprint="1" * 64,
+            processing_config_digest=tracker.processing_configuration_digest_from_values(
+                **values
+            ),
+            mode="process",
+        )
+
+    current = work_id()
+    monkeypatch.setattr(tracker, "PROCESS_LAYER_SEMANTICS_REVISION", 4)
+    assert work_id() != current
+    monkeypatch.setattr(tracker, "PROCESS_LAYER_SEMANTICS_REVISION", 5)
+    assert work_id() == current
+
+
 def test_a_toy_process_store_has_its_grid_table(tmp_path, tiny_inputs, registered_toy_embedder):
     out = tmp_path / "out"
     result = run_cli(
@@ -117,25 +146,38 @@ def test_a_toy_process_store_stays_byte_reproducible(
 
 
 def test_a_toy_grid_table_holds_the_cells_vectors(tmp_path, tiny_inputs, registered_toy_embedder):
-    """Row i is cell i in row-major order, with the toy's box-sum vector."""
+    """Row i is cell i in row-major order, with the toy's box-sum and pixel vector.
+
+    The last value is the cell's mean ``gray`` of the input's pixels, so an
+    embedding of the wrong pixels (another layer, the image before a
+    pixel-changing op, a flipped image) fails here.
+    """
     import numpy as np
     import pyarrow.parquet as pq
 
+    from phenotypic import Image
     from phenotypic.sdk_ import list_table_runs
-    from tests._tiny_run import TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES
+    from tests._tiny_run import TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES, toy_box_gray_mean
 
     out = tmp_path / "out"
     run_cli(tiny_inputs, out, mode="process", pipeline=toy_grid_process_pipeline(tmp_path), extra=ZARR_RGB)
-    (run,) = list_table_runs(_stores(out)[0])
+    store = _stores(out)[0]
+    (run,) = list_table_runs(store)
     table = pq.read_table(run.embedding_path("toy-v1", "grid")).to_pydict()
     assert table["Grid_RowMajorIdx"] == [0, 1, 2, 3]
     vectors = np.asarray(table["embedding"], dtype=np.float32)
     assert vectors.shape == (4, TOY_DIM)
-    # The toy vector of a cell is the sum of its box's four edges, repeated.
+    # The toy vector of a cell is the sum of its box's four edges, repeated...
     r, c = TOY_GRID_ROW_EDGES, TOY_GRID_COL_EDGES
     sums = [r[i] + r[i + 1] + c[j] + c[j + 1] for i in range(2) for j in range(2)]
-    assert (vectors == vectors[:, :1]).all()
+    assert (vectors[:, :-1] == vectors[:, :1]).all()
     assert vectors[:, 0].tolist() == sums
+    # ... then the cell's mean gray, from the input plate's own pixels.
+    boxes = [(r[i], c[j], r[i + 1], c[j + 1]) for i in range(2) for j in range(2)]
+    source = Image.imread(sorted(tiny_inputs.rglob("plate_1.tif"))[0])
+    expected = toy_box_gray_mean(np.asarray(source.gray[:]), boxes).astype(np.float16)
+    assert store.name == "plate_1.ome.zarr"
+    assert vectors[:, -1].tolist() == expected.astype(np.float32).tolist()
 
 
 def test_a_process_store_without_meas_has_no_tables(tmp_path, tiny_inputs):

@@ -950,14 +950,27 @@ TOY_DIM = 4
 _TOY_EMBEDDER: type | None = None
 
 
+def toy_box_gray_mean(gray, boxes):
+    """The mean of *gray* inside each ``(r0, c0, r1, c1)`` box: the toy vector's last value."""
+    import numpy as np
+
+    return np.array(
+        [float(gray[r0:r1, c0:c1].mean()) for r0, c0, r1, c1 in boxes],
+        dtype=np.float32,
+    )
+
+
 def toy_embedder_class() -> type:
     """The toy :class:`~phenotypic.abc_.MeasureEmbedding`, built once per process.
 
     Defined lazily rather than at module scope, because this module must
     import without ``phenotypic``, and cached so every fixture shares one
-    class. Its vectors are ``boxes.sum(1)`` repeated :data:`TOY_DIM` times, so
-    a test can tell which box a row came from without a model. ``token`` is
-    the model token, so two "models" can sit side by side in one run.
+    class. Its first ``TOY_DIM - 1`` values are ``boxes.sum(1)``, so a test can
+    tell which box a row came from without a model, and its last is the box's
+    mean ``gray`` (:func:`toy_box_gray_mean`), so a vector also depends on the
+    pixels it was computed from: an embedding of the wrong pixels or layer
+    differs (#281 P5 review, test quality). ``token`` is the model token, so
+    two "models" can sit side by side in one run.
     """
     global _TOY_EMBEDDER
     if _TOY_EMBEDDER is not None:
@@ -994,7 +1007,11 @@ def toy_embedder_class() -> type:
 
         def _embed_boxes(self, image, boxes):
             sums = boxes.sum(axis=1).astype(np.float32)
-            return np.repeat(sums[:, None], TOY_DIM, axis=1)
+            means = toy_box_gray_mean(np.asarray(image.gray[:]), boxes)
+            return np.concatenate(
+                [np.repeat(sums[:, None], TOY_DIM - 1, axis=1), means[:, None]],
+                axis=1,
+            )
 
     _TOY_EMBEDDER = ToyEmbedder
     return ToyEmbedder
