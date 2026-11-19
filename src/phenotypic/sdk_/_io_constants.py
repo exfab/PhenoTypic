@@ -3262,14 +3262,15 @@ class BundleLayout:
     that also holds ``results/`` and ``.phenotypic/``). A standalone bundle has
     ``output_root is None``; deliverables-internal artefacts always resolve from
     ``deliverables_base`` so the bundle is portable.
-
-    Attributes:
-        deliverables_base: Folder containing ``master_measurements.parquet``.
-        output_root: Parent run directory holding ``results/`` + machine state,
-            or ``None`` for a standalone (deliverables-only) bundle.
     """
 
+    # The fields are documented here (``#:``), not in an ``Attributes:``
+    # section: autodoc already documents each dataclass field, so a napoleon
+    # section described it a second time ("duplicate object description").
+    #: Folder containing ``master_measurements.parquet``.
     deliverables_base: Path
+    #: Parent run directory holding ``results/`` + machine state, or ``None``
+    #: for a standalone (deliverables-only) bundle.
     output_root: Optional[Path]
 
     @classmethod
