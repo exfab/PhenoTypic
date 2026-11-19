@@ -400,7 +400,7 @@ def in_place_refusal(
         >>> line.startswith("--overwrite")
         True
     """
-    from ._cli_process_only import _ZARR_CAPABLE_LAYERS
+    from ._cli_types import writes_process_store
 
     if overwrite:
         return (
@@ -409,7 +409,7 @@ def in_place_refusal(
             "without it (--restart clears only the machine state), or choose "
             "a different --output."
         )
-    if process_format != "zarr" or layer not in _ZARR_CAPABLE_LAYERS:
+    if not writes_process_store(layer, process_format):
         return (
             f"--layer {layer} --process-format {process_format} writes no "
             "store, and an in-place run adds a run folder to each input store. "

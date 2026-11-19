@@ -95,12 +95,21 @@ class ProcessingState:
         return sum(len(ds.failed) for ds in self.datasets.values())
 
 
+#: Layers that have a single-series OME-Zarr form. ``objmap`` and ``detect_mat``
+#: are absent for two different reasons, and
+#: :func:`~._cli_process_only.write_process_only_layer` refuses each with its
+#: own message saying which (spec §5.3).
+_ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
+
+
 def writes_process_store(layer: str | None, process_format: str) -> bool:
     """Whether a process export writes a store: ``--layer rgb|gray --process-format zarr``.
 
-    ``None`` *layer* (not a process run) is ``False``.
+    ``None`` *layer* (not a process run) is ``False``. The one rule behind
+    the process-mode lost-table refusal, the in-place store-export refusal
+    and :attr:`ExecutionConfig.in_place`.
     """
-    return layer in ("rgb", "gray") and process_format == "zarr"
+    return layer in _ZARR_CAPABLE_LAYERS and process_format == "zarr"
 
 
 def is_in_place_process(

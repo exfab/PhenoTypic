@@ -172,9 +172,9 @@ def process_meas_refusal(
         >>> process_meas_refusal(pipeline, layer="rgb", process_format="tiff") is None
         True
     """
-    from ._cli_process_only import _ZARR_CAPABLE_LAYERS
+    from ._cli_types import writes_process_store
 
-    if process_format == "zarr" and layer in _ZARR_CAPABLE_LAYERS:
+    if writes_process_store(layer, process_format):
         return None
     runnable = process_mode_measurers(pipeline)
     if not runnable:

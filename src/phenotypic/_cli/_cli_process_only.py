@@ -28,6 +28,7 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
+from ._cli_types import _ZARR_CAPABLE_LAYERS
 from ._cli_process_meas import (
     ProcessMeasRefusedError,
     embed_in_process_mode,
@@ -45,11 +46,6 @@ if TYPE_CHECKING:
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 logger = logging.getLogger(__name__)
-
-#: Layers that have a single-series OME-Zarr form. ``objmap`` and ``detect_mat``
-#: are absent for two different reasons, and :func:`write_process_only_layer`
-#: refuses each with its own message saying which (spec §5.3).
-_ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
 
 #: Why each non-store layer is refused. Two entries, two reasons, deliberately
 #: not collapsed: ``objmap`` is refused by the FORMAT, ``detect_mat`` by US.
