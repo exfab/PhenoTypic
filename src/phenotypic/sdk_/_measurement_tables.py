@@ -1362,10 +1362,12 @@ def _rewrite_store_tables(
 
     *consolidate* collapses the part's per-node metadata into its new root
     (:func:`~phenotypic._core._image_parts._image_io_handler._consolidate_store_part`)
-    after the root is written and before the check above, so a store
-    published consolidated stays consolidated. The store's previous
-    ``consolidated_metadata`` is dropped from the root first, since it
-    describes the old tree. ``False`` (measure mode) writes the root as read.
+    after the root is written and before the check above. A root that
+    already carries ``consolidated_metadata`` is re-consolidated whatever
+    *consolidate* says, so a store published consolidated stays consolidated
+    and its consolidated view never describes the tree it replaced; the old
+    view is dropped first. An unconsolidated store given ``False`` (measure
+    mode over a full run's store) is written unconsolidated, as before.
 
     Raises:
         StoreRootChangedError: See *expected_root_sha256*.
@@ -1383,6 +1385,10 @@ def _rewrite_store_tables(
     ):
         raise StoreRootChangedError(store_path)
     root_document = json.loads(root_bytes.decode("utf-8"))
+    # A root that was consolidated is re-consolidated, asked or not: its
+    # consolidated view describes the old tree, and a reader trusting it
+    # would miss this write's groups (P5 review I1, measure mode included).
+    consolidate = consolidate or _CONSOLIDATED_METADATA_KEY in root_document
     if consolidate:
         root_document.pop(_CONSOLIDATED_METADATA_KEY, None)
     phenotypic = root_document["attributes"][ngff_.PhenotypicAttr.ROOT]
