@@ -446,8 +446,9 @@ class MeasureFeatures(BaseOperation, ABC):
 
         Every measurement here is keyed on ``Object_Label`` and reads the
         image's object map. ``--mode process`` writes a store without an
-        object map, so it refuses a measurer for which this is ``True``
-        (#281 spec E4). :class:`~phenotypic.abc_.MeasureEmbedding` overrides
+        object map, so it skips a measurer for which this is ``True`` and
+        names it in one warning line (#281 spec E4, user decision
+        2026-11-18). :class:`~phenotypic.abc_.MeasureEmbedding` overrides
         it: a grid embedder embeds fixed cells and needs no objects.
 
         Examples:
