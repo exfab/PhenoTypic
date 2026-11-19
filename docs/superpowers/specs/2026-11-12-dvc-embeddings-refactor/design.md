@@ -556,7 +556,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   │   ├── measurements/table.parquet       scalar measurements (was tables/measurements/)
   │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
   │   └── embeddings/<model>/              e.g. dinov2-vitb14
-  │       ├── crops/table.parquet          Object_Label | embedding
+  │       ├── objects/table.parquet        Object_Label | embedding
   │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
   │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
   │       └── <region>-<name>/table.parquet  a named embedder (E3), same columns
@@ -597,7 +597,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
         "metadata":     { "…today's metadata descriptor…" },
         "metadata_table": { "snapshot_sha256": "…", "join_keys": ["…"], "join_kind": "…" },
         "embeddings": {
-          "dinov2-vitb14/crops": { "…entry…" },
+          "dinov2-vitb14/objects": { "…entry…" },
           "dinov2-vitb14/grid":  { "…entry…" } } } },
     "upstream": {
       "1-3f9c2a1b7d04": { "source": "<input path relative to --input>",
@@ -612,10 +612,10 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   | `model` | `{family, hf_id, revision, patch_size, device}`, where `revision` is the resolved hub commit and `device` (`"cuda"` or `"cpu"`) is the one that ran (P4 review Q1) |
   | `dim`, `dtype` | vector length and stored type |
   | `pooling` | the pooling mode used |
-  | `key` | `Object_Label` for crops, `Grid_RowMajorIdx` for grid |
-  | `input` | `{series, level}` |
+  | `key` | `Object_Label` for objects, `Grid_RowMajorIdx` for grid |
+  | `input` | `{series, level, layer}`: `series` is the stored series the pixels come from; `layer` is `rgb` or `gray` (gray is derived from `series`, so `binds.array_sha256` still tracks the stored pixels) |
   | `producer` | `{class, params_sha256}` |
-  | `binds` | for crops, `{objmap_path, objmap_sha256}`; for grid, `{array_sha256, grid_sha256}` |
+  | `binds` | for objects, `{objmap_path, objmap_sha256}`; for grid, `{array_sha256, grid_sha256}` |
   | `stale` | `false` when written |
   | `files` | `[{path, sha256, media_type}]` |
 - **D4 Interop attributes** go on each table group (§3.4):
@@ -709,7 +709,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 
 - **E1 `MeasureEmbedding` ABC** (`abc_/`), a `MeasureFeatures` subclass with
   `regions: Literal["objects", "grid"]`:
-  - `objects` reads the objmap and writes `crops/`. An empty objmap gives an
+  - `objects` reads the objmap and writes `objects/` (renamed from `crops/`, user decision 2026-11-19). An empty objmap gives an
     empty table, not an error (user decision 2026-11-18, P4 review Q3).
   - `grid` requires a grid definition, not an objmap, and writes `grid/`.
 
@@ -732,6 +732,8 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   | `revision` | `None` (a `str` when pinned) | the weights' Hugging Face commit (any ref the hub accepts). `None` loads the latest. The pin is in the pipeline file, so changing it changes the pipeline hash. Either way the entry records the commit actually loaded (D3) |
   | `regions` | `"objects"` | |
   | `grid` | `ManualGridFinder` (an `OperationField`) | required when `regions="grid"`, refused otherwise; the rig's cell edges in pixels (E3a) |
+  | `name` | `None` | optional slug; names the table `<region>-<name>` so one pipeline can hold several copies (user decision 2026-11-19) |
+  | `layer` | `"rgb"` | `rgb`, or `gray` stacked to three channels; two copies with different names embed both (user decision 2026-11-19) |
   | `pooling` | `"crop_cls"` | `crop_cls`, `crop_mean` or `masked_dense`; a grid cell is cropped from its rectangle exactly as an object is from its bbox |
   | `crop_px` | `224` | validated as a multiple of the loaded patch size |
   | `crop_pad_frac` | `0.25` | objects only |
@@ -842,8 +844,8 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     `embedding`, and `schema.json` lists it under each embedding table (C12).
 - **Named embedders** (user decision 2026-11-19). `MeasureEmbedding` takes an
   optional `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`), for either
-  region. The region string is `crops` or `grid` without a name and
-  `crops-<name>` or `grid-<name>` with one, so a named table is
+  region. The region string is `objects` or `grid` without a name and
+  `objects-<name>` or `grid-<name>` with one, so a named table is
   `tables/<run>/embeddings/<model>/<region>/` and its deliverable
   `deliverables/embeddings/<model>/<region>.parquet`. One pipeline can
   therefore carry several embedders of one model (two copies with different
@@ -938,7 +940,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 | P1 | Part B TSV | none (parallel with P0) |
 | P2 | Part C DVC layout, `metrics.json`, how-to page, C8 measurement | P0, P1 (the template names their files) |
 | P3 | Part D: `tables/` v2 per-pipeline layout, carry rule, upstream reference, ngio attributes, `--mode migrate` conversion, reader updates (finalizer, measure, recompile, marker, and the `sdk_` readers the GUI calls) | none (parallel with P0–P2) |
-| P4 | Part E1–E3a, E5: `MeasureEmbedding`, `MeasureDinoEmbedding` (crops + grid), `embed()`, deliverables | P3 |
+| P4 | Part E1–E3a, E5: `MeasureEmbedding`, `MeasureDinoEmbedding` (objects + grid), `embed()`, deliverables | P3 |
 | P5 | Part E4, E6, E7: process-mode measurements, in place, AutoConvertRaw-GC rollout | P3, P4, P0 |
 | Later | GPU execution (Stage-2 dense or Stage 4) | P4 timings |
 

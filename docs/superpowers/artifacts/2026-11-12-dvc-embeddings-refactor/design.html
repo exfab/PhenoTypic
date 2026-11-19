@@ -528,7 +528,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 │   ├── measurements/table.parquet       scalar measurements (was tables/measurements/)
 │   ├── metadata/pht-metadata.parquet    metadata projection (was tables/metadata/)
 │   └── embeddings/&lt;model&gt;/              e.g. dinov2-vitb14
-│       ├── crops/table.parquet          Object_Label | embedding
+│       ├── objects/table.parquet        Object_Label | embedding
 │       ├── grid/table.parquet           Grid_RowMajorIdx | Grid_RowNum | Grid_ColNum |
 │       │                                Grid_{Row,Col}Interval{Start,End} | embedding
 │       └── &lt;region&gt;-&lt;name&gt;/table.parquet  a named embedder (E3), same columns
@@ -557,7 +557,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata&quot;</span><span class="fu">:</span>     <span class="fu">{</span> <span class="dt">&quot;…today&#39;s metadata descriptor…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;metadata_table&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;snapshot_sha256&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span><span class="fu">,</span> <span class="dt">&quot;join_keys&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;…&quot;</span><span class="ot">]</span><span class="fu">,</span> <span class="dt">&quot;join_kind&quot;</span><span class="fu">:</span> <span class="st">&quot;…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;embeddings&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/crops&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/objects&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">},</span></span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;dinov2-vitb14/grid&quot;</span><span class="fu">:</span>  <span class="fu">{</span> <span class="dt">&quot;…entry…&quot;</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">}</span> <span class="fu">},</span></span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;upstream&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;1-3f9c2a1b7d04&quot;</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;&lt;input path relative to --input&gt;&quot;</span><span class="fu">,</span></span>
@@ -585,11 +585,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td><code>key</code></td>
-<td><code>Object_Label</code> for crops, <code>Grid_RowMajorIdx</code> for grid</td>
+<td><code>Object_Label</code> for objects, <code>Grid_RowMajorIdx</code> for grid</td>
 </tr>
 <tr class="odd">
 <td><code>input</code></td>
-<td><code>{series, level}</code></td>
+<td><code>{series, level, layer}</code>: <code>series</code> is the stored series the pixels come from; <code>layer</code> is <code>rgb</code> or <code>gray</code> (gray is derived from <code>series</code>, so <code>binds.array_sha256</code> still tracks the stored pixels)</td>
 </tr>
 <tr class="even">
 <td><code>producer</code></td>
@@ -597,7 +597,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td><code>binds</code></td>
-<td>for crops, <code>{objmap_path, objmap_sha256}</code>; for grid, <code>{array_sha256, grid_sha256}</code></td>
+<td>for objects, <code>{objmap_path, objmap_sha256}</code>; for grid, <code>{array_sha256, grid_sha256}</code></td>
 </tr>
 <tr class="even">
 <td><code>stale</code></td>
@@ -672,7 +672,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><p><strong>E1 <code>MeasureEmbedding</code> ABC</strong> (<code>abc_/</code>), a <code>MeasureFeatures</code> subclass with <code>regions: Literal["objects", "grid"]</code>:</p>
 <ul>
-<li><code>objects</code> reads the objmap and writes <code>crops/</code>. An empty objmap gives an empty table, not an error (user decision 2026-11-18, P4 review Q3).</li>
+<li><code>objects</code> reads the objmap and writes <code>objects/</code> (renamed from <code>crops/</code>, user decision 2026-11-19). An empty objmap gives an empty table, not an error (user decision 2026-11-18, P4 review Q3).</li>
 <li><code>grid</code> requires a grid definition, not an objmap, and writes <code>grid/</code>.</li>
 </ul>
 <p>A whole-image embedding is a 1 × 1 grid, so there is no separate image scope. <code>measure(image)</code> returns the table's frame directly, for notebook use.</p></li>
@@ -717,6 +717,16 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td><code>grid</code></td>
 <td><code>ManualGridFinder</code> (an <code>OperationField</code>)</td>
 <td>required when <code>regions="grid"</code>, refused otherwise; the rig's cell edges in pixels (E3a)</td>
+</tr>
+<tr class="even">
+<td><code>name</code></td>
+<td><code>None</code></td>
+<td>optional slug; names the table <code>&lt;region&gt;-&lt;name&gt;</code> so one pipeline can hold several copies (user decision 2026-11-19)</td>
+</tr>
+<tr class="odd">
+<td><code>layer</code></td>
+<td><code>"rgb"</code></td>
+<td><code>rgb</code>, or <code>gray</code> stacked to three channels; two copies with different names embed both (user decision 2026-11-19)</td>
 </tr>
 <tr class="even">
 <td><code>pooling</code></td>
@@ -805,7 +815,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Upstream tables (D8) are not aggregated into a downstream run's deliverables in v1.</li>
 <li>A <code>MeasureEmbedding</code> gets no by-feature split and no column section in the deliverables README, which document mirror columns. The README documents the embedding deliverables separately. The vector column is named <code>embedding</code>, and <code>schema.json</code> lists it under each embedding table (C12).</li>
 </ul></li>
-<li><p><strong>Named embedders</strong> (user decision 2026-11-19). <code>MeasureEmbedding</code> takes an optional <code>name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>), for either region. The region string is <code>crops</code> or <code>grid</code> without a name and <code>crops-&lt;name&gt;</code> or <code>grid-&lt;name&gt;</code> with one, so a named table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;region&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>. One pipeline can therefore carry several embedders of one model (two copies with different names), and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
+<li><p><strong>Named embedders</strong> (user decision 2026-11-19). <code>MeasureEmbedding</code> takes an optional <code>name</code> (a lowercase slug, <code>^[a-z0-9][a-z0-9_]{0,31}$</code>), for either region. The region string is <code>objects</code> or <code>grid</code> without a name and <code>objects-&lt;name&gt;</code> or <code>grid-&lt;name&gt;</code> with one, so a named table is <code>tables/&lt;run&gt;/embeddings/&lt;model&gt;/&lt;region&gt;/</code> and its deliverable <code>deliverables/embeddings/&lt;model&gt;/&lt;region&gt;.parquet</code>. One pipeline can therefore carry several embedders of one model (two copies with different names), and two embedders sharing a payload key are still refused. <code>split_embedding_key</code> is the one rule for valid regions.</p></li>
 <li><p><strong>E6 AutoConvertRaw-GC rollout</strong> (after the new wheel is built):</p>
 <ul>
 <li>add two embedders to the pipeline's <code>meas</code>, both <code>MeasureDinoEmbedding(size="base", revision=&lt;pinned commit&gt;, regions="grid")</code> (user decisions 2026-11-19; edges derived from 80 rig1 images and approved on overlays):
@@ -873,7 +883,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td>P4</td>
-<td>Part E1–E3a, E5: <code>MeasureEmbedding</code>, <code>MeasureDinoEmbedding</code> (crops + grid), <code>embed()</code>, deliverables</td>
+<td>Part E1–E3a, E5: <code>MeasureEmbedding</code>, <code>MeasureDinoEmbedding</code> (objects + grid), <code>embed()</code>, deliverables</td>
 <td>P3</td>
 </tr>
 <tr class="even">
