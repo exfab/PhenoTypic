@@ -80,7 +80,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ol type="1">
 <li><strong>Speed.</strong> One resident model per GPU worker processes many images, batched across images. The cold model load is paid once per shard, not once per process.</li>
 <li><strong>Larger models.</strong> DINOv2-large and -giant, and the DINOv3 ViT-L, H+ and 7B, in reduced precision where needed.</li>
-<li><strong>Consistent embeddings.</strong> A staged run embeds every image on GPUs, never mixing in CPU. Mixed GPU models on SLURM are fine. Vectors must not depend on how images were sharded or batched.</li>
+<li><strong>Consistent embeddings.</strong> A staged run embeds every image on GPUs, never mixing in CPU. Mixed GPU models on SLURM are fine. Within one GPU model and physical batch size, vectors must not depend on how images were sharded or batched (restated 2026-11-19, plan review S1: m is chosen per GPU model and OOM halving changes it, so an absolute guarantee cannot hold; across GPU models the measured difference is about 1e-7).</li>
 </ol>
 <h2 id="2-measured-facts-2026-11-19">2. Measured facts (2026-11-19)</h2>
 <p>The measurements used real 4012 × 6016 corrected plates (66 colonies, 96 wells), from code at <code>d1bc6febe</code>. Logs are in <code>/bigdata/exfab/anguy344/gate-results/gpu-baseline/</code>.</p>
@@ -181,7 +181,23 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td>U5</td>
-<td><strong>An unpinned <code>revision</code> is resolved once at submission</strong> and recorded in job metadata, so every shard and round loads the same commit. Offline, it falls back to per-process resolution with the existing warning.</td>
+<td><strong>An unpinned <code>revision</code> is resolved once, at a run's first submission,</strong> and recorded in job metadata, so every shard and round loads the same commit; a continuation reuses the recorded commit rather than re-resolving (2026-11-19). It applies to Stage-4 runs only. Offline, it falls back to per-process resolution with the existing warning.</td>
+</tr>
+<tr class="even">
+<td>U7</td>
+<td><strong>A stalled Stage-4 round ends unfinished</strong> (2026-11-19, plan review O8): after two unchanged retryable sets the finalizer runs, the leftover images keep no record and no journal row, and the run exits 5 ("re-run the same command"); a plain re-run retries them. GPU OOM and a changed root are node or concurrency state, never terminal per-image failures.</td>
+</tr>
+<tr class="odd">
+<td>U8</td>
+<td><strong>A measure-mode Stage-4 failure keeps the old embeddings</strong> (2026-11-19, plan review C3): the measure core carries the image's existing embeddings block forward (still valid, since measure never writes the objmap); Stage 4 replaces it. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as <code>MEASURE_FAILURE_STAGE</code>, so the run exits 3.</td>
+</tr>
+<tr class="even">
+<td>U9</td>
+<td><strong>An explicit <code>device="cpu"</code> pin wins</strong> (2026-11-19): under <code>auto</code>, a run whose in-scope embedder is pinned to CPU resolves <code>inline</code>, with a one-line note; <code>--embed-stage gpu</code> with such a pin is refused.</td>
+</tr>
+<tr class="odd">
+<td>U10</td>
+<td><strong>SLURM <code>--mode measure</code> moves onto the staged controller</strong> (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (<code>measure_failed</code>, no forward run proof).</td>
 </tr>
 <tr class="even">
 <td>U6</td>
@@ -216,7 +232,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td>H9</td>
-<td><strong>An in-scope embedder pinned to <code>device="cpu"</code> is refused</strong> when Stage 4 resolves on.</td>
+<td>Superseded by U9: an explicit CPU pin makes the run resolve inline; refused only with <code>--embed-stage gpu</code>.</td>
 </tr>
 <tr class="even">
 <td>H10</td>
@@ -294,7 +310,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>terminal on a recorded failure, missing <code>stages.stage3</code>, a store that doesn't match its work id, or a changed reference digest;</li>
 <li>retryable otherwise.</li>
 </ul></li>
-<li><strong>Rounds</strong> use their own counters: two unchanged retryable sets in a row go to the finalizer, which closes <code>terminal_incomplete</code>, exit 3. The ledger role is <code>stage4</code> and the token <code>stage4-round-&lt;n&gt;</code>, so <code>live_slurm_job_ids</code> sees them.</li>
+<li><strong>Rounds</strong> use their own counters: two unchanged retryable sets in a row go to the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is <code>stage4</code> and the token <code>stage4-round-&lt;n&gt;</code>, so <code>live_slurm_job_ids</code> sees them.</li>
 <li><strong>A per-round worklist</strong> (<code>stage4_worklist.json</code>) partitions only the retryable set across shards. After a walltime, the leftover work spreads over every GPU.</li>
 <li><strong>Stage 4 is an array over shards and is never chunked.</strong> It has no trigger entries and no sidecar jobs. Its resources are the Stage-2 GPU profile. The script prelude sets <code>CUBLAS_WORKSPACE_CONFIG=:4096:8</code>.</li>
 <li><strong>Progress:</strong> <code>StageTag</code> gains <code>"stage4"</code>, and the terminal stage for event counting becomes per-run.</li>
@@ -353,13 +369,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><strong>A Stage-1 re-run deletes the image's Stage-4 signals.</strong> <code>--restart</code> clears them with <code>progress/</code>.</li>
 <li><strong><code>--retry-failures</code></strong> re-runs only the GPU embedding of a Stage-4 failure.</li>
-<li><strong>Measure mode (U4).</strong> The measure core defers both <code>embed</code> and <code>_republish_table_marker</code>. Stage 4 runs in <em>republish</em> mode, flagged in the manifest (version 4 → 5), so it rewrites an already-certified store's embeddings and then republishes its record. That is a separate invocation, so "one writer per pass" holds.</li>
+<li><strong>Measure mode (U4, U8, U10).</strong> The measure core carries the existing embeddings forward and defers <code>embed</code> and <code>_republish_table_marker</code>. Stage 4 runs in <em>republish</em> mode, flagged in the manifest (version 4 → 5), so it rewrites an already-certified store's embeddings and then republishes its record. That is a separate invocation, so "one writer per pass" holds.</li>
 </ul>
 <h3 id="47-refusals-and-preflight">4.7 Refusals and preflight</h3>
 <p>These are each one usage-error line in the read-only half, outside <code>--skip-validation</code>, above <code>--restart</code>, <code>--overwrite</code>, <code>mint_run_identity</code> and <code>--dry-run</code>:</p>
 <ul>
 <li><strong>R1:</strong> <code>--embed-stage gpu</code> with <code>--mode process</code>.</li>
-<li><strong>R2 (H9):</strong> an in-scope embedder with <code>device="cpu"</code> when Stage 4 resolves on.</li>
+<li><strong>R2 (U9):</strong> <code>--embed-stage gpu</code> with an in-scope embedder pinned to <code>device="cpu"</code>. (Under <code>auto</code>, the pin resolves the run inline instead.)</li>
 <li><strong>R3 (U3):</strong> a continuation whose <code>embed_stage</code> differs from the recorded one.</li>
 </ul>
 <p>New preflight warnings, each with <code>HINTS</code> and a docs row:</p>

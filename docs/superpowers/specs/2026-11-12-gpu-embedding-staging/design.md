@@ -25,8 +25,11 @@ set:
 2. **Larger models.** DINOv2-large and -giant, and the DINOv3 ViT-L, H+ and
    7B, in reduced precision where needed.
 3. **Consistent embeddings.** A staged run embeds every image on GPUs, never
-   mixing in CPU. Mixed GPU models on SLURM are fine. Vectors must not depend
-   on how images were sharded or batched.
+   mixing in CPU. Mixed GPU models on SLURM are fine. Within one GPU model
+   and physical batch size, vectors must not depend on how images were
+   sharded or batched (restated 2026-11-19, plan review S1: m is chosen per
+   GPU model and OOM halving changes it, so an absolute guarantee cannot
+   hold; across GPU models the measured difference is about 1e-7).
 
 ## 2. Measured facts (2026-11-19)
 
@@ -70,7 +73,11 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 | U2 | **Opt-in is `auto`.** A new `--embed-stage {auto,gpu,inline}` defaults to `auto`. On SLURM, `auto` resolves to `gpu` when the run already has a GPU profile (a `GpuDetector`, or `--gpu-slurm` given), otherwise `inline`. A local run resolves `inline` unless `--embed-stage gpu`. |
 | U3 | **No switching mid-run.** A continuation whose resolved `embed_stage` differs from the recorded one is refused, naming the recorded flag, and `--mode measure --embed-stage gpu` to re-embed. |
 | U4 | **`--mode measure` uses Stage 4 in v1.** It is the documented remedy for an unreadable embedding (parent E5), and re-embedding a GPU run must stay on GPU. |
-| U5 | **An unpinned `revision` is resolved once at submission** and recorded in job metadata, so every shard and round loads the same commit. Offline, it falls back to per-process resolution with the existing warning. |
+| U5 | **An unpinned `revision` is resolved once, at a run's first submission,** and recorded in job metadata, so every shard and round loads the same commit; a continuation reuses the recorded commit rather than re-resolving (2026-11-19). It applies to Stage-4 runs only. Offline, it falls back to per-process resolution with the existing warning. |
+| U7 | **A stalled Stage-4 round ends unfinished** (2026-11-19, plan review O8): after two unchanged retryable sets the finalizer runs, the leftover images keep no record and no journal row, and the run exits 5 ("re-run the same command"); a plain re-run retries them. GPU OOM and a changed root are node or concurrency state, never terminal per-image failures. |
+| U8 | **A measure-mode Stage-4 failure keeps the old embeddings** (2026-11-19, plan review C3): the measure core carries the image's existing embeddings block forward (still valid, since measure never writes the objmap); Stage 4 replaces it. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as `MEASURE_FAILURE_STAGE`, so the run exits 3. |
+| U9 | **An explicit `device="cpu"` pin wins** (2026-11-19): under `auto`, a run whose in-scope embedder is pinned to CPU resolves `inline`, with a one-line note; `--embed-stage gpu` with such a pin is refused. |
+| U10 | **SLURM `--mode measure` moves onto the staged controller** (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (`measure_failed`, no forward run proof). |
 | U6 | **Mixed GPU models are allowed.** `device` and `device_name` are provenance, recorded per entry. |
 
 ### Defaults taken (the user did not object)
@@ -81,7 +88,7 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 | H5 | **Process mode, copy and in place, stays inline on CPU in v1.** That covers AutoConvertRaw-GC's direct `process_single_apply_only_core` calls. Process stores are write-once and byte-reproducible, and Stage 4 would add a second, device-dependent transaction. A GPU in-place backfill is a v2 candidate. |
 | H6 | **`--gpu-slurm` and `--gpu-shards` are reused.** No new resource flags in v1. |
 | H7 | **`compute_dtype: Literal["float32","bfloat16","float16"] = "float32"`** is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for 7B. |
-| H9 | **An in-scope embedder pinned to `device="cpu"` is refused** when Stage 4 resolves on. |
+| H9 | Superseded by U9: an explicit CPU pin makes the run resolve inline; refused only with `--embed-stage gpu`. |
 | H10 | **Backbone-major.** One model is resident at a time. Embedders sharing a backbone share one load. |
 
 ## 4. Design
@@ -145,7 +152,7 @@ parent D5's writer list, gain the Stage-4 rewrite.
     doesn't match its work id, or a changed reference digest;
   - retryable otherwise.
 - **Rounds** use their own counters: two unchanged retryable sets in a row go to
-  the finalizer, which closes `terminal_incomplete`, exit 3. The ledger role is
+  the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is
   `stage4` and the token `stage4-round-<n>`, so `live_slurm_job_ids` sees them.
 - **A per-round worklist** (`stage4_worklist.json`) partitions only the
   retryable set across shards. After a walltime, the leftover work spreads over
@@ -233,8 +240,9 @@ parent D5's writer list, gain the Stage-4 rewrite.
 - **A Stage-1 re-run deletes the image's Stage-4 signals.** `--restart` clears
   them with `progress/`.
 - **`--retry-failures`** re-runs only the GPU embedding of a Stage-4 failure.
-- **Measure mode (U4).** The measure core defers both `embed` and
-  `_republish_table_marker`. Stage 4 runs in *republish* mode, flagged in the
+- **Measure mode (U4, U8, U10).** The measure core carries the existing
+  embeddings forward and defers `embed` and `_republish_table_marker`. Stage 4
+  runs in *republish* mode, flagged in the
   manifest (version 4 → 5), so it rewrites an already-certified store's
   embeddings and then republishes its record. That is a separate invocation, so
   "one writer per pass" holds.
@@ -246,7 +254,7 @@ These are each one usage-error line in the read-only half, outside
 `--dry-run`:
 
 - **R1:** `--embed-stage gpu` with `--mode process`.
-- **R2 (H9):** an in-scope embedder with `device="cpu"` when Stage 4 resolves on.
+- **R2 (U9):** `--embed-stage gpu` with an in-scope embedder pinned to `device="cpu"`. (Under `auto`, the pin resolves the run inline instead.)
 - **R3 (U3):** a continuation whose `embed_stage` differs from the recorded one.
 
 New preflight warnings, each with `HINTS` and a docs row:
