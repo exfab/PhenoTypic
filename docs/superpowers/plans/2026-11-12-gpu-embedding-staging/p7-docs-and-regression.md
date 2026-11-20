@@ -48,7 +48,11 @@ SHA.
 - Modify: `docs/source/tutorials/pages/cli_batch_processing.md`: an
   "Embedding on GPUs" section (`--embed-stage`, the resolution table, R1–R3 as
   the user sees them, `--gpu-slurm`/`--gpu-shards` for Stage 4, pre-staged
-  weights and `HF_HUB_OFFLINE=1`).
+  weights and `HF_HUB_OFFLINE=1`; that a local `--embed-stage gpu` checks CUDA
+  before Stage 1 and exits `1` without one, and that this check imports torch,
+  so `--dry-run` with that flag pays the import too; and that
+  `CUBLAS_WORKSPACE_CONFIG` may be `:4096:8` (the default the CLI sets) or
+  `:16:8`).
 - Create or modify: the embeddings how-to page. If #281 merged none, create
   `docs/source/how_to/pages/embeddings.md` and add it to the how-to toctree.
   It covers model sizes and the size/version pairs, `compute_dtype` (bf16

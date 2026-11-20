@@ -19,18 +19,38 @@ failure leaves the previous embeddings and a valid record, and is journalled as
 
 **Files:**
 - Modify: `src/phenotypic/sdk_/_measurement_tables.py:1460-1645`.
-  `replace_image_tables` gains `carry_embeddings: bool = False`. With it, and
-  `embeddings=None`, the chosen run's existing `embeddings` block and its files
-  are carried into the part (hard links, `_clone_file_without_pixel_rewrite`,
-  `:1265`) instead of dropped, and the entry keeps that block as it was. Its
-  `stale` flags stay valid, because a measure write writes no objmap and no
-  array (`:1498-1501`). A run folder this write creates has nothing to carry.
+  `replace_image_tables` gains
+  `carry_embeddings: Sequence[tuple[str, str]] = ()`, pairs of
+  `(source_run_id, key)`. With `embeddings=None`, each named entry and its
+  files are carried into the chosen run (hard links,
+  `_clone_file_without_pixel_rewrite`, `:1265`) instead of dropped, under the
+  same key, and the entry keeps its fields as they were. Its `stale` flag stays
+  valid, because a measure write writes no objmap and no array (`:1498-1501`).
+  The plan refuses a pair whose run or key the store does not declare, before
+  any part exists.
+- **What the measure core carries** (U8, the user's ruling on a measure pipeline
+  that differs from the forward one, re-review item 3). For each embedder of the
+  measure pipeline, with `key = payload_key()` and `params = _params_sha256()`:
+  1. the measure pipeline's own run folder, when the store has one and its
+     entry under `key` has `producer.params_sha256 == params`;
+  2. otherwise **the run the record last certified**
+     (`certified_table_run`, `_cli_recompile_recovery.py:339`), when its entry
+     under `key` has the same `params_sha256`. That entry is as valid as one of
+     its own, because measure writes no objmap;
+  3. otherwise nothing: there is no comparable embedding to keep. If Stage 4
+     then fails for that image, the image is journalled as
+     `MEASURE_FAILURE_STAGE` and the run exits `3`, as for any other failure;
+     its new run folder simply has no table under that key.
+  The core builds the pairs with
+  `measure_embedding_carry(store, record_path, embedders) -> list[tuple[str, str]]`
+  (new, in `_cli_process_single.py`).
 - Modify: `src/phenotypic/_cli/_cli_output_manager.py:2084`.
   `replace_image_store_measurements` passes `carry_embeddings` through.
 - Modify: `src/phenotypic/_cli/_cli_process_single.py:472-655`.
   `process_single_store_measure_core` gains `defer_embeddings: bool = False`.
   When set: `pipeline.embed` (`:522`) is skipped, the replace (`:577-585`) gets
-  `embeddings=None, carry_embeddings=True` (U8; plan review C3), and the
+  `embeddings=None, carry_embeddings=measure_embedding_carry(...)` (U8; plan
+  review C3), and the
   `_republish_table_marker` block (`:629-655`) is skipped.
 - Modify: `src/phenotypic/_cli/_cli_execution_strategies.py:787-870`.
   `_process_single_local_measure` passes `defer_embeddings`; after the measure
@@ -51,12 +71,13 @@ failure leaves the previous embeddings and a valid record, and is journalled as
     (`_cli_recompile_tables.py:52`), with `measurements=run.measurements_path()`
     and the lifecycle-epoch rule of `_cli_process_single.py:640-655` (the SLURM
     generation on SLURM, the record's own locally);
-  - **a per-image Stage-4 failure in republish mode** (a `FailedImage` or a
-    non-finite vector) still republishes the record, now certifying the new
-    measurements with the carried embeddings, and journals the failure under
-    the measure work id with stage `MEASURE_FAILURE_STAGE`
-    (`_cli_failure_tracker.py`), not `"stage4"` (U8). Node state (OOM, no CUDA)
-    and a changed root republish nothing and journal nothing.
+  - **a per-image Stage-4 failure in republish mode** (a `FailedImage`, a
+    non-finite vector, or a payload bound to another image) still republishes
+    the record, now certifying the new measurements with whatever was carried
+    (nothing, under rule 3), and journals the failure under the measure work id
+    with stage `MEASURE_FAILURE_STAGE` (`_cli_failure_tracker.py`), not
+    `"stage4"` (U8). Node state (OOM, no CUDA) and a changed root republish
+    nothing and journal nothing.
   - `run_local_stage4` gains `republish: bool = False`.
 - Modify: `src/phenotypic/_cli/_cli_staged_resume.py`.
   `stage4_status(..., republish=True, pipeline_sha256=<the measure pipeline's>)`
@@ -101,16 +122,32 @@ def test_measure_over_a_staged_run_reembeds_and_republishes(tmp_path, tiny_input
     state = resolve_run_state(out, depth="deep")
     assert state.diagnostics.failed == 0 and all(v.verdict == "verified" for v in state.images.values())
 
-def test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
-    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+def test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record(tmp_path, tiny_inputs, stage4_cpu, stage4_faults):
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
     run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"])
     victim = store_of(out, 0)
     old = embedding_bytes(victim, "dinov2-vitb14/rgb/objects")
-    fail_stage4_for(monkeypatch, image=0)
+    plant_stage4_fault(stem_of(victim))                                         # on disk, not a monkeypatch
     result = run_cli(None, out, mode="measure", pipeline=pipe, extra=["--embed-stage", "gpu"])
     assert result.exit_code == 3                                                # U8
     assert embedding_bytes(victim, "dinov2-vitb14/rgb/objects") == old         # carried forward
     assert record_certifies_root(out, victim)                                   # a valid record
+    assert [r.failed_stage for r in read_terminal_failures(out)] == [MEASURE_FAILURE_STAGE]
+
+def test_a_differing_measure_pipeline_carries_matching_entries(tmp_path, tiny_inputs, stage4_cpu, stage4_faults):
+    out = tmp_path / "out"
+    forward = with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True, grid=True)
+    run_cli(tiny_inputs, out, pipeline=forward, extra=["--embed-stage", "gpu"])
+    victim = store_of(out, 0)
+    old = embedding_bytes(victim, "dinov2-vitb14/rgb/objects")
+    measure = with_measure_pipeline(tmp_path, keep="objects", add_grid_named="wells")   # another sha: a new run folder
+    plant_stage4_fault(stem_of(victim))
+    result = run_cli(None, out, mode="measure", pipeline=measure, extra=["--embed-stage", "gpu"])
+    assert result.exit_code == 3
+    new_run = owned_run(victim, pipeline_sha(measure))
+    assert embedding_bytes(victim, "dinov2-vitb14/rgb/objects", run=new_run) == old   # rule 2: carried from the certified run
+    assert "dinov2-vitb14/rgb/grid-wells" not in new_run.descriptor.get("embeddings", {})  # rule 3: nothing comparable
+    assert record_certifies_root(out, victim)
     assert [r.failed_stage for r in read_terminal_failures(out)] == [MEASURE_FAILURE_STAGE]
 
 def test_republish_keeps_the_records_identity(tmp_path, tiny_inputs, stage4_cpu):
@@ -139,8 +176,11 @@ def test_measure_stage4_survives_a_real_crash(tmp_path, tiny_inputs, stage4_cpu)
     assert again.returncode == 0 and all_records_valid(out)
 ```
 
-  `record_digest`, `record_identity`, `embedding_bytes`, `fail_stage4_for`
-  (it makes `prepare_regions` raise for that image), `record_certifies_root`
+  `record_digest`, `record_identity`, `embedding_bytes(store, key, *, run=None)`,
+  `with_measure_pipeline(tmp_path, *, keep, add_grid_named)` (a measure pipeline
+  whose objects embedder has the forward one's parameters, plus a new named
+  grid embedder, so its file and sha differ), `owned_run`, `pipeline_sha`,
+  `record_certifies_root`
   and `tail_events` / `new_events` / `stages_of` live in `tests/_tiny_run.py`
   (some from P4). `run_cli_subprocess(None, …)` omits `--input`, as `run_cli`
   does. In `test_replace_image_tables_carry.py`:
@@ -152,9 +192,24 @@ def test_carry_keeps_the_runs_embedding_files_and_block(store_with_crop_entry):
     old = dict(run.descriptor["embeddings"])
     inode = embedding_file(store, run).stat().st_ino
     replace_image_tables(store, tables_for_store(store), pipeline_sha256=run.pipeline_sha256,
-                         carry_embeddings=True)
+                         carry_embeddings=[(run.run_id, key) for key in old])
     run = latest_measurement_run(store)
     assert run.descriptor["embeddings"] == old and embedding_file(store, run).stat().st_ino == inode
+
+def test_carry_from_another_run_into_a_new_folder(store_with_crop_entry):
+    store = store_with_crop_entry
+    source = latest_measurement_run(store)
+    (key,) = source.descriptor["embeddings"]
+    run = replace_image_tables(store, tables_for_store(store), pipeline_sha256="b" * 64,
+                               carry_embeddings=[(source.run_id, key)])
+    assert run.run_id != source.run_id
+    assert run.descriptor["embeddings"][key] == {**source.descriptor["embeddings"][key],
+                                                 "files": relocated(source, run, key)}
+
+def test_carry_refuses_an_undeclared_pair(store_with_crop_entry):
+    with pytest.raises(ValueError, match="9-unknown"):
+        replace_image_tables(store_with_crop_entry, tables_for_store(store_with_crop_entry),
+                             pipeline_sha256=None, carry_embeddings=[("9-unknown", "x/rgb/objects")])
 
 def test_without_carry_the_embeddings_go(store_with_crop_entry):
     store = store_with_crop_entry
@@ -164,7 +219,9 @@ def test_without_carry_the_embeddings_go(store_with_crop_entry):
 ```
 
   `store_with_crop_entry` and `tables_for_store` exist (`tests/_tiny_run.py:747,850`);
-  `embedding_file(store, run)` is module-local. In `test_staged_manifest_version.py`:
+  `embedding_file(store, run)` and `relocated(source, run, key)` (the entry's
+  `files` with paths moved to the new run folder, sha256 unchanged) are
+  module-local. In `test_staged_manifest_version.py`:
 
 ```python
 def test_v5_records_republish(tmp_path):

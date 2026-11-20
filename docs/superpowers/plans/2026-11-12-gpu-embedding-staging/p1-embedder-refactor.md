@@ -154,7 +154,8 @@ def test_grid_outside_the_image_is_raised_by_prepare(plate):
     `_masked_dense` does today (`:546-600`), each passed through
     `processor(images=tile, return_tensors="np", **NATIVE_PROCESSOR_KWARGS)`
     (`_dino_support.py:56`, the call `extract_patch_features` makes at
-    `:342-344`, with `"np"` in place of `"pt"`), with the feature-grid shape and
+    `:342-344`, with `"np"` in place of `"pt"`; the test compares the two, so a
+    processor whose `"np"` and `"pt"` paths differ fails it), with the feature-grid shape and
     per-region masks in `pool_plan`. `processor=None` loads one through
     `load_dino_processor` (below).
   - `_dino_support.py`: add `load_dino_processor(dino_version, dino_size, *, revision=None) -> Any`,
@@ -219,7 +220,8 @@ def test_dense_tiles_are_the_processors_pixels(stub_backbone, detected_plate):
     assert all(t.dtype == np.float32 and t.shape[1] % 14 == 0 and t.shape[2] % 14 == 0
                for t in prepared.inputs.arrays)
     first = np.asarray(m._layer_pixels(detected_plate))[:112, :112]
-    ref = processor(images=first, return_tensors="np", **NATIVE_PROCESSOR_KWARGS)["pixel_values"][0]
+    # the inline path: extract_patch_features asks for "pt" (_dino_support.py:342-344)
+    ref = processor(images=first, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS)["pixel_values"][0].numpy()
     assert np.array_equal(prepared.inputs.arrays[0], ref)                    # same bits as inline
 
 def test_zero_regions_trigger_no_second_load(stub_backbone, plate):

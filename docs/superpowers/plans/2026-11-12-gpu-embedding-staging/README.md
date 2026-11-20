@@ -1,15 +1,20 @@
 # GPU Embedding Stage 4 Implementation Plan
 
-**Status:** revision 2 · 2026-11-19 · revised per `reports/2026-11-12-gpu-embedding-staging/plan-review.md`
-and the spec as amended in `c33b58193` (U5, U7–U10, S1); see "Revision 2" at the end
+**Status:** revision 3 · 2026-11-19 · revised per `reports/2026-11-12-gpu-embedding-staging/plan-review.md`,
+the spec as amended in `c33b58193` (U5, U7–U10, S1), and the re-review of
+revision 2 (`671665959`); see "Revision 3" at the end
 **Spec:** `docs/superpowers/specs/2026-11-12-gpu-embedding-staging/design.md` (approved 2026-11-19)
 **Parent:** #281, `docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md`
 **Base:** `feat/gpu-embedding-staging` (PR #282), after the orchestrator merges #281
 (`worktree-dvc-embeddings-refactor` at `26d7f86a6` or later) into it. Every
 `file:line` below is read from the #281 worktree at `26d7f86a6`, not from the
 #282 branch as it stands today. (`d3c54f723` → `26d7f86a6` changed one test
-file only, so revision 1's anchors carried over; every anchor revision 2 added
-or touched was re-read at `26d7f86a6`.)
+file only, so revision 1's anchors carried over; every anchor revisions 2 and
+3 added or touched was re-read at `26d7f86a6`, with `git show`, because the
+#281 worktree holds uncommitted edits.) **`detect/nn/_helper/_dino_support.py`
+is being edited on #281** (gridname's snapshot-path fallback in
+`resolved_revision`, `:257-272`): once it lands, that file's anchors below
+`:257` shift. Re-find them by name; they are not questions.
 
 ---
 
@@ -85,10 +90,12 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   - `torch.backends.cuda.matmul.allow_tf32 = False`, `torch.backends.cudnn.allow_tf32 = False`;
   - `torch.set_float32_matmul_precision("highest")`;
   - `torch.use_deterministic_algorithms(True, warn_only=True)`;
-  - `CUBLAS_WORKSPACE_CONFIG=:4096:8`: exported by the Stage-4 SLURM script
-    prelude, and set by the CLI right after `--embed-stage` resolves to `gpu`,
-    before any strategy can create a cuBLAS handle (local Stage 4 runs in the
-    CLI process; plan review I4).
+  - `CUBLAS_WORKSPACE_CONFIG`: exported as `:4096:8` by the Stage-4 SLURM
+    script prelude, and `setdefault` to `:4096:8` by the CLI right after
+    `--embed-stage` resolves to `gpu`, before any strategy can create a cuBLAS
+    handle (local Stage 4 runs in the CLI process; plan review I4).
+    `configure_determinism` accepts `:4096:8` or `:16:8`, the two deterministic
+    values, so a user's own `:16:8` is kept.
 - **Physical batch:**
   `m = min(batch_size, pow2floor((0.8·GPU_mem − weights − 1 GiB) / per_sample))`.
   It depends on the GPU model (total memory), the backbone and `crop_px` only,
@@ -128,8 +135,19 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
 - **U5:** an unpinned revision is resolved once, at a run's first submission,
   for Stage-4 runs only (O9); a continuation reuses the recorded commit.
 - **Commit pool and loader:** one commit thread; one DataLoader per backbone,
-  `spawn` context, not persistent, identity `collate_fn`, and
-  `resolve_local_worker_count(-1, n) − 1` workers (`_cli_utils.py:88`).
+  `spawn` context, not persistent, identity `collate_fn`, processors loaded in
+  the main process and pickled into the dataset. Workers:
+  `resolve_local_worker_count(config.n_jobs, n) − 1` locally (`--njobs 1` runs
+  it in-process) and `resolve_local_worker_count(-1, n) − 1` on a SLURM shard
+  (the allocation), `_cli_utils.py:88`.
+- **The encoder's in-flight bound is in bytes**
+  (`MAX_IN_FLIGHT_OUTPUT_BYTES`), so crop pipelines keep full batches and only
+  `masked_dense` feature grids flush early.
+- **No CUDA for a local `--embed-stage gpu` is exit `1`**, one line, before
+  Stage 1: an environment error, not a usage error.
+- **The revision an entry records comes only from `resolved_revision(model)`**;
+  no #282 code reads `config._commit_hash` (transformers ≥ 5.18 stopped setting
+  it; the #281 fallback lives in `resolved_revision`).
 - **Process mode** (copy and in place) and AutoConvertRaw-GC's direct
   `process_single_apply_only_core` calls stay inline on CPU, byte for byte (H5).
 - No new resource flags: Stage 4 runs on `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)`
@@ -215,7 +233,12 @@ Inputs the spec implies but names no test for. Each is pinned in the task named.
   Each task marks its torch tests **[torch]**. A torch test in the shared env
   must skip through `pytest.importorskip("torch")`, never fail. A test whose
   embedder has `device="auto"` runs under `stage4_cpu`, which also sets
-  `CUDA_VISIBLE_DEVICES=""`, so a GPU node gives the same bytes as a CPU node.
+  `CUDA_VISIBLE_DEVICES=""` **and patches `torch.cuda.is_available`** (the
+  variable alone does nothing once CUDA is initialised), so a GPU node gives the
+  same bytes as a CPU node.
+- **Per-image faults** in Stage 4 are injected through an on-disk trigger
+  (`FaultyDinoEmbedding` and `$PHENOTYPIC_TEST_FAULT_DIR`, P4), never a
+  monkeypatch, which a spawned loader worker would not see.
 - **Crash tests** run the CLI in a real subprocess and kill it with
   `os._exit(137)` right after the named durable write (`run_cli_subprocess`,
   P4). An exception raised inside the test process is not a crash.
@@ -391,7 +414,7 @@ mid tier. A reviewer is never weaker than its implementer.
 | §4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load) | P2 T3 (OOM halving), P3 T1 (root changed), P4 T1 (no CUDA at startup), P4 T3 (CUDA, corrupt, non-finite, root change non-terminal, fence on both seams), P4 T4 (walltime by real-crash injection), P5 T1 (rounds), P5 T3 (cold-load warning) |
 | §5 golden; batch invariance on hardware; transaction tests; local e2e with crash injection; controller fake-scheduler tests; live smoke; measure over staged; full regression | P0 T2 + P1 T2; P2 T4; P3 T1; P4 T4; P5 T1; P5 T4; P6 T2; P7 T2 |
 | §6 phases | this README's phase table |
-| §7 left to the builder: pool sizes, `per_sample`, `accelerate`, internal names | P0 T1 (`per_sample`, memory bounds), P2 T3 (`max_in_flight`), P4 T3 (one commit thread), P2 T1 Step 5 (`accelerate`: avoided, see below) |
+| §7 left to the builder: pool sizes, `per_sample`, `accelerate`, internal names | P0 T1 (`per_sample`, memory bounds), P2 T3 (`max_in_flight_bytes`), P4 T3 (one commit thread), P2 T1 Step 5 (`accelerate`: avoided, see below) |
 
 **Decisions this plan takes where the spec leaves the builder a choice** (§7):
 - `device_map={"":"cuda"}` needs `accelerate`. The plan loads with
@@ -400,8 +423,8 @@ mid tier. A reviewer is never weaker than its implementer.
   during the load, inside a 48 GB `--mem`. P2 T1 Step 5 records the peak.
 - The commit pool has **one** thread (the spec's §4.4 said two; plan review
   Cuts: one is enough to overlap the GPU, and it makes per-image ordering
-  trivial). The DataLoader has `resolve_local_worker_count(-1, n) − 1` workers,
-  `spawn`, `prefetch_factor=2`.
+  trivial). The DataLoader has `resolve_local_worker_count(config.n_jobs, n) − 1`
+  workers locally (the allocation's on SLURM), `spawn`, `prefetch_factor=2`.
 - A signal carries `root_sha256`, the root its payloads were computed against;
   a commit checks it against the live root and uses it as
   `expected_root_sha256`.
@@ -465,16 +488,16 @@ Revised 2026-11-19 against `reports/2026-11-12-gpu-embedding-staging/plan-review
 | **C4** no progress with several backbones under a walltime | Signals reused per key; the loader prepares only missing keys; the progress digest counts valid signal keys. (The alternative, documenting the walltime, was not taken.) P3 T2, P4 T3, P5 T1 | `test_a_second_round_embeds_only_the_keys_it_lacks`, `test_written_signals_count_as_progress` |
 | **C5** stale signals loop; terminal second `StoreRootChangedError` | Valid = signal root equals live root; stale signals deleted and re-embedded; a root change is never terminal. P3 T2, P4 T3 | `test_signals_are_classified_per_key_against_the_live_root`, `test_a_signal_from_an_old_root_is_deleted_and_reembedded`, `test_a_root_change_at_commit_leaves_the_image_pending` |
 | **I1** tile normalisation differs | Tiles go through the HF processor in `prepare_regions`; real-backbone golden gains `crop_mean` and `masked_dense`; P2 T3 and T4 gain `masked_dense`. P0 T2, P1 T2, P2 T3, P2 T4 | `test_dense_tiles_are_the_processors_pixels`, `test_the_batch_encoder_matches_the_inline_encoder[masked_dense]` |
-| **I2** BatchEncoder holds images and memory | Out-of-order drain, `max_in_flight` flush; memory modelled in `stage4_memory.py`. P0 T1, P2 T3 | `test_a_finished_image_is_drained_before_a_partial_batch`, `test_in_flight_images_are_bounded` |
+| **I2** BatchEncoder holds images and memory | Out-of-order drain, a byte-bounded flush (revision 3); memory modelled in `stage4_memory.py`. P0 T1, P2 T3 | `test_a_finished_image_is_drained_before_a_partial_batch`, `test_crop_pipelines_keep_full_batches`, `test_dense_grids_flush_on_the_byte_bound` |
 | **I3** DataLoader hazards | Per-backbone loader, `spawn`, not persistent, identity `collate_fn`. P4 T3 | `test_loader_items_arrive_as_ndarrays` |
 | **I4** `CUBLAS_WORKSPACE_CONFIG` only in the SLURM prelude | `prepare_stage4_environment` sets it right after resolution. P4 T1 | `test_the_cublas_variable_is_set_before_any_strategy` |
-| **I5** flat order, non-crashing crashes, half a fence | One commit thread and order compared per image; crashes are `os._exit(137)` in a subprocess; the fence test runs on both seams. P4 T3, P4 T4 | `test_commit_then_record_then_signals_per_image`, `test_a_real_crash_resumes_from_disk`, `test_a_fenced_epoch_commits_nothing[active_check/commit_guard]` |
+| **I5** flat order, non-crashing crashes, half a fence | One commit thread and order compared per image; crashes are `os._exit(137)` in a subprocess; the fence test runs on both seams. P4 T3, P4 T4 | `test_commit_then_record_then_signals_per_image`, `test_a_real_crash_resumes_from_disk`, `test_a_fenced_epoch_commits_nothing` |
 | **I6** wrong does-not-fit case | The unsupported set is computed; the refusal uses 7B fp32 on 16 GiB. P0 T1, P2 T2 | `physical_batch_size.py` checks 1–3, `test_weights_that_do_not_fit_are_refused` |
 | **I7** orphan cleanup unreachable | `sweep_orphan_stage4_signals` over the whole inventory, locally and in the controller. P4 T3, P5 T1 | `test_orphan_signals_of_a_done_image_are_swept`, `test_orphans_are_swept_before_classifying` |
 | **I8** missed event callers; test file name | All six callers listed; `test_cli_update_state_stage.py`. P4 T2 | `test_stage3_completion_is_not_completion_when_the_run_embeds_on_gpu` |
 | **I9** SLURM measure finalizer not wired | `RUN_MODE: "measure"`; no forward run proof; `measure_failed` from the journal under the epoch. P6 T2 | `test_the_measure_finalizer_publishes_no_run_proof_and_counts_measure_failures` |
 | **I10** API errors | Forward runs use `journal_table_run(store)`; measure uses `owned_table_run_id(block, pipeline_sha256=...)`. P4 T3, P6 T1 | the P4 T3 and P6 T1 suites |
-| **I11** stale recomputation cannot fire | The commit reads the digests from the live store. P3 T1, P4 T3 | `test_stale_is_computed_from_the_live_store` |
+| **I11** stale recomputation cannot fire | The commit reads the digests from the live store; a mismatch fails the image (revision 3). P3 T1, P4 T3 | `test_a_payload_bound_to_another_image_fails_the_image` |
 | **I12** zero-region `encode()` loads a model | It returns `(0, 0)` without `_dim()`; `payload_from` reshapes. P1 T1, P1 T2 | `test_zero_regions_call_neither_the_encoder_nor_dim`, `test_zero_regions_trigger_no_second_load` |
 | **I13** non-determinism; tests that cannot fail | Golden embedders pin `device="cpu"`; `stage4_cpu` hides CUDA; the one-value float16 test is gone; registers use `crop_mean`; a leaky stub proves the isolation check can fail. P0 T2, P2 T3, P4 | `test_the_registers_case_differs_from_a_registerless_run`, `test_the_isolation_check_catches_a_leaky_model` |
 | **I14** stub without parameters; delegate missing `dtype` | Parametric stub; the measurer's `load_dino_backbone` delegate gains `dtype`. P0 T2, P2 T1 | `test_a_bfloat16_load_reaches_the_weights` |
@@ -499,3 +522,32 @@ Revised 2026-11-19 against `reports/2026-11-12-gpu-embedding-staging/plan-review
 Not adopted: none. Where the review offered alternatives (C4 "or document the
 walltime", I1 "or record the drift", I16 "refuse or warn"), the plan takes the
 first, and says so in the row.
+
+## Revision 3
+
+Revised 2026-11-19 on top of `671665959`, against the re-review of revision 2.
+Each item, and where it is fixed:
+
+| Item | Fix | Pinned by |
+|---|---|---|
+| **1** local no-detector finalization calls `staged_detector_slot` | `reconcile_stage3_publications` (`phenotypicCLI.py:4264-4271`) is guarded on a `GpuDetector`; its comment (`:4265-4266`) corrected. P4 T2 | `test_a_no_detector_local_run_finalizes`; `test_local_stage4_matches_inline_deliverables[single-pass]` (P4 T4) |
+| **2a** the loader ignores `--njobs` | `resolve_local_worker_count(config.n_jobs, n) − 1` locally; `--njobs 1` gives 0 workers, in-process. P4 T3 | `test_njobs_1_runs_the_loader_in_process` |
+| **2b** fault injection by monkeypatch is invisible to spawned workers | An on-disk trigger: `FaultyDinoEmbedding` and `$PHENOTYPIC_TEST_FAULT_DIR`. P4 (fixtures), P4 T3, P4 T4, P6 T1 | `test_a_loader_worker_error_fails_only_its_image[0/2]`, `test_a_stage4_failure_exits_3_and_is_not_staged_complete`, `test_retry_failures_reruns_only_stage4`, `test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record` |
+| **2c** a worker loads its own processor | Processors are loaded in the main process and pickled into the dataset. P4 T3 | `test_the_dataset_pickles_with_its_processor` |
+| **3** U8 with a differing measure pipeline | `replace_image_tables(carry_embeddings=[(run_id, key), …])`; the measure core carries matching key and `params_sha256` from its own run, else from the record's certified run (`certified_table_run`, `_cli_recompile_recovery.py:339`); an unmatched key has nothing to keep, and a Stage-4 failure journals `MEASURE_FAILURE_STAGE`, exit 3. P6 T1 | `test_a_differing_measure_pipeline_carries_matching_entries`, `test_carry_from_another_run_into_a_new_folder`, `test_carry_refuses_an_undeclared_pair` |
+| **4** in-flight bound by image count | `max_in_flight_bytes` (`MAX_IN_FLIGHT_OUTPUT_BYTES`, P0 T1 `stage4_memory.py` checks 3–4). P2 T3 | `test_crop_pipelines_keep_full_batches`, `test_dense_grids_flush_on_the_byte_bound` |
+| **5** `stage4_cpu` relies on `CUDA_VISIBLE_DEVICES` | It also patches `torch.cuda.is_available`; so does the subprocess runner. P4 (fixtures) | every `stage4_cpu` test on a GPU node |
+| **6** no-CUDA refusal, `--dry-run` cost, CUBLAS values | Exit `1` via `click.ClickException`, one line, before Stage 1; the torch import is only for an explicit local `--embed-stage gpu`, and `--dry-run` pays it (P4 T1, tutorial in P7 T1); `check_cublas_workspace` accepts `:4096:8` and `:16:8` (P2 T2) | `test_no_cuda_stops_before_stage1`, `test_cublas_workspace_values[:16:8]` |
+| Minor: progress digest reads footers | One `stat` per key (existence and `st_mtime_ns`). P5 T1 | `test_the_progress_digest_reads_no_parquet` |
+| Minor: stale at commit | A per-image `stage4` failure; nothing committed or published. P4 T3 | `test_a_payload_bound_to_another_image_fails_the_image` |
+| Minor: orphans of a finished run | The sweep runs before the "All images already processed!" exit (`phenotypicCLI.py:3889-3897`). P4 T4 | `test_a_finished_rerun_sweeps_orphans_before_it_exits` |
+| Minor: a local root change leaves an image pending | `run_local_stage4` exits `1` with "still need Stage 4". P4 T3 | `test_a_local_run_left_pending_exits_1` |
+| Minor: U5 reuse for local continuations | Revisions recorded in `processing_state.json` too; local continuations reuse them. P5 T2 | `test_a_local_continuation_reuses_the_recorded_revision` |
+| Minor: a deferring core leaves an old `stages.stage3` | It drops it (and the image's signals) first. P4 T2 | `test_a_core_rerun_drops_the_old_stage3_first` |
+| Minor: `stage="stage3"` tag | Only under deferral. P4 T2 | `test_inline_events_stay_untagged` |
+| Minor: the dense-tile test compares `"np"` with itself | It compares with the inline `"pt"` path. P1 T2 | `test_dense_tiles_are_the_processors_pixels` |
+| #281 defect: `_commit_hash` unset on transformers ≥ 5.18 | Every revision comes from `resolved_revision` (gridname's fallback, in flight on #281); a guard forbids `_commit_hash` outside `_dino_support.py`. P2 T1, P5 T2 | `test_the_revision_comes_from_resolved_revision`, `test_no_282_module_reads_commit_hash_directly`, `test_u5_records_a_revision_when_commit_hash_is_absent` |
+
+The two revision tests depend on gridname's #281 fix; until it merges they
+fail, which is the behaviour they pin. Revision 2's table above is kept as
+history; where revision 3 renamed a test, the table names the new one.

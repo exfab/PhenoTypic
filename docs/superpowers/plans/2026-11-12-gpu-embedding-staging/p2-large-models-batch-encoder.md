@@ -29,7 +29,9 @@ three GPU models measures whether a crop's vector depends on its neighbours.
     dtype before the forward pass and pools in float32. A float32 model is
     unchanged, so the golden holds.
   - Add `compute_block(*, device: str, stage: Literal["inline", "stage4"], physical_batch: int) -> dict[str, Any]`,
-    the **one producer** of every device field (O4's condition): it calls
+    the **one producer** of every device field (O4's condition). The entry's
+    `model.revision` comes only from `resolved_revision(model)` (`:257`); no
+    #282 code reads `config._commit_hash` (re-review). It calls
     `backbone_device_name` (`:361`) once, and `entry_descriptor_for` copies its
     `device` and `device_name` into `model.device` / `model.device_name`, so the
     two places cannot disagree.
@@ -109,6 +111,19 @@ def test_a_bfloat16_load_reaches_the_weights(param_stub_backbone, detected_plate
     model = m._backbone()[0]
     assert next(model.parameters()).dtype == torch.bfloat16
 
+def test_the_revision_comes_from_resolved_revision(monkeypatch, detected_plate):
+    # transformers >= 5.18 sets no config._commit_hash (#281 defect; gridname's
+    # snapshot-path fallback in resolved_revision, _dino_support.py:257-272)
+    install_stub_backbone(monkeypatch, parametric=True, commit_hash=None,
+                          snapshot_revision="d" * 40)
+    d = MeasureDinoEmbedding(device="cpu").payload(detected_plate).descriptor
+    assert d["model"]["revision"] == "d" * 40
+
+def test_no_282_module_reads_commit_hash_directly():
+    offenders = [p for p in SRC.rglob("*.py")
+                 if "_commit_hash" in p.read_text(encoding="utf-8") and p.name != "_dino_support.py"]
+    assert offenders == []                                       # only resolved_revision reads it
+
 def test_inline_entries_record_their_compute(param_stub_backbone, detected_plate):
     compute = MeasureDinoEmbedding(batch_size=32).payload(detected_plate).descriptor["compute"]
     assert compute["stage"] == "inline" and compute["physical_batch"] == 32
@@ -118,6 +133,13 @@ def test_default_float32_keeps_the_281_params_digest():
     assert MeasureDinoEmbedding()._params_sha256() == SHA_281_DEFAULT_EMBEDDER
 ```
 
+  `install_stub_backbone(..., commit_hash=None, snapshot_revision=...)` (P0 T2
+  helper options added here; `snapshot_from_revision=True` instead takes the
+  revision from the load's `revision=`, for P5 T2) builds a config with no `_commit_hash` and a
+  `_name_or_path` laid out as a hub snapshot,
+  `<tmp>/models--facebook--dinov2-base/snapshots/<revision>`; spell it as
+  gridname's fallback reads it. `SRC` is `src/phenotypic`. The revision test
+  needs that #281 fix merged first; until then it fails, which is correct.
   `SHA_281_DEFAULT_EMBEDDER` is a module constant: the digest printed by
   `MeasureDinoEmbedding()._params_sha256()` on the #281 merge commit, pasted in
   by hand with that SHA in a comment.
@@ -198,10 +220,15 @@ def test_compute_never_splits_a_deliverable_group():
   - `per_sample_bytes(*, tokens: int, hidden: int, heads: int, dtype_bytes: int) -> int`
   - `physical_batch_size(*, batch_size: int, gpu_total_bytes: int, weight_bytes: int, per_sample: int) -> int`.
     Raises `ValueError` when the budget is not positive (weights do not fit).
+  - `check_cublas_workspace() -> None`: the variable check alone, which
+    `configure_determinism` calls on CUDA; separate so it is testable without a
+    GPU.
   - `configure_determinism() -> dict[str, object]`: applies the five settings in
     the README's Global Constraints and returns them, for the shard log. It
-    raises `RuntimeError` naming the variable when `CUBLAS_WORKSPACE_CONFIG` is
-    not `":4096:8"` and the device is CUDA.
+    accepts `CUBLAS_WORKSPACE_CONFIG` of `":4096:8"` or `":16:8"`, the two
+    values cuBLAS documents as deterministic, so a user's own `:16:8` is kept
+    (re-review item 6). Any other value, or none, raises `RuntimeError` naming
+    the variable and both values when the device is CUDA.
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -220,6 +247,18 @@ def test_the_values_match_the_logic_validation_script():
     pbs = module_from_spec(spec); spec.loader.exec_module(pbs)
     assert (MEMORY_FRACTION, RESERVE_BYTES, ACTIVATION_FACTOR) == (
         pbs.MEMORY_FRACTION, pbs.RESERVE_BYTES, pbs.ACTIVATION_FACTOR)
+
+@pytest.mark.parametrize("value, ok", [(":4096:8", True), (":16:8", True), (":0:0", False), (None, False)])
+def test_cublas_workspace_values(monkeypatch, value, ok):
+    if value is None:
+        monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG", raising=False)
+    else:
+        monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", value)
+    if ok:
+        check_cublas_workspace()
+    else:
+        with pytest.raises(RuntimeError, match=r":4096:8.*:16:8"):
+            check_cublas_workspace()
 
 def test_weights_that_do_not_fit_are_refused():
     with pytest.raises(ValueError, match="does not fit"):            # 7B fp32 on a 16 GiB card (P0 T1 check 3)
@@ -266,17 +305,20 @@ def test_determinism_settings(monkeypatch):
 **Interfaces:**
 - Consumes: `BackboneInputs` (P1 T1), `backbone_patch_size`,
   `reshape_patch_tokens` (`_dino_support.py:62,280`), P0 T1's
-  `MAX_IN_FLIGHT_IMAGES`.
+  `MAX_IN_FLIGHT_OUTPUT_BYTES`.
 - Produces:
   - `class BatchEncoder`:
-    - `__init__(self, model: Any, processor: Any, *, device: str, compute_dtype: ComputeDType, physical_batch: int, max_in_flight: int = MAX_IN_FLIGHT_IMAGES)`
+    - `__init__(self, model: Any, processor: Any, *, device: str, compute_dtype: ComputeDType, physical_batch: int, max_in_flight_bytes: int = MAX_IN_FLIGHT_OUTPUT_BYTES)`
     - `submit(self, ticket: Hashable, inputs: BackboneInputs) -> None`.
       Queues `inputs`' rows by `(h, w, pooling)`, one queue per key. A full
       queue runs at once. A zero-row submission completes at once, with no
-      forward pass. **When more than `max_in_flight` tickets have rows waiting,
-      every partial queue is flushed** (zero-padded), so a finished image is
-      never held behind a partial batch and at most `max_in_flight` images'
-      outputs are alive (plan review I2).
+      forward pass. **When the output bytes held for unfinished tickets exceed
+      `max_in_flight_bytes`, every partial queue is flushed** (zero-padded).
+      The bound is in bytes, not images (re-review item 4): a crop ticket
+      holds `N · D · 4` bytes, so crop pipelines never reach it and keep full
+      batches; a `masked_dense` ticket holds its feature grid
+      (`ENCODER_OUTPUT_BYTES`), so only those flush early (plan review I2).
+    - `held_bytes: int` (read-only): the output bytes held for unfinished tickets.
     - `flush(self) -> None`: runs every partial queue, zero-padded to exactly
       `physical_batch`.
     - `drain(self) -> Iterator[tuple[Hashable, list[np.ndarray]]]`: yields each
@@ -334,12 +376,23 @@ def test_a_finished_image_is_drained_before_a_partial_batch(stub_model):
     enc.submit("full", crops(4)); enc.submit("partial", crops(1))
     assert [t for t, _ in enc.drain()] == ["full"]              # not held behind "partial"
 
-def test_in_flight_images_are_bounded(stub_model):
-    enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32",
-                       physical_batch=64, max_in_flight=2)
+def test_crop_pipelines_keep_full_batches(stub_model):
+    seen = record_batch_sizes(stub_model)
+    enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32", physical_batch=8)
+    for i in range(20):                                          # 20 images of 3 crops: 60 rows
+        enc.submit(i, crops(3, seed=i))
+    enc.flush()
+    assert seen[:-1] == [8] * 7 and len(seen) == 8               # no early flush; only the last is padded
+
+def test_dense_grids_flush_on_the_byte_bound(stub_model):
+    seen = record_batch_sizes(stub_model)
+    one_grid = tile_output_bytes(stub_model, px=112)             # the stub's grid for one 112-px tile
+    enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32", physical_batch=8,
+                       max_in_flight_bytes=2 * one_grid)
     for t in "abc":
-        enc.submit(t, crops(1))
-    assert {t for t, _ in enc.drain()} >= {"a", "b"}            # the third submit flushed the first two
+        enc.submit(t, tiles(1, px=112))
+    assert {t for t, _ in enc.drain()} >= {"a", "b"}             # the third ticket crossed the bound
+    assert enc.held_bytes <= 2 * one_grid
 
 def test_one_queue_per_geometry(stub_model):
     seen = record_batch_shapes(stub_model)
@@ -381,7 +434,8 @@ def test_the_batch_encoder_matches_the_inline_encoder(param_stub_backbone, detec
   Module-local helpers: `stub_model` and `leaky_stub_model` return
   `_build_param_stub_dino()` and `_build_param_stub_dino(leaky=True)` as
   `(model, processor)`; `crops(n, *, px=224, seed=0)` builds a `"crops"`
-  `BackboneInputs`; `record_batch_sizes` / `record_batch_shapes` add a forward
+  `BackboneInputs` and `tiles(n, *, px)` a `"tiles"` one; `tile_output_bytes`
+  is one tile's grid in bytes; `record_batch_sizes` / `record_batch_shapes` add a forward
   pre-hook; `embed_alone` runs the model on just those rows; `oom_once` raises
   `torch.OutOfMemoryError` on the first forward only; `oom_always` on every one.
 - [ ] **Step 2: Run them and confirm they fail.**
@@ -445,7 +499,7 @@ be zero.
      shuffle; each crop moved to position 0 and to position `m − 1`; neighbours
      from another plate; the set split across two `BatchEncoder` instances (two
      "shards"); the last batch padded with 1 vs `m − 1` zeros; and a
-     `max_in_flight=1` run (forced early flushes).
+     `max_in_flight_bytes=1` run (forced early flushes).
   5. `invariant` is true when every **stored float16** vector is bit-identical
      to the reference in every case. The float32 max abs difference is
      information.

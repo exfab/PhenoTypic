@@ -19,16 +19,31 @@ for an image that only needs Stage 4.
   to Stage 4. With `fake_gpu`, the ops gain `FakeGpuDetector`
   (`tests/_fakes/fake_gpu_detector.py`; import `tests._fakes.register_fake_gpu`
   first and set `PHENOTYPIC_PRELOAD_MODULES`). With `grid`, `meas["grid"]` is a
-  2 × 2 `ManualGridFinder` embedder on the same backbone.
+  2 × 2 `ManualGridFinder` embedder on the same backbone. With `faulty`, the
+  objects embedder is `FaultyDinoEmbedding` (below), so a test can fail one
+  image on disk.
+- `FaultyDinoEmbedding`, in `tests/_fakes/faulty_dino_embedder.py` with a
+  `register_faulty_dino_embedder.py` for `PHENOTYPIC_PRELOAD_MODULES`: a
+  `MeasureDinoEmbedding` whose `prepare_regions` raises `ValueError` when the
+  file `$PHENOTYPIC_TEST_FAULT_DIR/<image stem>` exists. **Per-image faults are
+  injected through that on-disk trigger, never a monkeypatch** (re-review item
+  2): a spawned DataLoader worker imports the class afresh and inherits the
+  environment variable, but sees no monkeypatch. `plant_stage4_fault(stem: str) -> None`
+  writes the trigger and `clear_stage4_fault(stem)` removes it; `nth_stem(inputs, i)`
+  names an input's stem; the fixture `stage4_faults(monkeypatch, tmp_path)` sets
+  the variable.
 - fixture `stage4_cpu(monkeypatch, param_stub_backbone)`: sets
-  `PHENOTYPIC_STAGE4_DEVICE=cpu` **and** `CUDA_VISIBLE_DEVICES=""`, so the
-  inline comparison run's `device="auto"` also resolves to the CPU on a GPU node
-  (plan review I13); yields `param_stub_backbone`.
+  `PHENOTYPIC_STAGE4_DEVICE=cpu` and `CUDA_VISIBLE_DEVICES=""`, **and** patches
+  `torch.cuda.is_available` to `False`, because `CUDA_VISIBLE_DEVICES` does
+  nothing once the process has initialised CUDA (re-review item 5). The inline
+  comparison run's `device="auto"` then resolves to the CPU on a GPU node too
+  (plan review I13). It yields `param_stub_backbone`.
 - `run_cli_subprocess(inputs: Path, out: Path, *, pipeline: Path, extra: Sequence[str] = (), crash_after: str | None = None) -> subprocess.CompletedProcess`:
   one run in a fresh interpreter, built on the `_SUBPROCESS_RUN` pattern of
   `tests/integration/cli/test_embedding_deliverables.py:344-375` (parametric
   stub installed, `PYTHONPATH` set, `PHENOTYPIC_STAGE4_DEVICE=cpu`,
-  `CUDA_VISIBLE_DEVICES=""`). With `crash_after`, the script wraps that function
+  `CUDA_VISIBLE_DEVICES=""`, `torch.cuda.is_available` patched to `False` before
+  anything touches CUDA). With `crash_after`, the script wraps that function
   of `phenotypic._cli._cli_stage4_worker` so that right after it first returns
   the process calls `os._exit(137)`: a real crash between two durable writes,
   not an exception a caller can catch (plan review I5).
@@ -86,8 +101,14 @@ for an image that only needs Stage 4.
     the environment before the process's first cuBLAS handle; local Stage 4 runs
     in the CLI process, which Stage 2 may already have put on the GPU), then,
     **for a local run only**, `stage4_device()` (Task 3). A local run with no
-    usable CUDA stops here with exit `1` and one line, before Stage 1 writes
-    anything (plan review I16).
+    usable CUDA stops here with **exit `1`**, an environment error per the exit
+    table (`RunExitCode.ERROR`, `_cli/CLAUDE.md` "Exit codes"), as one line,
+    before Stage 1 writes anything (plan review I16). It raises
+    `click.ClickException`, never a `UsageError`: the options are fine, the
+    machine is not. The torch import this costs happens only for an explicit
+    local `--embed-stage gpu` (a local `auto` never resolves `gpu`), and it
+    happens in the read-only half, so a `--dry-run` with that flag pays it too;
+    the tutorial says so (P7 T1).
   - The exact copy:
     - R1: `--embed-stage gpu does not apply to --mode process: process mode embeds inline on the CPU`
     - R2 (U9): `--embed-stage gpu was given, but meas '<key>' (<Class>) is pinned to device='cpu'; set device='auto' or 'cuda', or drop --embed-stage gpu to embed inline`
@@ -216,7 +237,10 @@ image's Stage-4 signals first.
   `embeddings=None`.
 - Modify: `src/phenotypic/_cli/_cli_process_single.py:202-437`.
   `process_single_image_core` gains `defer_embeddings: bool = False`; when set,
-  it calls `delete_stage4_signals` first, skips `pipeline.embed` (`:368`), and
+  it first drops the image's old `stages.stage3` (`remove_stage3_completion_marker`,
+  `_cli_staged_resume.py:203`) and its Stage-4 signals (`delete_stage4_signals`),
+  so a crash mid-core can never leave a "done" image behind; then it skips
+  `pipeline.embed` (`:368`), and
   after the final save writes `write_stage3_completion_marker`
   (`_cli_staged_resume.py:162`), so the record holds `stages.stage3` and no
   artifacts.
@@ -236,8 +260,9 @@ image's Stage-4 signals first.
   carries the same fact).
 - Modify: `src/phenotypic/_cli/_cli_execution_strategies.py:525-650`.
   `_process_single_local` passes `defer_embeddings`, skips
-  `_publish_local_image_success` (`:574`) when deferring, and tags its events
-  `stage="stage3"`.
+  `_publish_local_image_success` (`:574`) when deferring, and, **only when
+  deferring**, tags its events `stage="stage3"`. An inline run's events stay
+  untagged, as today.
 - Modify: `src/phenotypic/phenotypicCLI.py`
   - **the local completion predicate** (plan review C2): under deferral,
     `_stage3_less_images` (`:1535-1553`) at its call (`:4329`) is replaced by
@@ -246,7 +271,13 @@ image's Stage-4 signals first.
     (`:4342-4346`) are computed from it, so a Stage-4 failure exits `3`, and a
     pending image is never marked staged-complete;
   - `local_staged_publication` (`:4198-4201`) is also true for a local
-    no-detector run with `defers_embeddings(config)`.
+    no-detector run with `defers_embeddings(config)`;
+  - so the finalization's `reconcile_stage3_publications(..., staged_detector_slot(config.pipeline_json), ...)`
+    (`:4264-4271`) is now reached by a pipeline with no detector, which
+    `staged_detector_slot` refuses (`_cli_stage2_token.py:98`). Guard that call
+    on the pipeline holding a `GpuDetector` (`uses_staged_gpu_strategy(config)`),
+    and correct its comment (`:4265-4266`), which says the guard implies one
+    (re-review item 1).
 - Modify: `src/phenotypic/_cli/_stages.py`: `StageTag` gains `"stage4"`;
   `STAGE_EMBED: StageTag = "stage4"`; `VALID_STAGE_TAGS` includes it; add
   `run_terminal_stage(state_config: Mapping[str, object] | None) -> StageTag`.
@@ -305,6 +336,25 @@ def test_a_core_rerun_deletes_the_images_signals(tmp_path, stage4_pending_with_s
     run_cli(*stage4_pending_with_signals.cli_args, extra=["--embed-stage", "gpu"])
     assert not any(signal_files(out, item))
 
+def test_a_no_detector_local_run_finalizes(tmp_path, tiny_inputs, stage4_cpu):
+    out = tmp_path / "out"
+    result = run_cli(tiny_inputs, out, pipeline=with_stage4_dino_objects(tmp_path, fake_gpu=False),
+                     extra=["--embed-stage", "gpu"])
+    assert result.exit_code == 0, result.output                 # no staged_detector_slot refusal
+    assert (out / "deliverables" / "embeddings" / "manifest.json").is_file()
+
+def test_a_core_rerun_drops_the_old_stage3_first(tmp_path, stage4_pending_with_signals, monkeypatch):
+    out, item = stage4_pending_with_signals
+    invalidate_store(out, item)
+    crash_inside_the_core(monkeypatch, item)                    # raises after the drop, before the save
+    run_cli(*stage4_pending_with_signals.cli_args, extra=["--embed-stage", "gpu"])
+    assert not stages_1_to_3_done(out, item.dataset, item.stem, item.work_id)
+
+def test_inline_events_stay_untagged(tmp_path, tiny_inputs, stage4_cpu):
+    out = tmp_path / "out"
+    run_cli(tiny_inputs, out, pipeline=with_stage4_dino_objects(tmp_path))       # local auto: inline
+    assert {e.stage for e in read_events(out)} == {None}
+
 def test_process_mode_ignores_embed_stage(tmp_path, tiny_inputs, stage4_cpu):
     out = tmp_path / "out"
     result = run_cli(tiny_inputs, out, mode="process", pipeline=with_stage4_dino_objects(tmp_path),
@@ -314,7 +364,9 @@ def test_process_mode_ignores_embed_stage(tmp_path, tiny_inputs, stage4_cpu):
     assert entry["compute"]["stage"] == "inline"
 ```
 
-  `stage4_worker_module` is `phenotypic._cli._cli_stage4_worker`, created in
+  `crash_inside_the_core` makes the core raise right after its first write;
+  `read_events(out)` parses the event log. `stage4_worker_module` is
+  `phenotypic._cli._cli_stage4_worker`, created in
   this task importable, with a `run_local_stage4` placeholder that raises
   `NotImplementedError`, so the monkeypatch target exists; Task 3 fills it.
   Create (helpers): `count_calls(monkeypatch, names) -> dict[str, int]`,
@@ -408,11 +460,15 @@ def test_run_terminal_stage():
   - `run_stage4(pipeline_path: Path, output_dir: Path, items: Sequence[StagedManifestEntry], *, image_type: ImageTypeName, epoch: str | None, republish: bool = False, revisions: Mapping[str, str | None] | None = None, num_workers: int, output_manager: OutputManager, active_check: ActiveCheck | None = None, commit_guard: CommitGuard | None = None) -> Stage4Outcome`
   - `run_local_stage4(config: ExecutionConfig, output_manager: OutputManager, output_dir: Path, datasets: Sequence[Dataset]) -> dict[str, tuple[int, int]]`:
     `{dataset: (published, failed)}`. It sweeps orphans first, uses
-    `num_workers = resolve_local_worker_count(-1, n_items) - 1` (plan review
-    I15), and raises `click.ClickException` (exit `1`) on `Stage4DeviceError`,
-    `Stage4OutOfMemory` or a host `MemoryError` after the commit pool drains,
-    journalling no image. Every image it is handed otherwise ends published or
-    journalled (plan review C2).
+    `num_workers = resolve_local_worker_count(config.n_jobs, n_items) - 1`, so
+    `--njobs` is honoured and `--njobs 1` runs the loader **in-process**, with
+    no worker at all (re-review item 2, plan review I15). It raises
+    `click.ClickException` (exit `1`) after the commit pool drains, journalling
+    no image, on `Stage4DeviceError`, `Stage4OutOfMemory`, a host
+    `MemoryError`, **or any image left pending** (a store root that changed at
+    commit): `"<n> image(s) still need Stage 4 because their store changed
+    during the run; run the same command again"` (re-review, Minor). Every other
+    image it is handed ends published or journalled (plan review C2).
 
 **The loop** (spec §4.4). Every durable step is preceded by `active_check()`,
 and every durable write runs under `commit_guard`.
@@ -444,7 +500,10 @@ and every durable write runs under `commit_guard`.
    1. read the live root; if it is not the signals' root, delete them and leave
       the image pending (spec §4.8: a plain retry, never terminal; C5);
    2. compute `objmap_sha256` and `array_sha256` **from the live store**
-      (plan review I11);
+      (plan review I11). A payload whose `binds` do not match them would be
+      written `stale: true`; instead the image fails here as a per-image
+      `stage4` failure, its signals are deleted, and nothing is committed or
+      published (re-review, Minor: never a published-then-dropped entry);
    3. `replace_run_embeddings(store, run.run_id, payloads, expected_root_sha256=<signals' root>, objmap_sha256=..., array_sha256=...)`;
       a `StoreRootChangedError` deletes the signals and leaves the image
       pending;
@@ -453,16 +512,18 @@ and every durable write runs under `commit_guard`.
       republish form;
    5. `delete_stage4_signals`.
 5. **DataLoader** (plan review I3): one `torch.utils.data.DataLoader` per
-   backbone over `Stage4ImageDataset(items, keys_for_backbone, ...)`, with
+   backbone over `Stage4ImageDataset(items, keys_for_backbone, processors, ...)`, with
    `batch_size=None`, `collate_fn=_identity_collate` (module level, so it
    pickles; ndarrays stay ndarrays), `num_workers=num_workers`,
    `multiprocessing_context="spawn"` (CUDA is live and the commit thread exists
    when workers start), `persistent_workers=False` (no per-backbone state
    survives), `prefetch_factor=2` when `num_workers > 0`, and the default
-   in-order iteration. An item is one image: the worker opens the store read
-   only, reads the root sha, loads the processor with `load_dino_processor`
-   when a key is `masked_dense`, and calls each pending key's
-   `prepare_regions`. **A per-image exception returns a picklable
+   in-order iteration. `processors` maps each `BackboneKey` with a
+   `masked_dense` key to its processor, loaded once **in the main process** with
+   `load_dino_processor` and pickled into the dataset; a worker loads nothing
+   (re-review item 2). An item is one image: the worker opens the store read
+   only, reads the root sha, and calls each pending key's
+   `prepare_regions(image, processor=...)`. **A per-image exception returns a picklable
    `FailedImage(identity, error_type, message, traceback)`**; it never raises
    through the loader.
 6. Failures that are the image's: a `FailedImage`, a non-finite float16 → a
@@ -504,10 +565,18 @@ def test_a_root_change_at_commit_leaves_the_image_pending(staged_tree, stage4_cp
     assert identity_of(store_of(staged_tree, 0)) in outcome.pending
     assert read_terminal_failures(staged_tree) == []                                   # never terminal
 
-def test_stale_is_computed_from_the_live_store(staged_tree, stage4_cpu, monkeypatch):
-    rebind_payloads_to_another_objmap(monkeypatch)                                     # binds of another image
-    run_stage4_over(staged_tree)
-    assert run_entry(store_of(staged_tree))["embeddings"]["dinov2-vitb14/rgb/objects"]["stale"] is True
+def test_a_local_run_left_pending_exits_1(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
+    touch_root_before_commit(monkeypatch, None, image=0)                               # inside the CLI run
+    result = run_cli(tiny_inputs, tmp_path / "out", pipeline=with_stage4_dino_objects(tmp_path, fake_gpu=True),
+                     extra=["--embed-stage", "gpu"])
+    assert result.exit_code == 1 and "still need Stage 4" in result.output
+
+def test_a_payload_bound_to_another_image_fails_the_image(staged_tree, stage4_cpu):
+    write_valid_signals(staged_tree, binds_from_another_objmap=True)                   # checked against the live store
+    outcome = run_stage4_over(staged_tree)
+    assert len(outcome.failed) == n_images(staged_tree)
+    assert all(not run_entry(s).get("embeddings") for s in stores_of(staged_tree))   # never published-then-dropped
+    assert {failure_stage(staged_tree, s) for s in stores_of(staged_tree)} == {"stage4"}
 
 def test_an_image_with_no_colonies_commits_an_empty_table(staged_tree_one_empty_plate, stage4_cpu):
     outcome = run_stage4_over(staged_tree_one_empty_plate)
@@ -515,12 +584,29 @@ def test_an_image_with_no_colonies_commits_an_empty_table(staged_tree_one_empty_
     assert identity_of(empty) in outcome.published
     assert pq.read_table(embedding_path(empty, "dinov2-vitb14/rgb/objects")).num_rows == 0
 
-def test_a_loader_worker_error_fails_only_its_image(staged_tree, stage4_cpu):
-    bad = corrupt_one_store(staged_tree)                  # deletes its objmap chunks
+@pytest.mark.parametrize("num_workers", [0, 2])
+def test_a_loader_worker_error_fails_only_its_image(staged_tree_faulty, stage4_cpu, stage4_faults, num_workers):
+    bad = store_of(staged_tree_faulty, 0)
+    plant_stage4_fault(stem_of(bad))                             # on disk: a spawned worker sees it
+    outcome = run_stage4_over(staged_tree_faulty, num_workers=num_workers)
+    assert set(outcome.failed) == {identity_of(bad)}
+    assert len(outcome.published) == n_images(staged_tree_faulty) - 1
+    assert failure_stage(staged_tree_faulty, bad) == "stage4"
+
+def test_a_corrupt_store_fails_only_its_image(staged_tree, stage4_cpu):
+    bad = corrupt_one_store(staged_tree)                         # deletes its objmap chunks
     outcome = run_stage4_over(staged_tree, num_workers=2)
     assert set(outcome.failed) == {identity_of(bad)}
-    assert len(outcome.published) == n_images(staged_tree) - 1
-    assert failure_stage(staged_tree, bad) == "stage4"
+
+def test_njobs_1_runs_the_loader_in_process(staged_tree, stage4_cpu, monkeypatch):
+    seen = capture_dataloader_kwargs(monkeypatch)
+    run_local_stage4_over(staged_tree, n_jobs=1)
+    assert seen["num_workers"] == 0
+
+def test_the_dataset_pickles_with_its_processor(staged_tree_dense, stage4_cpu):
+    dataset = stage4_dataset_for(staged_tree_dense)
+    again = pickle.loads(pickle.dumps(dataset))                  # what spawn does
+    assert again.processors.keys() == dataset.processors.keys()
 
 def test_loader_items_arrive_as_ndarrays(staged_tree, stage4_cpu):
     item = next(iter(stage4_loader_for(staged_tree, num_workers=1)))
@@ -569,12 +655,16 @@ def test_orphan_signals_of_a_done_image_are_swept(staged_tree, stage4_cpu):
   `--embed-stage gpu` run of `with_stage4_dino_objects(fake_gpu=True)` with
   `run_local_stage4` patched out, so every image is Stage-4 pending) and its
   variants `staged_tree_two_backbones`, `staged_tree_objects_and_grid`,
-  `staged_tree_one_empty_plate`, `staged_tree_dinov3`; `run_stage4_over(tree, **kw) -> Stage4Outcome`
+  `staged_tree_one_empty_plate`, `staged_tree_dinov3`, `staged_tree_faulty`
+  (`faulty=True`), `staged_tree_dense` (a `masked_dense` embedder); `stem_of(store)`;
+  `run_local_stage4_over(tree, *, n_jobs)`, `capture_dataloader_kwargs`,
+  `stage4_dataset_for`; `run_stage4_over(tree, **kw) -> Stage4Outcome`
   (items from `staged_manifest_entry`, then `run_stage4`); `stage4_loader_for`;
   `spy_calls_by_image(monkeypatch, names) -> dict[str, list[str]]`, keyed by
   image identity, so the one-thread pool's order is compared per image (plan
   review I5); `write_valid_signals`, `plant_signals`, `touch_root_before_commit`,
-  `rebind_payloads_to_another_objmap`, `fence_after_first_signal(seam) -> dict`
+  `write_valid_signals(..., binds_from_another_objmap=False)`,
+  `fence_after_first_signal(seam) -> dict`
   (an `active_check` or a `commit_guard` that raises after the first signal),
   `stores_of`, `store_of`, `identity_of`, `corrupt_one_store`, `failure_stage`,
   `ds_stem_wid`, `embedding_path`, `valid_record`, `inventory_and_work_ids`.
@@ -617,7 +707,10 @@ def test_orphan_signals_of_a_done_image_are_swept(staged_tree, stage4_cpu):
   - **a no-detector continuation** (plan review C1): that block runs only under
     `staged_gpu_resume` (`:3792`). For a run with `defers_embeddings(config)` and
     no `GpuDetector`, add a sibling branch that calls `split_stage4_pending`,
-    so images that finished Stages 1–3 skip the single-pass core.
+    so images that finished Stages 1–3 skip the single-pass core;
+  - under deferral, `sweep_orphan_stage4_signals` runs **before** the
+    "✓ All images already processed!" exit (`:3889-3897`), which a finished run
+    takes before Stage 4 is ever reached (re-review, Minor).
 - Modify: `src/phenotypic/_cli/_cli_stage4_worker.py`: add
   `split_stage4_pending(datasets: Sequence[Dataset], output_dir: Path, config: ExecutionConfig) -> tuple[list[Dataset], list[StagedManifestEntry]]`:
   the datasets still needing the core, and the Stage-4 items.
@@ -666,6 +759,13 @@ def test_a_finished_run_rerun_embeds_nothing(tmp_path, tiny_inputs, stage4_cpu):
     assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 0
     assert store_root_bytes(out) == roots and len(stage4_cpu.load_calls) == loads
 
+def test_a_finished_rerun_sweeps_orphans_before_it_exits(tmp_path, tiny_inputs, stage4_cpu):
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+    run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"])
+    plant_signals(out, image=0)                                 # a crash between record and cleanup
+    result = run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"])
+    assert "All images already processed" in result.output and no_stage4_signals(out)
+
 def test_a_no_detector_continuation_skips_the_core(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
     out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=False)
     with stage4_stubbed_out(monkeypatch):
@@ -674,9 +774,9 @@ def test_a_no_detector_continuation_skips_the_core(tmp_path, tiny_inputs, stage4
     assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 0
     assert calls == {"process_single_image_core": 0} and all_records_valid(out)
 
-def test_a_stage4_failure_exits_3_and_is_not_staged_complete(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
-    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
-    fail_stage4_for(monkeypatch, image=0)
+def test_a_stage4_failure_exits_3_and_is_not_staged_complete(tmp_path, tiny_inputs, stage4_cpu, stage4_faults):
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
+    plant_stage4_fault(nth_stem(tiny_inputs, 0))
     result = run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"])
     assert result.exit_code == 3                                          # plan review C2, not 1
     assert not staged_completion_path(out).is_file()
@@ -689,10 +789,11 @@ def test_a_stage1_rerun_deletes_the_images_signals(tmp_path, stage4_pending_with
     assert not any(signal_files(out, item))
     assert any(signal_files(out, other_item(stage4_pending_with_signals)))   # only that image's
 
-def test_retry_failures_reruns_only_stage4(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
-    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
-    with failing_stage4_for(monkeypatch, image=0):
-        assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 3
+def test_retry_failures_reruns_only_stage4(tmp_path, tiny_inputs, stage4_cpu, stage4_faults):
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
+    plant_stage4_fault(nth_stem(tiny_inputs, 0))
+    assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 3
+    clear_stage4_fault(nth_stem(tiny_inputs, 0))
     assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 3   # skipped
     events = tail_events(out)
     assert run_cli(tiny_inputs, out, pipeline=pipe,

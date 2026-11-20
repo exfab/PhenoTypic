@@ -64,9 +64,13 @@ phases `["stage3", "stage4"]`.
     changed reference digest (`_classify_stage2`'s rule, `:107-116`); retryable
     otherwise.
   - `_stage4_progress_digest(config, retryable) -> tuple[str, int]`: sha256 over
-    each retryable image's identity **and the sorted keys it holds a valid
-    signal for** at the live root. A round that wrote signals but committed
-    nothing has changed the digest, so it counts as progress (plan review C4).
+    each retryable image's identity **and, per key, whether its signal file
+    exists and its `st_mtime_ns`**, from one `stat` each; it never reads a
+    Parquet footer (re-review, Minor). Validity against the live root is the
+    worker's check, which deletes a stale signal before re-embedding it, so a
+    rewritten signal shows as a new mtime. A round that wrote signals but
+    committed nothing has changed the digest, so it counts as progress (plan
+    review C4).
   - `_submit_stage4_round(config, state, successor_id, current_job_id, retryable) -> None`:
     Stage 2's zero-progress rule (`_submit_stage2_round`, `:152-201`) on its
     **own** counters and on `_stage4_progress_digest`. Below two unchanged
@@ -100,6 +104,13 @@ def test_rounds_have_their_own_counters(controller_v2, fake_scheduler):
     run_staged_controller(controller_v2.config_path)
     state = load_orchestration_state(controller_v2.out)
     assert state["stage4_zero_progress_rounds"] == 0 and state["zero_progress_rounds"] == 1
+
+def test_the_progress_digest_reads_no_parquet(controller_v2, monkeypatch):
+    finish_stage3(controller_v2, stage4_pending=2)
+    write_signals(controller_v2, regions={"objects"})
+    monkeypatch.setattr("pyarrow.parquet.read_metadata", lambda *a, **k: pytest.fail("footer read"))
+    monkeypatch.setattr("pyarrow.parquet.read_table", lambda *a, **k: pytest.fail("table read"))
+    _stage4_progress_digest(controller_v2.config, controller_v2.entries)
 
 def test_written_signals_count_as_progress(controller_v2, fake_scheduler):
     finish_stage3(controller_v2, stage4_pending=2)
@@ -190,6 +201,7 @@ def test_no_detector_phases_start_at_stage3(controller_v2_no_detector, fake_sche
   it reports active (`active_roles()`, `set_active(job_id)`).
   `finish_stage3(fixture, *, stage4_pending, done=0, n_shards=1)` writes stores,
   records and markers so each entry classifies as asked;
+  `write_signals(fixture, *, regions)` writes signals for those regions;
   `run_round(fixture, scheduler, *, write_signals_for=())` marks the active
   Stage-4 job terminal, optionally writes valid signals for those regions, and
   runs one transition; `entry`, `tmp_worklist`, `record_of`,
@@ -249,6 +261,8 @@ def test_no_detector_phases_start_at_stage3(controller_v2_no_detector, fake_sche
   but Stage 4 remains, `config.staged_resume_phase = "stage4"` (plan review C1).
 - Modify: `src/phenotypic/_cli/_cli_embed_stage.py`: add `resolve_embed_revisions`
   and `recorded_embed_revisions`.
+- Modify: `src/phenotypic/_cli/_cli_state_management.py:362-385`: config gains
+  `"embed_revisions"` for a Stage-4 run; `run_local_stage4` (P4 T3) reads it.
 - Test: `tests/unit/cli/test_staged_slurm_scripts_stage4.py` (new, shared env);
   `tests/unit/cli/test_stage4_slurm_worker.py` (new) **[torch]**
 
@@ -287,9 +301,18 @@ def test_no_detector_phases_start_at_stage3(controller_v2_no_detector, fake_sche
     on its own (the existing `PF-EMBED-REVISION-UNPINNED` case). Stage-4 runs
     only (O9).
   - `recorded_embed_revisions(output_dir: Path) -> dict[str, str | None] | None`:
-    the revisions an earlier submission of this run recorded. **A continuation
-    reuses them and never re-resolves** (U5 as amended); `None` (a first
-    submission, or a pre-#282 run) resolves.
+    the revisions an earlier invocation of this run recorded, read from
+    `processing_state.json` config `"embed_revisions"`, then from
+    `job_metadata.json` `EMBED_REVISIONS`. **A continuation reuses them and
+    never re-resolves**, on SLURM **and locally** (U5 as amended; re-review,
+    Minor); `None` (a first invocation, or a pre-#282 run) resolves.
+  - The resolved map is recorded in both places for a Stage-4 run, SLURM or
+    local, and passed to `run_stage4(..., revisions=...)` by
+    `run_local_stage4` and `run_stage4_shard` alike.
+  - **The revision an entry records always comes from `resolved_revision(model)`**
+    (`_dino_support.py:257`), whose #281 snapshot-path fallback (gridname, in
+    flight) covers transformers ≥ 5.18, which no longer sets
+    `config._commit_hash`. Nothing here reads `_commit_hash` (P2 T1's guard).
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -332,6 +355,15 @@ def test_a_continuation_reuses_the_recorded_revision(tmp_path, monkeypatch, subm
     submit_staged_no_detector(tmp_path, n_shards=3)                               # the same command again
     assert read_job_metadata(tmp_path / "out")["embed_revisions"] == {"facebook/dinov2-base": "c" * 40}
 
+def test_a_local_continuation_reuses_the_recorded_revision(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "c" * 40)
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+    with stage4_stubbed_out(monkeypatch):
+        run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"])
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("re-resolved"))
+    assert run_cli(tiny_inputs, out, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 0
+    assert {c["revision"] for c in stage4_cpu.load_calls} == {"c" * 40}
+
 def test_offline_revision_falls_back_with_one_warning(monkeypatch, capsys):
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     assert resolve_embed_revisions(pipeline_with_dino()) == {"facebook/dinov2-base": None}
@@ -352,6 +384,13 @@ def test_every_shard_loads_the_recorded_revision(stage4_slurm_tree, stage4_cpu):
     for i in range(2):
         run_stage4_shard(**stage4_slurm_tree.shard_kwargs(shard_index=i))
     assert {c["revision"] for c in stage4_cpu.load_calls} == {"c" * 40}
+
+def test_u5_records_a_revision_when_commit_hash_is_absent(stage4_slurm_tree, monkeypatch):
+    # transformers >= 5.18: no config._commit_hash; the stub lays out a snapshot path instead
+    install_stub_backbone(monkeypatch, parametric=True, commit_hash=None, snapshot_from_revision=True)
+    monkeypatch.setenv("PHENOTYPIC_STAGE4_DEVICE", "cpu")
+    run_stage4_shard(**stage4_slurm_tree.shard_kwargs(shard_index=0))
+    assert first_entry(stage4_slurm_tree.out)["model"]["revision"] == "c" * 40
 
 def test_the_single_pass_role_defers_and_marks_stage3(stage4_slurm_tree, stage4_cpu):
     run_single_pass_step(**stage4_slurm_tree.single_pass_kwargs(index=0))
@@ -377,6 +416,10 @@ def test_the_params_digest_is_the_inline_one(stage4_slurm_tree, stage4_cpu):
   `store(i)`), `submit_staged_no_detector`, `read_job_metadata`, `first_entry`,
   `pipeline_with_dino`, `dino_pipeline_path(tmp_path)`, `output_manager_for`.
   `submissions` is the SLURM stub fixture (`tests/unit/cli/conftest.py:944`).
+  `install_stub_backbone(..., snapshot_from_revision=True)` makes the stub's
+  snapshot path carry the `revision=` it was loaded with (P2 T1's option, here
+  taking its value from the load). The U5 test needs gridname's #281 fallback
+  merged; before it, it fails, which is the point.
 - [ ] **Step 2: Run them and confirm they fail.**
 
   ```bash
@@ -396,7 +439,7 @@ def test_the_params_digest_is_the_inline_one(stage4_slurm_tree, stage4_cpu):
 - [ ] **Step 5: Commit.**
 
   ```bash
-  git add src/phenotypic/_cli/_cli_staged_slurm.py src/phenotypic/_cli/_cli_staged_slurm_worker.py src/phenotypic/_cli/_cli_execution_strategies.py src/phenotypic/phenotypicCLI.py src/phenotypic/_cli/_cli_embed_stage.py tests/_tiny_run.py tests/conftest.py tests/unit/cli/test_staged_slurm_scripts_stage4.py tests/unit/cli/test_stage4_slurm_worker.py
+  git add src/phenotypic/_cli/_cli_staged_slurm.py src/phenotypic/_cli/_cli_staged_slurm_worker.py src/phenotypic/_cli/_cli_execution_strategies.py src/phenotypic/phenotypicCLI.py src/phenotypic/_cli/_cli_embed_stage.py src/phenotypic/_cli/_cli_state_management.py src/phenotypic/_cli/_cli_stage4_worker.py tests/_tiny_run.py tests/conftest.py tests/unit/cli/test_staged_slurm_scripts_stage4.py tests/unit/cli/test_stage4_slurm_worker.py
   git commit -m "feat(slurm): the Stage-4 array, the no-detector plan, and one revision per run (#282 P5)"
   ```
 
@@ -420,7 +463,7 @@ def test_the_params_digest_is_the_inline_one(stage4_slurm_tree, stage4_cpu):
 
 **Interfaces:**
 - Consumes: P0 T1's `AMORTIZE_MIN_IMAGES_PER_SHARD`, `LOADER_BASE_BYTES`,
-  `LOADER_PER_WORKER`, `MAX_IN_FLIGHT_IMAGES` and `ENCODER_OUTPUT_BYTES`,
+  `LOADER_PER_WORKER` and `MAX_IN_FLIGHT_OUTPUT_BYTES`,
   copied into `_cli_preflight.py` as private constants whose docstrings name
   their scripts; the input-header shapes and bit depths the existing header
   checks read (`check_input_headers_readable`).
@@ -432,7 +475,7 @@ def test_the_params_digest_is_the_inline_one(stage4_slurm_tree, stage4_cpu):
     HINT: `"Use fewer --gpu-shards, pre-stage the weights and set HF_HUB_OFFLINE=1, or pass --embed-stage inline"`.
   - `check_embed_loader_memory(context) -> list[PreflightFinding]`: when the
     Stage-4 profile's `--mem` is below
-    `LOADER_BASE_BYTES + (cpus_per_task − 1) · LOADER_PER_WORKER(H, W, sample_bytes, crops) + MAX_IN_FLIGHT_IMAGES · ENCODER_OUTPUT_BYTES(...)`
+    `LOADER_BASE_BYTES + (cpus_per_task − 1) · LOADER_PER_WORKER(H, W, sample_bytes, crops) + MAX_IN_FLIGHT_OUTPUT_BYTES`
     for the largest header (the last term only for a `masked_dense` embedder).
     The message names the requested and the needed GB. HINT:
     `"Raise mem_gb in --gpu-slurm, or lower slurm_cpus_per_task there (fewer loader workers)"`.

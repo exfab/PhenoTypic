@@ -47,10 +47,15 @@ pinned by a unit test in P5 T1, not by a script: plan review, Cuts.)
     A worker holds one decoded plate: `rgb` at `sample_bytes` (1 for uint8, 2
     for uint16), and `gray`, `detect_mat` and `objmap` at 4 bytes each; plus
     the crops it cut and interpreter overhead (plan review, Minor).
-  - `MAX_IN_FLIGHT_IMAGES = 2` and
-    `ENCODER_OUTPUT_BYTES(H, W, patch, hidden) = (H // patch) · (W // patch) · hidden · 4`:
+  - `ENCODER_OUTPUT_BYTES(H, W, patch, hidden) = (H // patch) · (W // patch) · hidden · 4`:
     the largest per-image output the `BatchEncoder` holds (a `masked_dense`
-    feature grid), and how many images may hold one at once (plan review I2).
+    feature grid), and
+    `MAX_IN_FLIGHT_OUTPUT_BYTES = 2 · ENCODER_OUTPUT_BYTES(4012, 6016, 16, 4096)`
+    (about 3.1 GB): the bytes of output the encoder may hold for unfinished
+    images before it flushes early. The bound is in **bytes, not images**
+    (re-review item 4): a crop pipeline's outputs are kilobytes per image and
+    never reach it, so it keeps full batches; only `masked_dense` grids do
+    (plan review I2).
 
 - [ ] **Step 1: Write `physical_batch_size.py`.** It holds a model table and a
   GPU table and checks the spec's formula over their product.
@@ -95,8 +100,11 @@ pinned by a unit test in P5 T1, not by a script: plan review, Cuts.)
      (`sample_bytes=2`) is printed beside it.
   2. `ENCODER_OUTPUT_BYTES(4012, 6016, 16, 4096)` is 1.54 GB ± 1 %: a 7B
      `masked_dense` plate, the plan review's I2 figure.
-  3. `LOADER_BASE_BYTES + MAX_IN_FLIGHT_IMAGES · ENCODER_OUTPUT_BYTES(...)` for
-     that plate is under 48 GB, so the bound holds the worst case.
+  3. `LOADER_BASE_BYTES + MAX_IN_FLIGHT_OUTPUT_BYTES` is under 48 GB, so the
+     bound holds the worst case.
+  4. A crop pipeline never reaches the bound: 1,536 colonies (a dense 1536-well
+     plate) × 4096-d × 4 bytes per image, times the loader's prefetch of
+     `2 · (cpus − 1)` images on 8 CPUs, is under `MAX_IN_FLIGHT_OUTPUT_BYTES`.
 - [ ] **Step 4: Run all three.**
 
   ```bash
