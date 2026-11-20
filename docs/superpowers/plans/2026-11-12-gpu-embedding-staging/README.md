@@ -583,6 +583,6 @@ Applied as docs-only plan edits:
   4096-d, the 1.54 GB grid, `MAX_IN_FLIGHT_OUTPUT_BYTES`) as conservative,
   since giant's grid is about 0.75 GB.
 - **P5 T3:** the licence preflight test uses DINOv3 base, not 7B.
-- **P7:** bf16 is recommended for giant.
+- **P7:** float32 is recommended for every size, giant included; bf16 is documented as a memory-bound opt-in (H7, amended 2026-11-20 after P2 T4).
 - **README:** stop point 4 removed; U11 in the decisions table and spec
   coverage; O2 narrowed to `dinov2-vitg14`; a DINOv3 follow-up.

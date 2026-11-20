@@ -232,7 +232,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td>H7</td>
-<td><strong><code>compute_dtype: Literal["float32","bfloat16","float16"] = "float32"</code></strong> is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for giant.</td>
+<td><strong><code>compute_dtype: Literal["float32","bfloat16","float16"] = "float32"</code></strong> is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend float32 for every DINOv2 size, giant included; it fits on every cluster GPU (2026-11-20). bf16 is an opt-in for memory-bound models only, documented with P2 T4's measurement: within a bf16 run, mixed GPU models differ by up to 3.2e-4 in 1 − cos and an OOM batch halving by up to 4.3e-4, against ≤ 2.3e-7 and ≤ 6e-9 in float32. No warning or refusal; documentation only (user, 2026-11-20).</td>
 </tr>
 <tr class="odd">
 <td>H9</td>
