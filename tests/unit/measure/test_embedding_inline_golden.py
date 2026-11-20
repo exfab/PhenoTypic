@@ -46,6 +46,12 @@ VECTORS = GOLDEN.with_name("inline_embeddings_281.vectors.npz")
 REGENERATING = os.environ.get("PHENOTYPIC_REGEN_GOLDEN") == "1"
 
 #: The always-on check's floor: every row's cosine to its golden vector.
+#: Measured worst 1 - cos off the capture CPU, at 929e3fcca with
+#: ``golden_capture_env.py --cosine`` (OMP_NUM_THREADS=4), is 1.005e-7, 10x
+#: under the floor: Cascade Lake (x01, Gold 5220R, job 32280653) and Milan
+#: (r42, EPYC 7713, job 32280654) alike, on the stub ``objects_cls`` and
+#: ``objects_mean_masked`` rows; the real rows 4.1e-9 to 6.5e-9. Broadwell
+#: (i01, job 32280655) gives 2.2e-16, every row identical.
 COSINE_FLOOR = 1 - 1e-6
 
 #: The environment fields that must match for the bytes to be checked.
