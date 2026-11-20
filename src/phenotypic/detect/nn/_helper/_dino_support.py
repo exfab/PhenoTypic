@@ -358,6 +358,19 @@ def extract_patch_features(
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
 
 
+def backbone_device_name(device: str) -> str | None:
+    """The GPU's name for a resolved *device*, for an entry's ``model.device_name``.
+
+    ``torch.cuda.get_device_name()`` of the current CUDA device when *device*
+    is ``"cuda"``, ``None`` on the CPU (#281: the device is provenance).
+    """
+    if device != "cuda":
+        return None
+    import torch
+
+    return str(torch.cuda.get_device_name())
+
+
 def resolve_backbone_device(device: Literal["auto", "cpu", "cuda"]) -> str:
     """Resolve an embedder's ``device`` to a PyTorch device string.
 

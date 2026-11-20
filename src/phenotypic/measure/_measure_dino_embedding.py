@@ -329,17 +329,13 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             group descriptors without them (#281, user decision 2026-11-19).
         """
         from phenotypic.detect.nn._helper._dino_support import (
+            backbone_device_name,
             backbone_patch_size,
             hf_dino_id,
             resolved_revision,
         )
 
         model, _, device = self._backbone()
-        device_name: str | None = None
-        if device == "cuda":
-            import torch
-
-            device_name = str(torch.cuda.get_device_name())
         return {
             "model": {
                 "family": f"dinov{int(self.version)}",
@@ -347,7 +343,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
                 "revision": resolved_revision(model),
                 "patch_size": backbone_patch_size(model),
                 "device": device,
-                "device_name": device_name,
+                "device_name": backbone_device_name(device),
             },
             "dim": int(model.config.hidden_size),
             "dtype": self.dtype,
