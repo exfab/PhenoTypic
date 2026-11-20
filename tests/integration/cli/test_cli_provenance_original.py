@@ -136,7 +136,7 @@ def test_process_store_into_full_cli_preserves_both_applications(
     synth_one_level_input: Path,
 ) -> None:
     source_image = next(synth_one_level_input.rglob("*.tif"))
-    process_pipeline = tmp_path / "process.json.pht-pipe"
+    process_pipeline = tmp_path / "process.pht-pipe.json"
     ImagePipeline(ops={"process-blur": BlurGauss(sigma=0.75)}).to_json(
         process_pipeline
     )

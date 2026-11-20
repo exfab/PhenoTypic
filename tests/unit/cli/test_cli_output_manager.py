@@ -218,7 +218,7 @@ class TestLoadPipelineFromOutputDir:
 class TestSplitMasterByFeature:
     """``split_master_by_feature`` writes per-feature spreadsheets."""
 
-    def test_writes_csv_and_parquet_per_feature(self, tmp_path: Path) -> None:
+    def test_writes_tsv_and_parquet_per_feature(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline(meas=[MeasureSize(), MeasureShape()])
         master = _make_master_df(pipeline)
 
@@ -227,7 +227,7 @@ class TestSplitMasterByFeature:
         assert set(written) == {"MeasureSize", "MeasureShape"}
         for key in written:
             assert (
-                measurements_by_feature_dir(tmp_path) / f"{key}.csv"
+                measurements_by_feature_dir(tmp_path) / f"{key}.tsv"
             ).exists()
             assert (
                 measurements_by_feature_dir(tmp_path) / f"{key}.parquet"
@@ -242,7 +242,8 @@ class TestSplitMasterByFeature:
 
         for key in ("MeasureSize", "MeasureShape"):
             df = pl.read_csv(
-                measurements_by_feature_dir(tmp_path) / f"{key}.csv"
+                measurements_by_feature_dir(tmp_path) / f"{key}.tsv",
+                separator="\t",
             )
             for meta_col in (
                 str(EXPERIMENT.DATASET),
@@ -265,10 +266,12 @@ class TestSplitMasterByFeature:
 
         headers = _collect_feature_headers(pipeline)
         size_df = pl.read_csv(
-            measurements_by_feature_dir(tmp_path) / "MeasureSize.csv"
+            measurements_by_feature_dir(tmp_path) / "MeasureSize.tsv",
+            separator="\t",
         )
         shape_df = pl.read_csv(
-            measurements_by_feature_dir(tmp_path) / "MeasureShape.csv"
+            measurements_by_feature_dir(tmp_path) / "MeasureShape.tsv",
+            separator="\t",
         )
 
         for hdr in headers["MeasureSize"]:
@@ -291,10 +294,10 @@ class TestSplitMasterByFeature:
         written = split_master_by_feature(master, tmp_path, pipeline)
         assert written == {
             "MeasureSize": measurements_by_feature_dir(tmp_path)
-            / "MeasureSize.csv"
+            / "MeasureSize.tsv"
         }
         assert not (
-            measurements_by_feature_dir(tmp_path) / "MeasureShape.csv"
+            measurements_by_feature_dir(tmp_path) / "MeasureShape.tsv"
         ).exists()
 
     def test_empty_meas_returns_empty(self, tmp_path: Path) -> None:
@@ -307,7 +310,7 @@ class TestSplitMasterByFeature:
 
 
 class TestSplitMasterByCategory:
-    """``split_master_by_category`` writes one CSV + Parquet per category."""
+    """``split_master_by_category`` writes one TSV + Parquet per category."""
 
     @staticmethod
     def _master() -> pl.DataFrame:
@@ -320,16 +323,16 @@ class TestSplitMasterByCategory:
             }
         )
 
-    def test_writes_starting_metrics_csv_and_parquet(
+    def test_writes_starting_metrics_tsv_and_parquet(
         self, tmp_path: Path
     ) -> None:
         written = split_master_by_category(self._master(), tmp_path)
         split_dir = measurements_by_category_dir(tmp_path)
-        assert written == {"StartingMetrics": split_dir / "StartingMetrics.csv"}
-        csv_df = pl.read_csv(split_dir / "StartingMetrics.csv")
+        assert written == {"StartingMetrics": split_dir / "StartingMetrics.tsv"}
+        tsv_df = pl.read_csv(split_dir / "StartingMetrics.tsv", separator="\t")
         pq_df = pl.read_parquet(split_dir / "StartingMetrics.parquet")
-        assert csv_df.columns == ["Metadata_Dataset", "Object_Label", "Size_Area"]
-        assert pq_df.columns == csv_df.columns
+        assert tsv_df.columns == ["Metadata_Dataset", "Object_Label", "Size_Area"]
+        assert pq_df.columns == tsv_df.columns
         assert pq_df["Size_Area"].to_list() == [10.0]
 
     def test_no_categorized_columns_writes_nothing(
@@ -438,12 +441,12 @@ class TestAggregateMeasurementsAutoResolve:
 
         split_dir = measurements_by_feature_dir(output_dir)
         assert split_dir.is_dir()
-        size_csv = split_dir / "MeasureSize.csv"
-        shape_csv = split_dir / "MeasureShape.csv"
-        assert size_csv.exists()
-        assert shape_csv.exists()
+        size_tsv = split_dir / "MeasureSize.tsv"
+        shape_tsv = split_dir / "MeasureShape.tsv"
+        assert size_tsv.exists()
+        assert shape_tsv.exists()
 
-        size_df = pl.read_csv(size_csv)
+        size_df = pl.read_csv(size_tsv, separator="\t")
         assert "Size_Area" in size_df.columns
         assert "Shape_Circularity" not in size_df.columns
         assert str(IMAGE.IMAGE_NAME) in size_df.columns
@@ -476,9 +479,9 @@ class TestAggregateMeasurementsAutoResolve:
         assert master_path.exists()
         split_dir = measurements_by_feature_dir(output_dir)
         assert split_dir.is_dir()
-        size_csv = split_dir / "MeasureSize.csv"
-        assert size_csv.exists()
-        size_df = pl.read_csv(size_csv)
+        size_tsv = split_dir / "MeasureSize.tsv"
+        assert size_tsv.exists()
+        size_df = pl.read_csv(size_tsv, separator="\t")
         assert size_df.columns == [
             str(EXPERIMENT.DATASET),
             str(IMAGE.IMAGE_NAME),
@@ -510,13 +513,13 @@ class TestAggregateMeasurementsAutoResolve:
         )
 
         feature_dir = measurements_by_feature_dir(output_dir)
-        assert (feature_dir / "MeasureSize.csv").exists()
-        assert (feature_dir / "MeasureShape.csv").exists()
-        category_csv = (
-            measurements_by_category_dir(output_dir) / "StartingMetrics.csv"
+        assert (feature_dir / "MeasureSize.tsv").exists()
+        assert (feature_dir / "MeasureShape.tsv").exists()
+        category_tsv = (
+            measurements_by_category_dir(output_dir) / "StartingMetrics.tsv"
         )
-        assert category_csv.exists()
-        df = pl.read_csv(category_csv)
+        assert category_tsv.exists()
+        df = pl.read_csv(category_tsv, separator="\t")
         # The finalize frame puts IMAGE metadata after the measurements; the
         # split must still lead with context, exactly as the feature split does.
         assert df.columns == [
@@ -556,7 +559,7 @@ class TestAggregateMeasurementsAutoResolve:
         assert master_path is not None and master_path.exists()
         assert measurements_csv_path(output_dir).exists()
         assert (
-            measurements_by_feature_dir(output_dir) / "MeasureSize.csv"
+            measurements_by_feature_dir(output_dir) / "MeasureSize.tsv"
         ).exists()
         assert not measurements_by_category_dir(output_dir).exists()
 

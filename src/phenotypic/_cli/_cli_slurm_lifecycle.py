@@ -39,6 +39,13 @@ _SUBMIT_BACKOFF_SECONDS = (1.0, 2.0)
 
 SlurmDependencyKind = Literal["afterany", "afterok"]
 
+#: The fence's ``closed_by`` when a finalizer closed it after running to its
+#: end, with or without a run proof (#281 spec C3). Every cancel path closes
+#: the fence with no ``closed_by``, so ``phenotypic-wait`` can tell a
+#: finalized submission from a cancelled one. An older fence has no field and
+#: reads as "not closed by a finalizer".
+FENCE_CLOSED_BY_FINALIZER = "finalizer"
+
 
 class SchedulerQueryUnavailable(RuntimeError):
     """Raised when neither scheduler accounting source can be queried."""
@@ -663,20 +670,41 @@ def submit_with_lifecycle(
         )
 
 
-def deactivate_generation(output_dir: Path, generation: str) -> bool:
-    """Write the inactive fence under the lifecycle lock."""
+def deactivate_generation(
+    output_dir: Path, generation: str, *, closed_by: str | None = None
+) -> bool:
+    """Write the inactive fence under the lifecycle lock.
+
+    Args:
+        output_dir: Run output root.
+        generation: The generation to close. Any other generation is left
+            alone.
+        closed_by: Why the fence closed. Only a finalizer passes it
+            (:data:`FENCE_CLOSED_BY_FINALIZER`); a cancel leaves it unset.
+    """
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        return _deactivate_generation_locked(output_dir, generation)
+        return _deactivate_generation_locked(
+            output_dir, generation, closed_by=closed_by
+        )
 
 
-def _deactivate_generation_locked(output_dir: Path, generation: str) -> bool:
-    """Write the inactive fence while the caller holds the lifecycle lock."""
+def _deactivate_generation_locked(
+    output_dir: Path, generation: str, *, closed_by: str | None = None
+) -> bool:
+    """Write the inactive fence while the caller holds the lifecycle lock.
+
+    ``closed_by`` is recorded only by the call that closes the fence. A fence
+    that is already inactive is never rewritten, so a later cancel cannot
+    erase a finalizer's close, and a late finalizer cannot relabel a cancel.
+    """
     state = load_slurm_lifecycle(output_dir)
     if state is None or state.get("generation") != generation:
         return False
     if state.get("active") is not True:
         return False
     state["active"] = False
+    if closed_by is not None:
+        state["closed_by"] = closed_by
     state["updated_at"] = _timestamp()
     atomic_write_json(lifecycle_state_path(output_dir), state)
     return True
@@ -1041,6 +1069,7 @@ if __name__ == "__main__":
 
 
 __all__ = [
+    "FENCE_CLOSED_BY_FINALIZER",
     "CancellationResult",
     "SchedulerQueryUnavailable",
     "append_lifecycle_entry",

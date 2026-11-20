@@ -764,3 +764,102 @@ class TestProcessExportManifestRejectsIncompleteRun:
             _run_manifest(output_dir, progress_dir)
 
         assert run_completion_marker_path(output_dir).is_file()
+
+
+class TestFinalizerBindsPublicationToItsGeneration:
+    """#281 spec C3: ``phenotypic-wait`` accepts only this submission's publication.
+
+    The finalizer is the one writer of both bindings: it stamps the
+    generation it ran under into the aggregate proof, and it closes the fence
+    with ``closed_by: "finalizer"``. A cancel leaves the reason unset.
+    """
+
+    @staticmethod
+    def _finalize(tmp_path: Path, manifest: dict) -> tuple[Path, str, dict]:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        generation = "2123456789abcdef0123456789abcdef"
+        _write_job_metadata(
+            progress_dir,
+            {"ds1": {"total": 1, "images": ["a.tif"]}},
+            slurm_generation=generation,
+        )
+        initialize_slurm_lifecycle(
+            output_dir, generation=generation, mode="ordinary"
+        )
+        captured: dict = {}
+
+        def fake_aggregate(**kwargs: object) -> Path:
+            captured.update(kwargs)
+            return output_dir / "deliverables" / "measurements.parquet"
+
+        def publish_manifest(**_kwargs: object) -> None:
+            atomic_write_json(resolve_manifest_json_path(output_dir), manifest)
+
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler._wait_for_completion"
+            ),
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                side_effect=fake_aggregate,
+            ),
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                side_effect=publish_manifest,
+            ),
+            patch("phenotypic._cli._dashboard._generator.generate_dashboard"),
+        ):
+            _run_finalize(output_dir, progress_dir)
+        return output_dir, generation, captured
+
+    def test_a_successful_finalizer_stamps_and_closes_as_finalizer(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir, generation, captured = self._finalize(
+            tmp_path,
+            {"is_complete": True, "completed": 1, "failed": 0, "total_images": 1},
+        )
+        assert captured["execution_epoch"] == generation
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle["active"] is False  # type: ignore[index]
+        assert lifecycle["closed_by"] == "finalizer"  # type: ignore[index]
+
+    def test_a_terminal_incomplete_finalizer_closes_as_finalizer(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir, generation, captured = self._finalize(
+            tmp_path,
+            {"is_complete": True, "completed": 0, "failed": 1, "total_images": 1},
+        )
+        assert captured["execution_epoch"] == generation
+        assert not run_completion_marker_path(output_dir).exists()
+        lifecycle = load_slurm_lifecycle(output_dir)
+        assert lifecycle["active"] is False  # type: ignore[index]
+        assert lifecycle["closed_by"] == "finalizer"  # type: ignore[index]
+
+    def test_a_staged_finalizer_stamps_its_epoch(self, tmp_path: Path) -> None:
+        output_dir = tmp_path / "out"
+        progress_dir = progress_dir_helper(output_dir)
+        _write_job_metadata(progress_dir, NESTED_DATASETS)
+        initialize_orchestration(
+            output_dir,
+            epoch="epoch-1",
+            mode="fresh",
+            controller_config_path=progress_dir / "controller.json",
+        )
+        captured: dict = {}
+
+        def fake_aggregate(**kwargs: object) -> None:
+            captured.update(kwargs)
+            return None
+
+        with (
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                side_effect=fake_aggregate,
+            ),
+            pytest.raises(RuntimeError, match="No current-epoch measurements"),
+        ):
+            _run_finalize(output_dir, progress_dir, epoch="epoch-1")
+        assert captured["execution_epoch"] == "epoch-1"

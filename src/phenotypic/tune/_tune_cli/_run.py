@@ -26,7 +26,7 @@ from urllib.parse import urlsplit
 from phenotypic import GridImage
 from phenotypic._execution._slurm import SlurmExecutor
 from phenotypic.sdk_ import _io_constants as io
-from phenotypic.sdk_ import atomic_write_text
+from phenotypic.sdk_ import atomic_write_text, old_typed_config_sibling
 
 from .._engine import TuningEngine
 from .._evaluation import (
@@ -84,6 +84,21 @@ _STUDY_NAME: Final[str] = "tune_cost_v1"
 _SLURM_SUGAR_KEYS: Final[frozenset[str]] = frozenset(
     {"partition", "mem", "time", "constraint"}
 )
+
+
+def _publish_typed_config(path: Path, text: str) -> None:
+    """Atomically write a typed config, then retire its pre-flip twin.
+
+    Spec A4 (review M8): a tune re-run into a folder an older release wrote
+    would otherwise keep ``best_pipeline.json.pht-pipe`` (and its siblings)
+    beside the new ``best_pipeline.pht-pipe.json``. The new file is published
+    first, so a failure never leaves neither; a plain ``.json`` is never
+    removed.
+    """
+    atomic_write_text(path, text)
+    old = old_typed_config_sibling(path)
+    if old is not None:
+        old.unlink(missing_ok=True)
 
 
 def _default_study_db_url(output_dir: Path) -> str:
@@ -679,7 +694,7 @@ def run_tuning(
                     resolved_spec, images, output_dir
                 )
                 io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
-                atomic_write_text(
+                _publish_typed_config(
                     io.tuning_spec_path(output_dir),
                     resolved_spec.model_dump_json(indent=2),
                 )
@@ -732,7 +747,7 @@ def run_tuning(
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Always echo the resolved spec so the deliverable is re-runnable.
-    atomic_write_text(
+    _publish_typed_config(
         io.tuning_spec_path(output_dir), resolved_spec.model_dump_json(indent=2)
     )
 
@@ -1240,7 +1255,7 @@ def _finalize_outputs(
         json.dumps(compute_param_importance(store), indent=2),
     )
     if winner_pipeline is not None:
-        atomic_write_text(
+        _publish_typed_config(
             io.best_pipeline_path(output_dir), winner_pipeline.to_json() or ""
         )
 
@@ -1328,7 +1343,7 @@ def _finalize_pareto_outputs(
         )
         if winner is not None:
             pipeline = build_pipeline(spec.pipeline, winner.params)
-            atomic_write_text(
+            _publish_typed_config(
                 io.pareto_best_pipeline_path(output_dir, name),
                 pipeline.to_json() or "",
             )
@@ -1352,6 +1367,6 @@ def _finalize_pareto_outputs(
     )
     if knee is not None:
         knee_pipeline = build_pipeline(spec.pipeline, knee.params)
-        atomic_write_text(
+        _publish_typed_config(
             io.best_pipeline_path(output_dir), knee_pipeline.to_json() or ""
         )

@@ -6,9 +6,10 @@ import json
 import logging
 import os
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
@@ -21,7 +22,11 @@ from ._atomic_io import (
 )
 
 if TYPE_CHECKING:
+    import numpy as np
+
+    from ._embedding_tables import EmbeddingPayload
     from ._image_figures import StoredFigures
+    from ._table_runs import TableRun
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +154,180 @@ _TABLES_GROUP_DOCUMENT: dict[str, object] = {
 }
 
 
+def _group_document(attributes: Mapping[str, object]) -> dict[str, object]:
+    """A Zarr v3 group document carrying *attributes*."""
+    return {**_TABLES_GROUP_DOCUMENT, "attributes": dict(attributes)}
+
+
+def _ensure_group(
+    directory: Path, document: Mapping[str, object] = _TABLES_GROUP_DOCUMENT
+) -> None:
+    """Make *directory* a Zarr v3 group: create it and write its ``zarr.json``."""
+    from . import ngff_
+
+    directory.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(directory / ngff_.STORE_ROOT_JSON, dict(document))
+
+
+def ngff_feature_table_attrs(objmap_rel_path: str) -> dict[str, object]:
+    """The ngio feature-table attributes on a run's ``measurements/`` group (spec D4).
+
+    They let an ngio-style reader recognise the Parquet as an object table
+    indexed by ``Object_Label`` over the objmap label. Harmless to every other
+    reader; the layout is never flattened to suit ngio.
+
+    Args:
+        objmap_rel_path: The objmap label's path **relative to the table
+            group's parent** -- ``tables/<run>/`` -- which is the convention
+            the fractal/ngio table specification uses
+            (``"../labels/<name>"`` from ``<image>/tables/``). For a run folder
+            one level down that is ``"../../rgb/labels/objmap"``.
+
+    Returns:
+        The group's ``attributes`` mapping.
+    """
+    from phenotypic.schema import OBJECT
+
+    label = str(OBJECT.LABEL)
+    return {
+        "type": "feature_table",
+        "table_version": "1",
+        "region": {"path": objmap_rel_path},
+        "backend": "parquet",
+        "index_key": label,
+        "index_type": "int",
+        "instance_key": label,
+    }
+
+
+def _objmap_region_path(run_id: str, objmap_target: str) -> str:
+    """*objmap_target* (store-relative) relative to ``tables/<run_id>/``."""
+    import posixpath
+
+    from ._table_runs import table_run_relative_path
+
+    return posixpath.relpath(
+        objmap_target, start=table_run_relative_path(run_id).as_posix()
+    )
+
+
+def _measurement_group_document(
+    run_id: str, objmap_target: str
+) -> dict[str, object]:
+    """The exact ``zarr.json`` of ``tables/<run_id>/measurements/``."""
+    return _group_document(
+        ngff_feature_table_attrs(_objmap_region_path(run_id, objmap_target))
+    )
+
+
+def array_digest(array: np.ndarray) -> str:
+    """sha256 over an array's dtype string, shape and C-order bytes.
+
+    The binding digest of spec D7: computed from the in-memory array at write
+    time, never by re-reading the store, and identical for one set of values
+    whatever the array's memory layout (a Fortran-ordered copy digests the
+    same). The dtype is part of it, so the same labels as ``uint16`` and
+    ``uint32`` differ: pass the array exactly as the store writes it.
+    """
+    import hashlib
+
+    import numpy as np
+
+    contiguous = np.ascontiguousarray(array)
+    digest = hashlib.sha256()
+    digest.update(
+        f"{contiguous.dtype.str}|{list(contiguous.shape)}|".encode("ascii")
+    )
+    digest.update(memoryview(contiguous).cast("B") if contiguous.size else b"")
+    return digest.hexdigest()
+
+
+def objmap_digest(objmap: np.ndarray) -> str:
+    """The digest an objects embedding entry binds to: :func:`array_digest` of the objmap.
+
+    *objmap* is the level-0 label array as the store writes it. The writer
+    does not cast it (``_write_series`` writes ``image.objmap[:]``'s own
+    dtype, ``uint16``), so one set of labels has one digest.
+    """
+    return array_digest(objmap)
+
+
+def refresh_embedding_staleness(
+    runs: Mapping[str, Mapping[str, object]],
+    *,
+    objmap_sha256: str | None,
+    array_sha256: Mapping[str, str],
+) -> None:
+    """Set every embedding entry's ``stale`` from its ``binds`` (spec D7), in place.
+
+    **Recomputed on every write, never latched.** A staged run's Stage 1
+    writes an all-zeros objmap, so its objects entries read stale; Stage 3's
+    identical objmap clears the flag again. The files are kept either way.
+
+    - **Crops** (``binds.objmap_sha256``): stale when it differs from
+      *objmap_sha256*, the objmap being written; ``None`` (no objmap written)
+      is stale.
+    - **Grid** (``binds.array_sha256``): stale when it differs from
+      ``array_sha256[entry.input.series]``, the level-0 array being written;
+      a series not being written is stale.
+    - An entry with neither binding cannot be verified and reads stale.
+
+    Args:
+        runs: ``{run_id: run_entry}``; each entry's ``embeddings`` mapping is
+            updated in place.
+        objmap_sha256: :func:`objmap_digest` of the objmap being written.
+        array_sha256: :func:`array_digest` of each level-0 series being
+            written, keyed by series name.
+    """
+    from ._table_runs import EMBEDDINGS_KEY
+
+    for entry in runs.values():
+        embeddings = entry.get(EMBEDDINGS_KEY)
+        if not isinstance(embeddings, dict):
+            continue
+        for embedding in embeddings.values():
+            if not isinstance(embedding, dict):
+                continue
+            binds = embedding.get("binds")
+            binds = binds if isinstance(binds, Mapping) else {}
+            if "objmap_sha256" in binds:
+                current: str | None = objmap_sha256
+                bound = binds["objmap_sha256"]
+            elif "array_sha256" in binds:
+                source = embedding.get("input")
+                series = source.get("series") if isinstance(source, Mapping) else None
+                current = array_sha256.get(series) if isinstance(series, str) else None
+                bound = binds["array_sha256"]
+            else:
+                embedding["stale"] = True
+                continue
+            embedding["stale"] = current is None or bound != current
+
+
+def grid_bound_series(runs: Mapping[str, Mapping[str, object]]) -> set[str]:
+    """The series a grid embedding entry in *runs* binds to (those worth digesting)."""
+    from ._table_runs import EMBEDDINGS_KEY
+
+    series: set[str] = set()
+    for entry in runs.values():
+        embeddings = entry.get(EMBEDDINGS_KEY)
+        if not isinstance(embeddings, Mapping):
+            continue
+        for embedding in embeddings.values():
+            if not isinstance(embedding, Mapping):
+                continue
+            binds = embedding.get("binds")
+            source = embedding.get("input")
+            if (
+                isinstance(binds, Mapping)
+                and "array_sha256" in binds
+                and isinstance(source, Mapping)
+                and isinstance(source.get("series"), str)
+            ):
+                series.add(str(source["series"]))
+    return series
+
+
 def _write_validated_frame(
     payload: Path,
     frame: pd.DataFrame,
@@ -197,18 +376,34 @@ def _write_validated_parquet(
 def write_embedded_measurement_table(
     store_part: Path,
     table: PreparedEmbeddedMeasurementTable,
+    *,
+    run_id: str,
+    objmap_target: str,
 ) -> Path:
-    """Write the prepared Parquet payload and its two Zarr v3 groups."""
-    from . import ngff_
+    """Write run *run_id*'s measurement Parquet and the groups above it (spec D1, D4).
 
-    payload = Path(store_part) / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
-    payload.parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(
-        Path(store_part) / ngff_.TABLES_GROUP / ngff_.STORE_ROOT_JSON,
-        _TABLES_GROUP_DOCUMENT,
-    )
-    atomic_write_json(
-        payload.parent / ngff_.STORE_ROOT_JSON, _TABLES_GROUP_DOCUMENT
+    Writes ``tables/<run_id>/measurements/table.parquet`` with every level a
+    Zarr v3 group: ``tables/`` and ``tables/<run_id>/`` plain, and
+    ``measurements/`` carrying :func:`ngff_feature_table_attrs`.
+
+    Args:
+        store_part: An **unpromoted** ``*.ome.zarr.part`` directory.
+        table: The prepared payload.
+        run_id: The run folder (:func:`~phenotypic.sdk_.choose_table_run_id`).
+        objmap_target: Store-relative path of the objmap label the table's
+            ``Object_Label`` column indexes.
+
+    Returns:
+        The written Parquet path.
+    """
+    from . import ngff_
+    from ._table_runs import measurement_table_relative_path
+
+    payload = Path(store_part) / measurement_table_relative_path(run_id)
+    _ensure_group(Path(store_part) / ngff_.TABLES_GROUP)
+    _ensure_group(payload.parent.parent)
+    _ensure_group(
+        payload.parent, _measurement_group_document(run_id, objmap_target)
     )
     _write_validated_parquet(payload, table)
     return payload
@@ -217,8 +412,10 @@ def write_embedded_measurement_table(
 def write_metadata_table(
     store_part: Path,
     tables: PreparedImageTables,
+    *,
+    run_id: str,
 ) -> Path:
-    """Write ``tables/metadata/pht-metadata.parquet`` and its Zarr v3 group.
+    """Write ``tables/<run_id>/metadata/pht-metadata.parquet`` and its groups.
 
     The metadata analogue of :func:`write_embedded_measurement_table`, and
     called from the same place: the store's **own** ``.part``, before the root
@@ -233,6 +430,7 @@ def write_metadata_table(
     Args:
         store_part: An **unpromoted** ``*.ome.zarr.part`` directory.
         tables: The split payload. ``tables.metadata`` must not be ``None``.
+        run_id: The run folder the table belongs to.
 
     Returns:
         The written Parquet path.
@@ -241,18 +439,14 @@ def write_metadata_table(
         ValueError: If *tables* carries no metadata frame.
     """
     from . import ngff_
+    from ._table_runs import metadata_table_relative_path
 
     if tables.metadata is None:
         raise ValueError("PreparedImageTables carries no metadata table")
-    payload = Path(store_part) / ngff_.METADATA_TABLE_RELATIVE_PATH
-    payload.parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(
-        Path(store_part) / ngff_.TABLES_GROUP / ngff_.STORE_ROOT_JSON,
-        _TABLES_GROUP_DOCUMENT,
-    )
-    atomic_write_json(
-        payload.parent / ngff_.STORE_ROOT_JSON, _TABLES_GROUP_DOCUMENT
-    )
+    payload = Path(store_part) / metadata_table_relative_path(run_id)
+    _ensure_group(Path(store_part) / ngff_.TABLES_GROUP)
+    _ensure_group(payload.parent.parent)
+    _ensure_group(payload.parent)
     _write_validated_frame(
         payload, tables.metadata, tables.metadata_parquet_metadata()
     )
@@ -263,17 +457,32 @@ def build_measurement_table_descriptor(
     table: PreparedEmbeddedMeasurementTable,
     *,
     objmap_target: str,
+    run_id: str | None = None,
 ) -> dict[str, object]:
-    """Build the stable root descriptor for one embedded measurement table."""
+    """Build the stable descriptor for one embedded measurement table.
+
+    Args:
+        table: The prepared payload.
+        objmap_target: Store-relative path of the objmap label.
+        run_id: The run folder the table lives in. ``None`` describes the
+            **v1 flat** ``tables/measurements/table.parquet``, which only the
+            legacy :func:`replace_embedded_measurement_table` still writes.
+    """
     from phenotypic.schema import OBJECT
 
     from . import ngff_
+    from ._table_runs import measurement_table_relative_path
 
+    path = (
+        ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix()
+        if run_id is None
+        else measurement_table_relative_path(run_id).as_posix()
+    )
     return {
         "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
         "type": "object_measurements",
         "format": "parquet",
-        "path": ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
+        "path": path,
         "measurement_columns": list(table.measurement_columns),
         "target": {
             "column": str(OBJECT.LABEL),
@@ -284,23 +493,36 @@ def build_measurement_table_descriptor(
 
 def build_metadata_table_descriptor(
     tables: PreparedImageTables,
+    *,
+    run_id: str | None = None,
 ) -> dict[str, object]:
-    """Build the stable root descriptor for one embedded metadata table.
+    """Build the stable descriptor for one embedded metadata table.
 
     It records **what the file is**, not how it joins: the join keys are on
-    the Parquet's own key/value metadata and in the root's ``metadata_table``
+    the Parquet's own key/value metadata and in the run's ``metadata_table``
     block, and repeating them a third time here would be a third home for one
     fact.
+
+    Args:
+        tables: The split payload; ``tables.metadata`` must not be ``None``.
+        run_id: The run folder the table lives in; ``None`` describes the v1
+            flat ``tables/metadata/pht-metadata.parquet``.
     """
     from . import ngff_
+    from ._table_runs import metadata_table_relative_path
 
     if tables.metadata is None:
         raise ValueError("PreparedImageTables carries no metadata table")
+    path = (
+        ngff_.METADATA_TABLE_RELATIVE_PATH.as_posix()
+        if run_id is None
+        else metadata_table_relative_path(run_id).as_posix()
+    )
     return {
         "schema_version": ngff_.METADATA_TABLE_SCHEMA_VERSION,
         "type": "image_metadata",
         "format": "parquet",
-        "path": ngff_.METADATA_TABLE_RELATIVE_PATH.as_posix(),
+        "path": path,
         "metadata_columns": [
             str(column) for column in tables.metadata.columns
         ],
@@ -310,11 +532,13 @@ def build_metadata_table_descriptor(
 def build_metadata_table_block(
     tables: PreparedImageTables,
 ) -> dict[str, object] | None:
-    """Return the root's ``metadata_table`` block, or ``None`` to omit it.
+    """Return a run's ``metadata_table`` block, or ``None`` to omit it.
 
     D-A: a store keeps the metadata snapshot it was built against and says
     which one, so ``resolve_run_state`` can **derive** the divergence advisory
-    instead of tracking a backfill stage.
+    instead of tracking a backfill stage. Since #281 P3 (spec D3) the block
+    lives in its run entry, ``tables.runs.<run>.metadata_table``, not at the
+    root.
 
     ``None`` for ``not_requested`` and only for it (H2). The advisory fires
     when a store's recorded snapshot is neither ``None`` nor the run's current
@@ -348,59 +572,153 @@ def build_image_tables_attributes(
     tables: PreparedImageTables,
     *,
     objmap_target: str,
+    run_id: str,
 ) -> dict[str, object]:
-    """Return the ``attributes.phenotypic`` fragment two tables imply.
+    """Return the table fields of run *run_id*'s entry that *tables* implies.
 
-    A **total** description, not an increment: the caller applies it with
-    :func:`apply_image_tables_attributes`, which removes whatever the fragment
-    omits. See that function for why the difference is load-bearing.
+    ``measurements``, ``metadata`` when there is a metadata frame, and
+    ``metadata_table`` unless the join was ``not_requested``. A **total**
+    description of the run's tables, not an increment: a run re-measured
+    without ``--metadata`` loses its ``metadata`` descriptor and its
+    ``metadata_table`` block, because the run entry is rebuilt from this
+    fragment rather than updated by it (see :func:`apply_image_tables_attributes`).
     """
     from . import ngff_
 
-    descriptors: dict[str, object] = {
+    fields: dict[str, object] = {
         ngff_.MEASUREMENT_TABLE_GROUP: build_measurement_table_descriptor(
-            tables.measurements_payload(), objmap_target=objmap_target
+            tables.measurements_payload(),
+            objmap_target=objmap_target,
+            run_id=run_id,
         )
     }
     if tables.metadata is not None:
-        descriptors[ngff_.METADATA_TABLE_GROUP] = (
-            build_metadata_table_descriptor(tables)
+        fields[ngff_.METADATA_TABLE_GROUP] = build_metadata_table_descriptor(
+            tables, run_id=run_id
         )
-    fragment: dict[str, object] = {ngff_.PhenotypicAttr.TABLES: descriptors}
     block = build_metadata_table_block(tables)
     if block is not None:
-        fragment[ngff_.PhenotypicAttr.METADATA_TABLE] = block
-    return fragment
+        fields[ngff_.PhenotypicAttr.METADATA_TABLE] = block
+    return fields
 
 
-def apply_image_tables_attributes(
-    phenotypic: dict[str, object],
-    fragment: dict[str, object],
-) -> None:
-    """Make *phenotypic*'s table attributes equal *fragment*, removals included.
+def write_run_entry(
+    part: Path,
+    run_id: str,
+    *,
+    order: int,
+    pipeline_sha256: str | None,
+    measurements: PreparedImageTables | None = None,
+    objmap_target: str | None = None,
+    embeddings: Mapping[str, EmbeddingPayload | Mapping] | None = None,
+    objmap_sha256: str | None = None,
+    array_sha256: Mapping[str, str] | None = None,
+) -> dict[str, object]:
+    """Write run *run_id*'s tables into *part* and return its descriptor entry.
 
-    **Stated as a total function of the payload, never as an append.** A store
-    built with ``--metadata`` and then re-measured **without** it must LOSE
-    its ``metadata_table`` block and its ``tables.metadata`` descriptor. An
-    append-only refresh leaves the stale digest in place,
-    ``_store_metadata_snapshot`` keeps returning it, the run's
-    ``metadata_sha256`` is now ``None``, and the divergence advisory fires on
-    every such store forever -- H2's failure arriving through the measure path
-    instead of the promote path. That is invisible until someone re-measures
-    without ``--metadata``, which is why the removal is the rule and not a
-    special case.
+    The single owner of a run entry (spec D3): every writer that produces a
+    run's tables -- the store save, the measure rewrite, the migrate import --
+    goes through here, so a run folder's files and the entry describing them
+    cannot disagree. Every subtable is optional, so a store holding embeddings
+    and no measurements (a process store) has an entry too.
+
+    The folder must not already exist in *part*: a caller replacing a run
+    removes the part's hard-linked copy first, so every file is a new inode.
+
+    Args:
+        part: An **unpromoted** ``*.ome.zarr.part`` directory.
+        run_id: The run folder, ``<order>-<sha12>`` or ``<order>-unknown``.
+        order: The run's call-order number; must be *run_id*'s.
+        pipeline_sha256: The run's pipeline digest, or ``None``; must agree
+            with *run_id*.
+        measurements: The run's measurement and metadata tables, or ``None``.
+        objmap_target: Store-relative objmap label path; required with
+            *measurements*.
+        embeddings: The run's embedding tables, keyed ``"<model>/<layer>/<region>"``.
+            An :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload`
+            is written through
+            :func:`~phenotypic.sdk_._embedding_tables.write_embedding_tables`;
+            a plain mapping is an already-written entry whose files are
+            already in *part* under this run's folder (the raw seam a test
+            or the migrate import uses).
+        objmap_sha256: :func:`objmap_digest` of the objmap this write
+            certifies; with *array_sha256*, recomputes each embedding's
+            ``stale`` (D7). Both ``None`` leaves ``stale`` as given (``false``
+            for a payload written here).
+        array_sha256: :func:`array_digest` of each level-0 series written,
+            keyed by series name.
+
+    Returns:
+        The run entry: ``order``, ``pipeline_sha256``, and the descriptors of
+        the tables written.
+
+    Raises:
+        ValueError: If *run_id* disagrees with *order* or *pipeline_sha256*,
+            or *measurements* is given without *objmap_target*.
     """
     from . import ngff_
+    from ._table_runs import (
+        EMBEDDINGS_KEY,
+        ORDER_KEY,
+        PIPELINE_SHA256_KEY,
+        table_run_id,
+    )
 
-    phenotypic[ngff_.PhenotypicAttr.TABLES] = fragment[
-        ngff_.PhenotypicAttr.TABLES
-    ]
-    if ngff_.PhenotypicAttr.METADATA_TABLE in fragment:
-        phenotypic[ngff_.PhenotypicAttr.METADATA_TABLE] = fragment[
-            ngff_.PhenotypicAttr.METADATA_TABLE
-        ]
-    else:
-        phenotypic.pop(ngff_.PhenotypicAttr.METADATA_TABLE, None)
+    if table_run_id(order, pipeline_sha256) != run_id:
+        raise ValueError(
+            f"run id {run_id!r} is not order {order} of pipeline "
+            f"{pipeline_sha256!r}"
+        )
+    part = Path(part)
+    _ensure_group(part / ngff_.TABLES_GROUP)
+    _ensure_group(part / ngff_.TABLES_GROUP / run_id)
+    entry: dict[str, object] = {
+        ORDER_KEY: order,
+        PIPELINE_SHA256_KEY: pipeline_sha256,
+    }
+    if measurements is not None:
+        if objmap_target is None:
+            raise ValueError("a run's measurements need an objmap_target")
+        write_embedded_measurement_table(
+            part,
+            measurements.measurements_payload(),
+            run_id=run_id,
+            objmap_target=objmap_target,
+        )
+        if measurements.metadata is not None:
+            write_metadata_table(part, measurements, run_id=run_id)
+        entry.update(
+            build_image_tables_attributes(
+                measurements, objmap_target=objmap_target, run_id=run_id
+            )
+        )
+    if embeddings:
+        from ._embedding_tables import EmbeddingPayload, write_embedding_tables
+
+        written = write_embedding_tables(
+            part,
+            run_id,
+            {
+                key: value
+                for key, value in embeddings.items()
+                if isinstance(value, EmbeddingPayload)
+            },
+            objmap_sha256=objmap_sha256,
+            array_sha256=array_sha256,
+        )
+        entry[EMBEDDINGS_KEY] = {
+            key: written[key]
+            if isinstance(value, EmbeddingPayload)
+            else deepcopy(dict(value))
+            for key, value in embeddings.items()
+        }
+        if objmap_sha256 is not None or array_sha256 is not None:
+            refresh_embedding_staleness(
+                {run_id: entry},
+                objmap_sha256=objmap_sha256,
+                array_sha256=array_sha256 or {},
+            )
+    return entry
 
 
 def write_image_tables(
@@ -408,8 +726,14 @@ def write_image_tables(
     tables: PreparedImageTables,
     *,
     objmap_target: str,
+    run_id: str,
+    order: int,
+    pipeline_sha256: str | None,
 ) -> dict[str, object]:
-    """Write both of one image's tables into a part and return the fragment.
+    """Write one image's measurement and metadata tables as run *run_id*.
+
+    A thin delegate to :func:`write_run_entry` for the common case of a run
+    whose only tables are its measurements.
 
     Args:
         store_part: An **unpromoted** ``*.ome.zarr.part`` directory. Both
@@ -417,36 +741,258 @@ def write_image_tables(
         tables: The split payload.
         objmap_target: Store-relative path of the label image the measurement
             table's ``Object_Label`` column indexes.
+        run_id: The run folder.
+        order: The run's call-order number.
+        pipeline_sha256: The run's pipeline digest, or ``None``.
 
     Returns:
-        The ``attributes.phenotypic`` fragment to apply to the root document
-        with :func:`apply_image_tables_attributes`.
+        The run entry, to pass to :func:`apply_image_tables_attributes`.
     """
-    write_embedded_measurement_table(
-        store_part, tables.measurements_payload()
+    return write_run_entry(
+        store_part,
+        run_id,
+        order=order,
+        pipeline_sha256=pipeline_sha256,
+        measurements=tables,
+        objmap_target=objmap_target,
     )
-    if tables.metadata is not None:
-        write_metadata_table(store_part, tables)
-    return build_image_tables_attributes(tables, objmap_target=objmap_target)
 
 
-def _valid_metadata_table_contract(
-    store: Path, phenotypic: dict[str, object]
-) -> bool:
-    """Return whether a store's metadata table, group, and descriptor agree.
+def apply_image_tables_attributes(
+    phenotypic: dict[str, object],
+    runs: Mapping[str, Mapping[str, object]],
+    *,
+    upstream: Mapping[str, Mapping[str, object]] | None = None,
+) -> None:
+    """Make *phenotypic*'s ``tables`` the v2 descriptor of exactly *runs* and *upstream*.
 
-    **Conditioned on the descriptor being declared**, and deliberately so: a
-    store written before the inversion has no ``tables.metadata`` entry and no
-    ``tables/metadata/`` group, and is not thereby invalid -- it is a store
-    from before the table existed. Only a store that *claims* the table is
-    held to it (M2).
+    **Stated as a total function of the payload, never as an append.** The
+    caller passes every run the store keeps -- the carried ones and its own
+    -- and nothing else survives. That is what lets a run re-measured
+    **without** ``--metadata`` lose its ``metadata`` descriptor and its
+    ``metadata_table`` block (H2): an append-only refresh would leave the
+    stale digest in place and the divergence advisory would fire on that
+    store forever.
+
+    The root-level ``metadata_table`` block of the v1 layout is removed: it
+    moved into each run entry (spec D3). With no runs and no upstream the
+    ``tables`` key is removed too, so a table-less store declares nothing.
+
+    Runs are emitted by ascending ``order`` so two identical writes produce
+    byte-identical roots. A run id or order that *runs* and *upstream* share
+    is logged as a warning (:func:`~phenotypic.sdk_._table_runs.run_upstream_collisions`,
+    review M1).
+    """
+    from . import ngff_
+    from ._table_runs import (
+        ORDER_KEY,
+        RUNS_KEY,
+        SCHEMA_VERSION_KEY,
+        UPSTREAM_KEY,
+    )
+
+    phenotypic.pop(ngff_.PhenotypicAttr.METADATA_TABLE, None)
+    upstream = dict(upstream or {})
+    from ._table_runs import run_upstream_collisions
+
+    for collision in run_upstream_collisions(runs, upstream):
+        logger.warning(
+            "Table run numbering collides with the input's upstream runs: %s. "
+            "Readers keep the two apart; re-run with --restart over a fresh "
+            "output to renumber",
+            collision,
+        )
+    if not runs and not upstream:
+        phenotypic.pop(ngff_.PhenotypicAttr.TABLES, None)
+        return
+    def _order(item: tuple[str, Mapping[str, object]]) -> int:
+        order = item[1].get(ORDER_KEY)
+        return order if isinstance(order, int) else 0
+
+    ordered = sorted(runs.items(), key=_order)
+    phenotypic[ngff_.PhenotypicAttr.TABLES] = {
+        SCHEMA_VERSION_KEY: ngff_.TABLES_SCHEMA_VERSION,
+        RUNS_KEY: {run_id: dict(entry) for run_id, entry in ordered},
+        UPSTREAM_KEY: {key: dict(value) for key, value in sorted(upstream.items())},
+    }
+
+
+def _link_tree(source: Path, target: Path) -> None:
+    """Hard-link every file under *source* to the same place under *target*.
+
+    The files are never written through: a writer that replaces one first
+    unlinks the part's copy, and :func:`atomic_write_json` replaces by rename.
     """
     from . import ngff_
 
-    tables = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
-    if not isinstance(tables, dict):
-        return False
-    descriptor = tables.get(ngff_.METADATA_TABLE_GROUP)
+    root = ngff_.long_path(source)
+    for directory, _subdirectories, filenames in os.walk(root):
+        destination = Path(ngff_.long_path(target)) / os.path.relpath(
+            directory, root
+        )
+        destination.mkdir(parents=True, exist_ok=True)
+        for filename in filenames:
+            _clone_file_without_pixel_rewrite(
+                str(Path(directory) / filename), str(destination / filename)
+            )
+
+
+def _replaced_store_block(
+    final: Path, *, replace_unreadable: bool = False
+) -> Mapping[str, object] | None:
+    """The ``attributes.phenotypic`` block of the store a save replaces, or ``None``.
+
+    ``None`` -- nothing to carry, and nothing to number a new folder after --
+    when there is no store at *final*, or when its root has no ``phenotypic``
+    block: a third-party or half-built store that a save replaces whole, as it
+    always has.
+
+    **A root that exists but cannot be parsed is refused** (#281 P3 review
+    M4): it may describe other pipelines' run folders, and a save that read
+    it as "nothing to carry" would drop every one of them, against
+    :func:`carry_table_runs`' own rule that a store is never rewritten over a
+    descriptor it cannot interpret. The one exception is explicit:
+    ``--mode migrate`` rebuilding an invalid store from its HDF source
+    (``migrate_hdf_to_zarr``) passes *replace_unreadable* and replaces it
+    whole, carrying nothing, as it always has.
+
+    Raises:
+        ValueError: If the root exists but is not readable JSON, or is a
+            store version this build does not read, and *replace_unreadable*
+            is false.
+    """
+    from . import ngff_
+
+    try:
+        block = ngff_.read_phenotypic_attributes(Path(final))
+    except (FileNotFoundError, NotADirectoryError, KeyError):
+        return None
+    except ValueError as exc:  # json.JSONDecodeError included
+        if not replace_unreadable:
+            raise ValueError(
+                f"Refusing to rewrite {final}: its root zarr.json cannot be "
+                f"read ({exc}), so the table run folders it may declare "
+                "cannot be carried. Repair or remove the store first."
+            ) from exc
+        logger.warning("Replacing %s whole; its root is unreadable: %s", final, exc)
+        return None
+    return block if isinstance(block, Mapping) else None
+
+
+def carry_table_runs(
+    final: Path,
+    part: Path,
+    *,
+    exclude: str | None,
+    replace_unreadable: bool = False,
+) -> dict[str, dict[str, dict[str, object]]]:
+    """Carry every run folder of *final* but *exclude* into *part* (spec D5).
+
+    Used when a store is rewritten from scratch over an existing one (a
+    ``save2zarr`` over an existing store: ``--restart``, Stage 3 over
+    Stage 1, a re-derived process store). The other runs' files are
+    hard-linked (or copied) across byte for byte, with their descriptor
+    entries unchanged, and the ``upstream`` block comes with them.
+
+    *exclude* is the run the caller writes itself in this transaction. A
+    write that produces no tables of its own passes ``None`` and so carries
+    **every** folder, its own pipeline's included -- the rule figures follow.
+
+    A carried run whose folder is missing on disk keeps its entry, with a
+    warning: dropping it would wipe history, and a reader that opens the file
+    finds it absent rather than silently gone from the descriptor.
+
+    A store in the **v1 flat** layout carries nothing, with a warning naming
+    ``--mode migrate``: its tables are not run folders, and relabelling them
+    as one would be a guess. Forward CLI modes refuse such a store before
+    they reach here; this is the notebook path, which today's save already
+    behaves like (a save never carried v1 tables).
+
+    Args:
+        final: The store being replaced. Absent, or with no ``phenotypic``
+            block, carries nothing.
+        part: The unpromoted part being written.
+        exclude: The run folder the caller writes itself, or ``None``.
+        replace_unreadable: Carry nothing from a root that cannot be parsed,
+            instead of refusing (:func:`_replaced_store_block`). Only
+            ``--mode migrate``'s rebuild from HDF passes it.
+
+    Returns:
+        ``{"runs": {run_id: entry}, "upstream": {...}}`` of what was carried.
+
+    Raises:
+        ValueError: If *final*'s root cannot be parsed (unless
+            *replace_unreadable*), or its tables descriptor is corrupt or a
+            version this build does not read. A store is never rewritten over
+            a descriptor it cannot interpret.
+    """
+    from . import ngff_
+    from ._table_runs import (
+        RUNS_KEY,
+        UPSTREAM_KEY,
+        table_runs_of_block,
+        tables_schema_of_block,
+    )
+
+    carried: dict[str, dict[str, dict[str, object]]] = {
+        RUNS_KEY: {},
+        UPSTREAM_KEY: {},
+    }
+    block = _replaced_store_block(final, replace_unreadable=replace_unreadable)
+    if block is None:
+        return carried
+    schema = tables_schema_of_block(block)
+    if schema == 1:
+        logger.warning(
+            "Not carrying the v1 flat tables of %s into the rewritten store: "
+            "convert the tree with `python -m phenotypic --mode migrate` first",
+            final,
+        )
+    if schema != 2:
+        return carried
+    tables = block[ngff_.PhenotypicAttr.TABLES]
+    assert isinstance(tables, Mapping)
+    for run in table_runs_of_block(Path(final), block):
+        if run.run_id == exclude:
+            continue
+        if run.folder.is_dir():
+            _link_tree(run.folder, Path(part) / ngff_.TABLES_GROUP / run.run_id)
+        else:
+            logger.warning(
+                "Carrying the entry of table run %s although %s is missing",
+                run.run_id,
+                run.folder,
+            )
+        carried[RUNS_KEY][run.run_id] = deepcopy(dict(run.descriptor))
+    upstream = tables.get(UPSTREAM_KEY)
+    if isinstance(upstream, Mapping):
+        carried[UPSTREAM_KEY] = deepcopy(dict(upstream))
+    if carried[RUNS_KEY]:
+        _ensure_group(Path(part) / ngff_.TABLES_GROUP)
+    return carried
+
+
+def _valid_metadata_table_contract(
+    store: Path,
+    container: Mapping[str, object],
+    *,
+    run_id: str | None = None,
+) -> bool:
+    """Return whether a store's metadata table, group, and descriptor agree.
+
+    *container* holds the ``metadata`` descriptor: the run entry of *run_id*
+    on a v2 store, the v1 ``tables`` mapping when *run_id* is ``None``.
+
+    **Conditioned on the descriptor being declared**, and deliberately so: a
+    store written before the inversion has no ``metadata`` descriptor and no
+    metadata group, and is not thereby invalid -- it is a store from before
+    the table existed. Only a store that *claims* the table is held to it
+    (M2).
+    """
+    from . import ngff_
+    from ._table_runs import metadata_table_relative_path
+
+    descriptor = container.get(ngff_.METADATA_TABLE_GROUP)
     if descriptor is None:
         return True
     if not isinstance(descriptor, dict):
@@ -456,25 +1002,29 @@ def _valid_metadata_table_contract(
         isinstance(column, str) for column in columns
     ):
         return False
+    relative = (
+        ngff_.METADATA_TABLE_RELATIVE_PATH.as_posix()
+        if run_id is None
+        else metadata_table_relative_path(run_id).as_posix()
+    )
     if descriptor != {
         "schema_version": ngff_.METADATA_TABLE_SCHEMA_VERSION,
         "type": "image_metadata",
         "format": "parquet",
-        "path": ngff_.METADATA_TABLE_RELATIVE_PATH.as_posix(),
+        "path": relative,
         "metadata_columns": columns,
     }:
         return False
 
-    group = store / ngff_.TABLES_GROUP / ngff_.METADATA_TABLE_GROUP
+    payload = store / relative
     document = json.loads(
-        (group / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+        (payload.parent / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
     )
     if document != _TABLES_GROUP_DOCUMENT:
         return False
 
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
-    payload = store / ngff_.METADATA_TABLE_RELATIVE_PATH
     table = pq.read_table(payload)
     if table.column_names != columns:
         return False
@@ -500,11 +1050,177 @@ def _valid_metadata_table_contract(
     )
 
 
-def _valid_embedded_measurement_contract(store_path: Path) -> bool:
-    """Return whether a store's table payload, groups, and descriptor agree."""
+def _valid_measurement_payload(payload: Path, columns: list[str]) -> bool:
+    """Return whether a measurement Parquet carries *columns* and valid join provenance."""
+    import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
+    from . import ngff_
+
+    table = pq.read_table(payload)
+    if any(column not in table.column_names for column in columns):
+        return False
+    metadata = table.schema.metadata or {}
+    keys = ngff_.EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
+    required = tuple(key.encode() for key in keys)
+    if any(key not in metadata for key in required):
+        return False
+    join_status = metadata[keys.JOIN_STATUS.encode()].decode()
+    if join_status not in {
+        "not_requested",
+        "joined",
+        "no_common_keys",
+    }:
+        return False
+    if (
+        metadata[keys.JOIN_KIND.encode()] != b"right"
+        or metadata[keys.JOIN_LEFT.encode()] != b"metadata"
+        or metadata[keys.JOIN_RIGHT.encode()] != b"measurements"
+    ):
+        return False
+    join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
+    recorded_columns = json.loads(
+        metadata[keys.MEASUREMENT_COLUMNS.encode()].decode()
+    )
+    if not isinstance(join_keys, list) or not all(
+        isinstance(key, str) for key in join_keys
+    ):
+        return False
+    digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
+    if join_status == "not_requested":
+        if join_keys or digest:
+            return False
+    else:
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            return False
+        if join_status == "joined" and not join_keys:
+            return False
+        if join_status == "no_common_keys" and join_keys:
+            return False
+    return recorded_columns == columns
+
+
+def _valid_measurement_descriptor(
+    descriptor: object, *, relative_path: str, objmap_target: object
+) -> list[str] | None:
+    """The descriptor's ``measurement_columns`` when it is exactly the stable form, else ``None``."""
     from phenotypic.schema import OBJECT
 
     from . import ngff_
+
+    if not isinstance(descriptor, dict):
+        return None
+    columns = descriptor.get("measurement_columns")
+    if not isinstance(columns, list) or not all(
+        isinstance(column, str) for column in columns
+    ):
+        return None
+    if descriptor != {
+        "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
+        "type": "object_measurements",
+        "format": "parquet",
+        "path": relative_path,
+        "measurement_columns": columns,
+        "target": {
+            "column": str(OBJECT.LABEL),
+            "path": objmap_target,
+        },
+    }:
+        return None
+    return columns
+
+
+def _group_document_is(directory: Path, expected: Mapping[str, object]) -> bool:
+    from . import ngff_
+
+    document = json.loads(
+        (directory / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+    )
+    return document == expected
+
+
+def _valid_v1_embedded_measurement_contract(
+    store: Path, phenotypic: Mapping[str, object]
+) -> bool:
+    """The contract of a **v1 flat** store: ``tables/measurements/table.parquet``."""
+    from . import ngff_
+
+    tables = phenotypic[ngff_.PhenotypicAttr.TABLES]
+    assert isinstance(tables, Mapping)
+    objmap_target = phenotypic[ngff_.PhenotypicAttr.LABELS][ngff_.OBJMAP_LABEL]  # type: ignore[index]
+    columns = _valid_measurement_descriptor(
+        tables[ngff_.MEASUREMENT_TABLE_GROUP],
+        relative_path=ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
+        objmap_target=objmap_target,
+    )
+    if columns is None:
+        return False
+    for group in (
+        store / ngff_.TABLES_GROUP,
+        store / ngff_.TABLES_GROUP / ngff_.MEASUREMENT_TABLE_GROUP,
+    ):
+        if not _group_document_is(group, _TABLES_GROUP_DOCUMENT):
+            return False
+    if not _valid_metadata_table_contract(store, tables):
+        return False
+    return _valid_measurement_payload(
+        store / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH, columns
+    )
+
+
+def _valid_v2_embedded_measurement_contract(
+    store: Path, phenotypic: Mapping[str, object], run_id: str | None
+) -> bool:
+    """The contract of run *run_id* (default: the latest with measurements) of a v2 store."""
+    from . import ngff_
+    from ._table_runs import (
+        measurement_table_relative_path,
+        table_runs_of_block,
+    )
+
+    runs = table_runs_of_block(store, phenotypic)
+    if run_id is None:
+        run = next((r for r in reversed(runs) if r.has_measurements), None)
+    else:
+        run = next((r for r in runs if r.run_id == run_id), None)
+    if run is None or not run.has_measurements:
+        return False
+    objmap_target = phenotypic[ngff_.PhenotypicAttr.LABELS][ngff_.OBJMAP_LABEL]  # type: ignore[index]
+    columns = _valid_measurement_descriptor(
+        run.descriptor[ngff_.MEASUREMENT_TABLE_GROUP],
+        relative_path=measurement_table_relative_path(run.run_id).as_posix(),
+        objmap_target=objmap_target,
+    )
+    if columns is None or not isinstance(objmap_target, str):
+        return False
+    if not _group_document_is(store / ngff_.TABLES_GROUP, _TABLES_GROUP_DOCUMENT):
+        return False
+    if not _group_document_is(run.folder, _TABLES_GROUP_DOCUMENT):
+        return False
+    if not _group_document_is(
+        run.folder / ngff_.MEASUREMENT_TABLE_GROUP,
+        _measurement_group_document(run.run_id, objmap_target),
+    ):
+        return False
+    if not _valid_metadata_table_contract(store, run.descriptor, run_id=run.run_id):
+        return False
+    return _valid_measurement_payload(run.measurements_path(), columns)
+
+
+def _valid_embedded_measurement_contract(
+    store_path: Path, run_id: str | None = None
+) -> bool:
+    """Return whether a store's table payload, groups, and descriptor agree.
+
+    A v2 store is checked at run *run_id*, or by default at its latest run
+    that holds ``measurements`` (spec D6a's record-less reader default). A v1
+    flat store -- which only ``--mode migrate`` still reads -- is checked at
+    ``tables/measurements/``. A store with no tables, a corrupt descriptor or
+    any unreadable piece is not valid.
+    """
+    from . import ngff_
+    from ._table_runs import tables_schema_of_block
 
     try:
         store = Path(store_path)
@@ -512,92 +1228,39 @@ def _valid_embedded_measurement_contract(store_path: Path) -> bool:
             (store / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
         )
         phenotypic = root["attributes"][ngff_.PhenotypicAttr.ROOT]
-        descriptor = phenotypic[ngff_.PhenotypicAttr.TABLES][
-            ngff_.MEASUREMENT_TABLE_GROUP
-        ]
-        columns = descriptor["measurement_columns"]
-        objmap_target = phenotypic[ngff_.PhenotypicAttr.LABELS][
-            ngff_.OBJMAP_LABEL
-        ]
-        if not isinstance(columns, list) or not all(
-            isinstance(column, str) for column in columns
-        ):
-            return False
-        if descriptor != {
-            "schema_version": ngff_.MEASUREMENT_TABLE_SCHEMA_VERSION,
-            "type": "object_measurements",
-            "format": "parquet",
-            "path": ngff_.MEASUREMENT_TABLE_RELATIVE_PATH.as_posix(),
-            "measurement_columns": columns,
-            "target": {
-                "column": str(OBJECT.LABEL),
-                "path": objmap_target,
-            },
-        }:
-            return False
-
-        expected_group = _TABLES_GROUP_DOCUMENT
-        for group in (
-            store / ngff_.TABLES_GROUP,
-            store / ngff_.TABLES_GROUP / ngff_.MEASUREMENT_TABLE_GROUP,
-        ):
-            document = json.loads(
-                (group / ngff_.STORE_ROOT_JSON).read_text(encoding="utf-8")
+        schema = tables_schema_of_block(phenotypic)
+        if schema == 1:
+            return _valid_v1_embedded_measurement_contract(store, phenotypic)
+        if schema == 2:
+            return _valid_v2_embedded_measurement_contract(
+                store, phenotypic, run_id
             )
-            if document != expected_group:
-                return False
-
-        if not _valid_metadata_table_contract(store, phenotypic):
-            return False
-
-        import pyarrow.parquet as pq  # type: ignore[import-untyped]
-
-        payload = store / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
-        table = pq.read_table(payload)
-        if any(column not in table.column_names for column in columns):
-            return False
-        metadata = table.schema.metadata or {}
-        keys = ngff_.EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
-        required = tuple(key.encode() for key in keys)
-        if any(key not in metadata for key in required):
-            return False
-        join_status = metadata[keys.JOIN_STATUS.encode()].decode()
-        if join_status not in {
-            "not_requested",
-            "joined",
-            "no_common_keys",
-        }:
-            return False
-        if (
-            metadata[keys.JOIN_KIND.encode()] != b"right"
-            or metadata[keys.JOIN_LEFT.encode()] != b"metadata"
-            or metadata[keys.JOIN_RIGHT.encode()] != b"measurements"
-        ):
-            return False
-        join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
-        recorded_columns = json.loads(
-            metadata[keys.MEASUREMENT_COLUMNS.encode()].decode()
-        )
-        if not isinstance(join_keys, list) or not all(
-            isinstance(key, str) for key in join_keys
-        ):
-            return False
-        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
-        if join_status == "not_requested":
-            if join_keys or digest:
-                return False
-        else:
-            if len(digest) != 64 or any(
-                character not in "0123456789abcdef" for character in digest
-            ):
-                return False
-            if join_status == "joined" and not join_keys:
-                return False
-            if join_status == "no_common_keys" and join_keys:
-                return False
-        return recorded_columns == columns
+        return False
     except Exception:
         return False
+
+
+#: The root ``zarr.json`` key zarr-python writes consolidated metadata under.
+_CONSOLIDATED_METADATA_KEY = "consolidated_metadata"
+
+
+class StoreRootChangedError(RuntimeError):
+    """A store's root changed while a transaction was being built over it.
+
+    Raised by :func:`_rewrite_store_tables` given ``expected_root_sha256``:
+    the root a write was planned from is no longer the live one (an
+    AutoConvertRaw-GC reprocess, or a second writer). The part is removed and
+    the store is unchanged. Not the image's fault, so never a terminal
+    failure: an in-place process run rebuilds once from the new root, and
+    otherwise fails the image for this invocation only (#281 spec E7).
+    """
+
+    def __init__(self, store: Path) -> None:
+        super().__init__(
+            f"{store}: its root zarr.json changed while this write was being "
+            "built over it; nothing was written"
+        )
+        self.store = Path(store)
 
 
 def _clone_file_without_pixel_rewrite(source: str, target: str) -> str:
@@ -642,12 +1305,25 @@ def _rewrite_store_tables(
     durable: bool | None,
     commit_guard: CommitGuard | None,
     clear_figure_run: str | None = None,
+    clear_table_run: str | Callable[[], str | None] | None = None,
+    clear_tables: bool = True,
+    expected_root_sha256: str | None = None,
+    consolidate: bool = False,
 ) -> Path:
     """Re-promote one store with refreshed embedded tables, root written last.
 
     *plan* is handed the store's ``attributes.phenotypic`` block. It validates
     and **mutates** it -- before any part exists, so a refusal costs nothing --
     and returns the writer that populates the part.
+
+    *clear_table_run* drops the part's copy of that one run folder,
+    ``tables/<run>/``, before *plan*'s writer rewrites it (spec D5); every
+    other run folder is carried. It may name a subfolder,
+    ``<run>/measurements``, to rewrite only that table of the run. ``None``
+    drops the whole ``tables/`` tree, which only the v1 -> v2 conversion
+    wants (it rebuilds the run folder from the flat one). A callable is resolved after
+    *plan* has run, so a plan that chooses the run from the root it is handed
+    can name it without a second read of the root.
 
     *clear_figure_run* drops the part's copy of that one run folder,
     ``figures/<run>/``, before *plan*'s writer rewrites it (spec 2026-09-22
@@ -669,14 +1345,56 @@ def _rewrite_store_tables(
     re-promote now runs on **every** ``--mode measure``, not only on a
     descriptor change. If ``--mode measure`` on a large tree becomes slow,
     this is the reason.
+
+    *clear_tables* false keeps every run folder exactly as carried and
+    ignores *clear_table_run*: a write that adds no table run of its own (an
+    in-place process run whose pipeline only draws figures, #281 spec E7).
+
+    *expected_root_sha256* is the sha256 of the root bytes the caller built
+    its write from (an in-place process run, spec E7). The root read here
+    must have it, and the **live** root is read again immediately before
+    :func:`~phenotypic.sdk_.ngff_.promote_store`: either mismatch raises
+    :class:`StoreRootChangedError` and the part is removed, so a root built
+    from stale bytes is never swapped in. ``None`` checks nothing (measure
+    mode, migrate). A writer that changes the root between that last read
+    and the promote's rename is not caught; the output's single-run guard is
+    what keeps a second PhenoTypic run off the tree.
+
+    *consolidate* collapses the part's per-node metadata into its new root
+    (:func:`~phenotypic._core._image_parts._image_io_handler._consolidate_store_part`)
+    after the root is written and before the check above. A root that
+    already carries ``consolidated_metadata`` is re-consolidated whatever
+    *consolidate* says, so a store published consolidated stays consolidated
+    and its consolidated view never describes the tree it replaced; the old
+    view is dropped first. An unconsolidated store given ``False`` (measure
+    mode over a full run's store) is written unconsolidated, as before.
+
+    Raises:
+        StoreRootChangedError: See *expected_root_sha256*.
     """
+    import hashlib
+
     from . import ngff_
 
     store_path = Path(store_path)
     root_path = store_path / ngff_.STORE_ROOT_JSON
-    root_document = json.loads(root_path.read_text(encoding="utf-8"))
+    root_bytes = root_path.read_bytes()
+    if (
+        expected_root_sha256 is not None
+        and hashlib.sha256(root_bytes).hexdigest() != expected_root_sha256
+    ):
+        raise StoreRootChangedError(store_path)
+    root_document = json.loads(root_bytes.decode("utf-8"))
+    # A root that was consolidated is re-consolidated, asked or not: its
+    # consolidated view describes the old tree, and a reader trusting it
+    # would miss this write's groups (P5 review I1, measure mode included).
+    consolidate = consolidate or _CONSOLIDATED_METADATA_KEY in root_document
+    if consolidate:
+        root_document.pop(_CONSOLIDATED_METADATA_KEY, None)
     phenotypic = root_document["attributes"][ngff_.PhenotypicAttr.ROOT]
     populate = plan(phenotypic)
+    if callable(clear_table_run):
+        clear_table_run = clear_table_run()
 
     part = ngff_.new_part_path(store_path)
     try:
@@ -687,11 +1405,20 @@ def _rewrite_store_tables(
         )
         # A transaction is readable only after its refreshed root is written last.
         (part / ngff_.STORE_ROOT_JSON).unlink()
-        # The copied `tables/` tree goes with it: a store that LOSES its
-        # metadata table must lose the file too, not only the descriptor.
-        # These are hard links into the promoted store, so unlinking them in
-        # the part leaves the live store untouched.
-        shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
+        # The copied tables go with it: a run that LOSES its metadata table
+        # must lose the file too, not only the descriptor, and a run being
+        # rewritten must get new inodes (spec D5/D6). These are hard links
+        # into the promoted store, so unlinking them in the part leaves the
+        # live store untouched. Only that one run folder goes; every other
+        # run is carried as it is. Without *clear_tables* nothing goes.
+        if clear_tables:
+            if clear_table_run is None:
+                shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
+            else:
+                shutil.rmtree(
+                    ngff_.long_path(part / ngff_.TABLES_GROUP / clear_table_run),
+                    ignore_errors=True,
+                )
         if clear_figure_run is not None:
             # The copied figure files are HARD LINKS into the live store, like
             # everything copytree cloned above. Removing this run's folder
@@ -704,6 +1431,19 @@ def _rewrite_store_tables(
             )
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
+        if consolidate:
+            from phenotypic._core._image_parts._image_io_handler import (
+                _consolidate_store_part,
+            )
+
+            _consolidate_store_part(part)
+        if expected_root_sha256 is not None:
+            # Immediately before the swap: a reprocess or a second writer
+            # that replaced the root while the part was built would
+            # otherwise be overwritten by a root built from its predecessor.
+            live = hashlib.sha256(root_path.read_bytes()).hexdigest()
+            if live != expected_root_sha256:
+                raise StoreRootChangedError(store_path)
         ngff_.promote_store(
             part,
             store_path,
@@ -721,22 +1461,58 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
+    pipeline_sha256: str | None,
     figures: StoredFigures | None = None,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
-) -> Path:
-    """Refresh one store's measurement AND metadata tables together.
+    embeddings: Mapping[str, EmbeddingPayload] | None = None,
+) -> TableRun:
+    """Refresh the measurement AND metadata tables of one pipeline's run folder.
 
     The ``--mode measure`` analogue of the promote-time writer: both tables
-    and the root's ``metadata_table`` block move as one root-last
+    and the run's ``metadata_table`` block move as one root-last
     transaction, so the store never certifies a table it does not have or a
     snapshot it was not built against. When *figures* is given, its run
     folder is written in the same transaction.
 
+    **Which folder** (spec D6): the one *pipeline_sha256* owns, chosen by
+    :func:`~phenotypic.sdk_._table_runs.choose_table_run_id`. A store that
+    already has a folder for this pipeline gets it replaced, keeping its
+    number, its files rewritten as new inodes and no row of the previous
+    write surviving. Otherwise a new folder takes the next number. ``None``
+    replaces the highest-numbered ``-unknown`` folder, or adds one. Every
+    other run folder, and the ``upstream`` block, is carried as hard links
+    (spec D5), byte for byte.
+
+    **The replaced run's entry is a total description of this write** --
+    *tables* and *embeddings*, nothing else -- as
+    :func:`build_image_tables_attributes` states for the tables (spec D6: no
+    row from the previous write survives). So ``embeddings=None`` means
+    "this write has no embeddings": an embedding table the run held before is
+    dropped with its entry, exactly as a measurer dropped from the pipeline
+    drops its columns. ``--mode measure`` passes the pipeline's
+    :meth:`ImagePipeline.embed` payloads, so a pipeline that embeds keeps (and
+    rewrites) its embeddings.
+
+    The rewrite writes no objmap, so it recomputes no embedding's ``stale``
+    flag (spec D7): a carried run keeps its entry exactly, and this run's new
+    entries are written ``stale: false``, bound to the image the caller
+    embedded -- the store's own image, which measure mode loaded.
+
+    A store still in the **v1 flat** layout is rewritten whole: its flat
+    files go, and the new folder, numbered 1, is the store's only one.
+    Forward CLI modes refuse such a store before they reach here (#281 P3
+    Task 5).
+
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
+        pipeline_sha256: The sha256 of the pipeline file whose measurers
+            produced *tables* -- for ``--mode measure``, the file measure
+            mode runs, **not** the one the store's journal names (measure
+            mode opens no journal application). ``None`` when no digest is
+            known; one is never fabricated (spec D2).
         figures: One run's per-image figures. They replace that run's folder
             and descriptor entry only; every other run is carried across
             unchanged (spec 2026-09-22 §1a). ``None`` adds no run and
@@ -746,25 +1522,83 @@ def replace_image_tables(
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
         commit_guard: Publication guard, checked at the commit point.
+        embeddings: The pipeline's embedding tables for this image
+            (:meth:`ImagePipeline.embed`), written into the run folder beside
+            *tables*. ``None`` (or empty) writes none, and the run keeps none.
 
     Returns:
-        The store path.
+        The run folder written, as the promoted root declares it. Its
+        :meth:`~phenotypic.sdk_.TableRun.measurements_path` is the table a
+        per-image record certifies after the rewrite (spec D6a).
 
     Raises:
-        ValueError: If the store declares no objmap target.
+        ValueError: If the store declares no objmap target, or its tables
+            descriptor is corrupt or a version this build does not read.
     """
+
+    from . import ngff_
+    from ._table_runs import (
+        RUNS_KEY,
+        UPSTREAM_KEY,
+        TABLE_RUN_ID_RE,
+        TableRun,
+        choose_table_run_id,
+        tables_schema_of_block,
+    )
+
+    selected: dict[str, object] = {}
 
     def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
         target = _resolve_objmap_target(phenotypic, objmap_target)
+        schema = tables_schema_of_block(phenotypic)
+        # A v1 flat store numbers as an empty one: its flat tables are not
+        # run folders, and the rewrite replaces them whole.
+        run_id = choose_table_run_id(
+            phenotypic if schema == 2 else {}, pipeline_sha256=pipeline_sha256
+        )
+        selected["clear"] = run_id if schema == 2 else None
+        tables_block = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
+        kept = (
+            {
+                key: dict(value)
+                for key, value in tables_block.get(RUNS_KEY, {}).items()
+                if key != run_id
+            }
+            if schema == 2 and isinstance(tables_block, Mapping)
+            else {}
+        )
+        upstream = (
+            dict(tables_block.get(UPSTREAM_KEY, {}))
+            if schema == 2 and isinstance(tables_block, Mapping)
+            else {}
+        )
+        match = TABLE_RUN_ID_RE.match(run_id)
+        assert match is not None
+        order = int(match["order"])
 
         def _populate(part: Path) -> None:
-            # `write_image_tables` returns the fragment describing exactly the
-            # files it just wrote, so the root cannot certify a table the part
-            # does not have -- and `apply_` REMOVES what the fragment omits,
-            # which is how a store that loses its metadata loses the block.
+            # `write_run_entry` returns the entry describing exactly the files
+            # it just wrote, so the root cannot certify a table the part does
+            # not have -- and `apply_` keeps only the runs it is given, which
+            # is how a run that loses its metadata loses the descriptor.
+            own = write_run_entry(
+                part,
+                run_id,
+                order=order,
+                pipeline_sha256=pipeline_sha256,
+                measurements=tables,
+                objmap_target=target,
+                embeddings=embeddings,
+            )
             apply_image_tables_attributes(
-                phenotypic,
-                write_image_tables(part, tables, objmap_target=target),
+                phenotypic, {**kept, run_id: own}, upstream=upstream
+            )
+            selected["run"] = TableRun(
+                store=Path(store_path),
+                run_id=run_id,
+                order=order,
+                pipeline_sha256=pipeline_sha256,
+                descriptor=deepcopy(own),
             )
             if figures is None:
                 return
@@ -780,7 +1614,6 @@ def replace_image_tables(
         return _populate
 
     if figures is not None:
-        from . import ngff_
         from ._image_figures import known_figures_schema, read_image_figures_descriptor
 
         descriptor = read_image_figures_descriptor(Path(store_path))
@@ -795,13 +1628,209 @@ def replace_image_tables(
             )
             figures = None
 
-    return _rewrite_store_tables(
+    def _clear() -> str | None:
+        clear = selected["clear"]
+        assert clear is None or isinstance(clear, str)
+        return clear
+
+    _rewrite_store_tables(
         store_path,
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
         clear_figure_run=figures.run.run_id if figures is not None else None,
+        clear_table_run=_clear,
     )
+    run = selected["run"]
+    assert isinstance(run, TableRun)
+    return run
+
+
+def _v1_run_entry(
+    phenotypic: Mapping[str, object],
+) -> tuple[str, dict[str, object]]:
+    """The run id and v2 run entry a **v1 flat** *phenotypic* block converts to (spec D10).
+
+    The folder is ``1-<sha12>`` for
+    :func:`~phenotypic.sdk_._table_runs.v1_table_pipeline_sha`, or
+    ``1-unknown``: a v1 store has no runs and no upstream, so its one folder
+    is numbered 1. The entry keeps each v1 descriptor as it is, with ``path``
+    repointed at the run folder, and takes the root-level ``metadata_table``
+    block into the run (spec D3).
+
+    Raises:
+        ValueError: If the v1 ``tables`` mapping declares anything but
+            ``measurements`` and ``metadata``, or a descriptor that is not a
+            mapping. A table this converter does not know is refused rather
+            than dropped.
+    """
+    from . import ngff_
+    from ._table_runs import (
+        ORDER_KEY,
+        PIPELINE_SHA256_KEY,
+        measurement_table_relative_path,
+        metadata_table_relative_path,
+        table_run_id,
+        v1_table_pipeline_sha,
+    )
+
+    tables = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
+    assert isinstance(tables, Mapping)
+    unknown = sorted(
+        set(tables) - {ngff_.MEASUREMENT_TABLE_GROUP, ngff_.METADATA_TABLE_GROUP}
+    )
+    if unknown:
+        raise ValueError(
+            f"v1 tables descriptor declares {unknown!r}, which the v1 -> v2 "
+            "conversion does not know"
+        )
+    sha = v1_table_pipeline_sha(phenotypic)
+    run_id = table_run_id(1, sha)
+    entry: dict[str, object] = {ORDER_KEY: 1, PIPELINE_SHA256_KEY: sha}
+    for group, relative in (
+        (ngff_.MEASUREMENT_TABLE_GROUP, measurement_table_relative_path),
+        (ngff_.METADATA_TABLE_GROUP, metadata_table_relative_path),
+    ):
+        descriptor = tables.get(group)
+        if descriptor is None:
+            continue
+        if not isinstance(descriptor, Mapping):
+            raise ValueError(f"v1 tables descriptor {group!r} is not a mapping")
+        entry[group] = {
+            **deepcopy(dict(descriptor)),
+            "path": relative(run_id).as_posix(),
+        }
+    block = phenotypic.get(ngff_.PhenotypicAttr.METADATA_TABLE)
+    if isinstance(block, Mapping):
+        entry[ngff_.PhenotypicAttr.METADATA_TABLE] = deepcopy(dict(block))
+    return run_id, entry
+
+
+def _move_v1_payloads(
+    store: Path,
+    part: Path,
+    run_id: str,
+    entry: Mapping[str, object],
+    *,
+    objmap_target: str,
+    skip_measurements: bool = False,
+) -> None:
+    """Hard-link a v1 store's flat payloads into run *run_id* of *part*.
+
+    The payloads come from the **live** store at the v1 layout's paths
+    (never the descriptor's ``path`` string), and each group above them gets
+    its v2 document: the ``measurements/`` group carries the ngio
+    feature-table attributes (spec D4). Bytes are linked, never rewritten.
+    """
+    from . import ngff_
+    from ._table_runs import (
+        measurement_table_relative_path,
+        metadata_table_relative_path,
+    )
+
+    _ensure_group(part / ngff_.TABLES_GROUP)
+    _ensure_group(part / ngff_.TABLES_GROUP / run_id)
+    moves: list[tuple[Path, PurePosixPath, Mapping[str, object]]] = []
+    if ngff_.MEASUREMENT_TABLE_GROUP in entry and not skip_measurements:
+        moves.append(
+            (
+                ngff_.MEASUREMENT_TABLE_RELATIVE_PATH,
+                measurement_table_relative_path(run_id),
+                _measurement_group_document(run_id, objmap_target),
+            )
+        )
+    if ngff_.METADATA_TABLE_GROUP in entry:
+        moves.append(
+            (
+                ngff_.METADATA_TABLE_RELATIVE_PATH,
+                metadata_table_relative_path(run_id),
+                _TABLES_GROUP_DOCUMENT,
+            )
+        )
+    for source, destination, document in moves:
+        target = part / destination
+        _ensure_group(target.parent, document)
+        _clone_file_without_pixel_rewrite(str(Path(store) / source), str(target))
+
+
+def convert_tables_v1_to_v2(
+    store: Path,
+    *,
+    durable: bool | None,
+    commit_guard: CommitGuard | None = None,
+) -> TableRun | None:
+    """Convert a **v1 flat** store's tables into run folder ``1-<sha12>`` (spec D10).
+
+    ``tables/measurements`` and ``tables/metadata`` move into
+    ``tables/1-<sha12>/`` (or ``1-unknown``, ``pipeline_sha256: null``, when
+    :func:`~phenotypic.sdk_._table_runs.v1_table_pipeline_sha` finds no
+    digest -- one is never fabricated). The payload bytes are hard-linked,
+    not rewritten, and the descriptors are kept as they are with their
+    ``path`` repointed; the root-level ``metadata_table`` block moves into the
+    run (spec D3). It is a root-last re-promote through
+    :func:`_rewrite_store_tables`, and pixel arrays are never rewritten.
+
+    Only ``--mode migrate`` calls this. Converting changes the store root, so
+    the caller republishes the image's record and then the run proof.
+
+    Args:
+        store: A promoted ``*.ome.zarr`` store.
+        durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+        commit_guard: Publication guard, checked at the commit point.
+
+    Returns:
+        The run folder written, or ``None`` when *store* is not in the v1
+        layout (already v2, no tables at all, or no ``phenotypic`` block).
+
+    Raises:
+        FileNotFoundError: If the store has no root, or a declared v1
+            payload is missing.
+        ValueError: If the tables descriptor is corrupt, a newer version, or
+            a v1 mapping holding a table this converter does not know.
+    """
+    from . import ngff_
+    from ._table_runs import TableRun, tables_schema_of_block
+
+    store = Path(store)
+    try:
+        block = ngff_.read_phenotypic_attributes(store)
+    except KeyError:
+        # No `phenotypic` block (a third-party store): no PhenoTypic tables.
+        return None
+    if tables_schema_of_block(block) != 1:
+        return None
+    selected: dict[str, TableRun] = {}
+
+    def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
+        if tables_schema_of_block(phenotypic) != 1:
+            raise ValueError(f"{store} is no longer in the v1 tables layout")
+        run_id, entry = _v1_run_entry(phenotypic)
+        target = _resolve_objmap_target(phenotypic, None)
+        sha = entry["pipeline_sha256"]
+
+        def _populate(part: Path) -> None:
+            _move_v1_payloads(store, part, run_id, entry, objmap_target=target)
+            apply_image_tables_attributes(phenotypic, {run_id: entry}, upstream={})
+            selected["run"] = TableRun(
+                store=store,
+                run_id=run_id,
+                order=1,
+                pipeline_sha256=sha if isinstance(sha, str) else None,
+                descriptor=deepcopy(entry),
+            )
+
+        return _populate
+
+    # `None` clears the part's whole `tables/` tree: the flat folders go, and
+    # the run folder is rebuilt from links into the live store.
+    _rewrite_store_tables(
+        store,
+        plan=_plan,
+        durable=durable,
+        commit_guard=commit_guard,
+        clear_table_run=None,
+    )
+    return selected["run"]
 
 
 def replace_embedded_measurement_table(
@@ -812,66 +1841,144 @@ def replace_embedded_measurement_table(
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Replace one store's authoritative table without recomputing pixel arrays.
+    """Replace one store's measurement table without recomputing pixel arrays.
 
     A complete root-last store transaction whose unchanged files are
     hard-linked where the platform permits.
 
     **Superseded by** :func:`replace_image_tables` on every forward path. It
-    survives for the one consumer that still reads and rewrites
-    *pre-inversion* stores byte-exactly -- ``--mode migrate``, whose reclaim
-    authority compares a store's bytes against a joined payload. (``--mode
-    recompile`` was the other, until its per-store rewrite was removed
-    outright on 2026-09-11; it now writes no store byte.) **Retire it** with
-    the last of those call sites. It
-    deliberately leaves ``metadata_table`` and ``tables.metadata`` exactly as
-    it found them: it has no metadata payload to describe, and clearing a
-    block it knows nothing about would be a guess.
+    survives for ``--mode migrate``, which imports legacy per-image Parquets
+    into converted stores and whose reclaim authority compares a store's
+    bytes against that payload. It deliberately leaves the run's ``metadata``
+    table and ``metadata_table`` block exactly as it found them: it has no
+    metadata payload to describe, and clearing a block it knows nothing about
+    would be a guess.
+
+    **It writes the v2 layout** (#281 spec D10), so migrate never leaves a
+    tree mixed:
+
+    - the run is the one the store's pipeline owns
+      (:func:`~phenotypic.sdk_._table_runs.import_table_run_id`:
+      :func:`~phenotypic.sdk_._table_runs.choose_table_run_id` for
+      :func:`~phenotypic.sdk_._table_runs.v1_table_pipeline_sha`, the rule
+      that names a converted v1 folder). Migrate's checks of the import ask
+      the same function, so they judge the run it wrote (review M2). An existing folder for it has its
+      ``measurements/`` rewritten as new inodes and keeps everything else;
+      otherwise a new folder takes the next number. Every other run folder,
+      and the ``upstream`` block, is carried byte for byte;
+    - a store still in the **v1 flat** layout is converted in the same
+      transaction (as :func:`convert_tables_v1_to_v2` does), with its flat
+      metadata table carried into the run and the new measurements in place
+      of the flat ones.
+
+    Returns:
+        The written measurements Parquet path: the run it wrote, at
+        ``tables/<run>/measurements/table.parquet``.
     """
     from . import ngff_
+    from ._table_runs import (
+        ORDER_KEY,
+        PIPELINE_SHA256_KEY,
+        RUNS_KEY,
+        TABLE_RUN_ID_RE,
+        UPSTREAM_KEY,
+        import_table_run_id,
+        measurement_table_relative_path,
+        tables_schema_of_block,
+        v1_table_pipeline_sha,
+    )
+
+    store_path = Path(store_path)
+    selected: dict[str, str | None] = {}
 
     def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
         target = _resolve_objmap_target(phenotypic, objmap_target)
-        descriptor = build_measurement_table_descriptor(
-            table, objmap_target=target
+        schema = tables_schema_of_block(phenotypic)
+        kept: dict[str, dict[str, object]] = {}
+        upstream: dict[str, Mapping[str, object]] = {}
+        if schema == 1:
+            run_id, entry = _v1_run_entry(phenotypic)
+            # The whole flat `tables/` tree goes; the run folder is rebuilt.
+            selected["clear"] = None
+        else:
+            sha = v1_table_pipeline_sha(phenotypic)
+            run_id = import_table_run_id(phenotypic)
+            tables_block = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
+            if schema == 2 and isinstance(tables_block, Mapping):
+                kept = {
+                    key: dict(value)
+                    for key, value in tables_block.get(RUNS_KEY, {}).items()
+                }
+                upstream = dict(tables_block.get(UPSTREAM_KEY, {}))
+            match = TABLE_RUN_ID_RE.match(run_id)
+            assert match is not None
+            owned = kept.pop(run_id, None)
+            entry = (
+                deepcopy(owned)
+                if owned is not None
+                else {ORDER_KEY: int(match["order"]), PIPELINE_SHA256_KEY: sha}
+            )
+            # On a v2 store only this run's `measurements/` is rewritten (new
+            # inodes); its metadata and embeddings, and every other run, are
+            # carried. A store with no tables descriptor declares nothing
+            # under `tables/` (a stranded payload, say), so all of it goes.
+            selected["clear"] = (
+                f"{run_id}/{ngff_.MEASUREMENT_TABLE_GROUP}" if schema == 2 else None
+            )
+        entry[ngff_.MEASUREMENT_TABLE_GROUP] = build_measurement_table_descriptor(
+            table, objmap_target=target, run_id=run_id
         )
-        existing = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
-        declared = dict(existing) if isinstance(existing, dict) else {}
-        declared[ngff_.MEASUREMENT_TABLE_GROUP] = descriptor
-        phenotypic[ngff_.PhenotypicAttr.TABLES] = declared
+        selected["run_id"] = run_id
 
         def _populate(part: Path) -> None:
-            write_embedded_measurement_table(part, table)
-            if ngff_.METADATA_TABLE_GROUP not in declared:
-                return
-            # The `tables/` tree was cleared along with the measurement
-            # table, so a metadata table this store still DECLARES has to be
-            # carried across, or the promoted store would certify a file it
-            # no longer has.
-            source = Path(store_path) / ngff_.METADATA_TABLE_RELATIVE_PATH
-            destination = part / ngff_.METADATA_TABLE_RELATIVE_PATH
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write_json(
-                destination.parent / ngff_.STORE_ROOT_JSON,
-                _TABLES_GROUP_DOCUMENT,
+            if schema == 1:
+                _move_v1_payloads(
+                    store_path,
+                    part,
+                    run_id,
+                    entry,
+                    objmap_target=target,
+                    skip_measurements=True,
+                )
+            _ensure_group(part / ngff_.TABLES_GROUP)
+            _ensure_group(part / ngff_.TABLES_GROUP / run_id)
+            write_embedded_measurement_table(
+                part, table, run_id=run_id, objmap_target=target
             )
-            _clone_file_without_pixel_rewrite(str(source), str(destination))
+            apply_image_tables_attributes(
+                phenotypic, {**kept, run_id: entry}, upstream=upstream
+            )
 
         return _populate
+
+    def _clear() -> str | None:
+        return selected["clear"]
 
     _rewrite_store_tables(
         store_path,
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
+        clear_table_run=_clear,
     )
-    return Path(store_path) / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    run_id = selected["run_id"]
+    assert run_id is not None
+    return store_path / measurement_table_relative_path(run_id)
 
 
 def read_embedded_measurement_descriptor(
     store_path: Path,
 ) -> dict[str, object]:
-    """Return one store's ``tables.measurements`` descriptor.
+    """Return one store's measurement-table descriptor, from its latest measuring run.
+
+    A store holds one run folder per measuring pipeline (#281 spec D1). This
+    reader holds no per-image record, so it reads spec D6a's default: the
+    ``measurements`` descriptor of
+    :func:`~phenotypic.sdk_._table_runs.latest_measurement_run`, the
+    highest-numbered run that holds ``measurements``. A newer run without
+    measurements (a grid-only process folder) is skipped. A store still in
+    the v1 flat layout (tables schema 1, before ``--mode migrate``) reads
+    its one flat ``tables.measurements`` descriptor.
 
     The descriptor is the store's own account of its embedded table: the
     payload path, the ``measurement_columns`` list, and the ``target``
@@ -889,13 +1996,13 @@ def read_embedded_measurement_descriptor(
 
     Raises:
         OSError: If the store's root ``zarr.json`` does not exist.
-        KeyError: If the root carries no ``phenotypic`` block, or the block
-            declares no ``tables.measurements`` descriptor. **An absent
-            descriptor is a normal state**, not a fault: a ``--mode
-            process`` run never measures, and a store written before
-            embedded tables has none.
+        KeyError: If the root carries no ``phenotypic`` block, or no run
+            of the store declares ``measurements``. **An absent descriptor
+            is a normal state**, not a fault: a ``--mode process`` run never
+            measures, and a store written before embedded tables has none.
         ValueError: If the store's ``store_schema_version`` is not this
-            build's -- the same refusal every other content reader makes.
+            build's -- the same refusal every other content reader makes --
+            or its tables descriptor is corrupt or of an unknown version.
 
     Examples:
         >>> import tempfile
@@ -911,23 +2018,39 @@ def read_embedded_measurement_descriptor(
         ...         print('no embedded table')
         no embedded table
     """
-    from . import ngff_
+    # Gated by VALUE, not read raw: `latest_measurement_run` reads the root
+    # through `require_readable_store`, so a store written by a newer build
+    # is refused here exactly as it is on every other path that decodes store
+    # content, rather than this reader becoming the one place a future
+    # schema slips through under today's semantics.
+    return _latest_measurement_descriptor(Path(store_path))[1]
 
-    store_path = Path(store_path)
-    # Gated by VALUE, not read raw: a store written by a newer build must be
-    # refused here exactly as it is on every other path that decodes store
-    # content, or this reader becomes the one place a future schema slips
-    # through under today's semantics.
-    block = ngff_.require_readable_store(store_path)
-    descriptor = block.get(ngff_.PhenotypicAttr.TABLES, {}).get(
-        ngff_.MEASUREMENT_TABLE_GROUP
+
+def _latest_measurement_descriptor(
+    store_path: Path,
+) -> tuple[Path, dict[str, object]]:
+    """The record-less default table (spec D6a): its payload and its descriptor.
+
+    The latest run that holds ``measurements``, or, for a store still in the
+    v1 flat layout, its one flat table
+    (:func:`~phenotypic.sdk_._table_runs.record_less_measurement_table`, keyed
+    on the tables schema). Read-only: a v1 store is read, never written.
+
+    Raises:
+        KeyError: If the store declares no measurement table.
+    """
+    from . import ngff_
+    from ._table_runs import record_less_measurement_table
+
+    table = record_less_measurement_table(
+        store_path, ngff_.require_readable_store(store_path)
     )
-    if not isinstance(descriptor, dict):
+    if table is None:
         raise KeyError(
             f"OME-Zarr store declares no embedded measurement table: "
             f"{store_path}"
         )
-    return descriptor
+    return store_path / table.relative_path, dict(table.descriptor)
 
 
 def embedded_measurement_columns(store_path: Path) -> tuple[str, ...]:
@@ -963,6 +2086,10 @@ def read_embedded_measurement_column(
 ) -> dict[int, float | None]:
     """Project one measurement column out of a store's embedded table.
 
+    Reads the same table as :func:`read_embedded_measurement_descriptor`:
+    the store's latest run that holds ``measurements`` (spec D6a), or a v1
+    store's flat table.
+
     Returns the column keyed by the descriptor's own ``target.column`` --
     ``Object_Label`` -- rather than by a positional index or an assumed key
     name, so the value a caller paints onto a colony is the value measured
@@ -997,10 +2124,9 @@ def read_embedded_measurement_column(
     """
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
-    from . import ngff_
 
     store_path = Path(store_path)
-    descriptor = read_embedded_measurement_descriptor(store_path)
+    payload, descriptor = _latest_measurement_descriptor(store_path)
     declared = descriptor.get("measurement_columns")
     if not isinstance(declared, list) or column not in declared:
         raise ValueError(
@@ -1017,7 +2143,11 @@ def read_embedded_measurement_column(
         )
     join_column = str(target["column"])
 
-    payload = store_path / ngff_.MEASUREMENT_TABLE_RELATIVE_PATH
+    # `payload` is the same table's, so the columns checked above and the
+    # file read below come from one run folder. It is derived from the
+    # layout, never from the descriptor's own `path` string, so a
+    # request-facing caller cannot be pointed outside the store by a
+    # hand-edited root.
     projection = [join_column]
     if column != join_column:
         projection.append(column)

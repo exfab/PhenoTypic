@@ -1,0 +1,16 @@
+{
+  "images": {
+    "accepted": 1,
+    "failed": 0,
+    "succeeded": 1
+  },
+  "metadata": {
+    "phantoms": 0
+  },
+  "objects": {
+    "measured": 552
+  },
+  "phenotypic_version": "0.21.0",
+  "pipeline_sha256": null,
+  "schema_version": 1
+}

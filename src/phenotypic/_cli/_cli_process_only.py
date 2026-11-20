@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional
 
 import click
 
@@ -19,6 +19,7 @@ from phenotypic.sdk_ import (
     CommitGuard,
     atomic_write_with_writer,
     source_image_stem,
+    upstream_entries_for_input,
 )
 from phenotypic._core._provenance import (
     continuing_provenance_application,
@@ -27,6 +28,13 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
+from ._cli_types import _ZARR_CAPABLE_LAYERS
+from ._cli_process_meas import (
+    ProcessMeasRefusedError,
+    embed_in_process_mode,
+    process_meas_refusal,
+    skipped_measurers_warning,
+)
 from ._cli_reference import (
     ReferencePin,
     ReferencePlanStaleError,
@@ -34,14 +42,10 @@ from ._cli_reference import (
 )
 
 if TYPE_CHECKING:
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 logger = logging.getLogger(__name__)
-
-#: Layers that have a single-series OME-Zarr form. ``objmap`` and ``detect_mat``
-#: are absent for two different reasons, and :func:`write_process_only_layer`
-#: refuses each with its own message saying which (spec §5.3).
-_ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
 
 #: Why each non-store layer is refused. Two entries, two reasons, deliberately
 #: not collapsed: ``objmap`` is refused by the FORMAT, ``detect_mat`` by US.
@@ -165,6 +169,8 @@ def write_process_only_layer(
     fmt: ProcessFormat = "tiff",
     commit_guard: CommitGuard | None = None,
     figures: StoredFigures | None = None,
+    upstream: Mapping[str, Mapping] | None = None,
+    embeddings: Mapping[str, EmbeddingPayload] | None = None,
 ) -> None:
     """Write one image layer, as a flat file or as a single-series store.
 
@@ -182,7 +188,8 @@ def write_process_only_layer(
     has its root ``zarr.json`` or does not exist, so a kill mid-write cannot
     leave a truncated artifact at the final path.
 
-    The store carries **only** *layer*: no objmap, no other series, and no
+    The store carries **only** *layer* (plus the *embeddings* run folder and
+    the *figures*, when given): no objmap, no other series, and no
     ``image_class`` (which is what makes ``Image.load_zarr`` refuse it and
     point at ``Image.imread``).
 
@@ -192,7 +199,32 @@ def write_process_only_layer(
 
     *figures* are the per-image figures to write inside the store's
     transaction (spec 2026-09-22 §3); only the ``zarr`` branch writes them.
+
+    *upstream* is the input's table runs
+    (:func:`~phenotypic.sdk_.upstream_entries_for_input`), recorded under the
+    store's ``tables.upstream`` (#281 spec D8); only the ``zarr`` branch
+    records them, since a flat file has no descriptor. The entries are a pure
+    function of the input's root bytes and its input-relative path, so a
+    re-derived store stays byte-identical.
+
+    *embeddings* are the pipeline's embedding tables for this image
+    (:meth:`~phenotypic.ImagePipeline.embed`), written as the pipeline's run
+    folder ``tables/<n>-<sha12>/embeddings/<model>/<layer>/<region>/`` inside the
+    store's ``.part``, before the root and before consolidation, so the store
+    stays write-once (#281 spec E4). Only the ``zarr`` branch has somewhere
+    to put them: a flat export given any raises ``ValueError`` rather than
+    dropping them.
+
+    Raises:
+        ValueError: On a ``zarr`` export of a layer with no store form, or
+            *embeddings* given to a flat export.
     """
+    if fmt != "zarr" and embeddings:
+        raise ValueError(
+            f"a flat {fmt!r} export of layer {layer!r} has nowhere to put "
+            f"embedding tables ({', '.join(sorted(embeddings))}); write a "
+            "store (fmt='zarr', layer 'rgb' or 'gray')"
+        )
     if fmt == "zarr":
         from phenotypic.sdk_ import ngff_
 
@@ -246,6 +278,8 @@ def write_process_only_layer(
             # rewritten in place.
             consolidate=True,
             figures=figures,
+            upstream=upstream,
+            embeddings=embeddings or None,
         )
         return
 
@@ -264,6 +298,88 @@ def write_process_only_layer(
     )
 
 
+def read_process_input(
+    pipeline: ImagePipeline,
+    image_path: Path,
+    *,
+    image_type: ImageTypeName,
+    read_kwargs: Mapping[str, Any],
+    cli_nrows: Optional[int] = None,
+    cli_ncols: Optional[int] = None,
+) -> Image:
+    """Read one process-mode input as every process core reads it.
+
+    The caller's ``input_read_settings`` kwargs, completed by
+    :func:`~._cli_utils.image_read_kwargs` (a ``GridImage``'s shape from the
+    flags, then the pipeline's preset), then ``imread``; a ``detect_mode``
+    other than ``gray`` is applied after the read. Shared by the copy core
+    and the in-place core (#281 spec E7), so the two read an input alike.
+
+    Args:
+        pipeline: The loaded pipeline (for a ``GridImage`` preset).
+        image_path: A flat image file or a ``*.ome.zarr`` store.
+        image_type: ``"Image"`` or ``"GridImage"``.
+        read_kwargs: From ``input_read_settings``.
+        cli_nrows: ``--nrows``, or ``None``.
+        cli_ncols: ``--ncols``, or ``None``.
+
+    Returns:
+        The image.
+    """
+    from ._cli_utils import image_read_kwargs
+
+    image_cls = GridImage if image_type == "GridImage" else Image
+    kwargs = image_read_kwargs(
+        read_kwargs,
+        image_type=image_type,
+        cli_nrows=cli_nrows,
+        cli_ncols=cli_ncols,
+        pipeline=pipeline,
+    )
+    detect_mode = kwargs.pop("detect_mode", "gray")
+    image = image_cls.imread(image_path, **kwargs)
+    if detect_mode != "gray":
+        image.set_detect_mode(detect_mode)
+    return image
+
+
+def build_process_store_figures(
+    pipeline: ImagePipeline,
+    image: Image,
+    *,
+    run_initiation: RunInitiation | None,
+    image_path: Path,
+) -> StoredFigures | None:
+    """The per-image figures a process store holds, or ``None``.
+
+    The run folder is dated by *run_initiation*'s date only: a process store
+    omits the call's timestamp and pid, like the journal's wall-clock times
+    (spec §1a). There is no deliverables tree, so a run that cannot be named
+    is only logged. Measurer-backed bindings recompute inside ``inspect()``,
+    because ``apply()`` never filled their cache (spec §3, process mode).
+
+    Args:
+        pipeline: The loaded pipeline.
+        image: The image after ``apply()``.
+        run_initiation: The run's initial call, or ``None`` (today, UTC).
+        image_path: The input, whose name keys the run's failure lines.
+    """
+    from phenotypic.plotting._pipeline._store_figures import (
+        build_image_figures,
+        name_figure_run,
+    )
+
+    run = name_figure_run(
+        pipeline.get_plots(),
+        image,
+        date=run_initiation.date if run_initiation is not None else None,
+        image_stem=image_path.name,
+    )
+    if run is None:
+        return None
+    return build_image_figures(pipeline, image, run=run)
+
+
 def process_single_apply_only_core(
     pipeline_path: Path,
     image_path: Path,
@@ -280,10 +396,26 @@ def process_single_apply_only_core(
     dataset_name: str | None = None,
     reference_pin: ReferencePin | None = None,
 ) -> bool:
-    """Apply the pipeline to one image and export ``layer``. No measurement.
+    """Apply the pipeline to one image, embed it, and export ``layer``.
 
     Raises on failure (caller logs/handles), mirroring
     :func:`process_single_image_core`.
+
+    **The ``meas`` entries a process store can hold run too** (#281 spec E4,
+    user decision 2026-11-18: run what fits, skip the rest). An embedder whose
+    ``requires_objects`` is false (a grid embedder) runs after ``apply()``,
+    through :func:`~._cli_process_meas.embed_in_process_mode`, and its table
+    goes into the store's own transaction as the pipeline's run folder. In v1
+    nothing else runs: every other entry is skipped, as process mode always
+    skipped ``meas``, and named in one logged warning, either because it
+    needs objects (a process store holds no object map) or because it is not
+    an embedder (a process store holds only embedding tables). ``measure()``
+    is never called. A runnable entry with a flat output would lose its table, so it
+    raises :class:`~._cli_process_meas.ProcessMeasRefusedError` (a
+    ``ValueError``) before the image is read. The core checks this itself,
+    with the check the CLI runs in its read-only half
+    (:func:`~._cli_process_meas.process_meas_refusal`), because
+    AutoConvertRaw-GC calls it directly and never passes the CLI.
 
     ``run_initiation`` is the run's initial CLI call (figures spec §1a); only
     its date is used, as the figure-folder ``{date}`` (``None``: today in
@@ -300,6 +432,8 @@ def process_single_apply_only_core(
     image: Image | None = None
     provenance_application_opened = False
     figures: StoredFigures | None = None
+    upstream: dict[str, dict] = {}
+    embeddings: dict[str, EmbeddingPayload] = {}
 
     def _mark_provenance_failed() -> None:
         if image is None or not provenance_application_opened:
@@ -313,21 +447,27 @@ def process_single_apply_only_core(
 
     try:
         pipeline = ImagePipeline.from_json(pipeline_path)
-        image_cls = GridImage if image_type == "GridImage" else Image
-
-        from ._cli_utils import image_read_kwargs
-
-        read_kwargs = image_read_kwargs(
-            read_kwargs,
+        # Before the image is read: the pipeline, not the image, is at fault.
+        refusal = process_meas_refusal(
+            pipeline, layer=layer, process_format=process_format
+        )
+        if refusal is not None:
+            raise ProcessMeasRefusedError(refusal)
+        skipped = skipped_measurers_warning(pipeline)
+        if skipped is not None:
+            logger.warning(skipped)
+        image = read_process_input(
+            pipeline,
+            image_path,
             image_type=image_type,
+            read_kwargs=read_kwargs,
             cli_nrows=cli_nrows,
             cli_ncols=cli_ncols,
-            pipeline=pipeline,
         )
-        detect_mode = read_kwargs.pop("detect_mode", "gray")
-        image = image_cls.imread(image_path, **read_kwargs)
-        if detect_mode != "gray":
-            image.set_detect_mode(detect_mode)
+        # The input's table runs, referenced rather than copied (spec D8). A
+        # flat export has no descriptor to record them in.
+        if process_format == "zarr":
+            upstream = upstream_entries_for_input(image_path, input_root)
 
         # BEFORE apply, and that ordering is load-bearing:
         # `initialize_cli_provenance` opens with `new_provenance_journal()`
@@ -356,27 +496,20 @@ def process_single_apply_only_core(
             output_dir, dataset_name, pin=reference_pin
         ):
             pipeline.apply(image, inplace=True)
+            # Beside apply, as the full writer embeds beside measure (spec
+            # E2): the tables go into this store's run folder. Only the
+            # embedders that need no objects; empty when there are none, and
+            # always so for a flat export, which the refusal above admits
+            # only without one.
+            embeddings = embed_in_process_mode(pipeline, image)
         # Figures only when there is a store to hold them (spec §3 by mode),
         # and before the status is closed, as in full mode. Measurer-backed
         # bindings recompute inside inspect() here, because apply() never
         # filled their cache -- accepted (spec §3 process mode).
         if process_format == "zarr":
-            from phenotypic.plotting._pipeline._store_figures import (
-                build_image_figures,
-                name_figure_run,
+            figures = build_process_store_figures(
+                pipeline, image, run_initiation=run_initiation, image_path=image_path
             )
-
-            # The date only: a process store omits the call's timestamp and
-            # pid, like the journal's wall-clock times (spec §1a). There is no
-            # deliverables tree, so a run that cannot be named is only logged.
-            run = name_figure_run(
-                pipeline.get_plots(),
-                image,
-                date=run_initiation.date if run_initiation is not None else None,
-                image_stem=image_path.name,
-            )
-            if run is not None:
-                figures = build_image_figures(pipeline, image, run=run)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --
@@ -387,7 +520,7 @@ def process_single_apply_only_core(
         # `status in {"staged", "complete"}`, so a consumer following that
         # convention would reject every store we publish (spec 2.3.4).
         set_provenance_status(image, "complete")
-    except MemoryError:
+    except (MemoryError, ProcessMeasRefusedError):
         raise
     except ReferencePlanStaleError:
         # Not this image's fault: never a terminal scientific failure.
@@ -407,5 +540,7 @@ def process_single_apply_only_core(
         fmt=process_format,
         commit_guard=commit_guard,
         figures=figures,
+        upstream=upstream,
+        embeddings=embeddings,
     )
     return True

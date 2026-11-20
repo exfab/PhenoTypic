@@ -21,7 +21,7 @@ from typing import Any, Dict
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import get_python_command
-from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
+from phenotypic.sdk_ import slurm_logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import SLURM_PYTHONPATH_BOOTSTRAP_BASH
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def generate_sentinel_script(
     if "slurm_partition" not in sentinel_slurm_args:
         sentinel_slurm_args["slurm_partition"] = "batch"
 
-    log_path = logs_dir(output_dir) / "slurm" / "sentinel_%j.log"
+    log_path = slurm_logs_dir(output_dir) / "sentinel_%j.log"
     directives = generate_slurm_directives(
         job_name="pht-sentinel",
         slurm_args=sentinel_slurm_args,

@@ -74,6 +74,7 @@ from ._atomic_io import (
     atomic_write_json,
     publication_commit,
 )
+from ._delimited import INPUT_TABLE_SUFFIXES, delimiter_for, read_delimited
 from ._file_locking import exclusive_file_lock
 from ._io_constants import (
     DATASET_AGGREGATED_PARQUET,
@@ -464,9 +465,11 @@ def _preflight_frame(frame: Any, *, source: str) -> MetadataMigrationTarget:
 
 def _load_table(path: Path, kind: TargetKind) -> pd.DataFrame:
     if kind == "csv":
-        # CSV has no persisted dtype schema. Reading as text prevents header-only
-        # migration from converting values such as zero-padded plate IDs.
-        return pd.read_csv(path, dtype=str, keep_default_na=False).replace(
+        # Delimited text (``.csv`` or ``.tsv``, spec B4; the delimiter follows
+        # the suffix) has no persisted dtype schema. Reading as text prevents
+        # header-only migration from converting values such as zero-padded
+        # plate IDs.
+        return read_delimited(path, dtype=str, keep_default_na=False).replace(
             "", pd.NA
         )
     return pd.read_parquet(path)
@@ -882,7 +885,8 @@ def _preflight_hdf(path: Path) -> MetadataMigrationTarget:
 
 def _kind_for_file(path: Path) -> TargetKind:
     suffix = path.suffix.lower()
-    if suffix == ".csv":
+    if suffix in INPUT_TABLE_SUFFIXES:
+        # "csv" is the delimited-text kind; the delimiter follows the suffix.
         return "csv"
     if suffix == ".parquet":
         return "parquet"
@@ -1175,7 +1179,7 @@ def _discover_bundle_targets(
 
 def _bundle_target_is_mixed_table(layout: BundleLayout, path: Path) -> bool:
     """Return whether a bundle table also carries non-metadata measurements."""
-    if path.suffix.lower() not in {".csv", ".parquet"}:
+    if path.suffix.lower() not in INPUT_TABLE_SUFFIXES | {".parquet"}:
         return False
     if layout.output_root is None:
         return True
@@ -2932,7 +2936,8 @@ def _write_migrated_copy(
             else normalize_metadata_columns(source_frame)
         )
         if kind == "csv":
-            frame.to_csv(temp, index=False)
+            # Same delimiter as the source, so a .tsv stays tab-separated.
+            frame.to_csv(temp, index=False, sep=delimiter_for(source))
         else:
             frame.to_parquet(temp, index=False)
         shutil.copystat(source, temp)

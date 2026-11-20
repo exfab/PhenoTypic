@@ -13,14 +13,19 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
-from ._cli_failure_tracker import file_sha256, work_id_for_image
+from ._cli_failure_tracker import (
+    config_in_place,
+    file_sha256,
+    input_sha256_for,
+    work_id_for_image,
+)
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
     SLURM_GENERATION_ENV_VAR,
 )
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
+from phenotypic.sdk_ import event_log_path, slurm_logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     SlurmArrayScriptSpec,
     write_slurm_array_script,
@@ -202,7 +207,7 @@ def generate_array_job_script(
         script_name = f"array_job_chunk{chunk_id}.sh"
 
     # Generate log paths (using SLURM placeholders)
-    log_dir = logs_dir(output_dir) / "slurm" / dataset.name
+    log_dir = slurm_logs_dir(output_dir) / dataset.name
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{dataset.name}_%A_%a.log"
 
@@ -393,7 +398,10 @@ fi"""
                 continue
             image_path = Path(entry)
             work_id, _ = work_id_for_image(config, dataset.name, image_path)
-            identity_rows.append((work_id, file_sha256(image_path), uuid4().hex))
+            input_sha256 = input_sha256_for(
+                image_path, in_place=config_in_place(config)
+            )
+            identity_rows.append((work_id, input_sha256, uuid4().hex))
         prelude += "\nEXPECTED_WORK_IDS=(\n" + "\n".join(
             f"    {shlex.quote(row[0])}" for row in identity_rows
         ) + "\n)"
@@ -545,7 +553,7 @@ else
     {shard_command}
 fi"""
     script_path = slurm_scripts_dir(output_dir) / f"{finalizer_name}.sh"
-    log_path = logs_dir(output_dir) / "slurm" / f"{finalizer_name}_%A_%a.log"
+    log_path = slurm_logs_dir(output_dir) / f"{finalizer_name}_%A_%a.log"
     prelude = SLURM_THREAD_PIN_BASH
     if config.processing_generation:
         prelude += (

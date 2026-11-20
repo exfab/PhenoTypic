@@ -95,6 +95,53 @@ class ProcessingState:
         return sum(len(ds.failed) for ds in self.datasets.values())
 
 
+#: Layers that have a single-series OME-Zarr form. ``objmap`` and ``detect_mat``
+#: are absent for two different reasons, and
+#: :func:`~._cli_process_only.write_process_only_layer` refuses each with its
+#: own message saying which (spec §5.3).
+_ZARR_CAPABLE_LAYERS: frozenset[str] = frozenset({"rgb", "gray"})
+
+
+def writes_process_store(layer: str | None, process_format: str) -> bool:
+    """Whether a process export writes a store: ``--layer rgb|gray --process-format zarr``.
+
+    ``None`` *layer* (not a process run) is ``False``. The one rule behind
+    the process-mode lost-table refusal, the in-place store-export refusal
+    and :attr:`ExecutionConfig.in_place`.
+    """
+    return layer in _ZARR_CAPABLE_LAYERS and process_format == "zarr"
+
+
+def is_in_place_process(
+    *, input_root: Path | None, output_dir: Path | None, process: bool
+) -> bool:
+    """Whether a run is an in-place process run (#281 spec E7).
+
+    ``--mode process`` whose ``--output`` resolves to the same directory as
+    ``--input``. Both paths are resolved, links followed, as the CLI's
+    overlap refusal resolves them, so a symlinked spelling of the input is
+    still in place.
+
+    Args:
+        input_root: The ``--input``, or ``None``.
+        output_dir: The ``--output``, or ``None``.
+        process: Whether the run is in ``--mode process``.
+
+    Examples:
+        >>> from pathlib import Path
+        >>> from phenotypic._cli._cli_types import is_in_place_process
+        >>> is_in_place_process(input_root=Path("a"), output_dir=Path("a/."), process=True)
+        True
+        >>> is_in_place_process(input_root=Path("a"), output_dir=Path("a"), process=False)
+        False
+    """
+    if not process or input_root is None or output_dir is None:
+        return False
+    return Path(input_root).resolve(strict=False) == Path(output_dir).resolve(
+        strict=False
+    )
+
+
 @dataclass
 class ExecutionConfig:
     """Complete configuration for CLI execution.
@@ -227,6 +274,26 @@ class ExecutionConfig:
     # Stage-2 GPU SBATCH resources; inherits/deltas over slurm_args (the CPU
     # profile used by Stages 1 & 3).
     gpu_slurm_args: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def in_place(self) -> bool:
+        """Whether this is an in-place process run (#281 spec E7).
+
+        ``--mode process`` whose ``--output`` resolves to the same directory
+        as ``--input``: the run adds its run folder to each input store where
+        it is. Derived from the two paths and the export, never stored, so
+        it cannot drift from them. Only a store export can run in place; the
+        CLI refuses any other export with ``--output`` equal to ``--input``
+        before a worker exists, so this is false for one only in a config
+        built by hand.
+        """
+        return is_in_place_process(
+            input_root=self.input_path,
+            output_dir=self.output_dir,
+            process=writes_process_store(
+                self.process_only_layer, self.process_format
+            ),
+        )
 
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""

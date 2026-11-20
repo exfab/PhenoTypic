@@ -149,6 +149,8 @@ _SNAPSHOT: dict[str, str] = {
     "ColorXYZ.Z_COEFF_VARIANCE": "unitless",
     # CURATION
     "CURATION.ERROR_CATEGORY": "not_a_quantity",
+    # DINO_EMBEDDING
+    "DINO_EMBEDDING.EMBEDDING": "not_a_quantity",
     # LINEAR_CAP_AND_LAG_MODEL
     "LINEAR_CAP_AND_LAG_MODEL.v": "of_input_per_time",
     "LINEAR_CAP_AND_LAG_MODEL.s0": "of_input",

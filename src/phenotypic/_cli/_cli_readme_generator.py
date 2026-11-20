@@ -57,6 +57,7 @@ class READMEGenerator:
             self._generate_layers_section(),
             self._generate_measurements_section(),
             self._generate_categories_section(),
+            self._generate_embeddings_section(),
             self._generate_model_section(),
             self._generate_footer(),
         ]
@@ -111,21 +112,24 @@ Image Type: {self.config.image_type}{grid_info}"""
 output_folder/
 +-- deliverables/                     # User-facing run outputs
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
-|   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
-|   +-- measurements.parquet          # Parquet companion of measurements.csv
-|   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
-|   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
-|   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
-|   +-- <AnalysisClass>.csv           # Class-named model-fit output
+|   +-- measurements.tsv              # Metadata-joined mirror, tab-separated (refreshed on every run)
+|   +-- measurements.csv              # Same mirror, comma-separated: the file the GUI results viewer reads and curates (kept until #283)
+|   +-- measurements.parquet          # Parquet companion of the mirror
+|   +-- measurements_by_feature/      # One TSV + Parquet per measurer: shared context columns + that measurer's columns
+|   +-- measurements_by_category/     # One TSV + Parquet per measurement category (see Measurement Categories)
+|   +-- metrics.json                  # Run summary: image/object/phantom counts, PhenoTypic version, pipeline sha256
+|   +-- schema.json                   # Every column of each published table: dtype, unit, measurer, schema member, description
+|   +-- pipeline.pht-pipe.json        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
+|   +-- <AnalysisClass>.tsv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums
-|   +-- plots/                         # Configured plot outputs and page manifests
+|   +-- plots/                        # Configured plot outputs and page manifests
 |   +-- dashboard.html                # Live processing dashboard
 |   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results
 {dataset_list}
-|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + grid state, plus the authoritative object measurements at tables/measurements/table.parquet)
+|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + grid state, plus the authoritative object measurements at tables/<n>-<sha12>/measurements/table.parquet, one folder per measuring pipeline)
 |       +-- measurements/             # Legacy per-image Parquets — only in a tree written by an older release, never created by this run
 +-- .phenotypic/                      # Hidden machine-state cache
 |   +-- processing_state.json         # Continuation/state tracking
@@ -133,7 +137,32 @@ output_folder/
 |   +-- logs/                         # Execution logs
 |   |   +-- slurm/                    # SLURM job logs (if applicable)
 |   +-- slurm_scripts/                # Generated SLURM scripts (if applicable)
-```"""
+```
+
+**Generated tables are tab-separated (`.tsv`).** Releases before this change
+wrote `.csv` for the per-feature and per-category splits and for
+`<AnalysisClass>`; re-running finalize into such a folder replaces those with
+`.tsv` and deletes the old `.csv` files it replaces. Two CSVs stay: `metadata.csv`
+(or `metadata.tsv`; the byte-for-byte copy of the table you passed to
+`--metadata`) and `error_analysis.csv` (written by the results viewer).
+`measurements.csv` is kept because the results viewer's curation writes to it
+and to `measurements.parquet`, **not** to `measurements.tsv`: until #283 lands,
+curated edits reach `measurements.csv` and `measurements.parquet` but not
+`measurements.tsv`. `--metadata` must now be a `.csv` or `.tsv` table (the
+delimiter follows the suffix); any other suffix, such as a comma-separated
+`.txt` that earlier releases read, is refused, so rename it.
+
+**`metrics.json` and `schema.json` are for automation** (for example
+`dvc metrics show`). `metrics.json` counts the images the run accepted,
+succeeded on and failed terminally, the objects measured and the
+metadata-only phantom rows, and names the PhenoTypic version and the sha256 of
+the pipeline every aggregated table came from (`null` when they differ or it
+is not recorded). `schema.json` lists, for every published table (keyed by
+its path under `deliverables/` without the suffix), each column's Parquet
+dtype, unit, producing measurer, schema member and description. Both are
+rewritten each time a full, measure or recompile run publishes its tables
+(`--mode migrate` does not write them), and they hold no timestamps, so
+identical runs give byte-identical files."""
 
     def _generate_layers_section(self) -> str:
         """Generate documentation for saved layers."""
@@ -144,7 +173,7 @@ Each dataset directory contains the following:
 | Path | Format | Description |
 |------|--------|-------------|
 | `zarr/` | OME-Zarr (NGFF 0.5) | Processed image (layers + `objmap` label image + metadata + grid state) saved as a single `<stem>.ome.zarr` store directory per input image, reloadable via `Image.load_zarr` / `GridImage.load_zarr`. |
-| `zarr/<stem>.ome.zarr/tables/measurements/table.parquet` | Parquet | Authoritative per-object measurements for that image, embedded in its store and described by the store's root `attributes.phenotypic.tables.measurements`. This run writes no separate per-image `measurements/` folder. |
+| `zarr/<stem>.ome.zarr/tables/<n>-<sha12>/measurements/table.parquet` | Parquet | Authoritative per-object measurements for that image, embedded in its store: one `<n>-<sha12>/` folder per pipeline that measured the store, numbered in the order the pipelines ran and named by the first 12 hex of the pipeline file's sha256 (`<n>-unknown` when no digest is known). Each folder is described by its entry in the store's root `attributes.phenotypic.tables.runs`. Re-running a pipeline replaces its own folder; another pipeline adds a folder beside it. This run writes no separate per-image `measurements/` folder. |
 
 Each `.ome.zarr` store is a standard OME-NGFF image: **napari, QuPath, and
 Vizarr open it directly, with no PhenoTypic install** — drag the store
@@ -164,7 +193,7 @@ exploration."""
         Iterates through pipeline._meas to find MeasureFeatures instances
         and generates tables for each using MeasurementInfo metadata.
         """
-        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.abc_ import MeasureEmbedding, MeasureFeatures
 
         if not self.pipeline._meas:
             return """## Measurements
@@ -199,7 +228,11 @@ No measurements configured in this pipeline."""
                 sections.append(grid_table)
 
         for meas_name, measurer in self.pipeline._meas.items():
-            if not isinstance(measurer, MeasureFeatures):
+            # An embedder publishes no mirror column; its tables are
+            # documented in their own section (#281 spec E5).
+            if not isinstance(measurer, MeasureFeatures) or isinstance(
+                measurer, MeasureEmbedding
+            ):
                 continue
 
             # Get measurement info class if defined on the measurer
@@ -225,13 +258,14 @@ No measurements configured in this pipeline."""
         category whose members all come from an unconfigured measurer is
         omitted. Returns ``""`` when no category applies.
         """
-        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.abc_ import MeasureEmbedding, MeasureFeatures
         from phenotypic.schema import CATEGORIES
 
         infos = [
             info
             for measurer in (self.pipeline._meas or {}).values()
             if isinstance(measurer, MeasureFeatures)
+            and not isinstance(measurer, MeasureEmbedding)
             for info in self._get_measurement_infoclasses(measurer)
         ]
         # One malformed info must cost only its own columns, not the README,
@@ -257,12 +291,80 @@ No measurements configured in this pipeline."""
             listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
             blocks.append(
                 f"### {category.display_name}\n\n{category.desc}\n\n"
-                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.tsv` "
                 f"(and `.parquet`), alongside every context column.\n\n{listed}"
             )
         if not blocks:
             return ""
         return "## Measurement Categories\n\n" + "\n\n".join(blocks)
+
+    def _generate_embeddings_section(self) -> str:
+        """Document the embedding deliverables, one table per embedder (#281 spec E5).
+
+        An embedder writes no column of the measurement tables, so the
+        measurements section leaves it out; its vectors are published as
+        ``deliverables/embeddings/<model>/<layer>/<region>.parquet``. Returns
+        ``""`` when the pipeline has no embedder. Reads only the embedder's
+        fields, never its weights.
+        """
+        from phenotypic.abc_ import MeasureEmbedding
+        from phenotypic.sdk_ import DIR_DELIVERABLES, DIR_EMBEDDINGS, EMBEDDINGS_MANIFEST_JSON
+        from phenotypic.util._measurement_outputs import embedding_vector_member
+
+        embedders = [
+            (name, measurer)
+            for name, measurer in (self.pipeline._meas or {}).items()
+            if isinstance(measurer, MeasureEmbedding)
+        ]
+        if not embedders:
+            return ""
+        root = f"{DIR_DELIVERABLES}/{DIR_EMBEDDINGS}"
+        lines = [
+            "## Embeddings",
+            "",
+            "Each embedder writes one Parquet file of feature vectors, never "
+            "columns of the measurement tables. A row carries "
+            "`Metadata_Dataset`, `Metadata_ImageName`, the table's key "
+            "(`Object_Label` for colonies, the `Grid_*` cell keys for a "
+            "grid) and `embedding`, a fixed-length float16 vector. A file is "
+            "`<model>/<layer>/<region>.parquet`: the layer is `rgb` or `gray`, "
+            "the pixels embedded, and the region is `objects` or `grid`, or "
+            "`objects-<name>` / `grid-<name>` for an embedder given a `name`, "
+            "so two grids of one model (the wells and the whole agar, say), or "
+            "one grid on rgb and on gray, are two files. Join a "
+            "colony row to `master_measurements.parquet` on `Metadata_Dataset`, "
+            "`Metadata_ImageName` and `Object_Label`. These files are never "
+            "joined to metadata. "
+            f"`{root}/{EMBEDDINGS_MANIFEST_JSON}` records each file's path, "
+            "row count, sha256, store count and model descriptors.",
+            "",
+            "Each row also carries `descriptor_index` (int16), its 0-based "
+            "position in that file's `descriptors` list in the manifest: the "
+            "model id and revision, vector length, pooling and parameters "
+            "that produced the vector. It is 0 on every row when all stores "
+            "share one descriptor. Stores can differ when `revision` is left "
+            "unpinned (each process loads the hub's latest weights), or when "
+            "part of the run was re-measured with other settings; "
+            "finalization then logs a warning. Compare vectors only within "
+            "one `descriptor_index`. The device is not part of the "
+            "descriptor: a CPU and a GPU embedding differ by about 1e-6 in "
+            "cosine distance, so a run that used both is one descriptor; each "
+            "image's store records the device (and GPU name) that ran it.",
+            "",
+            "| Embedder | File |",
+            "|----------|------|",
+        ]
+        descs: dict[str, str] = {}
+        for name, embedder in embedders:
+            key = embedder.payload_key()
+            lines.append(f"| `{name}` ({type(embedder).__name__}) | `{root}/{key}.parquet` |")
+            member = embedding_vector_member(type(embedder).__name__)
+            if member is not None and member.desc:
+                descs.setdefault(type(embedder).__name__, member.desc)
+        for producer, desc in descs.items():
+            text = desc.replace("|", "\\|").replace("\n", " ")
+            lines += ["", f"`embedding` ({producer}): {text}"]
+        return "\n".join(lines)
 
     def _get_measurement_infoclasses(self, measurer) -> list[type[MeasurementInfo]]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
@@ -343,7 +445,7 @@ No measurements configured in this pipeline."""
             "## Models & Analysis",
             "",
             f"Model `{model_name}` fit on metric `{model.on}` "
-            f"(output written to `deliverables/{model_name}.csv`).",
+            f"(output written to `deliverables/{model_name}.tsv`).",
             "",
             "Output columns follow `<Model>_<metric>_<parameter>`; for this "
             f"run `<metric>` = `{token}`.",

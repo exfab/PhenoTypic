@@ -16,6 +16,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import EdgeCorrector, ICC, LogGrowthModel
+from phenotypic.abc_ import MeasureEmbedding
 from phenotypic.analysis.abc_ import QualityCheck
 from phenotypic.schema import QUALITY_CHECK, TEXTURE
 from phenotypic.util import measurement_producers
@@ -131,6 +132,10 @@ def test_texture_pattern_expands_to_the_columns_written(detected_plate) -> None:
         for p in measurement_producers()
         if hasattr(p.producer, "get_measurement_infoclasses")
         and not p.producer.output_header_placeholders()
+        # An embedder's default construction loads model weights; its
+        # documented ``embedding`` column is pinned against the written
+        # table on a stub backbone in test_measure_dino_embedding.py.
+        and not issubclass(p.producer, MeasureEmbedding)
     ],
 )
 def test_fixed_name_measurers_write_exactly_their_documented_headers(

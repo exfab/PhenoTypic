@@ -14,7 +14,7 @@ from phenotypic.sdk_ import (
     JobMetadataKey,
     atomic_write_json,
     job_metadata_path,
-    logs_dir,
+    slurm_logs_dir,
     progress_dir,
     slurm_scripts_dir,
     source_image_stem,
@@ -341,7 +341,7 @@ def generate_staged_scripts(
     """
     script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = logs_dir(output_dir) / "slurm"
+    log_dir = slurm_logs_dir(output_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = script_dir / "staged_manifest.json"

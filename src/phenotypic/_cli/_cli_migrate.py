@@ -116,18 +116,22 @@ from ._cli_migrate_slurm import (
 from ._embedded_measurement_tables import embedded_measurement_table_matches
 
 from phenotypic.sdk_ import (
+    RunExitCode,
     BundleLayout,
+    CONFIG_SUFFIX_PIPELINE,
     CommitGuard,
     DIR_LEGACY_V2,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     aggregate_publication_marker_path,
     atomic_write_json,
+    declared_measurement_table_path,
     deliverables_dir,
     image_completion_marker_path,
     load_image_from_store,
-    metadata_csv_deliverable_path,
+    resolve_metadata_snapshot_path,
     phenotypic_cache_dir,
+    pipeline_config_candidates,
     publication_commit,
     replace_embedded_measurement_table,
     run_completion_marker_path,
@@ -674,16 +678,24 @@ def _ensure_migration_processing_state(
             save_processing_state(existing, output_dir)
         return
 
+    # A root copy of the source pipeline under the new typed suffix, then one
+    # under the old ``*.json.pht-pipe`` (which ``*.pht-pipe`` matches); then
+    # the canonical config under deliverables/, new name before the old one.
+    canonical_config, old_typed_config, _plain = pipeline_config_candidates(
+        output_dir
+    )
     provenance_candidates = [
+        *sorted(output_dir.glob(f"*{CONFIG_SUFFIX_PIPELINE}")),
         *sorted(output_dir.glob("*.pht-pipe")),
-        deliverables_dir(output_dir) / "pipeline.json.pht-pipe",
+        canonical_config,
+        old_typed_config,
     ]
     pipeline_path = next(
         (path for path in provenance_candidates if path.is_file()),
         output_dir / "pipeline.pht-pipe",
     )
     now = datetime.now(timezone.utc)
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
+    metadata_snapshot = resolve_metadata_snapshot_path(output_dir)
     state = ProcessingState(
         version="3.0.0",
         pipeline_path=pipeline_path,
@@ -726,7 +738,11 @@ def _ensure_migration_processing_state(
             # the only reason nothing surfaces.
             "restart_epoch": 0,
             "pipeline_sha256": _file_sha256(pipeline_path),
-            "metadata_sha256": _file_sha256(metadata_snapshot),
+            "metadata_sha256": (
+                _file_sha256(metadata_snapshot)
+                if metadata_snapshot is not None
+                else None
+            ),
             "include_dataset_column": True,
             "no_qc": True,
             "process_only_layer": None,
@@ -1046,17 +1062,21 @@ def _publish_migration_aggregate(
         for path in (output_dir / "results").iterdir()
         if path.is_dir()
     ) if (output_dir / "results").is_dir() else []
-    snapshot = metadata_csv_deliverable_path(output_dir)
     aggregate_path = aggregate_measurements(
         output_dir,
         datasets,
-        metadata_csv=snapshot if snapshot.is_file() else None,
+        metadata_csv=resolve_metadata_snapshot_path(output_dir),
         no_qc=True,
         commit_guard=commit_guard,
     )
+    # Through the resolver (#281 spec D10): a v2 store keeps its table in a
+    # run folder, where the old flat glob found nothing, and this guard
+    # stopped firing.
     embedded_tables_exist = any(
-        (output_dir / "results").glob(
-            "*/zarr/*.ome.zarr/tables/measurements/table.parquet"
+        table is not None and table.is_file()
+        for table in (
+            declared_measurement_table_path(store)
+            for store in (output_dir / "results").glob(f"*/zarr/*{STORE_SUFFIX}")
         )
     )
     if aggregate_path is None and embedded_tables_exist:
@@ -1354,8 +1374,7 @@ def migrate_legacy_measurement_tables(
     )
 
     output_dir = Path(output_dir)
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
-    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+    metadata_csv = resolve_metadata_snapshot_path(output_dir)
     sources = sorted(
         path
         for path in (output_dir / "results").glob("*/measurements/*.parquet")
@@ -1368,7 +1387,9 @@ def migrate_legacy_measurement_tables(
         dataset = source.parent.parent.name
         stem = source.stem
         store = zarr_store_path(output_dir, dataset, stem)
-        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        embedded = declared_measurement_table_path(store) or (
+            store / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
         if dry_run:
             if embedded.is_file():
                 skipped += 1
@@ -1468,7 +1489,9 @@ def publish_migrated_image_markers(
                     raise FileNotFoundError(
                         f"Missing migrated overlay: {overlay}"
                     )
-                embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+                embedded = declared_measurement_table_path(store) or (
+                    store / MEASUREMENT_TABLE_RELATIVE_PATH
+                )
                 table_valid = _valid_embedded_measurement_contract(store)
                 if embedded.exists() and not table_valid:
                     raise RuntimeError(
@@ -1719,8 +1742,7 @@ def _run_migrate_owned(
             )
         ),
     )
-    metadata_snapshot = metadata_csv_deliverable_path(output_dir)
-    metadata_csv = metadata_snapshot if metadata_snapshot.is_file() else None
+    metadata_csv = resolve_metadata_snapshot_path(output_dir)
 
     if dry_run:
         metadata_pass = run_metadata_pass(output_dir, dry_run=True)
@@ -2162,23 +2184,27 @@ def _validate_migration_revert_selection(
         )
 
 
-def _run_migration_revert(output_dir: Path) -> int:
+def _run_migration_revert(output_dir: Path) -> RunExitCode:
     """Undo one migration by renaming the retained legacy trees back.
 
     Both of :func:`revert_legacy_trees`'s refusals -- nothing retained, and a
     record the retained trees do not cover -- are conditions a user can act
     on, so they are reported as messages and a nonzero exit, never a
     traceback.
+
+    Returns:
+        ``RunExitCode.COMPLETE`` once the trees are restored, else
+        ``RunExitCode.ERROR``.
     """
     try:
         moved = revert_legacy_trees(output_dir)
     except RuntimeError as exc:
         click.echo(f"--mode migrate --revert: {exc}", err=True)
-        return 1
+        return RunExitCode.ERROR
     click.echo("")
     click.echo(f"--mode migrate --revert: {output_dir}")
     click.echo(f"  Restored {moved} retained legacy tree(s).")
-    return 0
+    return RunExitCode.COMPLETE
 
 
 def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
@@ -2377,11 +2403,13 @@ def handle_migrate_mode(
     slurm_args: Mapping[str, Any] | None = None,
     revert: bool = False,
 ) -> int:
-    """Run local or SLURM ``--mode migrate`` and return its exit semantics.
+    """Run local or SLURM ``--mode migrate`` and return its exit code.
 
     SLURM scheduling deliberately creates a fresh generation for each call,
     returns after durable submission, and prints the durable control
-    references, including the terminal status file its finalizer writes.
+    references, including the terminal status file its finalizer writes. A
+    SLURM ``--dry-run`` submits too (its metadata preflight and per-image
+    validation chain), so it returns the same ``SUBMITTED`` code.
 
     If the finalizer itself never finishes (out of memory, time limit, node
     failure, or cancelled while pending), no terminal status file appears.
@@ -2406,8 +2434,12 @@ def handle_migrate_mode(
             trees back, instead of converting anything.
 
     Returns:
-        ``0`` on a clean local run, submitted dry run, or submitted attempt;
-        ``1`` on local migration failure.
+        A :class:`~phenotypic.sdk_.RunExitCode`: ``SUBMITTED`` (``4``) for a
+        submitted attempt or a submitted SLURM dry run, whatever its jobs
+        later do (the verdict is the terminal status file); ``COMPLETE``
+        (``0``) on a clean local run; ``ERROR`` (``1``) on local migration
+        failure. A revert returns ``COMPLETE`` or ``ERROR``. Until #281 a SLURM
+        submission returned ``0``.
     """
     if revert:
         _validate_migration_revert_selection(
@@ -2431,7 +2463,7 @@ def handle_migrate_mode(
             delete_sources=delete_sources,
         )
         echo_migration_summary(output_dir, report, dry_run=dry_run)
-        return 0 if report.ok else 1
+        return RunExitCode.COMPLETE if report.ok else RunExitCode.ERROR
 
     try:
         target = classify_provenance_migration_target(Path(output_dir))
@@ -2573,7 +2605,7 @@ def handle_migrate_mode(
             "submission owner is active"
         ) from exc
     _echo_migration_slurm_submission(plan, job_ids=job_ids, dry_run=dry_run)
-    return 0
+    return RunExitCode.SUBMITTED
 
 
 __all__ = [

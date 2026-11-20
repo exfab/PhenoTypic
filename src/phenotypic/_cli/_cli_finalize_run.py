@@ -13,9 +13,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from collections.abc import Mapping
+
     import polars as pl
 
     from phenotypic import ImagePipeline
+    from phenotypic.sdk_ import TableRun
     from phenotypic.sdk_._publication_guard import CommitGuard
 
 logger = logging.getLogger(__name__)
@@ -400,6 +403,352 @@ def _invalidate_finalization_intermediates(
 
 
 # ---------------------------------------------------------------------------
+# #281 spec C4, C12 -- the run summary and column schema
+# ---------------------------------------------------------------------------
+
+
+def aggregated_table_runs(
+    aggregated_sources: "Mapping[Path, str]",
+) -> "list[TableRun | None]":
+    """Return the certified run folder of each aggregated table (spec D6a).
+
+    Each authorized source **is** the ``measurements`` artifact its image's
+    record certifies (``authorized_measurement_sources``), so the run folder
+    declaring it is the one
+    :func:`~phenotypic._cli._cli_recompile_recovery.certified_table_run`
+    returns for that record. Resolving the source path directly gives the
+    same run without re-reading every record. It is never a folder chosen
+    by pipeline sha, which after ``--mode measure`` names the wrong one.
+
+    Args:
+        aggregated_sources: The sources the master was built from.
+
+    Returns:
+        One run per source, in source order; ``None`` where the source lies
+        in no v2 run (a legacy external Parquet, a v1 flat table) or its
+        store cannot be read.
+    """
+    from ._cli_parquet_agg import measurement_table_run
+
+    runs: "list[TableRun | None]" = []
+    for source in aggregated_sources:
+        try:
+            runs.append(measurement_table_run(source))
+        except (OSError, KeyError, ValueError):
+            runs.append(None)
+    return runs
+
+
+def _embedding_runs(
+    output_dir: Path,
+    aggregated_sources: "Mapping[Path, str]",
+    table_runs: "Sequence[TableRun | None]",
+    *,
+    kept_work_ids: "Sequence[str] | None",
+) -> "list[TableRun]":
+    """The certified runs whose embeddings this finalization publishes.
+
+    Each aggregated source's run (*table_runs*, in source order), less any
+    source the measurement projection excluded (review M1b). On the
+    ``shard_paths`` branch the aggregated sources are the **full selection**:
+    the shards applied the projection, and only the work ids they merged
+    (*kept_work_ids*, the finalizer's ``planned_work_ids``) say which stores
+    it kept. Without this filter a store whose measurements the master
+    leaves out would still contribute embeddings.
+
+    Args:
+        output_dir: Run output root.
+        aggregated_sources: The sources the master was built from.
+        table_runs: Their certified runs (:func:`aggregated_table_runs`).
+        kept_work_ids: The work ids the shards merged, or ``None`` off the
+            shard path, where the sources are already the projection's kept
+            set.
+
+    Returns:
+        The runs, in source order; sources with no run are dropped.
+    """
+    pairs = list(zip(aggregated_sources, table_runs))
+    if kept_work_ids is not None:
+        from ._cli_finalize_fanout import _work_ids_for_sources
+
+        kept = set(kept_work_ids)
+        work_ids = _work_ids_for_sources(output_dir, dict(aggregated_sources))
+        pairs = [pair for pair, work_id in zip(pairs, work_ids) if work_id in kept]
+    return [run for _, run in pairs if run is not None]
+
+
+def _aggregated_pipeline_digests(
+    aggregated_sources: "Mapping[Path, str]",
+    table_runs: "Sequence[TableRun | None] | None" = None,
+) -> list[str | None]:
+    """Return the producing pipeline's digest for each aggregated table.
+
+    The run folder holding each source is its certified run
+    (:func:`aggregated_table_runs`), and its ``pipeline_sha256`` is the
+    digest of the pipeline that wrote that table (spec D6a).
+    :func:`~phenotypic.sdk_._run_metrics.shared_pipeline_sha256` then reports
+    the digest they share, or ``None`` when they differ.
+
+    **An entry is** ``None`` where no digest is recorded: a ``<n>-unknown``
+    run, a legacy external Parquet, an unreadable store, or a v1 flat table,
+    which records no producing pipeline (the record names only the path, the
+    descriptor has no pipeline field, and a table rewritten by ``--mode
+    measure`` was never journaled, spec D10). The run config's digest is
+    never a substitute -- it still names the full run's pipeline after
+    ``--mode measure`` (spec C4, D6a) -- and neither is the finalizing
+    invocation's own pipeline, which a continuation or a recompile did not
+    measure every aggregated table with.
+
+    Args:
+        aggregated_sources: The sources the master was built from.
+        table_runs: Their certified runs, when the caller already resolved
+            them; ``None`` resolves them here.
+
+    Returns:
+        One digest per source, ``None`` where it is not recorded.
+    """
+    if table_runs is None:
+        table_runs = aggregated_table_runs(aggregated_sources)
+    return [None if run is None else run.pipeline_sha256 for run in table_runs]
+
+
+def _warn_on_mixed_pipelines(digests: Sequence[str | None]) -> None:
+    """Advise when the aggregated tables come from more than one pipeline.
+
+    Review OQ4, decided as **warn, not refuse**. Spec D6a has finalize
+    aggregate, per image, the run folder that image's record certifies; after
+    ``--mode measure`` with pipeline B, a plain continuation with A that adds
+    images certifies B's folder for the old images and A's for the new ones.
+    The master then mixes columns, which is what D6a asks for -- so this is an
+    advisory naming the pipelines, never a gate. ``metrics.json``'s
+    ``pipeline_sha256`` is ``null`` for the same run, which says the same
+    thing in the file.
+
+    Args:
+        digests: One producing-pipeline digest per aggregated table, ``None``
+            where none is recorded (those are not counted as a pipeline).
+    """
+    known = sorted({digest for digest in digests if digest is not None})
+    if len(known) > 1:
+        counts = {sha: sum(1 for d in digests if d == sha) for sha in known}
+        logger.warning(
+            "The aggregated measurement tables come from %d pipelines: %s. "
+            "Each image's table is the run folder its record certifies (the "
+            "pipeline that last measured it), so the master mixes their "
+            "columns. Re-measure every image with one pipeline "
+            "(--mode measure) for a single-pipeline master.",
+            len(known),
+            ", ".join(f"{sha[:12]} ({counts[sha]} table(s))" for sha in known),
+        )
+
+
+def _accepted_work_ids(output_dir: Path) -> set[str] | None:
+    """Return the run's accepted inventory, or ``None`` when no state names one."""
+    from ._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if state is None:
+        return None
+    raw = state.config.get("work_ids")
+    if not isinstance(raw, dict):
+        return None
+    return {
+        work_id
+        for images in raw.values()
+        if isinstance(images, dict)
+        for work_id in images.values()
+        if isinstance(work_id, str)
+    }
+
+
+def _published_table_schemas(
+    output_dir: Path,
+    *,
+    master_df: "pl.DataFrame",
+    mirror_df: "pl.DataFrame",
+) -> "dict[str, Mapping[str, pl.DataType]]":
+    """Return ``column -> dtype`` for every table finalization published.
+
+    The master and the mirror are the frames this finalization just wrote,
+    so their schemas come from the frames. The per-feature and per-category
+    splits and the named analyses are not held here, so they come from the
+    Parquet footers those writers published (a footer read opens no row
+    group and writes nothing). Tables are keyed by their
+    ``deliverables/``-relative path without the suffix, which names the
+    ``.parquet`` and its ``.tsv`` twin alike: ``master_measurements``,
+    ``measurements``, ``measurements_by_feature/<measurer>``,
+    ``measurements_by_category/<label>``, and each named analysis id from
+    ``analysis_manifest.json``.
+    """
+    import polars as pl
+
+    from phenotypic.plotting._pipeline._analysis_artifacts import (
+        read_analysis_manifest,
+    )
+    from phenotypic.sdk_ import (
+        deliverables_dir,
+        measurements_by_category_dir,
+        measurements_by_feature_dir,
+    )
+
+    deliverables = deliverables_dir(output_dir)
+    schemas: dict[str, Mapping[str, pl.DataType]] = {
+        "master_measurements": master_df.schema,
+        "measurements": mirror_df.schema,
+    }
+    paths: dict[str, Path] = {}
+    for split_dir in (
+        measurements_by_feature_dir(output_dir),
+        measurements_by_category_dir(output_dir),
+    ):
+        if split_dir.is_dir():
+            for path in sorted(split_dir.glob("*.parquet")):
+                paths[path.relative_to(deliverables).with_suffix("").as_posix()] = path
+    manifest = read_analysis_manifest(deliverables)
+    if manifest is not None:
+        for analysis_id, entry in sorted(manifest.analyses.items()):
+            paths[analysis_id] = deliverables / entry.parquet
+    schemas.update(
+        (name, pl.read_parquet_schema(path)) for name, path in paths.items()
+    )
+    return dict(sorted(schemas.items()))
+
+
+def publish_run_summaries(
+    output_dir: Path,
+    *,
+    master_df: "pl.DataFrame",
+    mirror_df: "pl.DataFrame",
+    aggregated_sources: "dict[Path, str]",
+    source_work_ids: Sequence[str] | None,
+    commit_guard: "CommitGuard | None" = None,
+    embeddings: "Mapping[str, Mapping[str, int]] | None" = None,
+    measure_failed: int = 0,
+    table_runs: "Sequence[TableRun | None] | None" = None,
+) -> tuple[Path, Path]:
+    """Write ``deliverables/metrics.json`` and ``deliverables/schema.json``.
+
+    Every count comes from what finalization already holds, never from a deep
+    ``resolve_run_state``, which would run an O(N) verification and write the
+    verification cache inside the finalizer:
+
+    - ``accepted``: the state's ``work_ids`` (the aggregated sources when no
+      state names an inventory, as on the legacy arm);
+    - ``succeeded``: the source set the master was built from;
+    - ``failed``: accepted work ids in the terminal-failure journal that did
+      not succeed, the same precedence ``resolve_run_state`` gives a verified
+      image over a recorded failure;
+    - on a ``--mode measure`` finalization, ``measure_failed``: the images
+      whose re-measure failed in this invocation are added to ``failed`` and
+      taken from ``succeeded`` (#281 P2 C11d). Measure records are keyed by
+      measure work ids, outside the accepted inventory, so the line above
+      never sees them, and the exit code (``3``) would otherwise disagree
+      with ``failed: 0``. **Such an image's previous table is usually still
+      aggregated:** a re-measure that fails before it replaces the table
+      leaves the store and its record untouched, so the image stays
+      marker-authorized, and the master, the mirror and ``objects.measured``
+      carry its earlier measurements. It is counted failed because it did not
+      succeed in this run, not because its rows are absent. (One that fails
+      after the replace leaves its record stale, so it is not aggregated and
+      the subtraction then also takes it from ``succeeded``, undercounting
+      that by one; ``succeeded`` is floored at zero);
+    - ``objects.measured`` and ``metadata.phantoms``: the master's rows and
+      the mirror's ``QC_MetadataOnly`` rows.
+
+    Neither file is read back by PhenoTypic, so neither is tracked state.
+
+    Args:
+        output_dir: Run output root.
+        master_df: The master just written.
+        mirror_df: The post-applied mirror just written.
+        aggregated_sources: The sources the master was built from.
+        source_work_ids: Their work ids, on the authorized arm; ``None`` on
+            the legacy arm, where the sources are counted instead.
+        commit_guard: Publication guard threaded to both writes.
+        embeddings: Per embedding entry id, ``{"rows", "stale_skipped"}``,
+            from :func:`~phenotypic._cli._cli_embedding_deliverables.aggregate_embedding_tables`;
+            ``None`` (or empty) omits the key. Given, ``schema.json`` also
+            lists each published ``embeddings/<model>/<layer>/<region>`` table.
+        measure_failed: How many images' ``--mode measure`` re-measure
+            failed in this finalization's invocation; ``0`` for any other run.
+        table_runs: The aggregated sources' certified runs
+            (:func:`aggregated_table_runs`), when already resolved.
+
+    Returns:
+        ``(metrics_path, schema_path)``.
+    """
+    from phenotypic.schema import METADATA_MATCH
+    from phenotypic.sdk_ import metrics_json_path, schema_json_path
+    from phenotypic.sdk_._run_metrics import (
+        build_run_metrics,
+        shared_pipeline_sha256,
+        write_canonical_json,
+    )
+    from phenotypic.util._measurement_outputs import build_output_schema
+
+    from ._cli_failure_tracker import terminal_failure_index
+
+    succeeded_ids = set(source_work_ids) if source_work_ids is not None else None
+    succeeded = (
+        len(succeeded_ids)
+        if succeeded_ids is not None
+        else len(aggregated_sources)
+    )
+    accepted_ids = _accepted_work_ids(output_dir)
+    if accepted_ids is None:
+        accepted = succeeded
+        failed = 0
+    else:
+        accepted = len(accepted_ids)
+        failed = len(
+            (set(terminal_failure_index(output_dir)) & accepted_ids)
+            - (succeeded_ids or set())
+        )
+    failed += measure_failed
+    succeeded = max(0, succeeded - measure_failed)
+
+    phantom_flag = str(METADATA_MATCH.METADATA_ONLY)
+    phantoms = (
+        int(mirror_df.get_column(phantom_flag).fill_null(False).sum())
+        if phantom_flag in mirror_df.columns
+        else 0
+    )
+
+    import phenotypic
+
+    from ._cli_embedding_deliverables import embedding_table_schemas
+
+    digests = _aggregated_pipeline_digests(aggregated_sources, table_runs)
+    _warn_on_mixed_pipelines(digests)
+    metrics = build_run_metrics(
+        phenotypic_version=phenotypic.__version__,
+        # The certified run folders' shared digest (spec C4, D6a).
+        pipeline_sha256=shared_pipeline_sha256(digests),
+        accepted=accepted,
+        succeeded=succeeded,
+        failed=failed,
+        measured_objects=master_df.height,
+        metadata_phantoms=phantoms,
+        embeddings=embeddings or None,
+    )
+    schema = build_output_schema(
+        _published_table_schemas(
+            output_dir, master_df=master_df, mirror_df=mirror_df
+        ),
+        embedding_tables=embedding_table_schemas(output_dir) if embeddings else None,
+    )
+
+    metrics_path = metrics_json_path(output_dir)
+    schema_path = schema_json_path(output_dir)
+    write_canonical_json(schema_path, schema, commit_guard=commit_guard)
+    write_canonical_json(metrics_path, metrics, commit_guard=commit_guard)
+    return metrics_path, schema_path
+
+
+# ---------------------------------------------------------------------------
 # The one path
 # ---------------------------------------------------------------------------
 
@@ -416,6 +765,8 @@ def finalize_run(
     shard_paths: Sequence[Path] | None = None,
     planned_work_ids: Sequence[str] | None = None,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: str | None = None,
+    measure_failed: int | None = None,
 ) -> Path | None:
     """Aggregate, join, publish -- one path for ``full``, ``measure`` and ``recompile``.
 
@@ -426,7 +777,14 @@ def finalize_run(
     3. join metadata + append metadata-only phantoms + apply post ops
     4. write  ->  ``deliverables/measurements.{parquet,csv}``
     5. persist ``pipeline.json``, analysis outputs, per-feature splits
-    6. publish the aggregate proof
+       5a. ``deliverables/embeddings/`` from each image's certified run
+       folder (#281 spec E5): validated and staged **before step 2**
+       (:func:`~phenotypic._cli._cli_embedding_deliverables.stage_embedding_deliverables`),
+       so an unreadable, non-stale entry raises having changed no
+       deliverable (review I1), and promoted here, manifest last
+    6. write ``deliverables/metrics.json`` and ``deliverables/schema.json``
+       (:func:`publish_run_summaries`, #281 spec C4/C12)
+    7. publish the aggregate proof, which declares the files of steps 2-6
 
     Steps 3-5 are :func:`~phenotypic._cli._cli_output_manager.finalize_post_master_outputs`,
     which owns them and three further un-numbered side effects (legacy-QC
@@ -480,6 +838,21 @@ def finalize_run(
             sources this call itself selected -- the same moment the master
             was built from, so the proof still describes the master.
         commit_guard: Publication guard threaded to every terminal write.
+        execution_epoch: The SLURM generation this finalizer runs under,
+            stamped into the aggregate proof so ``phenotypic-wait`` can tell
+            this submission's publication from an earlier one (#281 spec C3).
+            ``None`` for a local run.
+        measure_failed: A local ``--mode measure`` invocation's own failure
+            count, for ``metrics.json`` (#281 P2 C11d, spec C3): the count its
+            exit code is computed from. A local run mints no epoch for it,
+            because a local measure journals under the forward run's
+            content-derived generation, which every measure invocation
+            shares. ``None`` otherwise; when ``execution_epoch`` is given (a
+            SLURM finalizer) it is then the measure rows journalled under that
+            generation, counted by the helper ``phenotypic-wait`` uses
+            (:func:`~phenotypic._cli._cli_failure_tracker.terminal_failure_work_ids_under_epoch`).
+            A forward SLURM generation has no measure rows, so that count is
+            ``0`` for it.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` when no
@@ -511,81 +884,155 @@ def finalize_run(
         logger.warning("No valid measurements found for aggregation")
         return None
 
-    master_path = master_measurements_parquet_path(output_dir)
+    # #281 spec E5, review I1: the embedding deliverables are validated and
+    # staged BEFORE any deliverable is written, the master included. Every
+    # non-stale entry of every certified run folder (D6a) is read once,
+    # checked (present, its sha256, its type, one schema per key) and
+    # streamed to a hidden temporary; an unreadable one raises here, naming
+    # the store and the --mode measure remedy, and finalization fails having
+    # changed no deliverable. The images stay verified (D9). In this one task,
+    # never in the fan-out shards: it streams one store at a time and has no
+    # merge.
+    from ._cli_embedding_deliverables import stage_embedding_deliverables
 
-    def write_master_parquet() -> bool:
-        atomic_write_with_writer(
-            master_path,
-            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-        return True
-
-    # D8: the Parquet is the master, so the Parquet write is the GATE. Before
-    # D8 the CSV held that role and the Parquet was best-effort ("CSV was
-    # saved"); leaving the roles as they were would let a run report success
-    # having written no master at all.
-    with logged_step(logger, "finalize_run: write master parquet"):
-        master_saved = _guarded_terminal_best_effort(
-            commit_guard,
-            write_master_parquet,
-            warning="Failed to save master Parquet",
-            default=False,
-        )
-    if not master_saved:
-        return None
-
-    logger.info(
-        "Aggregated %d rows x %d cols into %s",
-        master_df.height,
-        master_df.width,
-        master_path.name,
-    )
-
-    resolved_pipeline = (
-        pipeline
-        if pipeline is not None
-        else _load_pipeline_from_output_dir(output_dir)
-    )
-    with logged_step(
-        logger, "finalize_run: post-master outputs (mirror, splits, plots, QC)"
-    ):
-        finalize_post_master_outputs(
+    with logged_step(logger, "finalize_run: validate and stage embedding deliverables"):
+        table_runs = aggregated_table_runs(aggregated_sources)
+        staged_embeddings = stage_embedding_deliverables(
             output_dir,
-            master_df,
-            resolved_pipeline,
-            metadata_csv=metadata_csv,
-            no_qc=no_qc,
-            study_config=study_config,
-            commit_guard=commit_guard,
-        )
-
-    if authorized:
-        from ._cli_completion import publish_aggregate_snapshot
-        from ._cli_finalize_fanout import _work_ids_for_sources
-
-        # The proof describes the master that was just written, and says so by
-        # being GIVEN that master's source set rather than re-deriving one.
-        # On the fan-out path the shards recorded what they merged; otherwise
-        # it is the set this call selected a few lines above. Either way it is
-        # the set the master came from, at the moment the master came from it.
-        source_work_ids = (
-            list(planned_work_ids)
-            if planned_work_ids is not None
-            else _work_ids_for_sources(output_dir, aggregated_sources)
-        )
-        with logged_step(logger, "finalize_run: publish aggregate proof"):
-            publish_aggregate_snapshot(
+            _embedding_runs(
                 output_dir,
-                source_work_ids=source_work_ids,
+                aggregated_sources,
+                table_runs,
+                kept_work_ids=(
+                    planned_work_ids
+                    if authorized and shard_paths is not None
+                    else None
+                ),
+            ),
+        )
+    try:
+        master_path = master_measurements_parquet_path(output_dir)
+
+        def write_master_parquet() -> bool:
+            atomic_write_with_writer(
+                master_path,
+                lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
+            )
+            return True
+
+        # D8: the Parquet is the master, so the Parquet write is the GATE. Before
+        # D8 the CSV held that role and the Parquet was best-effort ("CSV was
+        # saved"); leaving the roles as they were would let a run report success
+        # having written no master at all.
+        with logged_step(logger, "finalize_run: write master parquet"):
+            master_saved = _guarded_terminal_best_effort(
+                commit_guard,
+                write_master_parquet,
+                warning="Failed to save master Parquet",
+                default=False,
+            )
+        if not master_saved:
+            return None
+
+        logger.info(
+            "Aggregated %d rows x %d cols into %s",
+            master_df.height,
+            master_df.width,
+            master_path.name,
+        )
+
+        resolved_pipeline = (
+            pipeline
+            if pipeline is not None
+            else _load_pipeline_from_output_dir(output_dir)
+        )
+        with logged_step(
+            logger, "finalize_run: post-master outputs (mirror, splits, plots, QC)"
+        ):
+            mirror_df = finalize_post_master_outputs(
+                output_dir,
+                master_df,
+                resolved_pipeline,
+                metadata_csv=metadata_csv,
+                no_qc=no_qc,
+                study_config=study_config,
                 commit_guard=commit_guard,
             )
-        # AFTER the proof, so "invalidate on success" is literal. Publication
-        # can still raise here -- a tree with no current state, an artifact
-        # that moved -- and invalidating first would destroy the previous
-        # finalization's intermediates on behalf of one that did not complete.
-        with logged_step(
-            logger, "finalize_run: invalidate finalization intermediates"
-        ):
-            _invalidate_finalization_intermediates(output_dir, dataset_names)
 
-    return master_path
+        # Staged above, published here: after the mirror and splits, before the
+        # summaries that count the embedding rows and the proof that declares the
+        # files. The previous finalization's files that this one does not
+        # publish go with it (review M8).
+        with logged_step(logger, "finalize_run: publish embedding deliverables"):
+            staged_embeddings.promote(commit_guard=commit_guard)
+        embedding_counts = staged_embeddings.counts
+
+        source_work_ids: list[str] | None = None
+        if authorized:
+            from ._cli_finalize_fanout import _work_ids_for_sources
+
+            # The proof describes the master that was just written, and says so by
+            # being GIVEN that master's source set rather than re-deriving one.
+            # On the fan-out path the shards recorded what they merged; otherwise
+            # it is the set this call selected a few lines above. Either way it is
+            # the set the master came from, at the moment the master came from it.
+            source_work_ids = (
+                list(planned_work_ids)
+                if planned_work_ids is not None
+                else _work_ids_for_sources(output_dir, aggregated_sources)
+            )
+
+        # After the mirror and splits, whose columns schema.json describes, and
+        # BEFORE the proof, which declares both files (#281 spec C4, C12).
+        if measure_failed is None and execution_epoch is not None:
+            from ._cli_failure_tracker import (
+                MEASURE_FAILURE_STAGE,
+                terminal_failure_work_ids_under_epoch,
+            )
+
+            # The measure stage only: a forward generation's own rows are already
+            # counted through the accepted inventory above.
+            measure_failed = len(
+                terminal_failure_work_ids_under_epoch(
+                    output_dir, execution_epoch, stage=MEASURE_FAILURE_STAGE
+                )
+            )
+        with logged_step(logger, "finalize_run: publish metrics.json and schema.json"):
+            publish_run_summaries(
+                output_dir,
+                master_df=master_df,
+                mirror_df=mirror_df,
+                aggregated_sources=aggregated_sources,
+                source_work_ids=source_work_ids,
+                commit_guard=commit_guard,
+                embeddings=embedding_counts,
+                measure_failed=measure_failed or 0,
+                table_runs=table_runs,
+            )
+
+        if authorized:
+            from ._cli_completion import publish_aggregate_snapshot
+
+            assert source_work_ids is not None
+            with logged_step(logger, "finalize_run: publish aggregate proof"):
+                publish_aggregate_snapshot(
+                    output_dir,
+                    source_work_ids=source_work_ids,
+                    commit_guard=commit_guard,
+                    execution_epoch=execution_epoch,
+                    require_run_summaries=True,
+                )
+            # AFTER the proof, so "invalidate on success" is literal. Publication
+            # can still raise here -- a tree with no current state, an artifact
+            # that moved -- and invalidating first would destroy the previous
+            # finalization's intermediates on behalf of one that did not complete.
+            with logged_step(
+                logger, "finalize_run: invalidate finalization intermediates"
+            ):
+                _invalidate_finalization_intermediates(output_dir, dataset_names)
+
+        return master_path
+    finally:
+        # A no-op after a promote; otherwise (the master write failed, a
+        # post-master step raised) the staged temporaries are deleted.
+        staged_embeddings.discard()

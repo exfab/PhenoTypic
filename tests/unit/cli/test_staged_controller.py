@@ -928,3 +928,44 @@ def test_restart_cleanup_removes_only_transient_stage2_state(
         tmp_path, "plate", "image", STAGE2_SLOT
     ).exists()
     assert parquet.exists()
+
+
+def test_mark_staged_complete_closes_the_fence_as_finalizer(tmp_path: Path) -> None:
+    """#281 spec C3: the staged finalizer's success close names itself."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    _controller_fixture(tmp_path)
+    mark_staged_complete(tmp_path, "epoch-1")
+    lifecycle = load_slurm_lifecycle(tmp_path)
+    assert lifecycle is not None
+    assert lifecycle["active"] is False
+    assert lifecycle["closed_by"] == "finalizer"
+
+
+def test_a_cancelled_orchestration_closes_with_no_reason(tmp_path: Path) -> None:
+    """A cancel is not a publication, so ``phenotypic-wait`` exits 5 on it."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    _controller_fixture(tmp_path)
+    assert deactivate_orchestration(tmp_path, "cancelled") is True
+    lifecycle = load_slurm_lifecycle(tmp_path)
+    assert lifecycle is not None
+    assert lifecycle["active"] is False
+    assert "closed_by" not in lifecycle
+
+
+def test_a_terminal_incomplete_orchestration_can_close_as_finalizer(
+    tmp_path: Path,
+) -> None:
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    _controller_fixture(tmp_path)
+    assert (
+        deactivate_orchestration(
+            tmp_path, "terminal_incomplete", closed_by="finalizer"
+        )
+        is True
+    )
+    lifecycle = load_slurm_lifecycle(tmp_path)
+    assert lifecycle is not None
+    assert lifecycle["closed_by"] == "finalizer"

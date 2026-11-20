@@ -254,7 +254,7 @@ def test_parquet_tables_are_read_as_strings(tmp_path):
 def test_unsupported_suffix_is_a_table_error(tmp_path):
     path = tmp_path / "layout.xlsx"
     path.write_bytes(b"not a table")
-    with pytest.raises(ReferenceTableError, match=r"\.csv or \.parquet"):
+    with pytest.raises(ReferenceTableError, match=r"\.csv, \.tsv or \.parquet"):
         ReferenceContext(path)
 
 

@@ -1,0 +1,27 @@
+STORE /bigdata/exfab/anguy344/gate-results/ngio-check/run/out/results/ds/zarr/plate_1.ome.zarr
+probing /bigdata/exfab/anguy344/gate-results/ngio-check/run/out/results/ds/zarr/plate_1.ome.zarr
+Installed 58 packages in 2.11s
+ngio 1.1.5
+tables/zarr.json: {
+  "attributes": {},
+  "node_type": "group",
+  "zarr_format": 3
+}
+
+run 1-dddee9e56559 -> ['measurements', 'zarr.json']
+  measurements attrs: {'backend': 'parquet', 'index_key': 'Object_Label', 'index_type': 'int', 'instance_key': 'Object_Label', 'region': {'path': '../../rgb/labels/objmap'}, 'table_version': '1', 'type': 'feature_table'}
+open_ome_zarr_container(plate_1.ome.zarr) -> RAISED NgioValidationError Failed to decode NGIO NgioImageMeta metadata:
+Version 0.4: 1 validation error for ImageAttrs
+multiscales
+  Field required [type=missing, input_value={'ome': {'version': '0.5'...'}}}}, 'upstream': {}}}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.14/v/missing
+Ver
+open_ome_zarr_container(rgb) -> {'tables': [], 'labels': ['objmap']}
+open_table available: True
+open_table(tables/1-dddee9e56559/measurements) -> FeatureTableV1(num_rows=552, num_columns=33, reference_label=objmap)
+open_table(tables/1-dddee9e56559) -> GenericTable
+open_table(tables/zarr.json) -> RAISED NgioFileExistsError A Zarr group already exists at /bigdata/exfab/anguy344/gate-results/ngio-check/run/out/results/ds/zarr/plate_1.ome.zarr/tables/zarr.json, consider setting overwrite=True.
+open_tables_container available: True
+open_tables_container(tables/1-dddee9e56559/measurements) -> RAISED NgioValidationError Invalid /tables group. Expected a single tables attribute with a list of table names. Found: {'backend': 'parquet', 'index_key': 'Object_Label', 'index_type': 'int', 'instance_key': 'Object_Label', 'region': {'path': '../../rgb/labels/objmap'}, 'table_version': '1', 'type': 'feature_table'}
+open_tables_container(tables/1-dddee9e56559) -> <ngio.tables._tables_container.TablesContainer object at 0x7f3dfea40980>
+open_tables_container(tables/zarr.json) -> RAISED NgioFileExistsError A Zarr group already exists at /bigdata/exfab/anguy344/gate-results/ngio-check/run/out/results/ds/zarr/plate_1.ome.zarr/tables/zarr.json, consider setting overwrite=True.

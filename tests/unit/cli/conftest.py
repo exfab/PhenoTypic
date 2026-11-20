@@ -8,6 +8,8 @@ factories with sensible defaults overridable by keyword.
 
 from __future__ import annotations
 
+import os
+import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +23,10 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic import Image
-from phenotypic._cli._cli_completion import publish_image_success
+from phenotypic._cli._cli_completion import (
+    image_measurement_artifact,
+    publish_image_success,
+)
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_stage2_token import (
     detector_slot,
@@ -39,10 +44,10 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     ARTIFACT_KIND_FILE,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     atomic_write_json,
     dataset_measurements_dir,
     image_record_path,
+    latest_measurement_run,
     master_measurements_parquet_path,
     metadata_csv_deliverable_path,
     zarr_store_path,
@@ -55,6 +60,7 @@ from phenotypic.sdk_._image_record import (
 from tests._legacy_staged_resume import (
     classify_staged_image as legacy_classify_staged_image,
 )
+from tests._tiny_run import journal_table_path, plant_measurement_table
 from tests._legacy_staged_resume import (
     legacy_hdf_path,
     legacy_sidecar_path,
@@ -86,7 +92,7 @@ def write_stageable_pipeline(path: Path) -> Path:
     ``to_json(path)`` here: that routes through
     ``ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)``
     (``_serializable_pipeline.py:105``), so ``to_json(tmp/"pipeline.json")``
-    writes ``tmp/"pipeline.json.pht-pipe"`` and leaves the requested path
+    writes ``tmp/"pipeline.pht-pipe.json"`` and leaves the requested path
     absent -- a fixture that reports success while the caller's path is still
     empty. ``tests/integration/cli/test_staged_slurm_live.py:154`` already used
     the correct idiom. The post-condition below is what turns a repeat of that
@@ -258,7 +264,12 @@ class ArtifactWorld:
         if stage2_signal:
             self._write_stage2_signal()
         parquet_path = self._parquet_path()
-        if parquet:
+        if parquet and self.kind == "zarr":
+            # In the store's own v2 run folder, declared in its root (#281 P3).
+            parquet_path = plant_measurement_table(
+                zarr_store_path(self.root, self.DATASET, self.STEM)
+            )
+        elif parquet:
             parquet_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path.write_bytes(b"measurements")
         if stage3_marker:
@@ -348,11 +359,8 @@ class ArtifactWorld:
 
     def _parquet_path(self) -> Path:
         if self.kind == "zarr":
-            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-
-            return (
+            return journal_table_path(
                 zarr_store_path(self.root, self.DATASET, self.STEM)
-                / MEASUREMENT_TABLE_RELATIVE_PATH
             )
         return (
             dataset_measurements_dir(self.root, self.DATASET)
@@ -541,7 +549,6 @@ def legacy_headers_run(
     import json
     import shutil
 
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
     from tests.unit.sdk_._migration_fixtures import (
         make_measurement_headers_legacy,
         refresh_marker_descriptors,
@@ -552,7 +559,7 @@ def legacy_headers_run(
     shutil.copytree(_completed_run_two, output_dir)
     for stem in run_stems(output_dir):
         store = zarr_store_path(output_dir, _MIGRATION_DATASET, stem)
-        embedded = store / MEASUREMENT_TABLE_RELATIVE_PATH
+        embedded = latest_measurement_run(store).measurements_path()
         external = (
             dataset_measurements_dir(output_dir, _MIGRATION_DATASET)
             / f"{stem}.parquet"
@@ -732,7 +739,9 @@ def _publish_store(
         attempt_id="attempt-1",
         lifecycle_epoch="epoch-1",
         artifacts={
-            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            # The run folder the forward save wrote (#281 spec D6a), named by
+            # the same resolver the forward workers use.
+            "measurements": image_measurement_artifact(output_dir, DATASET, stem),
             "store": store,
         },
     )
@@ -831,7 +840,7 @@ def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
     for stem in stems:
         store = zarr_store_path(output_dir, DATASET, stem)
         manager.replace_image_store_measurements(
-            store, _measurements(stem), DATASET
+            store, _measurements(stem), DATASET, pipeline_sha256=None
         )
         publish_image_success(
             output_dir,
@@ -843,7 +852,9 @@ def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
             attempt_id="attempt-1",
             lifecycle_epoch="epoch-1",
             artifacts={
-                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                # The store holds one run folder (these stores' journals name
+                # no pipeline, so the rewrite replaces their `-unknown` run).
+                "measurements": latest_measurement_run(store).measurements_path(),
                 "store": store,
             },
         )
@@ -906,3 +917,101 @@ def _run_mode(output_dir: Path, mode: str) -> Path:
 
 def _master_bytes(output_dir: Path) -> bytes:
     return master_measurements_parquet_path(output_dir).read_bytes()
+
+
+# ---------------------------------------------------------------------------
+# The SLURM submission stub (moved from test_cli_slurm_submission_summary.py
+# by #281 P2 T1, so every CLI test can drive a real submission path).
+# ---------------------------------------------------------------------------
+
+#: Scheduler clients a test must never start.
+_SCHEDULER_COMMANDS = frozenset(
+    {"sbatch", "scontrol", "squeue", "sacct", "sacctmgr", "sinfo", "scancel", "srun"}
+)
+
+def _command_name(args: Any) -> str:
+    """The executable a ``Popen`` call would start, without its directory."""
+    if isinstance(args, (str, bytes, os.PathLike)):
+        words = os.fsdecode(args).split()
+        first = words[0] if words else ""
+    else:
+        argv = list(args)
+        first = os.fsdecode(argv[0]) if argv else ""
+    return Path(first).name
+
+
+@pytest.fixture
+def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Patch every SLURM submission seam the CLI reaches; refuse any other.
+
+    Covers both SLURM strategies and the SLURM recompile path
+    (``phenotypicCLI._handle_recompile_slurm``, which a forward run with
+    nothing left to do also reaches). Any other ``sbatch``/``squeue``/...
+    process is refused outright: on the HPCC an unpatched test queries the
+    real scheduler.
+
+    Returns the list each (fake) submission appends its kind to
+    (``"ordinary"``, ``"staged"`` or ``"recompile"``), so a test can prove the
+    real code path reached submission.
+    """
+    import phenotypic.sdk_.slurm as sdk_slurm
+    from phenotypic import phenotypicCLI
+    from phenotypic._cli import _cli_execution_strategies as strategies
+    from phenotypic._cli import _cli_slurm_config, _cli_staged_slurm
+    from phenotypic._cli._cli_slurm_submission import SLURMScriptChainSubmission
+
+    seen: list[str] = []
+
+    def _submit_chain(*, flat_chunk_scripts, **_kwargs) -> SLURMScriptChainSubmission:
+        seen.append("ordinary")
+        return SLURMScriptChainSubmission(
+            job_ids=["4242", "4243"],
+            warning=None,
+            flat_scripts=list(flat_chunk_scripts),
+            dispatcher_scripts=[],
+        )
+
+    def _submit_recompile_chain(
+        *, flat_chunk_scripts, **_kwargs
+    ) -> SLURMScriptChainSubmission:
+        seen.append("recompile")
+        return SLURMScriptChainSubmission(
+            job_ids=["4245", "4246"],
+            warning=None,
+            flat_scripts=list(flat_chunk_scripts),
+            dispatcher_scripts=[],
+        )
+
+    def _submit_controller(*_args: Any, **_kwargs: Any) -> str:
+        seen.append("staged")
+        return "4244"
+
+    # `submit_slurm_script_chain` is imported into the strategies module, so it
+    # is patched there; patching `phenotypicCLI` only reaches recompile.
+    monkeypatch.setattr(strategies, "submit_slurm_script_chain", _submit_chain)
+    monkeypatch.setattr(strategies, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(
+        phenotypicCLI, "submit_slurm_script_chain", _submit_recompile_chain
+    )
+    monkeypatch.setattr(phenotypicCLI, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(_cli_staged_slurm, "submit_with_intent", _submit_controller)
+    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(_cli_staged_slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    # The max-submit and array-limit probes, wherever else they are resolved.
+    monkeypatch.setattr(sdk_slurm, "get_slurm_array_limit", lambda: 1000)
+    monkeypatch.setattr(sdk_slurm, "get_slurm_max_submit_jobs", lambda: 100)
+    # The checkpoint-interval estimate runs `sinfo` for the partition; the
+    # array-script writer imports it from here at call time.
+    monkeypatch.setattr(
+        _cli_slurm_config, "estimate_concurrent_capacity", lambda **_kwargs: 16
+    )
+
+    real_popen = subprocess.Popen
+
+    def _refuse_scheduler(args: Any, *popen_args: Any, **popen_kwargs: Any):
+        if _command_name(args) in _SCHEDULER_COMMANDS:
+            raise AssertionError(f"a unit test started a scheduler client: {args!r}")
+        return real_popen(args, *popen_args, **popen_kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", _refuse_scheduler)
+    return seen

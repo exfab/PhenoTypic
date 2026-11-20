@@ -1,0 +1,39 @@
+{
+  "entries": {
+    "1945c913bf1f17b4c85b83ef8920d8187ce8574ad0d19fd510bfd331c559fd16": {
+      "dataset": "ds",
+      "image_stem": "plate",
+      "reason": null,
+      "stages": {
+        "measured": {
+          "at": "2026-11-14T00:51:22.239+00:00",
+          "declares_measurements": true,
+          "mode": "full",
+          "projectable_measurements": true,
+          "provenance": "forward"
+        }
+      },
+      "stat_tuples": {
+        ".phenotypic/progress/images/ds/plate.json": [
+          1153,
+          1794617482239802252
+        ],
+        "deliverables/overlays/ds/plate.png": [
+          224808,
+          1794617481658806106
+        ],
+        "results/ds/zarr/plate.ome.zarr/tables/measurements/table.parquet": [
+          47221,
+          1794617482063803419
+        ],
+        "results/ds/zarr/plate.ome.zarr/zarr.json": [
+          4681,
+          1794617482227802331
+        ]
+      },
+      "verdict": "verified"
+    }
+  },
+  "identity_digest": "331613b99648f3721878679dcfc1bbe18f35ed9026adf3bd8d10b10053089682",
+  "schema_version": 2
+}

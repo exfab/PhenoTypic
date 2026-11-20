@@ -20,8 +20,8 @@ from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.sdk_ import (
     CommitGuard,
     JobMetadataKey,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     event_log_path,
+    journal_measurement_table,
     job_metadata_path,
     progress_dir,
     zarr_store_path,
@@ -50,6 +50,7 @@ from ._cli_failure_tracker import (
 )
 from ._cli_completion import (
     image_data_artifact,
+    image_measurement_artifact,
     publish_image_success,
     valid_image_success,
 )
@@ -117,6 +118,26 @@ def _reference_pin(item: StagedManifestEntry) -> ReferencePin:
     image's records are published under.
     """
     return ReferencePin(item.stem, item.reference_digest)
+
+
+def _input_root(item: StagedManifestEntry) -> Path | None:
+    """The ``--input`` root the submitter resolved *item*'s relative path against.
+
+    The manifest records the input's absolute path and its input-relative
+    path (``staged_manifest_entry``), not the root, so the root is the input
+    path with the relative path's parts removed. Stage 1 hands it to
+    ``upstream_entries_for_input``, which re-derives exactly that relative
+    path as the upstream ``source`` (#281 spec D8). ``None`` -- an entry with
+    no relative path, or one the input path does not end with -- records the
+    input's file name instead.
+    """
+    if not item.relative_image_path:
+        return None
+    relative = Path(item.relative_image_path).parts
+    source = Path(item.input_path).parts
+    if not relative or len(relative) >= len(source) or source[-len(relative):] != relative:
+        return None
+    return Path(*source[: -len(relative)])
 
 
 def _active_check(output_dir: Path, epoch: str | None):
@@ -276,6 +297,7 @@ def run_stage1_step(
                 pipeline_identity=pipeline_identity,
                 drop_originals=drop_originals,
                 reference_pin=_reference_pin(item),
+                input_root=_input_root(item),
             )
     except Exception as exc:
         _record_terminal_scientific_failure(
@@ -337,10 +359,10 @@ def run_stage2_shard(
             or (
                 resume
                 and not markers_required
-                and (
+                and journal_measurement_table(
                     zarr_store_path(output_dir, item.dataset, item.stem)
-                    / MEASUREMENT_TABLE_RELATIVE_PATH
-                ).is_file()
+                )
+                is not None
             )
         )
     ]
@@ -428,10 +450,7 @@ def run_stage3_step(
     here costs exactly what a lost value in Stage 1 costs.
     """
     item = _entry(manifest[index])
-    measurement_table = (
-        zarr_store_path(output_dir, item.dataset, item.stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-    )
+    store = zarr_store_path(output_dir, item.dataset, item.stem)
     output_manager = OutputManager.from_config(
         output_dir,
         ext,
@@ -454,7 +473,7 @@ def run_stage3_step(
         resume
         and (not markers_required or not item.work_id)
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and measurement_table.is_file()
+        and journal_measurement_table(store) is not None
     )
     if terminal:
         ensure_staged_overlay(
@@ -471,11 +490,8 @@ def run_stage3_step(
         resume
         and item.work_id
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
-        and staged_store_matches_work_id(
-            zarr_store_path(output_dir, item.dataset, item.stem),
-            item.work_id,
-        )
-        and measurement_table.is_file()
+        and staged_store_matches_work_id(store, item.work_id)
+        and journal_measurement_table(store) is not None
     ):
         ensure_staged_overlay(
             output_dir,
@@ -490,7 +506,9 @@ def run_stage3_step(
             output_dir, output_manager, item.dataset, item.stem
         )
         artifacts = {
-            "measurements": measurement_table,
+            "measurements": image_measurement_artifact(
+                output_dir, item.dataset, item.stem
+            ),
             data_key: data_path,
             "overlay": output_manager.get_output_path(
                 item.dataset, "overlays", item.stem
@@ -560,9 +578,8 @@ def run_stage3_step(
                     output_dir, output_manager, item.dataset, item.stem
                 )
                 artifacts = {
-                    "measurements": (
-                        zarr_store_path(output_dir, item.dataset, item.stem)
-                        / MEASUREMENT_TABLE_RELATIVE_PATH
+                    "measurements": image_measurement_artifact(
+                        output_dir, item.dataset, item.stem
                     ),
                     data_key: data_path,
                 }

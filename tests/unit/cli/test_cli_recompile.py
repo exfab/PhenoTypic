@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
@@ -90,7 +91,8 @@ class TestRecompileCliRouting:
         with (
             patch("phenotypic.phenotypicCLI._handle_recompile") as mock_local,
             patch(
-                "phenotypic.phenotypicCLI._handle_recompile_slurm"
+                "phenotypic.phenotypicCLI._handle_recompile_slurm",
+                return_value=RunExitCode.SUBMITTED,
             ) as mock_slurm,
         ):
             result = CliRunner().invoke(
@@ -107,7 +109,7 @@ class TestRecompileCliRouting:
                 ],
             )
 
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == RunExitCode.SUBMITTED, result.output
         mock_local.assert_not_called()
         mock_slurm.assert_called_once_with(
             output_dir=output_dir,
@@ -471,10 +473,10 @@ def test_local_recompile_restores_deleted_overlay_marker_and_master(
     )
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
         master_measurements_parquet_path,
     )
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -485,8 +487,7 @@ def test_local_recompile_restores_deleted_overlay_marker_and_master(
     shutil.copytree(_completed_run_two, output_dir)
     stems = run_stems(output_dir)
     tables = {
-        zarr_store_path(output_dir, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        journal_table_path(zarr_store_path(output_dir, DATASET, stem))
         for stem in stems
     }
     expected_rows = sum(pl.read_parquet(table).height for table in tables)
@@ -576,10 +577,8 @@ def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
     """Recovery compares non-overlay artifacts again immediately before publish."""
     from phenotypic._cli._cli_completion import valid_image_success
     from phenotypic._cli._cli_output_manager import OutputManager
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_overlays_dir,
-    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -590,7 +589,7 @@ def test_local_overlay_recovery_rejects_post_discovery_table_corruption(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
     original_save = OutputManager.save_overlay
@@ -633,10 +632,8 @@ def test_local_overlay_recovery_rejects_publish_window_table_change(
 
     from phenotypic._cli import _cli_completion
     from phenotypic._cli._cli_completion import valid_image_success
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_overlays_dir,
-    )
+    from phenotypic.sdk_ import dataset_overlays_dir
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
         run_stems,
@@ -647,7 +644,7 @@ def test_local_overlay_recovery_rejects_publish_window_table_change(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
     original_publish = _cli_completion.publish_image_success
@@ -685,10 +682,10 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     import json
 
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
         image_record_path,
     )
+    from tests._tiny_run import journal_table_path
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
     output_dir = tmp_path / "process-only"
@@ -704,10 +701,46 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     record["mode"] = "process"
     record["artifacts"].pop("measurements")
     record_path.write_text(json.dumps(record), encoding="utf-8")
-    (store / MEASUREMENT_TABLE_RELATIVE_PATH).unlink()
+    journal_table_path(store).unlink()
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()
 
     _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
 
     assert overlay.is_file()
+
+
+def test_local_overlay_pass_refuses_a_record_claiming_a_missing_table(
+    _completed_run_two: Path,
+    tmp_path: Path,
+) -> None:
+    """The overlay pass asks the RECORD whether the image claims a table.
+
+    A record-era tree has no legacy ``image_complete/`` marker, so a guard
+    that read only that path saw no claim. With the record's certified table
+    deleted, the store holds no table and the record cannot bind the
+    overlay, so the pass used to render the overlay best-effort and leave
+    the refusal to the later authority check -- writing a deliverable into
+    a run it then refused. It must refuse first and write nothing.
+    """
+    from phenotypic.sdk_ import dataset_overlays_dir, image_record_path
+    from tests._tiny_run import journal_table_path
+    from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
+
+    output_dir = tmp_path / "completed"
+    shutil.copytree(_completed_run_two, output_dir)
+    stem = run_stems(output_dir)[0]
+    store = zarr_store_path(output_dir, DATASET, stem)
+    # STANDING RULE: the tree must really be record-era, or the legacy path
+    # would answer and this decides nothing.
+    assert image_record_path(output_dir, DATASET, stem).is_file()
+    journal_table_path(store).unlink()
+    overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
+    overlay.unlink()
+
+    with pytest.raises(
+        RuntimeError, match="Cannot safely restore marker authority"
+    ):
+        _regenerate_missing_overlays(output_dir, overlay_alpha=0.6, n_jobs=1)
+
+    assert not overlay.exists()

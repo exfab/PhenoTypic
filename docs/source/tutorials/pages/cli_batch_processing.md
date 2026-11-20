@@ -38,7 +38,9 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --out
 python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ --njobs 4
 ```
 
-Omit `--njobs` to use all available CPU cores.
+Omit `--njobs` to use all available CPU cores. Each worker loads its own
+copy of any model the pipeline runs, so memory grows with `--njobs`: a
+`MeasureDinoEmbedding(size="base")` is about 350 MB per worker.
 
 ## Continue After Interruption
 
@@ -96,6 +98,11 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 `--overwrite` that would delete the run's own inputs, and the parsing of
 `--metadata`, `--bit-depth`, and `--gpu-slurm` values.
 
+`--metadata` must be a `.csv` or `.tsv` table; the delimiter follows the
+suffix. Any other suffix is refused as a usage error (exit 2) in every mode.
+Earlier releases read any suffix in `--mode full`, so a comma-separated
+`plates.txt` that used to work must now be renamed `plates.csv`.
+
 | Code | Reported when | Severity | Remedy |
 |---|---|---|---|
 | `PF-PIPELINE-LOAD` | The pipeline file cannot be read: invalid JSON, a duplicated key, or invalid parameters | error | Fix the pipeline file |
@@ -106,6 +113,7 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-MISSING-MODULE` | An operation needs a package that is not installed | error | Install the extra the message names |
 | `PF-LICENSE` | A detector needs gated weights whose license the run has not accepted | error | `export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` |
 | `PF-WEIGHTS-UNCACHED` | A detector's weights are not in the local cache | warning | Pre-download them on a node with network access |
+| `PF-EMBED-REVISION-UNPINNED` | A `MeasureDinoEmbedding` the mode runs sets no `revision`, so each process loads the hub's latest weights and vectors may change between runs or workers | warning | Pin `revision` to a commit hash |
 | `PF-SBATCH-REJECTED` | `sbatch --test-only` names a configuration fault in a profile the run submits: an invalid partition, account, QoS, GRES or option | error | Fix the option `sbatch` names |
 | `PF-SBATCH-UNAVAILABLE` | A profile could not be confirmed: no `sbatch`, a timeout, a controller fault, or a failure a real submission may queue through (e.g. every node of the partition drained) | warning | Read `sbatch`'s message; a real submission still reports real failures |
 | `PF-TIME-OVER-PARTITION` | The requested time exceeds the partition's `MaxTime` (for a partition list, per the cluster's `EnforcePartLimits`) | warning | Lower the time, or choose another partition |
@@ -120,7 +128,7 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-STEM-COLLISION` | Two inputs in one dataset share a name without extension (e.g. `a.png`, `a.tif`) | error | Rename or move one file of each pair |
 | `PF-META-PARSE` | The `--metadata` CSV does not parse | error | Fix the CSV |
 | `PF-META-ALIAS` | The CSV has a legacy and a current spelling of one column, with conflicting values | error | Keep one spelling |
-| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys may be measurement columns such as `Grid_RowNum`, or metadata the images carry themselves (PhenoTypic exports, custom operations) | Add an `ImageName` column |
+| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys may be measurement columns such as `Grid_RowNum`, or metadata the images carry themselves (PhenoTypic exports, custom operations) | Add an `ImageName` column; if the message says the table looks comma- or tab-separated, fix its suffix |
 | `PF-META-DUP-KEYS` | A join key repeats in the CSV | as `PF-META-NO-KEYS` | Make each key unique |
 | `PF-META-UNMATCHED` | Some images have no metadata row | warning | Add rows, or match `ImageName` to the file names |
 | `PF-META-ORPHANS` | Some metadata rows match no image | warning | Expected for wells that grew nothing |
@@ -134,6 +142,7 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-OUTPUT-UNWRITABLE` | `--output` (or its nearest existing parent) is not writable | error | Choose another `--output`, or fix permissions |
 | `PF-OUTPUT-SPACE` | A `full` run's output disk has less free space than the inputs' size (a heuristic) | warning | Free space, or choose another `--output` |
 | `PF-NODE-LOCAL` | On a SLURM run, a path workers read or write is on node-local storage | warning | Move it to shared storage |
+| `PF-DVC-LINKED-CACHE` | `--output` is inside a DVC project whose `.dvc/config` or `.dvc/config.local` sets `cache.type` to `hardlink` or `symlink` (global and system DVC config are not read) | warning | Keep DVC's default `reflink,copy` |
 | `PF-CHECK-CRASHED` | A check itself failed | warning | Report it; the run is not blocked |
 
 "By reach" means an error when every input is affected, and a warning listing

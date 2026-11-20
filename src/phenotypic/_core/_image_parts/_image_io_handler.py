@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 import warnings
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from copy import deepcopy
 from datetime import datetime
 from fractions import Fraction
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
     from phenotypic.sdk_._image_figures import StoredFigures
     from phenotypic.sdk_._measurement_tables import (
         PreparedImageTables,
@@ -967,6 +968,32 @@ class ImageIOHandler(ImageColorSpace):
             if name != "rgb" or not self.rgb.isempty()
         ]
 
+    def _store_series_array(self, name: str) -> np.ndarray:
+        """The level-0 array of series *name* exactly as a store writes it.
+
+        ``rgb`` is planar, ``(c, y, x)``, because NGFF has no RGB type (its
+        channel axis comes before the space axes); ``gray`` and
+        ``detect_mat`` are written as they are. The one definition of that
+        form: the store writer uses it, and so does a grid embedding's
+        ``binds.array_sha256`` (#281 spec D7), which must digest the array the
+        store will hold.
+
+        Args:
+            name: ``"rgb"``, ``"gray"`` or ``"detect_mat"``.
+
+        Returns:
+            The array (a view where the layout allows one).
+        """
+        # ``np.asarray`` returns the accessor's ndarray itself (no copy); it
+        # only narrows the accessors' ndarray-or-scalar return type.
+        if name == "rgb":
+            return np.moveaxis(np.asarray(self.rgb[:]), -1, 0)  # (H,W,C)->(c,y,x)
+        if name == "gray":
+            return np.asarray(self.gray[:])
+        if name == "detect_mat":
+            return np.asarray(self.detect_mat[:])
+        raise ValueError(f"not a stored image series: {name!r}")
+
     def _write_series(
         self,
         part: Path,
@@ -1123,6 +1150,9 @@ class ImageIOHandler(ImageColorSpace):
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedImageTables | None = None,
         figures: StoredFigures | None = None,
+        upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -1146,6 +1176,33 @@ class ImageIOHandler(ImageColorSpace):
                 transaction (spec 2026-09-22 §3); they replace that run's
                 folder only. ``None`` adds no run. Either way, every other
                 run already at *path* is carried across.
+            measurement_table: This save's tables. They are written as the
+                table run folder ``tables/<n>-<sha12>/`` of the pipeline the
+                image's journal records (``<n>-unknown`` when it records
+                none), replacing that pipeline's folder if the store at
+                *path* has one. ``None`` writes no tables. Either way every
+                other run folder at *path* is carried across (#281 spec D5).
+            upstream: Table runs of the input this image was read from,
+                ``{run_id: {"source", "root_sha256", "pipeline_sha256"}}``,
+                recorded under ``tables.upstream`` and counted when numbering
+                a new folder (spec D2, D8). Nothing is copied. Given (even
+                empty), it **replaces** the store's existing ``upstream``
+                block: the caller read this input just now, so an entry it no
+                longer names is stale (review M1). ``None`` keeps the block.
+            replace_unreadable: Replace a store at *path* whose root cannot be
+                parsed whole, carrying nothing. By default such a save is
+                refused (``ValueError``), because the root may declare other
+                pipelines' table runs. Only ``--mode migrate``'s rebuild of an
+                invalid store from its HDF source passes it.
+            embeddings: This save's embedding tables,
+                ``{"<model>/<layer>/<region>": EmbeddingPayload}`` as
+                :meth:`ImagePipeline.embed` returns them. They are written
+                into the same run folder as *measurement_table*, under
+                ``embeddings/<model>/<layer>/<region>/`` (#281 spec D1). A save with
+                either writes that folder whole, so the folder holds exactly
+                this save's tables and embeddings; a save with neither carries
+                it unchanged. Each entry's ``stale`` is computed from the
+                objmap and arrays this save writes (spec D7).
 
         Returns:
             The promoted store path.
@@ -1180,6 +1237,9 @@ class ImageIOHandler(ImageColorSpace):
             commit_guard=commit_guard,
             measurement_table=measurement_table,
             figures=figures,
+            upstream=upstream,
+            replace_unreadable=replace_unreadable,
+            embeddings=embeddings,
         )
 
     def _save_store(
@@ -1197,6 +1257,9 @@ class ImageIOHandler(ImageColorSpace):
         consolidate: bool = False,
         reproducible_provenance: bool = False,
         figures: StoredFigures | None = None,
+        upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -1242,6 +1305,10 @@ class ImageIOHandler(ImageColorSpace):
                 transaction (spec 2026-09-22 §3); they replace that run's
                 folder only. ``None`` adds no run. Either way, every other
                 run already at *path* is carried across.
+            upstream: The input's table runs, recorded under
+                ``tables.upstream`` (see :meth:`save2zarr`).
+            replace_unreadable: See :meth:`save2zarr`.
+            embeddings: This save's embedding tables (see :meth:`save2zarr`).
 
         Returns:
             The promoted store path.
@@ -1269,6 +1336,9 @@ class ImageIOHandler(ImageColorSpace):
                 consolidate=consolidate,
                 reproducible_provenance=reproducible_provenance,
                 figures=figures,
+                upstream=upstream,
+                replace_unreadable=replace_unreadable,
+                embeddings=embeddings,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1290,6 +1360,9 @@ class ImageIOHandler(ImageColorSpace):
         consolidate: bool = False,
         reproducible_provenance: bool = False,
         figures: StoredFigures | None = None,
+        upstream: Mapping[str, Mapping] | None = None,
+        replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Populate one allocated part and promote it to its final path.
 
@@ -1322,13 +1395,8 @@ class ImageIOHandler(ImageColorSpace):
 
         # Only the requested layers are materialised: a preview store must not
         # pay for a `detect_mat` the node never touched.
-        loaders = {
-            "rgb": lambda: np.moveaxis(self.rgb[:], -1, 0),  # (H,W,C)->(c,y,x)
-            "gray": lambda: self.gray[:],
-            "detect_mat": lambda: self.detect_mat[:],
-        }
         arrays: dict[str, np.ndarray] = {
-            name: loaders[name]() for name in series
+            name: self._store_series_array(name) for name in series
         }
         if original_axis is not None and self._original is not None:
             arrays["original"] = (
@@ -1443,20 +1511,23 @@ class ImageIOHandler(ImageColorSpace):
             {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
         )
 
-        # Both tables land in THIS part, before the root below (D-A). The
-        # root `zarr.json` is the record's content anchor, so anything written
+        # Tables land in THIS part, before the root below (D-A). The root
+        # `zarr.json` is the record's content anchor, so anything written
         # after it mutates an artifact that already carries a content proof --
         # which is why the metadata table is written here rather than
-        # backfilled into the promoted store.
-        tables_attributes = None
-        if measurement_table is not None:
-            from phenotypic.sdk_._measurement_tables import write_image_tables
-
-            tables_attributes = write_image_tables(
-                part,
-                measurement_table,
-                objmap_target=ngff_.objmap_path(primary),
-            )
+        # backfilled into the promoted store. One folder per measuring
+        # pipeline (#281 spec D1-D7); see `_write_table_runs`.
+        table_runs, table_upstream = self._write_table_runs(
+            part,
+            final,
+            measurement_table=measurement_table,
+            embeddings=embeddings,
+            upstream=upstream,
+            primary=primary,
+            objmap=objmap,
+            arrays=arrays,
+            replace_unreadable=replace_unreadable,
+        )
 
         # Figures land in THIS part too, before the root, for the same reason
         # as the tables above: the root certifies their sha256 (spec §1). A
@@ -1487,14 +1558,13 @@ class ImageIOHandler(ImageColorSpace):
             write_image_class=write_image_class,
             reproducible_provenance=reproducible_provenance,
         )
-        if tables_attributes is not None:
-            from phenotypic.sdk_._measurement_tables import (
-                apply_image_tables_attributes,
-            )
+        from phenotypic.sdk_._measurement_tables import (
+            apply_image_tables_attributes,
+        )
 
-            apply_image_tables_attributes(
-                phenotypic_attributes, tables_attributes
-            )
+        apply_image_tables_attributes(
+            phenotypic_attributes, table_runs, upstream=table_upstream
+        )
         from phenotypic.sdk_._image_figures import apply_image_figures_attributes
 
         apply_image_figures_attributes(phenotypic_attributes, carried_fragment)
@@ -1517,6 +1587,131 @@ class ImageIOHandler(ImageColorSpace):
             fsync=ngff_.durable_writes_enabled(durable),
             commit_guard=commit_guard,
         )
+
+    def _write_table_runs(
+        self,
+        part: Path,
+        final: Path,
+        *,
+        measurement_table: PreparedImageTables | None,
+        upstream: Mapping[str, Mapping] | None,
+        primary: str,
+        objmap: np.ndarray | None,
+        arrays: Mapping[str, np.ndarray],
+        replace_unreadable: bool = False,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
+    ) -> tuple[dict[str, dict], dict[str, dict]]:
+        """Carry the store's table run folders into *part* and write this save's own.
+
+        #281 spec D5-D7:
+
+        - The run this save owns is :func:`~phenotypic.sdk_.choose_table_run_id`
+          over the live store's block (when *final* exists) merged with
+          *upstream*, for the pipeline digest the image's journal records
+          (:func:`~phenotypic._core._provenance.current_pipeline_sha256`).
+        - *upstream*, when given (even empty), replaces the store's
+          ``upstream`` block; ``None`` carries it (review M1). New folders are
+          numbered past both the carried and the given entries, so a number
+          is never reused.
+        - A save that writes tables -- *measurement_table*, *embeddings* or
+          both -- excludes its own folder from the carry and writes it fresh,
+          every file a new inode, holding exactly what this save gives. A
+          **table-less** save (the initial-checkpoint save, Stage 1) carries
+          **every** folder, its own pipeline's included -- the rule figures
+          follow.
+        - Every carried and written embedding entry's ``stale`` is recomputed
+          from the objmap and arrays being written, never latched.
+
+        Returns:
+            ``(runs, upstream)`` for :func:`apply_image_tables_attributes`.
+        """
+        from phenotypic._core._provenance import current_pipeline_sha256
+        from phenotypic.sdk_ import ngff_
+        from phenotypic.sdk_._measurement_tables import (
+            _replaced_store_block,
+            array_digest,
+            carry_table_runs,
+            grid_bound_series,
+            objmap_digest,
+            refresh_embedding_staleness,
+            write_run_entry,
+        )
+        from phenotypic.sdk_._table_runs import (
+            EMBEDDINGS_KEY,
+            RUNS_KEY,
+            TABLE_RUN_ID_RE,
+            UPSTREAM_KEY,
+            choose_table_run_id,
+        )
+
+        pipeline_sha256 = current_pipeline_sha256(cast("Image", self))
+        writes_own = measurement_table is not None or bool(embeddings)
+        run_id: str | None = None
+        if writes_own:
+            # The same read the carry makes, so the folder is numbered after
+            # exactly the runs that are carried.
+            live = _replaced_store_block(
+                final, replace_unreadable=replace_unreadable
+            )
+            selection = dict(deepcopy(live)) if live is not None else {}
+            if upstream:
+                tables = selection.get(ngff_.PhenotypicAttr.TABLES)
+                if not isinstance(tables, dict) or "schema_version" not in tables:
+                    tables = {"schema_version": ngff_.TABLES_SCHEMA_VERSION, RUNS_KEY: {}}
+                tables[UPSTREAM_KEY] = {
+                    **(tables.get(UPSTREAM_KEY) or {}),
+                    **{key: dict(value) for key, value in upstream.items()},
+                }
+                selection[ngff_.PhenotypicAttr.TABLES] = tables
+            run_id = choose_table_run_id(selection, pipeline_sha256=pipeline_sha256)
+
+        carried = carry_table_runs(
+            final, part, exclude=run_id, replace_unreadable=replace_unreadable
+        )
+        runs: dict[str, dict] = carried[RUNS_KEY]
+        # A writer that knows its input (``upstream`` given, even empty)
+        # REPLACES the block with what it read just now: merging kept an entry
+        # the input no longer has for ever (review M1). Stage 3 passes none
+        # and so carries the block Stage 1 recorded, which describes the input
+        # its pixels came from.
+        recorded_upstream: dict[str, dict] = (
+            {key: dict(value) for key, value in upstream.items()}
+            if upstream is not None
+            else carried[UPSTREAM_KEY]
+        )
+        # The digests of what this save writes, taken once: every carried
+        # entry and every new payload is compared against them (D7). Only the
+        # series some grid entry binds are digested.
+        new_payloads = {
+            "": {EMBEDDINGS_KEY: {
+                key: payload.descriptor for key, payload in (embeddings or {}).items()
+            }}
+        }
+        objmap_sha256 = objmap_digest(objmap) if objmap is not None else None
+        array_sha256 = {
+            series: array_digest(arrays[series])
+            for series in grid_bound_series(runs) | grid_bound_series(new_payloads)
+            if series in arrays
+        }
+        if writes_own:
+            assert run_id is not None
+            match = TABLE_RUN_ID_RE.match(run_id)
+            assert match is not None
+            runs[run_id] = write_run_entry(
+                part,
+                run_id,
+                order=int(match["order"]),
+                pipeline_sha256=pipeline_sha256,
+                measurements=measurement_table,
+                objmap_target=ngff_.objmap_path(primary),
+                embeddings=embeddings,
+                objmap_sha256=objmap_sha256,
+                array_sha256=array_sha256,
+            )
+        refresh_embedding_staleness(
+            runs, objmap_sha256=objmap_sha256, array_sha256=array_sha256
+        )
+        return runs, recorded_upstream
 
     def save_intermediate_zarr(self, path, layers: tuple[str, ...]) -> Path:
         """Save only *layers* as a single-level OME-Zarr store.

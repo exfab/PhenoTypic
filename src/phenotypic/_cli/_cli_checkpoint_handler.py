@@ -310,6 +310,9 @@ def _run_finalize(
             ),
             shard_paths=shard_paths,
             planned_work_ids=planned_work_ids,
+            # #281 spec C3: the aggregate proof names the generation that
+            # published it, so `phenotypic-wait` can bind it to a submission.
+            execution_epoch=epoch if epoch is not None else slurm_generation,
         )
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"
@@ -390,7 +393,13 @@ def _run_finalize(
             else _all_accepted_images_succeeded(output_dir) is True
         )
         if marker_completion is False:
-            deactivate_orchestration(output_dir, "terminal_incomplete")
+            from ._cli_slurm_lifecycle import FENCE_CLOSED_BY_FINALIZER
+
+            deactivate_orchestration(
+                output_dir,
+                "terminal_incomplete",
+                closed_by=FENCE_CLOSED_BY_FINALIZER,
+            )
         else:
             mark_staged_complete(output_dir, epoch)
         if marker_completion is True:
@@ -408,6 +417,7 @@ def _publish_run_completion_marker(
 ) -> bool:
     """Publish and fence ordinary completion for the exact active generation."""
     from ._cli_slurm_lifecycle import (
+        FENCE_CLOSED_BY_FINALIZER,
         _deactivate_generation_locked,
         lifecycle_lock_path,
         load_slurm_lifecycle,
@@ -480,7 +490,9 @@ def _publish_run_completion_marker(
                 and completed == total
             )
         if not complete:
-            if not _deactivate_generation_locked(output_dir, slurm_generation):
+            if not _deactivate_generation_locked(
+                output_dir, slurm_generation, closed_by=FENCE_CLOSED_BY_FINALIZER
+            ):
                 raise RuntimeError(
                     "Incomplete SLURM generation could not be closed"
                 )
@@ -494,7 +506,9 @@ def _publish_run_completion_marker(
             output_dir,
             execution_epoch=slurm_generation,
         )
-        if not _deactivate_generation_locked(output_dir, slurm_generation):
+        if not _deactivate_generation_locked(
+            output_dir, slurm_generation, closed_by=FENCE_CLOSED_BY_FINALIZER
+        ):
             raise RuntimeError(
                 "SLURM completion marker was published but the generation "
                 "could not be deactivated"

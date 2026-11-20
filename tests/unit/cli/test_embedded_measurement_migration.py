@@ -17,8 +17,11 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     PhenotypicAttr,
+    declared_measurement_table_path,
     image_record_path,
+    latest_measurement_run,
     read_phenotypic_attributes,
+    store_of_table_path,
     zarr_store_path,
 )
 from tests.unit.sdk_._migration_fixtures import (
@@ -169,15 +172,19 @@ def test_migration_repairs_payload_only_store_and_preserves_header_order(
     )
 
     assert result.exit_code == 0, result.output
-    for group in (store / "tables", store / "tables" / "measurements"):
+    # The import writes a v2 run folder (#281 spec D10); the stranded flat
+    # payload, which no descriptor declared, does not survive the rewrite.
+    run = latest_measurement_run(store)
+    assert run is not None
+    assert not payload.exists()
+    payload = run.measurements_path()
+    for group in (store / "tables", run.folder, payload.parent):
         document = json.loads(
             (group / "zarr.json").read_text(encoding="utf-8")
         )
         assert document["zarr_format"] == 3
         assert document["node_type"] == "group"
-    descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
-        "measurements"
-    ]
+    descriptor = run.descriptor["measurements"]
     expected_columns = list(legacy_columns)
     expected_columns[legacy_index] = "Metadata_Strain"
     assert descriptor["measurement_columns"] == expected_columns
@@ -272,11 +279,10 @@ def test_embedded_table_migration_retries_after_marker_interruption(
     )
     assert first.exit_code != 0
     stem = run_stems(legacy_headers_run)[0]
-    table = (
+    table = declared_measurement_table_path(
         zarr_store_path(legacy_headers_run, DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
     )
-    assert table.is_file(), (
+    assert table is not None and table.is_file(), (
         "interruption must leave the committed table retryable"
     )
 
@@ -640,10 +646,8 @@ def test_migrate_refinalizes_a_joined_legacy_tree_to_a_v2_shaped_master(
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
         PARQUET_WRITE_OPTIONS,
-        PhenotypicAttr,
         master_measurements_parquet_path,
         metadata_csv_deliverable_path,
-        read_phenotypic_attributes,
         replace_embedded_measurement_table,
         store_stem,
     )
@@ -653,9 +657,12 @@ def test_migrate_refinalizes_a_joined_legacy_tree_to_a_v2_shaped_master(
     output_dir = tmp_path / "joined_legacy"
     shutil.copytree(_completed_run_two, output_dir)
     tables = sorted(
-        (output_dir / "results").glob(
-            f"*/zarr/*.ome.zarr/{MEASUREMENT_TABLE_RELATIVE_PATH.as_posix()}"
+        table
+        for table in (
+            declared_measurement_table_path(store)
+            for store in (output_dir / "results").glob("*/zarr/*.ome.zarr")
         )
+        if table is not None and table.is_file()
     )
     assert len(tables) == len(run_stems(output_dir)), "not every store has a table"
 
@@ -672,12 +679,12 @@ def test_migrate_refinalizes_a_joined_legacy_tree_to_a_v2_shaped_master(
     )
     rejoined = 0
     for table in tables:
-        store = table.parents[len(MEASUREMENT_TABLE_RELATIVE_PATH.parts) - 1]
+        store = store_of_table_path(table)
         dataset = store.parents[1].name
         stem = store_stem(store)
-        descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
-            "measurements"
-        ]
+        run = latest_measurement_run(store)
+        assert run is not None and run.measurements_path() == table
+        descriptor = run.descriptor["measurements"]
         baseline = list(descriptor["measurement_columns"])
         payload = pq.read_table(table).to_pandas()
         replace_embedded_measurement_table(

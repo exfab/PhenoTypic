@@ -19,7 +19,7 @@ import pytest
 
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
+    latest_measurement_run,
     plot_failures_jsonl_path,
     plots_dir,
     zarr_store_path,
@@ -33,6 +33,13 @@ from tests.unit.correction._checker_frames import frozen_op, render_frame
 
 DAY = "2026-09-22"
 LATER = "2026-09-30"
+
+
+def _store_table(store: Path) -> Path:
+    """The store's measurements table, through the v2 resolver (#281 D6a)."""
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} has no measurement run"
+    return run.measurements_path()
 
 
 def _write_inputs(root: Path, *, with_plot: bool = True, gpu: bool = False, variant: int = 0):
@@ -212,13 +219,13 @@ def test_measure_with_the_same_pipeline_keeps_the_overlay_in_its_folder(tmp_path
     store = _full(out, pipeline, image)
     run_id = _run_of(pipeline)
     entry, data = _overlay(store, run_id)
-    table_inode = os.stat(store / MEASUREMENT_TABLE_RELATIVE_PATH).st_ino
+    table_inode = os.stat(_store_table(store)).st_ino
     # So the copy below can only be measure mode's own copy-out.
     shutil.rmtree(out / "deliverables" / "plots")
 
     _measure(out, store, pipeline, LATER)
 
-    assert os.stat(store / MEASUREMENT_TABLE_RELATIVE_PATH).st_ino != table_inode
+    assert os.stat(_store_table(store)).st_ino != table_inode
     assert list(_runs(store)) == [run_id]
     run = _runs(store)[run_id]
     assert run["failed"] == [] and run["unavailable"] == []
@@ -292,7 +299,7 @@ def test_staged_stage1_draws_the_overlay_and_stage3_keeps_it(tmp_path, fake_gpu,
     monkeypatch.setattr(_image_figures, "_utc_now", lambda: datetime(2027, 1, 15, tzinfo=timezone.utc))
     stage3_merge_measure_core(plan, out, "ds", "plate", _manager(out), image_type="Image")
 
-    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert _store_table(store).is_file()
     assert list(_runs(store)) == [run_id]
     run = _runs(store)[run_id]
     assert run["failed"] == [] and run["unavailable"] == []
@@ -367,7 +374,7 @@ def test_a_run_folder_that_cannot_be_named_fails_no_image(tmp_path):
     )
     assert process_single_image_core(pipeline, image, out, "ds", "Image", {}, manager)
     store = zarr_store_path(out, "ds", "plate")
-    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert _store_table(store).is_file()
     assert read_image_figures_descriptor(store) is None
     [line] = _failure_lines(out)
     assert (line["binding_id"], line["dataset"], line["image_stem"]) == (

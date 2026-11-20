@@ -40,7 +40,7 @@ from phenotypic._core._provenance import (
     write_provenance_checkpoint,
 )
 from phenotypic.abc_ import GpuDetector
-from phenotypic.sdk_ import CommitGuard, zarr_store_path
+from phenotypic.sdk_ import CommitGuard, upstream_entries_for_input, zarr_store_path
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_.typing_ import ImageTypeName
 
@@ -297,6 +297,7 @@ def stage1_preprocess_core(
     reference_pin: ReferencePin | None = None,
     cli_nrows: int | None = None,
     cli_ncols: int | None = None,
+    input_root: Path | None = None,
 ) -> None:
     """Read raw image, apply the pre-detector ops, publish the staged store.
 
@@ -307,6 +308,13 @@ def stage1_preprocess_core(
 
     ``reference_pin`` carries the reference digest *work_id* was computed
     from; the apply refuses a manifest that has re-planned the image since.
+
+    ``input_root`` is the run's ``--input``. When *image_path* is a
+    PhenoTypic store with table runs, the staged store records them as its
+    ``tables.upstream`` (#281 spec D8), ``source`` relative to this root.
+    Stage 3 never re-reads the input: it rewrites this store, and the carry
+    step keeps the ``upstream`` block Stage 1 recorded, which describes the
+    input Stage 1's pixels actually came from.
     """
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image: Image | None = None
@@ -322,6 +330,8 @@ def stage1_preprocess_core(
         image_cls = _image_class(image_type)
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
+        # The input's table runs, referenced rather than copied (spec D8).
+        upstream = upstream_entries_for_input(image_path, input_root)
         resumed = False
         checkpoint_root = store / "zarr.json"
         if checkpoint_root.is_file():
@@ -373,6 +383,7 @@ def stage1_preprocess_core(
                 image_stem,
                 work_id=work_id,
                 commit_guard=commit_guard,
+                upstream=upstream,
             )
             if initial_store is None or not valid_staged_store(initial_store):
                 raise RuntimeError(
@@ -428,6 +439,7 @@ def stage1_preprocess_core(
             work_id=work_id,
             commit_guard=commit_guard,
             figures=figures,
+            upstream=upstream,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(
@@ -641,6 +653,9 @@ def stage3_merge_measure_core(
             output_dir, dataset_name, pin=reference_pin
         ):
             measurements = replay_pipeline.measure(image, apply_post=False)
+            # Beside measure(), into the same run folder (#281 spec E2). The
+            # objmap is the replayed one, so Stage 1's zeros never bind them.
+            embeddings = replay_pipeline.embed(image)
 
         if output_manager.save_overlays:
             _check_active(active_check)
@@ -691,6 +706,7 @@ def stage3_merge_measure_core(
             commit_guard=commit_guard,
             measurements=measurements,
             figures=figures,
+            embeddings=embeddings,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(

@@ -47,10 +47,8 @@ from phenotypic._cli._cli_staged_resume import (
     classify_staged_image,
     write_stage3_completion_marker,
 )
-from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
-    zarr_store_path,
-)
+from phenotypic.sdk_ import zarr_store_path
+from tests._tiny_run import plant_measurement_table
 from tests.unit.cli.conftest import STAGE2_SLOT
 
 _DATASET = "plate"
@@ -1436,9 +1434,8 @@ def _plant(
         store_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(templates[store], store_path)
         if table:
-            embedded = store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-            embedded.parent.mkdir(parents=True, exist_ok=True)
-            embedded.write_bytes(b"measurements")
+            # In the store's own v2 run folder, declared in its root (#281 P3).
+            plant_measurement_table(store_path)
 
     if s2_raw:
         write_stage2_raw(

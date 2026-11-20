@@ -486,3 +486,141 @@ class TestBackbonePatchSize:
             backbone_patch_size(types.SimpleNamespace(config=types.SimpleNamespace()))
         with pytest.raises(ValueError, match="patch_size"):
             backbone_patch_size(types.SimpleNamespace())
+
+
+# ---------------------------------------------------------------------------
+# Loading: safetensors only, never remote code (#281 P4 T3 security)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("revision", [None, "refs/pr/1"])
+def test_load_dino_backbone_loads_safetensors_only_and_no_remote_code(monkeypatch, revision):
+    """Any ref may hold pickle ``.bin`` weights, so the model loads with
+    ``use_safetensors=True`` and neither load trusts remote code."""
+    import sys
+    import types
+
+    from phenotypic.detect.nn._helper._dino_support import load_dino_backbone
+
+    calls: list[tuple[str, str, dict]] = []
+
+    class _Model:
+        def to(self, device):
+            return self
+
+        def eval(self):
+            return self
+
+    def _recorder(kind, result):
+        def from_pretrained(repo_id, **kwargs):
+            calls.append((kind, repo_id, kwargs))
+            return result
+        return types.SimpleNamespace(from_pretrained=from_pretrained)
+
+    fake = types.ModuleType("transformers")
+    fake.AutoModel = _recorder("model", _Model())
+    fake.AutoImageProcessor = _recorder("processor", object())
+    monkeypatch.setitem(sys.modules, "transformers", fake)
+
+    load_dino_backbone(2, "small", "cpu", revision=revision)
+
+    (model_kind, model_repo, model_kwargs), (proc_kind, _, proc_kwargs) = calls
+    assert (model_kind, proc_kind) == ("model", "processor")
+    assert model_repo == "facebook/dinov2-small"
+    assert model_kwargs["use_safetensors"] is True
+    assert model_kwargs["revision"] == revision == proc_kwargs["revision"]
+    assert not model_kwargs.get("trust_remote_code")
+    assert not proc_kwargs.get("trust_remote_code")
+
+
+# ---------------------------------------------------------------------------
+# #281: the resolved revision without config._commit_hash (transformers>=5.18)
+# ---------------------------------------------------------------------------
+
+_PIN = "f9e44c814b77203eaa57a6bdbbd535f21ede1415"
+_OTHER = "1" * 40
+
+
+def _loaded(**config):
+    """A stand-in for a loaded ``AutoModel``: only ``config`` and ``name_or_path``."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        config=SimpleNamespace(**config), name_or_path=config.get("name_or_path")
+    )
+
+
+def _fake_hf_cache(root, repo_id: str, refs: dict) -> None:
+    """A Hugging Face hub cache holding *repo_id*: ``refs/<ref>`` -> commit, and its snapshots."""
+    repo = root / ("models--" + repo_id.replace("/", "--"))
+    (repo / "refs").mkdir(parents=True)
+    for ref, commit in refs.items():
+        (repo / "refs" / ref).write_text(commit, encoding="utf-8")
+        snapshot = repo / "snapshots" / commit
+        snapshot.mkdir(parents=True, exist_ok=True)
+        (snapshot / "config.json").write_text("{}", encoding="utf-8")
+
+
+def test_resolved_revision_prefers_the_configs_commit_hash():
+    from phenotypic.detect.nn._helper._dino_support import resolved_revision
+
+    model = _loaded(_commit_hash=_PIN, name_or_path="facebook/dinov2-base")
+    assert resolved_revision(model) == _PIN
+    assert resolved_revision(model, _OTHER) == _PIN
+
+
+@pytest.mark.parametrize("missing", [None, ""])
+def test_resolved_revision_takes_a_full_commit_pin_when_the_hash_is_gone(missing, monkeypatch):
+    import sys
+
+    from phenotypic.detect.nn._helper._dino_support import resolved_revision
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", None)  # the pin alone decides
+    model = _loaded(_commit_hash=missing, name_or_path="facebook/dinov2-base")
+    assert resolved_revision(model, _PIN) == _PIN
+
+
+def test_resolved_revision_reads_a_snapshot_directory_path(monkeypatch):
+    import sys
+
+    from phenotypic.detect.nn._helper._dino_support import resolved_revision
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", None)
+    path = f"/cache/hub/models--facebook--dinov2-base/snapshots/{_PIN}"
+    assert resolved_revision(_loaded(name_or_path=path)) == _PIN
+    assert resolved_revision(_loaded(name_or_path=path + "/")) == _PIN
+    assert resolved_revision(_loaded(_name_or_path=path)) == _PIN
+    # A short or non-hex folder is not a commit.
+    assert resolved_revision(_loaded(name_or_path="/x/snapshots/abc123")) is None
+
+
+@pytest.mark.parametrize(("revision", "expected"), [(None, _PIN), ("v1.0", _OTHER)])
+def test_resolved_revision_reads_the_local_cache_offline(tmp_path, monkeypatch, revision, expected):
+    """A hub id with no commit hash: the snapshot *revision* (``main`` when
+    ``None``) resolves to in the local cache. ``try_to_load_from_cache`` reads
+    the cache only; with no network and no token it still answers."""
+    hub = pytest.importorskip("huggingface_hub")
+    from huggingface_hub import constants
+
+    from phenotypic.detect.nn._helper._dino_support import resolved_revision
+
+    _fake_hf_cache(tmp_path, "facebook/dinov2-base", {"main": _PIN, "v1.0": _OTHER})
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("HF_TOKEN", "must-not-be-read")
+    assert hub.try_to_load_from_cache is not None
+    model = _loaded(name_or_path="facebook/dinov2-base")
+    assert resolved_revision(model, revision) == expected
+
+
+def test_resolved_revision_is_none_when_nothing_names_a_commit(tmp_path, monkeypatch):
+    from phenotypic.detect.nn._helper._dino_support import resolved_revision
+
+    if importlib.util.find_spec("huggingface_hub") is not None:
+        from huggingface_hub import constants
+
+        monkeypatch.setattr(constants, "HF_HUB_CACHE", str(tmp_path))  # an empty cache
+    assert resolved_revision(_loaded(name_or_path="facebook/dinov2-base")) is None
+    assert resolved_revision(_loaded(name_or_path="facebook/dinov2-base"), "main") is None
+    assert resolved_revision(_loaded(name_or_path="/a/local/dir")) is None
+    assert resolved_revision(_loaded()) is None

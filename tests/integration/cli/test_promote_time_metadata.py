@@ -87,8 +87,13 @@ def test_a_real_run_leaves_stores_a_third_party_can_join(
     assert len(stores) == 1, f"expected exactly one store, got {stores}"
     store = stores[0]
 
-    measurements_path = store / "tables" / "measurements" / "table.parquet"
-    metadata_path = store / "tables" / "metadata" / "pht-metadata.parquet"
+    from phenotypic.sdk_ import latest_measurement_run
+
+    # The run folder the forward save wrote (#281 spec D1, D6a).
+    run = latest_measurement_run(store)
+    assert run is not None, "the promoted store declares no measurement table"
+    measurements_path = run.measurements_path()
+    metadata_path = run.metadata_path()
     assert measurements_path.is_file(), (
         "the promoted store carries no measurement table"
     )
@@ -148,13 +153,13 @@ def test_the_measurement_table_carries_no_user_metadata(
     output = _run_full_pipeline(
         tmp_path, synth_plate_dir, simple_pipeline_json, metadata=True
     )
+    from phenotypic.sdk_ import latest_measurement_run
+
     store = sorted(output.rglob("*.ome.zarr"))[0]
-    measurements = pq.read_table(
-        store / "tables" / "measurements" / "table.parquet"
-    )
-    metadata = pq.read_table(
-        store / "tables" / "metadata" / "pht-metadata.parquet"
-    )
+    run = latest_measurement_run(store)
+    assert run is not None, "the promoted store declares no measurement table"
+    measurements = pq.read_table(run.measurements_path())
+    metadata = pq.read_table(run.metadata_path())
 
     # STANDING RULE: the negative below is satisfied by a store whose metadata
     # table was never written with the column either. Establish where it IS.

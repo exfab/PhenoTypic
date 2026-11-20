@@ -239,7 +239,7 @@ intro and this section consistent.
   `tests/unit/schema/test_categories.py`. Three things follow automatically:
   the generated Categories docs page (`measurements_ref/categories/index.rst`,
   written by `docs/source/_extensions/measurements_ref.py`), the README
-  section, and `deliverables/measurements_by_category/<label>.{csv,parquet}`.
+  section, and `deliverables/measurements_by_category/<label>.{tsv,parquet}`.
 - Badges: `member.category_badges` renders one
   `:bdg-ref-{_CATEGORY_BADGE_COLOR}-line:` outline pill per category, in
   `in_order` order, and each links to `CATEGORIES.X.anchor` on the Categories

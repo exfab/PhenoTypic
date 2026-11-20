@@ -8,6 +8,7 @@ and linear gradients. Results are returned as pandas DataFrames ready for analys
 
 from ._measure_bounds import MeasureBounds
 from ._measure_color import MeasureColor
+from ._measure_dino_embedding import MeasureDinoEmbedding
 from ._measure_intensity import MeasureIntensity
 from ._orientation_zones import MeasureOrientationZones
 from ._measure_shape import MeasureShape
@@ -25,6 +26,7 @@ __all__ = [
     "MeasureBounds",
     "MeasureColor",
     # "MeasureColorComposition",
+    "MeasureDinoEmbedding",
     "MeasureIntensity",
     "MeasureOrientationZones",
     "MeasureShape",

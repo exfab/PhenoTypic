@@ -1,0 +1,36 @@
+{
+  "artifacts": {
+    "measurements": {
+      "kind": "file",
+      "path": "results/ds/zarr/plate.ome.zarr/tables/measurements/table.parquet",
+      "sha256": "7faccf53258f2e20e2f4b9fb0061cb38a3644916f35cacec8e472ca6f9b28b93",
+      "size": 47221
+    },
+    "overlay": {
+      "kind": "file",
+      "path": "deliverables/overlays/ds/plate.png",
+      "sha256": "bd28a4a19899c3b4eeba797f7fe95417421f6b627dd6d9bad7abf1cd1c263ea6",
+      "size": 224808
+    },
+    "store": {
+      "kind": "store",
+      "path": "results/ds/zarr/plate.ome.zarr",
+      "sha256": "sha256:7986672c05ca76a89c2642fca59921f1e0c899ac8d5b12b80c70204809f62819"
+    }
+  },
+  "attempt_id": "e28847ce0a1a4a549204ba130e68e3bd",
+  "completed_at": "2026-11-14T00:51:22.240+00:00",
+  "dataset": "ds",
+  "image_stem": "plate",
+  "lifecycle_epoch": "94721db8b82a393b92d84ac09fe6ff6ba7f3b1ce3684f17b1fb4f8d98a7824ed",
+  "mode": "full",
+  "provenance": "forward",
+  "relative_image_path": "ds/plate.tif",
+  "stages": {
+    "measured": {
+      "at": "2026-11-14T00:51:22.239+00:00"
+    }
+  },
+  "version": 1,
+  "work_id": "1945c913bf1f17b4c85b83ef8920d8187ce8574ad0d19fd510bfd331c559fd16"
+}

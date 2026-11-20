@@ -43,9 +43,11 @@ details that are load-bearing rather than incidental:
   reach for `set_provenance_status(image, "in_progress")` — that status is also
   non-terminal and raises the very error it looks like it prevents.
 - The change of meaning is fenced in the work id:
-  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `4`;
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `5`;
   2 → 3 is the per-image figures, see **Per-image figures** below; 3 → 4 is
-  single-channel integer inputs normalised to float32 `[0, 1]` at construction)
+  single-channel integer inputs normalised to float32 `[0, 1]` at construction;
+  4 → 5 is process mode running `meas` into the store, see **Process mode runs
+  `meas`** below)
   rides beside `process_format` in the process-only branch of
   `processing_configuration_digest_from_values`, **not** in the base payload —
   a base placement would cold-start every in-flight `full` and `measure`
@@ -60,7 +62,8 @@ Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
 **`phenotypic_cli` has a read-only half and a mutating half, in that order.**
 The read-only half parses and validates options, scans the inputs, runs the
 refusals that cannot be skipped (the GPU placement refusal, the grid-preset
-refusal, the refusal of a
+refusal, the process-mode lost-table refusal in **Process mode runs `meas`**
+below, the in-place refusals in **In-place process runs** below, the refusal of a
 `--restart`/`--overwrite` that would delete the run's own inputs, the
 `--metadata`, `--bit-depth` and `--gpu-slurm` parses, and the two
 reference-metadata refusals in **Reference metadata** below), loads the pipeline,
@@ -84,14 +87,177 @@ and a row in the table in `docs/source/tutorials/pages/cli_batch_processing.md`;
 
 **Mode scoping.** A requirement check iterates `operations_in_scope(context)`,
 never the whole operation tree: `MODE_SLOTS` says which root slots each mode
-executes (`full`: all; `process`: `ops`; `measure`: `meas`, `post`, `filters`,
-`model`), and a pipeline nested in `ops` contributes only its own `ops`.
-Walking everything would refuse a `process` run over a measurer it never runs.
+executes (`full`: all; `process`: `ops`, `meas`; `measure`: `meas`, `post`,
+`filters`, `model`), and a pipeline nested in `ops` contributes only its own
+`ops`. In `process` mode the walk also drops each root `meas` entry that is
+not a no-objects embedder (`_skipped_in_process_mode`), because process mode
+skips it: the walk is what runs. Walking everything would refuse a `process`
+run over a measurer it never runs.
 
 **Operations declare their own requirements** through
 `BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
 through a checker-side table, so a new operation cannot fall out of date with
 the checks.
+
+## Process mode runs `meas` (`_cli_process_meas.py`)
+
+#281 spec E4, user decision 2026-11-18: **run what fits in a store, skip the
+rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
+`post`/`filters`/`model` or builds deliverables.
+
+- **Runs (v1: embedders only):** each `meas` entry that is a
+  `MeasureEmbedding` with `requires_objects` false, i.e. a grid embedder
+  (`regions="grid"`, named or not), per `runs_in_process_mode`.
+  `MeasureFeatures.requires_objects` is `True`; `MeasureEmbedding` overrides
+  it. `process_single_apply_only_core` calls `embed_in_process_mode` after
+  `apply()`, inside the same provenance and reference context. It passes the
+  payloads through `write_process_only_layer(embeddings=)` to `_save_store`,
+  so the run folder lands in the `.part` before `_consolidate_store_part` and
+  the store stays write-once and consolidated. `upstream=` is passed as
+  before. `measure()` is never called.
+- **Skipped, never silently:** every other entry, which is what process mode
+  always did with `meas`. One warning line names each, with its reason:
+  - it needs objects (an ordinary measurer, an objects embedder): `meas:size
+    skipped: process mode stores no objects`. A process store holds no
+    object map, so a table keyed on `Object_Label` would point at labels the
+    store cannot resolve;
+  - it needs no objects but is not an embedder: `meas:foo skipped: process
+    mode stores only embedding tables`. `measure()` is never called in
+    process mode, so it has nowhere to go. None ships today; the wording
+    keeps a future one from being dropped silently.
+
+  Both groups share one line, separated by `; `. The CLI prints it once, in
+  the read-only half, as `Warning: <line>.`; the core logs it per image.
+  Measurer-backed `PlotImage` figures in a process store still work, because
+  the figure binding recomputes in `inspect()`.
+- **Refused:** a runnable entry with a flat output (`--process-format tiff`,
+  `--layer objmap`, `--layer detect_mat`), because its table would be lost.
+  `_refuse_process_meas_it_would_lose` (`phenotypicCLI.py`) raises it as a
+  `click.UsageError` (exit 2), beside the grid-preset refusal: un-skippable,
+  above `--restart`, `--overwrite`, `mint_run_identity` and `--dry-run`.
+  `process_single_apply_only_core` runs the same check,
+  `process_meas_refusal`, before it reads the image, and raises
+  `ProcessMeasRefusedError` (a `ValueError`, never wrapped as a per-image
+  failure), because AutoConvertRaw-GC calls the core directly.
+  `write_process_only_layer` refuses `embeddings=` with a flat format too.
+- **Continuation:** `PROCESS_LAYER_SEMANTICS_REVISION` went 4 → 5, so a
+  process tree resumed across the change re-derives its stores rather than
+  reusing stores that lack the tables it now writes.
+- Pinned by `tests/unit/cli/test_process_mode_measurers.py` and
+  `tests/unit/cli/test_process_store_tables.py`.
+
+## In-place process runs (`_cli_process_in_place.py`)
+
+#281 spec E7. `--mode process` with `--output` resolving to the same
+directory as `--input` (`is_in_place_process`, `_cli_types.py`;
+`ExecutionConfig.in_place`) adds the pipeline's run folder to each input
+store where it is. Any other `--output` writes new stores as before. Only the
+**equality** case of the process overlap refusal is lifted: an output
+strictly inside the input, or an input strictly inside the output, stays
+refused.
+
+- **The write is the measure rewrite's transaction**, `_rewrite_store_tables`
+  (`sdk_/_measurement_tables.py`), with two options measure mode never
+  passes. `expected_root_sha256` refuses a root whose bytes are not the ones
+  the write was built from, both when the rewrite reads it and again
+  immediately before `promote_store`, raising `StoreRootChangedError` and
+  removing the part. `consolidate` re-consolidates the part after the root,
+  dropping the stale `consolidated_metadata` first; a root that already
+  carries `consolidated_metadata` is re-consolidated without being asked,
+  measure mode included, and an unconsolidated one given `False` is written
+  as before (P5 review I1). A third option,
+  `clear_tables=False`, keeps every run folder as carried, for a pipeline
+  that only draws figures. The plan (`_in_place_plan`) writes this pipeline's
+  folder through `write_run_entry` (the next number, or its own folder
+  replaced when stale), the figure run, and the journal, append-only
+  (`_appended_journal`): the root's earlier applications byte-for-byte, plus
+  the new `process` application without its wall-clock fields (I1).
+  Pixel chunks stay hard links, so they keep their inodes, and every other
+  run folder and the `upstream` block are carried byte for byte.
+- **`process_in_place_core`** is what both process callers dispatch to in
+  place: `LocalParallelStrategy._process_single_local_apply_only` and the
+  SLURM per-image worker (`_cli_process_single.py` `main`). It runs
+  `embed_in_process_mode`, never `measure()` (spec E4), and checks the pixels
+  after `apply()`: the exported layer must have the `level0_digest` (the
+  `objmap_digest` recipe) it had right after the read, so a legacy integer
+  `gray` store, which `imread` normalises to float32, is supported (user
+  decision 2026-11-18, Q3). A grid payload bound to the read layer is then
+  re-bound to the stored array's digest (`_bind_to_stored`), which is what
+  the entry certifies.
+  Otherwise it raises `InPlacePixelsChangedError`, a terminal failure that
+  writes nothing, which catches a pixel-changing op the `ImageCorrector`
+  refusal misses. If the root changes before the swap, it rebuilds once from
+  the new root. A second `StoreRootChangedError` is raised **unwrapped**, so
+  the image fails this invocation (exit `3`) without a terminal record, and a
+  plain re-run retries it.
+- **Continuation.** A store already holding this pipeline's folder with
+  each of its embedders' payload keys present and `stale: false` does no
+  work (`_owned_run_is_current`; an empty folder is not current, M1). A root
+  unreadable at that check is a per-image `PerImageScientificError`, not an
+  error retried for ever (M3). The skip warning is logged once per process
+  (M5). The work
+  id's input digest is `in_place_input_digest`: the `file_sha256` tree digest
+  (`store_tree_sha256`) minus the root `zarr.json`, `tables/` and `figures/`,
+  under its own domain tag, so the run's own write never changes its work id.
+  `input_sha256_for` is its one dispatcher. Selection, the SLURM worklist
+  (`_cli_slurm_array_scripts.py`) and the SLURM worker's identity and
+  expected-input check all call it. `processing_configuration_digest_from_values`
+  adds `in_place: true` to the process payload, and only when true, so a
+  copy run's digest is unchanged and an in-place run never reuses its
+  continuation.
+- **Refused in the read-only half** by `_refuse_in_place_run`
+  (`phenotypicCLI.py`), above `_refuse_run_inputs_the_run_would_delete`,
+  `--restart`/`--overwrite`, `mint_run_identity` and `--dry-run`, and
+  outside `--skip-validation`. Each refusal is one usage-error line, from
+  `in_place_refusal`, in this order: `--overwrite`; a layer or format that
+  writes no store; an `ObjectDetector` anywhere (any slot, any
+  depth, via `walk_operations`); an `ImageCorrector` in `ops` at any depth
+  (`ops` only, never a slot); an `--input` naming one store or file; a
+  legacy root-level machine-state name at the input root (`progress/`,
+  `processing_state.json`, `processing_events.log`, read from
+  `machine_state_restart_targets`), which the legacy migration would move
+  into `.phenotypic/` for `--restart` to delete (P5 review C1, Q2); an
+  orphaned `.<stem>.ome.zarr.<token>.trash` with no live store beside it,
+  naming the `mv` that restores it (I5, `transaction_debris`); then, per
+  store, reading one root each and stopping at the first failure, a store
+  that is a symlink or resolves outside `--input` (Q4), a non-PhenoTypic
+  input, a full run's bundle store whose root carries `image_class` (Q1), a
+  v1 tables layout (pointing at `--mode migrate`), and a `--layer` that is
+  not the primary series. The per-store checks see the images the run would
+  process, `--image-manifest` applied. Leftover `.part` directories are
+  named in one warning and never deleted (M6).
+- **No mode deletes an input through a restart target.**
+  `_refuse_run_inputs_the_run_would_delete` also scans `--input` when
+  `--restart` has targets, and refuses an image inside one: with `--input`
+  equal to `--output`, a dataset folder named `progress` is the legacy
+  root-level `progress/` although `--input` itself lies in no target (C1). The "already contains
+  files" check is skipped in place. Pinned by
+  `tests/unit/cli/test_process_in_place.py` and
+  `test_an_in_place_refusal_comes_before_the_mutating_half`.
+- **`--restart` is allowed in place** (user ruling 2026-11-18). It clears
+  only the non-preserved `.phenotypic/` machine state under the input root,
+  keeps the terminal-failure records, and never touches a store:
+  `machine_state_restart_targets` lists only `.phenotypic/` entries, so
+  `_refuse_run_inputs_the_run_would_delete` admits `--input` there and
+  refuses only a run input stored inside the machine state, as anywhere.
+  It is the remedy for a **different pipeline over the same stores**, which
+  the normal resume check refuses (`Cannot continue - Pipeline contents
+  changed`, exit `1`); in place that message is followed by a line naming
+  `--restart`. Pinned by `test_restart_in_place_touches_no_store` (every
+  store file keeps its inode and bytes) and
+  `test_another_pipeline_in_place_needs_restart`.
+- **Only store exports are in place for a worker.** `ExecutionConfig.in_place`
+  and the SLURM worker also require `writes_process_store` (`--layer
+  rgb|gray --process-format zarr`). The CLI refuses any other export with
+  equal paths before a worker exists, so this changes nothing a CLI run can
+  reach; it keeps a hand-built config with equal paths (the staged objmap
+  tests) on the copy path.
+- **`.phenotypic/` lives under the input root.** `scan_directory_structure`
+  does not skip dot-directories by name. It finds no input there because
+  `.phenotypic/` holds no image file at its top level, and a transaction's
+  `.<stem>.ome.zarr.<uuid>.part` is a dotted name and holds none either.
+  `test_machine_state_lives_under_the_input_root_and_is_not_an_input` pins
+  this.
 
 ## The grid-preset refusal (`_refuse_grid_preset_unlike_cli_grid`)
 
@@ -120,10 +286,13 @@ table as an argument; they read a run-level plan.
 
 - **Only the operations the mode runs count.** `reference_operations_in_scope`
   is the preflight's mode walk (`operations_run_in_mode`, the function behind
-  `operations_in_scope`). A `SubtractBlank` inside a measurer needs the table
-  in `full` mode and not in `process` mode.
+  `operations_in_scope`). A `SubtractBlank` inside a measurer that needs
+  objects needs the table in `full` mode and not in `process` mode, which
+  skips such measurers. One inside a `meas` entry process mode runs (an
+  embedder that needs no objects, #281 P5) needs it in both.
 - **Process mode uses `--metadata` only when those operations exist.** It is
-  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.csv`
+  then snapshotted byte-for-byte to `.phenotypic/reference_metadata.<ext>`
+  (the table's own suffix, `.csv` or `.tsv`)
   (preserved across `--restart`), a continuation may omit it, and a table
   inside `--output` is refused like any run input. Otherwise the old
   "`--metadata` is ignored in --mode process" warning still prints.
@@ -132,11 +301,13 @@ table as an argument; they read a run-level plan.
   - `_refuse_unusable_reference_table`: `--overwrite` without `--metadata`
     (the snapshot it would fall back to is deleted); no `--metadata` and no
     snapshot (`[PF-REF-NO-TABLE]`); a `--metadata` that fails
-    `metadata_csv_payload` (not a `.csv`, or bytes pandas cannot parse --
+    `metadata_csv_payload` (not a `.csv`/`.tsv`, or bytes pandas cannot parse --
     the very check `snapshot_reference_metadata` runs after `--overwrite`,
     so the two cannot disagree); or a table, given or snapshotted, that
-    `ReferenceContext` cannot read. `--metadata` is a CSV in every CLI mode,
-    although a notebook `ReferenceContext` also reads `.parquet`.
+    `ReferenceContext` cannot read. `--metadata` is a `.csv` or `.tsv` table
+    in every CLI mode (the `--metadata` Click callback refuses any other
+    suffix with exit 2), although a notebook `ReferenceContext` also reads
+    `.parquet`.
   - `_refuse_measuring_reference_pipeline`: `--mode measure` over a pipeline
     whose measurers read reference metadata. Measure mode plans nothing, never
     touches the manifest and carries no reference digest in its work-ids, so
@@ -476,6 +647,136 @@ trio.
 
 ## SLURM chaining (`_cli_staged_slurm.py` + `_cli_staged_slurm_worker.py`)
 
+### Exit codes (`phenotypic.sdk_.RunExitCode`)
+
+The CLI's exit code is a contract (#281 spec C10): an orchestrator such as a
+DVC stage acts on it without parsing logs. Use the enum member at every exit
+site, never a bare literal.
+
+| Code | Name | Meaning |
+|---|---|---|
+| `0` | `COMPLETE` | finished, no terminal failures |
+| `1` | `ERROR` | a runtime or config error |
+| `2` | — | a refused option: a `click.UsageError`, Click's own code. Includes an option value the CLI checks after parsing (`--slurm`/`--gpu-slurm` `KEY=VALUE` pairs and `time=`, `--ext`) |
+| `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
+| `4` | `SUBMITTED` | submitted to SLURM, not finished |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing (nothing published, or accepted images never attempted); re-run the same command (spec C3/C10, fork F5) |
+| `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
+
+- **Every SLURM submission exits `4`**: full, measure, staged and process
+  runs, a SLURM `--mode recompile`, a forward run whose only remaining work is
+  a SLURM recompile (a new metadata snapshot), a submitted `--mode migrate`
+  and a SLURM migrate `--dry-run`. When nothing needed SLURM,
+  `_handle_recompile_slurm` runs the recompile locally and returns the
+  finished run's code (`0` or `3`, below) instead, because then nothing was
+  submitted.
+- **"Failed" is the run's, not the invocation's.** A local exit asks
+  `_run_failure_count` (`phenotypicCLI.py`), which is
+  `resolve_run_state(...).diagnostics.failed` when this invocation recorded no
+  failure itself. A continuation skips recorded terminal failures, so a run
+  that exited `3` exits `3` again on a plain re-run, whether that re-run is a
+  "nothing left" no-op or a re-finalization. The same count gates
+  `publish_local_gui_completion`, which raises on a run with failed images.
+- **A recompile exits `3` over a run that carries a terminal failure**, local
+  or through either of `_handle_recompile_slurm`'s local fallbacks (user
+  decision 2026-11-13, P2 review I2/F4). A recompile re-publishes the
+  aggregate and leaves every failure record where it was, and on SLURM the
+  waiter reads the same run as `failed`, so the two agree.
+- **A local staged run whose only Stage-3-less images are current terminal
+  failures exits `3`, not `1`** (user decision 2026-11-13, P2 review I3/F3).
+  It is the local twin of the SLURM finalizer's `terminal_incomplete` close:
+  publication succeeded, every image without a Stage-3 marker has a `failed`
+  verdict in `resolve_run_state(depth="deep")`, the run is **not** marked
+  staged-complete, and a plain re-run (which skips those images)
+  re-finalizes and exits `3` again. It prints how to retry them
+  (`--retry-failures`), not "Run the same command again". A real publication
+  failure, or an unfinished image with no terminal record, still prints
+  `STAGED FINALIZATION FAILED ... Run the same command again` and exits `1`.
+- A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
+  `130`.
+- **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
+  run's own code** once the run ends, for a DVC stage or any orchestrator.
+  Read-only: it never aggregates, publishes or cancels, and submits only the
+  command given after `--` (below). Each poll
+  reads `live_slurm_job_ids` **before** `resolve_run_state(depth="shallow")`.
+  Any `live`/`unverified`/`unresolved` job keeps it waiting, whatever the
+  completion says. With none live, it exits `0`/`3` only when **this
+  submission** published. It reads the fence generation once, at the first
+  poll. Published means one of: that fence was closed with
+  `closed_by: "finalizer"` (`FENCE_CLOSED_BY_FINALIZER`) and no
+  `terminal_status`; the run proof's `execution_epoch` is that generation; or
+  the current aggregate proof's `execution_epoch` is that generation. The
+  finalizer is the only writer of both fields. It passes `execution_epoch=`
+  through `aggregate_measurements`/`finalize_run` to
+  `publish_aggregate_snapshot`, and `closed_by=` to the fence close. A cancel
+  leaves `closed_by` unset. **Matching digests are not enough:** a
+  `--mode measure` resubmission keeps no run state, so the earlier run's
+  proofs still match after its finalizer dies. **`3` also needs every
+  accepted image resolved** (`RunSnapshot.unresolved == 0`, i.e.
+  `verified + failed == accepted`); an image never attempted makes it `5`.
+  A SLURM `--mode measure` resubmission's failures sit outside the forward
+  inventory, so `_generation_failures` counts distinct work ids in the
+  terminal journal whose `lifecycle_epoch` is the bound generation; published
+  plus any such row gives `3` (review I5). **Those rows exist only since
+  C11d:** before it, measure mode journalled nothing (its core raises the
+  bare exception), so the count was always `0` for a real failure. Both
+  measure workers now wrap the core in `measure_scientific_boundary`
+  (`_cli_process_single.py`), which raises `PerImageScientificError` with
+  stage `MEASURE_FAILURE_STAGE` (`"measure"`, not the staged `"stage3"`), and
+  journal it under the measure work id. One helper,
+  `terminal_failure_work_ids_under_epoch` (`_cli_failure_tracker.py`), is
+  the count for both the waiter and `metrics.json`: on SLURM `finalize_run`
+  counts its `stage=MEASURE_FAILURE_STAGE` rows under `execution_epoch` (the
+  stage filter keeps a forward generation's own rows, already counted through
+  the inventory, from counting twice); locally the CLI passes the
+  invocation's own count as `measure_failed=` and mints no epoch, because a
+  local measure's `lifecycle_epoch` is the forward run's content-derived
+  generation, shared by every measure invocation. `failed` adds the count and
+  `succeeded` drops by it, although such an image's previous table usually
+  stays aggregated. The rows are keyed by measure work ids, so a forward
+  continuation never skips on them; its "N recorded failure(s) skipped" line
+  therefore counts `_run_failure_count`, not the whole journal. A process run that reads
+  `failed` exits `3` anyway. Everything else exits `5`, and `--timeout-seconds` exits
+  `6`. It does not serve `--mode migrate`, whose lifecycle lives under an
+  external control root.
+- **`phenotypic-wait --output <out> -- <submit…>` launches the submit
+  itself** (spec C3 "Launch", P2 T2a), so a SLURM DVC stage is one `cmd`
+  (DVC aborts a stage on the submit's `4`). `_run_submit` runs the argv with
+  `subprocess.run` (no shell; the waiter's cwd, env and stdio), mapping a
+  signal death to `128 + N` and a missing/unexecutable program to `127`/`126`.
+  Child `4` → `wait_for_run`; any other child code is returned unpolled.
+  `check_submit_argv` refuses (usage error, `2`) before launching: an empty
+  command after `--`, a child `--mode migrate` (also `--mode=`, `-m`, `-m…`),
+  and a child `-o`/`--output`/`--output=`/`-o…` resolving elsewhere than
+  `--output` (cwd-relative). Only the tokens after the program `phenotypic`
+  (`-m phenotypic`, `-mphenotypic`, or a token whose file name is
+  `phenotypic`) are read, so a wrapper's own `-o` (`srun -o log …`) is not the
+  run's; a command naming no such program, or no output, is not checked. The
+  command must be introduced by `--` (`_WaitCommand` keeps the raw args to
+  tell), and `allow_interspersed_args=False`, so a child's `-o` can never be
+  parsed as the waiter's. `--output` need not exist in the launch form (the
+  submit creates it); the wait-only form still requires it. `--timeout-seconds`
+  bounds the wait, never the submit.
+- **Before launching, an active job means attach** (fork F2): if
+  `LiveSlurmJobs.live` is non-empty for `--output`, the waiter skips the
+  submit, prints the generation and jobs, and waits on that run, which is the
+  recovery after the job running `dvc repro` hits its walltime.
+  `unverified`/`unresolved` alone still launch, and the child's own guard
+  refuses. Ctrl-C during the submit waits for the child and returns its code
+  unpolled; an interrupted wait exits `130`. Up to
+  `MAX_CONSECUTIVE_POLL_ERRORS` (5) failed polls in a row are printed and
+  retried; the fifth exits `1` with the reason.
+- **`--accept-failures`** (fork F1) maps a final `3`, waited or from a local
+  child, to `0` after printing the terminal-failure count, so a DVC stage
+  over a dataset with one empty plate completes. Every other code is left
+  alone. `_live_jobs` passes a per-process `_InactiveJobMemo` as
+  `live_slurm_job_ids(..., is_active=)`, since a job answered not-active
+  stays so. The seams tests replace are `_run_snapshot`, `_live_jobs`,
+  `_fence_generation`, `_published`, `_cancelled`, `_generation_failures`
+  and `_is_process_run`.
+- **The GUI run console reads `4` as a failed submission**
+  (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
+
 ### Array trigger routing, not scheduler sidecar jobs
 
 Do not add a **scheduler sidecar job**, meaning an extra `sbatch` job intended
@@ -568,8 +869,8 @@ persisting the returned ID.
 - Every worker checks the active epoch immediately before publishing the store,
   the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
-- Staged submission returns `PROCESSING SUBMITTED`, like every SLURM run
-  (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
+- Staged submission returns `PROCESSING SUBMITTED` and exits `4`
+  (`SUBMITTED`), like every SLURM run (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
   finalization owns aggregation, the dashboard and the completion marker.
   Nothing writes `processing_report.html` automatically.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
@@ -631,7 +932,12 @@ naming each `<generation>:<token>` for `unresolved`. When either unknown group
 is non-empty it adds the one remedy that works: run the same command on a
 cluster node where `squeue` works. It then lists `sacct -j <id>` and
 `squeue --noheader --format='%i|%k' | grep 'phenotypic:<gen>:<token>'` for
-checking by hand. There is no override flag. A host that cannot reach the
+checking by hand. There is no override flag. **A restored fence whose job ids
+SLURM has purged** (`squeue` says invalid, `sacct` has no rows) stays
+`unverified` forever; after confirming with `sacct` that nothing runs, set the
+fence's `"active"` to `false` in `.phenotypic/slurm_lifecycle.json`. Deleting
+the file does **not** work: with no fence, every generation's ledger is
+walked and the same jobs stay unverified (measured, P2 review M7). A host that cannot reach the
 scheduler cannot clear a stuck fence.
 
 **A stuck `active: true` does not refuse on its own, deliberately.** A
@@ -640,6 +946,37 @@ active forever. Refusing on the flag would block the plain re-run that is the
 recovery procedure. So liveness always comes from the scheduler. Once every
 ledgered job is terminal and no unresolved token matches a queued job, the run
 is allowed.
+
+**Allowed also means the stale fence is closed.** Until #281 P2 T5 it was not:
+the guard let a SLURM re-run through, and `initialize_slurm_lifecycle` then
+refused to publish a new generation over the still-`active` one, so the
+documented recovery died with `Unexpected error` after the mutating half had
+begun (a SLURM recompile refused the same way in
+`_initialize_recompile_slurm_attempt`). Now the first step of the mutating
+half, and the recompile attempt before its own check, call
+`retire_dead_lifecycle_fence` (`_cli_staged_orchestration.py`), which closes
+the fence on the guard's own evidence (`live_slurm_job_ids` empty) for the
+modes it owns, `ordinary`, `recompile` and `staged-*` (a staged fence through
+`deactivate_orchestration`). It leaves `closed_by` unset, so
+`phenotypic-wait` never reads the close as the old generation's publication.
+A `dvc checkout` that restores an old `.phenotypic/` (spec C13) is the same
+case. `migrate` (own lease and reconcile), `tune` and owned fences are never
+retired. Pinned by `tests/unit/cli/test_dvc_outs_at_submission.py`.
+
+**A fence with no ledger row for its generation is never retired** (P2 review
+I4). `live_slurm_job_ids` answers empty for it, because there is nothing to
+ask the scheduler about, yet it is exactly the state of a submitter between
+publishing its fence (`initialize_slurm_lifecycle`, or
+`initialize_orchestration` for staged runs) and writing its first `intent`
+row, a window that grows with a staged run's manifest. Retiring it made that
+submitter die with `SlurmGenerationInactiveError` after its mutating half had
+begun. `unledgered_active_fence` names such a fence; `_retire_dead_fence`
+then refuses a **SLURM** invocation with exit `1`, naming the generation and
+the fence file, before anything else is written (the refusal
+`initialize_slurm_lifecycle` made before the retire existed, moved up). A
+local run is not refused, as it never was. A submitter that died before its
+first `sbatch` leaves the same state, which is rare: the message says to
+delete the fence file once no invocation is running.
 
 The check is a read-only `squeue` from the invoking process, not a scheduler
 job, so it is not a sidecar. Pinned by `TestLiveSlurmRunGuard` in
@@ -664,8 +1001,9 @@ throttled per-image validation chain, and reports its durable job IDs,
 generation, control references, and the terminal status file its finalizer
 writes. That file is where a SLURM attempt's verdict is read: 0.21.0 removed
 `--wait`, which used to wait for the lifecycle to close and turn a failed
-terminal status into a Click error, so a submitted migration exits 0 whatever
-its jobs later do. **If the finalizer itself never finishes** (out of memory,
+terminal status into a Click error, so a submitted migration exits `4`
+(`SUBMITTED`) whatever its jobs later do, and so does a SLURM `--dry-run`,
+which submits its validation chain. A local migrate keeps `0`/`1`. **If the finalizer itself never finishes** (out of memory,
 time limit, node failure, or cancelled while pending), no terminal status file
 appears. Once no job of the attempt is queued, re-run `--mode migrate`:
 `reconcile_interrupted_migration_attempt` terminalizes the dead attempt as
@@ -680,6 +1018,52 @@ and PID fields are diagnostic only across hosts. For a ledgered SLURM attempt,
 only an explicit known terminal scheduler state permits interrupted
 terminalization. Every active/held/requeue/signaling state preserves the attempt,
 and an unknown state fails closed.
+
+**Tables v1 -> v2 (#281 spec D10).** Migrate converts a store still in the v1
+flat tables layout into run folder `tables/1-<sha12>/` (`1-unknown` when no
+digest is known; `v1_table_pipeline_sha`: latest figure run, else latest
+`full`/`legacy` journal application) with `convert_tables_v1_to_v2`. The step
+runs in the per-image task (`_cli_migrate_image`, local and SLURM image array)
+after the table stage, and republishes a record that was current before it via
+`_republish_table_marker`; the run proof follows at finalization. **Why
+in the image task, not a separate pass after it:** the conversion rewrites the
+store root, so the record stops verifying. Inside the task it is republished
+*before* the marker stage re-validates it, with its identity kept verbatim.
+
+**"Identity verbatim" means these fields, and it holds by construction on
+both paths** (#281 P3 review I1, I2). `_republish_table_marker` re-reads the
+record and passes back its `work_id`, `relative_image_path`, `mode`,
+`attempt_id`, `provenance` and `source_provenance`
+(`publish_image_success(provenance=...)`; before the fix it had no such
+parameter, and a `"migrated"` record came back `"forward"`). When the record
+is *not* current -- a crash between the conversion and its republish leaves
+a v2 store and a record naming the vanished flat path -- the marker stage
+republishes it from `_existing_marker_identity`, which reads **the record
+first** and the legacy `image_complete/` marker only when no record carries
+an identity; it keeps the same fields, and borrows nothing from a record for
+another image or another non-migrated `work_id`. The one field not kept is
+`lifecycle_epoch`: both paths stamp the live migration generation, because
+under SLURM `publish_image_success` refuses any other epoch. Pinned by
+`tests/unit/cli/test_migrate_rerun_v2.py`, which also checks that the crash
+path and the clean path publish the same identity.
+
+**Which table migrate certifies** (review C1, M2): the run folder the image's
+record certifies, when it certifies one of this store; otherwise, for an
+image with a legacy external Parquet, the run its import owns
+(`import_table_run_id`, the one rule the importer
+`replace_embedded_measurement_table` and migrate's contract and exactness
+checks share); otherwise the record-less default, the latest run holding
+`measurements`. Re-certifying the latest instead silently moved a tree
+measured A, B, A to pipeline B, and judging the latest while importing into
+A's folder kept a multi-run store from ever converging. Spec D10 needs only
+conversion, then the record, then the run proof. Every forward mode refuses a v1 tree before
+`--overwrite` clears it and before `--dry-run` exits (pinned in
+`test_migrate_tables_v2.py`). `--overwrite` does not bypass it; migrate or
+delete the tree (parity with the `.h5` refusal). A
+provenance-only target gets it in its store array
+(`convert_provenance_store_tables`). The legacy-Parquet import,
+`replace_embedded_measurement_table`, writes v2 directly, so no tree is left
+mixed.
 
 ## Per-image figures
 
@@ -700,7 +1084,7 @@ straight to `deliverables/` any more.
 | Staged Stage 1 | only the bindings `split_pipeline_at_gpu` gave to `pre_pipeline`, after the pre-GPU ops | Stage 1's `save_image_store(figures=)` | no; Stage 3 publishes |
 | Staged Stage 3 | `keep_image_figures` for Stage 1's bindings, merged with `build_image_figures(post_pipeline, keep_from=<Stage-1 store>)` | `save_image_store(figures=)` | yes |
 | Measure | after `measure()` and **before** the table replace | `replace_image_tables(figures=)`: the same root-last transaction as the tables | yes |
-| Process, `--process-format zarr` | after `pipeline.apply`, before the provenance status is closed | `write_process_only_layer(figures=)` | no `deliverables/` |
+| Process, `--process-format zarr` | after `pipeline.apply` (and `embed`), before the provenance status is closed | `write_process_only_layer(figures=, embeddings=)` | no `deliverables/` |
 | Process, `tiff` (and the `--layer objmap` PNG) | none for the exported file | none | none |
 
 - **Copy-out runs after the store is promoted and before anything marks the
@@ -973,9 +1357,9 @@ otherwise.
   leaves it exactly where it is; renaming it into `legacy-v2/`, where nothing
   reads it, would orphan the work of any staged run live across the migrate.
   Only `image_complete/` and `stage3_complete/` move.
-- **`deliverables/metadata.csv` is byte-exact provenance**, with no exception for
+- **`deliverables/metadata.<ext>` is byte-exact provenance**, with no exception for
   migrate. The canonical view is emitted *alongside* it as
-  `metadata.canonical.csv`; `metadata.original.csv` does not exist and must not
+  `metadata.canonical.tsv`; `metadata.original.csv` does not exist and must not
   be created.
 - **The master is parquet-only** (D8). `master_measurements.csv` is deleted on
   sight, not rewritten.
@@ -989,10 +1373,10 @@ otherwise.
 - **Not every record written during a migration carries `"migrated"`**, and the
   difference is the code path rather than the mode: the state migrator stamps
   it (`_cli_migrate_state.py:350`, `:1080`), while migrating the image artifact
-  itself goes through `publish_image_success` (`_cli_migrate_image.py:589`),
-  which has **no `provenance` parameter** and so takes `publish_image_record`'s
-  `PROVENANCE_FORWARD` default. **Do not use record provenance to ask whether a
-  tree was migrated** — `_output_was_migrated` keys on the migration manifest
+  itself goes through `publish_image_success` (`migrate_image_task`), whose
+  `provenance` defaults to `PROVENANCE_FORWARD`: it keeps an existing record's
+  provenance (review I2) and is otherwise `forward`. **Do not use record
+  provenance to ask whether a tree was migrated** — `_output_was_migrated` keys on the migration manifest
   for exactly this reason. Full table in
   [`tracked_state.md`](../../../docs/source/contrib_guide/tracked_state.md)
   under *Provenance has two writers*.
@@ -1129,16 +1513,68 @@ member (`sdk_/_schema_shape.py:192`).
 ## Output layout & deliverables
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
-`master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
-`measurements_by_feature/<feature>.{csv,parquet}`,
-`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+`master_measurements.parquet` (**parquet only** since D8), `measurements.{tsv,csv,parquet}`,
+`measurements_by_feature/<feature>.{tsv,parquet}`,
+`measurements_by_category/<label>.{tsv,parquet}` (one per `CATEGORIES` member
 with a present column; written beside the feature split by
 `finalize_post_master_outputs`),
-`<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
+`<AnalysisClass>.{tsv,parquet}`, `analysis_manifest.json`,
+`metrics.json` and `schema.json` (#281 spec C4/C12: the run summary and the
+column schema of every published table, written by `finalize_run`'s
+`publish_run_summaries` after the splits and before the aggregate proof, which
+declares and enforces both; byte-stable canonical JSON, never read back, so
+not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
+aggregated table shares and is `null` for v1 flat tables, which record none),
+`embeddings/<model>/<layer>/<region>.parquet` and `embeddings/manifest.json`
+(the key and the path are `<model>/<layer>/<region>`: the layer is `rgb` or
+`gray`, its own folder, so an rgb and a gray copy of one embedder coexist; the
+region is `objects` or `grid`, or `objects-<name>` / `grid-<name>` for an
+embedder given a `name`, so one pipeline can publish several embedders of one
+model, layer and region, e.g. rig1's `rgb/grid-wells` and `rgb/grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
+itself, never in the `0-K` aggregate shards. **Two phases, so a failure
+changes no deliverable** (P4 review I1): `stage_embedding_deliverables`
+runs *before the master is written*, reads every non-stale entry of each
+image's **certified** run folder once (present, its sha256, its type, one
+schema per key) and streams each key to a hidden temporary, one row group
+per store; `promote` runs after the splits and before `metrics.json`,
+replacing each target and writing `manifest.json` last. A `stale` entry
+(`stale is not False`, the one predicate) is skipped with a warning and
+counted; a non-stale entry it cannot read, or any entry whose key is not
+`<model>/<layer>/<region>` (`split_embedding_key`, the one rule for keys, which
+`EmbeddingPayload` refuses on; nothing else restates the region set),
+**raises**, failing finalization
+like the master, naming every such store, and the image stays `verified`
+(D9), so the remedy is a same-pipeline `--mode measure` over the whole run,
+which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,
+`phenotypic-wait`'s exit `5` points at `slurm_logs_dir`, where the
+finalizer's log says this). A key whose stores carry **different entry
+descriptors** (entry minus `binds`/`files`/`stale` and minus
+`model.device`/`model.device_name`: an unpinned `revision` resolving to
+different commits, a partly re-measured tree) still publishes,
+with one warning per key, and every row carries an `int16`
+`descriptor_index` into the key's manifest `descriptors`, listed in order
+of first appearance over the sorted stores, so bytes stay stable; it is
+`0` everywhere for one descriptor, so the schema never depends on the
+data (Q1). **The device is provenance, not descriptor** (user decision
+2026-11-19, measured: CPU vs GPU ~1e-6 cosine distance, two GPU models ~one
+float16 bit): each store entry records `model.device` and, on CUDA,
+`model.device_name`, and `_shared_descriptor` drops both before grouping, so a
+run mixing CPU and GPU publishes one descriptor with no warning. The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
+in-scope `MeasureDinoEmbedding(revision=None)`. On the `shard_paths` branch only the
+sources the projection kept contribute. Paths are compared unresolved, so a
+symlinked `results/` and a DVC symlink cache work. Parquet only, never
+joined to metadata. The aggregate proof declares `manifest.json` and each
+published table (no GUI writer touches them). A finalization deletes only
+the `*.parquet` and `manifest.json` a previous one wrote and it does not,
+then empty directories. Every per-image writer passes `pipeline.embed(image)`
+beside `measure()`, measure mode included:
+`replace_image_tables(embeddings=None)` drops the run's embeddings; an
+embedder's `MemoryError` or torch `OutOfMemoryError` propagates unwrapped,
+so it is never a terminal failure),
 `plots/<plot-id>/...`,
 `dashboard.html`, `README.md`, the on-demand `processing_report.html`
 (written only by `python -m phenotypic.sdk_.generate_report`, since 0.21.0),
-`pipeline.json.pht-pipe`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+`pipeline.pht-pipe.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
 pipeline config is **seeded** from the `--pipeline` bytes when a full or
 staged run starts (`_seed_pipeline_config`, only when no config -- canonical
 or legacy -- exists, under `pipeline_publication_lock`) and rewritten from
@@ -1149,8 +1585,12 @@ dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
 `/analysis/` app for interactive exploration. Each per-image **OME-Zarr store** stays at
 `results/<ds>/zarr/<stem>.ome.zarr/`. Its authoritative object measurements
-are embedded at `tables/measurements/table.parquet`, described by
-`attributes.phenotypic.tables.measurements` in the store root. Forward,
+are embedded per measuring pipeline, at
+`tables/<n>-<sha12>/measurements/table.parquet`, described by
+`attributes.phenotypic.tables.runs.<n>-<sha12>.measurements` in the store
+root (#281 spec D1-D3). A store written before that layout keeps one flat
+`tables/measurements/table.parquet`; every mode but migrate refuses such a
+tree (`_cli_tables_v1.first_v1_store`), and `--mode migrate` converts it. Forward,
 staged Stage 3, and measure runs do not create
 `results/<ds>/measurements/<stem>.parquet`; that directory is legacy migration
 input only. There is no per-image `.h5` on any forward path: `results/<ds>/hdf/` appears only in a tree written by a pre-store
@@ -1177,9 +1617,10 @@ replaced described the pre-inversion contract in every particular, and each
 particular is now false.)*
 
 Each embedded table carries **measurements alone**; the image's own rows of the
-run's metadata snapshot sit beside it at `tables/metadata/pht-metadata.parquet`,
-and the store root records which snapshot it was built against in
-`attributes.phenotypic.metadata_table.snapshot_sha256`.
+run's metadata snapshot sit beside it in the same run folder, at
+`tables/<n>-<sha12>/metadata/pht-metadata.parquet`, and the run's entry in
+the store root records which snapshot it was built against in
+`tables.runs.<n>-<sha12>.metadata_table.snapshot_sha256`.
 `master_measurements.parquet` is the pre-post concatenation of
 marker-authorized embedded tables, each **projected onto its own store's
 descriptor** first, so it is **un-joined**: intrinsic identity
@@ -1215,7 +1656,23 @@ is an advisory, and an advisory is never a gate. It *does* still refuse mixed
 **authority** — a tree holding both embedded tables and legacy external
 Parquets (`refuse_mixed_measurement_authority`).
 
-`measurements.{csv,parquet}` is the post-applied, metadata-joined mirror the GUI
+**Two generated CSVs and one input snapshot stay CSV** (#281 P1, spec B2/B9):
+`measurements.csv` stays because the GUI's curation rewrites it and the
+`.parquet` — never the `.tsv` — until #283, so until then a curated edit
+reaches `measurements.csv`/`.parquet` and not `measurements.tsv`;
+`error_analysis.csv` is written by the GUI; `metadata.<ext>` is the user's
+byte-exact snapshot. **Finalize's stale-CSV sweep** is
+`remove_stale_csv_sibling(tsv)` (`sdk_/_delimited.py`), called right after a
+`.tsv` is published: it deletes only that file's `.csv` twin (the splits in
+`_write_split`, `<AnalysisClass>` in `_emit_analysis_outputs`, and
+`metadata.canonical.csv` in `emit_canonical_metadata_view`), and raises on the
+stems `measurements`, `error_analysis` and `metadata` directly in
+`deliverables/` (the same stem in a split folder is an ordinary split). A reader of a possibly
+pre-cutover tree resolves the mirror text file with `measurements_table_path` /
+`BundleLayout.measurements_table_path()` (`.tsv`, else `.csv`); analysis tables
+go through the manifest, whose schema-1 entries map `csv` onto `tsv`.
+
+`measurements.{tsv,csv,parquet}` is the post-applied, metadata-joined mirror the GUI
 reads and curates. Metadata is the **left** frame, deliberately: a metadata
 identity that matched no measured object survives as a phantom row with
 `QC_MetadataOnly=true`, its metadata values kept and its measurement/info
@@ -1252,7 +1709,7 @@ visible per-image Parquets, dataset aggregates, or a partial deliverable master.
 
 **Metadata snapshot authority.** Before local processing or SLURM submission,
 full runs and recompile atomically copy the configured `--metadata` bytes to
-`deliverables/metadata.csv`, verify the copy, and use that stable path for
+`deliverables/metadata.<ext>` (the input's own `.csv` or `.tsv` suffix), verify the copy, and use that stable path for
 finalization. The snapshot is source provenance, not a generated schema table:
 legacy headers normalize only in memory, while finalization, recompile, and
 explicit `--mode migrate` must leave its bytes unchanged. Recompile performs

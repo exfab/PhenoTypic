@@ -284,7 +284,7 @@ def prepared_case(
     case_root = root / f"{CASE_PREFIX}{generation}"
     input_dir = case_root / "input"
     output_dir = case_root / f"output-{generation}"
-    pipeline_path = case_root / "pipeline.json.pht-pipe"
+    pipeline_path = case_root / "pipeline.pht-pipe.json"
     setup_complete = False
     try:
         case_root.mkdir(mode=0o700)
@@ -913,7 +913,7 @@ def anchored_cleanup_target(
 
         for fixture_name, kind in (
             ("input", "input"),
-            ("pipeline.json.pht-pipe", "pipeline"),
+            ("pipeline.pht-pipe.json", "pipeline"),
         ):
             try:
                 fixture_stat = os.stat(

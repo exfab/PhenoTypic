@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic._cli._cli_types import ExecutionResults
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
@@ -96,6 +97,6 @@ def test_gui_slurm_shaped_run_never_publishes_local_completion(
 
     result = CliRunner().invoke(phenotypic_cli, args)
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert scheduler_invocations == []
     assert not run_completion_marker_path(output).exists()

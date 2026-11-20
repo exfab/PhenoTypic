@@ -7,7 +7,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, contextmanager
 import json
 import os
 import sys
@@ -15,7 +15,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Mapping, cast
+from typing import Optional, Dict, Any, Callable, Iterator, Mapping, cast
 from uuid import uuid4
 
 import matplotlib
@@ -44,7 +44,11 @@ from ._cli_process_only import (
     process_single_apply_only_core,
     resolve_process_format,
 )
-from ._cli_completion import image_data_artifact, publish_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    image_measurement_artifact,
+    publish_image_success,
+)
 from ._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
     SLURM_GENERATION_ENV_VAR,
@@ -52,12 +56,14 @@ from ._cli_update_state import (
     append_completion_event,
 )
 from ._cli_failure_tracker import (
+    MEASURE_FAILURE_STAGE,
     PerImageScientificError,
     _normalized_input_relative_path,
     append_failure,
     append_terminal_failure,
     compute_work_id,
     file_sha256,
+    input_sha256_for,
     image_reference_digest,
     processing_configuration_digest_from_values,
 )
@@ -67,15 +73,16 @@ from ._cli_slurm_lifecycle import (
     generation_publication_guard,
     slurm_generation_inactive_cause,
 )
+from ._cli_types import is_in_place_process, writes_process_store
 from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extension
 from phenotypic.sdk_ import (
     CommitGuard,
     EnvVar,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     load_image_from_store,
     progress_dir,
     source_image_stem,
     store_stem,
+    upstream_entries_for_input,
     zarr_store_path,
 )
 from phenotypic.sdk_.typing_ import (
@@ -146,12 +153,15 @@ def _worker_work_identity(
     drop_originals: bool = False,
     mode: str,
     reference_digest: str | None = None,
+    in_place: bool = False,
 ) -> tuple[str, str]:
     """Calculate the same work identity used by top-level selection.
 
     ``reference_digest`` is the image's entry in the run's reference manifest
     (``image_reference_digest``), read once by the caller so the identity and
-    the context the apply runs in are pinned to the same plan.
+    the context the apply runs in are pinned to the same plan. ``in_place``
+    marks an in-place process run (#281 spec E7): its input digest leaves out
+    the bytes the run writes, and its configuration digest says so.
     """
     relative_path = _normalized_input_relative_path(
         input_root, image
@@ -160,7 +170,7 @@ def _worker_work_identity(
         compute_work_id(
             dataset=dataset_name,
             relative_image_path=relative_path,
-            input_sha256=file_sha256(image),
+            input_sha256=input_sha256_for(image, in_place=in_place),
             pipeline_fingerprint=file_sha256(pipeline),
             processing_config_digest=processing_configuration_digest_from_values(
                 image_type=image_type,
@@ -180,6 +190,7 @@ def _worker_work_identity(
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
+                in_place=in_place,
             ),
             mode=mode,
             reference_digest=reference_digest,
@@ -204,6 +215,7 @@ def process_single_image_core(
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
     reference_pin: ReferencePin | None = None,
+    input_root: Path | None = None,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -228,6 +240,10 @@ def process_single_image_core(
             filesystem commit point.
         reference_pin: The reference digest ``work_id`` was computed from;
             the apply refuses a manifest that has since re-planned the image.
+        input_root: The run's ``--input``. When *image_path* is a PhenoTypic
+            store with table runs, the result store records them as its
+            ``tables.upstream``, with ``source`` relative to this root
+            (#281 spec D8). ``None`` records the input's name.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -286,6 +302,8 @@ def process_single_image_core(
         )
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
+        # The input's table runs, referenced rather than copied (spec D8).
+        upstream = upstream_entries_for_input(image_path, input_root)
         resolved_pipeline_identity = (
             pipeline_source_identity(pipeline_path)
             if pipeline_identity is None
@@ -330,6 +348,7 @@ def process_single_image_core(
                 image_stem,
                 work_id=work_id,
                 commit_guard=commit_guard,
+                upstream=upstream,
             )
             if saved_store is None:
                 raise RuntimeError(
@@ -344,6 +363,9 @@ def process_single_image_core(
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
+            # Beside measure(), never inside it: the embedding tables go into
+            # the same run folder as the measurements (#281 spec E2).
+            embeddings = pipeline.embed(image)
         if output_manager.save_overlays:
             _check_active(active_check)
             output_manager.save_overlay(
@@ -382,6 +404,8 @@ def process_single_image_core(
             commit_guard=commit_guard,
             measurements=measurements,
             figures=figures,
+            upstream=upstream,
+            embeddings=embeddings,
         )
         if saved_store is None:
             raise RuntimeError(
@@ -412,6 +436,39 @@ def process_single_image_core(
     return True
 
 
+@contextmanager
+def measure_scientific_boundary() -> Iterator[None]:
+    """Make a ``--mode measure`` re-measure's failure a terminal scientific one.
+
+    The worker-side twin of the boundary :func:`process_single_image_core`
+    draws around a forward image: a failure inside it becomes a
+    :class:`PerImageScientificError` with stage
+    :data:`MEASURE_FAILURE_STAGE`, which both measure workers journal as a
+    terminal record under the image's measure work id (#281 P2 C11d, spec
+    C3). Before #281 measure mode journalled nothing, so neither
+    ``phenotypic-wait`` nor ``metrics.json`` could see a SLURM re-measure
+    fail. It wraps the call rather than living in
+    :func:`process_single_store_measure_core`, whose callers rely on the
+    original exception propagating.
+
+    As in the forward core, an inactive SLURM generation, ``MemoryError`` and
+    a stale reference plan propagate unwrapped: none of them is the image's
+    own outcome.
+
+    Raises:
+        PerImageScientificError: Wrapping any other exception.
+    """
+    try:
+        yield
+    except (SlurmGenerationInactiveError, MemoryError, ReferencePlanStaleError):
+        raise
+    except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        raise PerImageScientificError(MEASURE_FAILURE_STAGE, exc) from exc
+
+
 def process_single_store_measure_core(
     pipeline_path: Path,
     store_path: Path,
@@ -426,8 +483,9 @@ def process_single_store_measure_core(
     Loads ``store_path`` as :class:`Image` or :class:`GridImage` — dispatched
     from the store's own ``phenotypic.image_class``, with ``image_type`` as the
     fallback for a block that carries none — runs
-    :meth:`ImagePipeline.measure` only (no apply / no detection), and rewrites
-    the embedded measurement table. Does not regenerate overlays or pixel arrays.
+    :meth:`ImagePipeline.measure` and :meth:`ImagePipeline.embed` only (no
+    apply / no detection), and rewrites the pipeline's run folder: its
+    measurement table and its embedding tables. Does not regenerate overlays or pixel arrays.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
@@ -458,6 +516,10 @@ def process_single_store_measure_core(
     # Measurement only — no apply / detection. apply_post=False matches
     # the forward path so store re-measure parquets are also post-free.
     measurements = pipeline.measure(image, apply_post=False)
+    # The run folder's entry describes this write whole, so the embeddings
+    # must be passed or the same-pipeline rewrite drops them (review OQ5,
+    # #281 spec E2). The store's own objmap is what they are bound to.
+    embeddings = pipeline.embed(image)
 
     # ``store_stem``, never ``Path.stem``: ``.ome.zarr`` is a double suffix,
     # so ``.stem`` would name the parquet ``<stem>.ome.parquet`` and key the
@@ -507,12 +569,19 @@ def process_single_store_measure_core(
     # rewrote a promoted store's Parquet without refreshing the root, so the
     # per-image proof went on certifying content that had changed underneath
     # it (CAN-3).
-    output_manager.replace_image_store_measurements(
+    # The run folder is the one THIS pipeline file owns (spec D6): the same
+    # pipeline replaces its folder, another adds one beside it. The record
+    # must declare the table returned here -- not `journal_table_run`'s,
+    # since measure mode opens no journal application, so the journal still
+    # names the forward run's pipeline.
+    measurement_table = output_manager.replace_image_store_measurements(
         store_path,
         measurements,
         dataset_name,
+        pipeline_sha256=pipeline_sha256,
         commit_guard=commit_guard,
         figures=figures,
+        embeddings=embeddings,
     )
     PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
         store_path,
@@ -583,6 +652,7 @@ def process_single_store_measure_core(
             record_path,
             commit_guard=commit_guard,
             lifecycle_epoch=slurm_generation or None,
+            measurements=measurement_table,
         )
 
     return True
@@ -830,6 +900,15 @@ def main(
             output_dir, dataset_name, image, mode
         )
         reference_pin = ReferencePin(source_image_stem(image), reference_digest)
+        # --output equal to --input (#281 spec E7): the identity leaves out
+        # the bytes the run writes, and the core writes into the input store.
+        in_place = is_in_place_process(
+            input_root=input_root,
+            output_dir=output_dir,
+            process=writes_process_store(
+                process_only_layer, resolved_process_format
+            ),
+        )
 
         def _identity() -> tuple[str, str]:
             return _worker_work_identity(
@@ -851,6 +930,7 @@ def main(
                 drop_originals=drop_originals,
                 mode=mode,
                 reference_digest=reference_digest,
+                in_place=in_place,
             )
 
         work_identity = None if measure_only else _identity()
@@ -863,7 +943,7 @@ def main(
         if any(value is not None for value in expected_identity):
             if not all(value for value in expected_identity):
                 raise RuntimeError("Incomplete immutable SLURM task identity")
-            if file_sha256(image) != expected_input_sha256:
+            if input_sha256_for(image, in_place=in_place) != expected_input_sha256:
                 raise RuntimeError(
                     "Input changed after SLURM worklist creation"
                 )
@@ -900,24 +980,43 @@ def main(
                     work_id=expected_work_id or "",
                 )
             click.echo(
-                f"Processing (apply-only, {process_only_layer}) {image.name}..."
+                f"Processing (apply-only, {process_only_layer}"
+                f"{', in place' if in_place else ''}) {image.name}..."
             )
-            process_single_apply_only_core(
-                pipeline_path=pipeline,
-                image_path=image,
-                input_root=input_root,
-                output_dir=output_dir,
-                image_type=image_type,  # type: ignore[arg-type]
-                layer=process_only_layer,  # type: ignore[arg-type]
-                read_kwargs=process_only_read_kwargs,
-                cli_nrows=nrows,
-                cli_ncols=ncols,
-                commit_guard=commit_guard,
-                process_format=resolved_process_format,
-                run_initiation=run_initiation,
-                dataset_name=dataset_name,
-                reference_pin=reference_pin,
-            )
+            if in_place:
+                from ._cli_process_in_place import process_in_place_core
+
+                process_in_place_core(
+                    pipeline,
+                    image,
+                    input_root,
+                    layer=process_only_layer,
+                    read_kwargs=process_only_read_kwargs,
+                    image_type=image_type,  # type: ignore[arg-type]
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
+                    commit_guard=commit_guard,
+                    run_initiation=run_initiation,
+                    dataset_name=dataset_name,
+                    reference_pin=reference_pin,
+                )
+            else:
+                process_single_apply_only_core(
+                    pipeline_path=pipeline,
+                    image_path=image,
+                    input_root=input_root,
+                    output_dir=output_dir,
+                    image_type=image_type,  # type: ignore[arg-type]
+                    layer=process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=process_only_read_kwargs,
+                    cli_nrows=nrows,
+                    cli_ncols=ncols,
+                    commit_guard=commit_guard,
+                    process_format=resolved_process_format,
+                    run_initiation=run_initiation,
+                    dataset_name=dataset_name,
+                    reference_pin=reference_pin,
+                )
             assert work_identity is not None
             work_id, relative_path = work_identity
             publish_image_success(
@@ -994,15 +1093,19 @@ def main(
             )
 
             click.echo(f"Measuring {image.name} (store rerun)...")
-            process_single_store_measure_core(
-                pipeline_path=pipeline,
-                store_path=image,
-                output_dir=output_dir,
-                dataset_name=dataset_name,
-                image_type=cast(ImageTypeName, image_type),
-                output_manager=output_manager,
-                commit_guard=commit_guard,
-            )
+            # Journalled below under the measure work id `_identity()` gives
+            # (mode "measure") and this generation, which `phenotypic-wait`
+            # and the measure finalizer's metrics.json count.
+            with measure_scientific_boundary():
+                process_single_store_measure_core(
+                    pipeline_path=pipeline,
+                    store_path=image,
+                    output_dir=output_dir,
+                    dataset_name=dataset_name,
+                    image_type=cast(ImageTypeName, image_type),
+                    output_manager=output_manager,
+                    commit_guard=commit_guard,
+                )
         else:
             # Forward run: prepare read kwargs and dispatch to the detection path.
             read_kwargs = input_read_settings(bit_depth, detect_mode)
@@ -1036,6 +1139,7 @@ def main(
                 active_check=active_check,
                 commit_guard=commit_guard,
                 reference_pin=reference_pin,
+                input_root=input_root,
             )
             # The same resolver the local strategy and the staged SLURM
             # worker use. It is what keeps this site from certifying a `.h5`
@@ -1049,7 +1153,9 @@ def main(
                 source_image_stem(image),
             )
             artifacts = {
-                "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "measurements": image_measurement_artifact(
+                    output_dir, dataset_name, source_image_stem(image)
+                ),
                 data_key: data_path,
             }
             if save_overlays:

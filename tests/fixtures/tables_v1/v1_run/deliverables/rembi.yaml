@@ -1,0 +1,46 @@
+study:
+  Dataset: ds
+image_data:
+  n_images: 1
+  bit_depth:
+  - 8
+  files:
+  - name: plate
+    uuid: null
+    bit_depth: 8
+    image_type: GridImage
+analyzed_data:
+  features:
+    Size:
+    - Area
+    - BboxArea
+    - ConvexArea
+    - InscribedRadius
+    - IntegratedIntensity
+    - MajorAxisLength
+    - MaxFeretDiameter
+    - MaxRadius
+    - MeanRadius
+    - MedianRadius
+    - MinFeretDiameter
+    - MinorAxisLength
+    - Perimeter
+    - RobustMeanRadius
+    Object:
+    - Label
+    Bbox:
+    - CenterCC
+    - CenterRR
+    - DistWeightedCenterCC
+    - DistWeightedCenterRR
+    - IntensityWeightedCenterCC
+    - IntensityWeightedCenterRR
+    - MaxCC
+    - MaxRR
+    - MinCC
+    - MinRR
+    Grid:
+    - ColMajorIdx
+    - ColNum
+    - RowMajorIdx
+    - RowNum

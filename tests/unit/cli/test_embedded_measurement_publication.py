@@ -9,10 +9,17 @@ from phenotypic._cli._cli_completion import valid_image_success
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     image_record_path,
+    latest_measurement_run,
     zarr_store_path,
 )
+
+
+def _store_table(store: Path) -> Path:
+    """The store's measurements table, through the v2 resolver (#281 D6a)."""
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} has no measurement run"
+    return run.measurements_path()
 
 
 def test_new_run_structure_does_not_create_external_measurements_dir(
@@ -59,7 +66,7 @@ def test_single_pass_writes_only_the_embedded_measurement_table(
     )
 
     store = zarr_store_path(output, "ds", "plate")
-    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert _store_table(store).is_file()
     assert not (output / "results" / "ds" / "measurements").exists()
     assert not list(output.rglob("plate.parquet"))
 
@@ -93,7 +100,7 @@ def test_direct_store_source_uses_canonical_store_and_overlay_keys(
     )
 
     canonical_store = zarr_store_path(output, "ds", "p01")
-    assert (canonical_store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    assert _store_table(canonical_store).is_file()
     assert (output / "deliverables" / "overlays" / "ds" / "p01.png").is_file()
     assert not zarr_store_path(output, "ds", "p01.ome").exists()
     assert not (
@@ -148,8 +155,9 @@ def test_marker_binds_the_embedded_table_hash(tmp_path: Path) -> None:
         )
     )
     table_descriptor = marker["artifacts"]["measurements"]
-    assert table_descriptor["path"].endswith(
-        "plate.ome.zarr/tables/measurements/table.parquet"
+    # The run folder the save wrote, tables/<n>-<sha12>/ (#281 D6a).
+    assert (output / table_descriptor["path"]) == _store_table(
+        zarr_store_path(output, "in", "plate")
     )
     assert table_descriptor["kind"] == "file"
     work_id = marker["work_id"]

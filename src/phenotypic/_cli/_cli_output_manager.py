@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
     from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 from ._cli_types import Dataset
@@ -55,18 +56,23 @@ from phenotypic.sdk_ import (
     atomic_write_with_writer,
     dataset_overlays_dir,
     deliverables_dir,
-    metadata_csv_deliverable_path,
+    resolve_metadata_snapshot_path,
     measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    measurements_tsv_path,
     logs_dir,
-    pipeline_json_path,
+    slurm_logs_dir,
+    pipeline_config_candidates,
     pipeline_publication_lock,
     publication_commit,
+    TSV_SUFFIX,
     qc_duckdb_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
+    remove_stale_csv_sibling,
+    write_tsv,
 )
 
 logger = logging.getLogger(__name__)
@@ -527,8 +533,14 @@ def _collect_feature_headers(
         (e.g. ``"MeasureSize" → ["Size_Area", "Size_IntegratedIntensity", ...]``).
         Keys with no discoverable headers are omitted.
     """
+    from phenotypic.abc_ import MeasureEmbedding
+
     headers_by_key: Dict[str, List[str]] = {}
     for key, measurer in pipeline._meas.items():
+        if isinstance(measurer, MeasureEmbedding):
+            # An embedder writes its own tables, never a master column, so
+            # it gets no by-feature split (#281 spec E5).
+            continue
         infoclasses = []
         single = getattr(measurer, "_measurement_infoclass", None)
         if single is not None:
@@ -611,13 +623,18 @@ def _persist_pipeline_to_output_dir(
     output_dir: Path,
     pipeline: "ImagePipeline",
 ) -> Optional[Path]:
-    """Atomically write *pipeline*'s JSON to ``deliverables/pipeline.json.pht-pipe``.
+    """Atomically write *pipeline*'s JSON to ``deliverables/pipeline.pht-pipe.json``.
 
     The canonical pipeline JSON is the source of truth for analysis recipes
     and reproducibility — it captures filters/model alongside the
     operations/measurements/post chain. The analysis GUI reads from and
     writes back to this file; the CLI seeds it on every aggregate so the
     file always reflects the most recent run.
+
+    One current pipeline file per folder (spec A4): the new name is
+    published first, then an old-typed ``pipeline.json.pht-pipe`` sibling is
+    removed, both under the publication lock. A plain legacy
+    ``pipeline.json`` is never touched, so a V1 reader still finds it.
 
     Args:
         output_dir: Output root directory (the parent that holds
@@ -629,7 +646,7 @@ def _persist_pipeline_to_output_dir(
         failed. Failure is logged at WARNING; the caller does not need to
         handle the exception.
     """
-    target = pipeline_json_path(output_dir)
+    target, old_typed, _plain = pipeline_config_candidates(output_dir)
 
     def _write(p: str) -> None:
         Path(p).write_text(pipeline.to_json() or "")
@@ -637,6 +654,7 @@ def _persist_pipeline_to_output_dir(
     try:
         with pipeline_publication_lock(target):
             atomic_write_with_writer(target, _write)
+            old_typed.unlink(missing_ok=True)
         return target
     except Exception:
         logger.warning(
@@ -741,30 +759,30 @@ def _emit_analysis_outputs(
                 "or active-owner state changed during computation."
             )
             return None
-        staged_csv = transaction.staged_csv
+        staged_tsv = transaction.staged_table
         staged_parquet = transaction.staged_parquet
-        backup_csv = transaction.backup_csv
+        backup_tsv = transaction.backup_table
         backup_parquet = transaction.backup_parquet
         try:
             recover_analysis_publication(base)
             previous_manifest = read_analysis_manifest(base)
             previous_manifest_existed = analysis_manifest_path(base).exists()
-            fit_pl.write_csv(staged_csv)
+            write_tsv(fit_pl, staged_tsv)
             fit_pl.write_parquet(staged_parquet, **PARQUET_WRITE_OPTIONS)
             entry = AnalysisManifestEntry(
                 producer_class=type(model).__name__,
-                csv=paths.csv.name,
+                tsv=paths.tsv.name,
                 parquet=paths.parquet.name,
                 rows=len(fit_pd),
                 columns=tuple(fit_pd.columns),
-                csv_sha256=file_sha256(staged_csv),
+                tsv_sha256=file_sha256(staged_tsv),
                 parquet_sha256=file_sha256(staged_parquet),
             )
             write_analysis_publication_journal(
                 base,
                 analysis_id=analysis_id,
                 token=transaction.token,
-                old_csv_exists=paths.csv.exists(),
+                old_tsv_exists=paths.tsv.exists(),
                 old_parquet_exists=paths.parquet.exists(),
                 entry=entry,
             )
@@ -775,11 +793,11 @@ def _emit_analysis_outputs(
                 )
                 recover_analysis_publication(base)
                 return None
-            if paths.csv.exists():
-                os.replace(paths.csv, backup_csv)
+            if paths.tsv.exists():
+                os.replace(paths.tsv, backup_tsv)
             if paths.parquet.exists():
                 os.replace(paths.parquet, backup_parquet)
-            os.replace(staged_csv, paths.csv)
+            os.replace(staged_tsv, paths.tsv)
             os.replace(staged_parquet, paths.parquet)
             publish_analysis_manifest_entry(base, analysis_id, entry)
             if not _analysis_publication_guard_allows(publication_guard):
@@ -816,6 +834,12 @@ def _emit_analysis_outputs(
                 recover_analysis_publication(base)
                 return None
             recover_analysis_publication(base)
+            try:
+                remove_stale_csv_sibling(paths.tsv)
+            except OSError:
+                logger.warning(
+                    "Could not remove stale %s.csv", analysis_id, exc_info=True
+                )
         except Exception:
             try:
                 recover_analysis_publication(base)
@@ -833,7 +857,7 @@ def _emit_analysis_outputs(
             )
             return None
         finally:
-            for temporary in (staged_csv, staged_parquet):
+            for temporary in (staged_tsv, staged_parquet):
                 temporary.unlink(missing_ok=True)
 
     logger.info(
@@ -947,14 +971,23 @@ def _seed_measurements(
     *,
     commit_guard: "CommitGuard | None" = None,
 ) -> None:
-    """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
+    """Atomically write ``measurements.{tsv,csv,parquet}`` as a fresh master copy.
 
-    The GUI's results viewer mutates these mirrors in place when users curate
-    colonies; re-runs of the CLI (forward, measure mode, recompile mode)
-    intentionally reset them by calling this helper after the master is
-    written. Failures of either write are logged at WARNING and do not raise
-    — the master output is preserved as the authoritative source.
+    The GUI's results viewer mutates the ``.csv`` and ``.parquet`` mirrors in
+    place when users curate colonies; re-runs of the CLI (forward, measure
+    mode, recompile mode) intentionally reset all three by calling this helper
+    after the master is written. ``measurements.tsv`` is the generated table
+    (spec B2); the ``.csv`` stays because GUI curation rewrites it until #283
+    (spec B9), so until then a curation reaches the ``.csv`` and the
+    ``.parquet`` but not the ``.tsv``. Failures of any write are logged at
+    WARNING and do not raise — the master output is preserved as the
+    authoritative source.
     """
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: write_tsv(master_df, measurements_tsv_path(output_dir)),
+        warning="Failed to seed measurements.tsv (master was saved)",
+    )
     _guarded_terminal_best_effort(
         commit_guard,
         lambda: atomic_write_with_writer(
@@ -1085,8 +1118,8 @@ def finalize_post_master_outputs(
        based on the ``MeasurementInfo`` columns present in the frame, so
        users see post-derived columns (e.g. ``Metadata_Strain`` from
        ``ExpandMetadata``) in
-       ``measurements_by_feature/<feature>.{csv,parquet}`` and
-       ``measurements_by_category/<label>.{csv,parquet}``.
+       ``measurements_by_feature/<feature>.{tsv,parquet}`` and
+       ``measurements_by_category/<label>.{tsv,parquet}``.
     5. When *pipeline* is provided: persist ``pipeline.json``, run
        :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
        sees both post-applied and metadata-joined data), and run QC when
@@ -1361,7 +1394,7 @@ def split_master_by_feature(
     output_dir: Path,
     pipeline: Optional["ImagePipeline"] = None,
 ) -> Dict[str, Path]:
-    """Write one CSV + Parquet per recognized feature into *output_dir*.
+    """Write one TSV + Parquet per recognized feature into *output_dir*.
 
     Creates ``output_dir/measurements_by_feature/`` and emits a spreadsheet
     for every producer key returned by
@@ -1378,7 +1411,7 @@ def split_master_by_feature(
             columns in *master_df*.
 
     Returns:
-        Mapping of producer key → path to the emitted CSV. Empty if nothing
+        Mapping of producer key → path to the emitted TSV. Empty if nothing
         could be split.
     """
     del pipeline
@@ -1395,10 +1428,10 @@ def split_master_by_category(
     master_df: "pl.DataFrame",
     output_dir: Path,
 ) -> Dict[str, Path]:
-    """Write one CSV + Parquet per measurement category into *output_dir*.
+    """Write one TSV + Parquet per measurement category into *output_dir*.
 
     Creates ``deliverables/measurements_by_category/`` and emits
-    ``<label>.{csv,parquet}`` for every key returned by
+    ``<label>.{tsv,parquet}`` for every key returned by
     :func:`phenotypic.util.split_measurements_by_category`: the feature
     split's context columns plus that category's present columns. Called only
     from :func:`finalize_post_master_outputs`, the finalization path shared by
@@ -1409,7 +1442,7 @@ def split_master_by_category(
         output_dir: Run output root.
 
     Returns:
-        Mapping of category label → path to the emitted CSV. Empty, with no
+        Mapping of category label → path to the emitted TSV. Empty, with no
         directory created, when no categorized column is present.
     """
     master_df = normalize_measurement_metadata_columns(master_df)
@@ -1426,10 +1459,10 @@ def _write_split(
     split_dir: Path,
     split_frames: "Mapping[str, pd.DataFrame | pl.DataFrame]",
 ) -> Dict[str, Path]:
-    """Atomically write one CSV + Parquet per split frame into *split_dir*.
+    """Atomically write one TSV + Parquet per split frame into *split_dir*.
 
-    A failed CSV skips that key; a failed Parquet keeps the CSV. Returns
-    key → CSV path for every key whose CSV was written.
+    A failed TSV skips that key; a failed Parquet keeps the TSV. Returns
+    key → TSV path for every key whose TSV was written.
     """
     split_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1439,7 +1472,7 @@ def _write_split(
             subset = pl.from_pandas(subset_frame)
         else:
             subset = subset_frame
-        csv_path = split_dir / f"{key}.csv"
+        tsv_path = split_dir / f"{key}{TSV_SUFFIX}"
         pq_path = split_dir / f"{key}.parquet"
 
         def _write_parquet(
@@ -1448,10 +1481,10 @@ def _write_split(
             _subset.write_parquet(path, **PARQUET_WRITE_OPTIONS)
 
         try:
-            atomic_write_with_writer(csv_path, subset.write_csv)
+            write_tsv(subset, tsv_path)
         except Exception:
             logger.warning(
-                "Failed to write split CSV for %r", key, exc_info=True
+                "Failed to write split TSV for %r", key, exc_info=True
             )
             continue
 
@@ -1459,18 +1492,26 @@ def _write_split(
             atomic_write_with_writer(pq_path, _write_parquet)
         except Exception:
             logger.warning(
-                "Failed to write split Parquet for %r (CSV was saved)",
+                "Failed to write split Parquet for %r (TSV was saved)",
                 key,
                 exc_info=True,
             )
 
-        written[key] = csv_path
+        # The TSV is published, so the pre-cutover `.csv` twin is stale.
+        try:
+            remove_stale_csv_sibling(tsv_path)
+        except OSError:
+            logger.warning(
+                "Could not remove stale %s.csv", key, exc_info=True
+            )
+
+        written[key] = tsv_path
         logger.info(
             "Split %r: %d rows x %d cols -> %s",
             key,
             subset.height,
             subset.width,
-            csv_path.name,
+            tsv_path.name,
         )
 
     return written
@@ -1488,6 +1529,8 @@ def _aggregate_measurements_unlocked(
     planned_work_ids: Optional[Sequence[str]] = None,
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: Optional[str] = None,
+    measure_failed: Optional[int] = None,
 ) -> Optional[Path]:
     """Finalize this run through the one aggregation + join + publish path.
 
@@ -1518,6 +1561,12 @@ def _aggregate_measurements_unlocked(
         study_config: Optional REMBI Study-level fields (parsed ``--study``
             YAML) forwarded to the manifest.
         commit_guard: Publication guard threaded to every terminal write.
+        execution_epoch: The SLURM generation the calling finalizer runs
+            under, stamped into the aggregate proof (#281 spec C3). ``None``
+            for a local run.
+        measure_failed: A local ``--mode measure`` invocation's own failure
+            count, for ``metrics.json``. See
+            :func:`~phenotypic._cli._cli_finalize_run.finalize_run`.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` if no
@@ -1557,6 +1606,8 @@ def _aggregate_measurements_unlocked(
         shard_paths=shard_paths,
         planned_work_ids=planned_work_ids,
         commit_guard=commit_guard,
+        execution_epoch=execution_epoch,
+        measure_failed=measure_failed,
     )
 
 
@@ -1572,6 +1623,8 @@ def aggregate_measurements(
     planned_work_ids: Optional[Sequence[str]] = None,
     njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
+    execution_epoch: Optional[str] = None,
+    measure_failed: Optional[int] = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -1593,6 +1646,8 @@ def aggregate_measurements(
             planned_work_ids=planned_work_ids,
             njobs=njobs,
             commit_guard=commit_guard,
+            execution_epoch=execution_epoch,
+            measure_failed=measure_failed,
         )
 
 
@@ -1738,7 +1793,7 @@ class OutputManager:
 
         # Create logs directory in the hidden machine-state cache.
         self.logs_dir.mkdir(parents=True, exist_ok=True)
-        (self.logs_dir / "slurm").mkdir(parents=True, exist_ok=True)
+        slurm_logs_dir(self.base_dir).mkdir(parents=True, exist_ok=True)
 
         # Create dataset folders with subdirectories under results/
         for dataset in datasets:
@@ -1918,6 +1973,8 @@ class OutputManager:
         commit_guard: CommitGuard | None = None,
         measurements: pd.DataFrame | None = None,
         figures: StoredFigures | None = None,
+        upstream: Mapping[str, Mapping] | None = None,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1949,6 +2006,17 @@ class OutputManager:
                 transaction (spec 2026-09-22 §3); they replace that run's
                 folder only. ``None`` adds no run. Either way, every other
                 run already in the store is carried across (§1a).
+            upstream: The input's table runs
+                (:func:`~phenotypic.sdk_.upstream_entries_for_input`), recorded
+                under the store's ``tables.upstream`` and counted when
+                numbering its own folder (#281 spec D2, D8). Given (even
+                empty), it replaces the store's existing ``upstream`` block,
+                since this save read its input just now; ``None`` carries the
+                existing block (review M1).
+            embeddings: The pipeline's embedding tables for this image
+                (:meth:`~phenotypic.ImagePipeline.embed`), written into the
+                same run folder as *measurements* (#281 spec D1, E2). ``None``
+                writes none.
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -1974,12 +2042,8 @@ class OutputManager:
                         str(EXPERIMENT.DATASET),
                         dataset_name,
                     )
-                metadata_snapshot = metadata_csv_deliverable_path(
-                    self.base_dir
-                )
                 table = prepare_image_tables(
-                    baseline,
-                    metadata_snapshot if metadata_snapshot.is_file() else None,
+                    baseline, resolve_metadata_snapshot_path(self.base_dir)
                 )
             save_kwargs: dict[str, Any] = {
                 "work_id": work_id,
@@ -1992,6 +2056,10 @@ class OutputManager:
                 save_kwargs["measurement_table"] = table
             if figures is not None:
                 save_kwargs["figures"] = figures
+            if upstream is not None:
+                save_kwargs["upstream"] = upstream
+            if embeddings:
+                save_kwargs["embeddings"] = embeddings
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
                 "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
@@ -2019,12 +2087,14 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
+        pipeline_sha256: str | None,
         figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
+        embeddings: Mapping[str, EmbeddingPayload] | None = None,
     ) -> Path:
         """Replace an existing store's authoritative measurement and metadata
-        tables.
+        tables, in the run folder of the pipeline that measured them.
 
         Both move together, through the same producer the forward writer uses.
         Feeding this path the joined producer instead would silently
@@ -2036,6 +2106,14 @@ class OutputManager:
             store_path: A promoted ``*.ome.zarr`` store.
             measurements: The image's per-object measurements.
             dataset_name: Dataset name.
+            pipeline_sha256: sha256 of the pipeline file whose measurers
+                produced *measurements* -- for ``--mode measure``, the file
+                measure mode runs, never the store journal's (#281 spec D6).
+                Its run folder is replaced when the store has one, otherwise
+                added beside the others. ``None`` (no known digest) replaces
+                the store's highest-numbered ``-unknown`` folder, or adds one.
+                Required, with no default: a forgotten digest would silently
+                write an ``-unknown`` folder beside the forward run's.
             figures: This run's per-image figures, written as one run folder
                 beside the store's others; ``None`` adds no run and touches
                 no figure (spec 2026-09-22 §1a). See
@@ -2043,14 +2121,19 @@ class OutputManager:
             durable: ``fsync`` before promoting. ``None`` defers to
                 :attr:`durable_writes`.
             commit_guard: Publication guard, checked at the commit point.
+            embeddings: The pipeline's embedding tables for this image
+                (:meth:`~phenotypic.ImagePipeline.embed`). The run folder's
+                entry describes this write whole, so ``None`` **drops** the
+                folder's embeddings (review OQ5): ``--mode measure`` passes
+                its pipeline's payloads, so a pipeline that embeds keeps them.
 
         Returns:
-            The store's embedded measurement table path.
+            The ``measurements/table.parquet`` of the run folder written, the
+            path the image's republished record must declare (spec D6a).
+            It is not the folder :func:`~phenotypic.sdk_.journal_table_run`
+            names: measure mode adds no journal application.
         """
-        from phenotypic.sdk_ import (
-            MEASUREMENT_TABLE_RELATIVE_PATH,
-            replace_image_tables,
-        )
+        from phenotypic.sdk_ import replace_image_tables
 
         baseline = measurements.copy()
         if (
@@ -2062,19 +2145,19 @@ class OutputManager:
                 str(EXPERIMENT.DATASET),
                 dataset_name,
             )
-        metadata_snapshot = metadata_csv_deliverable_path(self.base_dir)
         tables = prepare_image_tables(
-            baseline,
-            metadata_snapshot if metadata_snapshot.is_file() else None,
+            baseline, resolve_metadata_snapshot_path(self.base_dir)
         )
-        replace_image_tables(
+        run = replace_image_tables(
             store_path,
             tables,
+            pipeline_sha256=pipeline_sha256,
             figures=figures,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
+            embeddings=embeddings,
         )
-        return Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
+        return run.measurements_path()
 
     def aggregate_master_csv(
         self,
@@ -2084,6 +2167,7 @@ class OutputManager:
         no_qc: bool = False,
         study_config: Optional[dict] = None,
         njobs: int = 1,
+        measure_failed: Optional[int] = None,
     ) -> Optional[Path]:
         """Finalize the run: aggregate, join, and publish every deliverable.
 
@@ -2105,6 +2189,8 @@ class OutputManager:
                 :func:`finalize_post_master_outputs`.
             study_config: Optional parsed ``--study`` YAML forwarded to the
                 REMBI manifest writer in :func:`finalize_post_master_outputs`.
+            measure_failed: A local ``--mode measure`` invocation's own
+                failure count; ``None`` otherwise.
 
         Returns:
             Path to ``master_measurements.parquet``, or ``None`` if no
@@ -2119,4 +2205,5 @@ class OutputManager:
             no_qc=no_qc,
             njobs=njobs,
             study_config=study_config,
+            measure_failed=measure_failed,
         )
