@@ -4,10 +4,12 @@
 its measurement table, from **the run folder the image's record certifies**
 (spec D6a), into one file per entry key::
 
-    deliverables/embeddings/<model>/<region>.parquet
+    deliverables/embeddings/<model>/<layer>/<region>.parquet
     deliverables/embeddings/manifest.json
 
-where ``<region>`` is ``objects`` or ``grid``, either optionally ``-<name>``
+where ``<layer>`` is ``rgb`` or ``gray`` and ``<region>`` is ``objects`` or
+``grid``, either optionally ``-<name>``: the entry key
+``<model>/<layer>/<region>``
 (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
 
 Each file holds the master's intrinsic identity (``Metadata_Dataset``,
@@ -57,7 +59,7 @@ does not are removed. :func:`aggregate_embedding_tables` is the two in one.
 - An entry that is **not stale but cannot be read** fails finalization, as a
   master that cannot be built does. Every such store is named in the one
   error, not only the first. So does an entry whose key is not
-  ``"<model>/<region>"`` (a store root edited by hand), stale or not:
+  ``"<model>/<layer>/<region>"`` (a store root edited by hand), stale or not:
   the key names the deliverable's file, and it is the rule an
   ``EmbeddingPayload`` is refused on when built
   (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`). It never revokes measurement authority: the
@@ -89,7 +91,7 @@ logger = logging.getLogger(__name__)
 EMBEDDINGS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
 
 #: The aggregate proof's ``required_outputs`` name of ``manifest.json``; each
-#: published table is ``embeddings/<model>/<region>`` (review M1a).
+#: published table is ``embeddings/<model>/<layer>/<region>`` (review M1a).
 EMBEDDINGS_MANIFEST_PROOF_NAME: Final[str] = "embeddings_manifest"
 
 #: Entry fields that describe one store's file rather than the table's kind;
@@ -216,10 +218,12 @@ def _unreadable_error(output_dir: Path, failures: Sequence[_Unreadable]) -> Runt
 
 
 def _target(output_dir: Path, key: str) -> Path:
+    """``deliverables/embeddings/<model>/<layer>/<region>.parquet`` for entry *key*."""
     from phenotypic.sdk_ import embeddings_dir
+    from phenotypic.sdk_._table_runs import split_embedding_key
 
-    model, _, region = key.partition("/")
-    return embeddings_dir(output_dir) / model / f"{region}.parquet"
+    model, layer, region = split_embedding_key(key)
+    return embeddings_dir(output_dir) / model / layer / f"{region}.parquet"
 
 
 @dataclass
@@ -246,7 +250,7 @@ def _plan_keys(
 ) -> tuple[list[_KeyPlan], list[_Unreadable]]:
     """Split each key's entries into readable runs and stale stores, in run order.
 
-    A key that is not ``"<model>/<region>"``
+    A key that is not ``"<model>/<layer>/<region>"``
     (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`, the rule an
     ``EmbeddingPayload`` is refused on when built) gets no plan: it names the
     deliverable's file, so each of its entries, stale or not, is returned as
@@ -269,7 +273,7 @@ def _plan_keys(
                 split_embedding_key(key)
             except ValueError as exc:
                 unreadable.append(
-                    _Unreadable(relative, key, f"its key is not <model>/<region>: {exc}")
+                    _Unreadable(relative, key, f"its key is not <model>/<layer>/<region>: {exc}")
                 )
                 continue
             plan = plans.setdefault(key, _KeyPlan(key))
@@ -454,7 +458,9 @@ def _remove_unpublished(
     root = embeddings_dir(output_dir)
     if not root.is_dir():
         return
-    ours = [*root.glob("*/*.parquet"), embeddings_manifest_path(output_dir)]
+    # Finalization writes only <model>/<layer>/<region>.parquet, so a user's
+    # file anywhere else under embeddings/ is never ours.
+    ours = [*root.glob("*/*/*.parquet"), embeddings_manifest_path(output_dir)]
     with publication_commit(commit_guard):
         for path in sorted(ours):
             if path not in published and path.is_file():
@@ -571,11 +577,12 @@ def stage_embedding_deliverables(
 
     Raises:
         RuntimeError: If any non-stale entry cannot be read, or any entry's
-            key is not ``"<model>/<region>"`` (its message names every
+            key is not ``"<model>/<layer>/<region>"`` (its message names every
             such store and the whole-run ``--mode measure`` remedy), or two
             stores' tables for one key have different schemas.
         ValueError: If a run's store is not a store of this run.
     """
+    from phenotypic.sdk_ import deliverables_dir
     from phenotypic.sdk_._embedding_tables import _file_sha256
 
     output_dir = Path(output_dir)
@@ -599,7 +606,7 @@ def stage_embedding_deliverables(
             if plan.readable:
                 target, temp, rows = _stage_key(output_dir, plan, identities, unreadable)
                 staged.staged[target] = temp
-                path = target.relative_to(target.parents[2]).as_posix()
+                path = target.relative_to(deliverables_dir(output_dir)).as_posix()
                 sha256 = _file_sha256(temp)
             staged.counts[plan.key] = {"rows": rows, "stale_skipped": len(plan.stale)}
             entries[plan.key] = {
@@ -653,7 +660,7 @@ def published_embedding_files(output_dir: Path) -> dict[str, Path]:
     """The embedding deliverables a finalization published, for the aggregate proof.
 
     ``manifest.json`` under :data:`EMBEDDINGS_MANIFEST_PROOF_NAME`, and each
-    table the manifest lists under ``embeddings/<model>/<region>`` (review
+    table the manifest lists under ``embeddings/<model>/<layer>/<region>`` (review
     M1a). Empty when there is no manifest: a run that embeds nothing
     declares nothing. No GUI writer touches these files, so the proof
     enforces them.
@@ -687,7 +694,7 @@ def embedding_table_schemas(output_dir: Path) -> dict[str, dict[str, object]]:
     as polars dtypes, as every other ``schema.json`` table is.
 
     Returns:
-        ``{"embeddings/<model>/<region>": {"columns", "dim", "model",
+        ``{"embeddings/<model>/<layer>/<region>": {"columns", "dim", "model",
         "producer"}}``, the shape
         :func:`~phenotypic.util._measurement_outputs.build_output_schema`
         takes as ``embedding_tables``. Empty when nothing is published.
@@ -718,7 +725,7 @@ def embedding_table_schemas(output_dir: Path) -> dict[str, dict[str, object]]:
         tables[f"embeddings/{key}"] = {
             "columns": columns,
             "dim": schema.field(EMBEDDING_COLUMN).type.list_size,
-            "model": key.partition("/")[0],
+            "model": key.split("/")[0],
             "producer": descriptor["producer"]["class"],
         }
     return tables

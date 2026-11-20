@@ -634,7 +634,7 @@ def write_run_entry(
         measurements: The run's measurement and metadata tables, or ``None``.
         objmap_target: Store-relative objmap label path; required with
             *measurements*.
-        embeddings: The run's embedding tables, keyed ``"<model>/<region>"``.
+        embeddings: The run's embedding tables, keyed ``"<model>/<layer>/<region>"``.
             An :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload`
             is written through
             :func:`~phenotypic.sdk_._embedding_tables.write_embedding_tables`;

@@ -54,16 +54,16 @@ def _assert_grid_run_folder(store: Path, model: str) -> None:
     (run,) = list_table_runs(store)
     assert run.run_id.startswith("1-") and not run.run_id.endswith("-unknown")
     assert not run.has_measurements
-    assert set(run.descriptor["embeddings"]) == {f"{model}/grid"}
-    entry = run.descriptor["embeddings"][f"{model}/grid"]
+    assert set(run.descriptor["embeddings"]) == {f"{model}/rgb/grid"}
+    entry = run.descriptor["embeddings"][f"{model}/rgb/grid"]
     assert entry["stale"] is False
-    path = run.embedding_path(model, "grid")
+    path = run.embedding_path(f"{model}/rgb/grid")
     assert path.is_file()
     # The store stays consolidated: the consolidated view names the new group.
-    assert f"tables/{run.run_id}/embeddings/{model}/grid" in _consolidated_nodes(store)
+    assert f"tables/{run.run_id}/embeddings/{model}/rgb/grid" in _consolidated_nodes(store)
     # Independent readers: zarr-python over the consolidated root, pyarrow.
     group = zarr.open_consolidated(store, mode="r")
-    assert f"tables/{run.run_id}/embeddings/{model}/grid" in dict(
+    assert f"tables/{run.run_id}/embeddings/{model}/rgb/grid" in dict(
         group.members(max_depth=None)
     )
     assert pq.read_table(path).num_rows == 4
@@ -148,7 +148,7 @@ def test_a_toy_process_store_stays_byte_reproducible(
 def test_a_toy_grid_table_holds_the_cells_vectors(tmp_path, tiny_inputs, registered_toy_embedder):
     """Row i is cell i in row-major order, with the toy's box-sum and pixel vector.
 
-    The last value is the cell's mean ``gray`` of the input's pixels, so an
+    The last value is the cell's mean rgb pixel of the input, so an
     embedding of the wrong pixels (another layer, the image before a
     pixel-changing op, a flipped image) fails here.
     """
@@ -157,13 +157,13 @@ def test_a_toy_grid_table_holds_the_cells_vectors(tmp_path, tiny_inputs, registe
 
     from phenotypic import Image
     from phenotypic.sdk_ import list_table_runs
-    from tests._tiny_run import TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES, toy_box_gray_mean
+    from tests._tiny_run import TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES, toy_box_layer_mean
 
     out = tmp_path / "out"
     run_cli(tiny_inputs, out, mode="process", pipeline=toy_grid_process_pipeline(tmp_path), extra=ZARR_RGB)
     store = _stores(out)[0]
     (run,) = list_table_runs(store)
-    table = pq.read_table(run.embedding_path("toy-v1", "grid")).to_pydict()
+    table = pq.read_table(run.embedding_path("toy-v1/rgb/grid")).to_pydict()
     assert table["Grid_RowMajorIdx"] == [0, 1, 2, 3]
     vectors = np.asarray(table["embedding"], dtype=np.float32)
     assert vectors.shape == (4, TOY_DIM)
@@ -172,10 +172,10 @@ def test_a_toy_grid_table_holds_the_cells_vectors(tmp_path, tiny_inputs, registe
     sums = [r[i] + r[i + 1] + c[j] + c[j + 1] for i in range(2) for j in range(2)]
     assert (vectors[:, :-1] == vectors[:, :1]).all()
     assert vectors[:, 0].tolist() == sums
-    # ... then the cell's mean gray, from the input plate's own pixels.
+    # ... then the cell's mean rgb pixel, from the input plate's own pixels.
     boxes = [(r[i], c[j], r[i + 1], c[j + 1]) for i in range(2) for j in range(2)]
     source = Image.imread(sorted(tiny_inputs.rglob("plate_1.tif"))[0])
-    expected = toy_box_gray_mean(np.asarray(source.gray[:]), boxes).astype(np.float16)
+    expected = toy_box_layer_mean(np.asarray(source.rgb[:]), boxes).astype(np.float16)
     assert store.name == "plate_1.ome.zarr"
     assert vectors[:, -1].tolist() == expected.astype(np.float32).tolist()
 
@@ -205,7 +205,7 @@ def test_a_flat_export_refuses_embeddings(tmp_path):
     with pytest.raises(ValueError, match="nowhere to put embedding tables"):
         write_process_only_layer(
             image, "rgb", tmp_path / "plate.tiff", fmt="tiff",
-            embeddings={"toy-v1/grid": object()},  # type: ignore[dict-item]
+            embeddings={"toy-v1/rgb/grid": object()},  # type: ignore[dict-item]
         )
     assert not (tmp_path / "plate.tiff").exists()
 

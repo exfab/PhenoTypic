@@ -67,11 +67,18 @@ DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "
 InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
 
 #: What a ``MeasureEmbedding`` embeds (#281 spec E1): ``"objects"`` crops each
-#: detected colony's bounding box and writes ``embeddings/<model>/objects/``;
+#: detected colony's bounding box and writes ``embeddings/<model>/<layer>/objects/``;
 #: ``"grid"`` crops each cell of a user-set grid and writes
-#: ``embeddings/<model>/grid/``; either gains ``-<name>`` with a ``name``.
-#: Literal-only, like ``InputLayer``.
+#: ``embeddings/<model>/<layer>/grid/``; either gains ``-<name>`` with a
+#: ``name``. Literal-only, like ``InputLayer``.
 EmbeddingRegions: TypeAlias = Literal["objects", "grid"]
+
+#: Which pixels a ``MeasureEmbedding`` reads (#281, user decision 2026-11-19):
+#: ``"rgb"`` the colour layer as stored; ``"gray"`` the gray layer, scaled to
+#: uint8 and stacked to three identical channels. It is the ``<layer>`` folder
+#: of the table, ``embeddings/<model>/<layer>/<region>/``. Literal-only, like
+#: ``InputLayer``.
+EmbeddingLayer: TypeAlias = Literal["rgb", "gray"]
 
 #: How ``MeasureDinoEmbedding`` turns a region into one vector (#281 spec E3):
 #: ``"crop_cls"`` and ``"crop_mean"`` take the CLS token or the mean patch

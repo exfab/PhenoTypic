@@ -361,7 +361,7 @@ def test_a_size_measurer_beside_a_toy_grid_embedder_stores_only_the_grid(
     for store in out.rglob("*.ome.zarr"):
         (run,) = list_table_runs(store)
         assert not run.has_measurements
-        assert set(run.descriptor["embeddings"]) == {"toy-v1/grid"}
+        assert set(run.descriptor["embeddings"]) == {"toy-v1/rgb/grid"}
 
 
 @requires_torch
@@ -384,7 +384,7 @@ def test_a_size_measurer_beside_a_dino_grid_embedder_stores_only_the_grid(
     for store in out.rglob("*.ome.zarr"):
         (run,) = list_table_runs(store)
         assert not run.has_measurements
-        assert set(run.descriptor["embeddings"]) == {"dinov2-vitb14/grid"}
+        assert set(run.descriptor["embeddings"]) == {"dinov2-vitb14/rgb/grid"}
 
 
 @requires_torch

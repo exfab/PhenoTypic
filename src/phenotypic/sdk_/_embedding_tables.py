@@ -3,9 +3,12 @@
 An embedding belongs to the pipeline that produced it, so its table lives in
 that pipeline's run folder::
 
-    tables/<n>-<sha12>/embeddings/<model>/objects/table.parquet Object_Label | embedding
-    tables/<n>-<sha12>/embeddings/<model>/grid/table.parquet    Grid_* keys  | embedding
-    tables/<n>-<sha12>/embeddings/<model>/<objects|grid>-<name>/...    a named embedder
+    tables/<n>-<sha12>/embeddings/<model>/<layer>/objects/table.parquet   Object_Label | embedding
+    tables/<n>-<sha12>/embeddings/<model>/<layer>/grid/table.parquet      Grid_* keys  | embedding
+
+``<layer>`` is ``rgb`` or ``gray``, the pixels the vectors were computed
+from, and a named embedder's region is ``objects-<name>`` or
+``grid-<name>``. The entry key is ``<model>/<layer>/<region>``.
 
 :class:`EmbeddingPayload` is what :meth:`ImagePipeline.embed` returns and a
 store writer consumes: one table's frame plus the descriptor fields the
@@ -61,22 +64,23 @@ class EmbeddingPayload:
     """One embedding table a pipeline produced for one image, not yet written.
 
     Attributes:
-        key: ``"<model>/<region>"``, the entry's key in the run's
-            ``embeddings`` block and its folder under ``embeddings/``; the
-            region is ``objects`` or ``grid``, either optionally ``-<name>``.
+        key: ``"<model>/<layer>/<region>"``, the entry's key in the run's
+            ``embeddings`` block and its folders under ``embeddings/``
+            (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
         frame: The table: its key columns (``Object_Label`` for objects, the
             ``Grid_*`` keys for a grid) and ``embedding``, one 1-D
             ``float16`` vector per row.
         descriptor: The entry fields the producer knows (spec D3): ``model``,
             ``dim``, ``dtype``, ``pooling``, ``key`` (the index column),
-            ``input`` (``{series, level}``), ``producer``
+            ``input`` (``{series, level, layer}``, the layer the key's),
+            ``producer``
             (``{class, params_sha256}``) and ``binds`` -- for objects
             ``{objmap_path, objmap_sha256}``, for a grid
             ``{array_sha256, grid_sha256}``, digests of the image the vectors
             were computed from. The writer adds ``stale`` and ``files``.
 
     Raises:
-        ValueError: If *key* is not ``"<model>/<region>"``
+        ValueError: If *key* is not ``"<model>/<layer>/<region>"``
             (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`), or
             *descriptor* lacks a required field.
     """
@@ -98,12 +102,17 @@ class EmbeddingPayload:
     @property
     def model(self) -> str:
         """The model folder, ``<model>`` of :attr:`key`."""
-        return self.key.partition("/")[0]
+        return self.key.split("/")[0]
+
+    @property
+    def layer(self) -> str:
+        """``"rgb"`` or ``"gray"``, the layer folder of :attr:`key`."""
+        return self.key.split("/")[1]
 
     @property
     def region(self) -> str:
         """``"objects"`` or ``"grid"``, optionally ``-<name>``: the region folder of :attr:`key`."""
-        return self.key.partition("/")[2]
+        return self.key.split("/")[2]
 
     @property
     def dim(self) -> int:
@@ -120,7 +129,7 @@ class EmbeddingTableUnreadableError(RuntimeError):
 
     Attributes:
         store: The store.
-        key: The entry's ``"<model>/<region>"`` key.
+        key: The entry's ``"<model>/<layer>/<region>"`` key.
         reason: Why it cannot be read.
     """
 
@@ -244,7 +253,7 @@ def write_embedding_tables(
 ) -> dict[str, dict]:
     """Write *payloads* into run *run_id* of *part*; return its ``embeddings`` block (spec D3).
 
-    Each payload becomes ``tables/<run_id>/embeddings/<model>/<region>/table.parquet``,
+    Each payload becomes ``tables/<run_id>/embeddings/<model>/<layer>/<region>/table.parquet``,
     every level a Zarr v3 group and the table group carrying
     :func:`embedding_table_group_attrs` (spec D4). Its entry is the payload's
     descriptor plus ``stale: false`` and ``files: [{path, sha256,
@@ -261,8 +270,9 @@ def write_embedding_tables(
     Args:
         part: An **unpromoted** ``*.ome.zarr.part`` directory.
         run_id: The run folder. Its folder must not hold these tables yet.
-        payloads: ``{"<model>/<region>": EmbeddingPayload}``; each mapping key
-            must equal its payload's :attr:`~EmbeddingPayload.key`.
+        payloads: ``{"<model>/<layer>/<region>": EmbeddingPayload}``; each
+            mapping key must equal its payload's :attr:`~EmbeddingPayload.key`,
+            and its descriptor's ``input.layer`` the key's layer.
         objmap_sha256: :func:`~phenotypic.sdk_._measurement_tables.objmap_digest`
             of the objmap this write certifies, or ``None``.
         array_sha256: :func:`~phenotypic.sdk_._measurement_tables.array_digest`
@@ -273,8 +283,9 @@ def write_embedding_tables(
         ``{key: entry}``, in *payloads* order.
 
     Raises:
-        ValueError: If a mapping key and its payload's key differ, or a
-            payload's frame does not fit its descriptor.
+        ValueError: If a mapping key and its payload's key differ, a
+            payload's ``input.layer`` is not its key's layer, or a payload's
+            frame does not fit its descriptor.
     """
     from . import ngff_
     from ._measurement_tables import (
@@ -291,15 +302,21 @@ def write_embedding_tables(
             raise ValueError(
                 f"embedding payload {payload.key!r} given under the key {key!r}"
             )
-        relative = embedding_table_relative_path(
-            run_id, payload.model, payload.region  # type: ignore[arg-type]
-        )
+        source = payload.descriptor.get("input")
+        if not isinstance(source, Mapping) or source.get("layer") != payload.layer:
+            recorded = source.get("layer") if isinstance(source, Mapping) else None
+            raise ValueError(
+                f"embedding payload {payload.key!r} records input.layer "
+                f"{recorded!r}, not its key's layer {payload.layer!r}"
+            )
+        relative = embedding_table_relative_path(run_id, payload.key)
         path = part / relative
         table = embedding_arrow_table(payload)
         _ensure_group(part / ngff_.TABLES_GROUP)
         _ensure_group(part / ngff_.TABLES_GROUP / run_id)
-        _ensure_group(path.parent.parent.parent)  # embeddings/
-        _ensure_group(path.parent.parent)  # embeddings/<model>/
+        _ensure_group(path.parents[3])  # embeddings/
+        _ensure_group(path.parents[2])  # embeddings/<model>/
+        _ensure_group(path.parents[1])  # embeddings/<model>/<layer>/
         _ensure_group(
             path.parent,
             _group_document(embedding_table_group_attrs(str(payload.descriptor["key"]))),
@@ -334,7 +351,7 @@ def read_embedding_table(
 
     Args:
         store: A promoted ``*.ome.zarr`` store.
-        key: ``"<model>/<region>"``.
+        key: ``"<model>/<layer>/<region>"``.
         run_id: Read this run folder's entry instead of the latest one.
 
     Returns:
@@ -409,7 +426,7 @@ def read_embedding_entry(
 
     Args:
         store: A promoted ``*.ome.zarr`` store.
-        key: The entry's ``"<model>/<region>"`` key, for messages.
+        key: The entry's ``"<model>/<layer>/<region>"`` key, for messages.
         entry: The entry, from the store root's ``embeddings`` block.
 
     Returns:

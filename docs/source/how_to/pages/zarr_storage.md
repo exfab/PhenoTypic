@@ -270,7 +270,7 @@ python -m phenotypic --mode process --layer rgb --process-format zarr \
     --input /bigdata/.../mirror --output /bigdata/.../mirror
 ```
 
-Each store gains one folder, `tables/<n>-<sha12>/embeddings/<model>/grid/`,
+Each store gains one folder, `tables/<n>-<sha12>/embeddings/<model>/rgb/grid/`,
 and its journal gains one `process` application. Nothing else changes:
 
 - **Pixels are never rewritten.** The store is hard-linked into a `.part`, the

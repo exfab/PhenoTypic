@@ -1525,10 +1525,12 @@ column schema of every published table, written by `finalize_run`'s
 declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
-`embeddings/<model>/<region>.parquet` and `embeddings/manifest.json`
-(the region is `objects` or `grid`, or `objects-<name>` / `grid-<name>` for an
+`embeddings/<model>/<layer>/<region>.parquet` and `embeddings/manifest.json`
+(the key and the path are `<model>/<layer>/<region>`: the layer is `rgb` or
+`gray`, its own folder, so an rgb and a gray copy of one embedder coexist; the
+region is `objects` or `grid`, or `objects-<name>` / `grid-<name>` for an
 embedder given a `name`, so one pipeline can publish several embedders of one
-model and region, e.g. rig1's `grid-wells` and `grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
+model, layer and region, e.g. rig1's `rgb/grid-wells` and `rgb/grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
 itself, never in the `0-K` aggregate shards. **Two phases, so a failure
 changes no deliverable** (P4 review I1): `stage_embedding_deliverables`
 runs *before the master is written*, reads every non-stale entry of each
@@ -1538,7 +1540,7 @@ per store; `promote` runs after the splits and before `metrics.json`,
 replacing each target and writing `manifest.json` last. A `stale` entry
 (`stale is not False`, the one predicate) is skipped with a warning and
 counted; a non-stale entry it cannot read, or any entry whose key is not
-`<model>/<region>` (`split_embedding_key`, the one rule for regions, which
+`<model>/<layer>/<region>` (`split_embedding_key`, the one rule for keys, which
 `EmbeddingPayload` refuses on; nothing else restates the region set),
 **raises**, failing finalization
 like the master, naming every such store, and the image stays `verified`

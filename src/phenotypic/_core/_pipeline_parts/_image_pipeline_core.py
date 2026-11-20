@@ -347,7 +347,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     ) -> Dict[str, MeasureFeatures]:
         """Refuse two embedders that would write one embedding table (#281 spec E2).
 
-        A run folder holds one table per ``"<model>/<region>"`` key, so two
+        A run folder holds one table per ``"<model>/<layer>/<region>"`` key, so two
         embedders of one model and region -- even with different pooling --
         would overwrite each other's table. Give them different models or
         different ``name`` (``grid-wells`` and ``grid-agar`` coexist), or keep
@@ -1381,7 +1381,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         :class:`~phenotypic.abc_.MeasureEmbedding` in ``meas``: this runs
         **only** those, in ``meas`` order. Each returns one table, which a
         store writer puts in the pipeline's run folder as
-        ``tables/<run>/embeddings/<model>/<region>/table.parquet``
+        ``tables/<run>/embeddings/<model>/<layer>/<region>/table.parquet``
         (#281 spec D1). A CLI per-image writer calls both methods and writes
         one run folder. Post-measurement ops never see embeddings.
 
@@ -1390,7 +1390,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 objmap; a grid embedder does not.
 
         Returns:
-            ``{"<model>/<region>": EmbeddingPayload}``, one per embedder;
+            ``{"<model>/<layer>/<region>": EmbeddingPayload}``, one per embedder;
             empty when the pipeline has none. Two embedders never share a key
             (refused when the pipeline is built).
 

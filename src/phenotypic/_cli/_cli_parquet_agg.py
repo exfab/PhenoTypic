@@ -177,7 +177,7 @@ def is_embedded_measurement_table(path: Path | str) -> bool:
     * the v1 flat ``<store>/tables/measurements/table.parquet``, kept as a
       **legacy read** for a tree ``--mode migrate`` has not converted yet.
 
-    An embedding table (``tables/<run>/embeddings/<model>/<region>/table.parquet``)
+    An embedding table (``tables/<run>/embeddings/<model>/<layer>/<region>/table.parquet``)
     is neither.
     """
     from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, ngff_

@@ -26,7 +26,7 @@ from tests._tiny_run import (
     toy_embedder_class,
 )
 
-KEY = "toy-v1/objects"
+KEY = "toy-v1/rgb/objects"
 
 
 def _store(out: Path, stem: str, image, payloads=None) -> Path:
@@ -98,9 +98,9 @@ def test_rows_stream_one_row_group_per_store_and_stale_is_skipped(three_stores):
     out, runs = three_stores
     counts = aggregate_embedding_tables(out, runs)
 
-    rows = [pq.read_metadata(run.embedding_path("toy-v1", "objects")).num_rows for run in runs[:2]]
+    rows = [pq.read_metadata(run.embedding_path("toy-v1/rgb/objects")).num_rows for run in runs[:2]]
     assert counts == {KEY: {"rows": sum(rows), "stale_skipped": 1}}
-    path = out / "deliverables" / "embeddings" / "toy-v1" / "objects.parquet"
+    path = out / "deliverables" / "embeddings" / "toy-v1" / "rgb" / "objects.parquet"
     metadata = pq.read_metadata(path)
     assert metadata.num_row_groups == 2
     table = pq.read_table(path)
@@ -110,7 +110,7 @@ def test_rows_stream_one_row_group_per_store_and_stale_is_skipped(three_stores):
     assert table.schema.field("embedding").type == pa.list_(pa.float16(), TOY_DIM)
     assert set(table.column("Metadata_ImageName").to_pylist()) == {"p1", "p2"}
     assert set(table.column("Metadata_Dataset").to_pylist()) == {"ds"}
-    manifest = json.loads((path.parent.parent / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((path.parents[2] / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["entries"][KEY]["stale_skipped"] == ["results/ds/zarr/p3.ome.zarr"]
     assert manifest["entries"][KEY]["rows"] == sum(rows)
 
@@ -126,7 +126,7 @@ def test_each_stores_rows_are_its_own_table(three_stores):
 
     out, runs = three_stores
     aggregate_embedding_tables(out, runs)
-    published = pq.read_table(out / "deliverables/embeddings/toy-v1/objects.parquet")
+    published = pq.read_table(out / "deliverables/embeddings/toy-v1/rgb/objects.parquet")
     own = {}
     for stem, run in (("p1", runs[0]), ("p2", runs[1])):
         own[stem] = read_embedding_table(run.store, KEY)
@@ -174,7 +174,7 @@ def test_an_unreadable_entry_fails_with_the_store_and_the_remedy(three_stores):
     from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
 
     out, runs = three_stores
-    runs[0].embedding_path("toy-v1", "objects").write_bytes(b"corrupt")
+    runs[0].embedding_path("toy-v1/rgb/objects").write_bytes(b"corrupt")
     with pytest.raises(RuntimeError, match=r"p1\.ome\.zarr.*--mode measure"):
         aggregate_embedding_tables(out, runs)
 
@@ -186,7 +186,7 @@ def test_an_unreadable_entry_fails_with_the_store_and_the_remedy(three_stores):
 
 @pytest.fixture
 def two_key_stores(tmp_path: Path, image_with_two_models, pipeline_file_a: Path):
-    """Two stores holding ``toy-v1/objects`` and ``toy-v2/objects``, aggregated once."""
+    """Two stores holding ``toy-v1/rgb/objects`` and ``toy-v2/rgb/objects``, aggregated once."""
     from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
 
     out = tmp_path / "out"
@@ -210,9 +210,9 @@ def test_a_failure_in_a_later_key_leaves_every_deliverable_as_it_was(two_key_sto
     from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
 
     out, runs = two_key_stores
-    runs[1].embedding_path("toy-v2", "objects").write_bytes(b"corrupt")
+    runs[1].embedding_path("toy-v2/rgb/objects").write_bytes(b"corrupt")
     before = _snapshot(out)
-    assert {"embeddings/toy-v1/objects.parquet", "embeddings/toy-v2/objects.parquet"} <= set(before)
+    assert {"embeddings/toy-v1/rgb/objects.parquet", "embeddings/toy-v2/rgb/objects.parquet"} <= set(before)
     with pytest.raises(RuntimeError, match=r"p2\.ome\.zarr"):
         aggregate_embedding_tables(out, runs)
     assert _snapshot(out) == before
@@ -235,24 +235,25 @@ def test_a_hand_edited_key_that_is_not_model_and_region_fails_and_changes_nothin
     two_key_stores,
 ):
     """#281 P4 simplify, key validation. The key names the deliverable's file,
-    so ``a/b/c`` (a region of ``b/c``) would publish ``embeddings/a/b/c.parquet``
-    and a manifest path the proof cannot find. It is the rule a payload is
+    so ``a/rgb/b/c`` (a region of ``b/c``) would publish
+    ``embeddings/a/rgb/b/c.parquet`` and a manifest path the proof cannot find. It is the rule a payload is
     refused on when built, so the entry is unreadable: finalization fails
     naming the store and the reason, and no deliverable changes."""
     from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
 
     out, runs = two_key_stores
-    _rename_root_embedding_key(runs[1].store, "toy-v2/objects", "a/b/c")
+    _rename_root_embedding_key(runs[1].store, "toy-v2/rgb/objects", "a/rgb/b/c")
     edited = [_latest(run.store) for run in runs]
-    assert "a/b/c" in edited[1].descriptor["embeddings"]
+    assert "a/rgb/b/c" in edited[1].descriptor["embeddings"]
     before = _snapshot(out)
 
     with pytest.raises(RuntimeError) as raised:
         aggregate_embedding_tables(out, edited)
 
     message = str(raised.value)
-    assert "results/ds/zarr/p2.ome.zarr (a/b/c)" in message
-    assert "objects or grid" in message and "--mode measure" in message
+    assert "results/ds/zarr/p2.ome.zarr (a/rgb/b/c)" in message
+    assert "<model>/<layer>/<region>, three segments" in message
+    assert "--mode measure" in message
     assert _snapshot(out) == before
     assert not (out / "deliverables" / "embeddings" / "a").exists()
     assert not list((out / "deliverables").rglob("*.tmp"))
@@ -263,7 +264,7 @@ def test_staging_writes_no_deliverable_until_promoted(three_stores):
 
     out, runs = three_stores
     staged = stage_embedding_deliverables(out, runs)
-    assert not (out / "deliverables/embeddings/toy-v1/objects.parquet").exists()
+    assert not (out / "deliverables/embeddings/toy-v1/rgb/objects.parquet").exists()
     assert not (out / "deliverables/embeddings/manifest.json").exists()
     staged.discard()
     assert not (out / "deliverables" / "embeddings").exists()
@@ -324,7 +325,7 @@ def test_an_embedding_file_symlinked_out_of_the_store_is_read(tmp_path, image_wi
 
     out = tmp_path / "out"
     store = _store(out, "p1", image_with_objects_payload)
-    table = _latest(store).embedding_path("toy-v1", "objects")
+    table = _latest(store).embedding_path("toy-v1/rgb/objects")
     cache = tmp_path / "dvc-cache" / "ab" / "cdef"
     cache.parent.mkdir(parents=True)
     os.replace(table, cache)
@@ -382,7 +383,7 @@ def test_the_proof_names_each_published_embedding_file(three_stores):
     aggregate_embedding_tables(out, runs)
     assert published_embedding_files(out) == {
         "embeddings_manifest": out / "deliverables/embeddings/manifest.json",
-        "embeddings/toy-v1/objects": out / "deliverables/embeddings/toy-v1/objects.parquet",
+        "embeddings/toy-v1/rgb/objects": out / "deliverables/embeddings/toy-v1/rgb/objects.parquet",
     }
 
 
@@ -461,7 +462,7 @@ def test_a_key_dropped_since_the_last_finalization_is_removed(
         embeddings=payloads_of(image_with_two_models),
     )
     assert set(aggregate_embedding_tables(out, [_latest(store)])) == {
-        "toy-v1/objects", "toy-v2/objects",
+        "toy-v1/rgb/objects", "toy-v2/rgb/objects",
     }
     one_model = {KEY: payloads_of(image_with_two_models)[KEY]}
     store = image_with_two_models.save2zarr(
@@ -593,7 +594,7 @@ def test_a_two_descriptor_key_publishes_warns_and_tags_each_row(mixed_descriptor
     assert [d["pooling"] for d in descriptors] == ["box_sum", "box_mean"]
     assert descriptors[1]["model"]["revision"] == _PINNED
 
-    table = pq.read_table(out / "deliverables/embeddings/toy-v1/objects.parquet")
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/rgb/objects.parquet")
     assert table.schema.field("descriptor_index").type == pa.int16()
     assert not table.schema.field("descriptor_index").nullable
     for stem, index in (("p1", 0), ("p2", 1), ("p3", 0)):
@@ -630,7 +631,7 @@ def test_a_single_descriptor_key_tags_every_row_zero(three_stores, caplog):
     with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
         aggregate_embedding_tables(out, runs)
     assert not [r for r in caplog.records if "descriptors" in r.getMessage()]
-    table = pq.read_table(out / "deliverables/embeddings/toy-v1/objects.parquet")
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/rgb/objects.parquet")
     assert table.schema.field("descriptor_index").type == pa.int16()
     assert set(table.column("descriptor_index").to_pylist()) == {0}
     manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
@@ -713,7 +714,7 @@ def test_stores_differing_only_in_device_get_two_descriptors(
     assert "[1] revision none, device cuda" in warning
     manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
     assert [d["model"]["device"] for d in manifest["entries"][KEY]["descriptors"]] == ["cpu", "cuda"]
-    table = pq.read_table(out / "deliverables/embeddings/toy-v1/objects.parquet")
+    table = pq.read_table(out / "deliverables/embeddings/toy-v1/rgb/objects.parquet")
     for stem, index in (("p1", 0), ("p2", 1)):
         rows = table.filter(pc.equal(table["Metadata_ImageName"], stem))
         assert set(rows.column("descriptor_index").to_pylist()) == {index}, stem
@@ -740,7 +741,7 @@ def test_every_unreadable_store_is_named_with_the_whole_tree_remedy(three_stores
 
     out, runs = three_stores
     for run in runs[:2]:
-        run.embedding_path("toy-v1", "objects").write_bytes(b"corrupt")
+        run.embedding_path("toy-v1/rgb/objects").write_bytes(b"corrupt")
     with pytest.raises(RuntimeError) as raised:
         aggregate_embedding_tables(out, runs)
     message = str(raised.value)

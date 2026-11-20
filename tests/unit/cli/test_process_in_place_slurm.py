@@ -87,7 +87,7 @@ def test_the_worker_writes_folder_2_and_publishes_its_record(
     )
     assert result.exit_code == 0, result.output
     assert [run.order for run in list_table_runs(store)] == [1, 2]
-    assert set(list_table_runs(store)[-1].descriptor["embeddings"]) == {"toy-v2/grid"}
+    assert set(list_table_runs(store)[-1].descriptor["embeddings"]) == {"toy-v2/rgb/grid"}
     record = json.loads(
         image_record_path(tree, "ds", "plate_1").read_text(encoding="utf-8")
     )

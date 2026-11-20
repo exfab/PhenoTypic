@@ -209,7 +209,7 @@ def write_process_only_layer(
 
     *embeddings* are the pipeline's embedding tables for this image
     (:meth:`~phenotypic.ImagePipeline.embed`), written as the pipeline's run
-    folder ``tables/<n>-<sha12>/embeddings/<model>/<region>/`` inside the
+    folder ``tables/<n>-<sha12>/embeddings/<model>/<layer>/<region>/`` inside the
     store's ``.part``, before the root and before consolidation, so the store
     stays write-once (#281 spec E4). Only the ``zarr`` branch has somewhere
     to put them: a flat export given any raises ``ValueError`` rather than

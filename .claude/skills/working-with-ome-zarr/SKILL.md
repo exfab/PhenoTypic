@@ -43,14 +43,22 @@ tables/<n>-<sha12>/zarr.json
 tables/<n>-<sha12>/measurements/zarr.json
 tables/<n>-<sha12>/measurements/table.parquet
 tables/<n>-<sha12>/metadata/pht-metadata.parquet       (when metadata was joined)
-tables/<n>-<sha12>/embeddings/<model>/{objects,grid}[-<name>]/    (optional)
+tables/<n>-<sha12>/embeddings/<model>/<layer>/<region>/    (optional)
 ```
 
-An embedding region is `objects` or `grid`, or `objects-<name>` / `grid-<name>`
-for an embedder with a `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`),
-so one run can hold several embedders of one model and region (rig1:
-`grid-wells`, `grid-agar`).
-`split_embedding_key` (`sdk_/_table_runs.py`) is the one rule for regions.
+An embedding entry's key is `<model>/<layer>/<region>`, which is also its
+folder path (e.g. `dinov2-vitb14/rgb/grid-wells`):
+- `<layer>` is `rgb` or `gray`, the pixels the vectors were computed from, so
+  an rgb and a gray copy of one embedder never share a table. The entry's
+  `input.layer` says the same; `binds.array_sha256` stays on the primary
+  series, the stored pixels either layer is computed from.
+- `<region>` is `objects` or `grid`, or `objects-<name>` / `grid-<name>` for
+  an embedder with a `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`), so
+  one run can hold several embedders of one model, layer and region (rig1:
+  `grid-wells`, `grid-agar`).
+
+`split_embedding_key` (`sdk_/_table_runs.py`) is the one rule for keys: three
+segments, nothing else.
 
 Every level is a Zarr v3 group document; every subtable is optional. The
 Parquet is the authoritative per-image object table; forward, staged Stage 3,
@@ -94,7 +102,7 @@ The root descriptor `attributes.phenotypic.tables` is:
  "runs": {"<n>-<sha12>": {"order": n, "pipeline_sha256": "<64 hex> | null",
                           "measurements": {...}, "metadata": {...},
                           "metadata_table": {"snapshot_sha256": "..."},
-                          "embeddings": {"<model>/<region>": {...}}}},
+                          "embeddings": {"<model>/<layer>/<region>": {...}}}},
  "upstream": {"<n>-<sha12>": {"source": "...", "root_sha256": "...",
                               "pipeline_sha256": "..."}}}
 ```

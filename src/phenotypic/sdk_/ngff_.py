@@ -91,7 +91,7 @@ MEASUREMENT_TABLE_RELATIVE_PATH: Final[Path] = Path(
 #: descriptor has no top-level ``schema_version``; its ``measurements`` and
 #: ``metadata`` sub-descriptors carry their own.
 TABLES_SCHEMA_VERSION: Final[int] = 2
-#: The per-run embeddings group, ``tables/<run>/embeddings/<model>/<region>/``.
+#: The per-run embeddings group, ``tables/<run>/embeddings/<model>/<layer>/<region>/``.
 EMBEDDINGS_TABLE_GROUP: Final[str] = "embeddings"
 MEASUREMENT_TABLE_SCHEMA_VERSION: Final[int] = 1
 

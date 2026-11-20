@@ -170,18 +170,18 @@ def test_a_square_leaving_the_image_is_zero_filled_not_stretched(stub_backbone, 
 # ---------------------------------------------------------------------------
 
 
-def test_the_thirteen_fields_in_the_plans_order():
-    """#281 named regions put ``name`` right after ``grid``."""
+def test_the_fourteen_fields_in_the_plans_order():
+    """#281 puts ``name`` then ``layer`` right after ``grid``."""
     assert list(MeasureDinoEmbedding.model_fields) == [
-        "size", "version", "revision", "regions", "grid", "name", "pooling",
+        "size", "version", "revision", "regions", "grid", "name", "layer", "pooling",
         "crop_px", "crop_pad_frac", "mask_background", "dtype", "batch_size", "device",
     ]
 
 
 def test_defaults():
     m = MeasureDinoEmbedding()
-    assert (m.size, m.version, m.revision, m.regions, m.grid, m.name) == (
-        "base", 2, None, "objects", None, None
+    assert (m.size, m.version, m.revision, m.regions, m.grid, m.name, m.layer) == (
+        "base", 2, None, "objects", None, None, "rgb"
     )
     assert (m.pooling, m.crop_px, m.crop_pad_frac, m.mask_background) == ("crop_cls", 224, 0.25, False)
     assert (m.dtype, m.batch_size, m.device) == ("float16", 64, "auto")
@@ -189,8 +189,8 @@ def test_defaults():
 
 def test_field_order_reaches_the_json_schema_and_the_pipeline_file():
     schema = MeasureDinoEmbedding.model_json_schema()
-    assert list(schema["properties"])[:6] == [
-        "size", "version", "revision", "regions", "grid", "name"
+    assert list(schema["properties"])[:7] == [
+        "size", "version", "revision", "regions", "grid", "name", "layer"
     ]
     params = json.loads(MeasureDinoEmbedding().to_json())["params"]
     assert list(params)[:4] == ["size", "version", "revision", "regions"]
@@ -200,6 +200,7 @@ def test_field_descriptions_survive_the_reorder():
     assert MeasureDinoEmbedding.model_fields["revision"].description
     assert MeasureDinoEmbedding.model_fields["regions"].description
     assert MeasureDinoEmbedding.model_fields["name"].description
+    assert MeasureDinoEmbedding.model_fields["layer"].description
 
 
 @pytest.mark.parametrize(
@@ -209,12 +210,12 @@ def test_field_descriptions_survive_the_reorder():
 def test_model_token_spells_version_size_and_patch(version, size, token):
     m = MeasureDinoEmbedding(version=version, size=size)
     assert m.model_token() == token
-    assert m.payload_key() == f"{token}/objects"
+    assert m.payload_key() == f"{token}/rgb/objects"
 
 
 def test_a_grid_embedder_writes_the_grid_folder():
     m = MeasureDinoEmbedding(regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]))
-    assert m.payload_key() == "dinov2-vitb14/grid"
+    assert m.payload_key() == "dinov2-vitb14/rgb/grid"
     assert m.requires_objects is False
 
 
@@ -224,10 +225,10 @@ def test_a_named_embedder_writes_its_named_folder():
         regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
         name="wells",
     )
-    assert m.payload_key() == "dinov2-vitb14/grid-wells"
+    assert m.payload_key() == "dinov2-vitb14/rgb/grid-wells"
     assert m.requires_objects is False
     crops = MeasureDinoEmbedding(name="cls")
-    assert crops.payload_key() == "dinov2-vitb14/objects-cls"
+    assert crops.payload_key() == "dinov2-vitb14/rgb/objects-cls"
     assert crops.requires_objects is True
     with pytest.raises(ValueError, match="name must be a lowercase slug"):
         MeasureDinoEmbedding(
@@ -243,11 +244,52 @@ def test_two_named_grids_share_one_backbone_load(stub_backbone, plate):
     from tests._tiny_run import grid_embedder, named_grid_embedders
 
     payloads = ImagePipeline(meas=named_grid_embedders(grid_embedder)).embed(plate)
-    assert list(payloads) == ["dinov2-vitb14/grid-wells", "dinov2-vitb14/grid-agar"]
+    assert list(payloads) == ["dinov2-vitb14/rgb/grid-wells", "dinov2-vitb14/rgb/grid-agar"]
     assert [len(p.frame) for p in payloads.values()] == [4, 1]
     assert len(stub_backbone.load_calls) == 1
     wells, agar = (p.frame["embedding"] for p in payloads.values())
     assert not any(np.array_equal(agar[0], cell) for cell in wells)
+
+
+def _equal_channel_plate(plate):
+    """The synth plate with its three channels made equal: gray is then rgb."""
+    value = np.asarray(plate.rgb[:]).mean(axis=2).astype(np.uint8)
+    return Image(np.stack([value] * 3, axis=-1))
+
+
+@requires_torch
+@pytest.mark.parametrize("pooling", ["crop_cls", "masked_dense"])
+def test_a_gray_dino_grid_differs_from_rgb_and_equals_it_on_a_gray_plate(stub_backbone, plate, pooling):
+    """#281 layer: gray is the gray layer as three uint8 channels, so on a
+    plate whose channels are already equal it is the rgb embedding."""
+    from tests._tiny_run import grid_embedder
+
+    rgb = grid_embedder(pooling=pooling)
+    gray = grid_embedder(pooling=pooling, layer="gray")
+    coloured = [np.stack(e.measure(plate)["embedding"]).astype(np.float32) for e in (rgb, gray)]
+    assert not np.allclose(coloured[0], coloured[1])
+    equal = _equal_channel_plate(plate)
+    same = [np.stack(e.measure(equal)["embedding"]).astype(np.float32) for e in (rgb, gray)]
+    np.testing.assert_allclose(same[0], same[1], atol=1e-2)
+    assert len(stub_backbone.load_calls) == 1
+
+
+@requires_torch
+@pytest.mark.parametrize("kwargs", [{"mask_background": True}, {"pooling": "masked_dense"}])
+def test_a_gray_object_embedder_runs_every_crop_option(stub_backbone, detected_plate, kwargs):
+    rgb = MeasureDinoEmbedding(device="cpu", **kwargs).measure(detected_plate)
+    gray = MeasureDinoEmbedding(device="cpu", layer="gray", **kwargs).measure(detected_plate)
+    assert len(gray) == len(rgb) == detected_plate.num_objects
+    assert not np.allclose(np.stack(rgb["embedding"]), np.stack(gray["embedding"]))
+
+
+@requires_torch
+def test_a_dino_entry_records_its_layer(stub_backbone, plate):
+    from tests._tiny_run import grid_embedder
+
+    payload = grid_embedder(layer="gray", name="wells").payload(plate)
+    assert payload.key == "dinov2-vitb14/gray/grid-wells"
+    assert payload.descriptor["input"] == {"series": "rgb", "level": 0, "layer": "gray"}
 
 
 @pytest.mark.parametrize("kwargs", [{"mask_background": True}, {"crop_pad_frac": 0.5}])
@@ -287,7 +329,7 @@ def test_tune_annotations_follow_the_plan():
         return next(meta for meta in MeasureDinoEmbedding.model_fields[name].metadata
                     if isinstance(meta, TuneSpec))
 
-    for name in ("size", "version", "revision", "regions", "grid", "name", "dtype",
+    for name in ("size", "version", "revision", "regions", "grid", "name", "layer", "dtype",
                  "batch_size", "device"):
         assert spec(name).tunable is False, name
     assert spec("crop_px").categories == (112, 224, 336, 448)
@@ -306,6 +348,7 @@ def test_preflight_declares_torch_transformers_and_the_weights():
     assert req.extra == "foundation"
     assert req.rgb_input is True
     assert [w.model for w in req.weights] == ["facebook/dinov2-small"]
+    assert MeasureDinoEmbedding(layer="gray").preflight_requirements().rgb_input is False
     gated = MeasureDinoEmbedding(version=3).preflight_requirements()
     assert "huggingface_hub" in gated.modules
     assert gated.weights[0].license_key == "dinov3"
@@ -529,8 +572,8 @@ def test_the_pipeline_payload_carries_the_model_entry(stub_backbone, detected_pl
         ops=[], meas={"emb": MeasureDinoEmbedding(size="small", crop_px=112, device="cpu")}
     )
     payloads = pipe.embed(detected_plate)
-    assert list(payloads) == ["dinov2-vits14/objects"]
-    descriptor = payloads["dinov2-vits14/objects"].descriptor
+    assert list(payloads) == ["dinov2-vits14/rgb/objects"]
+    descriptor = payloads["dinov2-vits14/rgb/objects"].descriptor
     assert descriptor["model"] == {
         "family": "dinov2", "hf_id": "facebook/dinov2-small",
         "revision": STUB_COMMIT, "patch_size": 14, "device": "cpu",

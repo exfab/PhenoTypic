@@ -198,7 +198,7 @@ def embed_in_process_mode(
     return an empty table keyed on labels the store does not hold.
 
     Returns:
-        ``{"<model>/<region>": EmbeddingPayload}``; empty when the
+        ``{"<model>/<layer>/<region>": EmbeddingPayload}``; empty when the
         pipeline has no no-objects embedder.
     """
     from phenotypic import ImagePipeline

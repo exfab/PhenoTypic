@@ -28,8 +28,8 @@ pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("torch") is None, reason="Requires torch (stub backbone)"
 )
 
-OBJECTS = "dinov2-vitb14/objects"
-GRID = "dinov2-vitb14/grid"
+OBJECTS = "dinov2-vitb14/rgb/objects"
+GRID = "dinov2-vitb14/rgb/grid"
 
 
 def _is_stale(run) -> bool:
@@ -53,8 +53,7 @@ def _deliverable_snapshot(out: Path) -> dict[str, tuple[bytes, int]]:
 def _corrupt(store: Path, key: str) -> None:
     from phenotypic.sdk_ import latest_measurement_run
 
-    model, _, region = key.partition("/")
-    latest_measurement_run(store).embedding_path(model, region).write_bytes(b"corrupt")
+    latest_measurement_run(store).embedding_path(key).write_bytes(b"corrupt")
 
 
 def _rows_of(table, image: str):
@@ -68,12 +67,12 @@ def test_full_run_publishes_embedding_deliverable(finished_tiny_run_with_embeddi
     import pyarrow.parquet as pq
 
     out = finished_tiny_run_with_embeddings
-    t = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
+    t = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet")
     assert {"Metadata_Dataset", "Object_Label", "embedding"} <= set(t.column_names)
     master = pl.read_parquet(out / "deliverables/master_measurements.parquet")
     assert "embedding" not in master.columns
     metrics = json.loads((out / "deliverables/metrics.json").read_text(encoding="utf-8"))
-    assert metrics["embeddings"]["dinov2-vitb14/objects"]["rows"] == t.num_rows
+    assert metrics["embeddings"]["dinov2-vitb14/rgb/objects"]["rows"] == t.num_rows
     # One row per measured colony, keyed as the master is.
     assert t.num_rows == master.height
     keys = {"Metadata_Dataset", "Metadata_ImageName", "Object_Label"}
@@ -93,7 +92,7 @@ def test_each_stores_rows_are_its_own_table(finished_tiny_run_with_embeddings):
     from tests._tiny_run import one_store
 
     out = finished_tiny_run_with_embeddings
-    published = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
+    published = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet")
     own = {}
     for stem in ("plate_1", "plate_2"):
         own[stem] = read_embedding_table(one_store(out, stem=stem), OBJECTS)
@@ -109,9 +108,9 @@ def test_the_manifest_describes_each_deliverable(finished_tiny_run_with_embeddin
     manifest = json.loads(
         (deliverables / "embeddings" / "manifest.json").read_text(encoding="utf-8")
     )
-    entry = manifest["entries"]["dinov2-vitb14/objects"]
+    entry = manifest["entries"]["dinov2-vitb14/rgb/objects"]
     path = deliverables / entry["path"]
-    assert entry["path"] == "embeddings/dinov2-vitb14/objects.parquet"
+    assert entry["path"] == "embeddings/dinov2-vitb14/rgb/objects.parquet"
     assert entry["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert entry["stores"] == 2 and entry["stale_skipped"] == []
     (descriptor,) = entry["descriptors"]
@@ -125,7 +124,7 @@ def test_embeddings_get_no_split_and_no_mirror_section(finished_tiny_run_with_em
     d = finished_tiny_run_with_embeddings / "deliverables"
     assert not any("Embedding" in p.name for p in (d / "measurements_by_feature").iterdir())
     schema = json.loads((d / "schema.json").read_text(encoding="utf-8"))
-    vector = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/objects"] if c["name"] == "embedding")
+    vector = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/rgb/objects"] if c["name"] == "embedding")
     # schema.json names a member as ``<enum>.<member>`` (spec C12, ``SIZE.AREA``).
     member = DINO_EMBEDDING.EMBEDDING
     assert vector["member"] == f"{type(member).__name__}.{member.name}"
@@ -134,11 +133,11 @@ def test_embeddings_get_no_split_and_no_mirror_section(finished_tiny_run_with_em
     assert vector["model"] == "dinov2-vitb14"
     assert vector["producer"] == "MeasureDinoEmbedding"
     # P4 review Q1: the per-row descriptor index, 0 for a one-descriptor run.
-    index = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/objects"] if c["name"] == "descriptor_index")
+    index = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/rgb/objects"] if c["name"] == "descriptor_index")
     assert index["dtype"] == "Int16" and "descriptors" in index["desc"]
     readme = (d / "README.md").read_text(encoding="utf-8")
     assert "DinoEmbedding_Embedding" not in readme
-    assert "deliverables/embeddings/dinov2-vitb14/objects.parquet" in readme
+    assert "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet" in readme
     assert "`descriptor_index`" in readme
 
 
@@ -155,10 +154,10 @@ def test_the_aggregate_proof_declares_and_enforces_the_embedding_files(
     out = finished_tiny_run_with_embeddings
     proof = json.loads(aggregate_publication_marker_path(out).read_text(encoding="utf-8"))
     outputs = proof["required_outputs"]
-    table = out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
+    table = out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet"
     manifest = out / "deliverables/embeddings/manifest.json"
-    assert outputs["embeddings/dinov2-vitb14/objects"]["path"] == "deliverables/embeddings/dinov2-vitb14/objects.parquet"
-    assert outputs["embeddings/dinov2-vitb14/objects"]["sha256"] == hashlib.sha256(table.read_bytes()).hexdigest()
+    assert outputs["embeddings/dinov2-vitb14/rgb/objects"]["path"] == "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet"
+    assert outputs["embeddings/dinov2-vitb14/rgb/objects"]["sha256"] == hashlib.sha256(table.read_bytes()).hexdigest()
     assert outputs["embeddings_manifest"]["path"] == "deliverables/embeddings/manifest.json"
     for path in (table, manifest):
         original = path.read_bytes()
@@ -184,12 +183,12 @@ def test_stale_entries_are_skipped_and_counted(tree_with_one_stale_store):
 
     out, runs = tree_with_one_stale_store            # 3 images, one stale
     counts = aggregate_embedding_tables(out, runs)
-    assert counts["dinov2-vitb14/objects"]["stale_skipped"] == 1
-    assert counts["dinov2-vitb14/objects"]["rows"] == sum(rows_in(r) for r in runs if not _is_stale(r))
+    assert counts["dinov2-vitb14/rgb/objects"]["stale_skipped"] == 1
+    assert counts["dinov2-vitb14/rgb/objects"]["rows"] == sum(rows_in(r) for r in runs if not _is_stale(r))
     manifest = json.loads(
         (out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["entries"]["dinov2-vitb14/objects"]["stale_skipped"] == [
+    assert manifest["entries"]["dinov2-vitb14/rgb/objects"]["stale_skipped"] == [
         "results/ds/zarr/plate_3.ome.zarr"
     ]
 
@@ -210,7 +209,7 @@ def test_corrupt_embedding_does_not_revoke_measurements(finished_tiny_run_with_e
     state = resolve_run_state(out, depth="deep")
     assert all(image.verdict == "verified" for image in state.images.values())
     with pytest.raises(EmbeddingTableUnreadableError):
-        read_embedding_table(store, "dinov2-vitb14/objects")
+        read_embedding_table(store, "dinov2-vitb14/rgb/objects")
 
 
 @pytest.fixture
@@ -302,7 +301,7 @@ def test_same_pipeline_measure_keeps_the_runs_crop_embeddings(
         assert read_embedding_table(store, DINO_OBJECTS_KEY).equals(table)
         assert objects_entry(store)["stale"] is False
     published = pq.read_metadata(
-        out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
+        out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet"
     ).num_rows
     assert published == sum(table.num_rows for table in before)
 
@@ -413,7 +412,7 @@ def test_stage3_writes_the_crop_embeddings(tmp_path, monkeypatch, stub_backbone)
     store = one_store(out)
     assert read_embedding_table(store, DINO_OBJECTS_KEY).num_rows > 0
     assert objects_entry(store)["stale"] is False
-    assert (out / "deliverables/embeddings/dinov2-vitb14/objects.parquet").is_file()
+    assert (out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet").is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +430,7 @@ def test_a_grid_embedder_publishes_its_grid_table(two_key_run):
     from tests._tiny_run import TOY_GRID_COL_EDGES, TOY_GRID_ROW_EDGES
 
     out = two_key_run
-    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/grid.parquet")
+    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/rgb/grid.parquet")
     cells = (len(TOY_GRID_ROW_EDGES) - 1) * (len(TOY_GRID_COL_EDGES) - 1)
     assert table.num_rows == 2 * cells
     assert str(GRID_SCHEMA.ROW_MAJOR_IDX) in table.column_names
@@ -448,7 +447,7 @@ def test_restart_republishes_the_embeddings(finished_tiny_run_with_embeddings):
     from tests._tiny_run import run_cli
 
     out = finished_tiny_run_with_embeddings
-    path = out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
+    path = out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet"
     before = path.read_bytes()
     result = run_cli(
         out.parent / "in", out, pipeline=out.parent / "dino_objects.pht-pipe.json",
@@ -477,7 +476,7 @@ def test_continuation_refinalizes_with_the_new_images_embeddings(
         (out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8")
     )
     assert manifest["entries"][OBJECTS]["stores"] == 3
-    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
+    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/rgb/objects.parquet")
     assert set(table.column("Metadata_ImageName").to_pylist()) == {
         "plate_1", "plate_2", "plate_3",
     }

@@ -17,10 +17,16 @@ from phenotypic.sdk_._table_runs import (
     OBJECTS_REGION,
     GRID_REGION,
     check_region_name,
+    embedding_key,
     embedding_region,
 )
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
-from phenotypic.sdk_.typing_ import EmbeddingRegions, OperationField, TuneSpec
+from phenotypic.sdk_.typing_ import (
+    EmbeddingLayer,
+    EmbeddingRegions,
+    OperationField,
+    TuneSpec,
+)
 
 from ._measure_features import MeasureFeatures
 
@@ -102,10 +108,12 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     An embedder crops image regions and turns each crop into one vector with
     a model (a DINOv2 backbone, say). Unlike every other measurer its output
     is not a set of scalar columns in the measurement table: each embedder
-    writes its own table, ``embeddings/<model>/<region>/table.parquet``,
-    inside the run folder of the pipeline that produced it. The region is
-    ``objects`` for colonies and ``grid`` for a grid, or ``objects-<name>`` /
-    ``grid-<name>`` for an embedder given a ``name``.
+    writes its own table, ``embeddings/<model>/<layer>/<region>/table.parquet``,
+    inside the run folder of the pipeline that produced it, keyed
+    ``<model>/<layer>/<region>``. The layer is ``rgb`` or ``gray``, the
+    pixels it read. The region is ``objects`` for colonies and ``grid`` for a
+    grid, or ``objects-<name>`` / ``grid-<name>`` for an embedder given a
+    ``name``.
 
     **Which runs which.** :meth:`ImagePipeline.measure` does **not** run
     embedders -- its frame never carries an ``embedding`` column.
@@ -120,8 +128,14 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     :class:`~phenotypic.grid.ManualGridFinder` whose pixel edges are set per
     rig, and needs no objects. A whole-image embedding is a 1 x 1 grid.
     Naming an embedder (``name="wells"``) lets one pipeline hold several
-    embedders of one model and region -- two grids, or two poolings of the
-    colonies -- each in its own table.
+    embedders of one model, layer and region -- two grids, or two poolings
+    of the colonies -- each in its own table. An ``rgb`` and a ``gray`` copy
+    need no name: the layer is a folder of its own.
+
+    **Pixels.** :meth:`_layer_pixels` is what an embedder reads:
+    ``layer="rgb"`` the colour layer as stored, ``layer="gray"`` the gray
+    layer scaled to uint8 and stacked to three identical channels, so a
+    model that takes RGB embeds either.
 
     To implement one, subclass this and define three methods:
 
@@ -132,7 +146,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     Override :meth:`_embed_object_boxes` as well when a colony's crop needs
     its own pixels (a background mask, a masked pool), and list the fields
     that name the model in ``_leading_fields`` to put them before
-    ``regions``, ``grid`` and ``name`` in the field order.
+    ``regions``, ``grid``, ``name`` and ``layer`` in the field order.
 
     Args:
         regions: ``"objects"`` to embed detected colonies, ``"grid"`` to
@@ -146,6 +160,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             ``grid``. A lowercase slug of 1 to 32 characters (``a-z``,
             ``0-9`` and ``_``, starting with a letter or digit). ``None``
             keeps the plain region.
+        layer: The pixels embedded: ``"rgb"``, the colour layer as stored,
+            or ``"gray"``, the gray layer as three identical uint8 channels.
+            It is the ``<layer>`` folder of the table and its key, and
+            the entry's ``input.layer``.
 
     Examples:
         A toy embedder whose vector is each box's height and width:
@@ -175,8 +193,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         Union[OperationField, None], TuneSpec(tunable=False)
     ] = None
     name: Annotated[Union[str, None], TuneSpec(tunable=False)] = None
+    layer: Annotated[EmbeddingLayer, TuneSpec(tunable=False)] = "rgb"
 
-    #: Subclass fields placed before ``regions``, ``grid`` and ``name``, in this order:
+    #: Subclass fields placed before ``regions``, ``grid``, ``name`` and ``layer``, in this order:
     #: the ones that name the model (``size``, ``version``, ...), which a
     #: reader of a pipeline file looks for first. Empty keeps pydantic's
     #: order, the ABC's fields first.
@@ -187,8 +206,8 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """Move ``_leading_fields`` to the front of the subclass's field order.
 
         Pydantic puts inherited fields first, so without this every
-        embedder's own model fields would follow ``regions``, ``grid`` and
-        ``name``.
+        embedder's own model fields would follow ``regions``, ``grid``,
+        ``name`` and ``layer``.
         The same forced-rebuild pattern as the field-append mixins
         (``sdk_/mixin/_input_layer_mixin.py``); ``TuneSpec`` metadata and the
         docstring descriptions survive it.
@@ -252,6 +271,23 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             An ``(N, D)`` float array, ``D == entry_descriptor()["dim"]``.
         """
 
+    def _layer_pixels(self, image: Image) -> np.ndarray:
+        """The ``(H, W, 3)`` pixels this embedder reads: its ``layer`` of *image*.
+
+        ``"rgb"`` is ``image.rgb[:]`` as stored (uint8 or uint16, never
+        copied). ``"gray"`` is ``image.gray[:]`` scaled to uint8 by its dtype
+        range, the scaling an RGB crop gets (``[0, 1]`` to ``0..255``), and
+        stacked to three identical channels, so a model that takes RGB gets
+        a gray plate unchanged by any colour weighting.
+        """
+        if self.layer == "rgb":
+            return np.asarray(image.rgb[:])
+        from phenotypic.abc_._gpu_detector import _scale_to_uint8
+
+        gray = np.asarray(image.gray[:])
+        scaled = gray if gray.dtype == np.uint8 else _scale_to_uint8(gray, "dtype_range")
+        return np.repeat(scaled[..., None], 3, axis=2)
+
     def _embed_object_boxes(
         self, image: Image, boxes: np.ndarray, labels: np.ndarray
     ) -> np.ndarray:
@@ -302,13 +338,13 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         return embedding_region(base, self.name)
 
     def payload_key(self) -> str:
-        """``"<model_token()>/<region>"``: the entry's key in its run folder.
+        """``"<model_token()>/<layer>/<region>"``: the entry's key in its run folder.
 
         Two embedders of one pipeline must not share it
-        (``ImagePipeline`` refuses them), so two embedders of one model and
-        region need different ``name``.
+        (``ImagePipeline`` refuses them), so two embedders of one model,
+        layer and region need different ``name``.
         """
-        return f"{self.model_token()}/{self.region}"
+        return embedding_key(self.model_token(), self.layer, self.region)
 
     def _dim(self) -> int:
         descriptor = self.entry_descriptor()
@@ -465,17 +501,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     # ------------------------------------------------------------------ #
 
     def _params_sha256(self) -> str:
-        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``).
-
-        ``name`` is left out while it is ``None``, so an unnamed embedder
-        has the digest it had before the field existed, and a run continued
-        across the upgrade keeps one descriptor per key (#281 named
-        regions). A name is part of the digest.
-        """
-        params = self.model_dump(mode="json")
-        if params.get("name") is None:
-            params.pop("name", None)
-        canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
+        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``)."""
+        canonical = json.dumps(
+            self.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+        )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def payload(self, image: Image) -> EmbeddingPayload:
@@ -485,7 +514,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         descriptor's ``binds`` are digests of the image the vectors were
         computed from, so a writer can tell whether the store it writes still
         holds that image (spec D7): for objects the objmap, for a grid the
-        level-0 array of the series read and the grid edges.
+        level-0 array of the series read and the grid edges. ``input`` names
+        that series and the ``layer`` read; a ``gray`` grid still binds the
+        primary series' array, the stored pixels gray is computed from, so
+        staleness tracks the store's pixels.
 
         Args:
             image: The image to embed.
@@ -520,7 +552,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         descriptor = {
             **self.entry_descriptor(),
             "key": key,
-            "input": {"series": series, "level": 0},
+            "input": {"series": series, "level": 0, "layer": self.layer},
             "producer": {
                 "class": type(self).__name__,
                 "params_sha256": self._params_sha256(),

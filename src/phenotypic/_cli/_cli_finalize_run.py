@@ -671,7 +671,7 @@ def publish_run_summaries(
         embeddings: Per embedding entry id, ``{"rows", "stale_skipped"}``,
             from :func:`~phenotypic._cli._cli_embedding_deliverables.aggregate_embedding_tables`;
             ``None`` (or empty) omits the key. Given, ``schema.json`` also
-            lists each published ``embeddings/<model>/<region>`` table.
+            lists each published ``embeddings/<model>/<layer>/<region>`` table.
         measure_failed: How many images' ``--mode measure`` re-measure
             failed in this finalization's invocation; ``0`` for any other run.
         table_runs: The aggregated sources' certified runs

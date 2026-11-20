@@ -2,7 +2,7 @@
 
 Since #281 P3 a store's tables live in one folder per measuring pipeline::
 
-    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/{objects,grid}[-<name>]}/
+    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/<layer>/<region>}/
 
 described by ``attributes.phenotypic.tables``::
 
@@ -62,6 +62,11 @@ EMBEDDINGS_KEY: Final[str] = "embeddings"
 #: or ``objects-<name>`` / ``grid-<name>`` for a named embedder.
 #: :func:`split_embedding_key` is the one rule for which strings are regions.
 EmbeddingRegion = str
+
+#: The pixel layers an embedder reads, each its own folder level between the
+#: model and the region (#281, user decision 2026-11-19), so an ``rgb`` and a
+#: ``gray`` copy of one embedder never share a table.
+EMBEDDING_LAYERS: Final[tuple[str, ...]] = ("rgb", "gray")
 
 #: The region of a colony embedder (``regions="objects"``) with no ``name``.
 OBJECTS_REGION: Final[str] = "objects"
@@ -184,60 +189,89 @@ def embedding_region(base: str, name: str | None) -> str:
     return f"{base}-{check_region_name(name)}"
 
 
-def _check_embedding_folders(model: str, region: str) -> None:
-    """Refuse a region that is not objects, grid or ``<either>-<name>``, or a model that is not one path segment."""
+def _check_embedding_folders(model: str, layer: str, region: str) -> None:
+    """Refuse a model that is not one path segment, a layer outside :data:`EMBEDDING_LAYERS`, or a bad region."""
+    if not model or "\\" in model or model in {".", ".."}:
+        raise ValueError(f"embedding model must be one path segment, got {model!r}")
+    if layer not in EMBEDDING_LAYERS:
+        raise ValueError(f"embedding layer must be rgb or gray, got {layer!r}")
     if not isinstance(region, str) or _EMBEDDING_REGION_RE.fullmatch(region) is None:
         raise ValueError(
             "embedding region must be objects or grid, or objects-<name> / grid-<name> "
             f"with <name> a lowercase slug (^[a-z0-9][a-z0-9_]{{0,31}}$), got {region!r}"
         )
-    if not model or "/" in model or "\\" in model or model in {".", ".."}:
-        raise ValueError(f"embedding model must be one path segment, got {model!r}")
 
 
-def split_embedding_key(key: str) -> tuple[str, EmbeddingRegion]:
-    """``(model, region)`` of an embedding entry key, ``"<model>/<region>"``.
+def split_embedding_key(key: str) -> tuple[str, str, EmbeddingRegion]:
+    """``(model, layer, region)`` of an embedding entry key, ``"<model>/<layer>/<region>"``.
 
-    The region is ``objects`` or ``grid``, or ``objects-<name>`` /
+    The layer is ``rgb`` or ``gray``, the pixels the vectors were computed
+    from. The region is ``objects`` or ``grid``, or ``objects-<name>`` /
     ``grid-<name>`` where ``<name>`` is the embedder's ``name``
-    (:func:`check_region_name`): ``dinov2-vitb14/grid-wells``.
+    (:func:`check_region_name`): ``dinov2-vitb14/rgb/grid-wells``.
 
     The one rule for a key: an
     :class:`~phenotypic.sdk_._embedding_tables.EmbeddingPayload` is refused
-    on it when built, and the run's embedding deliverables refuse a store
-    entry on it when finalization reads one (a store root edited by hand,
-    say), because the key names the deliverable's file.
+    on it when built, the store and deliverable paths are built from its
+    parts, and the run's embedding deliverables refuse a store entry on it
+    when finalization reads one (a store root edited by hand, say), because
+    the key names the deliverable's file.
 
     Raises:
-        ValueError: If the part after the first ``/`` is not a region (so
-            ``"a/b/c"``, ``"m/grid-"`` and ``"m/grid-Wells"`` are refused),
-            or the part before it is not one path segment.
+        ValueError: If *key* is not exactly three ``/``-separated segments,
+            the model is not one path segment, the layer is not ``rgb`` or
+            ``gray``, or the region is not one of the above (so
+            ``"m/grid"``, ``"m/rgb/grid/x"``, ``"m/hsv/grid"``,
+            ``"m/rgb/grid-"`` and ``"m/rgb/grid-Wells"`` are refused).
 
     Examples:
-        >>> split_embedding_key("dinov2-vitb14/grid-wells")
-        ('dinov2-vitb14', 'grid-wells')
+        >>> split_embedding_key("dinov2-vitb14/rgb/grid-wells")
+        ('dinov2-vitb14', 'rgb', 'grid-wells')
     """
-    model, _, region = key.partition("/")
-    _check_embedding_folders(model, region)
-    return model, region  # type: ignore[return-value]
+    parts = key.split("/") if isinstance(key, str) else []
+    if len(parts) != 3:
+        raise ValueError(
+            "an embedding key is <model>/<layer>/<region>, three segments, "
+            f"got {key!r}"
+        )
+    model, layer, region = parts
+    _check_embedding_folders(model, layer, region)
+    return model, layer, region
 
 
-def embedding_table_relative_path(
-    run_id: str, model: str, region: EmbeddingRegion
-) -> PurePosixPath:
-    """``tables/<run_id>/embeddings/<model>/<region>/table.parquet``, store-relative.
+def embedding_key(model: str, layer: str, region: EmbeddingRegion) -> str:
+    """``"<model>/<layer>/<region>"``, checked by :func:`split_embedding_key`.
 
     Raises:
-        ValueError: If *region* is not a region (:func:`split_embedding_key`),
-            or *model* is not a single path segment.
+        ValueError: As :func:`split_embedding_key`.
+
+    Examples:
+        >>> embedding_key("dinov2-vitb14", "gray", "objects")
+        'dinov2-vitb14/gray/objects'
+    """
+    key = f"{model}/{layer}/{region}"
+    split_embedding_key(key)
+    return key
+
+
+def embedding_table_relative_path(run_id: str, key: str) -> PurePosixPath:
+    """``tables/<run_id>/embeddings/<model>/<layer>/<region>/table.parquet``, store-relative.
+
+    Args:
+        run_id: The run folder.
+        key: The entry key, ``"<model>/<layer>/<region>"``.
+
+    Raises:
+        ValueError: If *key* is not an embedding key (:func:`split_embedding_key`).
     """
     from . import ngff_
 
-    _check_embedding_folders(model, region)
+    model, layer, region = split_embedding_key(key)
     return (
         table_run_relative_path(run_id)
         / ngff_.EMBEDDINGS_TABLE_GROUP
         / model
+        / layer
         / region
         / ngff_.MEASUREMENT_TABLE_FILENAME
     )
@@ -281,11 +315,9 @@ class TableRun:
         """The run's ``metadata/pht-metadata.parquet`` (whether or not it exists)."""
         return Path(self.store) / metadata_table_relative_path(self.run_id)
 
-    def embedding_path(self, model: str, region: EmbeddingRegion) -> Path:
-        """The run's ``embeddings/<model>/<region>/table.parquet``."""
-        return Path(self.store) / embedding_table_relative_path(
-            self.run_id, model, region
-        )
+    def embedding_path(self, key: str) -> Path:
+        """The run's ``embeddings/<model>/<layer>/<region>/table.parquet`` for entry *key*."""
+        return Path(self.store) / embedding_table_relative_path(self.run_id, key)
 
 
 def _tables_block(block: Mapping[str, object]) -> Mapping[str, object] | None:

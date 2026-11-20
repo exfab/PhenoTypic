@@ -143,8 +143,8 @@ def test_in_place_adds_folder_2_and_leaves_folder_1_byte_identical(kit, tmp_path
     # Carried as hard links: the same files, not copies of them.
     assert {path: path.stat().st_ino for path in inodes} == inodes
     second = list_table_runs(store)[-1]
-    assert set(second.descriptor["embeddings"]) == {f"{kit.model(1)}/grid"}
-    assert second.descriptor["embeddings"][f"{kit.model(1)}/grid"]["stale"] is False
+    assert set(second.descriptor["embeddings"]) == {f"{kit.model(1)}/rgb/grid"}
+    assert second.descriptor["embeddings"][f"{kit.model(1)}/rgb/grid"]["stale"] is False
 
 
 def test_pixel_arrays_are_never_rewritten(kit, tmp_path):
@@ -170,11 +170,11 @@ def test_an_independent_reader_sees_the_new_folder(kit, tmp_path):
     run = list_table_runs(store)[-1]
     group = zarr.open_consolidated(store, mode="r")
     members = dict(group.members(max_depth=None))
-    assert f"tables/{run.run_id}/embeddings/{kit.model(1)}/grid" in members
+    assert f"tables/{run.run_id}/embeddings/{kit.model(1)}/rgb/grid" in members
     # The first folder is still in the consolidated view too.
     first = list_table_runs(store)[0]
-    assert f"tables/{first.run_id}/embeddings/{kit.model(0)}/grid" in members
-    assert pq.read_table(run.embedding_path(kit.model(1), "grid")).num_rows == 4
+    assert f"tables/{first.run_id}/embeddings/{kit.model(0)}/rgb/grid" in members
+    assert pq.read_table(run.embedding_path(f"{kit.model(1)}/rgb/grid")).num_rows == 4
 
 
 def test_the_journal_gains_one_process_application(kit, tmp_path):
@@ -317,7 +317,7 @@ def test_another_pipeline_in_place_needs_restart(kit, tmp_path):
         assert [r.order for r in list_table_runs(each)] == [1, 2, 3]
     runs = list_table_runs(store)
     assert {run.run_id: tree_digest(run.folder) for run in runs[:2]} == folders
-    assert set(runs[2].descriptor["embeddings"]) == {f"{kit.model(2)}/grid"}
+    assert set(runs[2].descriptor["embeddings"]) == {f"{kit.model(2)}/rgb/grid"}
 
 
 # ---------------------------------------------------------------------------
@@ -537,7 +537,7 @@ def test_the_rewrite_consolidates_on_request(kit):
     )
     consolidated = json.loads(root.read_text(encoding="utf-8"))["consolidated_metadata"]
     run = list_table_runs(store)[0]
-    assert f"tables/{run.run_id}/embeddings/{kit.model(0)}/grid" in consolidated["metadata"]
+    assert f"tables/{run.run_id}/embeddings/{kit.model(0)}/rgb/grid" in consolidated["metadata"]
 
 
 # ---------------------------------------------------------------------------
@@ -691,15 +691,17 @@ def test_a_legacy_integer_gray_store_runs_in_place(tmp_path, registered_toy_embe
     stored = np.asarray(zarr.open_array(store=str(store / "gray" / "0"), mode="r"))
     assert stored.dtype == np.dtype(dtype), "fixture did not write an integer gray"
     extra = ["--layer", "gray", "--process-format", "zarr"]
-    result = in_place(tree, toy_grid_process_pipeline(tmp_path), extra)
+    # A gray store holds no rgb, so its embedder reads the gray layer.
+    pipeline = toy_grid_process_pipeline(tmp_path, layer="gray")
+    result = in_place(tree, pipeline, extra)
     assert result.exit_code == 0, result.output
     (run,) = list_table_runs(store)
-    entry = run.descriptor["embeddings"]["toy-v1/grid"]
+    entry = run.descriptor["embeddings"]["toy-v1/gray/grid"]
     # The stored array's digest binds the entry, so it reads fresh.
     assert entry["binds"]["array_sha256"] == level0_digest(stored)
     assert entry["stale"] is False
     before = {each: tree_digest(each) for each in _stores(tree)}
-    assert in_place(tree, toy_grid_process_pipeline(tmp_path), extra).exit_code == 0
+    assert in_place(tree, pipeline, extra).exit_code == 0
     assert {each: tree_digest(each) for each in _stores(tree)} == before
 
 
@@ -718,13 +720,15 @@ def test_in_place_over_other_store_shapes(tmp_path, registered_toy_embedder, var
         layer = "gray"
     inputs = _write_plates(tmp_path / "raw", arrays)
     extra = ["--layer", layer, "--process-format", "zarr"]
-    tree = _tree_from(tmp_path, inputs, toy_grid_process_pipeline(tmp_path), extra, "stores")
+    # The embedder reads the layer the store holds (a gray store has no rgb).
+    first = toy_grid_process_pipeline(tmp_path, layer=layer)
+    tree = _tree_from(tmp_path, inputs, first, extra, "stores")
     store = _stores(tree)[0]
     chunks = {p: p.stat().st_ino for p in (store / layer).rglob("*") if p.is_file()}
-    result = in_place(tree, _toy_pipeline(tmp_path, 1), extra)
+    result = in_place(tree, toy_grid_process_pipeline(tmp_path, token="toy-v2", layer=layer), extra)
     assert result.exit_code == 0, result.output
     assert [r.order for r in list_table_runs(store)] == [1, 2]
-    assert list_table_runs(store)[-1].descriptor["embeddings"]["toy-v2/grid"]["stale"] is False
+    assert list_table_runs(store)[-1].descriptor["embeddings"][f"toy-v2/{layer}/grid"]["stale"] is False
     assert {p: p.stat().st_ino for p in chunks} == chunks
 
 
@@ -802,12 +806,12 @@ def _block_with_run(entry: dict) -> dict:
 @pytest.mark.parametrize(
     ("entry", "keys", "current"),
     [
-        ({}, {"toy-v1/grid"}, False),
-        ({"embeddings": {}}, {"toy-v1/grid"}, False),
-        ({"embeddings": {"toy-v1/grid": {"stale": False}}}, {"toy-v1/grid"}, True),
-        ({"embeddings": {"toy-v1/grid": {"stale": True}}}, {"toy-v1/grid"}, False),
-        ({"embeddings": {"toy-v2/grid": {"stale": False}}}, {"toy-v1/grid"}, False),
-        ({"embeddings": {"toy-v1/grid": {"stale": False}}}, set(), False),
+        ({}, {"toy-v1/rgb/grid"}, False),
+        ({"embeddings": {}}, {"toy-v1/rgb/grid"}, False),
+        ({"embeddings": {"toy-v1/rgb/grid": {"stale": False}}}, {"toy-v1/rgb/grid"}, True),
+        ({"embeddings": {"toy-v1/rgb/grid": {"stale": True}}}, {"toy-v1/rgb/grid"}, False),
+        ({"embeddings": {"toy-v2/rgb/grid": {"stale": False}}}, {"toy-v1/rgb/grid"}, False),
+        ({"embeddings": {"toy-v1/rgb/grid": {"stale": False}}}, set(), False),
     ],
 )
 def test_the_owned_run_is_current_only_with_every_own_key_fresh(entry, keys, current):
@@ -931,11 +935,11 @@ def test_two_named_grids_in_place_add_one_folder_holding_both_tables(kit, tmp_pa
         assert [r.order for r in runs] == [1, 2]
         added = runs[-1]
         # The rewrite does not keep the payload order, and nothing reads it.
-        assert set(added.descriptor["embeddings"]) == {f"{model}/grid-wells", f"{model}/grid-agar"}
+        assert set(added.descriptor["embeddings"]) == {f"{model}/rgb/grid-wells", f"{model}/rgb/grid-agar"}
         assert "measurements" not in added.descriptor
         for region, ends in (("grid-wells", [100, 100, 200, 200]), ("grid-agar", [200])):
-            assert added.descriptor["embeddings"][f"{model}/{region}"]["stale"] is False
-            table = pq.read_table(added.embedding_path(model, region))
+            assert added.descriptor["embeddings"][f"{model}/rgb/{region}"]["stale"] is False
+            table = pq.read_table(added.embedding_path(f"{model}/rgb/{region}"))
             assert table.column(str(GRID.ROW_INTERVAL_END)).to_pylist() == ends
-        tables = store / "tables" / added.run_id / "embeddings" / model
+        tables = store / "tables" / added.run_id / "embeddings" / model / "rgb"
         assert sorted(p.name for p in tables.iterdir() if p.is_dir()) == ["grid-agar", "grid-wells"]

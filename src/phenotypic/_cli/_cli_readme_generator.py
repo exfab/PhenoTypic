@@ -303,7 +303,7 @@ No measurements configured in this pipeline."""
 
         An embedder writes no column of the measurement tables, so the
         measurements section leaves it out; its vectors are published as
-        ``deliverables/embeddings/<model>/<region>.parquet``. Returns
+        ``deliverables/embeddings/<model>/<layer>/<region>.parquet``. Returns
         ``""`` when the pipeline has no embedder. Reads only the embedder's
         fields, never its weights.
         """
@@ -327,9 +327,11 @@ No measurements configured in this pipeline."""
             "`Metadata_Dataset`, `Metadata_ImageName`, the table's key "
             "(`Object_Label` for colonies, the `Grid_*` cell keys for a "
             "grid) and `embedding`, a fixed-length float16 vector. A file is "
-            "named for its region: `objects` or `grid`, or `objects-<name>` / "
-            "`grid-<name>` for an embedder given a `name`, so two grids of "
-            "one model (the wells and the whole agar, say) are two files. Join a "
+            "`<model>/<layer>/<region>.parquet`: the layer is `rgb` or `gray`, "
+            "the pixels embedded, and the region is `objects` or `grid`, or "
+            "`objects-<name>` / `grid-<name>` for an embedder given a `name`, "
+            "so two grids of one model (the wells and the whole agar, say), or "
+            "one grid on rgb and on gray, are two files. Join a "
             "colony row to `master_measurements.parquet` on `Metadata_Dataset`, "
             "`Metadata_ImageName` and `Object_Label`. These files are never "
             "joined to metadata. "

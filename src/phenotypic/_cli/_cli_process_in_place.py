@@ -477,7 +477,7 @@ def _owned_run_is_current(
 ) -> bool:
     """Whether *block* holds this pipeline's folder, with each of its *keys* fresh.
 
-    *keys* are the payload keys (``"<model>/<region>"``) the pipeline's
+    *keys* are the payload keys (``"<model>/<layer>/<region>"``) the pipeline's
     process-mode embedders write. Every one must be in the owned folder's
     ``embeddings`` with ``stale`` exactly ``False``; a folder missing one, or
     a pipeline with no keys at all, is not current (P5 review M1).

@@ -156,8 +156,8 @@ def test_the_resolver_orders_runs_and_picks_defaults(tmp_path):
     run = owned_table_run(store, SHA_B)
     assert run.measurements_path() == store / "tables" / run.run_id / "measurements" / "table.parquet"
     assert run.metadata_path() == store / "tables" / run.run_id / "metadata" / "pht-metadata.parquet"
-    assert run.embedding_path("dinov2-vitb14", "objects") == (
-        store / "tables" / run.run_id / "embeddings" / "dinov2-vitb14" / "objects" / "table.parquet"
+    assert run.embedding_path("dinov2-vitb14/rgb/objects") == (
+        store / "tables" / run.run_id / "embeddings" / "dinov2-vitb14" / "rgb" / "objects" / "table.parquet"
     )
 
 

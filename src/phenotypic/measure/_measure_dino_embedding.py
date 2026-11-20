@@ -89,8 +89,9 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     The output is not a set of measurement columns. Each image gets one
     embedding table, ``Object_Label`` (or the ``Grid_*`` keys) plus an
     ``embedding`` vector per row, in its store's run folder, and the run
-    gets ``deliverables/embeddings/<model>/<region>.parquet``, the region
-    ``objects`` or ``grid``, or ``objects-<name>`` / ``grid-<name>`` when named;
+    gets ``deliverables/embeddings/<model>/<layer>/<region>.parquet``: the
+    layer ``rgb`` or ``gray``, the region ``objects`` or ``grid``, or
+    ``objects-<name>`` / ``grid-<name>`` when named;
     :class:`~phenotypic.schema.DINO_EMBEDDING` documents the vector.
     :meth:`ImagePipeline.embed` runs it; :meth:`ImagePipeline.measure` does
     not. It runs on the CPU unless CUDA is available.
@@ -140,12 +141,19 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         name: Names this embedder's table, so one pipeline can hold several
             embedders of one model and region -- a rig's well lattice and
             one whole-agar cell, say, or two poolings of the colonies. Its
-            region is then ``grid-<name>`` (``dinov2-vitb14/grid-wells``) or
+            region is then ``grid-<name>`` (``dinov2-vitb14/rgb/grid-wells``) or
             ``objects-<name>`` instead of ``grid`` or ``objects``. A lowercase
             slug of 1 to 32 characters: ``a-z``, ``0-9`` and ``_``, starting
             with a letter or digit. ``None`` keeps the plain region. Two
-            embedders of one model and region need different names; the
-            backbone still loads once for both.
+            embedders of one model, layer and region need different names;
+            the backbone still loads once for both.
+        layer: The pixels embedded. ``"rgb"`` (the default) is the colour
+            layer; ``"gray"`` is the gray layer, scaled to uint8 as an RGB
+            crop is and stacked to three identical channels, then normalised
+            as usual. Every pooling, ``mask_background`` and grid cell works
+            on either. It is the table's ``<layer>`` folder, so an rgb and a
+            gray copy of one embedder coexist, even with one ``name``; its
+            ``params_sha256`` differs too.
         pooling: How a region becomes one vector: ``"crop_cls"``,
             ``"crop_mean"`` or ``"masked_dense"`` (above).
         crop_px: Side of the square crop fed to the backbone, and the tile
@@ -186,12 +194,12 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         >>> from phenotypic.measure import MeasureDinoEmbedding
         >>> colonies = MeasureDinoEmbedding(size="small")
         >>> colonies.model_token(), colonies.payload_key()
-        ('dinov2-vits14', 'dinov2-vits14/objects')
+        ('dinov2-vits14', 'dinov2-vits14/rgb/objects')
         >>> whole_plate = MeasureDinoEmbedding(
         ...     regions="grid", grid=ManualGridFinder(row_edges=[0, 600], col_edges=[0, 800])
         ... )
         >>> whole_plate.payload_key(), whole_plate.requires_objects
-        ('dinov2-vitb14/grid', False)
+        ('dinov2-vitb14/rgb/grid', False)
 
         Two grids of one model, each in its own table: a rig's 2 x 3 well
         lattice and one cell over the whole agar it covers.
@@ -205,8 +213,17 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         ...     grid=ManualGridFinder(row_edges=[0, 600], col_edges=[0, 800]),
         ... )
         >>> wells.payload_key(), agar.payload_key()
-        ('dinov2-vitb14/grid-wells', 'dinov2-vitb14/grid-agar')
+        ('dinov2-vitb14/rgb/grid-wells', 'dinov2-vitb14/rgb/grid-agar')
         >>> rig = ImagePipeline(meas={"wells": wells, "agar": agar})
+
+        The same wells on the gray layer sit beside them, in ``gray/``:
+
+        >>> wells_gray = MeasureDinoEmbedding(
+        ...     regions="grid", name="wells", layer="gray", grid=wells.grid,
+        ... )
+        >>> wells_gray.payload_key()
+        'dinov2-vitb14/gray/grid-wells'
+        >>> rig = ImagePipeline(meas={"wells": wells, "wells_gray": wells_gray, "agar": agar})
         >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas={"dino": colonies})
 
         With the weights available, ``pipe.embed(image)`` returns one
@@ -330,8 +347,8 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         """Packages and weights this measurer loads (run preflight).
 
         torch and transformers (the ``foundation`` extra), plus
-        huggingface_hub for gated DINOv3; RGB input; and the backbone's
-        weights. See ``BaseOperation.preflight_requirements``.
+        huggingface_hub for gated DINOv3; RGB input, unless ``layer="gray"``;
+        and the backbone's weights. See ``BaseOperation.preflight_requirements``.
         """
         import dataclasses
 
@@ -343,6 +360,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             modules += ("huggingface_hub",)
         return dataclasses.replace(
             requirements,
+            rgb_input=self.layer == "rgb",
             modules=modules,
             extra="foundation",
             weights=(ckpt.dino_weight_requirement(self.version, self.size),),
@@ -418,7 +436,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         self, image: Image, boxes: np.ndarray, labels: np.ndarray | None
     ) -> np.ndarray:
         model, processor, device = self._backbone()
-        rgb = np.asarray(image.rgb[:])
+        rgb = self._layer_pixels(image)
         needs_mask = self.mask_background or self.pooling == "masked_dense"
         objmap = np.asarray(image.objmap[:]) if labels is not None and needs_mask else None
         if self.pooling == "masked_dense":
@@ -488,7 +506,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         """A colony's padded, squared crop at native resolution, zero outside the image.
 
         Args:
-            rgb: The image's RGB pixels.
+            rgb: The embedder's ``(H, W, 3)`` layer pixels (:meth:`_layer_pixels`).
             box: The colony's end-exclusive ``(r0, c0, r1, c1)`` bounding box.
             label: Its ``Object_Label``.
             objmap: The objmap, needed with ``mask_background``.

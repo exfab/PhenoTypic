@@ -132,18 +132,18 @@ def test_grid_staleness_follows_the_bound_array():
             "order": 1,
             "pipeline_sha256": None,
             "embeddings": {
-                "m/grid": {"input": {"series": "rgb", "level": 0},
+                "m/rgb/grid": {"input": {"series": "rgb", "level": 0},
                            "binds": {"array_sha256": "x", "grid_sha256": "g"}, "stale": False},
-                "m/objects": {"binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": "o"},
+                "m/rgb/objects": {"binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": "o"},
                             "stale": True},
             },
         }
     }
     refresh_embedding_staleness(runs, objmap_sha256="o", array_sha256={"rgb": "y"})
     embeddings = runs["1-unknown"]["embeddings"]
-    assert embeddings["m/grid"]["stale"] is True and embeddings["m/objects"]["stale"] is False
+    assert embeddings["m/rgb/grid"]["stale"] is True and embeddings["m/rgb/objects"]["stale"] is False
     refresh_embedding_staleness(runs, objmap_sha256=None, array_sha256={"rgb": "x"})
-    assert embeddings["m/grid"]["stale"] is False and embeddings["m/objects"]["stale"] is True
+    assert embeddings["m/rgb/grid"]["stale"] is False and embeddings["m/rgb/objects"]["stale"] is True
 
 
 def test_objmap_digest_is_of_the_labels_as_stored():

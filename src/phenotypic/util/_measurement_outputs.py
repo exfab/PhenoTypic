@@ -601,7 +601,7 @@ def build_output_schema(
         tables: Table name -> the table, as a polars or pandas frame, or as a
             ``column -> dtype`` mapping (a Parquet footer read with
             ``pl.read_parquet_schema``). ``dtype`` is rendered with ``str``.
-        embedding_tables: Table name (``embeddings/<model>/<region>``, the
+        embedding_tables: Table name (``embeddings/<model>/<layer>/<region>``, the
             region ``objects`` or ``grid``, either optionally ``-<name>``) ->
             ``{"columns": {column: dtype}, "dim", "model", "producer"}``,
             where ``producer`` is the writing class's name. ``None`` lists

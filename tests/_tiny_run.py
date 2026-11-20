@@ -694,7 +694,7 @@ def store_with_two_runs(tmp_path: Path, measured_image, pipeline_file_b: Path) -
 
 
 #: The embedding key and model folder :func:`store_with_crop_entry` writes.
-OBJECTS_ENTRY_KEY = "dinov2-vitb14/objects"
+OBJECTS_ENTRY_KEY = "dinov2-vitb14/rgb/objects"
 
 
 def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
@@ -708,10 +708,10 @@ def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
     from phenotypic.sdk_ import ngff_
     from phenotypic.sdk_._table_runs import embedding_table_relative_path
 
-    relative = embedding_table_relative_path(run_id, "dinov2-vitb14", "objects")
+    relative = embedding_table_relative_path(run_id, OBJECTS_ENTRY_KEY)
     payload = part / relative
     payload.parent.mkdir(parents=True, exist_ok=True)
-    for group in (payload.parent.parent.parent, payload.parent.parent, payload.parent):
+    for group in payload.parents[:4]:  # <region>/, <layer>/, <model>/, embeddings/
         (group / ngff_.STORE_ROOT_JSON).write_text(
             '{"zarr_format": 3, "node_type": "group", "attributes": {}}',
             encoding="utf-8",
@@ -731,7 +731,7 @@ def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
         "dtype": "float16",
         "pooling": "crop_cls",
         "key": "Object_Label",
-        "input": {"series": "rgb", "level": 0},
+        "input": {"series": "rgb", "level": 0, "layer": "rgb"},
         "producer": {"class": "MeasureDinoEmbedding", "params_sha256": "0" * 64},
         "binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": None},
         "stale": False,
@@ -950,12 +950,18 @@ TOY_DIM = 4
 _TOY_EMBEDDER: type | None = None
 
 
-def toy_box_gray_mean(gray, boxes):
-    """The mean of *gray* inside each ``(r0, c0, r1, c1)`` box: the toy vector's last value."""
+def toy_box_layer_mean(pixels, boxes):
+    """The toy vector's last value: the mean of uint8 *pixels* in each box, over 255.
+
+    *pixels* is what the toy embedder reads, ``embedder._layer_pixels(image)``:
+    ``image.rgb[:]`` for ``layer="rgb"``, the gray layer as three uint8
+    channels for ``layer="gray"``. Each ``(r0, c0, r1, c1)`` box's mean is
+    taken over every channel.
+    """
     import numpy as np
 
     return np.array(
-        [float(gray[r0:r1, c0:c1].mean()) for r0, c0, r1, c1 in boxes],
+        [float(pixels[r0:r1, c0:c1].mean()) / 255.0 for r0, c0, r1, c1 in boxes],
         dtype=np.float32,
     )
 
@@ -967,9 +973,10 @@ def toy_embedder_class() -> type:
     import without ``phenotypic``, and cached so every fixture shares one
     class. Its first ``TOY_DIM - 1`` values are ``boxes.sum(1)``, so a test can
     tell which box a row came from without a model, and its last is the box's
-    mean ``gray`` (:func:`toy_box_gray_mean`), so a vector also depends on the
-    pixels it was computed from: an embedding of the wrong pixels or layer
-    differs (#281 P5 review, test quality). ``token`` is the model token, so
+    mean pixel of the embedder's ``layer`` (:func:`toy_box_layer_mean`, read
+    through ``_layer_pixels`` as every embedder reads it), so a vector also
+    depends on the pixels it was computed from: an embedding of the wrong
+    pixels or layer differs (#281 P5 review, test quality). ``token`` is the model token, so
     two "models" can sit side by side in one run.
     """
     global _TOY_EMBEDDER
@@ -1007,7 +1014,7 @@ def toy_embedder_class() -> type:
 
         def _embed_boxes(self, image, boxes):
             sums = boxes.sum(axis=1).astype(np.float32)
-            means = toy_box_gray_mean(np.asarray(image.gray[:]), boxes)
+            means = toy_box_layer_mean(self._layer_pixels(image), boxes)
             return np.concatenate(
                 [np.repeat(sums[:, None], TOY_DIM - 1, axis=1), means[:, None]],
                 axis=1,
@@ -1069,7 +1076,7 @@ _IMAGE_PAYLOADS: dict[int, tuple[object, dict]] = {}
 
 
 def payloads_of(image) -> dict:
-    """The ``{"<model>/<region>": EmbeddingPayload}`` a fixture computed for *image*."""
+    """The ``{"<model>/<layer>/<region>": EmbeddingPayload}`` a fixture computed for *image*."""
     return _IMAGE_PAYLOADS[id(image)][1]
 
 
@@ -1092,7 +1099,7 @@ def _with_cli_payloads(image, pipeline_file: Path, embedders: Mapping[str, objec
 
 @pytest.fixture
 def image_with_objects_payload(detected_plate, pipeline_file_a: Path, toy_embedder):
-    """:func:`detected_plate` as a ``full`` application of A, with one ``toy-v1/objects`` payload."""
+    """:func:`detected_plate` as a ``full`` application of A, with one ``toy-v1/rgb/objects`` payload."""
     image = _with_cli_payloads(detected_plate, pipeline_file_a, {"emb": toy_embedder})
     yield image
     _IMAGE_PAYLOADS.pop(id(image), None)
@@ -1100,7 +1107,7 @@ def image_with_objects_payload(detected_plate, pipeline_file_a: Path, toy_embedd
 
 @pytest.fixture
 def image_with_two_models(detected_plate, pipeline_file_a: Path, toy_embedder):
-    """:func:`detected_plate` with payloads ``toy-v1/objects`` and ``toy-v2/objects``."""
+    """:func:`detected_plate` with payloads ``toy-v1/rgb/objects`` and ``toy-v2/rgb/objects``."""
     second = toy_embedder_class()(token="toy-v2")
     image = _with_cli_payloads(
         detected_plate, pipeline_file_a, {"v1": toy_embedder, "v2": second}
@@ -1111,7 +1118,7 @@ def image_with_two_models(detected_plate, pipeline_file_a: Path, toy_embedder):
 
 @pytest.fixture
 def image_with_grid_payload(detected_plate, pipeline_file_a: Path, toy_grid_embedder):
-    """:func:`detected_plate` with one ``toy-v1/grid`` payload over the 2 x 2 toy grid."""
+    """:func:`detected_plate` with one ``toy-v1/rgb/grid`` payload over the 2 x 2 toy grid."""
     image = _with_cli_payloads(
         detected_plate, pipeline_file_a, {"grid": toy_grid_embedder}
     )
@@ -1283,7 +1290,7 @@ def install_stub_backbone(monkeypatch, *, num_register_tokens: int = 0) -> list[
 # ---------------------------------------------------------------------------
 
 #: The crop entry a default ``MeasureDinoEmbedding()`` (DINOv2-base) writes.
-DINO_OBJECTS_KEY = "dinov2-vitb14/objects"
+DINO_OBJECTS_KEY = "dinov2-vitb14/rgb/objects"
 
 
 def with_dino_objects(directory: Path) -> Path:
@@ -1316,13 +1323,13 @@ def with_dino_objects(directory: Path) -> Path:
 
 
 #: The grid entry :func:`with_dino_objects_and_grid` adds, and its 2 x 2 grid.
-DINO_GRID_KEY = "dinov2-vitb14/grid"
+DINO_GRID_KEY = "dinov2-vitb14/rgb/grid"
 
 
 def with_dino_objects_and_grid(directory: Path) -> Path:
     """:func:`with_dino_objects` plus ``meas["grid"]``: a 2 x 2 grid embedder.
 
-    Two entry keys, ``dinov2-vitb14/objects`` then ``dinov2-vitb14/grid``, so a
+    Two entry keys, ``dinov2-vitb14/rgb/objects`` then ``dinov2-vitb14/rgb/grid``, so a
     finalization publishes two tables. The cells are
     :data:`TOY_GRID_ROW_EDGES` x :data:`TOY_GRID_COL_EDGES`.
 
@@ -1423,8 +1430,7 @@ def rows_in(run: "TableRun") -> int:
     """The row count of *run*'s :data:`DINO_OBJECTS_KEY` table, from its footer."""
     import pyarrow.parquet as pq
 
-    model, _, region = DINO_OBJECTS_KEY.partition("/")
-    return pq.read_metadata(run.embedding_path(model, region)).num_rows  # type: ignore[arg-type]
+    return pq.read_metadata(run.embedding_path(DINO_OBJECTS_KEY)).num_rows
 
 
 # ---------------------------------------------------------------------------
@@ -1454,7 +1460,7 @@ def with_named_grids(directory: Path, make) -> Path:
     """A full-run pipeline file: ``OtsuDetector``, ``MeasureSize`` and two named grids.
 
     ``meas`` is ``size`` then :func:`named_grid_embedders` of *make*, so a
-    finalization publishes ``<model>/grid-wells`` and ``<model>/grid-agar``
+    finalization publishes ``<model>/rgb/grid-wells`` and ``<model>/rgb/grid-agar``
     (#281 named grid regions). The toy embedder runs under
     :func:`registered_toy_embedder`; :func:`grid_embedder` under
     :func:`stub_backbone`.
@@ -1475,7 +1481,7 @@ def with_named_grids(directory: Path, make) -> Path:
 
 
 def assert_named_grids_published(out: Path, model: str) -> None:
-    """``<model>/grid-wells`` and ``<model>/grid-agar``: two store tables per
+    """``<model>/rgb/grid-wells`` and ``<model>/rgb/grid-agar``: two store tables per
     image, two deliverables, both manifest keys, and each store's rows are its
     own table of its own grid. For :func:`with_named_grids` runs over
     :func:`tiny_inputs` with plate_2 mirrored."""
@@ -1492,7 +1498,7 @@ def assert_named_grids_published(out: Path, model: str) -> None:
     manifest = json.loads(
         (deliverables / "embeddings" / "manifest.json").read_text(encoding="utf-8")
     )
-    keys = {f"{model}/grid-wells": 4, f"{model}/grid-agar": 1}
+    keys = {f"{model}/rgb/grid-wells": 4, f"{model}/rgb/grid-agar": 1}
     assert set(manifest["entries"]) == set(keys)
     own_vectors = {}
     for key, cells in keys.items():
@@ -1574,7 +1580,7 @@ def grid_process_pipeline(directory: Path, /, **kw) -> Path:
 
 
 #: The model token of :func:`toy_grid_process_pipeline`'s embedder.
-TOY_GRID_KEY = "toy-v1/grid"
+TOY_GRID_KEY = "toy-v1/rgb/grid"
 
 
 @pytest.fixture
@@ -1643,7 +1649,7 @@ def toy_grid_process_pipeline(directory: Path, /, **kw) -> Path:
     """:func:`grid_process_pipeline` with the toy embedder: torch-free.
 
     ``meas["grid_embedding"]`` is the toy embedder over the 2 x 2 toy grid,
-    stored under :data:`TOY_GRID_KEY` (or ``<token>/grid`` for another
+    stored under :data:`TOY_GRID_KEY` (or ``<token>/rgb/grid`` for another
     ``token=``). Run it under :func:`registered_toy_embedder`.
 
     Args:
