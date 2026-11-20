@@ -22,8 +22,8 @@ set:
 1. **Speed.** One resident model per GPU worker processes many images, batched
    across images. The cold model load is paid once per shard, not once per
    process.
-2. **Larger models.** DINOv2-large and -giant, and the DINOv3 ViT-L, H+ and
-   7B, in reduced precision where needed.
+2. **Larger models.** DINOv2-large and -giant, in reduced precision where
+   needed. (DINOv3 H+ and 7B are deferred, U11.)
 3. **Consistent embeddings.** A staged run embeds every image on GPUs, never
    mixing in CPU. Mixed GPU models on SLURM are fine. Within one GPU model
    and physical batch size, vectors must not depend on how images were
@@ -78,6 +78,7 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 | U8 | **A measure-mode Stage-4 failure keeps the old embeddings** (2026-11-19, plan review C3): the measure core carries the image's existing embeddings block forward (still valid, since measure never writes the objmap); Stage 4 replaces it. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as `MEASURE_FAILURE_STAGE`, so the run exits 3. |
 | U9 | **An explicit `device="cpu"` pin wins** (2026-11-19): under `auto`, a run whose in-scope embedder is pinned to CPU resolves `inline`, with a one-line note; `--embed-stage gpu` with such a pin is refused. |
 | U10 | **SLURM `--mode measure` moves onto the staged controller** (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (`measure_failed`, no forward run proof). |
+| U11 | **DINOv2 only for now** (2026-11-20). The new size this PR adds is DINOv2 `giant` (ViT-g/14). DINOv3 H+ and 7B are deferred to a follow-up, because their gated weights and hub configs need a licence and a valid token, which the cluster does not have; nothing about them could be verified. Existing DINOv3 sizes are untouched. The batch-invariance job (§5) runs DINOv2 models only. |
 | U6 | **Mixed GPU models are allowed.** `device` and `device_name` are provenance, recorded per entry. |
 
 ### Defaults taken (the user did not object)
@@ -87,7 +88,7 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 | H1 | **Crop geometry and the skimage resize stay on the CPU,** in DataLoader workers, through the same `_crop` / `_square_colony_crop` functions the inline path uses. The GPU runs only the backbone. CPU and GPU vectors then differ only by backbone arithmetic. |
 | H5 | **Process mode, copy and in place, stays inline on CPU in v1.** That covers AutoConvertRaw-GC's direct `process_single_apply_only_core` calls. Process stores are write-once and byte-reproducible, and Stage 4 would add a second, device-dependent transaction. A GPU in-place backfill is a v2 candidate. |
 | H6 | **`--gpu-slurm` and `--gpu-shards` are reused.** No new resource flags in v1. |
-| H7 | **`compute_dtype: Literal["float32","bfloat16","float16"] = "float32"`** is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for 7B. |
+| H7 | **`compute_dtype: Literal["float32","bfloat16","float16"] = "float32"`** is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for giant. |
 | H9 | Superseded by U9: an explicit CPU pin makes the run resolve inline; refused only with `--embed-stage gpu`. |
 | H10 | **Backbone-major.** One model is resident at a time. Embedders sharing a backbone share one load. |
 
@@ -217,10 +218,9 @@ parent D5's writer list, gain the Stage-4 rewrite.
 
 ### 4.5 Larger models
 
-- `DinoSize` gains:
-  - `giant`: DINOv2 only, ViT-g/14, 1536-d;
-  - `huge_plus`: DINOv3 only, ViT-H+/16;
-  - `7b`: DINOv3 only, ViT-7B/16.
+- The embedding size type gains `giant`: DINOv2 only, ViT-g/14, 1536-d.
+  (`huge_plus`, ViT-H+/16, and `7b`, ViT-7B/16, both DINOv3, are deferred:
+  U11.)
 - A validator refuses impossible size/version pairs.
 - Repository ids and dimensions are verified against the hub before use.
 - DINOv3 stays licence-gated (`require_license_acceptance`), refused at
@@ -288,7 +288,7 @@ New preflight warnings, each with `HINTS` and a docs row:
 - **Batch invariance, measured on hardware.** On `exfab` and on `short_gpu
   --constraint=gpu_latest` (Ada, A100, Blackwell), a crop's vector stays
   bit-identical when its batch neighbours, position or partition change. The job
-  also reports cross-GPU distance and float16 range for 7B and ViT-g. The spec's
+  also reports cross-GPU distance and float16 range for ViT-g. The spec's
   "vectors don't depend on sharding" rests on this measurement. If it fails, the
   fallback is an m = 1-per-crop mode for runs that need byte stability.
 - **`replace_run_embeddings`:**

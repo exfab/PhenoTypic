@@ -79,7 +79,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>This change runs embedding on GPUs, in its own stage, with three goals the user set:</p>
 <ol type="1">
 <li><strong>Speed.</strong> One resident model per GPU worker processes many images, batched across images. The cold model load is paid once per shard, not once per process.</li>
-<li><strong>Larger models.</strong> DINOv2-large and -giant, and the DINOv3 ViT-L, H+ and 7B, in reduced precision where needed.</li>
+<li><strong>Larger models.</strong> DINOv2-large and -giant, in reduced precision where needed. (DINOv3 H+ and 7B are deferred, U11.)</li>
 <li><strong>Consistent embeddings.</strong> A staged run embeds every image on GPUs, never mixing in CPU. Mixed GPU models on SLURM are fine. Within one GPU model and physical batch size, vectors must not depend on how images were sharded or batched (restated 2026-11-19, plan review S1: m is chosen per GPU model and OOM halving changes it, so an absolute guarantee cannot hold; across GPU models the measured difference is about 1e-7).</li>
 </ol>
 <h2 id="2-measured-facts-2026-11-19">2. Measured facts (2026-11-19)</h2>
@@ -200,6 +200,10 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td><strong>SLURM <code>--mode measure</code> moves onto the staged controller</strong> (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (<code>measure_failed</code>, no forward run proof).</td>
 </tr>
 <tr class="even">
+<td>U11</td>
+<td><strong>DINOv2 only for now</strong> (2026-11-20). The new size this PR adds is DINOv2 <code>giant</code> (ViT-g/14). DINOv3 H+ and 7B are deferred to a follow-up, because their gated weights and hub configs need a licence and a valid token, which the cluster does not have; nothing about them could be verified. Existing DINOv3 sizes are untouched. The batch-invariance job (§5) runs DINOv2 models only.</td>
+</tr>
+<tr class="odd">
 <td>U6</td>
 <td><strong>Mixed GPU models are allowed.</strong> <code>device</code> and <code>device_name</code> are provenance, recorded per entry.</td>
 </tr>
@@ -228,7 +232,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="even">
 <td>H7</td>
-<td><strong><code>compute_dtype: Literal["float32","bfloat16","float16"] = "float32"</code></strong> is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for 7B.</td>
+<td><strong><code>compute_dtype: Literal["float32","bfloat16","float16"] = "float32"</code></strong> is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend bf16 for giant.</td>
 </tr>
 <tr class="odd">
 <td>H9</td>
@@ -346,12 +350,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <h3 id="45-larger-models">4.5 Larger models</h3>
 <ul>
-<li><code>DinoSize</code> gains:
-<ul>
-<li><code>giant</code>: DINOv2 only, ViT-g/14, 1536-d;</li>
-<li><code>huge_plus</code>: DINOv3 only, ViT-H+/16;</li>
-<li><code>7b</code>: DINOv3 only, ViT-7B/16.</li>
-</ul></li>
+<li>The embedding size type gains <code>giant</code>: DINOv2 only, ViT-g/14, 1536-d. (<code>huge_plus</code>, ViT-H+/16, and <code>7b</code>, ViT-7B/16, both DINOv3, are deferred: U11.)</li>
 <li>A validator refuses impossible size/version pairs.</li>
 <li>Repository ids and dimensions are verified against the hub before use.</li>
 <li>DINOv3 stays licence-gated (<code>require_license_acceptance</code>), refused at preflight and again at shard start, before any load.</li>
@@ -433,7 +432,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <h2 id="5-verification">5. Verification</h2>
 <ul>
 <li><strong>Byte-identity of the inline path.</strong> A golden of today's inline CPU bytes (objects and grid, stub backbone, and a real small backbone where cached) stays identical through the refactor.</li>
-<li><strong>Batch invariance, measured on hardware.</strong> On <code>exfab</code> and on <code>short_gpu --constraint=gpu_latest</code> (Ada, A100, Blackwell), a crop's vector stays bit-identical when its batch neighbours, position or partition change. The job also reports cross-GPU distance and float16 range for 7B and ViT-g. The spec's "vectors don't depend on sharding" rests on this measurement. If it fails, the fallback is an m = 1-per-crop mode for runs that need byte stability.</li>
+<li><strong>Batch invariance, measured on hardware.</strong> On <code>exfab</code> and on <code>short_gpu --constraint=gpu_latest</code> (Ada, A100, Blackwell), a crop's vector stays bit-identical when its batch neighbours, position or partition change. The job also reports cross-GPU distance and float16 range for ViT-g. The spec's "vectors don't depend on sharding" rests on this measurement. If it fails, the fallback is an m = 1-per-crop mode for runs that need byte stability.</li>
 <li><strong><code>replace_run_embeddings</code>:</strong>
 <ul>
 <li>root-last;</li>
