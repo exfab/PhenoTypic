@@ -35,7 +35,7 @@ def pipeline_file(tmp_path: Path) -> Path:
     """Named `.pht-pipe` because `to_json` RENAMES anything else.
 
     `ImagePipeline().to_json(tmp / "preprocess.json")` writes
-    `preprocess.json.pht-pipe` and returns None -- verified by execution -- so
+    `preprocess.pht-pipe.json` and returns None -- verified by execution -- so
     a fixture that returns the path it passed in returns a path that does not
     exist, and every test using it dies in `from_json`.
 
@@ -48,7 +48,7 @@ def pipeline_file(tmp_path: Path) -> Path:
     """
     nested = tmp_path / "config" / "deep"
     nested.mkdir(parents=True)
-    path = nested / "preprocess.json.pht-pipe"
+    path = nested / "preprocess.pht-pipe.json"
     ImagePipeline(ops=[BlurGauss()]).to_json(path)
     assert path.is_file()
     return path
@@ -218,7 +218,7 @@ def test_core_records_the_pipeline_basename_not_its_path(
     store = out / f"IMG_4471{ngff_.STORE_SUFFIX}"
     journal = _block(store)[PhenotypicAttr.PROVENANCE]
     application = journal["applications"][-1]
-    assert application["pipeline"]["source_path"] == "preprocess.json.pht-pipe"
+    assert application["pipeline"]["source_path"] == "preprocess.pht-pipe.json"
     assert "/" not in application["pipeline"]["source_path"]
     assert len(application["pipeline"]["sha256"]) == 64
 
@@ -680,7 +680,7 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
     from phenotypic.measure import MeasureSymZones
 
     sym = MeasureSymZones()
-    pipeline = tmp_path / "plotted.json.pht-pipe"
+    pipeline = tmp_path / "plotted.pht-pipe.json"
     ImagePipeline(
         ops=[OtsuDetector()], meas={"sym": sym}, plots=[sym]
     ).to_json(pipeline)

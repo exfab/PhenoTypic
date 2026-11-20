@@ -83,9 +83,9 @@ A finished `full` run leaves three things under `--output`:
 out/
 ├── deliverables/            # what you read and share
 │   ├── master_measurements.parquet         # clean, un-joined, pre-post archive
-│   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
-│   ├── measurements_by_feature/            # one file per measurer
-│   ├── measurements_by_category/           # one file per measurement category
+│   ├── measurements.{tsv,csv,parquet}      # post-applied mirror; the GUI reads the .csv and .parquet
+│   ├── measurements_by_feature/            # one TSV + Parquet per measurer
+│   ├── measurements_by_category/           # one TSV + Parquet per category
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
 │   ├── dashboard.html
 │   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts

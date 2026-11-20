@@ -24,6 +24,7 @@ from phenotypic import ImagePipeline
 from phenotypic._core._provenance import continuing_provenance_application
 from phenotypic.sdk_ import (
     event_log_path,
+    journal_measurement_table,
     progress_dir,
     source_image_stem,
     zarr_store_path,
@@ -109,12 +110,13 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         read_kwargs = input_read_settings(cfg.bit_depth, cfg.detect_mode)
 
-        def _measurement_table_path(ds_name: str, stem: str) -> Path:
-            from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-
+        def _has_measurement_table(ds_name: str, stem: str) -> bool:
+            """Whether the store holds the table its own Stage-3 save wrote."""
             return (
-                zarr_store_path(output_dir, ds_name, stem)
-                / MEASUREMENT_TABLE_RELATIVE_PATH
+                journal_measurement_table(
+                    zarr_store_path(output_dir, ds_name, stem)
+                )
+                is not None
             )
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
@@ -136,9 +138,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                     output_dir, ds_name, source_image_stem(img)
                 )
                 and staged_store_matches_work_id(store, work_id)
-                and _measurement_table_path(
-                    ds_name, source_image_stem(img)
-                ).is_file()
+                and _has_measurement_table(ds_name, source_image_stem(img))
             ):
                 ensure_staged_overlay(
                     output_dir,
@@ -169,9 +169,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             ) or bool(
                 cfg.resume
                 and not cfg.staged_stage3_markers
-                and _measurement_table_path(
-                    ds_name, source_image_stem(img)
-                ).is_file()
+                and _has_measurement_table(ds_name, source_image_stem(img))
             )
             if terminal:
                 ensure_staged_overlay(
@@ -225,6 +223,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         ),
                         drop_originals=cfg.drop_originals,
                         reference_pin=_reference_pin(img, identity),
+                        input_root=cfg.input_path,
                     )
             except Exception as exc:
                 _record_local_terminal_failure(

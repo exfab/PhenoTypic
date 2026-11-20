@@ -205,6 +205,21 @@ its user-facing consumer is not wired — the message a user sees still comes
 from `OutputRoot.discover`. This is the capability, not its wiring.
 ```
 
+### Which submission published
+
+The aggregate proof and the run proof both carry `execution_epoch`: the SLURM
+generation of the finalizer that wrote them, or `"local"` (run proof) / `null`
+(aggregate proof) for a local run. A finalizer that closes the lifecycle fence
+also records `closed_by: "finalizer"` in it. A cancel (`cancel_generation`,
+`deactivate_orchestration`) leaves `closed_by` unset, and so does
+`retire_dead_lifecycle_fence`, which a forward run or recompile calls to close a
+fence whose jobs have all ended before it publishes its own. `phenotypic-wait` reads
+these to decide whether *this* submission published (#281 spec C3). Digests
+cannot answer that: a `--mode measure` resubmission keeps no run state, so an
+earlier run's proofs still match it after its own finalizer dies. Neither field
+is a verdict input: `resolve_run_state` never reads them. An aggregate proof or
+fence written before the fields existed reads as "not this submission".
+
 ---
 
 ## (c) Derived, and by what
@@ -274,8 +289,10 @@ verdict *and* re-derives the same advisory.
 
 `project_embedded_measurement_table` excludes a store for four reasons. The
 naming clause covers the two that are visible in the store's root document: no
-`tables.measurements` descriptor, and a descriptor whose `measurement_columns`
-is not a list of strings.
+`measurements` descriptor for the run folder the record certifies
+(`tables.runs.<n>-<sha12>.measurements`, or `tables.measurements` in a v1
+flat store), and a descriptor whose `measurement_columns` is not a list of
+strings.
 
 The other two are properties of the Parquet payload — a metadata-joined table
 that repeats rows while declaring no `target.column`, and one whose same-label
@@ -397,13 +414,16 @@ the difference is the code path, not the mode:
 |---|---|---|
 | Converting an existing marker into a record | `_cli_migrate_state.py:350` | `migrated` |
 | Minting a record from outputs (MIG-11) | `_cli_migrate_state.py:1080` via `publish_image_record` | `migrated` |
-| Migrating the image artifact itself | `_cli_migrate_image.py:589` via `publish_image_success` | **`forward`** |
+| Migrating the image artifact itself | `_cli_migrate_image.py` (`migrate_image_task`) via `publish_image_success` | the existing record's, when it carries an identity for this image (`_existing_marker_identity`); otherwise **`forward`** |
+| Republishing after a table rewrite (migrate's `tables_v2` step, `--mode measure`) | `_cli_recompile_tables._republish_table_marker` via `publish_image_success` | the record's own, kept verbatim |
 
-`publish_image_success` has **no `provenance` parameter**, so records it writes
-take `publish_image_record`'s `PROVENANCE_FORWARD` default. This is why
-`_cli_migrate_state.py`'s mint path calls `publish_image_record` directly and
-its docstring says `publish_image_success` is *"the wrong entry despite being
-the forward one"*.
+`publish_image_success` takes a `provenance` parameter that defaults to
+`PROVENANCE_FORWARD`. Only the two paths that keep an existing record's
+identity pass anything else (#281 P3 review I1, I2): a republish that kept a
+migrated `work_id` but wrote `forward` would fence the record on an identity it
+was never minted for. A record migrate builds from the legacy marker or from
+defaults is still `forward`, which is why `_cli_migrate_state.py`'s mint path
+calls `publish_image_record` directly.
 
 **Do not use record provenance to ask whether a tree was migrated.** Use the
 migration manifest.
@@ -427,6 +447,7 @@ here when you add a consumer.
 | `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
 | `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
+| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
 
 ### Consumers that deliberately ask something else
 

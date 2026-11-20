@@ -34,7 +34,7 @@ from phenotypic._cli._cli_state_management import (
     save_processing_state,
 )
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
+    latest_measurement_run,
     atomic_write_json,
     dataset_measurements_dir,
     dataset_zarr_dir,
@@ -208,9 +208,12 @@ def demote_store_to_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     # A completed current run owns its table inside the store. Demotion must
     # carry those exact bytes onto the external path older releases used,
     # otherwise this fixture becomes HDF-only and no longer exercises the
-    # legacy measurement migration pass.
-    embedded_table = store / MEASUREMENT_TABLE_RELATIVE_PATH
-    if embedded_table.is_file():
+    # legacy measurement migration pass. The current writer keeps that table
+    # in a per-pipeline run folder (#281 P3), so it is found through the
+    # resolver, not at the v1 flat path.
+    run = latest_measurement_run(store)
+    embedded_table = run.measurements_path() if run is not None else None
+    if embedded_table is not None and embedded_table.is_file():
         measurements = dataset_measurements_dir(output_dir, dataset)
         measurements.mkdir(parents=True, exist_ok=True)
         shutil.copy2(embedded_table, measurements / f"{stem}.parquet")

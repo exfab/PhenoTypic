@@ -368,11 +368,13 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
 # Per-image verification
 # ---------------------------------------------------------------------------
 
-#: ``attributes.phenotypic.metadata_table.snapshot_sha256`` on a store's root
-#: ``zarr.json`` -- which metadata snapshot the store's embedded tables were
-#: built against (D-A). **P4 Task 2 writes it**; until then the key is absent
-#: and the divergence advisory below simply never fires, which is the correct
-#: behaviour for a tree that has not recorded the fact.
+#: ``metadata_table.snapshot_sha256`` in a run entry of a store's root
+#: ``zarr.json`` (``attributes.phenotypic.tables.runs.<run>``; it sat at the
+#: root of ``attributes.phenotypic`` until #281 P3, spec D3) -- which metadata
+#: snapshot that run's embedded tables were built against (D-A). A run built
+#: without ``--metadata`` has no block, and the divergence advisory below
+#: simply never fires for it, which is the correct behaviour for a run that
+#: has not recorded the fact.
 #:
 #: The key is ``metadata_table`` and not ``metadata``, because
 #: ``phenotypic.metadata`` is already taken by the ``{protected, public,
@@ -390,8 +392,8 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
 _METADATA_TABLE_ATTR = _PhenotypicAttr.METADATA_TABLE
 _SNAPSHOT_SHA256_ATTR = _PhenotypicAttr.SNAPSHOT_SHA256
 
-#: The measurement-table descriptor's column list, inside
-#: ``attributes.phenotypic.tables.measurements``.
+#: The measurement-table descriptor's column list, inside a run entry's
+#: ``measurements`` descriptor (``attributes.phenotypic.tables.runs.<run>``).
 #:
 #: Spelled here rather than bound to a member, because this key has **no**
 #: shared constant: its writer
@@ -498,7 +500,7 @@ def fenced_artifact_path(
     The return value is deliberately the path to **stat next time**, not a
     bool: for a ``store`` descriptor that is the root ``zarr.json`` and not
     the store directory. A directory's ``mtime_ns`` tracks only its own
-    entries, so rewriting ``tables/measurements/table.parquet`` inside a
+    entries, so rewriting ``tables/<run>/measurements/table.parquet`` inside a
     promoted store would leave a directory-fenced entry looking current --
     spec §0's "a valid root does not imply unchanged contents", reached
     through the cache. ``entry_is_still_current`` refuses directories outright
@@ -637,8 +639,14 @@ def staged_image_is_complete(
     files* for it (gate finding F12) stranded finished images rather than
     merely wasting a stat.
 
-    **THE table is the embedded one**, inside the store at
-    ``tables/measurements/table.parquet``. The legacy
+    **THE table is the embedded one**, inside the store, in the run folder
+    the image's own save wrote: ``tables/<n>-<sha12>/measurements/
+    table.parquet`` for the pipeline its journal records
+    (:func:`~phenotypic.sdk_._table_runs.journal_measurement_table`, the
+    probe the staged resume classifiers use). Not the store's latest run: a
+    ``--mode measure`` with another pipeline adds a newer folder that this
+    staged run did not write, so its presence says nothing about whether
+    Stage 3 finished. The legacy
     ``results/<ds>/measurements/<stem>.parquet`` that the recovery controller
     stats is migration input: ``_cli/CLAUDE.md`` says forward, staged Stage 3
     and measure runs never write it, so that disjunct is dead on every run it
@@ -668,14 +676,15 @@ def staged_image_is_complete(
 
     Returns:
         ``True`` only when markers are off, this is a resume, and the store
-        carries an embedded measurement table.
+        carries its journal's run folder's embedded measurement table. An
+        unreadable or corrupt root answers ``False``, never raises.
     """
-    from .ngff_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from ._table_runs import journal_measurement_table
 
     if markers_required or not resume:
         return False
     store = zarr_store_path(output_dir, dataset, image_stem)
-    return (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    return journal_measurement_table(store) is not None
 
 
 def _store_phenotypic_block(
@@ -703,34 +712,106 @@ def _store_phenotypic_block(
     return block if isinstance(block, dict) else None
 
 
-def _store_metadata_snapshot(
+def _certified_tables_entry(
     block: Mapping[str, object] | None,
-) -> str | None:
-    """Return which metadata snapshot a store was built against, if it says.
+    *,
+    store_relative: str,
+    measurements_artifact: str | None,
+) -> Mapping[str, object] | None:
+    """Return the tables entry of the run an image's record certifies (#281 D6a).
 
-    ``None`` means the store does not record the fact, which is every store
-    until P4 Task 2 starts writing the key. A projection over the block
+    Since #281 P3 a store holds one run folder per measuring pipeline, and
+    each run's entry under ``tables.runs`` carries that run's
+    ``measurements`` descriptor and ``metadata_table`` block (spec D3). The
+    deep pass projects both out of **the run the record certifies**: the one
+    whose ``measurements`` path is the record's ``measurements`` artifact.
+    That is the folder finalization aggregates for the image, so the
+    exclusion advisory and the snapshot advisory describe the table the
+    master actually reads -- never the store's latest run, which after a
+    ``--mode measure`` with another pipeline is not the certified one.
+
+    A record that declares no ``measurements`` artifact (a process run, a
+    measure-less image) certifies no run, and the reader falls back to spec
+    D6a's record-less default, the highest-numbered run that holds
+    ``measurements``, for the metadata snapshot. The projectable flag is
+    consulted only together with a declared artifact, so the fallback never
+    reaches the exclusion advisory.
+
+    A store still in the v1 flat layout (tables schema 1, before
+    ``--mode migrate``) has one table and no runs; its "entry" is its flat
+    ``tables.measurements`` descriptor and the root-level ``metadata_table``
+    block, where v1 keeps them
+    (:func:`~phenotypic.sdk_._table_runs.declared_measurement_tables`).
+
+    A projection over the block :func:`_store_phenotypic_block` already read:
+    it opens nothing, and it never raises -- a corrupt or newer-version
+    tables descriptor certifies nothing.
+
+    Args:
+        block: The store's ``attributes.phenotypic`` block, or ``None``.
+        store_relative: The store directory, relative to the run root, as a
+            POSIX path.
+        measurements_artifact: The run-root-relative POSIX path the record's
+            ``measurements`` artifact fences on, or ``None`` when the record
+            declares none.
+
+    Returns:
+        The run's entry, or ``None`` when no run matches.
+    """
+    from pathlib import PurePosixPath
+
+    from ._table_runs import (
+        declared_measurement_tables,
+        record_less_measurement_table,
+    )
+
+    if block is None:
+        return None
+    try:
+        if measurements_artifact is None:
+            default = record_less_measurement_table(Path(store_relative), block)
+            return None if default is None else default.entry
+        declared = declared_measurement_tables(Path(store_relative), block)
+    except ValueError:
+        return None
+    certified = PurePosixPath(measurements_artifact)
+    for table in declared:
+        if PurePosixPath(store_relative) / table.relative_path == certified:
+            return table.entry
+    return None
+
+
+def _store_metadata_snapshot(
+    entry: Mapping[str, object] | None,
+) -> str | None:
+    """Return which metadata snapshot a run's tables were built against, if it says.
+
+    ``None`` means the run does not record the fact: a metadata-free run, or
+    no certified run at all. A projection over the run entry
+    :func:`_certified_tables_entry` picked out of the block
     :func:`_store_phenotypic_block` already read, rather than a reader of its
     own -- it opens nothing.
     """
-    table = None if block is None else block.get(_METADATA_TABLE_ATTR)
+    table = None if entry is None else entry.get(_METADATA_TABLE_ATTR)
     if not isinstance(table, Mapping):
         return None
     return _optional_str(table.get(_SNAPSHOT_SHA256_ATTR))
 
 
 def _store_declares_projectable_table(
-    block: Mapping[str, object] | None,
+    entry: Mapping[str, object] | None,
 ) -> bool:
-    """Return whether the store declares a table the master can project.
+    """Return whether the certified run declares a table the master can project.
 
     The **store's** half of FU-1's inconsistency. ``finalize_run`` projects
-    every authorized embedded table onto its own store's recorded
-    ``measurement_columns`` and excludes the store when there is no such
-    list to project onto -- an absent ``tables.measurements`` descriptor, or
-    one whose ``measurement_columns`` is not a list of strings. Those are
-    exactly the two refusals this predicate re-derives, from the one
-    document the deep pass already reads.
+    every authorized embedded table onto the recorded ``measurement_columns``
+    of the run that declares it, and excludes the store when there is no such
+    list to project onto -- no run declaring the certified table (the
+    ``measurements`` descriptor is absent), or a descriptor whose
+    ``measurement_columns`` is not a list of strings. Those are exactly the
+    two refusals this predicate re-derives, over the run entry
+    :func:`_certified_tables_entry` took from the one document the deep pass
+    already reads.
 
     **Deliberately only two of the projection's four exclusions.** The other
     two are properties of the Parquet payload -- a metadata-joined table that
@@ -750,14 +831,9 @@ def _store_declares_projectable_table(
     and answer a different question, inside a function whose contract is that
     it never raises.
     """
-    from .ngff_ import MEASUREMENT_TABLE_GROUP, PhenotypicAttr
+    from .ngff_ import MEASUREMENT_TABLE_GROUP
 
-    tables = None if block is None else block.get(PhenotypicAttr.TABLES)
-    descriptor = (
-        tables.get(MEASUREMENT_TABLE_GROUP)
-        if isinstance(tables, Mapping)
-        else None
-    )
+    descriptor = None if entry is None else entry.get(MEASUREMENT_TABLE_GROUP)
     if not isinstance(descriptor, Mapping):
         return False
     columns = descriptor.get(_MEASUREMENT_COLUMNS_KEY)
@@ -798,6 +874,7 @@ def _verify_image(
     marker = read_image_record(output_dir, dataset, image_stem)
     fence: dict[str, tuple[int, int]] = {}
     reason: str | None = "no readable image record"
+    measurements_fenced: str | None = None
     if marker is not None:
         reason = record_rejection(
             marker, work_id=work_id, dataset=dataset, image_stem=image_stem
@@ -822,6 +899,8 @@ def _verify_image(
                     reason = f"declared artifact {name!r} cannot be stat'd"
                     break
                 fence[fenced] = fenced_tuple
+                if name == _MEASUREMENTS_ARTIFACT:
+                    measurements_fenced = fenced
 
     if reason is None and marker is not None:
         # THE RECORD'S OWN STAGES, not a single-key projection. The comment
@@ -871,15 +950,26 @@ def _verify_image(
         # a warm shallow pass never opens a store, so an advisory that asked
         # a store anything at advisory time would exist on the deep path and
         # silently vanish on the one the GUI actually polls.
-        block = _store_phenotypic_block(output_dir, dataset, image_stem)
-        snapshot = _store_metadata_snapshot(block)
+        #
+        # Since #281 P3 both live per run folder, so they are read from the
+        # run this record certifies (`_certified_tables_entry`), out of the
+        # same single read of the root.
+        declares = isinstance(artifacts, Mapping) and isinstance(
+            artifacts.get(_MEASUREMENTS_ARTIFACT), Mapping
+        )
+        entry = _certified_tables_entry(
+            _store_phenotypic_block(output_dir, dataset, image_stem),
+            store_relative=zarr_store_path(output_dir, dataset, image_stem)
+            .relative_to(output_dir)
+            .as_posix(),
+            measurements_artifact=measurements_fenced if declares else None,
+        )
+        snapshot = _store_metadata_snapshot(entry)
         if snapshot is not None:
             stage[_SNAPSHOT_SHA256_ATTR] = snapshot
-        stage[_DECLARES_MEASUREMENTS] = isinstance(
-            artifacts, Mapping
-        ) and isinstance(artifacts.get(_MEASUREMENTS_ARTIFACT), Mapping)
+        stage[_DECLARES_MEASUREMENTS] = declares
         stage[_PROJECTABLE_MEASUREMENTS] = _store_declares_projectable_table(
-            block
+            entry
         )
         # Unconditional, and the guard it replaces was dead. This block is
         # only reachable with a non-`None` marker -- it dereferences one two
@@ -1233,8 +1323,13 @@ def run_proof_is_current(output_dir: Path) -> bool:
 #: whose default is "do not check" is not a fence. ``master_parquet`` has no
 #: GUI writer, so its claim survives curation and goes on being enforced --
 #: which is what makes this a narrowing rather than a disabling.
+#:
+#: ``measurements_tsv`` (spec B9) is the third mirror file and is listed for
+#: the same reason, one change early: no GUI code writes it until #283, which
+#: moves curation onto it, so a curated tree would otherwise turn stale the day
+#: #283 lands. Until then it is recorded and, like its two siblings, unenforced.
 _GUI_WRITTEN_PROOF_DESCRIPTORS: frozenset[str] = frozenset(
-    {"measurements_csv", "measurements_parquet"}
+    {"measurements_csv", "measurements_tsv", "measurements_parquet"}
 )
 
 

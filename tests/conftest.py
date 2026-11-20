@@ -16,6 +16,43 @@ import pytest
 
 from tests._support.xdist_workers import resolve_xdist_auto_workers
 
+# Shared #281 plan fixtures, re-exported by name so any test can request them.
+from tests._tiny_run import (  # noqa: F401
+    all_bad_inputs,
+    certified_older_than_latest,
+    detected_plate,
+    finished_tiny_run,
+    finished_tiny_run_with_embeddings,
+    full_run_store,
+    image_with_objects_payload,
+    image_with_grid_payload,
+    image_with_two_models,
+    input_store_v2,
+    measured_image,
+    metadata_bytes,
+    old_tree_with_measurements_csv,
+    pipeline_file_a,
+    pipeline_file_b,
+    plate,
+    process_store_tree,
+    registered_toy_embedder,
+    store_with_crop_entry,
+    stub_backbone,
+    store_with_two_runs,
+    tiny_inputs,
+    tiny_inputs_one_bad,
+    tiny_mirror,
+    tiny_pipeline,
+    tiny_pipeline_file,
+    toy_embedder,
+    toy_process_store_tree,
+    tree_with_one_stale_store,
+    toy_grid_embedder,
+    v1_store,
+    v1_store_legacy_null_pipeline,
+    v1_tree,
+)
+
 # matplotlib/plotly are guarded so this conftest stays importable in
 # dependency-light pytest invocations (e.g. the packaging-integrity CI job,
 # which runs the build-artifact tests in a bare ``pytest``-only env). When the

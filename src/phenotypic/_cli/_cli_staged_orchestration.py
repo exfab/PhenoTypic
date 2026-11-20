@@ -16,7 +16,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -29,6 +29,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 
 from ._cli_file_locking import atomic_append, atomic_read
 from ._cli_slurm_lifecycle import (
+    FENCE_CLOSED_BY_FINALIZER,
     SchedulerQueryUnavailable,
     SlurmGenerationInactiveError,
     _deactivate_generation_locked,
@@ -706,7 +707,11 @@ class LiveSlurmJobs:
         return bool(self.live or self.unverified or self.unresolved)
 
 
-def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
+def live_slurm_job_ids(
+    output_dir: Path,
+    *,
+    is_active: Callable[[str], bool | None] | None = None,
+) -> LiveSlurmJobs:
     """Return the jobs that may make *output_dir* owned by a live SLURM run.
 
     A closed lifecycle fence answers empty without asking the scheduler.
@@ -722,7 +727,12 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     submitter died after ``sbatch``); only then is one ``squeue``-only
     comment query made. A match is ``live``; a query that cannot run leaves
     the token ``unresolved``. Unknown answers are never read as inactive.
+
+    ``is_active`` replaces :func:`scheduler_job_is_active` for the per-job
+    question; ``phenotypic-wait`` passes a memo that remembers an answer of
+    ``False``, which is final.
     """
+    query = scheduler_job_is_active if is_active is None else is_active
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and lifecycle.get("active") is False:
         return LiveSlurmJobs()
@@ -733,7 +743,7 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     live: set[str] = set()
     unverified: set[str] = set()
     for job_id in _unterminated_ledger_job_ids(rows):
-        state = scheduler_job_is_active(job_id)
+        state = query(job_id)
         if state is None:
             unverified.add(job_id)
         elif state:
@@ -766,14 +776,113 @@ def live_slurm_job_ids(output_dir: Path) -> LiveSlurmJobs:
     )
 
 
+#: Lifecycle modes a forward run or recompile may retire once they are dead.
+#: ``migrate`` keeps its own lease and reconcile, and ``tune`` fences a tuning
+#: output, which no forward run shares; neither is listed.
+_RETIRABLE_FENCE_MODES = frozenset({"ordinary", "recompile"})
+
+
+def _retirable_active_fence(output_dir: Path) -> dict[str, Any] | None:
+    """The ``active`` fence when it is one a forward run or recompile may retire."""
+    lifecycle = load_slurm_lifecycle(output_dir)
+    if lifecycle is None or lifecycle.get("active") is not True:
+        return None
+    mode = str(lifecycle.get("mode", ""))
+    if lifecycle.get("owner_kind") is not None or not (
+        mode in _RETIRABLE_FENCE_MODES or mode.startswith("staged-")
+    ):
+        return None
+    return lifecycle
+
+
+def unledgered_active_fence(output_dir: Path) -> str | None:
+    """The generation of a retirable ``active`` fence that has no ledger row.
+
+    That is the state of a submitter between publishing its fence and writing
+    its first ``intent`` row (#281 P2 review I4), which may last as long as
+    the manifest and controller-state writes of a large staged run. It is also
+    the state a submitter leaves when it dies in that window, which is rare and
+    recovered by hand. The two cannot be told apart, so
+    :func:`retire_dead_lifecycle_fence` never retires such a fence, and a
+    SLURM submission over it is refused.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The fence's generation, or ``None`` when there is no such fence.
+    """
+    lifecycle = _retirable_active_fence(output_dir)
+    if lifecycle is None:
+        return None
+    generation = str(lifecycle["generation"])
+    if read_job_ledger(output_dir, epoch=generation):
+        return None
+    return generation
+
+
+def retire_dead_lifecycle_fence(output_dir: Path) -> str | None:
+    """Close an ``active`` fence whose jobs the scheduler reports all ended.
+
+    A finalizer killed for memory or cancelled outside PhenoTypic leaves its
+    fence ``active`` forever, and a ``dvc checkout`` of another revision
+    restores such a fence wholesale (#281 spec C13). The live-run guard
+    (``_refuse_live_slurm_run``) asks the scheduler rather than the flag, so it
+    lets the next run through -- but ``initialize_slurm_lifecycle`` then
+    refuses to publish a new generation over the stale one, and a SLURM
+    re-run, the documented recovery, failed after the mutating half had begun.
+
+    So the mutating half closes the fence first, on the same evidence the guard
+    used: :func:`live_slurm_job_ids` is empty, meaning every ledgered job is
+    terminal and no unrecorded submission is queued. The close leaves
+    ``closed_by`` unset, so ``phenotypic-wait`` never reads it as the old
+    generation's publication. A staged fence is closed through
+    :func:`deactivate_orchestration`, which also fences the controller state
+    and journals the deactivation for any straggling worker.
+
+    A fence with **no** ledger row for its generation is never retired
+    (:func:`unledgered_active_fence`): the scheduler has nothing to say about
+    it, because its submitter may still be preparing the first ``sbatch``.
+
+    Never call it above the ``--dry-run`` exit: it writes.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The retired generation, or ``None`` when there was nothing to retire:
+        no fence, an inactive one, a mode this function does not own, a fence
+        with no ledger row, or a fence that may still own a job.
+    """
+    lifecycle = _retirable_active_fence(output_dir)
+    if lifecycle is None or unledgered_active_fence(output_dir) is not None:
+        return None
+    if live_slurm_job_ids(output_dir):
+        return None
+    generation = str(lifecycle["generation"])
+    mode = str(lifecycle.get("mode", ""))
+    if mode.startswith("staged-"):
+        deactivate_orchestration(output_dir, "cancelled")
+    with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
+        _deactivate_generation_locked(output_dir, generation)
+    return generation
+
+
 def deactivate_orchestration(
-    output_dir: Path, phase: str = "cancelled"
+    output_dir: Path,
+    phase: str = "cancelled",
+    *,
+    closed_by: str | None = None,
 ) -> bool:
     """Fence an epoch immediately, without waiting for its controller lock.
 
     The append-only fence is authoritative over the mutable controller state.
     This lets cancellation stop publication even when a controller is blocked
     inside a scheduler query or submission retry.
+
+    ``closed_by`` is passed only by the finalizer
+    (``FENCE_CLOSED_BY_FINALIZER``), so a cancel leaves the fence's close
+    reason unset (#281 spec C3).
     """
     state = load_orchestration_state(output_dir)
     if state is None or state.get("phase") in {
@@ -784,7 +893,7 @@ def deactivate_orchestration(
         return False
     epoch = str(state.get("epoch", ""))
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        _deactivate_generation_locked(output_dir, epoch)
+        _deactivate_generation_locked(output_dir, epoch, closed_by=closed_by)
     atomic_append(
         epoch_deactivation_journal_path(output_dir),
         json.dumps(
@@ -838,7 +947,9 @@ def mark_staged_complete(output_dir: Path, epoch: str) -> None:
     }
     atomic_write_json(staged_completion_path(output_dir), marker)
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
-        _deactivate_generation_locked(output_dir, epoch)
+        _deactivate_generation_locked(
+            output_dir, epoch, closed_by=FENCE_CLOSED_BY_FINALIZER
+        )
     state = load_orchestration_state(output_dir)
     if state is not None and state.get("epoch") == epoch:
         state["phase"] = "complete"
@@ -896,6 +1007,7 @@ __all__ = [
     "orchestration_state_path",
     "quarantine_unchanged_restart_parquets",
     "read_job_ledger",
+    "retire_dead_lifecycle_fence",
     "retryable_digest",
     "save_orchestration_state",
     "scheduler_job_is_active",

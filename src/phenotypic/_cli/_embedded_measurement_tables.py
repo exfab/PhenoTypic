@@ -232,6 +232,8 @@ def prepare_embedded_measurement_table(
 def embedded_measurement_table_matches(
     store_path: Path,
     prepared: PreparedEmbeddedMeasurementTable,
+    *,
+    run_id: str | None = None,
 ) -> bool:
     """Return whether the embedded Arrow table exactly equals *prepared*.
 
@@ -239,19 +241,54 @@ def embedded_measurement_table_matches(
     values, null placement, and row count. The latter is what makes duplicate
     metadata-key fan-out part of reclaim authority rather than an incidental
     property of a readable Parquet payload.
+
+    The table compared is, for a v2 store, run *run_id*'s, or by default the
+    record-less default (spec D6a): the latest run folder holding
+    ``measurements``. ``--mode migrate`` passes the run its legacy-Parquet
+    import owns (:func:`~phenotypic.sdk_._table_runs.import_table_run_id`),
+    so it judges the run the import writes rather than a newer one of another
+    pipeline (review M2). Any other store -- v1, one with no tables
+    descriptor yet, or one whose root is not readable -- is compared at the
+    v1 flat ``tables/measurements/table.parquet``, the only place such a
+    store can hold a table (migrate's legacy read).
     """
     import pyarrow as pa  # type: ignore[import-untyped]
     import pyarrow.parquet as pq  # type: ignore[import-untyped]
 
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
-
     try:
+        table = _comparison_table(Path(store_path), run_id=run_id)
+        if table is None:
+            return False
         expected = pa.Table.from_pandas(
             prepared.frame, preserve_index=False
         ).replace_schema_metadata(prepared.parquet_metadata())
-        actual = pq.read_table(
-            Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
-        )
+        actual = pq.read_table(table)
     except Exception:  # noqa: BLE001 - inability to compare refuses deletion
         return False
     return actual.equals(expected, check_metadata=True)
+
+
+def _comparison_table(store: Path, *, run_id: str | None = None) -> Path | None:
+    """The table :func:`embedded_measurement_table_matches` compares, or ``None``.
+
+    Raises:
+        ValueError: The store's tables descriptor is a version this build
+            does not read, or corrupt (the caller refuses the comparison).
+    """
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from phenotypic.sdk_._table_runs import (
+        latest_measurement_run,
+        measurement_table_relative_path,
+        store_tables_schema,
+    )
+
+    try:
+        schema = store_tables_schema(store)
+    except (OSError, KeyError):
+        schema = None
+    if schema != 2:
+        return store / MEASUREMENT_TABLE_RELATIVE_PATH
+    if run_id is not None:
+        return store / measurement_table_relative_path(run_id)
+    run = latest_measurement_run(store)
+    return None if run is None else run.measurements_path()

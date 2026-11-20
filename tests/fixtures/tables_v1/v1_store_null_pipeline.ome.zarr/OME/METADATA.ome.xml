@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06">
+    <Image ID="Image:0" Name="rgb">
+      <Pixels ID="Pixels:0" DimensionOrder="XYZCT" Type="uint8" SizeX="800" SizeY="600" SizeZ="1" SizeC="3" SizeT="1">
+        <MetadataOnly/>
+      </Pixels>
+    </Image>
+    <Image ID="Image:1" Name="gray">
+      <Pixels ID="Pixels:1" DimensionOrder="XYZCT" Type="float" SizeX="800" SizeY="600" SizeZ="1" SizeC="1" SizeT="1">
+        <MetadataOnly/>
+      </Pixels>
+    </Image>
+    <Image ID="Image:2" Name="detect_mat">
+      <Pixels ID="Pixels:2" DimensionOrder="XYZCT" Type="float" SizeX="800" SizeY="600" SizeZ="1" SizeC="1" SizeT="1">
+        <MetadataOnly/>
+      </Pixels>
+    </Image>
+    <Image ID="Image:3" Name="original">
+      <Pixels ID="Pixels:3" DimensionOrder="XYZCT" Type="uint8" SizeX="800" SizeY="600" SizeZ="1" SizeC="3" SizeT="1">
+        <MetadataOnly/>
+      </Pixels>
+    </Image>
+  <StructuredAnnotations>
+    <MapAnnotation ID="Annotation:0" Namespace="ImageData">
+      <Value>
+          <M K="Metadata_BitDepth">8</M>
+          <M K="Metadata_FileSuffix">.tif</M>
+          <M K="Metadata_ImageName">plate</M>
+          <M K="Metadata_ImageType">GridImage</M>
+      </Value>
+    </MapAnnotation>
+    <MapAnnotation ID="Annotation:1" Namespace="imported">
+      <Value>
+          <M K="TIFF:BitsPerSample">(8, 8, 8)</M>
+          <M K="TIFF:Compression">1</M>
+          <M K="TIFF:ImageLength">600</M>
+          <M K="TIFF:ImageWidth">800</M>
+          <M K="TIFF:PhotometricInterpretation">2</M>
+          <M K="TIFF:PlanarConfiguration">1</M>
+          <M K="TIFF:RowsPerStrip">600</M>
+          <M K="TIFF:SamplesPerPixel">3</M>
+          <M K="TIFF:StripByteCounts">1440000</M>
+          <M K="TIFF:StripOffsets">140</M>
+      </Value>
+    </MapAnnotation>
+  </StructuredAnnotations>
+</OME>

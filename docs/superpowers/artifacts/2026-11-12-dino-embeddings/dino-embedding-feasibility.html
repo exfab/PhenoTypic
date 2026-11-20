@@ -1,0 +1,372 @@
+<title>DINOv2 Embedding Feasibility</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: verdict strip, then hazards → contract → measurer → ACR → cost → change list → decisions; one reading column, wide tables scroll in place. Tokens follow PhenoTypic DESIGN.md. */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --accent-soft: #e6f0f9; --gold: #926a00; --gold-soft: #fff4d6;
+  --code-bg: #edf2f7; --ok: #006B4F; --ok-soft: #e3f4ee; --warn: #7A5500; --warn-soft: #fbf1db; --bad: #b85100; --bad-soft: #fbe9dc;
+  --bar: #1b75bc; --bar2: #E69F00;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; --bad: #f29a5e; --bad-soft: #3d2416;
+  --bar: #56B4E9; --bar2: #f0b13a; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --accent-soft: #17304a; --gold: #f2c75c; --gold-soft: #3a2f12;
+  --code-bg: #1a2839; --ok: #43c9a2; --ok-soft: #12352c; --warn: #f0c75e; --warn-soft: #3a3014; --bad: #f29a5e; --bad-soft: #3d2416;
+  --bar: #56B4E9; --bar2: #f0b13a; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.6; }
+.page { max-width: 68rem; margin: 0 auto; padding-block: 2.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 3rem; }
+header { display: flex; flex-direction: column; gap: .75rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+h1 { font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h2 { font-size: 1.5rem; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; font-weight: 700; }
+h3 { font-size: 1.08rem; color: var(--heading); margin: 0; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 1.1rem; }
+section { display: flex; flex-direction: column; gap: 1rem; }
+.secnum { font-family: var(--mono); color: var(--muted); font-size: .85rem; font-weight: 400; margin-right: .5rem; }
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: .92rem; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding-block: .75rem; }
+nav.toc a { text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { text-decoration: underline; }
+
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.v { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.v .row { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.v b { color: var(--heading); }
+.v span.t { font-size: .92rem; }
+
+.pill { display: inline-block; font-family: var(--mono); font-size: .74rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; white-space: nowrap; }
+.ok { background: var(--ok-soft); color: var(--ok); }
+.mid { background: var(--warn-soft); color: var(--warn); }
+.hard { background: var(--bad-soft); color: var(--bad); }
+.na { background: var(--code-bg); color: var(--muted); }
+
+.req { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
+.req > div { border-top: 3px solid var(--accent); padding-top: .6rem; display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
+.req .id { font-family: var(--mono); font-size: .8rem; color: var(--accent); font-weight: 600; }
+
+.hazards { display: flex; flex-direction: column; gap: .75rem; }
+.hz { display: grid; grid-template-columns: 3rem 1fr; gap: .25rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; }
+.hz .n { font-family: var(--mono); font-weight: 600; color: var(--bad); grid-row: span 2; font-size: .95rem; }
+.hz b { color: var(--heading); }
+.hz p { font-size: .94rem; }
+.hz .where { font-size: .82rem; color: var(--muted); grid-column: 2; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; vertical-align: top; padding: .6rem .75rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; color: var(--heading); }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.w62 table { min-width: 62rem; } .w48 table { min-width: 48rem; } .w36 table { min-width: 36rem; }
+tr.rec td { background: var(--accent-soft); }
+
+pre.code { font-family: var(--mono); font-size: .8rem; line-height: 1.55; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; margin: 0; overflow-x: auto; color: var(--fg); }
+pre.code .c { color: var(--muted); }
+pre.code .k { color: var(--accent); font-weight: 600; }
+pre.code .g { color: var(--gold); }
+
+.callout { border: 1px solid var(--border); border-left: 4px solid var(--gold); background: var(--gold-soft); border-radius: 6px; padding: .9rem 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
+.callout.blue { border-left-color: var(--accent); background: var(--accent-soft); }
+.callout b { color: var(--heading); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1.25rem; }
+.two > div { min-width: 0; display: flex; flex-direction: column; gap: .6rem; }
+ul, ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .35rem; max-width: 72ch; }
+
+.bars { display: flex; flex-direction: column; gap: .45rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; }
+.bar { display: grid; grid-template-columns: minmax(9rem, 15rem) 1fr 5.5rem; gap: .75rem; align-items: center; font-size: .85rem; }
+.bar .lab { min-width: 0; }
+.bar .track { height: .8rem; background: var(--rule); border-radius: 3px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--bar); border-radius: 3px; }
+.bar .fill.dense { background: var(--bar2); }
+.bar .val { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.bars .axis { font-size: .78rem; color: var(--muted); display: flex; justify-content: space-between; padding-left: calc(min(15rem, 30%) + .75rem); padding-right: 6.25rem; }
+@media (max-width: 560px) { .bar { grid-template-columns: 1fr 4.5rem; } .bar .track { grid-column: 1 / -1; grid-row: 2; } .bars .axis { padding: 0; } }
+
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.ph { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.ph .id { font-family: var(--mono); font-size: .8rem; color: var(--gold); font-weight: 600; }
+.ph p { font-size: .92rem; }
+.qs { counter-reset: q; display: flex; flex-direction: column; gap: .8rem; padding: 0; list-style: none; max-width: none; }
+.qs li { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .85rem 1rem; display: flex; flex-direction: column; gap: .3rem; }
+.qs li b { color: var(--heading); }
+.qs li span { font-size: .93rem; }
+.src { font-size: .85rem; color: var(--muted); }
+footer { font-size: .85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">Scoping · PhenoTypic + AutoConvertRaw-GC · 2026-11-12</div>
+  <h1>DINOv2 Embedding Feasibility</h1>
+  <p class="lede">Can AutoConvertRaw-GC write DINOv2 embeddings into every OME-Zarr store it publishes, can those embeddings survive later rewrites, and can PhenoTypic gain a per-colony <code>MeasureDinoEmbedding</code>? Yes to all three. Loading the model is already solved in this codebase. The real work is in store persistence, table width, and where the GPU runs.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#req">1 · Requirements</a><a href="#hazards">2 · Overwrite hazards</a><a href="#contract">3 · Store contract</a><a href="#measurer">4 · MeasureDinoEmbedding</a><a href="#acr">5 · AutoConvertRaw-GC</a><a href="#cost">6 · Size</a><a href="#changes">7 · Change list</a><a href="#phases">8 · Phasing</a><a href="#decide">9 · Your decisions</a>
+  </nav>
+</header>
+
+<div class="verdict">
+  <div class="v"><div class="row"><b>Model loading</b><span class="pill ok">exists · S</span></div><span class="t"><code>load_dino_backbone</code>, <code>hf_dino_id</code>, patch-token extraction and tiling are already shared by the INSID3, FSSDINO and DinoSam2 detectors.</span></div>
+  <div class="v"><div class="row"><b>Persistence in the store</b><span class="pill mid">new namespace · M</span></div><span class="t">Every store writer would drop an embedding group today. It needs a figures-style namespace with a carry step in each writer.</span></div>
+  <div class="v"><div class="row"><b>Per-colony tables</b><span class="pill mid">own table · M</span></div><span class="t">768 columns per colony can't go through the master, the CSV mirror or the splits. Embeddings need their own table and their own aggregate.</span></div>
+  <div class="v"><div class="row"><b>GPU execution</b><span class="pill hard">optional · L</span></div><span class="t">On CPU it works today with no staging changes. GPU staging needs a new kind of Stage 2 signal, or a new Stage 4.</span></div>
+</div>
+
+<section id="req">
+  <h2><span class="secnum">1</span>What was asked, and the fact that splits it</h2>
+  <div class="req">
+    <div><span class="id">R1</span><b>AutoConvertRaw-GC writes embeddings</b><p>Every store the preprocessing pipeline publishes carries DINOv2 embeddings.</p></div>
+    <div><span class="id">R2</span><b>Never overwritten</b><p>A later PhenoTypic run or rewrite never silently drops or replaces them.</p></div>
+    <div><span class="id">R3</span><b>MeasureDinoEmbedding</b><p>A measurer that gives one embedding per colony inside a normal pipeline.</p></div>
+  </div>
+  <div class="callout">
+    <b>AutoConvertRaw-GC has no colonies to embed</b>
+    <p>It runs <code>--mode process</code> with the pipeline <code>CalibrateColorRpcc → ColorDenoise</code>, an empty <code>meas</code>, and <code>write_objmap=False</code>. No detection happens at that stage, so it can only produce <b>image-level</b> embeddings (a CLS token and a mean-pooled patch vector) or a <b>dense patch-feature grid</b>. Per-colony embeddings need an objmap, so they belong to <code>MeasureDinoEmbedding</code> in a later PhenoTypic run. That means two products written in two places, sharing one storage contract.</p>
+  </div>
+</section>
+
+<section id="hazards">
+  <h2><span class="secnum">2</span>Six ways embeddings would be lost today</h2>
+  <p>Each hazard was checked against the source. Together they rule out the obvious designs: a <code>tables/embeddings/</code> sibling, a group added after the store is published, and 768 extra measurement columns.</p>
+  <div class="hazards">
+    <div class="hz"><span class="n">H1</span><b>A store re-save starts from an empty part</b><p><code>_write_store_part</code> builds a fresh <code>.part</code>, carries over only figure runs, and rebuilds the root attributes. Full, Stage 1, Stage 3 and process saves all drop an unknown group or attribute key.</p><span class="where">_image_io_handler.py:1468 (carry_figure_runs), :1478 (root written last)</span></div>
+    <div class="hz"><span class="n">H2</span><b>Measure and recompile delete all of <code>tables/</code></b><p>The rewrite hard-link-copies the store and then removes <code>part/tables</code> entirely, so it can rebuild the measurement and metadata tables. An embedding table under <code>tables/</code> would be lost on every <code>--mode measure</code>.</p><span class="where">_measurement_tables.py:694</span></div>
+    <div class="hz"><span class="n">H3</span><b>Process stores are consolidated and immutable</b><p>Metadata is consolidated inside the part, and the code says the store "is written once and never mutated". A group added afterwards is invisible to readers that use consolidated metadata. It also breaks the byte-reproducibility that the work id depends on.</p><span class="where">_cli_process_only.py:247, _image_io_handler.py:1511</span></div>
+    <div class="hz"><span class="n">H4</span><b>The root is the completion marker's anchor</b><p>Editing <code>zarr.json</code> in place invalidates the image's marker. Continuation then re-derives the image, and H1 drops the addition.</p><span class="where">working-with-ome-zarr contract; ngff_.py STORE_ROOT_JSON</span></div>
+    <div class="hz"><span class="n">H5</span><b>AutoConvertRaw-GC replaces the whole prefix</b><p>Publishing runs <code>delete_prefix</code> and then <code>upload_tree</code>. Anything a separate job adds to a bucket or NAS store is deleted the next time that image is reprocessed.</p><span class="where">acr_core/worker.py:189–190</span></div>
+    <div class="hz"><span class="n">H6</span><b>Wide columns spread to every deliverable</b><p>Returned as ordinary measurement columns, 384–1024 floats per colony would reach the master, the CSV mirror and the GUI. A column no <code>MeasurementInfo</code> enum owns is copied into <em>every</em> <code>measurements_by_feature</code> file. A single list-typed column fixes the width, but CSV can't hold it.</p><span class="where">util/_measurement_outputs.py:96, :200</span></div>
+  </div>
+  <div class="callout blue">
+    <b>What follows</b>
+    <p>Embeddings need (a) their own namespace outside <code>tables/</code>, (b) a carry step in every writer, which is the rule figures already follow, and (c) to be written inside the store's own transaction, never added after promotion. Figures prove the pattern: <code>carry_figure_runs</code>, <code>known_figures_schema</code> and <code>apply_image_figures_attributes</code> in <code>sdk_/_image_figures.py</code> are a ready template.</p>
+  </div>
+</section>
+
+<section id="contract">
+  <h2><span class="secnum">3</span>Proposed store contract</h2>
+  <div class="two">
+    <div>
+<pre class="code"><span class="k">&lt;stem&gt;.ome.zarr/</span>
+├── zarr.json      <span class="c"># root lists every embedding file + sha256</span>
+├── …              <span class="c"># series, labels, tables/, figures/ unchanged</span>
+└── <span class="g">embeddings/</span>                       <span class="c"># Zarr v3 group, empty attrs</span>
+    ├── dinov2-vitb14-image-3f9c2a1b7d04/
+    │   └── vectors.parquet           <span class="c"># 1 row: cls[768], mean_patch[768]</span>
+    ├── dinov2-vitb14-object-a71e09c2b4f5/
+    │   └── table.parquet             <span class="c"># Object_Label + embedding list&lt;f16&gt;[768]</span>
+    └── dinov2-vits14-dense-0c4e…/      <span class="c"># optional Zarr array (C, Hp, Wp) f16</span></pre>
+    </div>
+    <div>
+<pre class="code"><span class="c">// attributes.phenotypic.embeddings</span>
+{ <span class="k">"schema_version"</span>: 1,
+  <span class="k">"entries"</span>: {
+    "dinov2-vitb14-object-a71e09c2b4f5": {
+      "scope": "object",
+      "model": { "family": "dinov2", "hf_id": "facebook/dinov2-base",
+                 "revision": "&lt;hub commit&gt;", "patch_size": 14 },
+      "dim": 768, "dtype": "float16",
+      "pooling": "crop_cls", "input_layer": "rgb",
+      "producer": { "class": "MeasureDinoEmbedding",
+                    "params_sha256": "…", "pipeline_sha256": "…" },
+      "binds": { "objmap": "rgb/labels/objmap", "objmap_sha256": "…" },
+      "files": [{ "path": "embeddings/…/table.parquet",
+                  "sha256": "…", "media_type": "application/vnd.apache.parquet" }]
+} } }</pre>
+    </div>
+  </div>
+  <div class="scroll w48">
+  <table>
+    <thead><tr><th>Rule</th><th>What it guarantees</th></tr></thead>
+    <tbody>
+      <tr><td>Deterministic entry id</td><td><code>{family}-{model}-{scope}-{12 hex of params digest}</code>. Re-running the same config replaces only its own entry, which is an idempotent re-derivation. A different model, size or pooling gets a new id, so the two coexist.</td></tr>
+      <tr><td>Carried by every writer</td><td>save2zarr (full, Stage 1, Stage 3), process <code>_save_store</code>, and the measure/recompile rewrite all copy every other entry and file across unchanged. Only <code>--overwrite</code> deletes them. This closes H1 and H2.</td></tr>
+      <tr><td>Written inside the transaction</td><td>Files land in the <code>.part</code> before consolidation and before the root, and the root records their sha256. The completion marker therefore covers them. This closes H3 and H4.</td></tr>
+      <tr><td>Bound to what was embedded</td><td>Object-scope entries record the objmap digest. If a re-detection changes the objmap, the carried entry is marked <code>stale</code> and readers refuse it. Otherwise relabeled colonies would silently pick up the wrong vectors. Image and dense entries bind the series and level they read.</td></tr>
+      <tr><td>Unknown versions carried whole</td><td>A descriptor whose <code>schema_version</code> this writer doesn't know is carried untouched and gets no new entry. This copies the figures rule.</td></tr>
+      <tr><td>Outside OME semantics</td><td>Nothing goes under <code>attributes.ome</code>, and nothing is listed in <code>ome.series</code>. Third-party viewers see the same store they see today.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><b>Vector encoding.</b> Recommended: one Arrow <code>FixedSizeList&lt;float16&gt;[D]</code> column. It is compact, and pyarrow, DuckDB and polars (<code>Array</code> dtype) all read it. Wide <code>DinoEmbedding_000…767</code> columns can be produced at export time for tools that need them.</p>
+</section>
+
+<section id="measurer">
+  <h2><span class="secnum">4</span>MeasureDinoEmbedding</h2>
+  <div class="two">
+    <div>
+      <h3>Proposed fields</h3>
+      <div class="scroll w36">
+      <table>
+        <thead><tr><th>Field</th><th>Type / default</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>dino_version</td><td><code>DinoVersion = 2</code></td><td>reuses <code>sdk_.typing_</code>; v3 goes through the license gate</td></tr>
+          <tr><td>dino_size</td><td><code>DinoSize = "base"</code></td><td>small / base / large → 384 / 768 / 1024 dims</td></tr>
+          <tr><td>pooling</td><td><code>"crop_cls"</code></td><td><code>crop_cls</code> · <code>crop_mean</code> · <code>masked_dense</code></td></tr>
+          <tr><td>crop_px</td><td><code>224</code></td><td>must be a multiple of the patch size; validated against the loaded model</td></tr>
+          <tr><td>crop_pad_frac</td><td><code>0.25</code></td><td>context ring around each colony's bbox</td></tr>
+          <tr><td>mask_background</td><td><code>False</code></td><td>zero pixels outside the colony mask before embedding</td></tr>
+          <tr><td>dtype</td><td><code>"float16"</code></td><td>halves storage (see §6)</td></tr>
+          <tr><td>batch_size, device</td><td><code>64</code>, <code>"auto"</code></td><td>crops per forward pass; cpu / cuda</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="src">Numeric fields need tune annotations under the annotation-coverage gate (<code>adding-an-operation</code> skill). The schema enum (e.g. <code>DINO_EMBEDDING</code>) gets <code>label</code>/<code>desc</code> only; <code>bio_desc</code> is left empty for a human author.</p>
+    </div>
+    <div>
+      <h3>What it reuses</h3>
+      <ul>
+        <li><code>detect/nn/_helper/_dino_support.py:193</code> <code>load_dino_backbone</code>, <code>:172</code> <code>hf_dino_id</code>, <code>:286</code> <code>extract_patch_features</code> (which already strips DINOv3's four register tokens), <code>backbone_patch_size</code>, <code>resize_mask_to_grid</code>, and the native-geometry processor kwargs.</li>
+        <li><code>_helper/_tiling.py</code> for the <code>masked_dense</code> mode over a full plate.</li>
+        <li><code>_checkpoint_manager.py</code> + <code>PHENOTYPIC_ACCEPT_MODEL_LICENSE</code> for gated weights. DINOv2 itself is Apache-2.0.</li>
+      </ul>
+      <h3>The return-contract problem</h3>
+      <p>A <code>MeasureFeatures</code> op's frame is merged into the measurement table (H6). The proposal is a thin ABC, <code>MeasureEmbedding(MeasureFeatures)</code>. It still sits in <code>meas</code>, so serialization, the GUI builder and tune need no changes. <code>ImagePipeline.measure</code> recognizes it by type and sends its frame to the embeddings namespace instead of the merge. Called on its own in a notebook, <code>MeasureDinoEmbedding().measure(image)</code> just returns <code>Object_Label</code> plus the vector column.</p>
+      <p>The alternative is a new pipeline slot (<code>embed</code>, like <code>plots</code>). It is more explicit, but it touches serialization, the builder, tune and the slot-namespaced tree paths.</p>
+    </div>
+  </div>
+
+  <h3>Where the model runs</h3>
+  <div class="scroll w62">
+  <table>
+    <thead><tr><th>Option</th><th>Where DINO runs</th><th>What changes</th><th>Gains</th><th>Costs</th></tr></thead>
+    <tbody>
+      <tr class="rec"><td>A · CPU in <code>meas</code> (start here)</td><td>single-pass worker, or Stage 3 on a CPU node</td><td>nothing in the staged engine. It is not a <code>GpuDetector</code>, so <code>refuse_cpu_only_slot</code> never fires</td><td>ships first; works locally and on SLURM; crop pooling available</td><td>slow on CPU for plates with hundreds to thousands of colonies; the model loads once per worker process unless cached at module level</td></tr>
+      <tr><td>B · Dense features from Stage 2</td><td>GPU Stage 2 computes an objmap-independent patch grid; Stage 3 pools it under the final objmap</td><td>a new Stage-2 signal kind and a feature-extractor role; <code>find_gpu_detectors</code> and the one-GPU-op limit must be extended when the pipeline also has a GPU detector</td><td>one resident model; reuses the Stage-2 infrastructure; Stage 3 replay stays exact because the features don't depend on the objmap</td><td><code>masked_dense</code> only (no crop CLS); a transient signal of 23–187 MB per image (§6)</td></tr>
+      <tr><td>C · GPU Stage 4</td><td>after Stage 3, crops cut from the final objmap</td><td>a new stage in the epoch-fenced controller: chunking, ledger, continuation marker</td><td>best embeddings (crop CLS) at GPU speed</td><td>largest change; a second GPU round trip per run</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="src">Option A must not subclass <code>GpuDetector</code>. If it did, <code>find_gpu_detectors</code> would refuse it in the <code>meas</code> slot (<code>_cli_validation.py:324</code>).</p>
+</section>
+
+<section id="acr">
+  <h2><span class="secnum">5</span>AutoConvertRaw-GC integration</h2>
+  <p>What it does today: <code>process_one.py:118</code> calls <code>process_single_apply_only_core(layer="rgb", process_format="zarr")</code> in an isolated child process. <code>verify_store</code> checks the root and the figure descriptor. The worker deletes the remote prefix, uploads the tree, and writes a done marker that records <code>pipeline_sha256</code>. GC runs on Spot <code>c3d-highmem-4</code> VMs (4 vCPU, 30 GB budget, 16.3 GB pilot peak, 612 s per image in the pilot). HPCC runs the same container as an Apptainer <code>.sif</code>. PhenoTypic is vendored as wheel 0.20.2.</p>
+  <div class="scroll w62">
+  <table>
+    <thead><tr><th>Option</th><th>How</th><th>PhenoTypic changes</th><th>Fit with R2</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr class="rec"><td>A · Native image embedder</td><td>an image-scope embedder bound in the pipeline JSON; process mode runs it after <code>apply()</code> and passes the payload to <code>_save_store(embeddings=…)</code> the way it passes <code>figures=</code></td><td>yes: §3 contract + a process-mode hook</td><td>full: written in the transaction, consolidated, carried by later writers</td><td><span class="pill ok">recommended</span></td></tr>
+      <tr><td>B · Post-step in the child</td><td>after PhenoTypic returns, open the local store, add the group, re-consolidate, rewrite the root, then upload</td><td>none</td><td>partial: contradicts "written once", hand-rolls consolidation, and any later PhenoTypic re-save drops it (H1)</td><td><span class="pill mid">stopgap only</span></td></tr>
+      <tr><td>C · Sidecar file</td><td><code>&lt;stem&gt;.dinov2.parquet</code> next to the store prefix, with its own marker</td><td>none</td><td>survives every store rewrite, but it isn't in the OME-Zarr</td><td><span class="pill na">fallback</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="two">
+    <div>
+      <h3>What Option A changes in AutoConvertRaw-GC</h3>
+      <ul>
+        <li><code>pipelines/exfab_rig1.json.pht-pipe</code> gains the embedder.</li>
+        <li><code>vendor/</code> gets the new wheel; <code>pyproject.toml</code> and <code>uv.lock</code> are updated.</li>
+        <li><code>Dockerfile</code> installs the <code>foundation</code> extra (CPU torch + transformers), bakes in the weights, and sets <code>HF_HUB_OFFLINE=1</code>. Then a rebuild with <code>tools/build_image.sh</code>, a new pinned <code>:&lt;sha&gt;</code> and a new <code>.sif</code>.</li>
+        <li><code>process.py verify_store</code> checks the embeddings descriptor the way it checks figures; <code>run.json</code> carries <code>expected_embeddings</code> (<code>plan.py</code>).</li>
+        <li>Re-pilot memory and timeout on <code>configs/smoke.yaml</code> / <code>smoke-hpcc.yaml</code>. Never on <code>data/</code>.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Consequences to plan for</h3>
+      <ul>
+        <li><b>Backfill is a reprocess.</b> Adding the embedder changes <code>pipeline_sha256</code>, so all done images become "changed". <code>--reprocess-changed</code> is opt-in. It reuses a stored TIFF when one is current, but it still reruns calibration and BM3D denoise, which is the expensive step. An embed-only backfill would need Option B's rewrite.</li>
+        <li><b>Weights offline.</b> The Batch VMs have no external IP, so a runtime Hugging Face download probably can't reach the hub. Bake the weights into the image: roughly 88 MB (ViT-S), 346 MB (ViT-B) or 1.2 GB (ViT-L) at fp32. Verify egress before relying on this.</li>
+        <li><b>Cross-CPU determinism.</b> Torch CPU inference is not guaranteed bit-identical across instruction sets (c3d on GC vs <code>intel</code> nodes on HPCC). Keep embedding bytes out of anything that must be byte-reproducible, or pin deterministic kernels and measure the drift.</li>
+        <li><b>CPU time is unmeasured.</b> Embedding a whole image at 518 px is one forward pass. A full-resolution dense grid over a roughly 6000 × 4000 frame is about 90 tiles of 518 px. Pilot both before choosing.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="cost">
+  <h2><span class="secnum">6</span>How big it gets</h2>
+  <p>Arithmetic, not measurement. It assumes 50,780 images (the AutoConvertRaw-GC scope), a frame of about 6000 × 4000 px (the ROIs reach column 6016), DINOv2 patch size 14, and no Parquet compression gain on float data.</p>
+  <div class="bars" role="img" aria-label="Total storage across 50,780 images, log scale">
+    <div class="bar"><span class="lab">Image vectors, ViT-B, fp32</span><span class="track"><span class="fill" style="width:10%; display:block"></span></span><span class="val">0.31 GB</span></div>
+    <div class="bar"><span class="lab">Per colony, ViT-B fp16, 96/plate</span><span class="track"><span class="fill" style="width:38%; display:block"></span></span><span class="val">7.5 GB</span></div>
+    <div class="bar"><span class="lab">Per colony, ViT-B fp16, 384/plate</span><span class="track"><span class="fill" style="width:50%; display:block"></span></span><span class="val">30 GB</span></div>
+    <div class="bar"><span class="lab">Per colony, ViT-B fp16, 1536/plate</span><span class="track"><span class="fill" style="width:62%; display:block"></span></span><span class="val">120 GB</span></div>
+    <div class="bar"><span class="lab">Dense grid, ViT-S fp16, ¼ res</span><span class="track"><span class="fill dense" style="width:69%; display:block"></span></span><span class="val">300 GB</span></div>
+    <div class="bar"><span class="lab">Dense grid, ViT-S fp16, ½ res</span><span class="track"><span class="fill dense" style="width:82%; display:block"></span></span><span class="val">1.19 TB</span></div>
+    <div class="bar"><span class="lab">Dense grid, ViT-B fp16, full res</span><span class="track"><span class="fill dense" style="width:100%; display:block"></span></span><span class="val">9.51 TB</span></div>
+    <p class="src">Bar length is on a log scale from 0.1 GB to 10 TB. Blue: vectors and tables. Orange: dense patch grids.</p>
+  </div>
+  <div class="scroll w48">
+  <table>
+    <thead><tr><th>Product</th><th>Model</th><th class="num">Per image</th><th class="num">All images</th><th>Where it lives</th></tr></thead>
+    <tbody>
+      <tr><td>Image vectors (CLS + mean)</td><td>ViT-B, fp32</td><td class="num">6.1 KB</td><td class="num">0.31 GB</td><td>AutoConvertRaw-GC store</td></tr>
+      <tr><td>Per colony, 96 / plate</td><td>ViT-S · B · L, fp16</td><td class="num">74 · 147 · 197 KB</td><td class="num">3.7 · 7.5 · 10 GB</td><td>result store + deliverable</td></tr>
+      <tr><td>Per colony, 384 / plate</td><td>ViT-S · B · L, fp16</td><td class="num">295 · 590 · 786 KB</td><td class="num">15 · 30 · 40 GB</td><td>result store + deliverable</td></tr>
+      <tr><td>Per colony, 1536 / plate</td><td>ViT-S · B · L, fp16</td><td class="num">1.2 · 2.4 · 3.1 MB</td><td class="num">60 · 120 · 160 GB</td><td>result store + deliverable</td></tr>
+      <tr><td>Dense grid, full res (285 × 428)</td><td>ViT-S · B, fp16</td><td class="num">94 · 187 MB</td><td class="num">4.8 · 9.5 TB</td><td>store, or a Stage-2 signal (option B)</td></tr>
+      <tr><td>Dense grid, ½ res (142 × 214)</td><td>ViT-S · B, fp16</td><td class="num">23 · 47 MB</td><td class="num">1.2 · 2.4 TB</td><td>store, or a Stage-2 signal</td></tr>
+      <tr><td>Dense grid, ¼ res (71 × 107)</td><td>ViT-S · B, fp16</td><td class="num">5.8 · 12 MB</td><td class="num">0.30 · 0.59 TB</td><td>store, or a Stage-2 signal</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Per-colony tables at 384 colonies per plate (30 GB for ViT-B fp16) are why embeddings get their own aggregate, <code>deliverables/embeddings/&lt;entry_id&gt;.parquet</code>, keyed on <code>Metadata_Dataset</code>, <code>Metadata_ImageFile</code> and <code>Object_Label</code>. Joining them into <code>measurements.csv</code> would add 768 columns to every row of the mirror.</p>
+</section>
+
+<section id="changes">
+  <h2><span class="secnum">7</span>What would change, file by file</h2>
+  <div class="scroll w62">
+  <table>
+    <thead><tr><th>Area</th><th>File</th><th>Change</th><th>Size</th></tr></thead>
+    <tbody>
+      <tr><td>Constants</td><td><code>sdk_/ngff_.py</code></td><td><code>EMBEDDINGS_GROUP</code>, schema version, <code>PhenotypicAttr.EMBEDDINGS</code></td><td><span class="pill ok">S</span></td></tr>
+      <tr><td>Store payload</td><td><code>sdk_/_image_embeddings.py</code> (new)</td><td>payload dataclass, write, carry, known-schema, apply-attributes; mirrors <code>_image_figures.py</code></td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>Store writer</td><td><code>_core/_image_parts/_image_io_handler.py</code></td><td><code>embeddings=</code> through <code>save2zarr</code> → <code>_save_store</code> → <code>_write_store_part</code>; carry step next to <code>carry_figure_runs</code> (:1468), before consolidation</td><td><span class="pill ok">S</span></td></tr>
+      <tr><td>Measure rewrite</td><td><code>sdk_/_measurement_tables.py</code></td><td>add or replace this run's object entry inside <code>_rewrite_store_tables</code>; mark object entries stale when the objmap digest changes</td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>Measurer</td><td><code>measure/_measure_dino_embedding.py</code> (new), <code>abc_/</code> <code>MeasureEmbedding</code></td><td>crop and dense pooling; lazy torch import (startup-import guards)</td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>Schema</td><td><code>schema/</code> + <code>schema/__init__.py</code></td><td><code>DINO_EMBEDDING</code> enum; <code>label</code>/<code>desc</code> only</td><td><span class="pill ok">S</span></td></tr>
+      <tr><td>Pipeline</td><td><code>_core/_pipeline_parts/_image_pipeline_core.py</code></td><td><code>measure()</code> sends <code>MeasureEmbedding</code> frames to an embeddings payload instead of merging them</td><td><span class="pill mid">S–M</span></td></tr>
+      <tr><td>CLI per-image writers</td><td>single-pass worker, Stage 3 worker, measure mode</td><td>thread the payload into the store write; record the digest in the completion marker through the root</td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>Process mode</td><td><code>_cli/_cli_process_only.py</code>, <code>_cli_failure_tracker.py</code></td><td>run image-scope embedders after <code>apply()</code>; bump <code>PROCESS_LAYER_SEMANTICS_REVISION</code> 4 → 5 so continuation re-derives stores without embeddings</td><td><span class="pill ok">S</span></td></tr>
+      <tr><td>Finalizer</td><td><code>_cli_output_manager.py</code>, <code>_cli_parquet_agg.py</code>, README generator</td><td>publish <code>deliverables/embeddings/&lt;id&gt;.parquet</code>; keep it out of master, mirror and splits; document it</td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>Docs</td><td><code>working-with-ome-zarr</code> skill, <code>zarr_storage.md</code>, root <code>CLAUDE.md</code></td><td>store contract table, rewrite rules</td><td><span class="pill ok">S</span></td></tr>
+      <tr><td>Tests</td><td><code>tests/unit/…</code></td><td>carried by each writer; survives <code>--mode measure</code>; stale on objmap change; consolidated metadata lists the group; independent reread with zarr-python and pyarrow</td><td><span class="pill mid">M</span></td></tr>
+      <tr><td>GPU staging (optional)</td><td><code>_cli_validation.py</code>, <code>_cli_staged_*.py</code>, <code>_cli_stage2_token.py</code></td><td>option B or C from §4</td><td><span class="pill hard">L</span></td></tr>
+      <tr><td>AutoConvertRaw-GC</td><td>pipeline JSON, <code>vendor/</code>, <code>Dockerfile</code>, <code>process.py</code>, <code>plan.py</code>, configs</td><td>see §5</td><td><span class="pill mid">S–M</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="phases">
+  <h2><span class="secnum">8</span>Suggested order</h2>
+  <p>P1 comes first because both products depend on it. P2 and P3 can then run in parallel, and P4 waits for measured CPU throughput.</p>
+  <div class="phases">
+    <div class="ph"><span class="id">P1 · PhenoTypic</span><b>Embeddings namespace</b><p>§3 contract, carry in every writer, stale binding, tests. No model involved.</p></div>
+    <div class="ph"><span class="id">P2 · both repos</span><b>Image embeddings in process mode</b><p>Image-scope embedder, process hook, new wheel and container, smoke pilot, then a decision on backfill.</p></div>
+    <div class="ph"><span class="id">P3 · PhenoTypic</span><b>MeasureDinoEmbedding on CPU</b><p>Measurer, pipeline routing, per-image writers, <code>deliverables/embeddings/</code>.</p></div>
+    <div class="ph"><span class="id">P4 · optional</span><b>GPU staging</b><p>Option B (dense Stage-2 signal) or C (Stage 4), chosen once P3's CPU timings are measured.</p></div>
+  </div>
+</section>
+
+<section id="decide">
+  <h2><span class="secnum">9</span>Decisions only you can make</h2>
+  <ol class="qs">
+    <li><b>What should AutoConvertRaw-GC store?</b><span>Image vectors only (about 0.3 GB in total), a dense grid (0.3–9.5 TB depending on resolution and model), or both. A dense grid would let <code>MeasureDinoEmbedding</code> pool from the input store and skip re-running the model, but it only supports <code>masked_dense</code> pooling.</span></li>
+    <li><b>Which model and precision?</b><span>DINOv2 small, base or large, and fp16 or fp32. This sets storage (§6), container size, and CPU time per image.</span></li>
+    <li><b>Per-colony pooling?</b><span><code>crop_cls</code> (one forward pass per colony, the best per-colony representation) or <code>masked_dense</code> (one pass per plate, coarse when a colony spans only a few 14-px patches).</span></li>
+    <li><b>Should result stores inherit the input store's image embeddings?</b><span>A full run reads an AutoConvertRaw-GC store as pixels and writes a new store elsewhere, so today the embeddings stay behind in the input store. They could be copied forward, referenced by input digest, or left where they are.</span></li>
+    <li><b>Is CPU good enough for the first version?</b><span>If yes, P4 waits. If GPU is required from the start, choose between B and C first, because it changes P3's design.</span></li>
+  </ol>
+</section>
+
+<footer>Read from PhenoTypic (<code>src/</code> identical to <code>main</code> @ 251e364fa) and AutoConvertRaw-GC @ 33046cb on 2026-11-12. Storage figures are arithmetic from stated assumptions; nothing on this page was benchmarked. Companion page: PhenoTypic Measurement Data Flow.</footer>
+</div>

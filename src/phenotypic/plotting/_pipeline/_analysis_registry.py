@@ -160,7 +160,7 @@ class AnalysisRegistry:
                     )
                 # Verify both mirrors and consume Parquet under the same lock.
                 resolve_manifest_artifact_path(
-                    base, analysis_id, entry, artifact="csv"
+                    base, analysis_id, entry, artifact="tsv"
                 )
                 parquet_path = resolve_manifest_artifact_path(
                     base, analysis_id, entry, artifact="parquet"

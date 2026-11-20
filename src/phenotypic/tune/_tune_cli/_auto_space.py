@@ -33,7 +33,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.sdk_ import _io_constants as io
-from phenotypic.sdk_ import atomic_write_text
+from phenotypic.sdk_ import atomic_write_text, old_typed_config_sibling
 
 from .._search_space import InferredSearchSpace, infer_search_space
 
@@ -65,9 +65,12 @@ def run_auto_space(pipeline: object, output_dir: str | Path) -> InferredSearchSp
     output_dir = Path(output_dir)
     io.deliverables_dir(output_dir).mkdir(parents=True, exist_ok=True)
     proposal = infer_search_space(pipeline)
-    atomic_write_text(
-        io.tuning_spec_path(output_dir), proposal.model_dump_json(indent=2)
-    )
+    spec_path = io.tuning_spec_path(output_dir)
+    atomic_write_text(spec_path, proposal.model_dump_json(indent=2))
+    # Spec A4: publish the new name first, then retire a pre-flip twin.
+    old_typed = old_typed_config_sibling(spec_path)
+    if old_typed is not None:
+        old_typed.unlink(missing_ok=True)
     return proposal
 
 

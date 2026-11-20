@@ -348,7 +348,10 @@ def add_metadata_image_name_from_filename(frame: pl.DataFrame) -> pl.DataFrame:
     if "filename" in frame.columns:
         filename_stem = pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1)
         embedded_store_stem = pl.col("filename").str.extract(
-            r"([^/\\]+)\.ome\.zarr[/\\]tables[/\\]measurements[/\\]table\.parquet$",
+            # v2 run folder (#281 spec D1) or the v1 flat layout.
+            r"([^/\\]+)\.ome\.zarr[/\\]tables[/\\]"
+            r"(?:[1-9][0-9]*-(?:[0-9a-f]{12}|unknown)[/\\])?"
+            r"measurements[/\\]table\.parquet$",
             1,
         )
         source_stem = pl.coalesce(embedded_store_stem, filename_stem)

@@ -246,7 +246,7 @@ class TestFileIO:
             pipe.to_json(filepath)
 
             assert typed_filepath.exists()
-            assert typed_filepath.name == "pipeline.json.pht-pipe"
+            assert typed_filepath.name == "pipeline.pht-pipe.json"
 
     def test_load_from_file(self):
         """Test loading pipeline from a file."""

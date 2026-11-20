@@ -376,3 +376,72 @@ def test_process_mode_ignores_metadata_in_the_refusal(
 
     assert "lies inside --output" not in result.output, result.output
     assert metadata.exists()
+
+
+@pytest.mark.parametrize("flag", ["--overwrite", "--restart"])
+def test_a_process_table_it_would_lose_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, flag: str
+) -> None:
+    """#281 P5 T1: a grid embedder into a flat export is refused above every mutation.
+
+    ``--restart`` clears ``.phenotypic/`` and ``--overwrite`` deletes the run;
+    the refusal must leave both untouched. Torch-free: nothing loads a model.
+    """
+    from tests._tiny_run import grid_embedder, with_meas
+
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+
+    result = _invoke(
+        "--mode", "process", "--layer", "rgb", "--process-format", "tiff",
+        "--pipeline", str(with_meas(tmp_path, grid=grid_embedder())),
+        "--input", str(image_tree), "--output", str(previous_run), flag,
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "meas:grid" in result.output and "would be lost" in result.output
+    assert (previous_run / PREVIOUS).read_text(encoding="utf-8") == "keep me"
+    assert state.read_text(encoding="utf-8") == "{}"
+
+
+@pytest.mark.parametrize(
+    ("extra", "needle"),
+    [
+        (("--overwrite",), "--overwrite is refused for an in-place"),
+        (("--overwrite", "--dry-run"), "--overwrite is refused for an in-place"),
+        (("--overwrite", "--skip-validation"), "--overwrite is refused for an in-place"),
+        # --restart is admitted in place (user ruling 2026-11-18), so the
+        # next refusal is what stops it: a raw tree has no store to write into.
+        (("--restart",), "is not a PhenoTypic store"),
+        (("--restart", "--dry-run"), "is not a PhenoTypic store"),
+    ],
+)
+def test_an_in_place_refusal_comes_before_the_mutating_half(
+    image_tree: Path, tmp_path: Path, extra: tuple[str, ...], needle: str
+) -> None:
+    """#281 P5 T3: in place (--output equal to --input), refusals precede every mutation.
+
+    The refusals are un-skippable and sit above the --restart clear, the
+    --overwrite rmtree and the --dry-run exit, so the input tree, its
+    machine state included, is byte-identical afterwards. The --overwrite
+    refusal also fires before the deletion-path refusal, which would name
+    --input otherwise. Torch-free: nothing loads a model.
+    """
+    from tests._tiny_run import grid_embedder, with_meas
+
+    state = image_tree / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(image_tree)
+
+    result = _invoke(
+        "--mode", "process", "--layer", "rgb", "--process-format", "zarr",
+        "--pipeline", str(with_meas(tmp_path, grid=grid_embedder())),
+        "--input", str(image_tree), "--output", str(image_tree), *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and needle in errors[0], result.output
+    assert _tree_digest(image_tree) == before

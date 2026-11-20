@@ -91,6 +91,7 @@ IMPORT_FIRST_ENTRY_MODULES = (
     "phenotypic._cli._cli_staged_slurm_worker",
     "phenotypic._cli._cli_recompile_worker",
     "phenotypic._cli._cli_checkpoint_handler",
+    "phenotypic._cli._cli_wait",
     # Plain modules, so package discovery below never finds them. `_startup_perf` is
     # the first thing every entry point imports, and `settings` is in `_LAZY_SUBPACKAGES`.
     "phenotypic._startup_perf",
@@ -425,4 +426,35 @@ def test_gui_help_loads_no_heavy_module() -> None:
     assert "phenotypic-gui" in report["help"]
     assert "--url-prefix" in report["help"]
     assert report["control"] is True
+    assert report["loaded"] == []
+
+
+def test_wait_help_loads_no_heavy_module() -> None:
+    """Tier 2: ``phenotypic-wait --help`` prints help without the library behind it.
+
+    The DVC stage runs the waiter right after a SLURM submission (#281 spec
+    C3), so its startup cost is paid once per stage. Its seams import the
+    scheduler and run-state readers lazily, which is what keeps this empty.
+    """
+    report = run_startup_probe(
+        "import contextlib, io\n"
+        "from phenotypic._cli._cli_wait import main\n"
+        "buffer = io.StringIO()\n"
+        "code = None\n"
+        "with contextlib.redirect_stdout(buffer):\n"
+        "    try:\n"
+        "        main(['--help'], prog_name='phenotypic-wait')\n"
+        "    except SystemExit as exc:\n"
+        "        code = exc.code\n"
+        f"watched = {sorted(HEAVY_STARTUP_MODULES)!r}\n"
+        "report = {'exit': code, 'help': buffer.getvalue(),\n"
+        "          'loaded': [m for m in watched if m in sys.modules],\n"
+        "          'scheduler': 'phenotypic._cli._cli_staged_orchestration' in sys.modules,\n"
+        "          'control': 'click' in sys.modules}\n"
+    )
+    assert report["exit"] in (0, None)
+    assert "phenotypic-wait" in report["help"]
+    assert "--timeout-seconds" in report["help"]
+    assert report["control"] is True
+    assert report["scheduler"] is False
     assert report["loaded"] == []

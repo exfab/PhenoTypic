@@ -23,9 +23,7 @@ from tests._ngff_conformance import assert_store_conforms
 
 from phenotypic.sdk_ import (
     EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
-    PhenotypicAttr,
-    read_phenotypic_attributes,
+    latest_measurement_run,
 )
 
 
@@ -77,27 +75,23 @@ def test_final_store_embeds_an_interoperable_measurement_table(
 
     assert store is not None
     assert_store_conforms(store)
-    table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    run = latest_measurement_run(store)
+    assert run is not None
+    table_path = run.measurements_path()
     assert table_path.is_file()
-    assert (
-        json.loads((store / "tables" / "zarr.json").read_text())["node_type"]
-        == "group"
-    )
-    assert (
-        json.loads(
-            (store / "tables" / "measurements" / "zarr.json").read_text()
-        )["node_type"]
-        == "group"
-    )
+    for group in (
+        store / "tables",
+        store / "tables" / run.run_id,
+        store / "tables" / run.run_id / "measurements",
+    ):
+        assert json.loads((group / "zarr.json").read_text())["node_type"] == "group"
 
-    descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
-        "measurements"
-    ]
+    descriptor = run.descriptor["measurements"]
     assert descriptor == {
         "schema_version": 1,
         "type": "object_measurements",
         "format": "parquet",
-        "path": "tables/measurements/table.parquet",
+        "path": f"tables/{run.run_id}/measurements/table.parquet",
         "measurement_columns": [
             "Object_Label",
             "Size_Area",
@@ -221,14 +215,13 @@ def test_zero_object_table_is_valid_and_keeps_its_ordered_schema(
     )
 
     assert store is not None
-    descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
-        "measurements"
-    ]
+    run = latest_measurement_run(store)
+    descriptor = run.descriptor["measurements"]
     assert descriptor["measurement_columns"] == [
         "Object_Label",
         "Size_Area",
         "Metadata_Dataset",
     ]
-    table = pq.read_table(store / MEASUREMENT_TABLE_RELATIVE_PATH)
+    table = pq.read_table(run.measurements_path())
     assert table.num_rows == 0
     assert table.column_names == descriptor["measurement_columns"]

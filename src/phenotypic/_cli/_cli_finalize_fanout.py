@@ -495,10 +495,11 @@ def _work_ids_for_sources(
     At the merge that view is gone, and re-deriving it from live state would
     reintroduce exactly the live-derivation CAN-5 exists to remove.
 
-    The record is the mapping: a source is
-    ``<store>/tables/measurements/table.parquet``, so the store is its
-    ``MEASUREMENT_TABLE_RELATIVE_PATH``-th parent and the record is read by
-    that store's stem.
+    The record is the mapping: a source is a store's
+    ``tables/<n>-<sha12>/measurements/table.parquet`` (or a v1 store's flat
+    ``tables/measurements/table.parquet``), so its store is the nearest
+    ``.ome.zarr`` ancestor (:func:`~phenotypic.sdk_._table_runs.store_of_table_path`)
+    and the record is read by that store's stem.
 
     **A source with no readable record raises rather than being skipped.**
     Skipping would silently shrink the planned set, and the aggregate proof
@@ -517,13 +518,13 @@ def _work_ids_for_sources(
         RuntimeError: A source has no record, or a record carries no
             ``work_id``.
     """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, store_stem
+    from phenotypic.sdk_ import store_stem
     from phenotypic.sdk_._image_record import read_image_record
+    from phenotypic.sdk_._table_runs import store_of_table_path
 
-    depth = len(MEASUREMENT_TABLE_RELATIVE_PATH.parts)
     work_ids: list[str] = []
     for source, dataset in sources.items():
-        store = Path(source).parents[depth - 1]
+        store = store_of_table_path(Path(source))
         record = read_image_record(output_dir, dataset, store_stem(store))
         if record is None:
             raise RuntimeError(

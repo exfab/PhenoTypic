@@ -19,23 +19,24 @@ from ._cli_completion import (
 from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_recompile_recovery import (
     assert_no_unrecoverable_measurement_authority,
+    certified_measurement_table,
     image_authority_payload,
     recoverable_recompile_measurement_sources,
     recompile_store_lock_path,
+    table_lies_in_store,
 )
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     CommitGuard,
     DIR_RESULTS,
     DIR_ZARR,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     source_image_stem,
     store_stem,
     dataset_overlays_dir,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
-    logs_dir,
+    slurm_logs_dir,
     progress_dir,
     recompile_dir,
     slurm_scripts_dir,
@@ -90,8 +91,10 @@ def build_recompile_tasks(
         )
         for dataset_name in dataset_names
     }
+    # Keyed by the table each repair's record certifies (spec D6a), which
+    # `_overlay_tasks_for_dataset` records as the task's `table_path`.
     recoverable_by_table = {
-        (Path(str(task["store_path"])) / MEASUREMENT_TABLE_RELATIVE_PATH): task
+        Path(str(task["table_path"])): task
         for overlay_tasks in overlay_tasks_by_dataset.values()
         for task in overlay_tasks
         if task.get("restore_marker_authority")
@@ -125,7 +128,7 @@ def build_recompile_tasks(
                 if dataset == dataset_name
             }
             recoverable_overlay_tables = {
-                Path(str(task["store_path"])) / MEASUREMENT_TABLE_RELATIVE_PATH
+                Path(str(task["table_path"]))
                 for task in overlay_tasks_by_dataset[dataset_name]
                 if task.get("restore_marker_authority")
             }
@@ -157,9 +160,7 @@ def build_recompile_tasks(
                     {
                         "dataset_name": str(repair["dataset_name"]),
                         "store_path": str(store_path),
-                        "table_path": str(
-                            store_path / MEASUREMENT_TABLE_RELATIVE_PATH
-                        ),
+                        "table_path": str(repair["table_path"]),
                         "overlay_alpha": float(repair["overlay_alpha"]),
                     }
                 )
@@ -265,7 +266,7 @@ def generate_recompile_slurm_scripts(
     if attempt_id is not None:
         script_dir = script_dir / attempt_id
     script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = logs_dir(output_dir) / "slurm" / "recompile"
+    log_dir = slurm_logs_dir(output_dir) / "recompile"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     scripts: list[Path] = []
@@ -336,14 +337,20 @@ def _overlay_tasks_for_dataset(
             "store_path": str(store_path.absolute()),
             "overlay_alpha": overlay_alpha,
         }
-        if _marker_binds_overlay_and_table(
+        # The table the image's record certifies: with several run folders
+        # in the store (spec D1), no fixed join names the one it binds.
+        table_path = certified_measurement_table(
+            output_dir, dataset_name, stem
+        )
+        if table_path is not None and _marker_binds_overlay_and_table(
             output_dir,
             dataset_name,
             stem,
             overlay_path,
-            store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+            table_path,
         ):
             task["restore_marker_authority"] = True
+            task["table_path"] = str(table_path)
         tasks.append(task)
     return tasks
 
@@ -378,24 +385,57 @@ def repair_overlay_marker_authority(
     *,
     lifecycle_epoch: str | None = None,
     commit_guard: CommitGuard | None = None,
+    table_path: Path | None = None,
 ) -> bool:
-    """Repair one missing overlay and refresh only unchanged marker authority."""
+    """Repair one missing overlay and refresh only unchanged marker authority.
+
+    Args:
+        table_path: The measurement table the repair was planned against.
+            ``None`` takes the one the image's record certifies now
+            (:func:`certified_measurement_table`). Either way the record
+            must still certify exactly this table, inside *store_path*, or
+            the repair is refused.
+    """
     overlay_path = (
         dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
     )
-    table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
     lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
+        bound = _bound_table(
+            output_dir, dataset_name, stem, store_path, table_path
+        )
         return _repair_overlay_marker_authority_locked(
             output_dir,
             dataset_name,
             stem,
             overlay_path,
-            table_path,
+            bound,
             render_overlay,
             lifecycle_epoch=lifecycle_epoch,
             commit_guard=commit_guard,
         )
+
+
+def _bound_table(
+    output_dir: Path,
+    dataset_name: str,
+    stem: str,
+    store_path: Path,
+    table_path: Path | None,
+) -> Path | None:
+    """The table an overlay repair binds: *table_path*, else the certified one.
+
+    ``None`` when it does not lie in *store_path*; the recovery check then
+    refuses, since no table of this store is bound.
+    """
+    bound = (
+        certified_measurement_table(output_dir, dataset_name, stem)
+        if table_path is None
+        else Path(table_path)
+    )
+    if bound is None or not table_lies_in_store(bound, store_path):
+        return None
+    return bound
 
 
 def _repair_overlay_marker_authority_locked(
@@ -403,7 +443,7 @@ def _repair_overlay_marker_authority_locked(
     dataset_name: str,
     stem: str,
     overlay_path: Path,
-    table_path: Path,
+    table_path: Path | None,
     render_overlay: Callable[[CommitGuard | None], object],
     *,
     lifecycle_epoch: str | None,
@@ -445,20 +485,27 @@ def refresh_overlay_marker_authority(
     *,
     lifecycle_epoch: str | None = None,
     commit_guard: CommitGuard | None = None,
+    table_path: Path | None = None,
 ) -> bool:
-    """Compare all stable artifacts and refresh a repaired overlay marker."""
+    """Compare all stable artifacts and refresh a repaired overlay marker.
+
+    Args:
+        table_path: As for :func:`repair_overlay_marker_authority`.
+    """
     overlay_path = (
         dataset_overlays_dir(output_dir, dataset_name) / f"{stem}.png"
     )
-    table_path = Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
     lock_path = recompile_store_lock_path(output_dir, dataset_name, stem)
     with exclusive_path_lock(lock_path, timeout=60.0):
+        bound = _bound_table(
+            output_dir, dataset_name, stem, store_path, table_path
+        )
         return _refresh_overlay_marker_authority_locked(
             output_dir,
             dataset_name,
             stem,
             overlay_path,
-            table_path,
+            bound,
             lifecycle_epoch=lifecycle_epoch,
             commit_guard=commit_guard,
         )
@@ -469,7 +516,7 @@ def _refresh_overlay_marker_authority_locked(
     dataset_name: str,
     stem: str,
     overlay_path: Path,
-    table_path: Path,
+    table_path: Path | None,
     *,
     lifecycle_epoch: str | None,
     commit_guard: CommitGuard | None,
@@ -515,7 +562,7 @@ def _overlay_recovery_marker(
     dataset_name: str,
     stem: str,
     overlay_path: Path,
-    table_path: Path,
+    table_path: Path | None,
     *,
     overlay_present: bool,
 ) -> (
@@ -526,11 +573,20 @@ def _overlay_recovery_marker(
     ]
     | None
 ):
-    """Return validated marker state for missing or newly repaired overlay."""
+    """Return validated marker state for missing or newly repaired overlay.
+
+    *table_path* is the measurement table the record must certify -- one run
+    folder's, in a v2 store (spec D6a) -- and the store is the one it lies
+    in. ``None`` (no table of the store is bound) validates nothing.
+    """
+    if table_path is None:
+        return None
+    from phenotypic.sdk_ import store_of_table_path
+
     output_root = Path(output_dir).resolve()
     canonical_store = zarr_store_path(output_root, dataset_name, stem)
-    store_path = Path(table_path).parents[2]
     try:
+        store_path = store_of_table_path(Path(table_path))
         if store_path.is_symlink():
             return None
         resolved_store = store_path.resolve(strict=True)

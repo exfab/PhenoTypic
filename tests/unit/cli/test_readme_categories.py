@@ -43,7 +43,7 @@ def test_categories_section_lists_present_columns_only() -> None:
     assert "## Measurement Categories" in section
     assert "### Starting Metrics" in section
     assert CATEGORIES.STARTING_METRICS.desc in section
-    assert "measurements_by_category/StartingMetrics.csv" in section
+    assert "measurements_by_category/StartingMetrics.tsv" in section
     assert f"`{SIZE.AREA}`" in section
     assert "ColorLab_L*Medoid" not in section  # MeasureColor not configured
 

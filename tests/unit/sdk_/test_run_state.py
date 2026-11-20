@@ -483,9 +483,18 @@ def _record_an_older_metadata_snapshot(root, stem, digest="e" * 64):
     afterwards through the real publisher. Without that the tree would be
     incomplete for an unrelated reason and the advisory assertion would be
     reading the wrong tree.
+
+    Since #281 P3 the block lives in the run entry, not at the root
+    (spec D3). The fixture's records declare no ``measurements`` artifact,
+    so the reader takes the record-less default, the latest run holding
+    ``measurements`` -- the store's one run -- and that is where it goes.
     """
     from phenotypic._cli._cli_completion import publish_image_success
-    from phenotypic.sdk_ import dataset_overlays_dir, zarr_store_path
+    from phenotypic.sdk_ import (
+        dataset_overlays_dir,
+        latest_measurement_run,
+        zarr_store_path,
+    )
     from phenotypic.sdk_._run_state import (
         _METADATA_TABLE_ATTR,
         _SNAPSHOT_SHA256_ATTR,
@@ -494,11 +503,13 @@ def _record_an_older_metadata_snapshot(root, stem, digest="e" * 64):
     from tests._output_layout import FIXTURE_DATASET
 
     store = zarr_store_path(root, FIXTURE_DATASET, stem)
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} declares no measurements table"
     root_json = store / STORE_ROOT_JSON
     payload = json.loads(root_json.read_text(encoding="utf-8"))
-    payload["attributes"][PhenotypicAttr.ROOT][_METADATA_TABLE_ATTR] = {
-        _SNAPSHOT_SHA256_ATTR: digest
-    }
+    payload["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES]["runs"][
+        run.run_id
+    ][_METADATA_TABLE_ATTR] = {_SNAPSHOT_SHA256_ATTR: digest}
     root_json.write_text(json.dumps(payload), encoding="utf-8")
     publish_image_success(
         root,
@@ -526,7 +537,7 @@ def _authorize_measurements(root, stem, *, projectable=True):
     -- the key ``authorized_measurement_sources`` picks on -- so the
     exclusion the advisory is about is reachable at all.
 
-    With ``projectable=False`` the store's ``tables.measurements``
+    With ``projectable=False`` the store's run's ``measurements``
     descriptor is removed first, which is the shape
     ``tests/unit/cli/test_finalize_run.py::_strip_measurement_descriptor``
     drives the projection's Step 0b with: ``table.parquet`` still on disk,
@@ -538,9 +549,9 @@ def _authorize_measurements(root, stem, *, projectable=True):
     """
     from phenotypic._cli._cli_completion import publish_image_success
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         atomic_write_json,
         dataset_overlays_dir,
+        latest_measurement_run,
         zarr_store_path,
     )
     from phenotypic.sdk_.ngff_ import (
@@ -551,12 +562,15 @@ def _authorize_measurements(root, stem, *, projectable=True):
     from tests._output_layout import FIXTURE_DATASET
 
     store = zarr_store_path(root, FIXTURE_DATASET, stem)
+    run = latest_measurement_run(store)
+    assert run is not None, f"{store} declares no measurements table"
+    table = run.measurements_path()
     if not projectable:
         root_json = store / STORE_ROOT_JSON
         payload = json.loads(root_json.read_text(encoding="utf-8"))
-        payload["attributes"][PhenotypicAttr.ROOT][
-            PhenotypicAttr.TABLES
-        ].pop(MEASUREMENT_TABLE_GROUP)
+        payload["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES][
+            "runs"
+        ][run.run_id].pop(MEASUREMENT_TABLE_GROUP)
         atomic_write_json(root_json, payload)
     publish_image_success(
         root,
@@ -569,7 +583,7 @@ def _authorize_measurements(root, stem, *, projectable=True):
         lifecycle_epoch="local",
         artifacts={
             "store": store,
-            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "measurements": table,
             "overlay": dataset_overlays_dir(root, FIXTURE_DATASET)
             / f"{stem}.png",
         },
@@ -2121,18 +2135,14 @@ def test_staged_completeness_reads_the_embedded_table_not_the_legacy_one(
 
     Creating the legacy file must not make this answer True.
     """
-    from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-        dataset_measurements_dir,
-        zarr_store_path,
-    )
+    from phenotypic.sdk_ import dataset_measurements_dir, zarr_store_path
     from phenotypic.sdk_._run_state import staged_image_is_complete
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+    from tests._tiny_run import journal_table_path
 
     stem = FIXTURE_STEMS[0]
-    embedded = (
+    embedded = journal_table_path(
         zarr_store_path(complete_run, FIXTURE_DATASET, stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
     )
     assert embedded.is_file(), "fixture no longer embeds a measurement table"
     assert (

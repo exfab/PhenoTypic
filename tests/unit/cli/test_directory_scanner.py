@@ -180,7 +180,8 @@ def test_measure_core_embeds_the_table_in_the_bare_stem_store(
     from phenotypic._cli._cli_process_single import (
         process_single_store_measure_core,
     )
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from phenotypic._cli._cli_failure_tracker import file_sha256
+    from tests._tiny_run import owned_table_run
 
     store = _real_store(tmp_path, "ds", "img")
     manager = OutputManager.from_config(tmp_path, ".tiff", save_overlays=False)
@@ -199,8 +200,9 @@ def test_measure_core_embeds_the_table_in_the_bare_stem_store(
         ]
     )
 
+    pipeline = _measure_pipeline(tmp_path)
     process_single_store_measure_core(
-        pipeline_path=_measure_pipeline(tmp_path),
+        pipeline_path=pipeline,
         store_path=store,
         output_dir=tmp_path,
         dataset_name="ds",
@@ -208,7 +210,9 @@ def test_measure_core_embeds_the_table_in_the_bare_stem_store(
         output_manager=manager,
     )
 
-    assert (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
+    # The table lands in the measure pipeline's own run folder (#281 D6).
+    run = owned_table_run(store, file_sha256(pipeline))
+    assert run is not None and run.measurements_path().is_file()
     assert not (tmp_path / "results" / "ds" / "measurements").exists()
 
 
@@ -621,10 +625,13 @@ def test_readme_documents_the_store_and_its_interoperability(
         assert viewer in text
     assert ".h5" not in text
     assert "load_hdf5" not in text
-    # Forward runs embed the object table in the store; the Saved Layers
-    # table must not advertise the retired per-image `measurements/` folder.
+    # Forward runs embed the object table in the store, one run folder per
+    # measuring pipeline (#281 spec D1); the Saved Layers table must name that
+    # layout, not the v1 flat path, and must not advertise the retired
+    # per-image `measurements/` folder.
     layers = text.split("## Saved Layers", 1)[1].split("\n## ", 1)[0]
-    assert "tables/measurements/table.parquet" in layers
+    assert "tables/<n>-<sha12>/measurements/table.parquet" in layers
+    assert "tables/measurements/table.parquet" not in layers
     assert "| `measurements/` |" not in layers
 
 

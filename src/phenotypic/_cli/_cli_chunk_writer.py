@@ -318,13 +318,18 @@ def _scan_unchunked_parquets(
 
 def _chunk_state_key(parquet_path: Path) -> str:
     """Return a stable dataset/image key for legacy or embedded authority."""
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, STORE_SUFFIX
+    from phenotypic.sdk_ import STORE_SUFFIX
+    from phenotypic.sdk_._table_runs import store_of_table_path
+
+    from ._cli_parquet_agg import is_embedded_measurement_table
 
     path = Path(parquet_path)
-    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
-    if tuple(path.parts[-len(suffix) :]) == suffix:
-        store = path.parents[2]
-        dataset = path.parents[4].name
+    if is_embedded_measurement_table(path):
+        # `results/<ds>/zarr/<stem>.ome.zarr/tables/[<run>/]measurements/...`:
+        # the key names the image, never the run folder, so a re-measure into
+        # another folder does not read as a new image.
+        store = store_of_table_path(path)
+        dataset = store.parent.parent.name
         stem = store.name.removesuffix(STORE_SUFFIX)
         return f"{dataset}/{stem}.parquet"
     return f"{path.parent.parent.name}/{path.name}"

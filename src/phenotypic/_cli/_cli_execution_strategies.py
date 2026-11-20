@@ -59,13 +59,16 @@ from ._cli_failure_tracker import (
     work_identity_for_image,
 )
 from ._cli_reference import ReferencePin
-from ._cli_completion import image_data_artifact, publish_image_success
+from ._cli_completion import (
+    image_data_artifact,
+    image_measurement_artifact,
+    publish_image_success,
+)
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
 from phenotypic.sdk_ import (
     JobMetadataKey,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dashboard_html_path,
     event_log_path,
     atomic_write_bytes,
@@ -180,7 +183,9 @@ def _publish_local_image_success(
             source_image_stem(image_path),
         )
         artifacts = {
-            "measurements": data_path / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "measurements": image_measurement_artifact(
+                output_dir, dataset, source_image_stem(image_path)
+            ),
             data_key: data_path,
         }
         if output_manager.save_overlays:
@@ -563,6 +568,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 reference_pin=ReferencePin(
                     source_image_stem(image_path), identity.reference_digest
                 ),
+                input_root=self.config.input_path,
             )
 
             _publish_local_image_success(
@@ -676,23 +682,43 @@ class LocalParallelStrategy(ExecutionStrategy):
                 self.config, dataset.name, image_path
             )
             work_identity = (identity.work_id, identity.relative_path)
-            process_single_apply_only_core(
-                pipeline_path=self.config.pipeline_json,
-                image_path=image_path,
-                input_root=self.config.input_path,
-                output_dir=output_dir,
-                image_type=self.config.image_type,
-                layer=self.config.process_only_layer,  # type: ignore[arg-type]
-                read_kwargs=read_kwargs,
-                cli_nrows=self.config.nrows,
-                cli_ncols=self.config.ncols,
-                process_format=self.config.process_format,
-                run_initiation=self.config.run_initiation,
-                dataset_name=dataset.name,
-                reference_pin=ReferencePin(
-                    source_image_stem(image_path), identity.reference_digest
-                ),
+            reference_pin = ReferencePin(
+                source_image_stem(image_path), identity.reference_digest
             )
+            if self.config.in_place:
+                # --output equal to --input (#281 spec E7): the run folder is
+                # added to the input store where it is.
+                from ._cli_process_in_place import process_in_place_core
+
+                process_in_place_core(
+                    self.config.pipeline_json,
+                    image_path,
+                    self.config.input_path,
+                    layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=read_kwargs,
+                    image_type=self.config.image_type,
+                    cli_nrows=self.config.nrows,
+                    cli_ncols=self.config.ncols,
+                    run_initiation=self.config.run_initiation,
+                    dataset_name=dataset.name,
+                    reference_pin=reference_pin,
+                )
+            else:
+                process_single_apply_only_core(
+                    pipeline_path=self.config.pipeline_json,
+                    image_path=image_path,
+                    input_root=self.config.input_path,
+                    output_dir=output_dir,
+                    image_type=self.config.image_type,
+                    layer=self.config.process_only_layer,  # type: ignore[arg-type]
+                    read_kwargs=read_kwargs,
+                    cli_nrows=self.config.nrows,
+                    cli_ncols=self.config.ncols,
+                    process_format=self.config.process_format,
+                    run_initiation=self.config.run_initiation,
+                    dataset_name=dataset.name,
+                    reference_pin=reference_pin,
+                )
             _publish_local_image_success(
                 self.config,
                 self.output_manager,
@@ -789,8 +815,12 @@ class LocalParallelStrategy(ExecutionStrategy):
         """
         # Lazy-import the measure worker to match the forward-run pattern and
         # avoid any new top-level import cycle.
-        from ._cli_process_single import process_single_store_measure_core
+        from ._cli_process_single import (
+            measure_scientific_boundary,
+            process_single_store_measure_core,
+        )
 
+        attempt_id = uuid4().hex
         append_event(event_log, dataset.name, image_path.name, "started")
 
         try:
@@ -799,14 +829,15 @@ class LocalParallelStrategy(ExecutionStrategy):
             # store root so a GridImage rehydrates with its grid state intact,
             # and falls back to the configured ``--image-type`` only when the
             # block carries none.
-            process_single_store_measure_core(
-                pipeline_path=self.config.pipeline_json,
-                store_path=image_path,
-                output_dir=output_dir,
-                dataset_name=dataset.name,
-                image_type=self.config.image_type,  # type: ignore[arg-type]
-                output_manager=self.output_manager,
-            )
+            with measure_scientific_boundary():
+                process_single_store_measure_core(
+                    pipeline_path=self.config.pipeline_json,
+                    store_path=image_path,
+                    output_dir=output_dir,
+                    dataset_name=dataset.name,
+                    image_type=self.config.image_type,  # type: ignore[arg-type]
+                    output_manager=self.output_manager,
+                )
 
             append_completion_event(
                 event_log, dataset.name, image_path.name, "completed"
@@ -818,6 +849,25 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             error_msg = str(e)
             tb = traceback.format_exc()
+
+            # The SLURM measure worker's twin (#281 P2 C11d): the record is
+            # keyed by the measure work id `work_id_for_image` derives from
+            # this config, outside the forward inventory. The local exit code
+            # and metrics.json count this invocation's own failures instead.
+            if not _record_local_terminal_failure(
+                self.config,
+                output_dir,
+                dataset.name,
+                image_path,
+                e,
+                tb,
+                attempt_id,
+            ) and isinstance(e, PerImageScientificError):
+                logger.warning(
+                    "Measure failure for %s/%s was not journalled as terminal",
+                    dataset.name,
+                    image_path.name,
+                )
 
             logger.error(
                 "Measure rerun failed for %s/%s:\n%s",

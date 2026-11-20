@@ -9,6 +9,8 @@ from types import SimpleNamespace
 from click.testing import CliRunner
 import pytest
 
+from phenotypic.sdk_ import RunExitCode
+
 
 def _store(path: Path, *, schema_version: int = 1) -> Path:
     """Create one minimal PhenoTypic store with durable provenance."""
@@ -289,7 +291,7 @@ def test_public_slurm_dispatch_routes_direct_store_to_provenance_topology(
         store, slurm_args={"slurm_partition": "short"}
     )
 
-    assert result == 0
+    assert result == RunExitCode.SUBMITTED
     assert len(submitted) == 1
     plan = submitted[0]
     assert plan.topology == "provenance_only"

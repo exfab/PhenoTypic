@@ -15,8 +15,8 @@ from pathlib import Path
 import polars as pl
 
 from phenotypic.schema import IMAGE
+from tests._tiny_run import journal_table_path
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     image_record_path,
     zarr_store_path,
 )
@@ -261,7 +261,7 @@ def test_a_legacy_tree_repairs_overlay_authority_on_its_own_version(
 
     _metadata, output = _inverted_store_run(tmp_path)
     store = zarr_store_path(output, "input", "plate")
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    table = journal_table_path(store)
 
     # The overlay has to be a declared artifact for this path to consider the
     # image at all, and absent from disk for `overlay_present=False`. Publish

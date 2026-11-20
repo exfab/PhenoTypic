@@ -1,0 +1,118 @@
+{
+  "zarr_format": 3,
+  "node_type": "group",
+  "attributes": {
+    "ome": {
+      "version": "0.5",
+      "multiscales": [
+        {
+          "axes": [
+            {
+              "name": "c",
+              "type": "channel"
+            },
+            {
+              "name": "y",
+              "type": "space"
+            },
+            {
+              "name": "x",
+              "type": "space"
+            }
+          ],
+          "datasets": [
+            {
+              "path": "0",
+              "coordinateTransformations": [
+                {
+                  "type": "scale",
+                  "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                }
+              ]
+            },
+            {
+              "path": "1",
+              "coordinateTransformations": [
+                {
+                  "type": "scale",
+                  "scale": [
+                    1.0,
+                    2.0,
+                    2.0
+                  ]
+                },
+                {
+                  "type": "translation",
+                  "translation": [
+                    0.0,
+                    0.5,
+                    0.5
+                  ]
+                }
+              ]
+            }
+          ],
+          "type": "mean",
+          "metadata": {
+            "description": "2x block mean over an edge-replicated pad"
+          },
+          "name": "plate"
+        }
+      ],
+      "omero": {
+        "channels": [
+          {
+            "label": "R",
+            "color": "FF0000",
+            "active": true,
+            "family": "linear",
+            "coefficient": 1,
+            "inverted": false,
+            "window": {
+              "min": 0,
+              "max": 255,
+              "start": 0,
+              "end": 255
+            }
+          },
+          {
+            "label": "G",
+            "color": "00FF00",
+            "active": true,
+            "family": "linear",
+            "coefficient": 1,
+            "inverted": false,
+            "window": {
+              "min": 0,
+              "max": 255,
+              "start": 0,
+              "end": 255
+            }
+          },
+          {
+            "label": "B",
+            "color": "0000FF",
+            "active": true,
+            "family": "linear",
+            "coefficient": 1,
+            "inverted": false,
+            "window": {
+              "min": 0,
+              "max": 255,
+              "start": 0,
+              "end": 255
+            }
+          }
+        ],
+        "rdefs": {
+          "model": "color"
+        },
+        "name": "plate"
+      }
+    }
+  }
+}

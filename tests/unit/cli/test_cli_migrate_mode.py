@@ -20,6 +20,7 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from phenotypic.sdk_ import RunExitCode
 from phenotypic.phenotypicCLI import phenotypic_cli
 
 
@@ -398,7 +399,7 @@ def test_migrate_with_repeated_slurm_plans_and_submits_once(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert planned == [
         {
             "output_dir": legacy_run,
@@ -455,7 +456,7 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
         dry_run=True,
     )
 
-    assert result == 0
+    assert result == RunExitCode.SUBMITTED
     assert submitted == [plan]
     assert science.read_bytes() == b"immutable science"
 
@@ -497,7 +498,7 @@ def test_direct_slurm_dry_run_submission_writes_no_science(
         dry_run=True,
     )
 
-    assert result == 0
+    assert result == RunExitCode.SUBMITTED
     assert science.read_bytes() == b"immutable science"
 
 
@@ -863,7 +864,7 @@ def test_slurm_migration_dry_run_preserves_every_output_byte(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert _tree_snapshot(legacy_run) == before
     controls = list(cache.rglob("migration_manifest.json"))
     assert len(controls) == 1
@@ -975,7 +976,7 @@ def test_submission_reports_job_ids_without_scientific_publication(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert "Initial job IDs: 101, 102" in result.output
     # Where the verdict will be: 0.21.0 removed --wait, so nothing awaits it.
     terminal = migrate.migration_terminal_status_path(plan.control_root, "attempt-1")
@@ -1070,7 +1071,7 @@ def test_mocked_slurm_dry_run_preserves_every_directory_and_file_byte(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert submissions == [plan]
     assert "Initial job IDs: 101, 102" in result.output
     assert _tree_snapshot(legacy_run) == before
@@ -1118,7 +1119,7 @@ def test_slurm_dry_run_keeps_its_terminal_outside_science(
         ],
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == RunExitCode.SUBMITTED, result.output
     assert "SLURM migration dry-run submitted" in result.output
     assert migrate.migration_terminal_status_path(
         plan.control_root, "attempt-1"
@@ -1181,8 +1182,8 @@ def test_public_rerun_after_terminal_failure_uses_new_attempt(
     second = CliRunner().invoke(phenotypic_cli, args)
 
     # Submission succeeds either way; the verdict is in the terminal file.
-    assert first.exit_code == 0, first.output
-    assert second.exit_code == 0, second.output
+    assert first.exit_code == RunExitCode.SUBMITTED, first.output
+    assert second.exit_code == RunExitCode.SUBMITTED, second.output
     assert planned == ["attempt-1", "attempt-2"]
 
 
@@ -1297,7 +1298,7 @@ def test_public_rerun_after_failed_submission_uses_a_fresh_attempt(
     )
 
     assert first.exit_code == 1
-    assert second.exit_code == 0, second.output
+    assert second.exit_code == RunExitCode.SUBMITTED, second.output
     assert planned == ["attempt-1", "attempt-2"]
     assert "attempt-2" in second.output
 
@@ -1805,7 +1806,7 @@ def test_running_migrate_twice_converts_zero_and_migrates_zero_headers(
     import polars as pl
 
     from phenotypic._cli._cli_migrate import run_migrate
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+    from phenotypic.sdk_ import declared_measurement_table_path, zarr_store_path
 
     source = legacy_run / "results" / "ds" / "measurements" / "img.parquet"
     source_bytes = source.read_bytes()
@@ -1818,8 +1819,7 @@ def test_running_migrate_twice_converts_zero_and_migrates_zero_headers(
     assert first.headers_migrated == 0
     assert first.tables_migrated > 0
     embedded_columns = pl.read_parquet(
-        zarr_store_path(legacy_run, "ds", "img")
-        / MEASUREMENT_TABLE_RELATIVE_PATH
+        declared_measurement_table_path(zarr_store_path(legacy_run, "ds", "img"))
     ).columns
     assert "MetadataGenetic_Strain" not in embedded_columns
     assert "Metadata_Strain" in embedded_columns
@@ -1839,8 +1839,8 @@ def test_pass_three_embeds_canonical_measurement_headers_without_rewriting_sourc
     import polars as pl
 
     from phenotypic.sdk_ import (
-        MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_measurements_dir,
+        declared_measurement_table_path,
         zarr_store_path,
     )
     from phenotypic._cli._cli_migrate import run_migrate
@@ -1860,8 +1860,9 @@ def test_pass_three_embeds_canonical_measurement_headers_without_rewriting_sourc
     assert source.read_bytes() == source_bytes
     embedded_columns = set(
         pl.read_parquet(
-            zarr_store_path(legacy_run, "ds", source.stem)
-            / MEASUREMENT_TABLE_RELATIVE_PATH
+            declared_measurement_table_path(
+                zarr_store_path(legacy_run, "ds", source.stem)
+            )
         ).columns
     )
     assert "MetadataGenetic_Strain" not in embedded_columns
@@ -2120,6 +2121,21 @@ def test_revert_reports_an_empty_retention_as_a_message(tmp_path: Path) -> None:
     assert result.exit_code == 1, result.output
     assert "nothing to revert" in result.output
     assert "Traceback" not in result.output
+
+
+def test_the_revert_returns_exit_code_members(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#281 P2 review M2: every exit site returns a ``RunExitCode``, never a bare int."""
+    from phenotypic._cli import _cli_migrate
+
+    output = tmp_path / "never-migrated"
+    output.mkdir()
+    refused = _cli_migrate._run_migration_revert(output)
+    assert type(refused) is RunExitCode and refused is RunExitCode.ERROR
+    monkeypatch.setattr(_cli_migrate, "revert_legacy_trees", lambda _out: 2)
+    reverted = _cli_migrate._run_migration_revert(output)
+    assert type(reverted) is RunExitCode and reverted is RunExitCode.COMPLETE
 
 
 def test_revert_puts_a_migrated_tree_back(finished_legacy_run) -> None:

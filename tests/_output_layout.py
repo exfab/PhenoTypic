@@ -29,7 +29,9 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    measurements_tsv_path,
     pipeline_json_path,
+    write_tsv,
     resolve_manifest_json_path,
 )
 
@@ -78,15 +80,24 @@ def write_master(root: Path, master: Any, *, parquet: bool = True) -> Path:
 
 
 def write_measurements_mirror(
-    root: Path, df: Any, *, csv: bool = True, parquet: bool = True
+    root: Path,
+    df: Any,
+    *,
+    csv: bool = True,
+    parquet: bool = True,
+    tsv: bool = True,
 ) -> Path:
-    """Write the post-applied ``measurements.{csv,parquet}`` mirror.
+    """Write the post-applied ``measurements.{tsv,csv,parquet}`` mirror.
 
     This is the frame the GUI viewer reads/curates (see CLAUDE.md
     "Master vs. mirror outputs"). Lives under ``<root>/deliverables/``.
+    Finalize writes all three (spec B9), and the aggregate proof certifies all
+    three, so a fixture that skips one cannot be published as complete.
     """
     deliv = _ensure_deliverables(root)
     frame = _to_polars(df)
+    if tsv:
+        write_tsv(frame, measurements_tsv_path(root))
     if csv:
         frame.write_csv(measurements_csv_path(root))
     if parquet:
@@ -627,7 +638,7 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
 
     Args:
         root: Run output root whose ``deliverables/`` already holds the master
-            parquet and the ``measurements.{csv,parquet}`` mirror.
+            parquet and the ``measurements.{tsv,csv,parquet}`` mirror.
         total_images: The number of images the fixture meant to publish,
             asserted against the master so a fixture cannot drift silently.
 
@@ -650,6 +661,7 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
     core = {
         "master parquet": master_measurements_parquet_path(root),
         "measurements CSV": measurements_csv_path(root),
+        "measurements TSV": measurements_tsv_path(root),
         "measurements parquet": measurements_parquet_path(root),
     }
     missing = [name for name, path in core.items() if not path.is_file()]

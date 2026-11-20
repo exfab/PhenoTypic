@@ -1,0 +1,160 @@
+{
+  "zarr_format": 3,
+  "node_type": "group",
+  "attributes": {
+    "ome": {
+      "version": "0.5",
+      "bioformats2raw.layout": 3
+    },
+    "phenotypic": {
+      "store_schema_version": 3,
+      "phenotypic_version": "0.21.0",
+      "publication_protocol": "root-last-immutable-v1",
+      "series": {
+        "rgb": "rgb",
+        "gray": "gray",
+        "detect_mat": "detect_mat",
+        "original": "original"
+      },
+      "pyramid": {
+        "levels": 2,
+        "stop_px": 512,
+        "downsample": {
+          "image": "mean",
+          "label": "nearest"
+        }
+      },
+      "detect_mode": "gray",
+      "illuminant": "D65",
+      "gamma": "SRGB",
+      "metadata": {
+        "protected": {
+          "Metadata_ImageName": "plate",
+          "Metadata_ImageType": "GridImage",
+          "Metadata_BitDepth": 8
+        },
+        "public": {
+          "Metadata_FileSuffix": ".tif"
+        },
+        "imported": {
+          "TIFF:ImageWidth": 800,
+          "TIFF:ImageLength": 600,
+          "TIFF:BitsPerSample": "(8, 8, 8)",
+          "TIFF:Compression": 1,
+          "TIFF:PhotometricInterpretation": 2,
+          "TIFF:StripOffsets": 140,
+          "TIFF:SamplesPerPixel": 3,
+          "TIFF:RowsPerStrip": 600,
+          "TIFF:StripByteCounts": 1440000,
+          "TIFF:PlanarConfiguration": 1
+        }
+      },
+      "image_class": "GridImage",
+      "provenance": {
+        "schema_version": 2,
+        "status": "complete",
+        "original_filename": "plate.tif",
+        "applications": [
+          {
+            "sequence": 1,
+            "kind": "full",
+            "phenotypic_version": "0.21.0",
+            "input_filename": "plate.tif",
+            "status": "complete",
+            "pipeline": {
+              "source_path": "tiny_run.pht-pipe.json",
+              "sha256": "ae2757956880293d6534d21cebb9358ca7a309b95e92e704ac174e619750747f"
+            },
+            "retry_base_length": 0,
+            "operations": [
+              {
+                "sequence": 1,
+                "operation_name": "OtsuDetector",
+                "operation_class": "phenotypic.detect._otsu_detector.OtsuDetector",
+                "phenotypic_version": "0.21.0",
+                "parameters": {
+                  "ignore_zeros": false,
+                  "ignore_borders": true
+                },
+                "applied_at_utc": "2026-11-14T00:51:19.450Z",
+                "duration_seconds": 0.020449723990168422,
+                "pipeline_step_path": [
+                  "OtsuDetector"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "labels": {
+        "objmap": "rgb/labels/objmap"
+      },
+      "work_id": "1945c913bf1f17b4c85b83ef8920d8187ce8574ad0d19fd510bfd331c559fd16",
+      "grid": {
+        "nrows": 8,
+        "ncols": 12,
+        "grid_finder": {
+          "class": "CenteredAutoGridFinder",
+          "params": {
+            "nrows": 8,
+            "ncols": 12,
+            "residual_fraction": 0.25,
+            "n_pitch_samples": 512,
+            "response_floor": 0.8,
+            "max_iter": 6,
+            "min_fit_objects": 6,
+            "warn": false
+          }
+        }
+      },
+      "tables": {
+        "measurements": {
+          "schema_version": 1,
+          "type": "object_measurements",
+          "format": "parquet",
+          "path": "tables/measurements/table.parquet",
+          "measurement_columns": [
+            "Size_Area",
+            "Size_IntegratedIntensity",
+            "Size_Perimeter",
+            "Size_ConvexArea",
+            "Size_BboxArea",
+            "Size_MajorAxisLength",
+            "Size_MinorAxisLength",
+            "Size_MinFeretDiameter",
+            "Size_MaxFeretDiameter",
+            "Size_InscribedRadius",
+            "Size_MedianRadius",
+            "Size_MeanRadius",
+            "Size_RobustMeanRadius",
+            "Size_MaxRadius",
+            "Metadata_ImageName",
+            "Metadata_ImageType",
+            "Metadata_BitDepth",
+            "Metadata_FileSuffix",
+            "Object_Label",
+            "Bbox_CenterRR",
+            "Bbox_CenterCC",
+            "Bbox_MinRR",
+            "Bbox_MinCC",
+            "Bbox_MaxRR",
+            "Bbox_MaxCC",
+            "Bbox_IntensityWeightedCenterRR",
+            "Bbox_IntensityWeightedCenterCC",
+            "Bbox_DistWeightedCenterRR",
+            "Bbox_DistWeightedCenterCC",
+            "Grid_RowNum",
+            "Grid_ColNum",
+            "Grid_RowMajorIdx",
+            "Grid_ColMajorIdx",
+            "Metadata_Dataset"
+          ],
+          "target": {
+            "column": "Object_Label",
+            "path": "rgb/labels/objmap"
+          }
+        }
+      }
+    }
+  }
+}

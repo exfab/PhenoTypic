@@ -39,7 +39,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.refine import RemoveSmallObjects
-from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+from phenotypic.sdk_ import latest_measurement_run, zarr_store_path
 from tests._support.staged_job_metadata import write_staged_job_metadata
 
 
@@ -277,10 +277,10 @@ class StagedStageHarness:
         )
 
     def read_measurements(self) -> "pl.DataFrame":
-        return pl.read_parquet(
-            zarr_store_path(self.output_dir, "ds", "img")
-            / MEASUREMENT_TABLE_RELATIVE_PATH
-        )
+        # Through the v2 resolver: the table lives in a run folder (#281 D6a).
+        run = latest_measurement_run(zarr_store_path(self.output_dir, "ds", "img"))
+        assert run is not None, "the store has no measurement run"
+        return pl.read_parquet(run.measurements_path())
 
 
 def _build_stage_harness(

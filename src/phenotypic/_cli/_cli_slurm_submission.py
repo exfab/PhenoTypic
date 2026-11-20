@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from phenotypic.sdk_ import logs_dir
+from phenotypic.sdk_ import slurm_logs_dir
 from phenotypic.sdk_.slurm import (
     generate_dispatcher_chain,
     submit_drip_feed_start,
@@ -75,7 +75,7 @@ def submit_slurm_script_chain(
         )
 
     control_output = Path(control_output_dir or output_dir)
-    log_dir = logs_dir(control_output) / "slurm"
+    log_dir = slurm_logs_dir(control_output)
     dependency_kinds = _resolve_continuation_dependency_kinds(
         chunk_count=len(flat_scripts),
         has_finalizer=finalizer_script is not None,

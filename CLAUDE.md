@@ -133,8 +133,12 @@ isolation before attributing it — most of them pass.
   journal, and each process/full/programmatic invocation appends a separately
   typed application with its own pipeline identity. Process output is therefore
   valid input to the normal CLI and browse GUI without losing the process
-  pipeline. A tree of stores is valid `--input`. Skips
-  measurement/deliverables/QC/
+  pipeline. A tree of stores is valid `--input`. Runs the `meas` entries
+  that need no objects (a grid embedder) and stores their tables in each
+  store's run folder; skips object measurers with one warning, and refuses a
+  runnable entry with a flat output (its table would be lost) — see
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) "Process mode runs `meas`".
+  Skips post/deliverables/QC/
   dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
   continuation reuse; switching `--process-format` invalidates continuation
   rather than reusing outputs of the other kind. So does a change in what an
@@ -143,7 +147,9 @@ isolation before attributing it — most of them pass.
   when `--layer objmap` began applying the post-detector op chain, to `3`
   when process stores began carrying figures, and to `4` when single-channel
   integer inputs began to be normalised to float32 `[0, 1]` at construction
-  (their `gray` export changed dtype), so a tree
+  (their `gray` export changed dtype), and to `5` when process mode began
+  running the pipeline's `meas` and writing its tables into each store's run
+  folder (#281 P5), so a tree
   processed under the old semantics is re-derived rather than reused. The
   revision is one integer shared by every layer, so a bump invalidates
   in-flight `--layer gray` continuations too — deliberate; invalidating too much
@@ -152,6 +158,23 @@ isolation before attributing it — most of them pass.
   started before it must be re-run with `--overwrite`, which the
   `.. versionchanged::` notes on `SIZE`, `INTENSITY` and `TEXTURE` say. Run the same command again after an interruption or when new
   compatible inputs appear; there is no `--resume` flag.
+  **In place** (#281 spec E7): `--output` equal to `--input` adds the
+  pipeline's run folder to each input store where it is, through the measure
+  rewrite's root-last transaction, and never rewrites a pixel (chunks keep
+  their inodes). It is for pipelines that detect nothing. Refused in the
+  read-only half, one usage error each: `--overwrite` (`--restart` is
+  allowed: it clears only `.phenotypic/`, and is the remedy for a second
+  pipeline over the same stores), a layer or format that writes no store, an `ObjectDetector` anywhere, an
+  `ImageCorrector` in `ops`, a single-store `--input`, a legacy
+  machine-state name (`progress/`, `processing_state.json`,
+  `processing_events.log`) at the input root, an orphaned `.trash`, a
+  symlinked store, a non-PhenoTypic, bundle (`image_class`) or v1 input, a
+  `--layer` that is not the primary series. Only the equal case of
+  the overlap refusal is lifted; strict containment stays refused.
+  `.phenotypic/` then lives under the input root. Run it on a local copy
+  (the `/bigdata` mirror), never on the bucket or the NAS tree
+  AutoConvertRaw-GC republishes. See
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) "In-place process runs".
 - `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
   migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
   Full runs keep the metadata → image → seal → optional reclaim → finalizer
@@ -248,7 +271,9 @@ isolation before attributing it — most of them pass.
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. **Every SLURM run returns at submission** (0.21.0 removed `--wait`,
-  with no shim) and exits 0. A full, measure or staged run writes the README
+  with no shim) and exits `4` (`RunExitCode.SUBMITTED`; the full exit-code
+  table is in [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)). A full,
+  measure or staged run writes the README
   and prints `PROCESSING SUBMITTED`; a process run prints `PROCESS-ONLY
   SUBMITTED` and has no README; recompile and migrate print their own
   submission lines. The submitting CLI never aggregates for a SLURM run, so
@@ -574,8 +599,11 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
   the durable QC + curation state under `deliverables/qc/`); per-image image
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
-  object measurements at `tables/measurements/table.parquet` inside each
-  store. Forward runs do not create external per-image measurement Parquets.
+  object measurements at `tables/<n>-<sha12>/measurements/table.parquet`
+  inside each store, one folder per measuring pipeline (the v1 flat
+  `tables/measurements/` is converted by `--mode migrate` and refused by
+  every other mode). Forward runs do not create external per-image
+  measurement Parquets.
   `master_measurements.parquet` is the pre-post concatenation of authorized
   embedded tables, each **projected onto its own store's recorded
   `measurement_columns`** first: **un-joined**, carrying intrinsic identity
@@ -586,10 +614,18 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `project_embedded_measurement_table`). **Parquet only** — D8 deleted
   `master_measurements.csv` along with its constant, its path helper and its
   reader, because the un-joined master is not the file a human opens.
-  `measurements.{csv,parquet}` carries the metadata join, appends
+  `measurements.{tsv,csv,parquet}` carries the metadata join, appends
   metadata-only phantoms once, and is the post-applied mirror the GUI
   reads/curates — feed analysis and dashboards from the **mirror**, not the
-  master. `measurements_by_feature/` (one file per measurer) and
+  master. Generated tables are TSV (spec B2); **three CSVs stay**:
+  `metadata.<ext>` (the user's byte-exact snapshot), `error_analysis.csv`
+  (GUI-written) and `measurements.csv` (GUI curation rewrites it and the
+  `.parquet`, not the `.tsv`, until #283 — spec B9). Finalize deletes only
+  the stale `.csv` twin of a split/`<AnalysisClass>`/`metadata.canonical`
+  file it just republished as `.tsv` (`remove_stale_csv_sibling`, which
+  refuses those three names); readers resolve the mirror with
+  `measurements_table_path` (`.tsv`, else a pre-cutover `.csv`).
+  `measurements_by_feature/` (one file per measurer) and
   `measurements_by_category/` (one file per `CATEGORIES` member) are both
   written from that mirror's post-applied frame by
   `finalize_post_master_outputs`, the finalization path shared by full,
@@ -604,12 +640,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   context (startup writes `.phenotypic/reference_manifest.json`; workers read
   it), and a per-image reference digest enters the work-id only for such
   pipelines. Process mode snapshots the table to
-  `.phenotypic/reference_metadata.csv`, preserved across `--restart`.
+  `.phenotypic/reference_metadata.<ext>`, preserved across `--restart`.
   `--mode measure` refuses a pipeline whose measurers read reference
   metadata. See `docs/source/how_to/pages/reference_metadata.md`.
 - **Metadata startup snapshot:** full runs and recompile copy a configured
-  `--metadata` CSV byte-for-byte to `deliverables/metadata.csv` before local
-  work or SLURM submission. Treat that file as input provenance: **never rewrite
+  `--metadata` table byte-for-byte to `deliverables/metadata.<ext>` before local
+  work or SLURM submission. `<ext>` is the input's own suffix, `.csv` or `.tsv`
+  (spec B5; any other suffix is a usage error), and a run keeps exactly one:
+  find it with `resolve_metadata_snapshot_path`, which refuses a folder holding
+  both, never by hand-joining `metadata.csv`. Treat that file as input provenance: **never rewrite
   it as a side effect** of any other operation. Finalization, chunk writers, and
   `--mode recompile` normalize legacy headers **only in memory**.
   **There is no exception, including `--mode migrate`.** An earlier draft of
@@ -620,8 +659,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
   provenance, and "the original is recoverable over there" is a weaker
   guarantee than "the bytes you supplied are still the bytes on disk".
   `--mode migrate` instead **emits a canonical view alongside** the snapshot,
-  at `deliverables/metadata.canonical.csv`, and leaves `metadata.csv`
-  byte-identical (pinned by
+  at `deliverables/metadata.canonical.tsv` (a generated table, so TSV), and
+  leaves `metadata.<ext>` byte-identical (pinned by
   `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate`).
   `metadata.original.csv` does not exist and must not be created. Generated
   scientific tables still emit only the canonical flat `Metadata_<Label>`

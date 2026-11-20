@@ -328,20 +328,47 @@ def classify_provenance_migration_target(
     )
 
 
+def convert_provenance_store_tables(
+    store: Path,
+    *,
+    dry_run: bool,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """The ``tables_v2`` step of a provenance-only store (#281 spec D10).
+
+    Converts a store still in the v1 flat tables layout into run folder
+    ``1-<sha12>``, after its journal upgrade, since the folder is named from
+    that journal. A no-op on any other store, and in a dry run.
+
+    Only for a ``direct_store`` or ``process_tree`` target. A full run's
+    stores are converted by their image task instead
+    (``_cli_migrate_image``), which republishes each image's record; these
+    targets hold no record a conversion would invalidate.
+    """
+    if dry_run:
+        return
+    from phenotypic.sdk_ import convert_tables_v1_to_v2
+
+    convert_tables_v1_to_v2(store, durable=None, commit_guard=commit_guard)
+
+
 def _upgrade_outcome(
     store: Path,
     *,
     dry_run: bool,
     commit_guard: CommitGuard | None,
+    convert_tables: bool = False,
 ) -> tuple[ProvenanceUpgradeResult | None, tuple[Path, str] | None]:
     """Isolate one store failure from the rest of a local migration."""
     try:
-        return (
-            upgrade_store_provenance(
-                store, dry_run=dry_run, commit_guard=commit_guard
-            ),
-            None,
+        result = upgrade_store_provenance(
+            store, dry_run=dry_run, commit_guard=commit_guard
         )
+        if convert_tables:
+            convert_provenance_store_tables(
+                store, dry_run=dry_run, commit_guard=commit_guard
+            )
+        return result, None
     except Exception as exc:  # noqa: BLE001 - one malformed store is reportable
         return None, (store, f"{type(exc).__name__}: {exc}")
 
@@ -353,20 +380,31 @@ def execute_provenance_migration(
     dry_run: bool,
     commit_guard: CommitGuard | None = None,
 ) -> tuple[tuple[ProvenanceUpgradeResult, ...], tuple[tuple[Path, str], ...]]:
-    """Upgrade one classified inventory through the existing joblib pattern."""
+    """Upgrade one classified inventory through the existing joblib pattern.
+
+    A provenance-only target (any kind but ``full_run``) also gets the
+    ``tables_v2`` step per store (:func:`convert_provenance_store_tables`).
+    """
+    convert_tables = target.kind != "full_run"
     if n_jobs > 1 and len(target.stores) > 1:
         from joblib import Parallel, delayed
 
         outcomes = Parallel(n_jobs=n_jobs)(
             delayed(_upgrade_outcome)(
-                store, dry_run=dry_run, commit_guard=commit_guard
+                store,
+                dry_run=dry_run,
+                commit_guard=commit_guard,
+                convert_tables=convert_tables,
             )
             for store in target.stores
         )
     else:
         outcomes = [
             _upgrade_outcome(
-                store, dry_run=dry_run, commit_guard=commit_guard
+                store,
+                dry_run=dry_run,
+                commit_guard=commit_guard,
+                convert_tables=convert_tables,
             )
             for store in target.stores
         ]

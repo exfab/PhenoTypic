@@ -12,7 +12,7 @@ reference-free gate does.
 The source determines the **modality**:
 
 * a **directory** of per-image masks → ``"mask"`` (the object-overlap path);
-* a ``.csv`` / ``.parquet`` file of per-image counts → ``"count"`` (the count-MAE path,
+* a ``.csv`` / ``.tsv`` / ``.parquet`` file of per-image counts → ``"count"`` (the count-MAE path,
   consumed by chunk B's ``SupervisedScorer`` via ``ExpectedVsDetectedCount``);
 * ``None`` or an empty/absent directory → ``"none"`` (abstain).
 
@@ -32,6 +32,7 @@ from typing import Any, Literal, Optional, TypeAlias
 
 import numpy as np
 import numpy.typing as npt
+from phenotypic.sdk_._delimited import INPUT_TABLE_SUFFIXES
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -71,7 +72,8 @@ GTMaskArray: TypeAlias = "npt.NDArray[np.integer[Any]] | npt.NDArray[np.bool_]"
 _MASK_SUFFIX_PRIORITY: tuple[str, ...] = (".npy", ".tif", ".png")
 
 #: Count-source suffixes (a per-image expected-count table, not per-image masks).
-_COUNT_SUFFIXES: frozenset[str] = frozenset({".csv", ".parquet"})
+#: A delimited table may be ``.csv`` or ``.tsv`` (spec B4), like every user table.
+_COUNT_SUFFIXES: frozenset[str] = INPUT_TABLE_SUFFIXES | {".parquet"}
 
 
 class GroundTruthMasks(BaseModel):
@@ -86,7 +88,7 @@ class GroundTruthMasks(BaseModel):
 
     Args:
         gt_masks_source: Path to the ground-truth source — a **directory** of
-            per-image masks (``modality "mask"``), a ``.csv``/``.parquet`` count
+            per-image masks (``modality "mask"``), a ``.csv``/``.tsv``/``.parquet`` count
             table (``modality "count"``), or ``None`` to abstain
             (``modality "none"``). Captured as a string in the serialized surface
             so the source round-trips through ``tuning_spec.json``.
@@ -175,7 +177,7 @@ class GroundTruthMasks(BaseModel):
 
         Returns:
             ``"mask"`` when ``gt_masks_source`` is a directory holding at least one
-            recognized mask file; ``"count"`` when it is a ``.csv``/``.parquet``
+            recognized mask file; ``"count"`` when it is a ``.csv``/``.tsv``/``.parquet``
             count table; ``"none"`` when no source is configured, the directory is
             empty/absent, or the path is otherwise unusable (abstain).
         """

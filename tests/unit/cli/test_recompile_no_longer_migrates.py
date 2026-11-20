@@ -27,8 +27,8 @@ from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
+    declared_measurement_table_path,
     zarr_store_path,
 )
 
@@ -127,13 +127,12 @@ def test_migrate_canonicalizes_embedded_headers_without_rewriting_sources(
     assert "MetadataGenetic_Strain" in after
     assert {source: source.read_bytes() for source in source_bytes} == source_bytes
     for source in source_bytes:
-        embedded = (
+        embedded = declared_measurement_table_path(
             zarr_store_path(
                 legacy_headers_run,
                 source.parent.parent.name,
                 source.stem,
             )
-            / MEASUREMENT_TABLE_RELATIVE_PATH
         )
         columns = set(pl.read_parquet(embedded).columns)
         assert "MetadataGenetic_Strain" not in columns

@@ -90,7 +90,7 @@ from phenotypic.enhance import BlurGauss, ContrastStretching, SubtractGaussian
 from phenotypic.measure import MeasureShape, MeasureSize
 from phenotypic.refine import RemoveSmallObjects
 from phenotypic.schema import EXPERIMENT
-from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, zarr_store_path
+from phenotypic.sdk_ import latest_measurement_run, zarr_store_path
 from phenotypic.sdk_._operation_tree import substitute_at_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
@@ -484,9 +484,10 @@ class _StagedStoreRun:
         self.run_stage3()
 
     def embedded_measurements(self) -> pd.DataFrame:
-        return pl.read_parquet(
-            self.store / MEASUREMENT_TABLE_RELATIVE_PATH
-        ).to_pandas()
+        # Through the v2 resolver: the table lives in a run folder (#281 D6a).
+        run = latest_measurement_run(self.store)
+        assert run is not None, "the staged store has no measurement run"
+        return pl.read_parquet(run.measurements_path()).to_pandas()
 
     def single_pass_reference(self):
         """A single-pass run of the SAME bytes Stage 1 read.

@@ -141,13 +141,24 @@ def read_metadata_csv(path: "Path | str") -> pl.DataFrame:
     same CSV failed in some readers and not others (spec 2026-09-24-cli-preflight
     F22, §10.5). Every reader goes through here now.
 
+    The table may be ``.csv`` or ``.tsv`` (spec B4); the delimiter follows the
+    suffix through :func:`phenotypic.sdk_.delimiter_for`, so a startup snapshot
+    keeps its user's suffix and is read the way the user's file was.
+
     Args:
-        path: The metadata CSV.
+        path: The metadata table, ``.csv`` or ``.tsv``.
 
     Returns:
         The parsed frame, with no header normalization applied.
+
+    Raises:
+        ValueError: For any other suffix.
     """
-    return pl.read_csv(path, infer_schema_length=None)
+    from phenotypic.sdk_ import delimiter_for
+
+    return pl.read_csv(
+        path, infer_schema_length=None, separator=delimiter_for(path)
+    )
 
 
 def prepare_metadata_join_keys(

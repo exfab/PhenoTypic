@@ -298,7 +298,13 @@ def test_process_refuses_canonical_input_output_overlap_before_mutation(
     synth_one_level_input: Path,
     shape: str,
 ) -> None:
-    """No aliasing/nesting shape may let process mutate its source tree."""
+    """No aliasing/nesting shape may let process mutate its source tree.
+
+    Strict containment either way is refused as an overlap. An output equal to
+    the input, spelled directly or through a symlink, is an in-place run
+    (#281 spec E7), which refuses ``--overwrite`` instead: either way the
+    source is byte-identical afterwards.
+    """
     source = synth_one_level_input
     source_bytes = {
         path.relative_to(source): path.read_bytes()
@@ -338,8 +344,13 @@ def test_process_refuses_canonical_input_output_overlap_before_mutation(
         ],
     )
 
-    assert result.exit_code != 0
-    assert "must not overlap" in " ".join(result.output.split()).lower()
+    assert result.exit_code == 2, result.output
+    expected = (
+        "--overwrite is refused for an in-place process run"
+        if shape in ("same", "symlink_alias")
+        else "must not overlap"
+    )
+    assert expected.lower() in " ".join(result.output.split()).lower()
     assert {
         path.relative_to(source): path.read_bytes()
         for path in source.rglob("*")

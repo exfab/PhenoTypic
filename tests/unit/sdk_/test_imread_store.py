@@ -55,7 +55,7 @@ def test_imread_accepts_a_valid_store_with_plain_zarr_name(tmp_path: Path) -> No
 def _pipeline_file(tmp_path: Path) -> Path:
     nested = tmp_path / "config" / "deep"
     nested.mkdir(parents=True, exist_ok=True)
-    path = nested / "preprocess_pipeline.json.pht-pipe"
+    path = nested / "preprocess_pipeline.pht-pipe.json"
     path.write_text('{"name": "acr_preprocess"}', encoding="utf-8")
     return path
 
@@ -121,7 +121,7 @@ def test_imread_carries_a_basename_only_pipeline_path(tmp_path: Path) -> None:
     store, img = _provenanced_store(tmp_path, basename_only=True)
     recovered = Image.imread(store)._metadata.provenance_journal
     source_path = recovered["applications"][-1]["pipeline"]["source_path"]
-    assert source_path == "preprocess_pipeline.json.pht-pipe"
+    assert source_path == "preprocess_pipeline.pht-pipe.json"
     assert "/" not in source_path
 
 

@@ -27,7 +27,10 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    measurements_tsv_path,
+    metrics_json_path,
     publication_commit,
+    schema_json_path,
     progress_dir,
     run_completion_marker_path,
     source_image_stem,
@@ -35,6 +38,7 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._digests import canonical_digest
 from phenotypic.sdk_._image_record import (
+    PROVENANCE_FORWARD,
     STAGE_MEASURED,
     read_image_record,
     record_rejection,
@@ -169,6 +173,47 @@ def image_data_artifact(
     )
 
 
+def image_measurement_artifact(
+    output_dir: Path, dataset: str, image_stem: str
+) -> Path:
+    """Return the ``measurements`` artifact a **forward** per-image record certifies.
+
+    It is the ``measurements/table.parquet`` of the run folder the forward
+    save wrote, ``tables/<n>-<sha12>/`` (#281 spec D1, D6a), found through
+    the resolver (:func:`phenotypic.sdk_.journal_table_run`) and never by
+    joining a path: the folder name depends on the store's other runs.
+    Full mode, staged Stage 3 and their resume paths call this; ``--mode
+    measure`` declares the run its own rewrite returns instead, because its
+    pipeline is not the one the store's journal names.
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        image_stem: Image stem.
+
+    Returns:
+        The table path, which exists.
+
+    Raises:
+        FileNotFoundError: If the store holds no measurements table for its
+            journal's pipeline -- the same outcome ``publish_image_success``'s
+            ``strict=True`` resolve would give, with the reason spelled out.
+    """
+    from phenotypic.sdk_ import journal_table_run, zarr_store_path
+
+    store = zarr_store_path(output_dir, dataset, image_stem)
+    run = journal_table_run(store)
+    if run is None or not run.has_measurements:
+        raise FileNotFoundError(
+            f"{store} holds no measurements table for the pipeline its journal "
+            "records; the image's forward save did not write one"
+        )
+    path = run.measurements_path()
+    if not path.is_file():
+        raise FileNotFoundError(f"declared measurements table is missing: {path}")
+    return path
+
+
 def publish_image_success(
     output_dir: Path,
     *,
@@ -184,9 +229,17 @@ def publish_image_success(
         Mapping[str, Mapping[str, object]] | None
     ) = None,
     source_provenance: Mapping[str, object] | None = None,
+    provenance: str = PROVENANCE_FORWARD,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Validate artifacts and atomically publish the image marker last."""
+    """Validate artifacts and atomically publish the image marker last.
+
+    *provenance* and *source_provenance* go to the record verbatim. A
+    republish that keeps an existing record's identity (the table-marker
+    refresh after ``--mode measure`` or migrate's ``tables_v2`` step) passes
+    the record's own, so a ``"migrated"`` record stays migrated (#281 P3
+    review I1); every other caller takes the ``"forward"`` default.
+    """
     if os.environ.get("SLURM_JOB_ID"):
         from ._cli_slurm_lifecycle import load_slurm_lifecycle
 
@@ -275,6 +328,7 @@ def publish_image_success(
         artifacts=artifacts,
         attempt_id=attempt_id,
         lifecycle_epoch=lifecycle_epoch,
+        provenance=provenance,
         source_provenance=source_provenance,
         pre_replace=(
             _validate_expected_artifacts
@@ -1068,6 +1122,8 @@ def publish_aggregate_snapshot(
     *,
     source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
+    execution_epoch: str | None = None,
+    require_run_summaries: bool = False,
 ) -> Path:
     """Publish marker-last integrity evidence for the canonical core snapshot.
 
@@ -1092,6 +1148,21 @@ def publish_aggregate_snapshot(
             parameter would have left ``sdk_/_hdf_to_zarr.py`` on the old
             live-derive behaviour, unmodified and unnoticed.
         commit_guard: Publication guard threaded to the marker write.
+        execution_epoch: The SLURM generation the publishing finalizer runs
+            under, or ``None`` for a local run. Recorded as the proof's
+            ``execution_epoch``, as the run proof already records it, so
+            ``phenotypic-wait`` accepts this proof only for that submission
+            (#281 spec C3). A proof written before the field existed has no
+            key and never counts for a submission.
+        require_run_summaries: Whether ``deliverables/metrics.json`` and
+            ``deliverables/schema.json`` (#281 spec C4, C12) must exist.
+            ``finalize_run`` writes both just before its call and passes
+            ``True``, so on that path an absent file is a fault and resolving
+            it raises, like any other required output. With ``False`` (the
+            default) each is certified only when present: the migrate
+            re-publication (``sdk_._hdf_to_zarr.republish_aggregate``)
+            re-certifies whatever deliverables a tree already holds, and a
+            tree finalized before the files existed has neither.
 
     Returns:
         Path to the aggregate publication marker.
@@ -1109,20 +1180,23 @@ def publish_aggregate_snapshot(
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
 
-    # D8: three descriptors, not four. `master_measurements.csv` is gone --
-    # the un-joined master is no longer the file a human opens, the mirror is
-    # -- and `finalize_run` writes no CSV, so certifying one would make every
-    # forward finalization fail on a `resolve(strict=True)` for a file nothing
-    # writes.
+    # D8: `master_measurements.csv` is gone -- the un-joined master is no
+    # longer the file a human opens, the mirror is -- and `finalize_run`
+    # writes no master CSV, so certifying one would make every forward
+    # finalization fail on a `resolve(strict=True)` for a file nothing writes.
+    # P1 (spec B9) adds the mirror's `.tsv` beside its `.csv` and `.parquet`,
+    # so there are four descriptors: one master and three mirror files. #281
+    # C4/C12 adds metrics.json and schema.json below, for six.
     #
     # O-3: the reader no longer validates whatever the proof LISTS, and that
-    # sentence used to stand here. All three are still WRITTEN -- the marker
+    # sentence used to stand here. All four are still WRITTEN -- the marker
     # is a complete record of what finalization published, which is
     # provenance worth keeping and is what lets a later reader say which
     # artifacts a run declared. But `_run_state._valid_aggregate_proof` skips
-    # the two mirror descriptors when it checks, because `CurationLabels`
-    # rewrites them on every curation save: the proof's claim about them
-    # becomes false the moment a user marks one colony, and false by design.
+    # the mirror descriptors when it checks, because `CurationLabels`
+    # rewrites the `.csv` and `.parquet` on every curation save (and the
+    # `.tsv` once #283 lands): the proof's claim about them becomes false the
+    # moment a user marks one colony, and false by design.
     #
     # So do NOT infer enforcement from this dict. Adding an entry here
     # records an artifact; whether it is enforced is decided by
@@ -1131,8 +1205,26 @@ def publish_aggregate_snapshot(
     required_paths = {
         "master_parquet": master_measurements_parquet_path(output_dir),
         "measurements_csv": measurements_csv_path(output_dir),
+        "measurements_tsv": measurements_tsv_path(output_dir),
         "measurements_parquet": measurements_parquet_path(output_dir),
     }
+    # #281 spec C4/C12: the run summary and the column schema are deliverables
+    # a DVC stage reads, published by the same finalization, so the proof
+    # fences them like the master. No GUI writer touches either, so both stay
+    # enforced (they are not in `_GUI_WRITTEN_PROOF_DESCRIPTORS`).
+    for name, path in (
+        ("metrics_json", metrics_json_path(output_dir)),
+        ("schema_json", schema_json_path(output_dir)),
+    ):
+        if require_run_summaries or path.is_file():
+            required_paths[name] = path
+    # #281 spec E5, review M1a: the embedding deliverables the same
+    # finalization published -- manifest.json and each table it lists --
+    # and nothing when no run embeds (finalization then removes the folder).
+    # No GUI writer touches them, so they are enforced like the summaries.
+    from ._cli_embedding_deliverables import published_embedding_files
+
+    required_paths.update(published_embedding_files(output_dir))
     output_root = output_dir.resolve()
     descriptors: dict[str, dict[str, object]] = {}
     for name, path in required_paths.items():
@@ -1165,6 +1257,7 @@ def publish_aggregate_snapshot(
         "scientific_config_digest": state.config.get("pipeline_sha256"),
         "source_set_digest": canonical_digest(sorted(source_work_ids)),
         "source_image_count": len(set(source_work_ids)),
+        "execution_epoch": execution_epoch,
         "required_outputs": descriptors,
         "published_at": datetime.now(timezone.utc).isoformat(
             timespec="milliseconds"

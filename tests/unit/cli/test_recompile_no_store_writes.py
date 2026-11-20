@@ -124,6 +124,18 @@ def _publish_a_tree_the_old_rewrite_rewrote(output_dir: Path) -> None:
     _install_overlays(output_dir, _STEMS)
 
 
+def _run_entry(output_dir: Path, stem: str) -> dict:
+    """The descriptor of the one run folder *stem*'s store holds (#281 spec D1).
+
+    The forward writer puts each table in ``tables/<n>-<sha12>/``; these
+    stores are written once, so they hold exactly one run.
+    """
+    from phenotypic.sdk_ import list_table_runs
+
+    [run] = list_table_runs(zarr_store_path(output_dir, DATASET, stem))
+    return dict(run.descriptor)
+
+
 def _assert_the_snapshot_would_have_been_joined(output_dir: Path) -> None:
     """Fail loudly if the premise that makes the pin non-vacuous is gone.
 
@@ -134,13 +146,11 @@ def _assert_the_snapshot_would_have_been_joined(output_dir: Path) -> None:
     short-circuited -- the exact failure the fixture above exists to fix. So
     the premise is asserted rather than assumed.
     """
-    from phenotypic.sdk_ import PhenotypicAttr, read_phenotypic_attributes
-
     header = _SNAPSHOT.splitlines()[0].split(",")
     for stem in _STEMS:
-        baseline = read_phenotypic_attributes(
-            zarr_store_path(output_dir, DATASET, stem)
-        )[PhenotypicAttr.TABLES]["measurements"]["measurement_columns"]
+        baseline = _run_entry(output_dir, stem)["measurements"][
+            "measurement_columns"
+        ]
         shared = sorted(set(header) & set(baseline))
         assert shared, (
             f"{stem}'s baseline {sorted(baseline)} shares no column with the "
@@ -212,7 +222,6 @@ def test_a_metadata_tree_recompiles_end_to_end(tmp_path: Path) -> None:
     recompile fixture in the tree was built without a snapshot, so nothing
     exercised the case the mode refused outright.
     """
-    from phenotypic.sdk_ import PhenotypicAttr, read_phenotypic_attributes
     from phenotypic.sdk_.ngff_ import (
         MEASUREMENT_TABLE_GROUP,
         METADATA_TABLE_GROUP,
@@ -226,9 +235,7 @@ def test_a_metadata_tree_recompiles_end_to_end(tmp_path: Path) -> None:
     # STANDING RULE: the stores must really be INVERTED, or this passes on a
     # tree the old refusal would have accepted and decides nothing.
     for stem in _STEMS:
-        tables = read_phenotypic_attributes(
-            zarr_store_path(output_dir, DATASET, stem)
-        )[PhenotypicAttr.TABLES]
+        tables = _run_entry(output_dir, stem)
         assert MEASUREMENT_TABLE_GROUP in tables
         assert METADATA_TABLE_GROUP in tables, (
             f"{stem}'s store is not inverted; the snapshot did not reach the "
@@ -257,7 +264,5 @@ def test_a_metadata_tree_recompiles_end_to_end(tmp_path: Path) -> None:
     # rewrite would have stranded.
     assert _results_fingerprint(output_dir) == before
     for stem in _STEMS:
-        tables = read_phenotypic_attributes(
-            zarr_store_path(output_dir, DATASET, stem)
-        )[PhenotypicAttr.TABLES]
+        tables = _run_entry(output_dir, stem)
         assert METADATA_TABLE_GROUP in tables

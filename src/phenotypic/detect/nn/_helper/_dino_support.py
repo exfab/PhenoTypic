@@ -8,7 +8,8 @@ and threshold to a boolean ``objmask``. This module centralises that core
 
 It also owns the **single correct** DINO dense-feature extraction — the C1 fix.
 DINOv3's ``last_hidden_state`` is ``(B, 1 + num_register_tokens + Hp*Wp, D)``
-with ``config.num_register_tokens == 4`` (0 for DINOv2). Slicing only the CLS
+with ``config.num_register_tokens == 4`` (0 for the ``facebook/dinov2-*``
+checkpoints; ``dinov2-with-registers`` has 4). Slicing only the CLS
 token (``[:, 1:, :]``) leaves the 4 register tokens contaminating the patch
 grid; we slice ``[:, 1 + num_register_tokens:, :]`` here, in one place, and
 ``DinoSam2Detector`` calls it too (its buggy private copy is deleted).
@@ -25,7 +26,8 @@ construct and serialise without them.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Tuple
+import re
+from typing import TYPE_CHECKING, Any, List, Literal, Tuple
 
 if TYPE_CHECKING:
     import numpy as np
@@ -194,6 +196,8 @@ def load_dino_backbone(
     dino_version: "DinoVersion",
     dino_size: "DinoSize",
     device: str,
+    *,
+    revision: str | None = None,
 ) -> Tuple[Any, Any]:
     """Load a frozen DINO backbone ``(model, processor)`` on ``device``.
 
@@ -206,6 +210,12 @@ def load_dino_backbone(
         dino_version: ``2`` (DINOv2, ungated) or ``3`` (DINOv3, gated).
         dino_size: ``"small"`` / ``"base"`` / ``"large"``.
         device: Resolved PyTorch device string (e.g. ``"cuda"``, ``"cpu"``).
+        revision: The Hugging Face revision (a commit, branch or tag) to load,
+            passed to both ``from_pretrained`` calls. ``None`` loads the hub's
+            default branch. :func:`resolved_revision` reports the commit that
+            was actually loaded. Weights load from ``.safetensors`` only,
+            whatever the revision, so a ref holding only pickle weights is
+            refused rather than unpickled.
 
     Returns:
         ``(model, processor)`` — an ``AutoModel`` on ``device`` (eval mode) and
@@ -234,10 +244,96 @@ def load_dino_backbone(
         Dinov3CheckpointManager(size=dino_size).download(interactive=False)
 
     dino_id = hf_dino_id(dino_version, dino_size)
-    model = AutoModel.from_pretrained(dino_id).to(device)
+    # safetensors only: any ref (a community refs/pr/N, say) may carry pickle
+    # .bin weights, and unpickling runs code. Every facebook/dinov2-* and
+    # dinov3-*-lvd1689m repo ships model.safetensors. Never trust_remote_code.
+    model = AutoModel.from_pretrained(
+        dino_id, revision=revision, use_safetensors=True
+    ).to(device)
     model.eval()
-    processor = AutoImageProcessor.from_pretrained(dino_id)
+    processor = AutoImageProcessor.from_pretrained(dino_id, revision=revision)
     return model, processor
+
+
+#: A full Hugging Face commit: 40 lowercase hex.
+_COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+#: The snapshot folder of a Hugging Face cache path, ``.../snapshots/<commit>/...``.
+_SNAPSHOT_RE = re.compile(r"(?:^|[/\\])snapshots[/\\]([0-9a-f]{40})(?:[/\\]|$)")
+
+
+def resolved_revision(model: Any, revision: str | None = None) -> str | None:
+    """The Hugging Face commit a loaded backbone's weights came from.
+
+    Tried in order, the first answer wins:
+
+    1. ``model.config._commit_hash``, which ``from_pretrained`` records on
+       transformers before 5.18. From 5.18 (huggingface-hub 2.x) it is no
+       longer set, so the rest is the fallback that makes the revision
+       independent of it (#281).
+    2. *revision*, when it is a full 40-hex commit: ``from_pretrained``
+       loaded that pin or raised, so the pin is the commit.
+    3. A ``.../snapshots/<commit>/`` component of the config's or the
+       model's ``name_or_path``: a backbone loaded from a cache snapshot
+       directory.
+    4. The local Hugging Face cache: the snapshot that *revision* (``main``
+       when ``None``) resolves to for the repo ``name_or_path``, through
+       ``huggingface_hub.try_to_load_from_cache``. It reads only the cache's
+       ``refs/`` and ``snapshots/``, so it works offline and never reads or
+       sends a token. ``from_pretrained`` just loaded from that cache, and
+       updated the ref when it fetched, so it is the snapshot in use.
+
+    Args:
+        model: A loaded ``AutoModel``.
+        revision: The revision it was loaded with, as passed to
+            ``from_pretrained``.
+
+    Returns:
+        The 40-hex commit, or ``None`` when no source names one (a model
+        built from a plain local directory, say). Never fabricated.
+    """
+    config = getattr(model, "config", None)
+    commit = getattr(config, "_commit_hash", None)
+    if commit:
+        return str(commit)
+    if isinstance(revision, str) and _COMMIT_RE.fullmatch(revision):
+        return revision
+    paths = [
+        getattr(config, "name_or_path", None),
+        getattr(config, "_name_or_path", None),
+        getattr(model, "name_or_path", None),
+    ]
+    sources = [str(path) for path in paths if isinstance(path, str) and path]
+    for source in sources:
+        snapshot = _SNAPSHOT_RE.search(source)
+        if snapshot:
+            return snapshot.group(1)
+    for source in dict.fromkeys(sources):
+        commit = _cached_snapshot_commit(source, revision)
+        if commit is not None:
+            return commit
+    return None
+
+
+def _cached_snapshot_commit(repo_id: str, revision: str | None) -> str | None:
+    """The commit *revision* resolves to for *repo_id* in the local Hugging Face cache.
+
+    Offline and token-free: ``try_to_load_from_cache`` only reads the
+    cache's ``refs/<revision>`` and ``snapshots/<commit>/config.json``.
+    ``None`` when huggingface_hub is missing, *repo_id* is not a hub id, or
+    the cache does not hold it.
+    """
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except ImportError:
+        return None
+    try:
+        cached = try_to_load_from_cache(repo_id, "config.json", revision=revision)
+    except Exception:  # noqa: BLE001 -- an id that is not a repo id, say
+        return None
+    if not isinstance(cached, str):
+        return None
+    snapshot = _SNAPSHOT_RE.search(cached)
+    return snapshot.group(1) if snapshot else None
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +349,8 @@ def reshape_patch_tokens(
     """Reshape a ViT token sequence to the ``(Hp, Wp, D)`` patch grid.
 
     DINOv3's ``last_hidden_state`` is ``(1 + num_register_tokens + Hp*Wp, D)``
-    (``config.num_register_tokens == 4``); DINOv2 has none. Dropping only the
+    (``config.num_register_tokens == 4``); the ``facebook/dinov2-*``
+    checkpoints have none (``dinov2-with-registers`` has 4). Dropping only the
     CLS token (``tokens[1:]``) leaves the register tokens contaminating the
     grid — **the C1 bug**. This drops CLS *and* the register tokens, then
     reshapes the remaining patch tokens row-major.
@@ -262,7 +359,8 @@ def reshape_patch_tokens(
         tokens: ``(n_tokens, D)`` sequence for ONE image (CLS first, then
             ``num_register_tokens`` registers, then ``Hp*Wp`` patch tokens).
         grid_hw: ``(Hp, Wp)`` patch grid inferred from the processed image.
-        num_register_tokens: ``config.num_register_tokens`` (0 for DINOv2).
+        num_register_tokens: ``config.num_register_tokens`` (0 for the
+            ``facebook/dinov2-*`` checkpoints, 4 for DINOv3).
 
     Returns:
         ``(Hp, Wp, D)`` dense patch features in row-major patch order.
@@ -309,7 +407,10 @@ def extract_patch_features(
     inputs = processor(
         images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
     ).to(device)
-    with torch.no_grad():
+    # inference_mode, as spec E3 asks of the embedder: every caller (the
+    # embedder's masked_dense, DinoSam2, InSID3) takes the features as numpy,
+    # so none needs autograd.
+    with torch.inference_mode():
         outputs = model(**inputs)
     tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
 
@@ -319,6 +420,128 @@ def extract_patch_features(
     grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
+
+
+def backbone_device_name(device: str) -> str | None:
+    """The GPU's name for a resolved *device*, for an entry's ``model.device_name``.
+
+    ``torch.cuda.get_device_name()`` of the current CUDA device when *device*
+    is ``"cuda"``, ``None`` on the CPU (#281: the device is provenance).
+    """
+    if device != "cuda":
+        return None
+    import torch
+
+    return str(torch.cuda.get_device_name())
+
+
+def resolve_backbone_device(device: Literal["auto", "cpu", "cuda"]) -> str:
+    """Resolve an embedder's ``device`` to a PyTorch device string.
+
+    Unlike :func:`~phenotypic.detect.nn._helper._checkpoint_manager.resolve_device`,
+    ``"auto"`` falls back to the CPU **silently**: an embedder is meant to run
+    on CPU nodes (#281 spec E3), so the fallback is not a degraded mode worth
+    a warning per image.
+
+    Args:
+        device: ``"auto"``, ``"cpu"`` or ``"cuda"``.
+
+    Returns:
+        ``"cuda"`` or ``"cpu"``.
+
+    Raises:
+        RuntimeError: If ``"cuda"`` is asked for and CUDA is not available.
+    """
+    import torch
+
+    if device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("device='cuda' requested but CUDA is not available")
+    return device
+
+
+def embed_crops(
+    model: Any,
+    processor: Any,
+    crops: "np.ndarray",
+    *,
+    pooling: Literal["crop_cls", "crop_mean"],
+    device: str,
+    batch_size: int,
+) -> "np.ndarray":
+    """Embed square RGB crops with a frozen DINO ViT, one vector per crop.
+
+    The batched counterpart of :func:`extract_patch_features`, for crops that
+    are already the model's input size. Each crop is scaled and normalized
+    with the processor's own ``rescale_factor``, ``image_mean`` and
+    ``image_std`` and is **never resized**: the caller has resized it to a
+    multiple of the patch size. Batches run under ``torch.inference_mode()``.
+
+    Args:
+        model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``, in eval
+            mode.
+        processor: The matching ``AutoImageProcessor``; only its
+            normalization constants are read.
+        crops: ``(N, crop_px, crop_px, 3)`` uint8 RGB crops.
+        pooling: ``"crop_cls"`` takes the CLS token; ``"crop_mean"`` averages
+            the patch tokens, with the CLS and register tokens dropped by
+            :func:`reshape_patch_tokens`.
+        device: Resolved PyTorch device string.
+        batch_size: Crops per forward pass.
+
+    Returns:
+        ``(N, hidden_size)`` float32 vectors, in crop order.
+
+    Raises:
+        ValueError: If *crops* is not ``(N, H, W, 3)`` uint8, *pooling* is not
+            a crop pooling, or *batch_size* is not positive.
+    """
+    import numpy as np
+    import torch
+
+    crops = np.asarray(crops)
+    if crops.ndim != 4 or crops.shape[-1] != 3 or crops.dtype != np.uint8:
+        raise ValueError(
+            f"crops must be (N, H, W, 3) uint8, got {crops.shape} {crops.dtype}"
+        )
+    if pooling not in ("crop_cls", "crop_mean"):
+        raise ValueError(f"pooling must be 'crop_cls' or 'crop_mean', got {pooling!r}")
+    if batch_size < 1:
+        raise ValueError(f"batch_size must be positive, got {batch_size}")
+
+    patch = backbone_patch_size(model)
+    grid_hw = patch_grid_hw(crops.shape[1:3], patch)
+    n_reg = int(getattr(model.config, "num_register_tokens", 0) or 0)
+    scale = float(getattr(processor, "rescale_factor", 1.0 / 255.0))
+    mean = torch.tensor(processor.image_mean, dtype=torch.float32, device=device)
+    std = torch.tensor(processor.image_std, dtype=torch.float32, device=device)
+    mean, std = mean.view(1, 3, 1, 1), std.view(1, 3, 1, 1)
+
+    vectors: List["np.ndarray"] = []
+    with torch.inference_mode():
+        for start in range(0, len(crops), batch_size):
+            batch = torch.from_numpy(
+                np.ascontiguousarray(crops[start : start + batch_size])
+            ).to(device)
+            pixels = (batch.permute(0, 3, 1, 2).to(torch.float32) * scale - mean) / std
+            tokens = model(pixel_values=pixels).last_hidden_state
+            tokens = tokens.detach().to(torch.float32).cpu().numpy()
+            if pooling == "crop_cls":
+                vectors.append(tokens[:, 0, :])
+            else:
+                vectors.append(
+                    np.stack(
+                        [
+                            reshape_patch_tokens(one, grid_hw, n_reg).mean(axis=(0, 1))
+                            for one in tokens
+                        ]
+                    )
+                )
+    if not vectors:
+        hidden = int(model.config.hidden_size)
+        return np.zeros((0, hidden), dtype=np.float32)
+    return np.concatenate(vectors, axis=0).astype(np.float32, copy=False)
 
 
 def extract_reference_features(

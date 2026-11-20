@@ -561,7 +561,8 @@ def test_the_state_generation_is_not_a_uuid(tmp_path, make_exec_config):
     assert len(str(state.config["processing_generation"])) == 64
 
 
-def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
+@pytest.mark.parametrize("ext", [".csv", ".tsv"])
+def test_the_two_metadata_digests_agree(tmp_path, make_exec_config, ext):
     """**The cross-module agreement test.** Category E, not spec drift.
 
     `mint_run_identity` must recompute `metadata_sha256` rather than read it,
@@ -578,16 +579,21 @@ def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
     A docstring saying "keep these identical" is prevention with no
     detection. This is the detection: compute both ways over one input and
     require them equal.
+
+    Parametrized over both snapshot suffixes (review I2): ARM 2 over a
+    ``.tsv`` snapshot is what fails if the fallback reverts to the
+    ``.csv``-only ``metadata_csv_deliverable_path``.
     """
     from phenotypic._cli._cli_identity import _metadata_digest_for
     from phenotypic.phenotypicCLI import _snapshot_metadata_csv
-    from phenotypic.sdk_ import metadata_csv_deliverable_path
+    from phenotypic.sdk_ import metadata_snapshot_path
 
     root = tmp_path / "run"
     phenotypic_cache_dir(root).mkdir(parents=True)
-    metadata = tmp_path / "metadata.csv"
+    metadata = tmp_path / f"metadata{ext}"
+    sep = "\t" if ext == ".tsv" else ","
     metadata.write_text(
-        "Metadata_Well,Metadata_Strain\nA1,wt\n", encoding="utf-8"
+        f"Metadata_Well{sep}Metadata_Strain\nA1{sep}wt\n", encoding="utf-8"
     )
     config = make_exec_config(
         pipeline_json=tmp_path / "pipeline.json",
@@ -602,7 +608,7 @@ def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
     # the half already under a docstring, and stayed green through every
     # drift it named.
     _snapshot_metadata_csv(root, metadata)
-    snapshot = metadata_csv_deliverable_path(root)
+    snapshot = metadata_snapshot_path(root, ext)
 
     assert _metadata_digest_for(config) == file_sha256(snapshot)
 

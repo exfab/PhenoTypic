@@ -55,6 +55,7 @@ FindingCode = Literal[
     "PF-MISSING-MODULE",
     "PF-LICENSE",
     "PF-WEIGHTS-UNCACHED",
+    "PF-EMBED-REVISION-UNPINNED",
     "PF-SBATCH-REJECTED",
     "PF-SBATCH-UNAVAILABLE",
     "PF-TIME-OVER-PARTITION",
@@ -83,6 +84,7 @@ FindingCode = Literal[
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
     "PF-NODE-LOCAL",
+    "PF-DVC-LINKED-CACHE",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -119,6 +121,13 @@ HINTS: dict[str, str] = {
         "Read the model's license, then accept it for this run, e.g. "
         "`export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` (comma-separate "
         "several). Gated Hugging Face models also need `uv run hf auth login`."
+    ),
+    "PF-EMBED-REVISION-UNPINNED": (
+        "Pin the embedder's `revision` to a Hugging Face commit hash in the "
+        "pipeline file (the commit each run loaded is recorded in "
+        "deliverables/embeddings/manifest.json). Unpinned, the run still "
+        "publishes, and finalization tags each row with the descriptor_index "
+        "of the weights it was embedded with."
     ),
     "PF-WEIGHTS-UNCACHED": (
         "The weights will be downloaded by the first worker that needs them, "
@@ -250,6 +259,12 @@ HINTS: dict[str, str] = {
         "ops. If a custom operation writes the object map itself, rerun with "
         "--skip-validation."
     ),
+    "PF-DVC-LINKED-CACHE": (
+        "Keep DVC's default cache type: run `dvc config cache.type "
+        "reflink,copy`, or `dvc config --local --unset cache.type` when "
+        ".dvc/config.local sets it. On GPFS that copies each out into the "
+        "cache once. hardlink and symlink are unsupported for PhenoTypic outs."
+    ),
 }
 
 #: How many affected subjects a finding displays before summarizing the rest.
@@ -257,12 +272,14 @@ SUBJECT_DISPLAY_LIMIT = 20
 
 #: The pipeline slots each mode executes at the ROOT pipeline (spec §0,
 #: "Checks are scoped to what the mode runs"). ``full`` applies ``ops`` and
-#: then measures; ``process`` only applies ``ops``; ``measure`` only measures a
-#: stored image. A pipeline nested in ``ops`` is applied, not measured, so only
+#: then measures; ``process`` applies ``ops`` and runs the ``meas`` entries a
+#: process store can hold (#281 spec E4: embedders that need no objects; the walk
+#: drops the others, which process mode skips), never ``post``/``filters``/
+#: ``model``; ``measure`` only measures a stored image. A pipeline nested in ``ops`` is applied, not measured, so only
 #: its own ``ops`` ever run -- see :func:`operations_in_scope`.
 MODE_SLOTS: dict[str, frozenset[str]] = {
     "full": frozenset({"ops", "meas", "post", "filters", "model"}),
-    "process": frozenset({"ops"}),
+    "process": frozenset({"ops", "meas"}),
     "measure": frozenset({"meas", "post", "filters", "model"}),
 }
 
@@ -625,6 +642,33 @@ def check_model_weights_cached(context: PreflightContext) -> list[PreflightFindi
                 )
             )
     return findings
+
+
+def check_embedding_revision_pinned(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-EMBED-REVISION-UNPINNED``: a DINO embedder that loads the hub's latest weights.
+
+    #281 P4 review Q1. With ``revision=None`` every process resolves the
+    hub's latest commit, so two runs, or two workers of one run, may embed
+    with different weights though the pipeline file is the same. A warning,
+    never an error: the run publishes, and finalization tags each row with
+    its descriptor. Only in-scope embedders count, ``process`` mode's
+    included (#281 spec E4).
+    """
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    return [
+        PreflightFinding(
+            code="PF-EMBED-REVISION-UNPINNED",
+            severity="warning",
+            message=(
+                f"{'/'.join(path)} ({type(operation).__name__}) sets no "
+                "revision: weights not pinned; vectors may change between "
+                "runs or workers"
+            ),
+        )
+        for path, operation in operations_in_scope(context)
+        if isinstance(operation, MeasureDinoEmbedding) and operation.revision is None
+    ]
 
 
 def _severity_for(affected: int, total: int) -> Severity:
@@ -1269,10 +1313,13 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
         caveat = ", so without a measurement-level key nothing would join"
     findings: list[PreflightFinding] = []
     if not analysis.join_columns:
+        from phenotypic.sdk_ import misdelimited_table_hint
+
+        hint = misdelimited_table_hint(metadata_csv, list(frame.columns))
         findings.append(PreflightFinding(
             "PF-META-NO-KEYS", key_severity,
             f"{metadata_csv} shares no column with the images' ImageName, "
-            "FileSuffix or Dataset" + caveat,
+            "FileSuffix or Dataset" + caveat + (f" ({hint})" if hint else ""),
         ))
     if analysis.duplicate_key_count:
         findings.append(PreflightFinding(
@@ -1548,6 +1595,96 @@ def check_node_local_paths(context: PreflightContext) -> list[PreflightFinding]:
     )]
 
 
+#: The DVC ``cache.type`` links that make a cached file read-only (#281 C6).
+_DVC_LINKED_CACHE_TYPES = frozenset({"hardlink", "symlink"})
+#: The project config files ``find_dvc_cache_type`` reads, later overlaying
+#: earlier -- DVC's own precedence among the project's two levels.
+_DVC_PROJECT_CONFIGS = ("config", "config.local")
+
+
+def _dvc_cache_type_source(start: Path) -> "tuple[str, Path] | None":
+    """``(raw cache.type, the file that set it)`` for the project above *start*.
+
+    See :func:`find_dvc_cache_type`, which is this without the file.
+    """
+    import configparser
+
+    current = Path(os.path.abspath(start))
+    for directory in (current, *current.parents):
+        dvc_dir = directory / ".dvc"
+        if dvc_dir.is_dir():
+            break
+    else:
+        return None
+    found: "tuple[str, Path] | None" = None
+    for name in _DVC_PROJECT_CONFIGS:
+        path = dvc_dir / name
+        if not path.is_file():
+            continue
+        parser = configparser.ConfigParser(interpolation=None, strict=False)
+        parser.read(path, encoding="utf-8")
+        if parser.has_option("cache", "type"):
+            found = (parser.get("cache", "type").strip().strip("'\""), path)
+    return found
+
+
+def find_dvc_cache_type(start: Path) -> str | None:
+    """The ``cache.type`` of the DVC project enclosing *start*, as written.
+
+    Walks up from *start* (which need not exist yet: ``--output`` usually
+    does not) to the first directory holding a ``.dvc/`` directory, which is
+    how DVC finds a project root. Reads ``[cache] type`` from ``.dvc/config``
+    and overlays ``.dvc/config.local`` on it, with the stdlib's
+    ``configparser``.
+
+    **Only those two files are read.** DVC also merges a global
+    (``~/.config/dvc/config``) and a system config, below the project's; they
+    are ignored here, so a linked cache set only there goes unreported. DVC is
+    never imported: the preflight runs in every submitting process, and DVC
+    need not be installed in PhenoTypic's environment at all.
+
+    Args:
+        start: A path inside the project, typically ``--output``.
+
+    Returns:
+        The raw value (e.g. ``"reflink,copy"``), or ``None`` when no
+        enclosing project sets it, which means DVC's default,
+        ``reflink,copy``.
+    """
+    source = _dvc_cache_type_source(start)
+    return None if source is None else source[0]
+
+
+def _check_dvc_cache_link_type(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-DVC-LINKED-CACHE``: the enclosing DVC project links cached files.
+
+    #281 spec C6. With ``hardlink`` or ``symlink`` anywhere in ``cache.type``,
+    DVC makes the checked-out outs read-only links into its cache, and
+    ``.phenotypic/`` holds files appended in place by concurrent writers (the
+    terminal-failure journal, the event log, the SLURM lifecycle ledger), so
+    an append either fails or rewrites the cached copy. A warning: the run
+    itself is unaffected until DVC links its outs.
+    """
+    if context.config.output_dir is None:
+        return []
+    source = _dvc_cache_type_source(Path(context.config.output_dir))
+    if source is None:
+        return []
+    value, path = source
+    links = {part.strip().lower() for part in value.split(",")}
+    if not links & _DVC_LINKED_CACHE_TYPES:
+        return []
+    return [PreflightFinding(
+        "PF-DVC-LINKED-CACHE", "warning",
+        f"{path} sets the DVC cache.type to {value!r}. DVC makes linked "
+        "(hardlink or symlink) files read-only, and PhenoTypic appends "
+        "in place to files under .phenotypic/ (the failure journal, the event "
+        "log, the SLURM ledger), so tracking this run's outs would break or "
+        "corrupt them. Only the project's .dvc/config and .dvc/config.local "
+        "were read; global and system DVC config are not.",
+    )]
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
@@ -1557,6 +1694,7 @@ CHECKS: tuple[Check, ...] = (
     check_optional_modules,
     check_model_licenses,
     check_model_weights_cached,
+    check_embedding_revision_pinned,
     check_slurm_profiles,
     check_partition_time,
     check_staged_slurm_limits,
@@ -1573,6 +1711,7 @@ CHECKS: tuple[Check, ...] = (
     check_output_writable,
     check_output_space,
     check_node_local_paths,
+    _check_dvc_cache_link_type,
 )
 
 
@@ -1635,6 +1774,8 @@ def operations_run_in_mode(
     root_slots = MODE_SLOTS[mode]
     in_scope: list[tuple[tuple[str, ...], Any]] = []
     for path, operation in walk_operations(pipeline):
+        if mode == "process" and path and _skipped_in_process_mode(pipeline, path[0]):
+            continue
         if all(
             _segment_runs(
                 get_at_path(pipeline, path[:depth]),
@@ -1646,6 +1787,24 @@ def operations_run_in_mode(
         ):
             in_scope.append((path, operation))
     return in_scope
+
+
+def _skipped_in_process_mode(pipeline: "ImagePipeline", segment: str) -> bool:
+    """Whether root *segment* is a ``meas`` entry process mode skips (#281 E4).
+
+    Process mode runs only the ``meas`` embedders that need no objects
+    (:func:`~._cli_process_meas.runs_in_process_mode`) and skips the rest, so
+    the walk leaves the rest out: a skipped measurer, and everything nested in
+    it, is no more in scope than ``post``. The slot is decided against the
+    live pipeline, never by parsing the segment.
+    """
+    from phenotypic.sdk_._operation_tree import get_at_path, pipeline_slot_of
+
+    from ._cli_process_meas import runs_in_process_mode
+
+    if pipeline_slot_of(pipeline, segment) != "meas":
+        return False
+    return not runs_in_process_mode(get_at_path(pipeline, (segment,)))
 
 
 def _segment_runs(

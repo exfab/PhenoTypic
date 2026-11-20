@@ -130,7 +130,10 @@ def publish_image_record(
             ``--mode migrate`` writes ``PROVENANCE_MIGRATED``, and any forward
             run that rewrites this record restores ``"forward"`` by taking the
             default -- which is what makes U-10 self-limiting rather than a
-            permanent hole.
+            permanent hole. A *republish* that keeps the record's identity
+            verbatim (``_republish_table_marker``) keeps its provenance too:
+            it keeps the migrated ``work_id``, which a forward record would
+            be fenced on (#281 P3 review I1).
         source_provenance: Optional migration bookkeeping, recorded verbatim.
         pre_replace: Re-validated immediately before the rename, inside the
             publication commit. ``publish_image_success`` threads its

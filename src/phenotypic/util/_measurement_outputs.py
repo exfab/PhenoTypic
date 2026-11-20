@@ -6,7 +6,7 @@ import inspect
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Iterator, Protocol, TypeAlias, TypeGuard
+from typing import Iterable, Iterator, Mapping, Protocol, TypeAlias, TypeGuard
 
 import pandas as pd
 import polars as pl
@@ -445,6 +445,202 @@ def _describe_column(column: str) -> str | None:
     """Resolve *column* to its member's ``desc`` across all schemes, or None."""
     member = _member_for_column(column)
     return member.desc if member is not None else None
+
+
+#: ``schema.json``'s own format version (#281 spec C12).
+OUTPUT_SCHEMA_VERSION = 1
+
+
+def _member_id(member: MeasurementInfo) -> str:
+    """Name *member* as ``<enum class>.<member name>``, e.g. ``SIZE.AREA``."""
+    return f"{type(member).__name__}.{member.name}"
+
+
+def _table_schema(table: object) -> Mapping[str, object]:
+    """Return ``column -> dtype`` for a frame or for an already-read schema."""
+    if isinstance(table, (pl.DataFrame, pl.LazyFrame)):
+        return table.collect_schema()
+    if isinstance(table, pd.DataFrame):
+        return {str(column): dtype for column, dtype in table.dtypes.items()}
+    if isinstance(table, Mapping):
+        return table
+    raise TypeError(
+        f"expected a DataFrame or a column -> dtype mapping, got {type(table).__name__}"
+    )
+
+
+def embedding_vector_member(producer: str) -> MeasurementInfo | None:
+    """The schema member of producer class *producer*'s ``embedding`` column.
+
+    An embedding table's vector column is named ``embedding`` in every table
+    (#281 spec D1), not by its member's prefixed header, so it is resolved
+    through the producer that wrote it: the member of the producer's schemas
+    whose :meth:`MeasurementProducer.output_header` is ``embedding``.
+
+    Args:
+        producer: The producing class's name, as an embedding entry records
+            it under ``producer.class`` (``"MeasureDinoEmbedding"``).
+
+    Returns:
+        The member, or ``None`` when no public producer of that name declares
+        one.
+
+    Examples:
+        >>> from phenotypic.util._measurement_outputs import embedding_vector_member
+        >>> embedding_vector_member("MeasureDinoEmbedding").name
+        'EMBEDDING'
+    """
+    from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
+
+    for candidate in _discover_measurement_producers():
+        if candidate.output_key != producer:
+            continue
+        for info in candidate.primary_infos:
+            for member in info:
+                if candidate.output_header(member) == EMBEDDING_COLUMN:
+                    return member
+    return None
+
+
+def _schema_row(
+    column: str, dtype: str, member: MeasurementInfo | None, producer: str | None
+) -> dict[str, object]:
+    """One ``schema.json`` column row (#281 spec C12)."""
+    unit = member.unit if member is not None else None
+    return {
+        "name": column,
+        "dtype": dtype,
+        "unit": str(unit) if unit is not None else None,
+        "producer": producer,
+        "member": _member_id(member) if member is not None else None,
+        "desc": member.desc if member is not None else None,
+    }
+
+
+#: ``schema.json``'s ``desc`` of an embedding deliverable's ``descriptor_index``
+#: column, which no schema member owns (#281 P4 review Q1).
+DESCRIPTOR_INDEX_DESC = (
+    "Which model descriptor produced this row's vector: a 0-based index into "
+    "this table's descriptors list in deliverables/embeddings/manifest.json "
+    "(model id, revision and device, vector length, pooling, producer "
+    "parameters). "
+    "0 on every row when all stores share one descriptor; compare vectors "
+    "only within one index."
+)
+
+
+def _embedding_rows(embedding: Mapping[str, object]) -> list[dict[str, object]]:
+    """The ``schema.json`` rows of one embedding table (#281 spec C12, E5)."""
+    from phenotypic.sdk_._embedding_tables import DESCRIPTOR_INDEX_COLUMN, EMBEDDING_COLUMN
+
+    producer = str(embedding["producer"])
+    columns = embedding["columns"]
+    assert isinstance(columns, Mapping)
+    rows: list[dict[str, object]] = []
+    for raw_column, dtype in columns.items():
+        column = str(raw_column)
+        if column == DESCRIPTOR_INDEX_COLUMN:
+            # Written by finalization, not by the embedder; no member owns it.
+            row = _schema_row(column, str(dtype), None, None)
+            row["desc"] = DESCRIPTOR_INDEX_DESC
+            rows.append(row)
+            continue
+        if column != EMBEDDING_COLUMN:
+            # A key or identity column: written as a key, not measured.
+            rows.append(_schema_row(column, str(dtype), _member_for_column(column), None))
+            continue
+        row = _schema_row(
+            column,
+            f"FixedSizeList<float16>[{int(embedding['dim'])}]",  # type: ignore[call-overload]
+            embedding_vector_member(producer),
+            producer,
+        )
+        row["model"] = str(embedding["model"])
+        rows.append(row)
+    return rows
+
+
+def build_output_schema(
+    tables: Mapping[str, object],
+    *,
+    embedding_tables: Mapping[str, Mapping[str, object]] | None = None,
+) -> dict[str, object]:
+    """Describe every column of each published table, for ``deliverables/schema.json``.
+
+    Each column gets its name, its dtype, and -- when a public schema enum
+    owns the header -- the owning ``MeasurementInfo`` member, that member's
+    ``desc`` and unit, and the measurer that produces it. The member is
+    decoded from the header with the same recognition schemes the
+    per-feature split uses, and the producer comes from the
+    :func:`measurement_producers` registry the deliverables README reads, so
+    the schema, the split and the README cannot disagree about a column.
+
+    A column no enum owns (a user metadata column, a run's own bookkeeping)
+    gets ``member``, ``desc``, ``unit`` and ``producer`` all ``None``. A
+    column an enum owns but no measurer writes (``Object_Label``, the
+    ``Metadata_*`` image identity) gets its member with ``producer: None``.
+    ``unit`` is the member's own unit, else its enum's ``default_unit()``,
+    written as the ``UNITS`` key (``"px2"``); an input-dependent unit is
+    written unresolved (``"of_input"``), because the column it was computed
+    on is not recoverable from every header.
+
+    Columns keep each table's own order and tables are keyed by name, so a
+    canonical JSON dump of the result is byte-stable for identical tables.
+
+    **Embedding tables** (#281 spec E5) come from *embedding_tables*. Their
+    ``embedding`` column has the same name in every table, so no header
+    decodes to its member: it is resolved through the producer that wrote it
+    (:func:`embedding_vector_member`), its dtype is
+    ``FixedSizeList<float16>[D]``, and its row also carries ``model``, the
+    model folder. Their key and identity columns resolve as any column does,
+    with ``producer: None``, because the embedder writes them as keys.
+    ``descriptor_index`` (``Int16``) has no member; its ``desc`` says it
+    indexes the manifest's ``descriptors`` list.
+
+    Args:
+        tables: Table name -> the table, as a polars or pandas frame, or as a
+            ``column -> dtype`` mapping (a Parquet footer read with
+            ``pl.read_parquet_schema``). ``dtype`` is rendered with ``str``.
+        embedding_tables: Table name (``embeddings/<model>/<layer>/<region>``, the
+            region ``objects`` or ``grid``, either optionally ``-<name>``) ->
+            ``{"columns": {column: dtype}, "dim", "model", "producer"}``,
+            where ``producer`` is the writing class's name. ``None`` lists
+            none.
+
+    Returns:
+        ``{"schema_version": 1, "tables": {name: [{"name", "dtype", "unit",
+        "producer", "member", "desc"}, ...]}}``.
+
+    Examples:
+        >>> import polars as pl
+        >>> from phenotypic.util._measurement_outputs import build_output_schema
+        >>> frame = pl.DataFrame({"Size_Area": [12.0], "Strain": ["BY4741"]})
+        >>> area, strain = build_output_schema({"measurements": frame})["tables"]["measurements"]
+        >>> area["producer"], area["member"], area["unit"]
+        ('MeasureSize', 'SIZE.AREA', 'px2')
+        >>> strain["member"] is None and strain["producer"] is None
+        True
+    """
+    described: dict[str, list[dict[str, object]]] = {}
+    for name, table in tables.items():
+        schema = _table_schema(table)
+        columns = [str(column) for column in schema]
+        producer_of: dict[str, str] = {}
+        for producer, owned in _producer_column_groups(columns).items():
+            for column in owned:
+                producer_of.setdefault(column, producer)
+        described[str(name)] = [
+            _schema_row(
+                str(column),
+                str(dtype),
+                _member_for_column(str(column)),
+                producer_of.get(str(column)),
+            )
+            for column, dtype in schema.items()
+        ]
+    for name, embedding in (embedding_tables or {}).items():
+        described[str(name)] = _embedding_rows(embedding)
+    return {"schema_version": OUTPUT_SCHEMA_VERSION, "tables": described}
 
 
 def unit_of_column(column: str) -> ResolvedUnit | None:

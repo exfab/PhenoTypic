@@ -91,6 +91,34 @@ def test_orphan_rows_warn(tmp_path: Path) -> None:
     assert findings["PF-META-ORPHANS"].severity == "warning"
 
 
+@pytest.mark.parametrize(
+    ("name", "text", "hint"),
+    [
+        ("m.tsv", "ImageName,Strain\nimg001,WT\n", "comma-separated table; name it .csv"),
+        ("m.csv", "ImageName\tStrain\nimg001\tWT\n", "tab-separated table; name it .tsv"),
+    ],
+)
+def test_a_mis_suffixed_table_names_the_delimiter(
+    tmp_path: Path, name: str, text: str, hint: str
+) -> None:
+    """Review M6: a one-column header holding the other delimiter says so."""
+    csv = _csv(tmp_path / name, text)
+
+    findings = _by_code(check_metadata_join(_context(tmp_path, csv, "img001.tiff")))
+
+    assert hint in findings["PF-META-NO-KEYS"].message
+
+
+def test_a_keyless_table_with_the_right_delimiter_gets_no_delimiter_hint(
+    tmp_path: Path,
+) -> None:
+    csv = _csv(tmp_path / "m.csv", "Strain,Condition\nWT,heat\n")
+
+    findings = _by_code(check_metadata_join(_context(tmp_path, csv, "img001.tiff")))
+
+    assert "name it" not in findings["PF-META-NO-KEYS"].message
+
+
 def test_no_shared_key_and_no_measurement_key_is_an_error(tmp_path: Path) -> None:
     csv = _csv(tmp_path / "m.csv", "Strain,Condition\nWT,heat\n")
 

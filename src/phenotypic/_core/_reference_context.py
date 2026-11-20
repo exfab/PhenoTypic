@@ -164,16 +164,21 @@ def _read_table(source: Any) -> "tuple[pl.DataFrame, str | None]":
         path = Path(source)
         if not path.is_file():
             raise ReferenceTableError(f"Reference metadata table not found: {path}")
+        from phenotypic.sdk_ import INPUT_TABLE_SUFFIXES, delimiter_for
+
         suffix = path.suffix.lower()
-        if suffix not in (".csv", ".parquet"):
+        if suffix not in INPUT_TABLE_SUFFIXES | {".parquet"}:
             raise ReferenceTableError(
-                f"Reference metadata must be .csv or .parquet, got {path.name!r}"
+                f"Reference metadata must be .csv, .tsv or .parquet, got {path.name!r}"
             )
         try:
-            if suffix == ".csv":
+            if suffix in INPUT_TABLE_SUFFIXES:
                 # infer_schema=False: every value is a name, and inference would
                 # turn the stem "000123" into the integer 123 (Review Focus 1).
-                frame = pl.read_csv(path, infer_schema=False)
+                # The delimiter follows the suffix (spec B4).
+                frame = pl.read_csv(
+                    path, infer_schema=False, separator=delimiter_for(path)
+                )
             else:
                 frame = pl.read_parquet(path)
         except Exception as exc:  # noqa: BLE001 -- any parse failure is the error
@@ -290,7 +295,7 @@ class ReferenceContext:
     (each ``with`` block sees and restores only its own thread's state).
 
     Args:
-        metadata: A ``.csv``/``.parquet`` path, or a pandas/polars frame. It must
+        metadata: A ``.csv``/``.tsv``/``.parquet`` path, or a pandas/polars frame. It must
             carry ``Metadata_ImageName`` (or the bare ``ImageName``). Values are
             read as strings.
         image_root: Directory that reference-image names resolve against. A bare

@@ -61,7 +61,7 @@ def test_resolved_pipeline_config_path_prefers_canonical(tmp_path):
     out = tmp_path / "run"
     base = out / "deliverables"
     _seed_deliverables(base)
-    canonical = base / "pipeline.json.pht-pipe"
+    canonical = base / "pipeline.pht-pipe.json"
     legacy = base / "pipeline.json"
     canonical.write_text("{}", encoding="utf-8")
     legacy.write_text("{}", encoding="utf-8")

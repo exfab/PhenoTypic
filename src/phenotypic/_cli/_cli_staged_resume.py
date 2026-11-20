@@ -9,8 +9,8 @@ from typing import Literal, Mapping, Sequence
 
 from phenotypic.sdk_ import (
     CommitGuard,
-    MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
+    journal_measurement_table,
     progress_dir,
     source_image_stem,
     zarr_store_path,
@@ -287,18 +287,14 @@ def classify_staged_image(
         process_only_layer is None
         and expected_work_id is not None
         and stage3_completion_exists(output_dir, dataset, stem)
-        and (
-            zarr_store_path(output_dir, dataset, stem)
-            / MEASUREMENT_TABLE_RELATIVE_PATH
-        ).is_file()
+        and journal_measurement_table(store) is not None
     ):
         return "stage3"
 
-    measurement_table = store / MEASUREMENT_TABLE_RELATIVE_PATH
     if (
         process_only_layer is None
         and not markers_required
-        and measurement_table.is_file()
+        and journal_measurement_table(store) is not None
         and not stage2_done
     ):
         return "complete"
@@ -399,18 +395,17 @@ def migrate_legacy_stage3_markers(
     for item in plan.items:
         if item.stage != "complete":
             continue
-        measurement_table = (
+        measurement_table = journal_measurement_table(
             zarr_store_path(
                 output_dir, item.dataset, source_image_stem(item.image)
             )
-            / MEASUREMENT_TABLE_RELATIVE_PATH
         )
         legacy_table = (
             dataset_measurements_dir(output_dir, item.dataset)
             / f"{source_image_stem(item.image)}.parquet"
         )
         if (
-            not measurement_table.is_file() and not legacy_table.is_file()
+            measurement_table is None and not legacy_table.is_file()
         ) or stage3_completion_exists(
             output_dir, item.dataset, source_image_stem(item.image)
         ):

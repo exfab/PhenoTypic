@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 
 from phenotypic.sdk_ import CommitGuard
+from phenotypic.sdk_._image_record import record_provenance
 
 from ._cli_completion import publish_image_success
 
@@ -54,9 +55,35 @@ def _republish_table_marker(
     *,
     commit_guard: CommitGuard | None,
     lifecycle_epoch: str | None = None,
+    measurements: Path | None = None,
 ) -> None:
-    """Rehash all existing artifacts and publish the marker last."""
+    """Rehash all existing artifacts and publish the marker last.
+
+    The record's identity is kept verbatim -- ``work_id``, dataset, stem,
+    ``relative_image_path``, ``mode``, ``attempt_id``, ``provenance`` and
+    ``source_provenance`` -- and only ``lifecycle_epoch`` may be replaced.
+    Dropping ``provenance`` would turn a ``"migrated"`` record into a forward
+    one, which is then fenced on a ``work_id`` it was never minted for
+    (#281 P3 review I1).
+
+    Args:
+        output_dir: Run output root.
+        marker_path: The image's record.
+        commit_guard: Publication guard, checked at the commit point.
+        lifecycle_epoch: The epoch to stamp; ``None`` keeps the record's.
+        measurements: The table the republished record declares as its
+            ``measurements`` artifact, replacing the one it declared. The
+            ``--mode measure`` rewrite passes the run folder it wrote
+            (#281 spec D6a): a measure with a new pipeline adds a folder, so
+            the record's old path still exists, still verifies, and would
+            certify the previous pipeline's table. ``None`` rehashes the
+            declared table in place.
+    """
     marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    artifacts = _marker_artifacts(output_dir, marker)
+    if measurements is not None:
+        artifacts["measurements"] = Path(measurements)
+    source_provenance = marker.get("source_provenance")
     publish_image_success(
         output_dir,
         work_id=str(marker["work_id"]),
@@ -70,6 +97,10 @@ def _republish_table_marker(
             if lifecycle_epoch is not None
             else str(marker["lifecycle_epoch"])
         ),
-        artifacts=_marker_artifacts(output_dir, marker),
+        artifacts=artifacts,
+        provenance=record_provenance(marker),
+        source_provenance=(
+            source_provenance if isinstance(source_provenance, dict) else None
+        ),
         commit_guard=commit_guard,
     )

@@ -58,7 +58,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.phenotypicCLI import _seed_pipeline_config, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
-    MEASUREMENT_TABLE_RELATIVE_PATH,
+    latest_measurement_run,
     deliverables_dir,
     master_measurements_parquet_path,
     measurements_csv_path,
@@ -2006,9 +2006,12 @@ class TestEdgeCases:
 
         import pandas as pd
 
-        table = store / MEASUREMENT_TABLE_RELATIVE_PATH
         assert store.is_dir(), f"Expected {store} to exist"
         assert (store / "zarr.json").is_file()
+        # The run folder the forward save wrote (#281 spec D1, D6a).
+        run = latest_measurement_run(store)
+        assert run is not None, f"{store} declares no measurement table"
+        table = run.measurements_path()
         assert table.is_file(), f"Expected embedded measurements at {table}"
         assert not pd.read_parquet(table).empty
         assert not (output_dir / "results" / "input" / "measurements").exists()
