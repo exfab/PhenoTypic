@@ -593,6 +593,8 @@ def test_an_auto_embedder_records_the_device_that_ran(stub_backbone, monkeypatch
     import torch
 
     monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
+    # The entry also names the GPU; this node may have none to ask.
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda *a, **k: "stub GPU")
     m = MeasureDinoEmbedding(size="small", device="auto")
     expected = "cuda" if cuda else "cpu"
     assert m.entry_descriptor()["model"]["device"] == expected
