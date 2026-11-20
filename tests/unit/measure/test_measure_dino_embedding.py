@@ -170,11 +170,13 @@ def test_a_square_leaving_the_image_is_zero_filled_not_stretched(stub_backbone, 
 # ---------------------------------------------------------------------------
 
 
-def test_the_fourteen_fields_in_the_plans_order():
-    """#281 puts ``name`` then ``layer`` right after ``grid``."""
+def test_the_fifteen_fields_in_the_plans_order():
+    """#281 puts ``name`` then ``layer`` right after ``grid``; #282 P2 puts
+    ``compute_dtype`` right after ``dtype``."""
     assert list(MeasureDinoEmbedding.model_fields) == [
         "size", "version", "revision", "regions", "grid", "name", "layer", "pooling",
-        "crop_px", "crop_pad_frac", "mask_background", "dtype", "batch_size", "device",
+        "crop_px", "crop_pad_frac", "mask_background", "dtype", "compute_dtype",
+        "batch_size", "device",
     ]
 
 
@@ -593,8 +595,10 @@ def test_an_auto_embedder_records_the_device_that_ran(stub_backbone, monkeypatch
     import torch
 
     monkeypatch.setattr(torch.cuda, "is_available", lambda: cuda)
-    # The entry also names the GPU; this node may have none to ask.
+    # The entry also names the GPU and its compute capability (#282 P2's
+    # ``compute`` block); this node may have none to ask.
     monkeypatch.setattr(torch.cuda, "get_device_name", lambda *a, **k: "stub GPU")
+    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda *a, **k: (8, 9))
     m = MeasureDinoEmbedding(size="small", device="auto")
     expected = "cuda" if cuda else "cpu"
     assert m.entry_descriptor()["model"]["device"] == expected
@@ -610,6 +614,8 @@ def test_a_cuda_entry_records_the_gpu_name(stub_backbone, monkeypatch):
 
     monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
     monkeypatch.setattr(torch.cuda, "get_device_name", lambda *a, **k: "NVIDIA RTX 6000 Ada Generation")
+    # The entry's ``compute`` block asks for the capability too (#282 P2).
+    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda *a, **k: (8, 9))
     model = MeasureDinoEmbedding(size="small", device="auto").entry_descriptor()["model"]
     assert (model["device"], model["device_name"]) == ("cuda", "NVIDIA RTX 6000 Ada Generation")
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
