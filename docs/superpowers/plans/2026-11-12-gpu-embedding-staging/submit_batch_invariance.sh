@@ -2,7 +2,7 @@
 # #282 P2 Task 4: submit the GPU batch-invariance jobs from a detached worktree.
 #
 #   submit_batch_invariance.sh <commit> [gpu-type ...]     (default: ada6000 a100 blackwell6000)
-#   submit_batch_invariance.sh <commit> --smoke <gpu-type>  (one image, two base rows, no repeat)
+#   submit_batch_invariance.sh <commit> --smoke <gpu-type>  (one image, every row, no repeat)
 #
 # Per GPU type: a measurement job, then a separate-process repeat of its
 # reference (`--repeat-of`, `afterany`: it fails on its own when the first
@@ -85,8 +85,7 @@ runs=()
 for gpu in "${GPUS[@]}"; do
   if (( SMOKE )); then
     part=$(pick_partition "$gpu" 00:45:00)
-    id=$(submit "c6-smoke-$gpu" "$part" "$gpu" 00:45:00 "" "$D/smoke-$gpu.json" \
-           --images 1 --rows base_crop_cls,base_masked_dense)
+    id=$(submit "c6-smoke-$gpu" "$part" "$gpu" 00:45:00 "" "$D/smoke-$gpu.json" --images 1)
     echo "smoke $gpu: job $id on $part"
     ids+=("$id")
     continue
