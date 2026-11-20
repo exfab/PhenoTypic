@@ -574,7 +574,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tbody>
 <tr class="odd">
 <td><code>model</code></td>
-<td><code>{family, hf_id, revision, patch_size, device}</code>, where <code>revision</code> is the resolved hub commit and <code>device</code> (<code>"cuda"</code> or <code>"cpu"</code>) is the one that ran (P4 review Q1)</td>
+<td><code>{family, hf_id, revision, patch_size, device, device_name}</code>, where <code>revision</code> is the resolved hub commit, <code>device</code> (<code>"cuda"</code> or <code>"cpu"</code>) is the one that ran and <code>device_name</code> the GPU model on CUDA. <code>device</code> and <code>device_name</code> are provenance only: the mixed-descriptor grouping (E5) ignores them</td>
 </tr>
 <tr class="even">
 <td><code>dim</code>, <code>dtype</code></td>
@@ -806,7 +806,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>the master comes from <code>measurements/</code>, exactly as today;</li>
 <li>each embedding table goes to <code>deliverables/embeddings/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;.parquet</code>, with the master's intrinsic identity columns plus the table's key, <code>descriptor_index</code> and <code>embedding</code>;</li>
 <li><code>deliverables/embeddings/manifest.json</code> holds each key's distinct entry descriptors (in first-appearance order over the sorted stores), row count, sha256 and the stores skipped as stale.</li>
-<li><strong>Mixed descriptors</strong> (user decision 2026-11-18, P4 review Q1). Two stores of one key can carry different descriptors: an unpinned <code>revision</code>, a different device (the entry's <code>model.device</code> records the one that ran), or a partial re-measure. Finalization publishes all of them with one warning per key naming each descriptor and its stores. Each row's int16 <code>descriptor_index</code> points into that key's <code>descriptors</code> list, and is <code>0</code> on every row when there is one. The run preflight warns (<code>PF-EMBED-REVISION-UNPINNED</code>) when an in-scope DINO embedder leaves <code>revision</code> unpinned.</li>
+<li><strong>Mixed descriptors</strong> (user decision 2026-11-18, P4 review Q1). Two stores of one key can carry different descriptors: an unpinned <code>revision</code>, or a partial re-measure that changed the model or its parameters. <strong>The device is provenance, not part of the descriptor</strong> (user decision 2026-11-19): measured on DINOv2-base, CPU vs GPU vectors differ by about 1e-6 cosine distance (some 60,000× below six hours of colony growth) and two GPU models by about 1e-7, so a run mixing CPU and GPU, or GPU models, publishes under one descriptor. The bytes still differ between device types, so a DVC stage over such a run sees its embedding deliverable change. Finalization publishes all of them with one warning per key naming each descriptor and its stores. Each row's int16 <code>descriptor_index</code> points into that key's <code>descriptors</code> list, and is <code>0</code> on every row when there is one. The run preflight warns (<code>PF-EMBED-REVISION-UNPINNED</code>) when an in-scope DINO embedder leaves <code>revision</code> unpinned.</li>
 <li><strong>Remedy for an unreadable embedding</strong> (user decision 2026-11-18, Q2): finalization fails, names every such store, and points at a same-pipeline <code>--mode measure</code> over the run, which re-embeds every image. There is no scoped re-embed in v1.</li>
 </ul>
 <p>Rules:</p>

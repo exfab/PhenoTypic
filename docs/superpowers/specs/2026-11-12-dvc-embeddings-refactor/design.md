@@ -612,7 +612,7 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
 
   | Field | Contents |
   |---|---|
-  | `model` | `{family, hf_id, revision, patch_size, device}`, where `revision` is the resolved hub commit and `device` (`"cuda"` or `"cpu"`) is the one that ran (P4 review Q1) |
+  | `model` | `{family, hf_id, revision, patch_size, device, device_name}`, where `revision` is the resolved hub commit, `device` (`"cuda"` or `"cpu"`) is the one that ran and `device_name` the GPU model on CUDA. `device` and `device_name` are provenance only: the mixed-descriptor grouping (E5) ignores them |
   | `dim`, `dtype` | vector length and stored type |
   | `pooling` | the pooling mode used |
   | `key` | `Object_Label` for objects, `Grid_RowMajorIdx` for grid |
@@ -822,9 +822,14 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
     descriptors (in first-appearance order over the sorted stores), row
     count, sha256 and the stores skipped as stale.
   - **Mixed descriptors** (user decision 2026-11-18, P4 review Q1). Two stores
-    of one key can carry different descriptors: an unpinned `revision`, a
-    different device (the entry's `model.device` records the one that ran), or
-    a partial re-measure. Finalization publishes all of them with one warning
+    of one key can carry different descriptors: an unpinned `revision`, or a
+    partial re-measure that changed the model or its parameters. **The device
+    is provenance, not part of the descriptor** (user decision 2026-11-19):
+    measured on DINOv2-base, CPU vs GPU vectors differ by about 1e-6 cosine
+    distance (some 60,000× below six hours of colony growth) and two GPU models
+    by about 1e-7, so a run mixing CPU and GPU, or GPU models, publishes under
+    one descriptor. The bytes still differ between device types, so a DVC
+    stage over such a run sees its embedding deliverable change. Finalization publishes all of them with one warning
     per key naming each descriptor and its stores. Each row's int16
     `descriptor_index` points into that key's `descriptors` list, and is `0`
     on every row when there is one. The run preflight warns
