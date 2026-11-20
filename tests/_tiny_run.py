@@ -1164,7 +1164,22 @@ STUB_COMMIT = "0" * 40
 STUB_REGISTER_VALUE = 1000.0
 
 
-def _build_stub_dino(num_register_tokens: int = 0):
+#: Where a stub with ``snapshot_revision`` says it was loaded from: a hub
+#: cache snapshot folder, as ``resolved_revision``'s fallback reads one.
+STUB_SNAPSHOT_ROOT = "/stub-hf-cache"
+
+
+def _stub_snapshot_path(dino_size: str, revision: str) -> str:
+    """``<root>/models--facebook--dinov2-<size>/snapshots/<revision>``."""
+    return f"{STUB_SNAPSHOT_ROOT}/models--facebook--dinov2-{dino_size}/snapshots/{revision}"
+
+
+def _build_stub_dino(
+    num_register_tokens: int = 0,
+    *,
+    commit_hash: str | None = STUB_COMMIT,
+    name_or_path: str = "",
+):
     """A deterministic stand-in for a DINOv2 ``(model, processor)``; needs torch.
 
     The model average-pools each ``14 x 14`` patch of the normalized pixels
@@ -1180,6 +1195,9 @@ def _build_stub_dino(num_register_tokens: int = 0):
     out, so a pooling that reads one is visibly wrong (review T3). The
     processor is callable (the dense path) and carries the normalization
     constants the batched crop path reads.
+
+    *commit_hash* is the config's ``_commit_hash`` (``None``: unset, as on
+    transformers >= 5.18), and *name_or_path* its ``_name_or_path``.
     """
     from types import SimpleNamespace
 
@@ -1193,7 +1211,8 @@ def _build_stub_dino(num_register_tokens: int = 0):
                 patch_size=STUB_PATCH_SIZE,
                 hidden_size=STUB_HIDDEN_SIZE,
                 num_register_tokens=num_register_tokens,
-                _commit_hash=STUB_COMMIT,
+                _commit_hash=commit_hash,
+                _name_or_path=name_or_path,
             )
 
         def forward(self, pixel_values):
@@ -1230,7 +1249,13 @@ def _build_stub_dino(num_register_tokens: int = 0):
     return _StubDinoModel().eval(), _StubProcessor()
 
 
-def _build_param_stub_dino(num_register_tokens: int = 0, *, leaky: bool = False):
+def _build_param_stub_dino(
+    num_register_tokens: int = 0,
+    *,
+    leaky: bool = False,
+    commit_hash: str | None = STUB_COMMIT,
+    name_or_path: str = "",
+):
     """A parametric stand-in for a DINOv2 ``(model, processor)``; needs torch.
 
     Where :func:`_build_stub_dino` has no weights, this model has real ones, so
@@ -1245,7 +1270,8 @@ def _build_param_stub_dino(num_register_tokens: int = 0, *, leaky: bool = False)
 
     ``leaky=True`` adds the **batch** mean to every row: a model whose rows
     depend on their neighbours, which a batch-isolation check must catch
-    (plan review I13). The processor is the plain stub's.
+    (plan review I13). The processor is the plain stub's. *commit_hash* and
+    *name_or_path* are as :func:`_build_stub_dino`'s.
     """
     from types import SimpleNamespace
 
@@ -1263,7 +1289,8 @@ def _build_param_stub_dino(num_register_tokens: int = 0, *, leaky: bool = False)
                 patch_size=STUB_PATCH_SIZE,
                 hidden_size=STUB_HIDDEN_SIZE,
                 num_register_tokens=num_register_tokens,
-                _commit_hash=STUB_COMMIT,
+                _commit_hash=commit_hash,
+                _name_or_path=name_or_path,
             )
 
         def forward(self, pixel_values):
@@ -1305,7 +1332,8 @@ def stub_backbone(monkeypatch):
 
     Yields:
         A namespace whose ``load_calls`` is a list of
-        ``{dino_version, dino_size, device, revision}`` dicts, one per load.
+        ``{dino_version, dino_size, device, revision, dtype}`` dicts, one per
+        load.
     """
     from types import SimpleNamespace
 
@@ -1366,12 +1394,23 @@ def install_stub_backbone(
     num_register_tokens: int = 0,
     parametric: bool = False,
     leaky: bool = False,
+    commit_hash: str | None = STUB_COMMIT,
+    snapshot_revision: str | None = None,
+    snapshot_from_revision: bool = False,
 ) -> list[dict]:
     """Patch ``MeasureDinoEmbedding``'s loader with :func:`_build_stub_dino`.
 
     With ``parametric=True`` the stub is :func:`_build_param_stub_dino` (real
-    weights, so ``dtype`` matters), and ``leaky=True`` makes its rows depend
-    on the batch. The default is the #281 stub, so #281's tests keep it.
+    weights, so ``dtype`` matters: a load's ``dtype=`` casts them), and
+    ``leaky=True`` makes its rows depend on the batch. The default is the
+    #281 stub, so #281's tests keep it.
+
+    ``commit_hash`` is the loaded config's ``_commit_hash``; ``None`` leaves
+    it unset, as transformers >= 5.18 does. ``snapshot_revision`` then lays
+    the config's ``_name_or_path`` out as a hub snapshot,
+    ``<root>/models--facebook--dinov2-<size>/snapshots/<revision>``, which
+    ``resolved_revision``'s fallback reads; ``snapshot_from_revision=True``
+    takes that revision from the load's ``revision=`` instead (U5, P5 T2).
 
     The processor-only loader (``load_dino_processor``, which ``masked_dense``
     preparation uses when given no processor) is patched to the stub's
@@ -1383,24 +1422,35 @@ def install_stub_backbone(
 
     Returns:
         The list each load appends its ``{dino_version, dino_size, device,
-        revision}`` to.
+        revision, dtype}`` to.
     """
     from phenotypic.measure import _measure_dino_embedding as module
 
     calls: list[dict] = []
 
-    def _stub_load(dino_version, dino_size, device, *, revision=None):
+    def _stub_load(dino_version, dino_size, device, *, revision=None, dtype="float32"):
         calls.append(
             {
                 "dino_version": dino_version,
                 "dino_size": dino_size,
                 "device": device,
                 "revision": revision,
+                "dtype": dtype,
             }
         )
+        snapshot = revision if snapshot_from_revision else snapshot_revision
+        identity = {
+            "commit_hash": commit_hash,
+            "name_or_path": "" if snapshot is None else _stub_snapshot_path(dino_size, snapshot),
+        }
         if parametric:
-            return _build_param_stub_dino(num_register_tokens, leaky=leaky)
-        return _build_stub_dino(num_register_tokens)
+            import torch
+
+            model, processor = _build_param_stub_dino(
+                num_register_tokens, leaky=leaky, **identity
+            )
+            return model.to(getattr(torch, dtype)), processor
+        return _build_stub_dino(num_register_tokens, **identity)
 
     def _stub_processor(dino_version, dino_size, *, revision=None):
         # The processor-only loader (``masked_dense`` tiles, #282 P1): the

@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     import numpy as np
 
     from phenotypic.detect.nn._helper._tiling import _Tile
-    from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
+    from phenotypic.sdk_.typing_ import ComputeDType, DinoVersion, EmbeddingDinoSize
 
 
 # ---------------------------------------------------------------------------
@@ -172,19 +172,29 @@ def upsample_grid_to_image(
     return (covered > 0.5) if is_bool else covered
 
 
-def hf_dino_id(dino_version: "DinoVersion", dino_size: "DinoSize") -> str:
+def hf_dino_id(dino_version: "DinoVersion", dino_size: "EmbeddingDinoSize") -> str:
     """Map ``(dino_version, dino_size)`` to the Hugging Face backbone id.
 
     Args:
         dino_version: ``2`` (DINOv2, Apache/ungated) or ``3`` (DINOv3, gated).
-        dino_size: ``"small"`` / ``"base"`` / ``"large"``.
+        dino_size: ``"small"`` / ``"base"`` / ``"large"``, or ``"giant"``
+            (ViT-g/14) for DINOv2 only.
 
     Returns:
-        ``"facebook/dinov2-{size}"`` for v2, or
+        ``"facebook/dinov2-{size}"`` for v2 (``giant`` is
+        ``"facebook/dinov2-giant"``), or
         ``"facebook/dinov3-vit{s|b|l}16-pretrain-lvd1689m"`` for v3.
+
+    Raises:
+        ValueError: For a DINOv3 size it does not have (``giant``).
     """
     if dino_version == 2:
         return f"facebook/dinov2-{dino_size}"
+    if dino_size not in _DINOV3_SIZE_TO_REPO:
+        raise ValueError(
+            f"DINOv3 has no {dino_size!r} backbone; it has "
+            f"{', '.join(repr(size) for size in _DINOV3_SIZE_TO_REPO)}"
+        )
     return _DINOV3_SIZE_TO_REPO[dino_size]
 
 
@@ -195,10 +205,11 @@ def hf_dino_id(dino_version: "DinoVersion", dino_size: "DinoSize") -> str:
 
 def load_dino_backbone(
     dino_version: "DinoVersion",
-    dino_size: "DinoSize",
+    dino_size: "EmbeddingDinoSize",
     device: str,
     *,
     revision: str | None = None,
+    dtype: "ComputeDType" = "float32",
 ) -> Tuple[Any, Any]:
     """Load a frozen DINO backbone ``(model, processor)`` on ``device``.
 
@@ -209,7 +220,8 @@ def load_dino_backbone(
 
     Args:
         dino_version: ``2`` (DINOv2, ungated) or ``3`` (DINOv3, gated).
-        dino_size: ``"small"`` / ``"base"`` / ``"large"``.
+        dino_size: ``"small"`` / ``"base"`` / ``"large"``, or ``"giant"``
+            for DINOv2.
         device: Resolved PyTorch device string (e.g. ``"cuda"``, ``"cpu"``).
         revision: The Hugging Face revision (a commit, branch or tag) to load,
             passed to both ``from_pretrained`` calls. ``None`` loads the hub's
@@ -217,6 +229,10 @@ def load_dino_backbone(
             was actually loaded. Weights load from ``.safetensors`` only,
             whatever the revision, so a ref holding only pickle weights is
             refused rather than unpickled.
+        dtype: The torch dtype the weights load in, ``from_pretrained``'s
+            ``dtype=`` (#282 H7). The model is loaded in it on the host and
+            then moved to *device*; no ``device_map``, which would need
+            ``accelerate``. ``"float32"`` is what a load without it gives.
 
     Returns:
         ``(model, processor)`` — an ``AutoModel`` on ``device`` (eval mode) and
@@ -249,7 +265,7 @@ def load_dino_backbone(
     # .bin weights, and unpickling runs code. Every facebook/dinov2-* and
     # dinov3-*-lvd1689m repo ships model.safetensors. Never trust_remote_code.
     model = AutoModel.from_pretrained(
-        dino_id, revision=revision, use_safetensors=True
+        dino_id, revision=revision, use_safetensors=True, dtype=dtype
     ).to(device)
     model.eval()
     processor = AutoImageProcessor.from_pretrained(dino_id, revision=revision)
@@ -259,7 +275,7 @@ def load_dino_backbone(
 @functools.lru_cache(maxsize=4)
 def load_dino_processor(
     dino_version: "DinoVersion",
-    dino_size: "DinoSize",
+    dino_size: "EmbeddingDinoSize",
     *,
     revision: str | None = None,
 ) -> Any:
@@ -274,7 +290,7 @@ def load_dino_processor(
 
     Args:
         dino_version: ``2`` (DINOv2, ungated) or ``3`` (DINOv3, gated).
-        dino_size: ``"small"`` / ``"base"`` / ``"large"``.
+        dino_size: As :func:`load_dino_backbone`.
         revision: The Hugging Face revision, as :func:`load_dino_backbone`.
 
     Returns:
@@ -479,7 +495,8 @@ def patch_features_from_pixels(
 
     Args:
         model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``.
-        pixel_values: ``(3, h, w)`` (or ``(1, 3, h, w)``) float pixels.
+        pixel_values: ``(3, h, w)`` (or ``(1, 3, h, w)``) float pixels, cast
+            to the backbone's parameter dtype before the forward pass.
         device: Resolved PyTorch device string.
 
     Returns:
@@ -491,9 +508,12 @@ def patch_features_from_pixels(
     pixels = torch.from_numpy(np.ascontiguousarray(pixel_values)).to(device)
     if pixels.ndim == 3:
         pixels = pixels[None]
+    # A reduced-precision backbone (#282 H7) takes its own dtype in and is
+    # read out in float32; for a float32 backbone both casts are no-ops.
+    pixels = pixels.to(backbone_dtype(model))
     with torch.inference_mode():
         outputs = model(pixel_values=pixels)
-    tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
+    tokens = outputs.last_hidden_state[0].detach().to(torch.float32).cpu().numpy()
     return _tokens_to_patch_grid(model, tokens, pixels.shape[-2:])
 
 
@@ -524,6 +544,61 @@ def backbone_device_name(device: str) -> str | None:
     import torch
 
     return str(torch.cuda.get_device_name())
+
+
+def compute_block(
+    *, device: str, stage: Literal["inline", "stage4"], physical_batch: int
+) -> dict[str, Any]:
+    """Where and how an embedding entry was computed: its ``compute`` block (#282 §4.5).
+
+    The **one producer** of every device field an entry records (#282 O4):
+    ``MeasureDinoEmbedding.entry_descriptor_for`` copies this block's
+    ``device`` and ``device_name`` into ``model.device`` /
+    ``model.device_name``, so the two places cannot disagree. Provenance
+    only: the deliverables group descriptors without it.
+
+    Args:
+        device: The resolved device that ran the backbone, ``"cuda"`` or
+            ``"cpu"``.
+        stage: ``"inline"`` (the measure core) or ``"stage4"`` (the GPU stage).
+        physical_batch: Inputs per forward pass.
+
+    Returns:
+        ``{device, device_name, capability, torch, cuda, physical_batch,
+        stage}``: ``device_name`` from :func:`backbone_device_name`;
+        ``capability`` the GPU's ``"<major>.<minor>"`` compute capability on
+        CUDA and ``None`` on the CPU; ``torch`` the torch version; ``cuda``
+        ``torch.version.cuda`` on CUDA (``None`` on the CPU, which ran none).
+    """
+    import torch
+
+    on_cuda = device == "cuda"
+    capability = None
+    if on_cuda:
+        major, minor = torch.cuda.get_device_capability()
+        capability = f"{int(major)}.{int(minor)}"
+    return {
+        "device": device,
+        "device_name": backbone_device_name(device),
+        "capability": capability,
+        "torch": str(torch.__version__),
+        "cuda": torch.version.cuda if on_cuda else None,
+        "physical_batch": int(physical_batch),
+        "stage": stage,
+    }
+
+
+def backbone_dtype(model: Any) -> Any:
+    """The dtype of *model*'s parameters, ``torch.float32`` for a model with none.
+
+    What a backbone's input is cast to before its forward pass (#282 H7): a
+    bfloat16 or float16 model takes inputs of its own dtype.
+    """
+    import torch
+
+    parameters = getattr(model, "parameters", None)
+    first = next(iter(parameters()), None) if callable(parameters) else None
+    return first.dtype if first is not None else torch.float32
 
 
 def resolve_backbone_device(device: Literal["auto", "cpu", "cuda"]) -> str:
@@ -567,7 +642,8 @@ def embed_crops(
     are already the model's input size. Each crop is scaled and normalized
     with the processor's own ``rescale_factor``, ``image_mean`` and
     ``image_std`` and is **never resized**: the caller has resized it to a
-    multiple of the patch size. Batches run under ``torch.inference_mode()``.
+    multiple of the patch size. Batches run under ``torch.inference_mode()``,
+    in the backbone's parameter dtype, and are pooled in float32.
 
     Args:
         model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``, in eval
@@ -610,13 +686,17 @@ def embed_crops(
     mean, std = mean.view(1, 3, 1, 1), std.view(1, 3, 1, 1)
 
     vectors: List["np.ndarray"] = []
+    # Normalised in float32, then cast to the backbone's own dtype (#282 H7);
+    # the tokens are read out and pooled in float32. For a float32 backbone
+    # the cast is a no-op, so its bytes are unchanged.
+    compute = backbone_dtype(model)
     with torch.inference_mode():
         for start in range(0, len(crops), batch_size):
             batch = torch.from_numpy(
                 np.ascontiguousarray(crops[start : start + batch_size])
             ).to(device)
             pixels = (batch.permute(0, 3, 1, 2).to(torch.float32) * scale - mean) / std
-            tokens = model(pixel_values=pixels).last_hidden_state
+            tokens = model(pixel_values=pixels.to(compute)).last_hidden_state
             tokens = tokens.detach().to(torch.float32).cpu().numpy()
             if pooling == "crop_cls":
                 vectors.append(tokens[:, 0, :])

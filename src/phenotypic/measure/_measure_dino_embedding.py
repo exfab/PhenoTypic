@@ -14,9 +14,10 @@ from phenotypic.abc_._measure_embedding import GridCellOutsideImageError
 from phenotypic.schema import DINO_EMBEDDING, MeasurementInfo
 from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
 from phenotypic.sdk_.typing_ import (
-    DinoSize,
+    ComputeDType,
     DinoVersion,
     EmbeddingDevice,
+    EmbeddingDinoSize,
     EmbeddingDType,
     EmbeddingPooling,
     TuneSpec,
@@ -38,16 +39,24 @@ __all__ = ["GridCellOutsideImageError", "MeasureDinoEmbedding"]
 #: before any weights load; the loaded backbone is checked against it.
 _PATCH_SIZE: Final[dict[int, int]] = {2: 14, 3: 16}
 
-#: ``size`` -> the ViT letter of the model token (``vits``, ``vitb``, ``vitl``).
-_SIZE_LETTER: Final[dict[str, str]] = {"small": "s", "base": "b", "large": "l"}
+#: ``size`` -> the ViT letter of the model token (``vits``, ``vitb``, ``vitl``,
+#: ``vitg``).
+_SIZE_LETTER: Final[dict[str, str]] = {"small": "s", "base": "b", "large": "l", "giant": "g"}
+
+#: The sizes each DINO version has: DINOv3 has no ViT-g (#282 U11).
+_VERSION_SIZES: Final[dict[int, tuple[str, ...]]] = {
+    2: ("small", "base", "large", "giant"),
+    3: ("small", "base", "large"),
+}
 
 
 def load_dino_backbone(
     dino_version: DinoVersion,
-    dino_size: DinoSize,
+    dino_size: EmbeddingDinoSize,
     device: str,
     *,
     revision: str | None = None,
+    dtype: ComputeDType = "float32",
 ) -> tuple[Any, Any]:
     """Load a frozen DINO ``(model, processor)``; see ``_dino_support.load_dino_backbone``.
 
@@ -58,13 +67,13 @@ def load_dino_backbone(
     from phenotypic.detect.nn._helper import _dino_support
 
     return _dino_support.load_dino_backbone(
-        dino_version, dino_size, device, revision=revision
+        dino_version, dino_size, device, revision=revision, dtype=dtype
     )
 
 
 def load_dino_processor(
     dino_version: DinoVersion,
-    dino_size: DinoSize,
+    dino_size: EmbeddingDinoSize,
     *,
     revision: str | None = None,
 ) -> Any:
@@ -81,16 +90,19 @@ def load_dino_processor(
 
 @functools.lru_cache(maxsize=2)
 def _cached_backbone(
-    version: int, size: str, revision: str | None, device: str
+    version: int, size: str, revision: str | None, device: str, compute_dtype: str
 ) -> tuple[Any, Any]:
     """One ``(model, processor)`` per process for each backbone identity.
 
     ``(version, size)`` names the Hugging Face id one-to-one
     (``hf_dino_id``), so this is the ``(hf_id, revision, device)`` cache of
-    spec E3. Two entries: one pipeline rarely holds more than one embedder,
-    and a ViT-L is over a gigabyte.
+    spec E3, keyed on the ``compute_dtype`` the weights load in too (#282).
+    Two entries: one pipeline rarely holds more than one embedder, and a
+    ViT-L is over a gigabyte.
     """
-    return load_dino_backbone(version, size, device, revision=revision)  # type: ignore[arg-type]
+    return load_dino_backbone(
+        version, size, device, revision=revision, dtype=compute_dtype  # type: ignore[arg-type]
+    )
 
 
 class MeasureDinoEmbedding(MeasureEmbedding):
@@ -127,18 +139,20 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     ``batch_size`` do not apply to it.
 
     **Identity.** The weights are named by the model token
-    ``dinov{version}-vit{s|b|l}{patch}`` (``dinov2-vitb14``), the folder its
+    ``dinov{version}-vit{s|b|l|g}{patch}`` (``dinov2-vitb14``), the folder its
     tables go in, and by ``revision``. Each table's entry records the
     Hugging Face commit actually loaded, pinned or not. The backbone loads
     once per process, and each process holds its own copy: a local run with
     ``--njobs N`` holds N, about 90 MB each for ViT-S, 350 MB for ViT-B and
-    1.2 GB for ViT-L in float32, on top of each worker's images. DINOv3
+    1.2 GB for ViT-L and 4.4 GB for ViT-g in float32 (half that in
+    ``compute_dtype="bfloat16"``), on top of each worker's images. DINOv3
     weights are gated: the run refuses unless
     ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` lists ``dinov3``, and never prompts.
 
     Args:
         size: Backbone size, ``"small"`` (ViT-S, 384-d vectors), ``"base"``
-            (ViT-B, 768-d) or ``"large"`` (ViT-L, 1024-d).
+            (ViT-B, 768-d), ``"large"`` (ViT-L, 1024-d) or ``"giant"``
+            (ViT-g, 1536-d; DINOv2 only, since DINOv3 has no ViT-g).
         version: DINO version, ``2`` (DINOv2, patch 14, ungated) or ``3``
             (DINOv3, patch 16, gated by the DINOv3 License).
         revision: The weights' Hugging Face revision, a commit hash, branch
@@ -190,6 +204,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         mask_background: Zero the pixels of a colony's crop outside the
             colony, so only the colony is embedded. Objects only.
         dtype: The stored vector type. Only ``"float16"``.
+        compute_dtype: The type the backbone runs in: ``"float32"`` (the
+            default), ``"bfloat16"`` or ``"float16"``. The weights load in
+            it and every forward pass runs in it; vectors are pooled in
+            float32 and stored as ``dtype``. A reduced type halves the
+            backbone's memory, which suits ``"giant"`` on a GPU, but moves
+            the vectors far more than a change of device does, so it is part
+            of the table's descriptor (``compute_dtype``): tables computed in
+            different types are never grouped together.
         batch_size: Crops per forward pass. Changes speed and memory. On the
             CPU the vectors do not depend on it; on a GPU, batched kernels may
             round the last float16 bits differently.
@@ -204,7 +226,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             records the device that ran (``model.device``, ``"cuda"`` or
             ``"cpu"``) and on CUDA the GPU's name (``model.device_name``),
             and a run mixing devices still publishes one
-            ``descriptor_index``.
+            ``descriptor_index``. The entry's ``compute`` block records the
+            same device beside the GPU's compute capability, the torch and
+            CUDA versions, the inputs per forward pass and the stage that
+            ran it; it is provenance too.
 
     Examples:
         Construction needs no weights; the backbone loads on the first
@@ -261,7 +286,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     _requires_rgb_input: ClassVar[bool] = True
     _leading_fields: ClassVar[tuple[str, ...]] = ("size", "version", "revision")
 
-    size: Annotated[DinoSize, TuneSpec(tunable=False)] = "base"
+    size: Annotated[EmbeddingDinoSize, TuneSpec(tunable=False)] = "base"
     version: Annotated[DinoVersion, TuneSpec(tunable=False)] = 2
     revision: Annotated[Optional[str], TuneSpec(tunable=False)] = None
     pooling: EmbeddingPooling = "crop_cls"
@@ -269,6 +294,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     crop_pad_frac: Annotated[float, TuneSpec(0.0, 0.5)] = Field(0.25, ge=0.0)
     mask_background: bool = False
     dtype: Annotated[EmbeddingDType, TuneSpec(tunable=False)] = "float16"
+    compute_dtype: Annotated[ComputeDType, TuneSpec(tunable=False)] = "float32"
     batch_size: Annotated[int, TuneSpec(tunable=False)] = Field(64, ge=1)
     device: Annotated[EmbeddingDevice, TuneSpec(tunable=False)] = "auto"
 
@@ -279,6 +305,18 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         if value is not None and not value.strip():
             raise ValueError("revision must be None or a non-empty Hugging Face revision")
         return value
+
+    @model_validator(mode="after")
+    def _size_matches_version(self) -> "MeasureDinoEmbedding":
+        """A size the version has: ``giant`` is DINOv2 only (#282 U11)."""
+        sizes = _VERSION_SIZES[int(self.version)]
+        if self.size not in sizes:
+            raise ValueError(
+                f"size={self.size!r} needs version=2: DINOv{int(self.version)} has "
+                f"no ViT-g. version={int(self.version)} has sizes "
+                f"{', '.join(repr(size) for size in sizes)}"
+            )
+        return self
 
     @model_validator(mode="after")
     def _crop_options_are_objects_only(self) -> "MeasureDinoEmbedding":
@@ -326,7 +364,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     # ------------------------------------------------------------------ #
 
     def model_token(self) -> str:
-        """``dinov{version}-vit{s|b|l}{patch}``, e.g. ``"dinov2-vitb14"``."""
+        """``dinov{version}-vit{s|b|l|g}{patch}``, e.g. ``"dinov2-vitb14"``."""
         version = int(self.version)
         return f"dinov{version}-vit{_SIZE_LETTER[self.size]}{_PATCH_SIZE[version]}"
 
@@ -352,40 +390,49 @@ class MeasureDinoEmbedding(MeasureEmbedding):
 
         Args:
             model: The loaded backbone the vectors came from.
-            compute: Reserved for the per-entry ``compute`` block (#282 P2);
-                accepted and ignored for now.
+            compute: The entry's ``compute`` block, from
+                :func:`~phenotypic.detect.nn._helper._dino_support.compute_block`.
+                ``None`` (the inline path) builds the inline one: this
+                embedder's resolved ``device``, ``stage="inline"``, and
+                ``batch_size`` inputs per forward pass (one tile for
+                ``masked_dense``, which runs a tile at a time).
 
         Returns:
             ``{model: {family, hf_id, revision, patch_size, device,
-            device_name}, dim, dtype, pooling}``, where ``revision`` is the
-            commit loaded, ``device`` (``"cuda"`` or ``"cpu"``) the embedder's
-            resolved ``device``, and ``device_name`` the GPU's name from
-            ``torch.cuda.get_device_name()`` on CUDA and ``None`` on the CPU.
-            The two device fields are provenance: the run's deliverables
-            group descriptors without them (#281, user decision 2026-11-19).
+            device_name}, dim, dtype, compute_dtype, pooling, compute}``,
+            where ``revision`` is the commit loaded
+            (:func:`~phenotypic.detect.nn._helper._dino_support.resolved_revision`),
+            and ``device`` (``"cuda"`` or ``"cpu"``) and ``device_name`` (the
+            GPU's name on CUDA, ``None`` on the CPU) are copied from
+            *compute*, their one producer (#282 O4). The device fields and
+            ``compute`` are provenance: the run's deliverables group
+            descriptors without them (#281, user decision 2026-11-19).
+            ``compute_dtype`` is identity.
         """
-        from phenotypic.detect.nn._helper._dino_support import (
-            backbone_device_name,
-            backbone_patch_size,
-            hf_dino_id,
-            resolve_backbone_device,
-            resolved_revision,
-        )
+        from phenotypic.detect.nn._helper import _dino_support
 
-        del compute  # written by #282 P2
-        device = resolve_backbone_device(self.device)
+        if compute is None:
+            physical_batch = 1 if self.pooling == "masked_dense" else self.batch_size
+            compute = _dino_support.compute_block(
+                device=_dino_support.resolve_backbone_device(self.device),
+                stage="inline",
+                physical_batch=physical_batch,
+            )
+        block = dict(compute)
         return {
             "model": {
                 "family": f"dinov{int(self.version)}",
-                "hf_id": hf_dino_id(self.version, self.size),
-                "revision": resolved_revision(model, self.revision),
-                "patch_size": backbone_patch_size(model),
-                "device": device,
-                "device_name": backbone_device_name(device),
+                "hf_id": _dino_support.hf_dino_id(self.version, self.size),
+                "revision": _dino_support.resolved_revision(model, self.revision),
+                "patch_size": _dino_support.backbone_patch_size(model),
+                "device": block["device"],
+                "device_name": block["device_name"],
             },
             "dim": int(model.config.hidden_size),
             "dtype": self.dtype,
+            "compute_dtype": self.compute_dtype,
             "pooling": self.pooling,
+            "compute": block,
         }
 
     def crop_geometry(self) -> tuple[int, int]:
@@ -445,7 +492,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
 
         device = resolve_backbone_device(self.device)
         model, processor = _cached_backbone(
-            int(self.version), self.size, self.revision, device
+            int(self.version), self.size, self.revision, device, self.compute_dtype
         )
         self._check_geometry(model)
         return model, processor, device

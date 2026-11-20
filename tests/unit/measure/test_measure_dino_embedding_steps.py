@@ -98,7 +98,7 @@ def test_entry_descriptor_for_does_not_load(stub_backbone, detected_plate):
 
     m = MeasureDinoEmbedding(device="cpu")
     m.measure(detected_plate)
-    model = _cached_backbone(2, "base", None, "cpu")[0]
+    model = _cached_backbone(2, "base", None, "cpu", "float32")[0]
     n = len(stub_backbone.load_calls)
     assert m.entry_descriptor_for(model) == m.entry_descriptor()
     assert len(stub_backbone.load_calls) == n

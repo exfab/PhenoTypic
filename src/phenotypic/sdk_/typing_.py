@@ -162,6 +162,17 @@ DinoVersion = Literal[2, 3]
 #: model id (e.g. (2, "base") -> "facebook/dinov2-base").
 DinoSize = Literal["small", "base", "large"]
 
+#: DINO backbone size for ``MeasureDinoEmbedding`` (#282): :data:`DinoSize`
+#: plus ``"giant"``, DINOv2's ViT-g/14 (1536-d), which DINOv3 does not have.
+#: A separate alias, so the detectors do not gain ``giant``. DINOv3 H+ and
+#: 7B are deferred (#282 U11).
+EmbeddingDinoSize: TypeAlias = Literal["small", "base", "large", "giant"]
+
+#: The dtype ``MeasureDinoEmbedding`` runs its backbone in (#282 H7). The
+#: stored vectors stay :data:`EmbeddingDType`; a reduced compute dtype moves
+#: them far more than a device does, so it is part of the table's descriptor.
+ComputeDType: TypeAlias = Literal["float32", "bfloat16", "float16"]
+
 #: Public top-level CLI execution mode. ``full`` performs the normal
 #: apply-and-measure run, ``measure`` reruns measurement from existing image
 #: stores, ``recompile`` refreshes aggregate outputs from an existing output

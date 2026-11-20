@@ -48,10 +48,15 @@ _GRID_KEY_COLUMNS: Final[tuple[GRID, ...]] = (
     GRID.COL_INTERVAL_END,
 )
 
-#: Fields added to ``MeasureEmbedding`` after embedders were in use (#281
-#: named embedders / layer), and the default that leaves
-#: :meth:`MeasureEmbedding._params_sha256` where it was before each existed.
-_DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {"name": None, "layer": "rgb"}
+#: Fields added to embedders after they were in use (#281 named embedders /
+#: layer; #282 ``MeasureDinoEmbedding.compute_dtype``), and the default that
+#: leaves :meth:`MeasureEmbedding._params_sha256` where it was before each
+#: existed, so a #281 table does not read stale.
+_DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {
+    "name": None,
+    "layer": "rgb",
+    "compute_dtype": "float32",
+}
 
 #: Descriptor fields :meth:`MeasureEmbedding.entry_descriptor` must return.
 _ENTRY_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
@@ -665,10 +670,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     def _params_sha256(self) -> str:
         """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``).
 
-        ``name=None`` and ``layer="rgb"`` are left out
-        (:data:`_DIGEST_NEUTRAL_DEFAULTS`), so an unnamed rgb embedder has the
-        digest it had before either field existed; a name or ``layer="gray"``
-        is part of it.
+        ``name=None``, ``layer="rgb"`` and ``compute_dtype="float32"`` are
+        left out (:data:`_DIGEST_NEUTRAL_DEFAULTS`), so an unnamed rgb
+        float32 embedder has the digest it had before those fields existed;
+        a name, ``layer="gray"`` or a reduced ``compute_dtype`` is part of it.
         """
         params = self.model_dump(mode="json")
         for field, neutral in _DIGEST_NEUTRAL_DEFAULTS.items():
