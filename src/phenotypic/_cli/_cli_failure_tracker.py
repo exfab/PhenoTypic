@@ -8,15 +8,17 @@ be read by the live dashboard or post-hoc analysis tools.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import hashlib
 import logging
+import os
 import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, TYPE_CHECKING
+from typing import Any, Dict, Iterator, List, NamedTuple, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
@@ -83,6 +85,59 @@ def is_terminal_scientific_exception(exception: Exception) -> bool:
     )
 
 
+#: Launch-scoped memo for :func:`file_sha256` -- ``(pid, {stat key: digest})``,
+#: or ``None`` when no launch is active. See :func:`launch_digest_cache`.
+_LAUNCH_DIGESTS: tuple[int, dict[tuple, str]] | None = None
+
+
+@contextlib.contextmanager
+def launch_digest_cache() -> Iterator[None]:
+    """Hash each unchanged input file once for the duration of one CLI launch.
+
+    A forward launch derives every image's digest several times over -- the
+    work ID during selection, the state/manifest pass, and again (twice) while
+    writing the SLURM identity arrays -- and each derivation streams the whole
+    file. On a 10,476-photo run of ~135 MB TIFFs that was ~4 TB of reads and
+    ~10 h before the first worker was submitted. Inside this context
+    :func:`file_sha256` returns the digest it already computed for a regular
+    file whose ``(resolved path, st_dev, st_ino, st_size, st_mtime_ns,
+    st_ctime_ns)`` is unchanged, so each image is read once per launch.
+
+    The guarantee is unchanged where it matters: a worker runs in its own
+    process (``python -m phenotypic._cli._cli_process_single``), where no
+    cache is active, so its "input changed after SLURM worklist creation"
+    check still streams the bytes. The memo is bound to the process that
+    opened it, so a forked pool worker that inherits the dict ignores it.
+    OME-Zarr store directories are never memoized: no single stat covers a
+    tree. Nesting is a no-op; the outermost context owns the memo.
+
+    **Limit.** File timestamps are coarse-grained (the kernel's coarse clock,
+    ~1-10 ms), so a same-size rewrite inside the same tick as the hash it
+    follows leaves every key field unchanged and the launch keeps the earlier
+    digest. That needs an input edited *during* the launch, within
+    milliseconds of being hashed; under SLURM the worker's own byte re-hash
+    then fails the task ("Input changed after SLURM worklist creation")
+    rather than processing it under a stale identity.
+    """
+    global _LAUNCH_DIGESTS
+    if _LAUNCH_DIGESTS is not None and _LAUNCH_DIGESTS[0] == os.getpid():
+        yield
+        return
+    _LAUNCH_DIGESTS = (os.getpid(), {})
+    try:
+        yield
+    finally:
+        _LAUNCH_DIGESTS = None
+
+
+def _launch_digest_memo() -> dict[tuple, str] | None:
+    """The active launch memo of *this* process, or ``None``."""
+    active = _LAUNCH_DIGESTS
+    if active is None or active[0] != os.getpid():
+        return None
+    return active[1]
+
+
 def file_sha256(path: Path) -> str:
     """Return the SHA-256 digest of *path* without retaining file contents.
 
@@ -147,6 +202,26 @@ def file_sha256(path: Path) -> str:
             store.
     """
     target = Path(path)
+    memo = _launch_digest_memo()
+    if memo is not None and not target.is_dir():
+        st = target.stat()
+        key = (
+            os.fspath(target.resolve()),
+            st.st_dev,
+            st.st_ino,
+            st.st_size,
+            st.st_mtime_ns,
+            st.st_ctime_ns,
+        )
+        cached = memo.get(key)
+        if cached is None:
+            cached = memo[key] = _stream_sha256(target)
+        return cached
+    return _stream_sha256(target)
+
+
+def _stream_sha256(target: Path) -> str:
+    """Uncached body of :func:`file_sha256`."""
     digest = hashlib.sha256()
 
     def _feed(file_path: Path) -> None:

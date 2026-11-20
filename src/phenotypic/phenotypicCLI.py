@@ -163,6 +163,7 @@ from phenotypic._cli._cli_directory_scanner import (
 )
 from phenotypic._cli._cli_failure_tracker import (
     file_sha256,
+    launch_digest_cache,
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
@@ -2227,6 +2228,9 @@ def phenotypic_cli(
             f"{exc}. Fix the module name or unset the variable."
         ) from exc
     _load_cli_runtime()
+    # One digest per unchanged input for this launch; closed with the click
+    # context. Workers are separate processes and still re-hash their input.
+    ctx.with_resource(launch_digest_cache())
     try:
         _reject_unexpected_positional_args(ctx.args)
 

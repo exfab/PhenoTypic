@@ -1123,6 +1123,16 @@ member (`sdk_/_schema_shape.py:192`).
   `polars[rtcompat]` (a runtime-CPU-dispatch build that runs on pre-AVX2 nodes without a
   per-node wheel swap); numpy/scipy use runtime SIMD dispatch and are unaffected. See
   `docs/source/how_to/pages/polars_cpu_build.md`. Stage 2's GPU work runs on GPU nodes.
+- **Input digests are memoized per launch** (`launch_digest_cache`,
+  `_cli_failure_tracker.py`). `phenotypic_cli` opens it via `ctx.with_resource`, so
+  every `file_sha256` of an unchanged regular file inside one invocation streams the
+  bytes once (key: resolved path, dev, inode, size, mtime_ns, ctime_ns). Selection,
+  the state pass and the SLURM identity arrays used to re-read each image 3+ times —
+  ~4 TB / ~10 h of startup on a 10k-photo run. Workers are separate processes (and a
+  forked child ignores the parent's pid-bound memo), so the worker's "Input changed
+  after SLURM worklist creation" re-hash still reads the bytes. Stores are never
+  memoized. Limit: a same-size edit inside the hash's timestamp tick is not seen by
+  the launch; the worker re-hash fails that task instead.
 
 ---
 
