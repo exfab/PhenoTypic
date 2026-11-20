@@ -301,7 +301,12 @@ New preflight warnings, each with `HINTS` and a docs row:
   - checked by an independent reader (zarr-python, pyarrow).
 - **Local end-to-end with a stub** (`PHENOTYPIC_STAGE4_DEVICE=cpu`), with crash
   injection after the signal, after the promote and after the record. The
-  deliverable must be byte-equal to an inline run's.
+  deliverable must be byte-equal to an inline run's **when both run the same
+  pass shape** (the inline embedder's `batch_size` at least its region count,
+  so each side runs one pass). Otherwise they agree only within the cosine
+  bound: inline runs its last pass unpadded while Stage 4 pads to `m`, and
+  CPU GEMM bits depend on row count (measured by C5, 2026-11-20: max 4.77e-7
+  in float32, thread-count dependent).
 - **Controller unit tests with a fake scheduler:**
   - rounds and zero-progress;
   - no Stage-2/Stage-4 counter crosstalk;

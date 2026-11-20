@@ -443,7 +443,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>re-consolidation;</li>
 <li>checked by an independent reader (zarr-python, pyarrow).</li>
 </ul></li>
-<li><strong>Local end-to-end with a stub</strong> (<code>PHENOTYPIC_STAGE4_DEVICE=cpu</code>), with crash injection after the signal, after the promote and after the record. The deliverable must be byte-equal to an inline run's.</li>
+<li><strong>Local end-to-end with a stub</strong> (<code>PHENOTYPIC_STAGE4_DEVICE=cpu</code>), with crash injection after the signal, after the promote and after the record. The deliverable must be byte-equal to an inline run's <strong>when both run the same pass shape</strong> (the inline embedder's <code>batch_size</code> at least its region count, so each side runs one pass). Otherwise they agree only within the cosine bound: inline runs its last pass unpadded while Stage 4 pads to <code>m</code>, and CPU GEMM bits depend on row count (measured by C5, 2026-11-20: max 4.77e-7 in float32, thread-count dependent).</li>
 <li><strong>Controller unit tests with a fake scheduler:</strong>
 <ul>
 <li>rounds and zero-progress;</li>
