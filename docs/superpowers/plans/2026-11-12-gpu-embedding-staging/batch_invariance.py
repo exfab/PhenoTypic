@@ -139,9 +139,9 @@ def make_embedder(row: str, region: str) -> Any:
 class RowSet:
     """Every row a backbone runs for one table row, grouped by queue geometry.
 
-    Crops: one unit per (region, image). ``masked_dense``: the two regions cut
-    the same tiles from one image (asserted), so one unit per image serves
-    both, and each region pools its own masks from the shared grids.
+    One unit per (region, image): its crops, or its ``masked_dense`` tiles.
+    The two regions read different images (the control pipeline crops the
+    plate before detecting colonies), so their tiles are not shared.
     """
 
     def __init__(self, embedders: dict[str, Any], images: list[dict[str, Any]], processor: Any):
@@ -162,19 +162,11 @@ class RowSet:
                 self.prepared[(region, img)] = prep
                 self.kind = prep.inputs.kind
                 self.pooling = prep.inputs.pooling
+                unit: Hashable = (region, img)
                 if self.kind == "crops":
-                    unit: Hashable = (region, img)
                     arrays = list(prep.inputs.arrays[0])
                 else:
-                    unit = ("tiles", img)
                     arrays = list(prep.inputs.arrays)
-                    if unit in self.unit_inputs:
-                        other = self.unit_inputs[unit].arrays
-                        assert len(other) == len(arrays) and all(
-                            np.array_equal(a, b) for a, b in zip(other, arrays)
-                        ), "the two regions cut different masked_dense tiles"
-                        self.unit_of[(region, img)] = unit
-                        continue
                 self.unit_of[(region, img)] = unit
                 self.unit_inputs[unit] = prep.inputs
                 self.image_of[unit] = img
@@ -314,7 +306,9 @@ def compare_stored(ref: dict, other: dict) -> dict[str, Any]:
         mismatch_rows += int(diff_rows.sum())
         total += len(a)
         max_abs = max(max_abs, float(np.max(np.abs(a - b))))
-        cos.extend(cosine_distance(a.astype(np.float16), b.astype(np.float16)).tolist())
+        d = cosine_distance(a.astype(np.float16), b.astype(np.float16))
+        d[~diff_rows] = 0.0          # identical stored bits: no rounding residue
+        cos.extend(d.tolist())
     return {"rows": total, "f16_mismatch_rows": mismatch_rows,
             "f32_max_abs": max_abs, "f16_max_cos": float(np.max(cos))}
 
@@ -608,11 +602,11 @@ def compare(out: Path, runs: list[Path]) -> int:
                 continue
             a = np.concatenate([va[k] for k in keys]).astype(np.float32)
             b = np.concatenate([vb[k] for k in keys]).astype(np.float32)
-            cos = cosine_distance(a, b)
+            same = np.all(a.astype(np.float16).view(np.uint16) == b.astype(np.float16).view(np.uint16), axis=1)
+            cos = np.where(same, 0.0, cosine_distance(a, b))
             pairs[f"{ja['gpu']} vs {jb['gpu']}"] = {
                 "rows": len(a), "median_cos": float(np.median(cos)), "max_cos": float(np.max(cos)),
-                "bit_identical_rows": int(np.sum(np.all(a.astype(np.float16).view(np.uint16)
-                                                        == b.astype(np.float16).view(np.uint16), axis=1))),
+                "bit_identical_rows": int(np.sum(same)),
                 "max_abs": float(np.max(np.abs(a - b)))}
         table["rows"][row] = pairs
     out.write_text(json.dumps(table, indent=1), encoding="utf-8")

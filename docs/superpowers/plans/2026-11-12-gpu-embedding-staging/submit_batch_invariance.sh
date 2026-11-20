@@ -48,9 +48,16 @@ pick_partition() {
   local parts=(short_gpu)
   [[ $gpu == ada6000 ]] && parts=(exfab short_gpu)
   for p in "${parts[@]}"; do
-    # shellcheck disable=SC2046
-    start=$(sbatch --test-only $(flags_for "$p" "$gpu") --cpus-per-task=8 --mem=64G \
-              --time="$time" --wrap=true 2>&1 | grep -o 'to start at [0-9T:-]*' | awk '{print $4}') || true
+    # The controller intermittently answers "Requested node configuration is
+    # not available" or "Zero Bytes were transmitted" to a request it accepts
+    # a moment later, so ask up to three times.
+    start=""
+    for _ in 1 2 3; do
+      # shellcheck disable=SC2046
+      start=$(sbatch --test-only $(flags_for "$p" "$gpu") --cpus-per-task=8 --mem=64G \
+                --time="$time" --wrap=true 2>&1 | grep -o 'to start at [0-9T:-]*' | awk '{print $4}') || true
+      [[ -n $start ]] && break
+    done
     echo "  $gpu on $p: predicted start ${start:-none}" >&2
     if [[ -n $start && ( -z $best_start || $start < $best_start ) ]]; then best=$p; best_start=$start; fi
   done
