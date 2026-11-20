@@ -200,5 +200,5 @@ def test_another_pipelines_replace_with_embeddings_leaves_the_first_folder_byte_
     assert [run.run_id for run in runs] == [first.run_id, written.run_id]
     assert tree_digest(first.folder) == before
     assert root_tables(store)["runs"][first.run_id] == entry_before
-    assert set(runs[1].descriptor["embeddings"]) == {"toy-v1/crops"}
-    assert runs[1].descriptor["embeddings"]["toy-v1/crops"]["stale"] is False
+    assert set(runs[1].descriptor["embeddings"]) == {"toy-v1/objects"}
+    assert runs[1].descriptor["embeddings"]["toy-v1/objects"]["stale"] is False

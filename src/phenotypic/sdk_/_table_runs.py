@@ -2,7 +2,7 @@
 
 Since #281 P3 a store's tables live in one folder per measuring pipeline::
 
-    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/{crops,grid}[-<name>]}/
+    tables/<n>-<sha12>/{measurements,metadata,embeddings/<model>/{objects,grid}[-<name>]}/
 
 described by ``attributes.phenotypic.tables``::
 
@@ -58,13 +58,13 @@ PIPELINE_SHA256_KEY: Final[str] = "pipeline_sha256"
 SCHEMA_VERSION_KEY: Final[str] = "schema_version"
 EMBEDDINGS_KEY: Final[str] = "embeddings"
 
-#: An embedding region folder of a run (spec D1, E3): ``crops`` or ``grid``,
-#: or ``crops-<name>`` / ``grid-<name>`` for a named embedder.
+#: An embedding region folder of a run (spec D1, E3): ``objects`` or ``grid``,
+#: or ``objects-<name>`` / ``grid-<name>`` for a named embedder.
 #: :func:`split_embedding_key` is the one rule for which strings are regions.
 EmbeddingRegion = str
 
-#: The region of a crop embedder (``regions="objects"``) with no ``name``.
-CROPS_REGION: Final[str] = "crops"
+#: The region of a colony embedder (``regions="objects"``) with no ``name``.
+OBJECTS_REGION: Final[str] = "objects"
 #: The region of a grid embedder with no ``name``.
 GRID_REGION: Final[str] = "grid"
 
@@ -73,7 +73,7 @@ GRID_REGION: Final[str] = "grid"
 _REGION_NAME: Final[str] = r"[a-z0-9][a-z0-9_]{0,31}"
 _REGION_NAME_RE: Final[re.Pattern[str]] = re.compile(_REGION_NAME)
 _EMBEDDING_REGION_RE: Final[re.Pattern[str]] = re.compile(
-    rf"(?:{CROPS_REGION}|{GRID_REGION})(?:-{_REGION_NAME})?"
+    rf"(?:{OBJECTS_REGION}|{GRID_REGION})(?:-{_REGION_NAME})?"
 )
 
 _SHA_PREFIX_LENGTH: Final[int] = 12
@@ -166,7 +166,7 @@ def embedding_region(base: str, name: str | None) -> str:
     """The region folder of an embedder: *base*, or ``<base>-<name>``.
 
     Args:
-        base: :data:`CROPS_REGION` or :data:`GRID_REGION`.
+        base: :data:`OBJECTS_REGION` or :data:`GRID_REGION`.
         name: The embedder's ``name``, or ``None``.
 
     Raises:
@@ -177,18 +177,18 @@ def embedding_region(base: str, name: str | None) -> str:
         >>> embedding_region("grid", None), embedding_region("grid", "wells")
         ('grid', 'grid-wells')
     """
-    if base not in (CROPS_REGION, GRID_REGION):
-        raise ValueError(f"embedding region base must be crops or grid, got {base!r}")
+    if base not in (OBJECTS_REGION, GRID_REGION):
+        raise ValueError(f"embedding region base must be objects or grid, got {base!r}")
     if name is None:
         return base
     return f"{base}-{check_region_name(name)}"
 
 
 def _check_embedding_folders(model: str, region: str) -> None:
-    """Refuse a region that is not crops, grid or ``<either>-<name>``, or a model that is not one path segment."""
+    """Refuse a region that is not objects, grid or ``<either>-<name>``, or a model that is not one path segment."""
     if not isinstance(region, str) or _EMBEDDING_REGION_RE.fullmatch(region) is None:
         raise ValueError(
-            "embedding region must be crops or grid, or crops-<name> / grid-<name> "
+            "embedding region must be objects or grid, or objects-<name> / grid-<name> "
             f"with <name> a lowercase slug (^[a-z0-9][a-z0-9_]{{0,31}}$), got {region!r}"
         )
     if not model or "/" in model or "\\" in model or model in {".", ".."}:
@@ -198,7 +198,7 @@ def _check_embedding_folders(model: str, region: str) -> None:
 def split_embedding_key(key: str) -> tuple[str, EmbeddingRegion]:
     """``(model, region)`` of an embedding entry key, ``"<model>/<region>"``.
 
-    The region is ``crops`` or ``grid``, or ``crops-<name>`` /
+    The region is ``objects`` or ``grid``, or ``objects-<name>`` /
     ``grid-<name>`` where ``<name>`` is the embedder's ``name``
     (:func:`check_region_name`): ``dinov2-vitb14/grid-wells``.
 

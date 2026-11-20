@@ -29,7 +29,7 @@ def test_an_embedder_is_a_measurer_with_a_region_dependent_object_need(
     assert isinstance(toy_embedder, MeasureEmbedding)
     assert toy_embedder.requires_objects is True
     assert toy_grid_embedder.requires_objects is False
-    assert toy_embedder.payload_key() == "toy-v1/crops"
+    assert toy_embedder.payload_key() == "toy-v1/objects"
     assert toy_grid_embedder.payload_key() == "toy-v1/grid"
 
 
@@ -193,8 +193,8 @@ def test_a_lowercase_slug_name_is_accepted(name):
 @pytest.mark.parametrize(
     ("regions", "name", "key"),
     [
-        ("objects", None, "toy-v1/crops"),
-        ("objects", "pool2", "toy-v1/crops-pool2"),
+        ("objects", None, "toy-v1/objects"),
+        ("objects", "pool2", "toy-v1/objects-pool2"),
         ("grid", None, "toy-v1/grid"),
         ("grid", "wells", "toy-v1/grid-wells"),
         ("grid", "agar", "toy-v1/grid-agar"),

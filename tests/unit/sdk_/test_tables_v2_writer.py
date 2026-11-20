@@ -19,7 +19,7 @@ from phenotypic.sdk_._measurement_tables import (
     refresh_embedding_staleness,
 )
 from tests._tiny_run import (
-    crop_entry,
+    objects_entry,
     owned_table_run,
     resave_with_objmap,
     resave_with_pipeline,
@@ -112,15 +112,15 @@ def test_the_carried_folder_is_hard_linked_not_rewritten(store_with_two_runs, pi
 
 def test_stale_is_recomputed_not_latched(store_with_crop_entry):
     # Review Focus 2: Stage 1 writes zeros, Stage 3 restores the same objmap
-    assert crop_entry(store_with_crop_entry)["stale"] is False
+    assert objects_entry(store_with_crop_entry)["stale"] is False
     resave_with_objmap(store_with_crop_entry, zeros=True)
-    assert crop_entry(store_with_crop_entry)["stale"] is True
+    assert objects_entry(store_with_crop_entry)["stale"] is True
     resave_with_objmap(store_with_crop_entry, zeros=False)
-    assert crop_entry(store_with_crop_entry)["stale"] is False
+    assert objects_entry(store_with_crop_entry)["stale"] is False
 
 
 def test_the_crop_payload_is_carried_by_a_table_less_save(store_with_crop_entry):
-    path = store_with_crop_entry / crop_entry(store_with_crop_entry)["files"][0]["path"]
+    path = store_with_crop_entry / objects_entry(store_with_crop_entry)["files"][0]["path"]
     before = path.read_bytes()
     resave_with_objmap(store_with_crop_entry, zeros=True)
     assert path.read_bytes() == before
@@ -134,16 +134,16 @@ def test_grid_staleness_follows_the_bound_array():
             "embeddings": {
                 "m/grid": {"input": {"series": "rgb", "level": 0},
                            "binds": {"array_sha256": "x", "grid_sha256": "g"}, "stale": False},
-                "m/crops": {"binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": "o"},
+                "m/objects": {"binds": {"objmap_path": "rgb/labels/objmap", "objmap_sha256": "o"},
                             "stale": True},
             },
         }
     }
     refresh_embedding_staleness(runs, objmap_sha256="o", array_sha256={"rgb": "y"})
     embeddings = runs["1-unknown"]["embeddings"]
-    assert embeddings["m/grid"]["stale"] is True and embeddings["m/crops"]["stale"] is False
+    assert embeddings["m/grid"]["stale"] is True and embeddings["m/objects"]["stale"] is False
     refresh_embedding_staleness(runs, objmap_sha256=None, array_sha256={"rgb": "x"})
-    assert embeddings["m/grid"]["stale"] is False and embeddings["m/crops"]["stale"] is True
+    assert embeddings["m/grid"]["stale"] is False and embeddings["m/objects"]["stale"] is True
 
 
 def test_objmap_digest_is_of_the_labels_as_stored():

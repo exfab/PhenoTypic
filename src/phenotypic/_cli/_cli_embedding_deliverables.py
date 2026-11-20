@@ -7,7 +7,7 @@ its measurement table, from **the run folder the image's record certifies**
     deliverables/embeddings/<model>/<region>.parquet
     deliverables/embeddings/manifest.json
 
-where ``<region>`` is ``crops`` or ``grid``, either optionally ``-<name>``
+where ``<region>`` is ``objects`` or ``grid``, either optionally ``-<name>``
 (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
 
 Each file holds the master's intrinsic identity (``Metadata_Dataset``,

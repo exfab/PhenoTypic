@@ -1386,7 +1386,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         one run folder. Post-measurement ops never see embeddings.
 
         Args:
-            image: The image after :meth:`apply`. A crop embedder needs its
+            image: The image after :meth:`apply`. An objects embedder needs its
                 objmap; a grid embedder does not.
 
         Returns:

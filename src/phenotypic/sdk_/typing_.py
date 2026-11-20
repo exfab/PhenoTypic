@@ -67,7 +67,7 @@ DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "
 InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
 
 #: What a ``MeasureEmbedding`` embeds (#281 spec E1): ``"objects"`` crops each
-#: detected colony's bounding box and writes ``embeddings/<model>/crops/``;
+#: detected colony's bounding box and writes ``embeddings/<model>/objects/``;
 #: ``"grid"`` crops each cell of a user-set grid and writes
 #: ``embeddings/<model>/grid/``; either gains ``-<name>`` with a ``name``.
 #: Literal-only, like ``InputLayer``.

@@ -66,8 +66,8 @@ def test_the_same_metrics_give_the_same_bytes(tmp_path):
 
 
 def test_the_embeddings_hook_is_present_only_when_given():
-    m = _metrics(embeddings={"dinov2-vitb14/crops": {"rows": 7, "stale_skipped": 1}})
-    assert m["embeddings"] == {"dinov2-vitb14/crops": {"rows": 7, "stale_skipped": 1}}
+    m = _metrics(embeddings={"dinov2-vitb14/objects": {"rows": 7, "stale_skipped": 1}})
+    assert m["embeddings"] == {"dinov2-vitb14/objects": {"rows": 7, "stale_skipped": 1}}
 
 
 def test_an_unknown_pipeline_sha_is_written_as_null(tmp_path):

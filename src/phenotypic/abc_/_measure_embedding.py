@@ -14,7 +14,7 @@ from pydantic import field_validator, model_validator
 from phenotypic.schema import GRID, OBJECT
 from phenotypic.sdk_.exceptions_ import OperationFailedError
 from phenotypic.sdk_._table_runs import (
-    CROPS_REGION,
+    OBJECTS_REGION,
     GRID_REGION,
     check_region_name,
     embedding_region,
@@ -104,7 +104,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     is not a set of scalar columns in the measurement table: each embedder
     writes its own table, ``embeddings/<model>/<region>/table.parquet``,
     inside the run folder of the pipeline that produced it. The region is
-    ``crops`` for colonies and ``grid`` for a grid, or ``crops-<name>`` /
+    ``objects`` for colonies and ``grid`` for a grid, or ``objects-<name>`` /
     ``grid-<name>`` for an embedder given a ``name``.
 
     **Which runs which.** :meth:`ImagePipeline.measure` does **not** run
@@ -142,7 +142,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             otherwise. A cell outside the image fails that image.
         name: Names this embedder's table, so that one pipeline can hold
             several embedders of one model and region: the region becomes
-            ``crops-<name>`` or ``grid-<name>`` instead of ``crops`` or
+            ``objects-<name>`` or ``grid-<name>`` instead of ``objects`` or
             ``grid``. A lowercase slug of 1 to 32 characters (``a-z``,
             ``0-9`` and ``_``, starting with a letter or digit). ``None``
             keeps the plain region.
@@ -297,8 +297,8 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
     @property
     def region(self) -> str:
-        """The table's region folder: ``crops`` or ``grid``, suffixed ``-<name>`` when named."""
-        base = CROPS_REGION if self.regions == "objects" else GRID_REGION
+        """The table's region folder: ``objects`` or ``grid``, suffixed ``-<name>`` when named."""
+        base = OBJECTS_REGION if self.regions == "objects" else GRID_REGION
         return embedding_region(base, self.name)
 
     def payload_key(self) -> str:
@@ -484,7 +484,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         :meth:`ImagePipeline.embed` calls this for each embedder. The
         descriptor's ``binds`` are digests of the image the vectors were
         computed from, so a writer can tell whether the store it writes still
-        holds that image (spec D7): for crops the objmap, for a grid the
+        holds that image (spec D7): for objects the objmap, for a grid the
         level-0 array of the series read and the grid edges.
 
         Args:

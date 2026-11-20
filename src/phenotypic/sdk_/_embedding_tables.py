@@ -3,9 +3,9 @@
 An embedding belongs to the pipeline that produced it, so its table lives in
 that pipeline's run folder::
 
-    tables/<n>-<sha12>/embeddings/<model>/crops/table.parquet   Object_Label | embedding
+    tables/<n>-<sha12>/embeddings/<model>/objects/table.parquet Object_Label | embedding
     tables/<n>-<sha12>/embeddings/<model>/grid/table.parquet    Grid_* keys  | embedding
-    tables/<n>-<sha12>/embeddings/<model>/<crops|grid>-<name>/...      a named embedder
+    tables/<n>-<sha12>/embeddings/<model>/<objects|grid>-<name>/...    a named embedder
 
 :class:`EmbeddingPayload` is what :meth:`ImagePipeline.embed` returns and a
 store writer consumes: one table's frame plus the descriptor fields the
@@ -63,14 +63,14 @@ class EmbeddingPayload:
     Attributes:
         key: ``"<model>/<region>"``, the entry's key in the run's
             ``embeddings`` block and its folder under ``embeddings/``; the
-            region is ``crops`` or ``grid``, either optionally ``-<name>``.
-        frame: The table: its key columns (``Object_Label`` for crops, the
+            region is ``objects`` or ``grid``, either optionally ``-<name>``.
+        frame: The table: its key columns (``Object_Label`` for objects, the
             ``Grid_*`` keys for a grid) and ``embedding``, one 1-D
             ``float16`` vector per row.
         descriptor: The entry fields the producer knows (spec D3): ``model``,
             ``dim``, ``dtype``, ``pooling``, ``key`` (the index column),
             ``input`` (``{series, level}``), ``producer``
-            (``{class, params_sha256}``) and ``binds`` -- for crops
+            (``{class, params_sha256}``) and ``binds`` -- for objects
             ``{objmap_path, objmap_sha256}``, for a grid
             ``{array_sha256, grid_sha256}``, digests of the image the vectors
             were computed from. The writer adds ``stale`` and ``files``.
@@ -102,7 +102,7 @@ class EmbeddingPayload:
 
     @property
     def region(self) -> str:
-        """``"crops"`` or ``"grid"``, optionally ``-<name>``: the region folder of :attr:`key`."""
+        """``"objects"`` or ``"grid"``, optionally ``-<name>``: the region folder of :attr:`key`."""
         return self.key.partition("/")[2]
 
     @property

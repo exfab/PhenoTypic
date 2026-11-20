@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("torch") is None, reason="Requires torch (stub backbone)"
 )
 
-CROPS = "dinov2-vitb14/crops"
+OBJECTS = "dinov2-vitb14/objects"
 GRID = "dinov2-vitb14/grid"
 
 
@@ -37,7 +37,7 @@ def _is_stale(run) -> bool:
     from phenotypic.sdk_ import list_table_runs
 
     (current,) = [r for r in list_table_runs(run.store) if r.run_id == run.run_id]
-    return current.descriptor["embeddings"][CROPS]["stale"] is True
+    return current.descriptor["embeddings"][OBJECTS]["stale"] is True
 
 
 def _deliverable_snapshot(out: Path) -> dict[str, tuple[bytes, int]]:
@@ -68,12 +68,12 @@ def test_full_run_publishes_embedding_deliverable(finished_tiny_run_with_embeddi
     import pyarrow.parquet as pq
 
     out = finished_tiny_run_with_embeddings
-    t = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/crops.parquet")
+    t = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
     assert {"Metadata_Dataset", "Object_Label", "embedding"} <= set(t.column_names)
     master = pl.read_parquet(out / "deliverables/master_measurements.parquet")
     assert "embedding" not in master.columns
     metrics = json.loads((out / "deliverables/metrics.json").read_text(encoding="utf-8"))
-    assert metrics["embeddings"]["dinov2-vitb14/crops"]["rows"] == t.num_rows
+    assert metrics["embeddings"]["dinov2-vitb14/objects"]["rows"] == t.num_rows
     # One row per measured colony, keyed as the master is.
     assert t.num_rows == master.height
     keys = {"Metadata_Dataset", "Metadata_ImageName", "Object_Label"}
@@ -93,10 +93,10 @@ def test_each_stores_rows_are_its_own_table(finished_tiny_run_with_embeddings):
     from tests._tiny_run import one_store
 
     out = finished_tiny_run_with_embeddings
-    published = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/crops.parquet")
+    published = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
     own = {}
     for stem in ("plate_1", "plate_2"):
-        own[stem] = read_embedding_table(one_store(out, stem=stem), CROPS)
+        own[stem] = read_embedding_table(one_store(out, stem=stem), OBJECTS)
         rows = _rows_of(published, stem).select(own[stem].column_names)
         assert rows.equals(own[stem]), stem
     assert not own["plate_1"].column("embedding").equals(own["plate_2"].column("embedding"))
@@ -109,9 +109,9 @@ def test_the_manifest_describes_each_deliverable(finished_tiny_run_with_embeddin
     manifest = json.loads(
         (deliverables / "embeddings" / "manifest.json").read_text(encoding="utf-8")
     )
-    entry = manifest["entries"]["dinov2-vitb14/crops"]
+    entry = manifest["entries"]["dinov2-vitb14/objects"]
     path = deliverables / entry["path"]
-    assert entry["path"] == "embeddings/dinov2-vitb14/crops.parquet"
+    assert entry["path"] == "embeddings/dinov2-vitb14/objects.parquet"
     assert entry["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert entry["stores"] == 2 and entry["stale_skipped"] == []
     (descriptor,) = entry["descriptors"]
@@ -125,7 +125,7 @@ def test_embeddings_get_no_split_and_no_mirror_section(finished_tiny_run_with_em
     d = finished_tiny_run_with_embeddings / "deliverables"
     assert not any("Embedding" in p.name for p in (d / "measurements_by_feature").iterdir())
     schema = json.loads((d / "schema.json").read_text(encoding="utf-8"))
-    vector = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/crops"] if c["name"] == "embedding")
+    vector = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/objects"] if c["name"] == "embedding")
     # schema.json names a member as ``<enum>.<member>`` (spec C12, ``SIZE.AREA``).
     member = DINO_EMBEDDING.EMBEDDING
     assert vector["member"] == f"{type(member).__name__}.{member.name}"
@@ -134,11 +134,11 @@ def test_embeddings_get_no_split_and_no_mirror_section(finished_tiny_run_with_em
     assert vector["model"] == "dinov2-vitb14"
     assert vector["producer"] == "MeasureDinoEmbedding"
     # P4 review Q1: the per-row descriptor index, 0 for a one-descriptor run.
-    index = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/crops"] if c["name"] == "descriptor_index")
+    index = next(c for c in schema["tables"]["embeddings/dinov2-vitb14/objects"] if c["name"] == "descriptor_index")
     assert index["dtype"] == "Int16" and "descriptors" in index["desc"]
     readme = (d / "README.md").read_text(encoding="utf-8")
     assert "DinoEmbedding_Embedding" not in readme
-    assert "deliverables/embeddings/dinov2-vitb14/crops.parquet" in readme
+    assert "deliverables/embeddings/dinov2-vitb14/objects.parquet" in readme
     assert "`descriptor_index`" in readme
 
 
@@ -155,10 +155,10 @@ def test_the_aggregate_proof_declares_and_enforces_the_embedding_files(
     out = finished_tiny_run_with_embeddings
     proof = json.loads(aggregate_publication_marker_path(out).read_text(encoding="utf-8"))
     outputs = proof["required_outputs"]
-    table = out / "deliverables/embeddings/dinov2-vitb14/crops.parquet"
+    table = out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
     manifest = out / "deliverables/embeddings/manifest.json"
-    assert outputs["embeddings/dinov2-vitb14/crops"]["path"] == "deliverables/embeddings/dinov2-vitb14/crops.parquet"
-    assert outputs["embeddings/dinov2-vitb14/crops"]["sha256"] == hashlib.sha256(table.read_bytes()).hexdigest()
+    assert outputs["embeddings/dinov2-vitb14/objects"]["path"] == "deliverables/embeddings/dinov2-vitb14/objects.parquet"
+    assert outputs["embeddings/dinov2-vitb14/objects"]["sha256"] == hashlib.sha256(table.read_bytes()).hexdigest()
     assert outputs["embeddings_manifest"]["path"] == "deliverables/embeddings/manifest.json"
     for path in (table, manifest):
         original = path.read_bytes()
@@ -184,12 +184,12 @@ def test_stale_entries_are_skipped_and_counted(tree_with_one_stale_store):
 
     out, runs = tree_with_one_stale_store            # 3 images, one stale
     counts = aggregate_embedding_tables(out, runs)
-    assert counts["dinov2-vitb14/crops"]["stale_skipped"] == 1
-    assert counts["dinov2-vitb14/crops"]["rows"] == sum(rows_in(r) for r in runs if not _is_stale(r))
+    assert counts["dinov2-vitb14/objects"]["stale_skipped"] == 1
+    assert counts["dinov2-vitb14/objects"]["rows"] == sum(rows_in(r) for r in runs if not _is_stale(r))
     manifest = json.loads(
         (out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["entries"]["dinov2-vitb14/crops"]["stale_skipped"] == [
+    assert manifest["entries"]["dinov2-vitb14/objects"]["stale_skipped"] == [
         "results/ds/zarr/plate_3.ome.zarr"
     ]
 
@@ -206,28 +206,28 @@ def test_corrupt_embedding_does_not_revoke_measurements(finished_tiny_run_with_e
     # spec D9: embeddings are additive to measurement authority
     out = finished_tiny_run_with_embeddings
     store = one_store(out, stem="plate_1")
-    _corrupt(store, CROPS)
+    _corrupt(store, OBJECTS)
     state = resolve_run_state(out, depth="deep")
     assert all(image.verdict == "verified" for image in state.images.values())
     with pytest.raises(EmbeddingTableUnreadableError):
-        read_embedding_table(store, "dinov2-vitb14/crops")
+        read_embedding_table(store, "dinov2-vitb14/objects")
 
 
 @pytest.fixture
 def two_key_run(tmp_path, tiny_inputs, stub_backbone) -> Path:
-    """A finished full run of :func:`~tests._tiny_run.with_dino_crops_and_grid`: two keys."""
-    from tests._tiny_run import differentiate_plate_2, run_cli, with_dino_crops_and_grid
+    """A finished full run of :func:`~tests._tiny_run.with_dino_objects_and_grid`: two keys."""
+    from tests._tiny_run import differentiate_plate_2, run_cli, with_dino_objects_and_grid
 
     differentiate_plate_2(tiny_inputs)
     out = tmp_path / "out"
-    result = run_cli(tiny_inputs, out, pipeline=with_dino_crops_and_grid(tmp_path))
+    result = run_cli(tiny_inputs, out, pipeline=with_dino_objects_and_grid(tmp_path))
     assert result.exit_code == 0, result.output
     return out
 
 
 def test_a_corrupt_embedding_fails_finalization_and_changes_no_deliverable(two_key_run):
     """Review I1 and T6. The second key (``grid``) of plate_2 is corrupt, so
-    the first (``crops``) is the one a non-atomic writer would already have
+    the first (``objects``) is the one a non-atomic writer would already have
     replaced. Finalization fails naming the store and the remedy, and no file
     under ``deliverables/`` changes: not the master, the mirror, the
     summaries, the manifest or either table, in bytes or in mtime."""
@@ -258,24 +258,24 @@ def test_a_rerun_after_a_failed_finalization_does_not_hide_it(finished_tiny_run_
     repaired and a recompile publishes again."""
     from phenotypic.sdk_ import read_embedding_table, resolve_run_state
 
-    from tests._tiny_run import DINO_CROPS_KEY, one_store, run_cli
+    from tests._tiny_run import DINO_OBJECTS_KEY, one_store, run_cli
 
     out = finished_tiny_run_with_embeddings
     store = one_store(out, stem="plate_2")
-    _corrupt(store, CROPS)
+    _corrupt(store, OBJECTS)
     before = _deliverable_snapshot(out)
     assert run_cli(None, out, mode="recompile").exit_code != 0
 
-    rerun = run_cli(out.parent / "in", out, pipeline=out.parent / "dino_crops.pht-pipe.json")
+    rerun = run_cli(out.parent / "in", out, pipeline=out.parent / "dino_objects.pht-pipe.json")
 
     assert rerun.exit_code == 0, rerun.output
     assert "already processed" in rerun.output
     assert _deliverable_snapshot(out) == before
     assert resolve_run_state(out, depth="deep").completion == "complete"
     # The remedy the error names repairs the store and publishes again.
-    measured = run_cli(None, out, mode="measure", pipeline=out.parent / "dino_crops.pht-pipe.json")
+    measured = run_cli(None, out, mode="measure", pipeline=out.parent / "dino_objects.pht-pipe.json")
     assert measured.exit_code == 0, measured.output
-    assert read_embedding_table(store, DINO_CROPS_KEY).num_rows > 0
+    assert read_embedding_table(store, DINO_OBJECTS_KEY).num_rows > 0
 
 
 def test_same_pipeline_measure_keeps_the_runs_crop_embeddings(
@@ -287,22 +287,22 @@ def test_same_pipeline_measure_keeps_the_runs_crop_embeddings(
 
     from phenotypic.sdk_ import list_table_runs, read_embedding_table
 
-    from tests._tiny_run import DINO_CROPS_KEY, crop_entry, one_store, run_cli
+    from tests._tiny_run import DINO_OBJECTS_KEY, objects_entry, one_store, run_cli
 
     out = finished_tiny_run_with_embeddings
     stores = [one_store(out, stem=stem) for stem in ("plate_1", "plate_2")]
-    before = [read_embedding_table(store, DINO_CROPS_KEY) for store in stores]
-    pipeline = out.parent / "dino_crops.pht-pipe.json"
+    before = [read_embedding_table(store, DINO_OBJECTS_KEY) for store in stores]
+    pipeline = out.parent / "dino_objects.pht-pipe.json"
 
     result = run_cli(None, out, mode="measure", pipeline=pipeline)
 
     assert result.exit_code == 0, result.output
     for store, table in zip(stores, before):
         assert len(list_table_runs(store)) == 1
-        assert read_embedding_table(store, DINO_CROPS_KEY).equals(table)
-        assert crop_entry(store)["stale"] is False
+        assert read_embedding_table(store, DINO_OBJECTS_KEY).equals(table)
+        assert objects_entry(store)["stale"] is False
     published = pq.read_metadata(
-        out / "deliverables/embeddings/dinov2-vitb14/crops.parquet"
+        out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
     ).num_rows
     assert published == sum(table.num_rows for table in before)
 
@@ -328,9 +328,9 @@ def test_a_rerun_without_embeddings_drops_the_deliverable(
 
 def test_byte_stable_embedding_deliverables(tmp_path, tiny_inputs, stub_backbone):
     """Spec C11: identical runs give identical ``deliverables/embeddings/`` bytes."""
-    from tests._tiny_run import run_cli, tree_digest, with_dino_crops
+    from tests._tiny_run import run_cli, tree_digest, with_dino_objects
 
-    pipeline = with_dino_crops(tmp_path)
+    pipeline = with_dino_objects(tmp_path)
     digests = []
     for name in ("a", "b"):
         out = tmp_path / name
@@ -356,7 +356,7 @@ sys.exit(result.exit_code)
 
 def test_byte_stable_across_two_processes(tmp_path, tiny_inputs):
     """Review T7: two fresh interpreters, two backbone loads, the same bytes."""
-    from tests._tiny_run import tree_digest, with_dino_crops
+    from tests._tiny_run import tree_digest, with_dino_objects
 
     root = Path(__file__).resolve().parents[3]
     env = dict(os.environ)
@@ -364,7 +364,7 @@ def test_byte_stable_across_two_processes(tmp_path, tiny_inputs):
         [str(root / "src"), str(root), *filter(None, [env.get("PYTHONPATH")])]
     )
     env["QT_QPA_PLATFORM"] = "offscreen"
-    pipeline = with_dino_crops(tmp_path)
+    pipeline = with_dino_objects(tmp_path)
     digests = []
     for name in ("a", "b"):
         out = tmp_path / name
@@ -388,7 +388,7 @@ def test_stage3_writes_the_crop_embeddings(tmp_path, monkeypatch, stub_backbone)
     from phenotypic.sdk_ import read_embedding_table
 
     from tests._fakes.fake_gpu_detector import FakeGpuDetector
-    from tests._tiny_run import DINO_CROPS_KEY, crop_entry, one_store
+    from tests._tiny_run import DINO_OBJECTS_KEY, objects_entry, one_store
 
     monkeypatch.setattr(phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False)
     images = tmp_path / "images"
@@ -411,9 +411,9 @@ def test_stage3_writes_the_crop_embeddings(tmp_path, monkeypatch, stub_backbone)
     )
     assert result.exit_code == 0, result.output
     store = one_store(out)
-    assert read_embedding_table(store, DINO_CROPS_KEY).num_rows > 0
-    assert crop_entry(store)["stale"] is False
-    assert (out / "deliverables/embeddings/dinov2-vitb14/crops.parquet").is_file()
+    assert read_embedding_table(store, DINO_OBJECTS_KEY).num_rows > 0
+    assert objects_entry(store)["stale"] is False
+    assert (out / "deliverables/embeddings/dinov2-vitb14/objects.parquet").is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -423,7 +423,7 @@ def test_stage3_writes_the_crop_embeddings(tmp_path, monkeypatch, stub_backbone)
 
 def test_a_grid_embedder_publishes_its_grid_table(two_key_run):
     """A grid embedder through the CLI: one row per cell per image, keyed by
-    the ``Grid_*`` cell columns, beside the crops table."""
+    the ``Grid_*`` cell columns, beside the objects table."""
     import pyarrow.parquet as pq
 
     from phenotypic.schema import GRID as GRID_SCHEMA
@@ -438,7 +438,7 @@ def test_a_grid_embedder_publishes_its_grid_table(two_key_run):
     assert table.column_names[:2] == ["Metadata_Dataset", "Metadata_ImageName"]
     assert table.column_names[-1] == "embedding"
     metrics = json.loads((out / "deliverables/metrics.json").read_text(encoding="utf-8"))
-    assert set(metrics["embeddings"]) == {CROPS, GRID}
+    assert set(metrics["embeddings"]) == {OBJECTS, GRID}
     assert metrics["embeddings"][GRID] == {"rows": 2 * cells, "stale_skipped": 0}
 
 
@@ -448,10 +448,10 @@ def test_restart_republishes_the_embeddings(finished_tiny_run_with_embeddings):
     from tests._tiny_run import run_cli
 
     out = finished_tiny_run_with_embeddings
-    path = out / "deliverables/embeddings/dinov2-vitb14/crops.parquet"
+    path = out / "deliverables/embeddings/dinov2-vitb14/objects.parquet"
     before = path.read_bytes()
     result = run_cli(
-        out.parent / "in", out, pipeline=out.parent / "dino_crops.pht-pipe.json",
+        out.parent / "in", out, pipeline=out.parent / "dino_objects.pht-pipe.json",
         extra=["--restart"],
     )
     assert result.exit_code == 0, result.output
@@ -471,13 +471,13 @@ def test_continuation_refinalizes_with_the_new_images_embeddings(
     out = finished_tiny_run_with_embeddings
     inputs = out.parent / "in"
     (inputs / "ds" / "plate_3.tif").write_bytes((inputs / "ds" / "plate_1.tif").read_bytes())
-    result = run_cli(inputs, out, pipeline=out.parent / "dino_crops.pht-pipe.json")
+    result = run_cli(inputs, out, pipeline=out.parent / "dino_objects.pht-pipe.json")
     assert result.exit_code == 0, result.output
     manifest = json.loads(
         (out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["entries"][CROPS]["stores"] == 3
-    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/crops.parquet")
+    assert manifest["entries"][OBJECTS]["stores"] == 3
+    table = pq.read_table(out / "deliverables/embeddings/dinov2-vitb14/objects.parquet")
     assert set(table.column("Metadata_ImageName").to_pylist()) == {
         "plate_1", "plate_2", "plate_3",
     }

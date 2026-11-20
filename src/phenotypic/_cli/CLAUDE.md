@@ -117,7 +117,7 @@ rest.** `MODE_SLOTS["process"]` is `ops` + `meas`, and process mode never runs
   before. `measure()` is never called.
 - **Skipped, never silently:** every other entry, which is what process mode
   always did with `meas`. One warning line names each, with its reason:
-  - it needs objects (an ordinary measurer, a crop embedder): `meas:size
+  - it needs objects (an ordinary measurer, an objects embedder): `meas:size
     skipped: process mode stores no objects`. A process store holds no
     object map, so a table keyed on `Object_Label` would point at labels the
     store cannot resolve;
@@ -1526,7 +1526,7 @@ declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
 `embeddings/<model>/<region>.parquet` and `embeddings/manifest.json`
-(the region is `crops` or `grid`, or `crops-<name>` / `grid-<name>` for an
+(the region is `objects` or `grid`, or `objects-<name>` / `grid-<name>` for an
 embedder given a `name`, so one pipeline can publish several embedders of one
 model and region, e.g. rig1's `grid-wells` and `grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
 itself, never in the `0-K` aggregate shards. **Two phases, so a failure

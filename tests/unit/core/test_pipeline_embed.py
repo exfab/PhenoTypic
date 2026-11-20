@@ -16,20 +16,20 @@ def test_measure_skips_and_embed_runs(toy_embedder, plate):
     img = pipe.apply(plate)
     assert not any("embedding" in c for c in pipe.measure(img).columns)
     payloads = pipe.embed(img)
-    assert list(payloads) == ["toy-v1/crops"]
-    assert len(payloads["toy-v1/crops"].frame) == img.num_objects
+    assert list(payloads) == ["toy-v1/objects"]
+    assert len(payloads["toy-v1/objects"].frame) == img.num_objects
 
 
 def test_two_embedders_with_one_payload_key_are_refused(toy_embedder):
     twin = toy_embedder.model_copy()                  # same model and region, e.g. another pooling
-    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/crops"):
+    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/objects"):
         ImagePipeline(ops=[OtsuDetector()], meas={"emb_a": toy_embedder, "emb_b": twin})
 
 
 def test_a_crop_and_a_grid_embedder_of_one_model_coexist(toy_embedder, toy_grid_embedder, plate):
     pipe = ImagePipeline(ops=[OtsuDetector()], meas={"crops": toy_embedder, "grid": toy_grid_embedder})
     payloads = pipe.embed(pipe.apply(plate))
-    assert list(payloads) == ["toy-v1/crops", "toy-v1/grid"]
+    assert list(payloads) == ["toy-v1/objects", "toy-v1/grid"]
 
 
 def test_measure_without_any_plain_measurer_returns_the_info_block(toy_embedder, plate):
@@ -46,14 +46,14 @@ def test_a_pipeline_without_embedders_embeds_nothing(plate):
 
 def test_assigning_a_duplicate_embedder_later_is_refused(toy_embedder):
     pipe = ImagePipeline(ops=[OtsuDetector()], meas={"emb_a": toy_embedder})
-    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/crops"):
+    with pytest.raises(ValueError, match="emb_a.*emb_b.*toy-v1/objects"):
         pipe.set_meas({"emb_a": toy_embedder, "emb_b": toy_embedder.model_copy()})
 
 
 def test_the_crop_payload_descriptor_binds_the_objmap(toy_embedder, detected_plate):
     from phenotypic.sdk_._measurement_tables import objmap_digest
 
-    payload = ImagePipeline(meas={"emb": toy_embedder}).embed(detected_plate)["toy-v1/crops"]
+    payload = ImagePipeline(meas={"emb": toy_embedder}).embed(detected_plate)["toy-v1/objects"]
     assert isinstance(payload, EmbeddingPayload)
     descriptor = payload.descriptor
     assert descriptor["key"] == str(OBJECT.LABEL)
@@ -107,9 +107,9 @@ def test_two_named_crop_embedders_of_one_model_coexist(detected_plate):
         }
     )
     assert [m.payload_key() for m in pipe._meas.values()] == [
-        "dinov2-vitb14/crops-cls", "dinov2-vitb14/crops-mean",
+        "dinov2-vitb14/objects-cls", "dinov2-vitb14/objects-mean",
     ]
-    with pytest.raises(ValueError, match="dinov2-vitb14/crops"):
+    with pytest.raises(ValueError, match="dinov2-vitb14/objects"):
         ImagePipeline(
             meas={
                 "cls": MeasureDinoEmbedding(pooling="crop_cls"),
@@ -118,7 +118,7 @@ def test_two_named_crop_embedders_of_one_model_coexist(detected_plate):
         )
     toy = toy_embedder_class()
     payloads = ImagePipeline(meas={"a": toy(name="a"), "b": toy(name="b")}).embed(detected_plate)
-    assert list(payloads) == ["toy-v1/crops-a", "toy-v1/crops-b"]
+    assert list(payloads) == ["toy-v1/objects-a", "toy-v1/objects-b"]
     assert all(len(p.frame) == detected_plate.num_objects for p in payloads.values())
 
 

@@ -193,7 +193,7 @@ def embed_in_process_mode(
 ) -> dict[str, "EmbeddingPayload"]:
     """:meth:`ImagePipeline.embed` over only the entries process mode runs.
 
-    A crop embedder needs objects, so it is skipped like any object
+    An objects embedder needs objects, so it is skipped like any object
     measurer; ``embed`` itself would run it over an empty object map and
     return an empty table keyed on labels the store does not hold.
 

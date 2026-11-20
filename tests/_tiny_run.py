@@ -694,7 +694,7 @@ def store_with_two_runs(tmp_path: Path, measured_image, pipeline_file_b: Path) -
 
 
 #: The embedding key and model folder :func:`store_with_crop_entry` writes.
-CROP_ENTRY_KEY = "dinov2-vitb14/crops"
+OBJECTS_ENTRY_KEY = "dinov2-vitb14/objects"
 
 
 def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
@@ -708,7 +708,7 @@ def _write_crop_payload(part: Path, run_id: str, labels) -> dict:
     from phenotypic.sdk_ import ngff_
     from phenotypic.sdk_._table_runs import embedding_table_relative_path
 
-    relative = embedding_table_relative_path(run_id, "dinov2-vitb14", "crops")
+    relative = embedding_table_relative_path(run_id, "dinov2-vitb14", "objects")
     payload = part / relative
     payload.parent.mkdir(parents=True, exist_ok=True)
     for group in (payload.parent.parent.parent, payload.parent.parent, payload.parent):
@@ -781,7 +781,7 @@ def store_with_crop_entry(tmp_path: Path, measured_image) -> Path:
                 pipeline_sha256=run.pipeline_sha256,
                 measurements=tables,
                 objmap_target="rgb/labels/objmap",
-                embeddings={CROP_ENTRY_KEY: raw},
+                embeddings={OBJECTS_ENTRY_KEY: raw},
                 objmap_sha256=objmap_digest(objmap),
             )
             phenotypic["tables"]["runs"][run.run_id] = entry
@@ -811,15 +811,15 @@ def resave_with_objmap(store: Path, *, zeros: bool) -> Path:
     return image.save2zarr(store)
 
 
-def crop_entry(store: Path) -> dict:
-    """The :data:`CROP_ENTRY_KEY` embedding entry of *store*'s first run that has one."""
+def objects_entry(store: Path) -> dict:
+    """The :data:`OBJECTS_ENTRY_KEY` embedding entry of *store*'s first run that has one."""
     from phenotypic.sdk_ import list_table_runs
 
     for run in list_table_runs(store):
         embeddings = run.descriptor.get("embeddings") or {}
-        if CROP_ENTRY_KEY in embeddings:
-            return dict(embeddings[CROP_ENTRY_KEY])
-    raise KeyError(f"{store} has no {CROP_ENTRY_KEY} entry")
+        if OBJECTS_ENTRY_KEY in embeddings:
+            return dict(embeddings[OBJECTS_ENTRY_KEY])
+    raise KeyError(f"{store} has no {OBJECTS_ENTRY_KEY} entry")
 
 
 # ---------------------------------------------------------------------------
@@ -1091,8 +1091,8 @@ def _with_cli_payloads(image, pipeline_file: Path, embedders: Mapping[str, objec
 
 
 @pytest.fixture
-def image_with_crop_payload(detected_plate, pipeline_file_a: Path, toy_embedder):
-    """:func:`detected_plate` as a ``full`` application of A, with one ``toy-v1/crops`` payload."""
+def image_with_objects_payload(detected_plate, pipeline_file_a: Path, toy_embedder):
+    """:func:`detected_plate` as a ``full`` application of A, with one ``toy-v1/objects`` payload."""
     image = _with_cli_payloads(detected_plate, pipeline_file_a, {"emb": toy_embedder})
     yield image
     _IMAGE_PAYLOADS.pop(id(image), None)
@@ -1100,7 +1100,7 @@ def image_with_crop_payload(detected_plate, pipeline_file_a: Path, toy_embedder)
 
 @pytest.fixture
 def image_with_two_models(detected_plate, pipeline_file_a: Path, toy_embedder):
-    """:func:`detected_plate` with payloads ``toy-v1/crops`` and ``toy-v2/crops``."""
+    """:func:`detected_plate` with payloads ``toy-v1/objects`` and ``toy-v2/objects``."""
     second = toy_embedder_class()(token="toy-v2")
     image = _with_cli_payloads(
         detected_plate, pipeline_file_a, {"v1": toy_embedder, "v2": second}
@@ -1283,19 +1283,19 @@ def install_stub_backbone(monkeypatch, *, num_register_tokens: int = 0) -> list[
 # ---------------------------------------------------------------------------
 
 #: The crop entry a default ``MeasureDinoEmbedding()`` (DINOv2-base) writes.
-DINO_CROPS_KEY = "dinov2-vitb14/crops"
+DINO_OBJECTS_KEY = "dinov2-vitb14/objects"
 
 
-def with_dino_crops(directory: Path) -> Path:
+def with_dino_objects(directory: Path) -> Path:
     """A pipeline file: :func:`tiny_pipeline`'s ops and ``meas``, plus ``meas["emb"]``.
 
     ``meas["emb"]`` is ``MeasureDinoEmbedding(device="cpu")``, otherwise the
-    defaults: crop embeddings under :data:`DINO_CROPS_KEY`. ``device="cpu"``
+    defaults: crop embeddings under :data:`DINO_OBJECTS_KEY`. ``device="cpu"``
     keeps the stub backbone off a GPU the test node may have. Run it under
     :func:`stub_backbone`, which needs torch.
 
     Args:
-        directory: Where to write ``dino_crops.pht-pipe.json``.
+        directory: Where to write ``dino_objects.pht-pipe.json``.
 
     Returns:
         The pipeline file.
@@ -1309,25 +1309,25 @@ def with_dino_crops(directory: Path) -> Path:
         ops=[OtsuDetector()],
         meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(device="cpu")},
     )
-    path = Path(directory) / "dino_crops.pht-pipe.json"
+    path = Path(directory) / "dino_objects.pht-pipe.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(pipeline.to_json() or "", encoding="utf-8")
     return path
 
 
-#: The grid entry :func:`with_dino_crops_and_grid` adds, and its 2 x 2 grid.
+#: The grid entry :func:`with_dino_objects_and_grid` adds, and its 2 x 2 grid.
 DINO_GRID_KEY = "dinov2-vitb14/grid"
 
 
-def with_dino_crops_and_grid(directory: Path) -> Path:
-    """:func:`with_dino_crops` plus ``meas["grid"]``: a 2 x 2 grid embedder.
+def with_dino_objects_and_grid(directory: Path) -> Path:
+    """:func:`with_dino_objects` plus ``meas["grid"]``: a 2 x 2 grid embedder.
 
-    Two entry keys, ``dinov2-vitb14/crops`` then ``dinov2-vitb14/grid``, so a
+    Two entry keys, ``dinov2-vitb14/objects`` then ``dinov2-vitb14/grid``, so a
     finalization publishes two tables. The cells are
     :data:`TOY_GRID_ROW_EDGES` x :data:`TOY_GRID_COL_EDGES`.
 
     Returns:
-        ``<directory>/dino_crops_grid.pht-pipe.json``.
+        ``<directory>/dino_objects_grid.pht-pipe.json``.
     """
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
@@ -1346,7 +1346,7 @@ def with_dino_crops_and_grid(directory: Path) -> Path:
             "grid": MeasureDinoEmbedding(regions="grid", grid=grid, device="cpu"),
         },
     )
-    path = Path(directory) / "dino_crops_grid.pht-pipe.json"
+    path = Path(directory) / "dino_objects_grid.pht-pipe.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(pipeline.to_json() or "", encoding="utf-8")
     return path
@@ -1371,25 +1371,25 @@ def differentiate_plate_2(inputs: Path) -> None:
 def finished_tiny_run_with_embeddings(
     tmp_path: Path, tiny_inputs: Path, stub_backbone
 ) -> Path:
-    """A finished local full run of :func:`with_dino_crops` over :func:`tiny_inputs`.
+    """A finished local full run of :func:`with_dino_objects` over :func:`tiny_inputs`.
 
     ``plate_2`` is mirrored (:func:`differentiate_plate_2`), so the two
     stores' vectors differ. The backbone is :func:`stub_backbone`'s, so this
-    needs torch. The pipeline file is ``<tmp>/dino_crops.pht-pipe.json``.
+    needs torch. The pipeline file is ``<tmp>/dino_objects.pht-pipe.json``.
 
     Returns:
         The output root (``<tmp>/out``).
     """
     differentiate_plate_2(tiny_inputs)
     out = tmp_path / "out"
-    result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path))
+    result = run_cli(tiny_inputs, out, pipeline=with_dino_objects(tmp_path))
     assert result.exit_code == 0, result.output
     return out
 
 
 @pytest.fixture
 def tree_with_one_stale_store(tmp_path: Path, tiny_inputs: Path, stub_backbone):
-    """A finished :func:`with_dino_crops` run over three plates, one crop entry stale.
+    """A finished :func:`with_dino_objects` run over three plates, one crop entry stale.
 
     ``plate_3``'s store is re-saved table-less with an all-zeros objmap
     (:func:`resave_with_objmap`), so its crop entry is recomputed
@@ -1408,7 +1408,7 @@ def tree_with_one_stale_store(tmp_path: Path, tiny_inputs: Path, stub_backbone):
     good = (tiny_inputs / "ds" / "plate_1.tif").read_bytes()
     (tiny_inputs / "ds" / "plate_3.tif").write_bytes(good)
     out = tmp_path / "out"
-    result = run_cli(tiny_inputs, out, pipeline=with_dino_crops(tmp_path))
+    result = run_cli(tiny_inputs, out, pipeline=with_dino_objects(tmp_path))
     assert result.exit_code == 0, result.output
     resave_with_objmap(one_store(out, stem="plate_3"), zeros=True)
     runs = []
@@ -1420,10 +1420,10 @@ def tree_with_one_stale_store(tmp_path: Path, tiny_inputs: Path, stub_backbone):
 
 
 def rows_in(run: "TableRun") -> int:
-    """The row count of *run*'s :data:`DINO_CROPS_KEY` table, from its footer."""
+    """The row count of *run*'s :data:`DINO_OBJECTS_KEY` table, from its footer."""
     import pyarrow.parquet as pq
 
-    model, _, region = DINO_CROPS_KEY.partition("/")
+    model, _, region = DINO_OBJECTS_KEY.partition("/")
     return pq.read_metadata(run.embedding_path(model, region)).num_rows  # type: ignore[arg-type]
 
 

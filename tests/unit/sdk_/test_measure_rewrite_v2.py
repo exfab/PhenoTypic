@@ -15,7 +15,7 @@ import pytest
 from phenotypic._cli._cli_failure_tracker import file_sha256
 from phenotypic.sdk_ import list_table_runs, replace_image_tables
 from tests._tiny_run import (
-    crop_entry,
+    objects_entry,
     other_tables,
     resave_with_objmap,
     tables_for_store,
@@ -61,11 +61,11 @@ def test_the_measure_rewrite_leaves_stale_unchanged(store_with_crop_entry, SHA_B
     # Built before the all-zeros resave: a store with no objects cannot be measured.
     tables = other_tables(store_with_crop_entry)
     resave_with_objmap(store_with_crop_entry, zeros=True)
-    assert crop_entry(store_with_crop_entry)["stale"] is True
+    assert objects_entry(store_with_crop_entry)["stale"] is True
     carried = list_table_runs(store_with_crop_entry)[0]
     before = tree_digest(carried.folder)
     replace_image_tables(store_with_crop_entry, tables, pipeline_sha256=SHA_B)
-    assert crop_entry(store_with_crop_entry)["stale"] is True     # D7: no objmap written
+    assert objects_entry(store_with_crop_entry)["stale"] is True     # D7: no objmap written
     assert tree_digest(carried.folder) == before
 
 

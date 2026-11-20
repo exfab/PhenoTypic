@@ -43,10 +43,10 @@ tables/<n>-<sha12>/zarr.json
 tables/<n>-<sha12>/measurements/zarr.json
 tables/<n>-<sha12>/measurements/table.parquet
 tables/<n>-<sha12>/metadata/pht-metadata.parquet       (when metadata was joined)
-tables/<n>-<sha12>/embeddings/<model>/{crops,grid}[-<name>]/    (optional)
+tables/<n>-<sha12>/embeddings/<model>/{objects,grid}[-<name>]/    (optional)
 ```
 
-An embedding region is `crops` or `grid`, or `crops-<name>` / `grid-<name>`
+An embedding region is `objects` or `grid`, or `objects-<name>` / `grid-<name>`
 for an embedder with a `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`),
 so one run can hold several embedders of one model and region (rig1:
 `grid-wells`, `grid-agar`).

@@ -209,7 +209,7 @@ def test_field_descriptions_survive_the_reorder():
 def test_model_token_spells_version_size_and_patch(version, size, token):
     m = MeasureDinoEmbedding(version=version, size=size)
     assert m.model_token() == token
-    assert m.payload_key() == f"{token}/crops"
+    assert m.payload_key() == f"{token}/objects"
 
 
 def test_a_grid_embedder_writes_the_grid_folder():
@@ -219,7 +219,7 @@ def test_a_grid_embedder_writes_the_grid_folder():
 
 
 def test_a_named_embedder_writes_its_named_folder():
-    """#281 named regions: ``grid-<name>`` and ``crops-<name>``."""
+    """#281 named regions: ``grid-<name>`` and ``objects-<name>``."""
     m = MeasureDinoEmbedding(
         regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
         name="wells",
@@ -227,7 +227,7 @@ def test_a_named_embedder_writes_its_named_folder():
     assert m.payload_key() == "dinov2-vitb14/grid-wells"
     assert m.requires_objects is False
     crops = MeasureDinoEmbedding(name="cls")
-    assert crops.payload_key() == "dinov2-vitb14/crops-cls"
+    assert crops.payload_key() == "dinov2-vitb14/objects-cls"
     assert crops.requires_objects is True
     with pytest.raises(ValueError, match="name must be a lowercase slug"):
         MeasureDinoEmbedding(
@@ -529,8 +529,8 @@ def test_the_pipeline_payload_carries_the_model_entry(stub_backbone, detected_pl
         ops=[], meas={"emb": MeasureDinoEmbedding(size="small", crop_px=112, device="cpu")}
     )
     payloads = pipe.embed(detected_plate)
-    assert list(payloads) == ["dinov2-vits14/crops"]
-    descriptor = payloads["dinov2-vits14/crops"].descriptor
+    assert list(payloads) == ["dinov2-vits14/objects"]
+    descriptor = payloads["dinov2-vits14/objects"].descriptor
     assert descriptor["model"] == {
         "family": "dinov2", "hf_id": "facebook/dinov2-small",
         "revision": STUB_COMMIT, "patch_size": 14, "device": "cpu",

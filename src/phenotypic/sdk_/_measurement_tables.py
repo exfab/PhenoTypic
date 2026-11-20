@@ -243,7 +243,7 @@ def array_digest(array: np.ndarray) -> str:
 
 
 def objmap_digest(objmap: np.ndarray) -> str:
-    """The digest a crop embedding entry binds to: :func:`array_digest` of the objmap.
+    """The digest an objects embedding entry binds to: :func:`array_digest` of the objmap.
 
     *objmap* is the level-0 label array as the store writes it. The writer
     does not cast it (``_write_series`` writes ``image.objmap[:]``'s own
@@ -261,7 +261,7 @@ def refresh_embedding_staleness(
     """Set every embedding entry's ``stale`` from its ``binds`` (spec D7), in place.
 
     **Recomputed on every write, never latched.** A staged run's Stage 1
-    writes an all-zeros objmap, so its crop entries read stale; Stage 3's
+    writes an all-zeros objmap, so its objects entries read stale; Stage 3's
     identical objmap clears the flag again. The files are kept either way.
 
     - **Crops** (``binds.objmap_sha256``): stale when it differs from

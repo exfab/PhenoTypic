@@ -13,7 +13,7 @@ class DINO_EMBEDDING(DiscriminativeFeature):
     cell keys) and one ``embedding`` vector per row, under
     ``tables/<run>/embeddings/<model>/<region>/table.parquet`` in each
     image's store and ``deliverables/embeddings/<model>/<region>.parquet``
-    for the run. The region is ``crops`` or ``grid``, or ``crops-<name>`` /
+    for the run. The region is ``objects`` or ``grid``, or ``objects-<name>`` /
     ``grid-<name>`` for an embedder given a ``name``.
     """
 

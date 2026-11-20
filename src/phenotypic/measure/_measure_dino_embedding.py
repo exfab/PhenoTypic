@@ -90,7 +90,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     embedding table, ``Object_Label`` (or the ``Grid_*`` keys) plus an
     ``embedding`` vector per row, in its store's run folder, and the run
     gets ``deliverables/embeddings/<model>/<region>.parquet``, the region
-    ``crops`` or ``grid``, or ``crops-<name>`` / ``grid-<name>`` when named;
+    ``objects`` or ``grid``, or ``objects-<name>`` / ``grid-<name>`` when named;
     :class:`~phenotypic.schema.DINO_EMBEDDING` documents the vector.
     :meth:`ImagePipeline.embed` runs it; :meth:`ImagePipeline.measure` does
     not. It runs on the CPU unless CUDA is available.
@@ -141,7 +141,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             embedders of one model and region -- a rig's well lattice and
             one whole-agar cell, say, or two poolings of the colonies. Its
             region is then ``grid-<name>`` (``dinov2-vitb14/grid-wells``) or
-            ``crops-<name>`` instead of ``grid`` or ``crops``. A lowercase
+            ``objects-<name>`` instead of ``grid`` or ``objects``. A lowercase
             slug of 1 to 32 characters: ``a-z``, ``0-9`` and ``_``, starting
             with a letter or digit. ``None`` keeps the plain region. Two
             embedders of one model and region need different names; the
@@ -184,9 +184,9 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.grid import ManualGridFinder
         >>> from phenotypic.measure import MeasureDinoEmbedding
-        >>> crops = MeasureDinoEmbedding(size="small")
-        >>> crops.model_token(), crops.payload_key()
-        ('dinov2-vits14', 'dinov2-vits14/crops')
+        >>> colonies = MeasureDinoEmbedding(size="small")
+        >>> colonies.model_token(), colonies.payload_key()
+        ('dinov2-vits14', 'dinov2-vits14/objects')
         >>> whole_plate = MeasureDinoEmbedding(
         ...     regions="grid", grid=ManualGridFinder(row_edges=[0, 600], col_edges=[0, 800])
         ... )
@@ -207,13 +207,13 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         >>> wells.payload_key(), agar.payload_key()
         ('dinov2-vitb14/grid-wells', 'dinov2-vitb14/grid-agar')
         >>> rig = ImagePipeline(meas={"wells": wells, "agar": agar})
-        >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas={"dino": crops})
+        >>> pipe = ImagePipeline(ops=[OtsuDetector()], meas={"dino": colonies})
 
         With the weights available, ``pipe.embed(image)`` returns one
-        payload per embedder, and ``crops.measure(image)`` the table's frame:
+        payload per embedder, and ``colonies.measure(image)`` the table's frame:
 
         >>> from phenotypic.data import load_synth_yeast_plate
-        >>> frame = crops.measure(OtsuDetector().apply(load_synth_yeast_plate()))  # doctest: +SKIP
+        >>> frame = colonies.measure(OtsuDetector().apply(load_synth_yeast_plate()))  # doctest: +SKIP
         >>> frame.columns.tolist(), frame["embedding"][0].shape  # doctest: +SKIP
         (['Object_Label', 'embedding'], (384,))
     """

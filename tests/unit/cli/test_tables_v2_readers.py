@@ -168,7 +168,7 @@ def test_v2_table_paths_are_embedded_authority(store_with_two_runs):
     # The v1 flat shape stays recognised (migrate's legacy read, until C15).
     assert is_embedded_measurement_table(store / "tables/measurements/table.parquet")
     assert not is_embedded_measurement_table(
-        store / "tables/1-unknown/embeddings/m/crops/table.parquet"
+        store / "tables/1-unknown/embeddings/m/objects/table.parquet"
     )
     assert not is_embedded_measurement_table(
         store / "tables/0-abc/measurements/table.parquet"
