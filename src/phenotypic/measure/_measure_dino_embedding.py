@@ -340,7 +340,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             "model": {
                 "family": f"dinov{int(self.version)}",
                 "hf_id": hf_dino_id(self.version, self.size),
-                "revision": resolved_revision(model),
+                "revision": resolved_revision(model, self.revision),
                 "patch_size": backbone_patch_size(model),
                 "device": device,
                 "device_name": backbone_device_name(device),

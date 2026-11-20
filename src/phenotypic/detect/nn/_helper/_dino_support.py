@@ -26,6 +26,7 @@ construct and serialise without them.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, List, Literal, Tuple
 
 if TYPE_CHECKING:
@@ -254,22 +255,85 @@ def load_dino_backbone(
     return model, processor
 
 
-def resolved_revision(model: Any) -> str | None:
+#: A full Hugging Face commit: 40 lowercase hex.
+_COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+#: The snapshot folder of a Hugging Face cache path, ``.../snapshots/<commit>/...``.
+_SNAPSHOT_RE = re.compile(r"(?:^|[/\\])snapshots[/\\]([0-9a-f]{40})(?:[/\\]|$)")
+
+
+def resolved_revision(model: Any, revision: str | None = None) -> str | None:
     """The Hugging Face commit a loaded backbone's weights came from.
 
-    ``from_pretrained`` records the snapshot's commit hash on the config,
-    whether the revision asked for was a commit, a branch, a tag or ``None``,
-    so this is the identity of the weights actually in use.
+    Tried in order, the first answer wins:
+
+    1. ``model.config._commit_hash``, which ``from_pretrained`` records on
+       transformers before 5.18. From 5.18 (huggingface-hub 2.x) it is no
+       longer set, so the rest is the fallback that makes the revision
+       independent of it (#281).
+    2. *revision*, when it is a full 40-hex commit: ``from_pretrained``
+       loaded that pin or raised, so the pin is the commit.
+    3. A ``.../snapshots/<commit>/`` component of the config's or the
+       model's ``name_or_path``: a backbone loaded from a cache snapshot
+       directory.
+    4. The local Hugging Face cache: the snapshot that *revision* (``main``
+       when ``None``) resolves to for the repo ``name_or_path``, through
+       ``huggingface_hub.try_to_load_from_cache``. It reads only the cache's
+       ``refs/`` and ``snapshots/``, so it works offline and never reads or
+       sends a token. ``from_pretrained`` just loaded from that cache, and
+       updated the ref when it fetched, so it is the snapshot in use.
 
     Args:
         model: A loaded ``AutoModel``.
+        revision: The revision it was loaded with, as passed to
+            ``from_pretrained``.
 
     Returns:
-        ``model.config._commit_hash``, or ``None`` when the config records
-        none (a model built from a local directory, say).
+        The 40-hex commit, or ``None`` when no source names one (a model
+        built from a plain local directory, say). Never fabricated.
     """
-    commit = getattr(getattr(model, "config", None), "_commit_hash", None)
-    return None if commit is None else str(commit)
+    config = getattr(model, "config", None)
+    commit = getattr(config, "_commit_hash", None)
+    if commit:
+        return str(commit)
+    if isinstance(revision, str) and _COMMIT_RE.fullmatch(revision):
+        return revision
+    paths = [
+        getattr(config, "name_or_path", None),
+        getattr(config, "_name_or_path", None),
+        getattr(model, "name_or_path", None),
+    ]
+    sources = [str(path) for path in paths if isinstance(path, str) and path]
+    for source in sources:
+        snapshot = _SNAPSHOT_RE.search(source)
+        if snapshot:
+            return snapshot.group(1)
+    for source in dict.fromkeys(sources):
+        commit = _cached_snapshot_commit(source, revision)
+        if commit is not None:
+            return commit
+    return None
+
+
+def _cached_snapshot_commit(repo_id: str, revision: str | None) -> str | None:
+    """The commit *revision* resolves to for *repo_id* in the local Hugging Face cache.
+
+    Offline and token-free: ``try_to_load_from_cache`` only reads the
+    cache's ``refs/<revision>`` and ``snapshots/<commit>/config.json``.
+    ``None`` when huggingface_hub is missing, *repo_id* is not a hub id, or
+    the cache does not hold it.
+    """
+    try:
+        from huggingface_hub import try_to_load_from_cache
+    except ImportError:
+        return None
+    try:
+        cached = try_to_load_from_cache(repo_id, "config.json", revision=revision)
+    except Exception:  # noqa: BLE001 -- an id that is not a repo id, say
+        return None
+    if not isinstance(cached, str):
+        return None
+    snapshot = _SNAPSHOT_RE.search(cached)
+    return snapshot.group(1) if snapshot else None
 
 
 # ---------------------------------------------------------------------------
