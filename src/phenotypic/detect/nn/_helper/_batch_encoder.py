@@ -9,7 +9,9 @@ resident model per shard and crops from many images in each forward pass
 - the **physical batch** rule, :func:`physical_batch_size`, a function of the
   GPU's total memory, the backbone and ``crop_px`` only, never of free memory;
 - :func:`configure_determinism`, the settings Stage 4 runs under, and
-  :func:`check_cublas_workspace`, its cuBLAS half.
+  :func:`check_cublas_workspace`, its cuBLAS half;
+- :class:`BatchEncoder`, which runs one backbone over regions from many
+  images at a fixed physical shape, and :class:`Stage4OutOfMemory`.
 
 The rule's constants are copied from the P0 logic-validation script
 ``docs/superpowers/logic_validation_scripts/2026-11-12-gpu-embedding-staging/physical_batch_size.py``,
@@ -22,8 +24,17 @@ torch is imported inside functions only.
 from __future__ import annotations
 
 import os
+import sys
+from collections import deque
+from collections.abc import Hashable, Iterator
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from phenotypic.abc_ import BackboneInputs, RegionEncoder
+    from phenotypic.sdk_.typing_ import ComputeDType
 
 # ---------------------------------------------------------------------------
 # The physical batch size (spec §4.4; P0 T1 physical_batch_size.py)
@@ -237,3 +248,381 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
         ),
         "cublas_workspace_config": os.environ.get(CUBLAS_WORKSPACE_VARIABLE),
     }
+
+
+# ---------------------------------------------------------------------------
+# The encoder (spec §4.4)
+# ---------------------------------------------------------------------------
+
+#: The ``torch`` dtype name of each ``compute_dtype``.
+_COMPUTE_DTYPES: Final[tuple[str, ...]] = ("float32", "bfloat16", "float16")
+
+#: One queued row: its ticket, its index in that ticket's inputs, its pixels.
+_Row = tuple[Hashable, int, np.ndarray]
+#: A queue's geometry: ``(kind, h, w, pooling)``.
+_QueueKey = tuple[str, int, int, str]
+
+
+class Stage4OutOfMemory(RuntimeError):
+    """The backbone ran out of GPU memory and the physical batch cannot halve again.
+
+    Raised by a forward pass at ``m = 1``, or after ``m`` has already halved
+    once for the shard (spec §4.8). Running out is the node's state, never the
+    image's: the shard exits non-zero, and the next round retries its images.
+    """
+
+
+@dataclass
+class _Ticket:
+    """What the encoder holds for one submission until :meth:`BatchEncoder.drain` yields it."""
+
+    outputs: list[Any]
+    remaining: int
+    output_bytes: int
+
+
+def _is_device_oom(exc: BaseException) -> bool:
+    """torch's (GPU) ``OutOfMemoryError``; never a host ``MemoryError``, which ends the shard."""
+    torch = sys.modules.get("torch")
+    if torch is None:
+        return False
+    for owner in (torch, getattr(torch, "cuda", None)):
+        oom = getattr(owner, "OutOfMemoryError", None)
+        if isinstance(oom, type) and isinstance(exc, oom):
+            return True
+    return False
+
+
+class BatchEncoder:
+    """One resident backbone over regions from many images, at a fixed physical shape (spec §4.4).
+
+    Rows are queued by geometry, ``(kind, h, w, pooling)``, one queue per
+    key. **Every forward pass has exactly** :attr:`physical_batch` inputs:
+    a full queue runs at once, and :meth:`flush` zero-pads the partial ones.
+    Crops are normalised as
+    :func:`~phenotypic.detect.nn._helper._dino_support.embed_crops`
+    normalises them; ``masked_dense`` tiles arrive normalised by the HF
+    processor (P1 T2). Both are cast to ``compute_dtype`` and run under
+    ``torch.inference_mode()``; the CLS token, the mean patch token and the
+    patch grids are read out in float32 and pooled as the inline encoder
+    pools them, so on one physical batch a row's vector is the inline one
+    whenever the backbone's rows do not depend on their pass (S1).
+
+    A submission is a *ticket*, the caller's key (e.g. ``(image, key)``);
+    :meth:`drain` yields each ticket as soon as all its rows are done, in
+    completion order, and drops it. So a finished image never waits behind
+    another image's partial batch.
+
+    **In-flight bound.** The output bytes held for unfinished tickets
+    (:attr:`held_bytes`) are bounded by *max_in_flight_bytes*: when a
+    submission takes them over, every partial queue is flushed. A crop
+    ticket holds ``N * D * 4`` bytes, so crop pipelines never reach the
+    default bound and keep full batches; a ``masked_dense`` ticket holds its
+    feature grid, so only dense grids flush early (re-review item 4).
+
+    **Out of memory.** A pass that runs out of GPU memory halves the physical
+    batch once (:meth:`halve`) and puts its rows back at the head of their
+    queue, so no row is lost and every later pass has the halved size. A run
+    started by :meth:`submit` then returns, leaving the rows for the next
+    :meth:`submit` or :meth:`flush`; :meth:`flush` retries them at once. A pass
+    that runs out of memory when the batch cannot halve raises
+    :class:`Stage4OutOfMemory`.
+
+    Args:
+        model: The loaded backbone, on *device*, in *compute_dtype*.
+        processor: Its processor; only ``rescale_factor``, ``image_mean`` and
+            ``image_std`` are read, for crops.
+        device: The device *model* is on, ``"cuda"`` or ``"cpu"``.
+        compute_dtype: The dtype *model*'s parameters are in.
+        physical_batch: ``m``, from :func:`physical_batch_size`.
+        max_in_flight_bytes: The bound on :attr:`held_bytes`.
+
+    Raises:
+        ValueError: If *physical_batch* or *max_in_flight_bytes* is not
+            positive, *compute_dtype* is not one of the three, or *model*'s
+            parameters are in another dtype.
+    """
+
+    def __init__(
+        self,
+        model: Any,
+        processor: Any,
+        *,
+        device: str,
+        compute_dtype: ComputeDType,
+        physical_batch: int,
+        max_in_flight_bytes: int = MAX_IN_FLIGHT_OUTPUT_BYTES,
+    ) -> None:
+        import torch
+
+        from phenotypic.detect.nn._helper._dino_support import (
+            backbone_dtype,
+            backbone_patch_size,
+        )
+
+        if physical_batch < 1:
+            raise ValueError(f"physical_batch must be positive, got {physical_batch}")
+        if max_in_flight_bytes < 1:
+            raise ValueError(f"max_in_flight_bytes must be positive, got {max_in_flight_bytes}")
+        if compute_dtype not in _COMPUTE_DTYPES:
+            raise ValueError(f"compute_dtype must be one of {_COMPUTE_DTYPES}, got {compute_dtype!r}")
+        dtype = getattr(torch, compute_dtype)
+        loaded = backbone_dtype(model)
+        if loaded != dtype:
+            raise ValueError(
+                f"the backbone's parameters are {loaded}, not compute_dtype={compute_dtype!r}; "
+                "load it in the compute dtype"
+            )
+        self._model, self._device, self._dtype = model, device, dtype
+        self._patch = backbone_patch_size(model)
+        self._registers = int(getattr(model.config, "num_register_tokens", 0) or 0)
+        self._hidden = int(model.config.hidden_size)
+        # The crop normalisation, exactly as embed_crops builds it.
+        self._scale = float(getattr(processor, "rescale_factor", 1.0 / 255.0))
+        mean = torch.tensor(processor.image_mean, dtype=torch.float32, device=device)
+        std = torch.tensor(processor.image_std, dtype=torch.float32, device=device)
+        self._mean, self._std = mean.view(1, 3, 1, 1), std.view(1, 3, 1, 1)
+
+        self._m = int(physical_batch)
+        self._halved = False
+        self._max_in_flight_bytes = int(max_in_flight_bytes)
+        self._queues: dict[_QueueKey, deque[_Row]] = {}
+        self._tickets: dict[Hashable, _Ticket] = {}
+        self._done: deque[Hashable] = deque()
+        self._held_bytes = 0
+
+    # ------------------------------------------------------------------ #
+    # State
+    # ------------------------------------------------------------------ #
+
+    @property
+    def physical_batch(self) -> int:
+        """``m``: the inputs in every forward pass (halved once after an OOM)."""
+        return self._m
+
+    @property
+    def held_bytes(self) -> int:
+        """The output bytes held for unfinished tickets: what the in-flight bound counts."""
+        return self._held_bytes
+
+    @property
+    def max_in_flight_bytes(self) -> int:
+        """The bound on :attr:`held_bytes`."""
+        return self._max_in_flight_bytes
+
+    def halve(self) -> bool:
+        """Halve the physical batch, once for the encoder's life.
+
+        Returns:
+            ``True`` if it halved; ``False`` when it already has, or ``m`` is 1.
+        """
+        if self._halved or self._m <= 1:
+            return False
+        self._m //= 2
+        self._halved = True
+        return True
+
+    # ------------------------------------------------------------------ #
+    # Submit, flush, drain
+    # ------------------------------------------------------------------ #
+
+    def submit(self, ticket: Hashable, inputs: BackboneInputs) -> None:
+        """Queue *inputs*' rows under *ticket*, and run every queue that is full.
+
+        A zero-row submission completes at once, with no forward pass. When
+        the output bytes held for unfinished tickets then exceed the
+        in-flight bound, every partial queue is flushed.
+
+        Args:
+            ticket: The caller's key for these outputs, not already held.
+            inputs: ``"crops"`` (``crop_cls`` / ``crop_mean``) or ``"tiles"``
+                (``patches``), as :meth:`MeasureDinoEmbedding.prepare_regions`
+                builds them.
+
+        Raises:
+            ValueError: If *ticket* is held (submitted and not yet drained),
+                or *inputs* are not a backbone's.
+            Stage4OutOfMemory: As :meth:`flush`, from a pass this runs.
+        """
+        if ticket in self._tickets:
+            raise ValueError(f"ticket {ticket!r} is already held; drain it before reusing it")
+        entry, rows = self._admit(inputs)
+        self._tickets[ticket] = entry
+        if entry.remaining == 0:
+            self._done.append(ticket)
+            return
+        self._held_bytes += entry.output_bytes
+        for key, index, pixels in rows:
+            self._queues.setdefault(key, deque()).append((ticket, index, pixels))
+        self._run_queues(partial=False)
+        if self._held_bytes > self._max_in_flight_bytes:
+            self.flush()
+
+    def flush(self) -> None:
+        """Run every queue to empty, the last pass of each zero-padded to exactly ``m``.
+
+        A pass that runs out of memory halves ``m`` and its rows are retried
+        at once, at the halved size.
+
+        Raises:
+            Stage4OutOfMemory: If a pass runs out of GPU memory and ``m``
+                cannot halve (it already has, or it is 1).
+        """
+        self._run_queues(partial=True)
+
+    def drain(self) -> Iterator[tuple[Hashable, list[np.ndarray]]]:
+        """Yield each finished ticket and its outputs, in completion order, and drop it.
+
+        Runs nothing: a ticket with rows still queued stays held.
+
+        Yields:
+            ``(ticket, outputs)``, the outputs shaped as
+            :meth:`~phenotypic.abc_.RegionEncoder.run` returns them: for crops
+            one ``(N, D)`` float32 array, for tiles one ``(h // p, w // p, D)``
+            float32 grid per tile.
+        """
+        while self._done:
+            ticket = self._done.popleft()
+            yield ticket, self._tickets.pop(ticket).outputs
+
+    def as_region_encoder(self) -> RegionEncoder:
+        """A synchronous :class:`~phenotypic.abc_.RegionEncoder` on this encoder.
+
+        Its ``run`` submits, flushes and returns that one ticket's outputs,
+        so :meth:`MeasureEmbedding.encode` can run on the batched path.
+        """
+        return _SyncRegionEncoder(self)
+
+    # ------------------------------------------------------------------ #
+    # Internals
+    # ------------------------------------------------------------------ #
+
+    def _admit(self, inputs: BackboneInputs) -> tuple[_Ticket, list[tuple[_QueueKey, int, np.ndarray]]]:
+        """A ticket for *inputs*, with its preallocated outputs, and its rows by queue."""
+        if inputs.kind == "crops":
+            if inputs.pooling not in ("crop_cls", "crop_mean"):
+                raise ValueError(f"crops pool by 'crop_cls' or 'crop_mean', got {inputs.pooling!r}")
+            (crops,) = inputs.arrays
+            crops = np.asarray(crops)
+            if crops.ndim != 4 or crops.shape[-1] != 3 or crops.dtype != np.uint8:
+                raise ValueError(f"crops must be (N, H, W, 3) uint8, got {crops.shape} {crops.dtype}")
+            n, h, w = crops.shape[:3]
+            vectors = np.zeros((n, self._hidden), dtype=np.float32)
+            crop_key: _QueueKey = ("crops", int(h), int(w), inputs.pooling)
+            return (
+                _Ticket(outputs=[vectors], remaining=n, output_bytes=vectors.nbytes),
+                [(crop_key, i, crops[i]) for i in range(n)],
+            )
+        if inputs.kind == "tiles":
+            if inputs.pooling != "patches":
+                raise ValueError(f"tiles pool by 'patches', got {inputs.pooling!r}")
+            rows: list[tuple[_QueueKey, int, np.ndarray]] = []
+            grid_bytes = 0
+            for i, tile in enumerate(inputs.arrays):
+                tile = np.asarray(tile)
+                if tile.ndim == 4 and tile.shape[0] == 1:
+                    tile = tile[0]
+                if tile.ndim != 3 or tile.shape[0] != 3:
+                    raise ValueError(f"a tile must be (3, h, w), got {tile.shape}")
+                h, w = int(tile.shape[1]), int(tile.shape[2])
+                grid_bytes += (h // self._patch) * (w // self._patch) * self._hidden * 4
+                rows.append((("tiles", h, w, "patches"), i, tile))
+            outputs: list[Any] = [None] * len(rows)
+            return _Ticket(outputs=outputs, remaining=len(rows), output_bytes=grid_bytes), rows
+        raise ValueError(f"a DINO backbone does not run {inputs.kind!r} inputs")
+
+    def _run_queues(self, *, partial: bool) -> None:
+        """Run full queues (and, with *partial*, every queue) until none is left to run.
+
+        After an out-of-memory pass that halved ``m``, a run started by
+        :meth:`submit` (``partial=False``) returns; :meth:`flush` goes on.
+        """
+        while True:
+            key = next(
+                (k for k, q in self._queues.items() if len(q) >= self._m or (partial and q)),
+                None,
+            )
+            if key is None:
+                return
+            queue = self._queues[key]
+            batch = [queue.popleft() for _ in range(min(self._m, len(queue)))]
+            if not queue:
+                del self._queues[key]
+            if not self._forward(key, batch) and not partial:
+                return
+
+    def _forward(self, key: _QueueKey, batch: list[_Row]) -> bool:
+        """One pass of exactly ``m`` inputs; ``False`` if it ran out of memory and was re-queued."""
+        import torch
+
+        kind, h, w, _ = key
+        n = len(batch)
+        try:
+            with torch.inference_mode():
+                pixels = torch.zeros((self._m, 3, h, w), dtype=torch.float32, device=self._device)
+                stacked = torch.from_numpy(np.stack([row for _, _, row in batch])).to(self._device)
+                if kind == "crops":
+                    stacked = (stacked.permute(0, 3, 1, 2).to(torch.float32) * self._scale - self._mean) / self._std
+                pixels[:n] = stacked
+                del stacked
+                tokens = self._model(pixel_values=pixels.to(self._dtype)).last_hidden_state
+                tokens = tokens.detach().to(torch.float32).cpu().numpy()
+        except Exception as exc:
+            if not _is_device_oom(exc):
+                raise
+            self._queues.setdefault(key, deque()).extendleft(reversed(batch))
+            if self._device == "cuda":
+                torch.cuda.empty_cache()
+            if not self.halve():
+                halved = ", after halving once" if self._halved else ""
+                raise Stage4OutOfMemory(
+                    f"the backbone ran out of GPU memory at physical batch {self._m}{halved}; "
+                    "the shard stops and the next round retries its images"
+                ) from exc
+            return False
+        self._route(key, batch, tokens)
+        return True
+
+    def _route(self, key: _QueueKey, batch: list[_Row], tokens: np.ndarray) -> None:
+        """Put each row's pooled output in its ticket, pooled as the inline encoder pools it."""
+        from phenotypic.detect.nn._helper._dino_support import (
+            patch_grid_hw,
+            reshape_patch_tokens,
+        )
+
+        _, h, w, pooling = key
+        grid_hw = patch_grid_hw((h, w), self._patch)
+        for position, (ticket, index, _) in enumerate(batch):
+            entry = self._tickets[ticket]
+            one = tokens[position]
+            if pooling == "crop_cls":
+                entry.outputs[0][index] = one[0]
+            elif pooling == "crop_mean":
+                entry.outputs[0][index] = reshape_patch_tokens(one, grid_hw, self._registers).mean(
+                    axis=(0, 1)
+                )
+            else:
+                # A copy, so the pass's token array is not kept alive by a view.
+                entry.outputs[index] = np.array(reshape_patch_tokens(one, grid_hw, self._registers))
+            entry.remaining -= 1
+            if entry.remaining == 0:
+                self._held_bytes -= entry.output_bytes
+                self._done.append(ticket)
+
+
+class _SyncRegionEncoder:
+    """:meth:`BatchEncoder.as_region_encoder`: one ticket at a time, run to completion."""
+
+    def __init__(self, encoder: BatchEncoder) -> None:
+        self._encoder = encoder
+
+    def run(self, inputs: BackboneInputs) -> list[np.ndarray]:
+        encoder = self._encoder
+        if encoder._tickets:
+            raise RuntimeError("the synchronous adaptor needs an encoder that holds no other ticket")
+        ticket = object()
+        encoder.submit(ticket, inputs)
+        encoder.flush()
+        ((done, outputs),) = list(encoder.drain())
+        assert done is ticket
+        return outputs
