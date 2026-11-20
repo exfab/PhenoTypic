@@ -1,0 +1,10 @@
+{
+  "cpu_capability": "AVX2",
+  "cpu_model": "Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz",
+  "omp_num_threads": "4",
+  "provenance": "Every row's committed vectors_sha256 reproduced at faef903f3 (the capture commit) on this node with OMP_NUM_THREADS=4 and torch's thread count left at that default: Slurm jobs 32279709 (stub rows) and 32279287 (real rows), docs/superpowers/plans/2026-11-12-gpu-embedding-staging/golden_capture_env.py. The real rows were first captured by job 32242483 on i01 (intel,broadwell; OMP_NUM_THREADS=4, 4 CPUs; i01's CPU model name was not read). The stub rows' original capture node is not recorded.",
+  "slurm_features": "intel,broadwell",
+  "slurm_node": "i02",
+  "torch_num_threads": 4,
+  "torch_version": "2.11.0+cu130"
+}
