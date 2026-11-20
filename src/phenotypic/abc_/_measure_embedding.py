@@ -254,7 +254,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
     To implement one, subclass this and define three methods:
 
-    - :meth:`_embed_boxes` turns ``(N, 4)`` boxes into ``(N, D)`` vectors;
+    - :meth:`_embed_boxes` turns ``(N, 4)`` boxes into ``(N, D)`` vectors
+      (or, for an embedder with a backbone, override the steps below
+      instead);
     - :meth:`model_token` names the model folder (``"dinov2-vitb14"``);
     - :meth:`entry_descriptor` describes the model and the vectors.
 
@@ -381,9 +383,13 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     # The subclass contract
     # ------------------------------------------------------------------ #
 
-    @abstractmethod
     def _embed_boxes(self, image: Image, boxes: np.ndarray) -> np.ndarray:
         """Embed each box of *image*.
+
+        The ABC's inline encoder calls it (through
+        :meth:`_embed_object_boxes` for objects). Define it, or override
+        :meth:`prepare_regions` and :meth:`inline_encoder` instead, as an
+        embedder with a backbone does; one of the two is required.
 
         Args:
             image: The image being measured.
@@ -392,7 +398,14 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
         Returns:
             An ``(N, D)`` float array, ``D == entry_descriptor()["dim"]``.
+
+        Raises:
+            NotImplementedError: If the subclass defines neither route.
         """
+        raise NotImplementedError(
+            f"{type(self).__name__} defines neither _embed_boxes nor its own "
+            "prepare_regions and inline_encoder"
+        )
 
     def _layer_pixels(self, image: Image) -> np.ndarray:
         """The ``(H, W, 3)`` pixels this embedder reads: its ``layer`` of *image*.

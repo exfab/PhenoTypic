@@ -26,6 +26,7 @@ construct and serialise without them.
 
 from __future__ import annotations
 
+import functools
 import re
 from typing import TYPE_CHECKING, Any, List, Literal, Tuple
 
@@ -255,6 +256,54 @@ def load_dino_backbone(
     return model, processor
 
 
+@functools.lru_cache(maxsize=4)
+def load_dino_processor(
+    dino_version: "DinoVersion",
+    dino_size: "DinoSize",
+    *,
+    revision: str | None = None,
+) -> Any:
+    """Load only the ``AutoImageProcessor`` of a DINO backbone: no model.
+
+    What normalises a ``masked_dense`` tile on the CPU (#282): the processor
+    :func:`load_dino_backbone` would return for the same arguments, without
+    holding the weights in memory. Cached, one per ``(version, size,
+    revision)`` per process. ``dino_version=3`` is gated and pre-staged
+    exactly as :func:`load_dino_backbone` does it, so the license gate holds
+    here too.
+
+    Args:
+        dino_version: ``2`` (DINOv2, ungated) or ``3`` (DINOv3, gated).
+        dino_size: ``"small"`` / ``"base"`` / ``"large"``.
+        revision: The Hugging Face revision, as :func:`load_dino_backbone`.
+
+    Returns:
+        The backbone's ``AutoImageProcessor``.
+
+    Raises:
+        ImportError: If ``transformers`` is not installed.
+        RuntimeError: For ``dino_version=3``, if the gated license was not
+            accepted or no Hugging Face token is present.
+    """
+    try:
+        from transformers import AutoImageProcessor
+    except ImportError:
+        raise ImportError(
+            "Frozen-DINO detectors require transformers (>=5.2.0). "
+            "Install with: pip install phenotypic[foundation]"
+        ) from None
+
+    if dino_version == 3:
+        from phenotypic.detect.nn._helper._checkpoint_manager import (
+            Dinov3CheckpointManager,
+        )
+
+        Dinov3CheckpointManager(size=dino_size).download(interactive=False)
+    return AutoImageProcessor.from_pretrained(
+        hf_dino_id(dino_version, dino_size), revision=revision
+    )
+
+
 #: A full Hugging Face commit: 40 lowercase hex.
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}")
 #: The snapshot folder of a Hugging Face cache path, ``.../snapshots/<commit>/...``.
@@ -407,15 +456,57 @@ def extract_patch_features(
     inputs = processor(
         images=rgb_uint8, return_tensors="pt", **NATIVE_PROCESSOR_KWARGS
     ).to(device)
-    # inference_mode, as spec E3 asks of the embedder: every caller (the
-    # embedder's masked_dense, DinoSam2, InSID3) takes the features as numpy,
-    # so none needs autograd.
+    # inference_mode, as spec E3 asks of the embedder: every caller (DinoSam2,
+    # InSID3; the embedder through patch_features_from_pixels) takes the
+    # features as numpy, so none needs autograd.
     with torch.inference_mode():
         outputs = model(**inputs)
     tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
+    return _tokens_to_patch_grid(model, tokens, inputs["pixel_values"].shape[-2:])
 
-    pixel = inputs["pixel_values"]
-    in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
+
+def patch_features_from_pixels(
+    model: Any, pixel_values: "np.ndarray", *, device: str
+) -> "np.ndarray":
+    """Run a frozen DINO ViT on one processed tile → dense ``(Hp, Wp, D)`` features.
+
+    The second half of :func:`extract_patch_features`, for a tile its
+    processor has already normalised (``processor(images=tile,
+    return_tensors="np", **NATIVE_PROCESSOR_KWARGS)["pixel_values"][0]``), so
+    the normalisation can run on the CPU apart from the model (#282). Given
+    the processor's own pixels, the features are
+    :func:`extract_patch_features`'s, bit for bit.
+
+    Args:
+        model: A loaded ``AutoModel`` (DINOv2/DINOv3) on ``device``.
+        pixel_values: ``(3, h, w)`` (or ``(1, 3, h, w)``) float pixels.
+        device: Resolved PyTorch device string.
+
+    Returns:
+        ``(Hp, Wp, D)`` float32 dense patch features.
+    """
+    import numpy as np
+    import torch
+
+    pixels = torch.from_numpy(np.ascontiguousarray(pixel_values)).to(device)
+    if pixels.ndim == 3:
+        pixels = pixels[None]
+    with torch.inference_mode():
+        outputs = model(pixel_values=pixels)
+    tokens = outputs.last_hidden_state[0].detach().cpu().numpy().astype(np.float32)
+    return _tokens_to_patch_grid(model, tokens, pixels.shape[-2:])
+
+
+def _tokens_to_patch_grid(
+    model: Any, tokens: "np.ndarray", pixel_hw: Tuple[int, int]
+) -> "np.ndarray":
+    """One image's ``(n_tokens, D)`` tokens as its ``(Hp, Wp, D)`` patch grid.
+
+    The grid is inferred from the processed pixel geometry *pixel_hw* and
+    ``config.patch_size``; the CLS and register tokens are dropped
+    (:func:`reshape_patch_tokens`).
+    """
+    in_h, in_w = int(pixel_hw[0]), int(pixel_hw[1])
     patch = backbone_patch_size(model)
     grid_hw = patch_grid_hw((in_h, in_w), patch)
     n_reg = int(getattr(model.config, "num_register_tokens", 0))

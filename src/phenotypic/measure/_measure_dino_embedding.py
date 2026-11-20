@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Optional, TypeAlias
 
 import numpy as np
 from pydantic import Field, field_validator, model_validator
 
-from phenotypic.abc_ import MeasureEmbedding
+from phenotypic.abc_ import BackboneInputs, MeasureEmbedding, PreparedRegions, RegionEncoder
 from phenotypic.abc_._measure_embedding import GridCellOutsideImageError
 from phenotypic.schema import DINO_EMBEDDING, MeasurementInfo
 from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
@@ -59,6 +60,23 @@ def load_dino_backbone(
     return _dino_support.load_dino_backbone(
         dino_version, dino_size, device, revision=revision
     )
+
+
+def load_dino_processor(
+    dino_version: DinoVersion,
+    dino_size: DinoSize,
+    *,
+    revision: str | None = None,
+) -> Any:
+    """Load a DINO backbone's processor only; see ``_dino_support.load_dino_processor``.
+
+    A thin lazy delegate, as :func:`load_dino_backbone` is, which tests patch
+    alongside it: what :meth:`MeasureDinoEmbedding.prepare_regions`
+    normalises ``masked_dense`` tiles with when it is given no processor.
+    """
+    from phenotypic.detect.nn._helper import _dino_support
+
+    return _dino_support.load_dino_processor(dino_version, dino_size, revision=revision)
 
 
 @functools.lru_cache(maxsize=2)
@@ -317,13 +335,31 @@ class MeasureDinoEmbedding(MeasureEmbedding):
 
         Loads the backbone (cached), because the vector length, the resolved
         revision and the device are properties of the weights actually
-        loaded.
+        loaded: :meth:`entry_descriptor_for` of that backbone.
+
+        Returns:
+            As :meth:`entry_descriptor_for`.
+        """
+        return self.entry_descriptor_for(self._backbone()[0])
+
+    def entry_descriptor_for(
+        self, model: Any, compute: Mapping[str, Any] | None = None
+    ) -> dict:
+        """:meth:`entry_descriptor` of an already loaded *model*: loads nothing (#282).
+
+        A GPU stage that holds its own model describes the entry with it,
+        rather than through :meth:`_backbone`, which would load a second one.
+
+        Args:
+            model: The loaded backbone the vectors came from.
+            compute: Reserved for the per-entry ``compute`` block (#282 P2);
+                accepted and ignored for now.
 
         Returns:
             ``{model: {family, hf_id, revision, patch_size, device,
             device_name}, dim, dtype, pooling}``, where ``revision`` is the
-            commit loaded, ``device`` (``"cuda"`` or ``"cpu"``) the device it
-            ran on, and ``device_name`` the GPU's name from
+            commit loaded, ``device`` (``"cuda"`` or ``"cpu"``) the embedder's
+            resolved ``device``, and ``device_name`` the GPU's name from
             ``torch.cuda.get_device_name()`` on CUDA and ``None`` on the CPU.
             The two device fields are provenance: the run's deliverables
             group descriptors without them (#281, user decision 2026-11-19).
@@ -332,10 +368,12 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             backbone_device_name,
             backbone_patch_size,
             hf_dino_id,
+            resolve_backbone_device,
             resolved_revision,
         )
 
-        model, _, device = self._backbone()
+        del compute  # written by #282 P2
+        device = resolve_backbone_device(self.device)
         return {
             "model": {
                 "family": f"dinov{int(self.version)}",
@@ -349,6 +387,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             "dtype": self.dtype,
             "pooling": self.pooling,
         }
+
+    def crop_geometry(self) -> tuple[int, int]:
+        """``(crop_px, crop_px)``: the shape of each crop :meth:`prepare_regions` cuts."""
+        return (self.crop_px, self.crop_px)
 
     def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this measurer loads (run preflight).
@@ -429,50 +471,156 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     # Embedding
     # ------------------------------------------------------------------ #
 
-    def _embed_boxes(self, image: Image, boxes: np.ndarray) -> np.ndarray:
-        """Embed grid cells, each cropped exactly from its rectangle."""
-        return self._embed_regions(image, boxes, None)
+    def prepare_regions(
+        self, image: Image, *, processor: Any = None
+    ) -> PreparedRegions:
+        """Cut *image*'s regions for the backbone, on the CPU, loading no model (#282).
 
-    def _embed_object_boxes(
-        self, image: Image, boxes: np.ndarray, labels: np.ndarray
-    ) -> np.ndarray:
-        """Embed colonies: padded boxes, and each colony's own mask."""
-        return self._embed_regions(image, boxes, labels)
+        ``crop_cls`` / ``crop_mean``: every region's crop, through
+        :meth:`_crop` and :meth:`_square_colony_crop`, as one
+        ``(N, crop_px, crop_px, 3)`` uint8 array (``"crops"``). That is every
+        crop at once, about 0.9 GB at ``crop_px=448`` on a 1536-colony plate,
+        which a DataLoader worker can hold; the inline encoder still feeds
+        the backbone one ``batch_size`` slice at a time, so peak device
+        memory is what it was when crops were built per batch. Imports no
+        torch.
 
-    def _embed_regions(
-        self, image: Image, boxes: np.ndarray, labels: np.ndarray | None
-    ) -> np.ndarray:
-        model, processor, device = self._backbone()
+        ``masked_dense``: the plate cut into ``crop_px`` tiles aligned to the
+        patch grid, each normalised by the backbone's processor exactly as
+        :func:`~phenotypic.detect.nn._helper._dino_support.extract_patch_features`
+        does it (``"tiles"``), with the feature-grid shape, each tile's
+        offset and each region's mask in ``pool_plan``. The HF processor may
+        import torch.
+
+        Args:
+            image: The image to embed.
+            processor: The backbone's processor, for ``masked_dense``.
+                ``None`` loads one (:func:`load_dino_processor`), without the
+                weights. Crop pooling reads none.
+
+        Returns:
+            The prepared regions, in table order.
+
+        Raises:
+            GridCellOutsideImageError: As :meth:`MeasureEmbedding.prepare_regions`.
+            ValueError: For ``masked_dense``, if the image is smaller than
+                one patch.
+        """
+        keys, boxes, labels = self._regions(image)
         rgb = self._layer_pixels(image)
         needs_mask = self.mask_background or self.pooling == "masked_dense"
         objmap = np.asarray(image.objmap[:]) if labels is not None and needs_mask else None
         if self.pooling == "masked_dense":
-            return self._masked_dense(model, processor, device, rgb, boxes, labels, objmap)
-
-        from phenotypic.detect.nn._helper._dino_support import embed_crops
+            inputs, pool_plan = self._dense_tiles(rgb, boxes, labels, objmap, processor)
+            return self._prepared(image, keys, inputs, pool_plan)
 
         region_labels: list[int | None] = (
             [None] * len(boxes) if labels is None else [int(v) for v in labels]
         )
-        vectors = []
-        # Crops are built one batch at a time: at crop_px=448 a 1536-colony
-        # plate's crops would otherwise hold ~0.9 GB at once.
-        for start in range(0, len(boxes), self.batch_size):
-            batch = range(start, min(start + self.batch_size, len(boxes)))
-            crops = np.stack(
-                [self._crop(rgb, boxes[i], region_labels[i], objmap) for i in batch]
+        crops = np.empty((len(boxes), self.crop_px, self.crop_px, 3), dtype=np.uint8)
+        for i in range(len(boxes)):
+            crops[i] = self._crop(rgb, boxes[i], region_labels[i], objmap)
+        inputs = BackboneInputs(kind="crops", arrays=(crops,), pooling=self.pooling)  # type: ignore[arg-type]
+        return self._prepared(image, keys, inputs)
+
+    def _dense_tiles(
+        self,
+        rgb: np.ndarray,
+        boxes: np.ndarray,
+        labels: np.ndarray | None,
+        objmap: np.ndarray | None,
+        processor: Any,
+    ) -> tuple[BackboneInputs, dict[str, Any] | None]:
+        """``masked_dense``'s tiles and the plan to pool their patch grids.
+
+        The plate is cut into ``crop_px`` tiles aligned to the patch grid, so
+        their ``(h // p, w // p)`` grids abut exactly in one
+        ``(H // p, W // p, dim)`` feature grid and no patch is computed
+        twice. The bottom and right ``H % p`` / ``W % p`` pixels are not
+        covered, as in every DINO dense path here. An image with no regions
+        gets no tiles: it never reaches the backbone.
+        """
+        if len(boxes) == 0:
+            return BackboneInputs(kind="tiles", arrays=(), pooling="patches"), None
+        from phenotypic.detect.nn._helper._dino_support import NATIVE_PROCESSOR_KWARGS
+
+        patch = _PATCH_SIZE[int(self.version)]
+        height, width = rgb.shape[:2]
+        grid_h, grid_w = height // patch, width // patch
+        if grid_h == 0 or grid_w == 0:
+            raise ValueError(
+                f"the image is {height} x {width}, smaller than one {patch}-px patch"
             )
-            vectors.append(
-                embed_crops(
-                    model,
-                    processor,
-                    crops,
-                    pooling=self.pooling,  # type: ignore[arg-type]
-                    device=device,
-                    batch_size=self.batch_size,
-                )
+        if processor is None:
+            processor = load_dino_processor(self.version, self.size, revision=self.revision)
+        tiles: list[np.ndarray] = []
+        offsets: list[tuple[int, int]] = []
+        tile = self.crop_px
+        for y0 in range(0, grid_h * patch, tile):
+            for x0 in range(0, grid_w * patch, tile):
+                y1, x1 = min(y0 + tile, grid_h * patch), min(x0 + tile, grid_w * patch)
+                pixels = processor(
+                    images=_as_uint8_rgb(rgb[y0:y1, x0:x1]),
+                    return_tensors="np",
+                    **NATIVE_PROCESSOR_KWARGS,
+                )["pixel_values"]
+                tiles.append(np.asarray(pixels[0]))
+                offsets.append((y0 // patch, x0 // patch))
+
+        masks: list[np.ndarray] = []
+        for i, box in enumerate(boxes):
+            r0, c0, r1, c1 = (int(v) for v in box)
+            if labels is None:
+                masks.append(np.ones((r1 - r0, c1 - c0), dtype=bool))
+            else:
+                assert objmap is not None
+                masks.append(objmap[r0:r1, c0:c1] == int(labels[i]))
+        pool_plan = {
+            "patch": patch,
+            "grid_hw": (grid_h, grid_w),
+            "offsets": tuple(offsets),
+            "origins": tuple((int(box[0]), int(box[1])) for box in boxes),
+            "masks": tuple(masks),
+        }
+        return BackboneInputs(kind="tiles", arrays=tuple(tiles), pooling="patches"), pool_plan
+
+    def inline_encoder(self, image: Image) -> RegionEncoder:
+        """The cached backbone, on this embedder's device (after the license gate).
+
+        Raises:
+            RuntimeError: As :meth:`_backbone`.
+            ValueError: As :meth:`_backbone`.
+        """
+        model, processor, device = self._backbone()
+        return _InlineDinoEncoder(model, processor, device, self.batch_size)
+
+    def vectors_from(
+        self, prepared: PreparedRegions, outputs: list[np.ndarray]
+    ) -> np.ndarray:
+        """The ``(N, D)`` float32 vectors, region order, from the encoder's *outputs*.
+
+        Crop pooling: the encoder's one ``(N, D)`` array. ``masked_dense``:
+        each tile's ``(h // p, w // p, D)`` grid is placed in the plate's
+        feature grid, and each region's vector is the mean feature under its
+        mask (:func:`_pool_under_mask`).
+        """
+        if prepared.inputs.pooling != "patches":
+            return super().vectors_from(prepared, outputs)
+        plan = prepared.pool_plan
+        assert plan is not None
+        if len(outputs) != len(plan["offsets"]):
+            raise ValueError(
+                f"the encoder returned {len(outputs)} patch grids for "
+                f"{len(plan['offsets'])} tiles"
             )
-        return np.concatenate(vectors, axis=0)
+        grid_h, grid_w = plan["grid_hw"]
+        features = np.zeros((grid_h, grid_w, int(outputs[0].shape[-1])), dtype=np.float32)
+        for (gy, gx), dense in zip(plan["offsets"], outputs):
+            features[gy : gy + dense.shape[0], gx : gx + dense.shape[1]] = dense
+        vectors = np.empty((len(plan["masks"]), features.shape[-1]), dtype=np.float32)
+        for i, (origin, region) in enumerate(zip(plan["origins"], plan["masks"])):
+            vectors[i] = _pool_under_mask(features, region, origin, plan["patch"])
+        return vectors
 
     def _crop(
         self,
@@ -543,59 +691,52 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         canvas[ir0 - r0 : ir1 - r0, ic0 - c0 : ic1 - c0] = inside
         return canvas
 
-    def _masked_dense(
-        self,
-        model: Any,
-        processor: Any,
-        device: str,
-        rgb: np.ndarray,
-        boxes: np.ndarray,
-        labels: np.ndarray | None,
-        objmap: np.ndarray | None,
-    ) -> np.ndarray:
-        """Average one plate-wide patch-feature grid under each region's mask.
 
-        The plate is cut into ``crop_px`` tiles aligned to the patch grid,
-        and each tile's features land in one ``(H // p, W // p, dim)`` grid:
-        ``crop_px`` is a multiple of ``p``, so the tiles abut exactly and no
-        patch is computed twice. The bottom and right ``H % p`` / ``W % p``
-        pixels are not covered, as in every DINO dense path here.
-        """
-        from phenotypic.detect.nn._helper._dino_support import (
-            backbone_patch_size,
-            extract_patch_features,
-        )
+class _InlineDinoEncoder:
+    """The inline :class:`~phenotypic.abc_.RegionEncoder` of a loaded DINO backbone.
 
-        patch = backbone_patch_size(model)
-        height, width = rgb.shape[:2]
-        grid_h, grid_w = height // patch, width // patch
-        if grid_h == 0 or grid_w == 0:
-            raise ValueError(
-                f"the image is {height} x {width}, smaller than one {patch}-px patch"
-            )
-        features = np.zeros(
-            (grid_h, grid_w, int(model.config.hidden_size)), dtype=np.float32
-        )
-        tile = self.crop_px
-        for y0 in range(0, grid_h * patch, tile):
-            for x0 in range(0, grid_w * patch, tile):
-                y1, x1 = min(y0 + tile, grid_h * patch), min(x0 + tile, grid_w * patch)
-                dense = extract_patch_features(
-                    model, processor, _as_uint8_rgb(rgb[y0:y1, x0:x1]), device=device
+    ``"crops"``: :func:`~phenotypic.detect.nn._helper._dino_support.embed_crops`,
+    called once per ``batch_size`` slice of the crops, so the device holds one
+    batch at a time. ``"tiles"``: the backbone over each tile's processed
+    pixels (:func:`~phenotypic.detect.nn._helper._dino_support.patch_features_from_pixels`).
+
+    Args:
+        model: The loaded backbone, on *device*.
+        processor: Its processor; ``embed_crops`` reads its normalisation.
+        device: The resolved device string.
+        batch_size: Crops per forward pass.
+    """
+
+    def __init__(self, model: Any, processor: Any, device: str, batch_size: int) -> None:
+        self.model, self.processor = model, processor
+        self.device, self.batch_size = device, batch_size
+
+    def run(self, inputs: BackboneInputs) -> list[np.ndarray]:
+        from phenotypic.detect.nn._helper import _dino_support
+
+        if inputs.kind == "crops":
+            (crops,) = inputs.arrays
+            vectors = [
+                _dino_support.embed_crops(
+                    self.model,
+                    self.processor,
+                    crops[start : start + self.batch_size],
+                    pooling=inputs.pooling,  # type: ignore[arg-type]
+                    device=self.device,
+                    batch_size=self.batch_size,
                 )
-                gy, gx = y0 // patch, x0 // patch
-                features[gy : gy + dense.shape[0], gx : gx + dense.shape[1]] = dense
-
-        vectors = np.empty((len(boxes), features.shape[-1]), dtype=np.float32)
-        for i, box in enumerate(boxes):
-            r0, c0, r1, c1 = (int(v) for v in box)
-            if labels is None:
-                region = np.ones((r1 - r0, c1 - c0), dtype=bool)
-            else:
-                assert objmap is not None
-                region = objmap[r0:r1, c0:c1] == int(labels[i])
-            vectors[i] = _pool_under_mask(features, region, (r0, c0), patch)
-        return vectors
+                for start in range(0, len(crops), self.batch_size)
+            ]
+            if not vectors:
+                hidden = int(self.model.config.hidden_size)
+                return [np.zeros((0, hidden), dtype=np.float32)]
+            return [np.concatenate(vectors, axis=0)]
+        if inputs.kind == "tiles":
+            return [
+                _dino_support.patch_features_from_pixels(self.model, tile, device=self.device)
+                for tile in inputs.arrays
+            ]
+        raise ValueError(f"a DINO backbone does not run {inputs.kind!r} inputs")
 
 
 def _as_uint8_rgb(array: np.ndarray) -> np.ndarray:

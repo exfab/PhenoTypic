@@ -1373,6 +1373,10 @@ def install_stub_backbone(
     weights, so ``dtype`` matters), and ``leaky=True`` makes its rows depend
     on the batch. The default is the #281 stub, so #281's tests keep it.
 
+    The processor-only loader (``load_dino_processor``, which ``masked_dense``
+    preparation uses when given no processor) is patched to the stub's
+    processor too, without recording a load.
+
     Clears the measurer's backbone cache first, so the next measure loads
     this stub. :func:`stub_backbone` is this with no registers; a test that
     compares two stubs calls it twice.
@@ -1398,8 +1402,15 @@ def install_stub_backbone(
             return _build_param_stub_dino(num_register_tokens, leaky=leaky)
         return _build_stub_dino(num_register_tokens)
 
+    def _stub_processor(dino_version, dino_size, *, revision=None):
+        # The processor-only loader (``masked_dense`` tiles, #282 P1): the
+        # stub's processor, which every stub shares. Not a model load, so not
+        # in ``calls``.
+        return _build_stub_dino(num_register_tokens)[1]
+
     module._cached_backbone.cache_clear()
     monkeypatch.setattr(module, "load_dino_backbone", _stub_load)
+    monkeypatch.setattr(module, "load_dino_processor", _stub_processor)
     return calls
 
 
