@@ -56,7 +56,7 @@ SHA.
 - Create or modify: the embeddings how-to page. If #281 merged none, create
   `docs/source/how_to/pages/embeddings.md` and add it to the how-to toctree.
   It covers model sizes and the size/version pairs, `compute_dtype` (bf16
-  recommended for 7B, H7), what `compute` records, mixed GPU models (U6), the
+  recommended for giant, H7 as amended by U11), what `compute` records, mixed GPU models (U6), the
   measured device distances (spec §2), P2 T4's batch-invariance result stated
   as S1 restates goal 3 (within one GPU model and physical batch), and U8's
   measure-mode failure behaviour.

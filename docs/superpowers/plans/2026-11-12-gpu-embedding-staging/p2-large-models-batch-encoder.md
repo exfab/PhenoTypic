@@ -1,11 +1,12 @@
 # P2 · Large models, `compute_dtype`, the `BatchEncoder`, determinism
 
 **Spec:** §4.4 (BatchEncoder, batch size, determinism, batch invariance), §4.5,
-H7, U6, §5 "Batch invariance, measured on hardware"
+H7, U6, U11, §5 "Batch invariance, measured on hardware"
 
 ---
 
-**Goal:** DINOv2-giant and DINOv3 H+ and 7B are usable in reduced precision;
+**Goal:** DINOv2-giant is usable, in reduced precision where needed (DINOv3 H+
+and 7B are deferred, U11);
 every entry records where and how it was computed; a `BatchEncoder` runs the
 backbone over crops from many images at a fixed physical shape; and a GPU job on
 three GPU models measures whether a crop's vector depends on its neighbours.
@@ -16,12 +17,14 @@ three GPU models measures whether a crop's vector depends on its neighbours.
 
 **Files:**
 - Modify: `src/phenotypic/sdk_/typing_.py:163`. Add
-  `EmbeddingDinoSize = Literal["small", "base", "large", "giant", "huge_plus", "7b"]`
-  and `ComputeDType = Literal["float32", "bfloat16", "float16"]`. `DinoSize`
-  stays as it is (O1, accepted: the detectors do not gain the new sizes).
+  `EmbeddingDinoSize = Literal["small", "base", "large", "giant"]` and
+  `ComputeDType = Literal["float32", "bfloat16", "float16"]`. `DinoSize`
+  (`Literal["small", "base", "large"]` at `:163` on the merged tree, checked)
+  stays as it is (O1, accepted: the detectors do not gain `giant`). Under U11
+  there is no `huge_plus` and no `7b`.
 - Modify: `src/phenotypic/detect/nn/_helper/_dino_support.py`
-  - `_DINOV3_SIZE_TO_REPO` (`:43`) gains `huge_plus` and `7b`; `hf_dino_id`
-    (`:173`) maps v2 `giant` to `facebook/dinov2-giant`.
+  - `hf_dino_id` (`:173`) maps v2 `giant` to `facebook/dinov2-giant`.
+    `_DINOV3_SIZE_TO_REPO` (`:43`) is unchanged (U11).
   - `load_dino_backbone` (`:194`) gains `dtype: ComputeDType = "float32"`,
     passed to `AutoModel.from_pretrained` as the torch dtype, then `.to(device)`.
     No `device_map`, so no `accelerate`.
@@ -36,19 +39,20 @@ three GPU models measures whether a crop's vector depends on its neighbours.
     `device` and `device_name` into `model.device` / `model.device_name`, so the
     two places cannot disagree.
 - Modify: `src/phenotypic/detect/nn/_helper/_checkpoint_manager.py`.
-  `Dinov2CheckpointManager._SIZE_TO_REPO` (`:678`) gains `giant`;
-  `Dinov3CheckpointManager._SIZE_TO_REPO` (`:721`) gains `huge_plus`, `7b`.
+  `Dinov2CheckpointManager._SIZE_TO_REPO` (`:678`) gains `giant`, so
+  `dino_weight_requirement` (`:926`) can name its weights.
+  `Dinov3CheckpointManager` is unchanged (U11).
 - Modify: `src/phenotypic/measure/_measure_dino_embedding.py`
   - the delegate `load_dino_backbone` (`:44-62`) gains `dtype: ComputeDType = "float32"`
     and passes it through (plan review I14);
-  - `size: EmbeddingDinoSize`; `_SIZE_LETTER` (`:41`) becomes `_MODEL_SLUG`,
-    giving `vitg14`, `vith16plus`, `vit7b16` for the new sizes (O2, accepted)
-    and today's `vit{s,b,l}{patch}` for the rest, pinned by a test;
+  - `size: EmbeddingDinoSize`; `_SIZE_LETTER` (`:41`) gains `"giant": "g"`, so
+    `model_token()` (`:313`) gives `dinov2-vitg14` (O2, accepted) and today's
+    `vit{s,b,l}{patch}` tokens are unchanged, pinned by a test;
   - new field `compute_dtype: Annotated[ComputeDType, TuneSpec(tunable=False)] = "float32"`,
     placed after `dtype`;
-  - `model_validator` `_size_matches_version`: `giant` needs `version=2`;
-    `huge_plus` and `7b` need `version=3`. The message names both values and the
-    sizes the version has;
+  - `model_validator` `_size_matches_version`: `giant` needs `version=2`
+    (DINOv3 has no ViT-g). The message names both values and the sizes version 3
+    has;
   - `_cached_backbone` (`:65`) keys on `(version, size, revision, device, compute_dtype)`;
   - `entry_descriptor_for` writes top-level `compute_dtype` and the `compute`
     block. The inline `entry_descriptor()` passes
@@ -78,15 +82,21 @@ three GPU models measures whether a crop's vector depends on its neighbours.
 - [ ] **Step 1: Write the failing tests.**
 
 ```python
-@pytest.mark.parametrize("size, version", [("giant", 3), ("huge_plus", 2), ("7b", 2)])
-def test_impossible_size_version_pairs_are_refused(size, version):
-    with pytest.raises(ValidationError, match=f"{size}.*version"):
-        MeasureDinoEmbedding(size=size, version=version)
+def test_giant_with_version_3_is_refused():
+    with pytest.raises(ValidationError, match="giant.*version"):
+        MeasureDinoEmbedding(size="giant", version=3)
+    MeasureDinoEmbedding(size="giant", version=2)                    # the one valid pair
 
-@pytest.mark.parametrize("size, version, token", [
-    ("giant", 2, "dinov2-vitg14"), ("huge_plus", 3, "dinov3-vith16plus"), ("7b", 3, "dinov3-vit7b16")])
-def test_new_model_tokens(size, version, token):
-    assert MeasureDinoEmbedding(size=size, version=version).model_token() == token
+@pytest.mark.parametrize("size", ["huge_plus", "7b"])
+def test_the_deferred_sizes_do_not_exist(size):
+    with pytest.raises(ValidationError):                             # U11
+        MeasureDinoEmbedding(size=size, version=3)
+
+def test_the_giant_token():
+    assert MeasureDinoEmbedding(size="giant", version=2).model_token() == "dinov2-vitg14"
+
+def test_the_detectors_do_not_gain_giant():
+    assert get_args(DinoSize) == ("small", "base", "large")          # O1
 
 def test_compute_dtype_is_descriptor_identity(param_stub_backbone, detected_plate):
     a = MeasureDinoEmbedding().payload(detected_plate).descriptor
@@ -169,17 +179,16 @@ def test_compute_never_splits_a_deliverable_group():
   From a node with network, for each new repo id, fetch `config.json` at the
   default branch with `huggingface_hub.hf_hub_download` and record
   `hidden_size`, `num_attention_heads`, `num_hidden_layers`, `patch_size`,
-  `num_register_tokens` and the commit. DINOv3 ids need the licence-accepted
-  token (stop point 4). Paste the values into the P0 T1 model table if they
-  differ, re-run `physical_batch_size.py`, and record the commits in the commit
-  message. Expected: `dinov2-giant` 1536-d, patch 14, no registers;
-  `dinov3-vith16plus` 1280-d, `dinov3-vit7b16` 4096-d, patch 16, 4 registers.
-  Any other value stops the task.
+  `num_register_tokens` and the commit. Under U11 the one new repo id is
+  `facebook/dinov2-giant`, which is ungated. If its values differ from the P0
+  T1 model table's row, re-run `physical_batch_size.py` with them, and record
+  the commit in the commit message. Expected: 1536-d, 24 heads, patch 14, no
+  registers. Any other value stops the task.
 - [ ] **Step 5: Confirm the loader keyword and the load footprint.** In the
   foundation venv, check which of `dtype=` and `torch_dtype=` the installed
   transformers' `from_pretrained` accepts without a deprecation warning, and use
-  that one. Record the peak RSS of a `7b` bf16 load in a Slurm job
-  (`intel`, 4 CPU, 48 GB, 1 h), if the weights are reachable. Expected: below 48 GB.
+  that one. Record the peak RSS of a `giant` float32 load (about 4.4 GB of
+  weights) in a Slurm job (`intel`, 4 CPU, 16 GB, 1 h). Expected: below 16 GB.
 - [ ] **Step 6: Run the tests, the golden, the tune gate and the startup guards.**
 
   ```bash
@@ -193,7 +202,7 @@ def test_compute_never_splits_a_deliverable_group():
 
   ```bash
   git add src/phenotypic/sdk_/typing_.py src/phenotypic/detect/nn/_helper/_dino_support.py src/phenotypic/detect/nn/_helper/_checkpoint_manager.py src/phenotypic/measure/_measure_dino_embedding.py src/phenotypic/abc_/_measure_embedding.py src/phenotypic/_cli/_cli_embedding_deliverables.py tests/_tiny_run.py tests/unit/measure/test_measure_dino_embedding_sizes.py tests/unit/cli/test_embedding_grouping_provenance.py
-  git commit -m "feat(embed): giant, H+ and 7B, compute_dtype, and the compute provenance block (#282 P2)"
+  git commit -m "feat(embed): DINOv2 giant, compute_dtype, and the compute provenance block (#282 P2)"
   ```
 
 ### Task 2: Determinism and the physical batch size
@@ -261,11 +270,19 @@ def test_cublas_workspace_values(monkeypatch, value, ok):
             check_cublas_workspace()
 
 def test_weights_that_do_not_fit_are_refused():
-    with pytest.raises(ValueError, match="does not fit"):            # 7B fp32 on a 16 GiB card (P0 T1 check 3)
-        physical_batch_size(batch_size=64, gpu_total_bytes=16 << 30,
-                            weight_bytes=6_700_000_000 * 4, per_sample=1)
+    giant_fp32 = 1_100_000_000 * 4                                   # about 4.1 GiB of weights
+    with pytest.raises(ValueError, match="does not fit"):            # an explicit 4 GiB card: 3.2 GiB budget
+        physical_batch_size(batch_size=64, gpu_total_bytes=4 << 30,
+                            weight_bytes=giant_fp32, per_sample=1)
+    assert physical_batch_size(batch_size=64, gpu_total_bytes=16 << 30,
+                               weight_bytes=giant_fp32, per_sample=1) == 64   # the same weights fit on 16 GiB
 ```
 
+  The refusal uses an explicit small `gpu_total_bytes`, because under U11 **no
+  DINOv2 combination is unsupported** on P0 T1's GPU table: the committed
+  script's computed unsupported set holds only `dinov3-7b` rows on the 16 GiB
+  card (run at `ccb017c58`), and giant in float32 fits there. The second
+  assertion keeps the test able to fail on a rule that refuses everything.
   `LOGIC_SCRIPTS` is the repo path of P0 T1's folder. This test reads the
   script, which is allowed: the rule is that the script never imports
   `phenotypic`, not the reverse.
@@ -487,9 +504,9 @@ be zero.
 - [ ] **Step 1: Write `batch_invariance.py <out.json> [--repeat-of <json>]`.**
   Inputs are the three stores spec §2 measured
   (`gpu-baseline/measure_embedding_baseline.py:25`), read only, objects and a
-  96-well grid. Rows: DINOv2-base float32 `crop_cls`; DINOv2-base float32
-  `masked_dense`; DINOv2-large float32; DINOv2-giant bfloat16; DINOv3-7B
-  bfloat16 (when its licence and token are present, stop point 4). For each:
+  96-well grid. Rows, DINOv2 only (U11): DINOv2-base float32 `crop_cls`;
+  DINOv2-base float32 `masked_dense`; DINOv2-large float32; DINOv2-giant
+  bfloat16. For each:
   1. `warnings.simplefilter("error")` around the forward passes, so any
      determinism warning from `use_deterministic_algorithms(warn_only=True)`
      fails the row and is listed (plan review, Minor).
@@ -505,8 +522,8 @@ be zero.
      information.
   6. Re-embed at `m/2` and record the max cosine distance to the reference as
      `half_m_max_cos` (information: OOM halving changes `m`, S1).
-  7. Record `f16_max_abs` and whether any value exceeds 65504 (the 7B and ViT-g
-     rows the spec asks for).
+  7. Record `f16_max_abs` and whether any value exceeds 65504 (the ViT-g row
+     the spec asks for).
   8. With `--repeat-of`, compare every vector with the earlier process's file:
      a separate-process repeat must be bit-identical too.
 - [ ] **Step 2: Write the sbatch script and the submitter.** The submitter adds a

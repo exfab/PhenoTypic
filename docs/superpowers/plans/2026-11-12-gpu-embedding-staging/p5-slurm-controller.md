@@ -512,11 +512,11 @@ def test_a_no_detector_gpu_embed_run_checks_the_gpu_partition(tmp_path):
                              embed_stage="gpu", sinfo_gres={"intel": ""})
     assert "PF-GPU-PARTITION" in codes(findings)
 
-def test_dinov3_7b_is_refused_at_preflight_without_the_licence(tmp_path, monkeypatch):
+def test_a_dinov3_embedder_is_refused_at_preflight_without_the_licence(tmp_path, monkeypatch):
     monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
     findings = preflight_for(tmp_path, n_images=1000, embed_stage="gpu",
-                             embedder=MeasureDinoEmbedding(version=3, size="7b", compute_dtype="bfloat16"))
-    assert "PF-LICENSE" in codes(findings)                   # the existing check, now reaching 7b (spec §4.5)
+                             embedder=MeasureDinoEmbedding(version=3, size="base"))
+    assert "PF-LICENSE" in codes(findings)       # the existing check reaches a Stage-4 run (spec §4.5; U11: no 7b)
 
 def test_the_checks_import_no_torch(tmp_path):
     assert "torch" not in modules_loaded_by(lambda: preflight_for(tmp_path, n_images=40, embed_stage="gpu"))

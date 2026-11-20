@@ -56,6 +56,11 @@ pinned by a unit test in P5 T1, not by a script: plan review, Cuts.)
     (re-review item 4): a crop pipeline's outputs are kilobytes per image and
     never reach it, so it keeps full batches; only `masked_dense` grids do
     (plan review I2).
+  - **Under U11 these bounds are conservative.** They are sized for DINOv3-7B
+    (4096-d, the 1.54 GB plate grid), and the largest model this PR ships is
+    DINOv2-giant at 1536-d, whose plate grid at patch 14 is about 0.75 GB. The
+    formulas and the committed constants stay as they are: they remain safe
+    upper bounds, and the deferred DINOv3 follow-up needs them.
 
 - [ ] **Step 1: Write `physical_batch_size.py`.** It holds a model table and a
   GPU table and checks the spec's formula over their product.
@@ -64,6 +69,11 @@ pinned by a unit test in P5 T1, not by a script: plan review, Cuts.)
     huge_plus (`8.4e8, 1280, 20, 16, 4`), 7b (`6.7e9, 4096, 32, 16, 4`). A
     comment says P2 T1 verifies each row against the hub's `config.json` and
     re-runs this script.
+  - **Note (U11, added after the scripts were committed at `ccb017c58`):** the
+    DINOv3 `huge_plus` and `7b` rows, and the checks that name them (3 and 3b),
+    are informational only. This PR ships no such size, nothing verifies those
+    rows against the hub, and the scripts stay as committed: the rows are
+    harmless arithmetic, and the deferred follow-up will verify them.
   - GPU table, total bytes: Ada 6000 48 GiB, A100 40 and 80 GiB, H100 80 GiB,
     Blackwell 6000 96 GiB; plus a 16 GiB card (P100 class), which the cluster
     excludes with `gpu_latest` but which gives the script a real "does not fit".

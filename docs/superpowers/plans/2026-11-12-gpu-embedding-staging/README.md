@@ -378,9 +378,6 @@ mid tier. A reviewer is never weaker than its implementer.
    process at one GPU model and physical batch, or any determinism warning. The
    spec's §5 fallback (an m = 1-per-crop mode) is then a user decision, and P4
    does not start.
-4. **DINOv3 weights.** The 7B and H+ rows of P2 T4 need the gated licence
-   accepted on the Hugging Face account and a token on the cluster. If either is
-   missing, the orchestrator asks rather than skipping the rows silently.
 
 ## Spec coverage
 
@@ -398,6 +395,7 @@ mid tier. A reviewer is never weaker than its implementer.
 | U8 a measure-mode Stage-4 failure keeps the old embeddings, journalled `MEASURE_FAILURE_STAGE`, exit 3 | P6 T1 (`carry_embeddings`, `test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record`) |
 | U9 a CPU pin under `auto` resolves inline with a note; refused with `--embed-stage gpu` (supersedes H9) | P4 T1 (resolver `cpu_pinned`, R2) |
 | U10 SLURM measure on the staged controller, with a measure-mode finalizer | P6 T2 |
+| U11 DINOv2 only for now: `giant` is the one new size; DINOv3 H+ and 7B deferred | P2 T1 (sizes, validator, tokens, hub check), P2 T4 (DINOv2 rows only), P0 T1 note |
 | H1 crop geometry on CPU via `_crop` / `_square_colony_crop` | P1 T2, P4 T3 (loader calls `prepare_regions`) |
 | H5 process mode inline on CPU | P4 T1 (R1), P4 T2 (`test_process_mode_ignores_embed_stage`) |
 | H6 reuse `--gpu-slurm`, `--gpu-shards` | P5 T2 |
@@ -408,7 +406,7 @@ mid tier. A reviewer is never weaker than its implementer.
 | §4.2 deferral, signal, `replace_run_embeddings`, record once | P3 T1, P3 T2, P4 T2, P4 T3 |
 | §4.3 controller v2, `_classify_stage4`, rounds, worklist, array over shards, `CUBLAS_WORKSPACE_CONFIG`, `StageTag` and per-run terminal stage | P5 T1, P5 T2, P4 T2 (`StageTag`) |
 | §4.4 plan, loop, DataLoader, `BatchEncoder`, batch size, determinism, embedder refactor, `entry_descriptor_for` | P1 T1–T2, P2 T2–T3, P4 T3 |
-| §4.5 `giant`/`huge_plus`/`7b`, size/version validator, hub verification, licence gate twice, `compute` block | P2 T1, P4 T3 (licence at shard start), P5 T3 (licence at preflight is the existing `PF-LICENSE`) |
+| §4.5 (as amended by U11) `giant`, size/version validator, hub verification, licence gate twice, `compute` block | P2 T1, P4 T3 (licence at shard start), P5 T3 (licence at preflight is the existing `PF-LICENSE`) |
 | §4.6 done/pending, `ResumeStage` `"stage4"`, gated shortcuts, interrupted states, Stage-1 re-run deletes signals, `--retry-failures`, measure carry and republish, manifest 4 → 5 | P4 T2, P4 T3 (`stage4_status`), P4 T4, P6 T1 |
 | §4.7 R1–R3, `PF-EMBED-SHARD-AMORTIZE`, `PF-EMBED-RESOURCES` | P4 T1, P5 T3 |
 | §4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load) | P2 T3 (OOM halving), P3 T1 (root changed), P4 T1 (no CUDA at startup), P4 T3 (CUDA, corrupt, non-finite, root change non-terminal, fence on both seams), P4 T4 (walltime by real-crash injection), P5 T1 (rounds), P5 T3 (cold-load warning) |
@@ -419,8 +417,9 @@ mid tier. A reviewer is never weaker than its implementer.
 **Decisions this plan takes where the spec leaves the builder a choice** (§7):
 - `device_map={"":"cuda"}` needs `accelerate`. The plan loads with
   `from_pretrained(dtype=compute_dtype)` then `.to("cuda")` instead, so the
-  `foundation` extra gains no dependency. 7B in bf16 is 13.4 GB of host RAM
-  during the load, inside a 48 GB `--mem`. P2 T1 Step 5 records the peak.
+  `foundation` extra gains no dependency. Giant in float32 is about 4.4 GB of
+  host RAM during the load (U11; the deferred 7B would be 13.4 GB in bf16).
+  P2 T1 Step 5 records the peak.
 - The commit pool has **one** thread (the spec's §4.4 said two; plan review
   Cuts: one is enough to overlap the GPU, and it makes per-image ordering
   trivial). The DataLoader has `resolve_local_worker_count(config.n_jobs, n) − 1`
@@ -441,13 +440,14 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
 | # | Question | Decision | Where |
 |---|---|---|---|
 | O1 | Where the new sizes live | Accepted: a separate `EmbeddingDinoSize`; the detectors' `DinoSize` is unchanged | P2 T1 |
-| O2 | Tokens for the new sizes | Accepted: `dinov2-vitg14`, `dinov3-vith16plus`, `dinov3-vit7b16`; the existing tokens are pinned by a test | P2 T1 |
+| O2 | Tokens for the new sizes | Accepted for the one new size under U11: `dinov2-vitg14`; the existing tokens are pinned by a test | P2 T1 |
 | O3 | A non-DINO embedder under Stage 4 | Accepted: refused under R2 | P4 T1 |
 | O4 | `compute` beside `model.device` | Accepted with a condition: one producer writes both, and a test asserts they agree | P2 T1 |
 | O5 | `--embed-stage gpu` with no embedder | Accepted: resolves inline with a note | P4 T1 |
 | O6 | The amortisation warning | Accepted with conditions: a GPU-only constant (439 / 297), worded as efficiency | P0 T1, P5 T3 |
 | O7 | SLURM measure on the controller | Became **U10** (user, 2026-11-19), with a measure-mode finalizer | P6 T2 |
 | O8 | Zero-progress leftovers | Became **U7** (user): no record, no journal row, exit 5; revision 1's journalling is removed | P5 T1 |
+| U11 | DINOv3 H+ and 7B (user, 2026-11-20) | **DINOv2 only for now**: the cluster's HF token has expired and the DINOv3 licence is not accepted, so their weights and hub configs cannot be fetched or verified. `giant` is the one new size; existing DINOv3 sizes are untouched | P2 T1, P2 T4, Follow-ups |
 | O9 | U5's scope | Accepted: Stage-4 runs only | P5 T2 |
 
 ## Follow-ups (not in this plan)
@@ -455,6 +455,8 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
 - **The GUI run console** has no `--embed-stage` control, so it launches a
   no-detector run that resolves inline. The control is the GUI follow-up of
   spec §6, with its `FEATURES.md` and `WORKFLOWS.md` rows.
+- **DINOv3 H+ and 7B:** needs an accepted licence and a valid HF token;
+  re-add the sizes, hub verification and P2 T4 rows (U11).
 - **`promote_store`'s two renames:** a walltime kill between them can lose a
   store. Pre-existing; Stage 4 crosses the window once more per image. P7
   documents it as a known limit; a fix belongs to the store writer, not here.
@@ -492,7 +494,7 @@ Revised 2026-11-19 against `reports/2026-11-12-gpu-embedding-staging/plan-review
 | **I3** DataLoader hazards | Per-backbone loader, `spawn`, not persistent, identity `collate_fn`. P4 T3 | `test_loader_items_arrive_as_ndarrays` |
 | **I4** `CUBLAS_WORKSPACE_CONFIG` only in the SLURM prelude | `prepare_stage4_environment` sets it right after resolution. P4 T1 | `test_the_cublas_variable_is_set_before_any_strategy` |
 | **I5** flat order, non-crashing crashes, half a fence | One commit thread and order compared per image; crashes are `os._exit(137)` in a subprocess; the fence test runs on both seams. P4 T3, P4 T4 | `test_commit_then_record_then_signals_per_image`, `test_a_real_crash_resumes_from_disk`, `test_a_fenced_epoch_commits_nothing` |
-| **I6** wrong does-not-fit case | The unsupported set is computed; the refusal uses 7B fp32 on 16 GiB. P0 T1, P2 T2 | `physical_batch_size.py` checks 1–3, `test_weights_that_do_not_fit_are_refused` |
+| **I6** wrong does-not-fit case | The unsupported set is computed; the refusal now uses giant fp32 on an explicit 4 GiB `gpu_total_bytes`, since no DINOv2 row is unsupported (U11). P0 T1, P2 T2 | `physical_batch_size.py` checks 1–3, `test_weights_that_do_not_fit_are_refused` |
 | **I7** orphan cleanup unreachable | `sweep_orphan_stage4_signals` over the whole inventory, locally and in the controller. P4 T3, P5 T1 | `test_orphan_signals_of_a_done_image_are_swept`, `test_orphans_are_swept_before_classifying` |
 | **I8** missed event callers; test file name | All six callers listed; `test_cli_update_state_stage.py`. P4 T2 | `test_stage3_completion_is_not_completion_when_the_run_embeds_on_gpu` |
 | **I9** SLURM measure finalizer not wired | `RUN_MODE: "measure"`; no forward run proof; `measure_failed` from the journal under the epoch. P6 T2 | `test_the_measure_finalizer_publishes_no_run_proof_and_counts_measure_failures` |
@@ -551,3 +553,27 @@ Each item, and where it is fixed:
 The two revision tests depend on gridname's #281 fix; until it merges they
 fail, which is the behaviour they pin. Revision 2's table above is kept as
 history; where revision 3 renamed a test, the table names the new one.
+
+### U11 (2026-11-20)
+
+The user chose DINOv2 only for now (spec `52674eac2`: U11, §1 goal 2, §4.5).
+Applied as docs-only plan edits:
+- **P2 T1:** `EmbeddingDinoSize = Literal["small", "base", "large", "giant"]`
+  (the merged tree's `DinoSize` is `Literal["small", "base", "large"]`,
+  unchanged); `giant` with version 3 is refused; one token, `dinov2-vitg14`;
+  hub verification covers `facebook/dinov2-giant` only; no
+  `_DINOV3_SIZE_TO_REPO` or `Dinov3CheckpointManager` change.
+- **P2 T2:** no DINOv2 combination is unsupported on the GPU table (the
+  committed script's unsupported set is all `dinov3-7b`), so the refusal test
+  uses an explicit 4 GiB `gpu_total_bytes`, with a 16 GiB control that keeps it
+  able to fail.
+- **P2 T4:** DINOv2 rows only (base `crop_cls`, base `masked_dense`, large fp32,
+  giant bf16); the float16-range check covers ViT-g.
+- **P0:** the scripts stay as committed; a note marks their DINOv3 rows
+  informational, and the memory bounds sized for 7B (`ENCODER_OUTPUT_BYTES` at
+  4096-d, the 1.54 GB grid, `MAX_IN_FLIGHT_OUTPUT_BYTES`) as conservative,
+  since giant's grid is about 0.75 GB.
+- **P5 T3:** the licence preflight test uses DINOv3 base, not 7B.
+- **P7:** bf16 is recommended for giant.
+- **README:** stop point 4 removed; U11 in the decisions table and spec
+  coverage; O2 narrowed to `dinov2-vitg14`; a DINOv3 follow-up.

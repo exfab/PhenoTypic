@@ -87,8 +87,8 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><code>resolved_revision</code>, <code>:257-272</code>): once it lands, that file's anchors below</p>
 <p><code>:257</code> shift. Re-find them by name; they are not questions.</p>
 </div></header>
-<nav class="toc" aria-label="Contents"><b>GPU Embedding Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-expected-red-gui-tests-283-inherited-from-281">Expected-red GUI tests (#283, inherited from #281)</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li><li class="l2"><a href="#d0-spec-coverage">Spec coverage</a></li><li class="l2"><a href="#d0-decisions-on-the-open-questions">Decisions on the open questions</a></li><li class="l2"><a href="#d0-follow-ups-not-in-this-plan">Follow-ups (not in this plan)</a></li><li class="l2"><a href="#d0-render">Render</a></li><li class="l2"><a href="#d0-revision-2">Revision 2</a></li><li class="l2"><a href="#d0-revision-3">Revision 3</a></li></ul><b>P0 · Logic validation and the inline golden</b><ul><li class="l3"><a href="#d1-task-1-logic-validation-scripts-lane-a">Task 1: Logic-validation scripts (Lane A)</a></li><li class="l3"><a href="#d1-task-2-the-parametric-stub-and-the-inline-golden">Task 2: The parametric stub and the inline golden</a></li></ul><b>P1 · The embedder refactor (prepare / encode / payload)</b><ul><li class="l3"><a href="#d2-task-1-the-three-steps-on-the-abc">Task 1: The three steps on the ABC</a></li><li class="l3"><a href="#d2-task-2-measuredinoembedding-on-the-three-steps">Task 2: MeasureDinoEmbedding on the three steps</a></li></ul><b>P2 · Large models, `compute_dtype`, the `BatchEncoder`, determinism</b><ul><li class="l3"><a href="#d3-task-1-sizes-compute_dtype-and-the-compute-block">Task 1: Sizes, compute_dtype, and the compute block</a></li><li class="l3"><a href="#d3-task-2-determinism-and-the-physical-batch-size">Task 2: Determinism and the physical batch size</a></li><li class="l3"><a href="#d3-task-3-batchencoder">Task 3: BatchEncoder</a></li><li class="l3"><a href="#d3-task-4-the-gpu-batch-invariance-job-lane-b">Task 4: The GPU batch-invariance job (Lane B)</a></li></ul><b>P3 · `replace_run_embeddings` and the Stage-4 signal</b><ul><li class="l3"><a href="#d4-task-1-replace_run_embeddings">Task 1: replace_run_embeddings</a></li><li class="l3"><a href="#d4-task-2-the-stage-4-signal">Task 2: The Stage-4 signal</a></li></ul><b>P4 · Local Stage 4: resolver, refusals, deferral, gated recovery, resume</b><ul><li class="l3"><a href="#d5-task-1-the-resolver-r1r3-cuda-and-determinism-at-startup-and-recording">Task 1: The resolver, R1–R3, CUDA and determinism at startup, and recording</a></li><li class="l3"><a href="#d5-task-2-deferral-gated-recovery-shortcuts-the-completion-predicate-and-the-stage4-tag">Task 2: Deferral, gated recovery shortcuts, the completion predicate, and the stage4 tag</a></li><li class="l3"><a href="#d5-task-3-the-stage-4-worker">Task 3: The Stage-4 worker</a></li><li class="l3"><a href="#d5-task-4-resume-retry-the-no-detector-continuation-and-crash-injection">Task 4: Resume, retry, the no-detector continuation, and crash injection</a></li></ul><b>P5 · SLURM: controller v2, rounds, worklist, the no-detector plan, preflight</b><ul><li class="l3"><a href="#d6-task-1-controller-v2-stage-4-rounds-and-the-worklist">Task 1: Controller v2, Stage-4 rounds and the worklist</a></li><li class="l3"><a href="#d6-task-2-scripts-the-workers---stage-4-the-no-detector-plan-and-the-revision-pin">Task 2: Scripts, the worker's --stage 4, the no-detector plan, and the revision pin</a></li><li class="l3"><a href="#d6-task-3-preflight-codes">Task 3: Preflight codes</a></li><li class="l3"><a href="#d6-task-4-live-slurm-smoke-stop-point-2-the-user-approves-first">Task 4: Live SLURM smoke (stop point 2: the user approves first)</a></li></ul><b>P6 · `--mode measure` through a republish Stage 4</b><ul><li class="l3"><a href="#d7-task-1-the-measure-core-carries-and-defers-local-republish-stage-4-manifest-v5">Task 1: The measure core carries and defers; local republish Stage 4; manifest v5</a></li><li class="l3"><a href="#d7-task-2-slurm-measure-mode-on-the-controller-with-a-measure-mode-finalizer-u10">Task 2: SLURM measure mode on the controller, with a measure-mode finalizer (U10)</a></li></ul><b>P7 · Docs, the simplify pass, and the full regression</b><ul><li class="l3"><a href="#d8-task-1-docs">Task 1: Docs</a></li><li class="l3"><a href="#d8-task-2-simplify-then-the-full-regression">Task 2: Simplify, then the full regression</a></li></ul></nav>
-<main><section class="doc"><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/README.md</div><blockquote>
+<nav class="toc" aria-label="Contents"><b>GPU Embedding Plan</b><ul><li class="l2"><a href="#d0-global-constraints">Global Constraints</a></li><li class="l3"><a href="#d0-expected-red-gui-tests-283-inherited-from-281">Expected-red GUI tests (#283, inherited from #281)</a></li><li class="l2"><a href="#d0-review-focus">Review Focus</a></li><li class="l2"><a href="#d0-conventions-for-every-task">Conventions for every task</a></li><li class="l2"><a href="#d0-phases">Phases</a></li><li class="l2"><a href="#d0-execution">Execution</a></li><li class="l2"><a href="#d0-spec-coverage">Spec coverage</a></li><li class="l2"><a href="#d0-decisions-on-the-open-questions">Decisions on the open questions</a></li><li class="l2"><a href="#d0-follow-ups-not-in-this-plan">Follow-ups (not in this plan)</a></li><li class="l2"><a href="#d0-render">Render</a></li><li class="l2"><a href="#d0-revision-2">Revision 2</a></li><li class="l2"><a href="#d0-revision-3">Revision 3</a></li><li class="l3"><a href="#d0-u11-2026-11-20">U11 (2026-11-20)</a></li></ul><b>P0 · Logic validation and the inline golden</b><ul><li class="l3"><a href="#d1-task-1-logic-validation-scripts-lane-a">Task 1: Logic-validation scripts (Lane A)</a></li><li class="l3"><a href="#d1-task-2-the-parametric-stub-and-the-inline-golden">Task 2: The parametric stub and the inline golden</a></li></ul><b>P1 · The embedder refactor (prepare / encode / payload)</b><ul><li class="l3"><a href="#d2-task-1-the-three-steps-on-the-abc">Task 1: The three steps on the ABC</a></li><li class="l3"><a href="#d2-task-2-measuredinoembedding-on-the-three-steps">Task 2: MeasureDinoEmbedding on the three steps</a></li></ul><b>P2 · Large models, `compute_dtype`, the `BatchEncoder`, determinism</b><ul><li class="l3"><a href="#d3-task-1-sizes-compute_dtype-and-the-compute-block">Task 1: Sizes, compute_dtype, and the compute block</a></li><li class="l3"><a href="#d3-task-2-determinism-and-the-physical-batch-size">Task 2: Determinism and the physical batch size</a></li><li class="l3"><a href="#d3-task-3-batchencoder">Task 3: BatchEncoder</a></li><li class="l3"><a href="#d3-task-4-the-gpu-batch-invariance-job-lane-b">Task 4: The GPU batch-invariance job (Lane B)</a></li></ul><b>P3 · `replace_run_embeddings` and the Stage-4 signal</b><ul><li class="l3"><a href="#d4-task-1-replace_run_embeddings">Task 1: replace_run_embeddings</a></li><li class="l3"><a href="#d4-task-2-the-stage-4-signal">Task 2: The Stage-4 signal</a></li></ul><b>P4 · Local Stage 4: resolver, refusals, deferral, gated recovery, resume</b><ul><li class="l3"><a href="#d5-task-1-the-resolver-r1r3-cuda-and-determinism-at-startup-and-recording">Task 1: The resolver, R1–R3, CUDA and determinism at startup, and recording</a></li><li class="l3"><a href="#d5-task-2-deferral-gated-recovery-shortcuts-the-completion-predicate-and-the-stage4-tag">Task 2: Deferral, gated recovery shortcuts, the completion predicate, and the stage4 tag</a></li><li class="l3"><a href="#d5-task-3-the-stage-4-worker">Task 3: The Stage-4 worker</a></li><li class="l3"><a href="#d5-task-4-resume-retry-the-no-detector-continuation-and-crash-injection">Task 4: Resume, retry, the no-detector continuation, and crash injection</a></li></ul><b>P5 · SLURM: controller v2, rounds, worklist, the no-detector plan, preflight</b><ul><li class="l3"><a href="#d6-task-1-controller-v2-stage-4-rounds-and-the-worklist">Task 1: Controller v2, Stage-4 rounds and the worklist</a></li><li class="l3"><a href="#d6-task-2-scripts-the-workers---stage-4-the-no-detector-plan-and-the-revision-pin">Task 2: Scripts, the worker's --stage 4, the no-detector plan, and the revision pin</a></li><li class="l3"><a href="#d6-task-3-preflight-codes">Task 3: Preflight codes</a></li><li class="l3"><a href="#d6-task-4-live-slurm-smoke-stop-point-2-the-user-approves-first">Task 4: Live SLURM smoke (stop point 2: the user approves first)</a></li></ul><b>P6 · `--mode measure` through a republish Stage 4</b><ul><li class="l3"><a href="#d7-task-1-the-measure-core-carries-and-defers-local-republish-stage-4-manifest-v5">Task 1: The measure core carries and defers; local republish Stage 4; manifest v5</a></li><li class="l3"><a href="#d7-task-2-slurm-measure-mode-on-the-controller-with-a-measure-mode-finalizer-u10">Task 2: SLURM measure mode on the controller, with a measure-mode finalizer (U10)</a></li></ul><b>P7 · Docs, the simplify pass, and the full regression</b><ul><li class="l3"><a href="#d8-task-1-docs">Task 1: Docs</a></li><li class="l3"><a href="#d8-task-2-simplify-then-the-full-regression">Task 2: Simplify, then the full regression</a></li></ul></nav>
+<main><section class="doc"><div class="docsrc">README.md</div><blockquote>
 <p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
 </blockquote>
 <p><strong>Goal:</strong> Run every <code>MeasureDinoEmbedding</code> of a staged run on GPUs, in a Stage 4 after the store is final. One resident model per GPU shard, batched across images, with vectors that, within one GPU model and physical batch size, do not depend on sharding or batching (spec goal 3 as restated, S1).</p>
@@ -630,7 +630,6 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Any design question the spec does not settle, before the task that consumes it. O1–O9 are all decided (below); none is open.</li>
 <li><strong>The live SLURM smoke (P5 T4)</strong> spends real GPU time; it runs only on the user's go-ahead.</li>
 <li><strong>A batch-invariance measurement that refutes the hypothesis</strong> (P2 T4): any stored float16 bit that changes with neighbours, position, partition or process at one GPU model and physical batch, or any determinism warning. The spec's §5 fallback (an m = 1-per-crop mode) is then a user decision, and P4 does not start.</li>
-<li><strong>DINOv3 weights.</strong> The 7B and H+ rows of P2 T4 need the gated licence accepted on the Hugging Face account and a token on the cluster. If either is missing, the orchestrator asks rather than skipping the rows silently.</li>
 </ol>
 <h2 id="d0-spec-coverage">Spec coverage</h2>
 <div class="scroll"><table>
@@ -690,70 +689,74 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>P6 T2</td>
 </tr>
 <tr class="odd">
+<td>U11 DINOv2 only for now: <code>giant</code> is the one new size; DINOv3 H+ and 7B deferred</td>
+<td>P2 T1 (sizes, validator, tokens, hub check), P2 T4 (DINOv2 rows only), P0 T1 note</td>
+</tr>
+<tr class="even">
 <td>H1 crop geometry on CPU via <code>_crop</code> / <code>_square_colony_crop</code></td>
 <td>P1 T2, P4 T3 (loader calls <code>prepare_regions</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>H5 process mode inline on CPU</td>
 <td>P4 T1 (R1), P4 T2 (<code>test_process_mode_ignores_embed_stage</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>H6 reuse <code>--gpu-slurm</code>, <code>--gpu-shards</code></td>
 <td>P5 T2</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>H7 <code>compute_dtype</code> field in the descriptor</td>
 <td>P2 T1</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>H9 superseded by U9</td>
 <td>P4 T1</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>H10 backbone-major, one model resident, shared loads</td>
 <td>P4 T3 (<code>plan_stage4</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>§4.1 where Stage 4 runs; recorded config, outside the work id</td>
 <td>P4 T1, P5 T2, P6 T1</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>§4.2 deferral, signal, <code>replace_run_embeddings</code>, record once</td>
 <td>P3 T1, P3 T2, P4 T2, P4 T3</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>§4.3 controller v2, <code>_classify_stage4</code>, rounds, worklist, array over shards, <code>CUBLAS_WORKSPACE_CONFIG</code>, <code>StageTag</code> and per-run terminal stage</td>
 <td>P5 T1, P5 T2, P4 T2 (<code>StageTag</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>§4.4 plan, loop, DataLoader, <code>BatchEncoder</code>, batch size, determinism, embedder refactor, <code>entry_descriptor_for</code></td>
 <td>P1 T1–T2, P2 T2–T3, P4 T3</td>
 </tr>
-<tr class="odd">
-<td>§4.5 <code>giant</code>/<code>huge_plus</code>/<code>7b</code>, size/version validator, hub verification, licence gate twice, <code>compute</code> block</td>
+<tr class="even">
+<td>§4.5 (as amended by U11) <code>giant</code>, size/version validator, hub verification, licence gate twice, <code>compute</code> block</td>
 <td>P2 T1, P4 T3 (licence at shard start), P5 T3 (licence at preflight is the existing <code>PF-LICENSE</code>)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>§4.6 done/pending, <code>ResumeStage</code> <code>"stage4"</code>, gated shortcuts, interrupted states, Stage-1 re-run deletes signals, <code>--retry-failures</code>, measure carry and republish, manifest 4 → 5</td>
 <td>P4 T2, P4 T3 (<code>stage4_status</code>), P4 T4, P6 T1</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>§4.7 R1–R3, <code>PF-EMBED-SHARD-AMORTIZE</code>, <code>PF-EMBED-RESOURCES</code></td>
 <td>P4 T1, P5 T3</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>§4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load)</td>
 <td>P2 T3 (OOM halving), P3 T1 (root changed), P4 T1 (no CUDA at startup), P4 T3 (CUDA, corrupt, non-finite, root change non-terminal, fence on both seams), P4 T4 (walltime by real-crash injection), P5 T1 (rounds), P5 T3 (cold-load warning)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>§5 golden; batch invariance on hardware; transaction tests; local e2e with crash injection; controller fake-scheduler tests; live smoke; measure over staged; full regression</td>
 <td>P0 T2 + P1 T2; P2 T4; P3 T1; P4 T4; P5 T1; P5 T4; P6 T2; P7 T2</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>§6 phases</td>
 <td>this README's phase table</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>§7 left to the builder: pool sizes, <code>per_sample</code>, <code>accelerate</code>, internal names</td>
 <td>P0 T1 (<code>per_sample</code>, memory bounds), P2 T3 (<code>max_in_flight_bytes</code>), P4 T3 (one commit thread), P2 T1 Step 5 (<code>accelerate</code>: avoided, see below)</td>
 </tr>
@@ -761,7 +764,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </table></div>
 <p><strong>Decisions this plan takes where the spec leaves the builder a choice</strong> (§7):</p>
 <ul>
-<li><code>device_map={"":"cuda"}</code> needs <code>accelerate</code>. The plan loads with <code>from_pretrained(dtype=compute_dtype)</code> then <code>.to("cuda")</code> instead, so the <code>foundation</code> extra gains no dependency. 7B in bf16 is 13.4 GB of host RAM during the load, inside a 48 GB <code>--mem</code>. P2 T1 Step 5 records the peak.</li>
+<li><code>device_map={"":"cuda"}</code> needs <code>accelerate</code>. The plan loads with <code>from_pretrained(dtype=compute_dtype)</code> then <code>.to("cuda")</code> instead, so the <code>foundation</code> extra gains no dependency. Giant in float32 is about 4.4 GB of host RAM during the load (U11; the deferred 7B would be 13.4 GB in bf16). P2 T1 Step 5 records the peak.</li>
 <li>The commit pool has <strong>one</strong> thread (the spec's §4.4 said two; plan review Cuts: one is enough to overlap the GPU, and it makes per-image ordering trivial). The DataLoader has <code>resolve_local_worker_count(config.n_jobs, n) − 1</code> workers locally (the allocation's on SLURM), <code>spawn</code>, <code>prefetch_factor=2</code>.</li>
 <li>A signal carries <code>root_sha256</code>, the root its payloads were computed against; a commit checks it against the live root and uses it as <code>expected_root_sha256</code>.</li>
 <li><code>masked_dense</code> tiles are normalised by the HF processor in the loader, exactly as inline does, so the two paths share bits on the CPU (plan review I1).</li>
@@ -788,7 +791,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="even">
 <td>O2</td>
 <td>Tokens for the new sizes</td>
-<td>Accepted: <code>dinov2-vitg14</code>, <code>dinov3-vith16plus</code>, <code>dinov3-vit7b16</code>; the existing tokens are pinned by a test</td>
+<td>Accepted for the one new size under U11: <code>dinov2-vitg14</code>; the existing tokens are pinned by a test</td>
 <td>P2 T1</td>
 </tr>
 <tr class="odd">
@@ -828,6 +831,12 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>P5 T1</td>
 </tr>
 <tr class="odd">
+<td>U11</td>
+<td>DINOv3 H+ and 7B (user, 2026-11-20)</td>
+<td><strong>DINOv2 only for now</strong>: the cluster's HF token has expired and the DINOv3 licence is not accepted, so their weights and hub configs cannot be fetched or verified. <code>giant</code> is the one new size; existing DINOv3 sizes are untouched</td>
+<td>P2 T1, P2 T4, Follow-ups</td>
+</tr>
+<tr class="even">
 <td>O9</td>
 <td>U5's scope</td>
 <td>Accepted: Stage-4 runs only</td>
@@ -838,6 +847,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <h2 id="d0-follow-ups-not-in-this-plan">Follow-ups (not in this plan)</h2>
 <ul>
 <li><strong>The GUI run console</strong> has no <code>--embed-stage</code> control, so it launches a no-detector run that resolves inline. The control is the GUI follow-up of spec §6, with its <code>FEATURES.md</code> and <code>WORKFLOWS.md</code> rows.</li>
+<li><strong>DINOv3 H+ and 7B:</strong> needs an accepted licence and a valid HF token; re-add the sizes, hub verification and P2 T4 rows (U11).</li>
 <li><strong><code>promote_store</code>'s two renames:</strong> a walltime kill between them can lose a store. Pre-existing; Stage 4 crosses the window once more per image. P7 documents it as a known limit; a fix belongs to the store writer, not here.</li>
 </ul>
 <h2 id="d0-render">Render</h2>
@@ -913,7 +923,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td><strong>I6</strong> wrong does-not-fit case</td>
-<td>The unsupported set is computed; the refusal uses 7B fp32 on 16 GiB. P0 T1, P2 T2</td>
+<td>The unsupported set is computed; the refusal now uses giant fp32 on an explicit 4 GiB <code>gpu_total_bytes</code>, since no DINOv2 row is unsupported (U11). P0 T1, P2 T2</td>
 <td><code>physical_batch_size.py</code> checks 1–3, <code>test_weights_that_do_not_fit_are_refused</code></td>
 </tr>
 <tr class="even">
@@ -1143,9 +1153,20 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tbody>
 </table></div>
 <p>The two revision tests depend on gridname's #281 fix; until it merges they fail, which is the behaviour they pin. Revision 2's table above is kept as history; where revision 3 renamed a test, the table names the new one.</p>
+<h3 id="d0-u11-2026-11-20">U11 (2026-11-20)</h3>
+<p>The user chose DINOv2 only for now (spec <code>52674eac2</code>: U11, §1 goal 2, §4.5). Applied as docs-only plan edits:</p>
+<ul>
+<li><strong>P2 T1:</strong> <code>EmbeddingDinoSize = Literal["small", "base", "large", "giant"]</code> (the merged tree's <code>DinoSize</code> is <code>Literal["small", "base", "large"]</code>, unchanged); <code>giant</code> with version 3 is refused; one token, <code>dinov2-vitg14</code>; hub verification covers <code>facebook/dinov2-giant</code> only; no <code>_DINOV3_SIZE_TO_REPO</code> or <code>Dinov3CheckpointManager</code> change.</li>
+<li><strong>P2 T2:</strong> no DINOv2 combination is unsupported on the GPU table (the committed script's unsupported set is all <code>dinov3-7b</code>), so the refusal test uses an explicit 4 GiB <code>gpu_total_bytes</code>, with a 16 GiB control that keeps it able to fail.</li>
+<li><strong>P2 T4:</strong> DINOv2 rows only (base <code>crop_cls</code>, base <code>masked_dense</code>, large fp32, giant bf16); the float16-range check covers ViT-g.</li>
+<li><strong>P0:</strong> the scripts stay as committed; a note marks their DINOv3 rows informational, and the memory bounds sized for 7B (<code>ENCODER_OUTPUT_BYTES</code> at 4096-d, the 1.54 GB grid, <code>MAX_IN_FLIGHT_OUTPUT_BYTES</code>) as conservative, since giant's grid is about 0.75 GB.</li>
+<li><strong>P5 T3:</strong> the licence preflight test uses DINOv3 base, not 7B.</li>
+<li><strong>P7:</strong> bf16 is recommended for giant.</li>
+<li><strong>README:</strong> stop point 4 removed; U11 in the decisions table and spec coverage; O2 narrowed to <code>dinov2-vitg14</code>; a DINOv3 follow-up.</li>
+</ul>
 </section><section class="doc"><h2 class="doctitle" id="d1-top">P0 · Logic validation and the inline golden</h2><div class="meta"><p><strong>Spec:</strong> §4.4 (batch size), §4.7 (<code>PF-EMBED-SHARD-AMORTIZE</code>,</p>
 <p><code>PF-EMBED-RESOURCES</code>), §5 (byte identity of the inline path), §7</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p0-validation-and-golden.md</div><p><strong>Goal:</strong> Two things exist before any code changes. The numeric rules Stage 4 rests on (the physical batch, the amortisation threshold, the loader and encoder memory) are re-derived from scratch in standalone scripts. Today's inline CPU bytes are pinned by a golden that P1 must keep green.</p>
+</div><div class="docsrc">p0-validation-and-golden.md</div><p><strong>Goal:</strong> Two things exist before any code changes. The numeric rules Stage 4 rests on (the physical batch, the amortisation threshold, the loader and encoder memory) are re-derived from scratch in standalone scripts. Today's inline CPU bytes are pinned by a golden that P1 must keep green.</p>
 <p><strong>Depends on:</strong> #281 merged into <code>feat/gpu-embedding-staging</code>. T2 is captured on that merge commit, before any P1 commit.</p>
 <h3 id="d1-task-1-logic-validation-scripts-lane-a">Task 1: Logic-validation scripts (Lane A)</h3>
 <p><strong>Files:</strong></p>
@@ -1166,12 +1187,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><code>AMORTIZE_MIN_IMAGES_PER_SHARD(size) = ceil(COLD_LOAD_S / WARM_GPU_S_PER_IMAGE[size])</code>: below it, the cold load is more than half the shard's GPU time. This is an efficiency threshold for that pipeline shape, not a correctness one (O6, accepted with this wording).</li>
 <li><code>LOADER_BASE_BYTES = 6 &lt;&lt; 30</code> (spec §2, peak RSS) and <code>LOADER_PER_WORKER(H, W, sample_bytes, crop_bytes) = H · W · (3 · sample_bytes + 12) + crop_bytes + (1 &lt;&lt; 30)</code>. A worker holds one decoded plate: <code>rgb</code> at <code>sample_bytes</code> (1 for uint8, 2 for uint16), and <code>gray</code>, <code>detect_mat</code> and <code>objmap</code> at 4 bytes each; plus the crops it cut and interpreter overhead (plan review, Minor).</li>
 <li><code>ENCODER_OUTPUT_BYTES(H, W, patch, hidden) = (H // patch) · (W // patch) · hidden · 4</code>: the largest per-image output the <code>BatchEncoder</code> holds (a <code>masked_dense</code> feature grid), and <code>MAX_IN_FLIGHT_OUTPUT_BYTES = 2 · ENCODER_OUTPUT_BYTES(4012, 6016, 16, 4096)</code> (about 3.1 GB): the bytes of output the encoder may hold for unfinished images before it flushes early. The bound is in <strong>bytes, not images</strong> (re-review item 4): a crop pipeline's outputs are kilobytes per image and never reach it, so it keeps full batches; only <code>masked_dense</code> grids do (plan review I2).</li>
+<li><strong>Under U11 these bounds are conservative.</strong> They are sized for DINOv3-7B (4096-d, the 1.54 GB plate grid), and the largest model this PR ships is DINOv2-giant at 1536-d, whose plate grid at patch 14 is about 0.75 GB. The formulas and the committed constants stay as they are: they remain safe upper bounds, and the deferred DINOv3 follow-up needs them.</li>
 </ul></li>
 </ul>
 <ul class="task-list">
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 1: Write <code>physical_batch_size.py</code>.</strong> It holds a model table and a GPU table and checks the spec's formula over their product.</p><ul>
 <li>Model table, <code>(params, hidden, heads, patch, registers)</code>: DINOv2 small, base, large, giant (<code>1.1e9, 1536, 24, 14, 0</code>); DINOv3 small, base, large, huge_plus (<code>8.4e8, 1280, 20, 16, 4</code>), 7b (<code>6.7e9, 4096, 32, 16, 4</code>). A comment says P2 T1 verifies each row against the hub's <code>config.json</code> and re-runs this script.</li>
+<li><strong>Note (U11, added after the scripts were committed at <code>ccb017c58</code>):</strong> the DINOv3 <code>huge_plus</code> and <code>7b</code> rows, and the checks that name them (3 and 3b), are informational only. This PR ships no such size, nothing verifies those rows against the hub, and the scripts stay as committed: the rows are harmless arithmetic, and the deferred follow-up will verify them.</li>
 <li>GPU table, total bytes: Ada 6000 48 GiB, A100 40 and 80 GiB, H100 80 GiB, Blackwell 6000 96 GiB; plus a 16 GiB card (P100 class), which the cluster excludes with <code>gpu_latest</code> but which gives the script a real "does not fit".</li>
 <li>Checks:
 <ol type="1">
@@ -1303,7 +1326,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d1-cb6-2"><a href="#d1-cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;test(embed): parametric DINO stub and the inline CPU golden, captured on &lt;merge-sha&gt; (#282 P0)&quot;</span></span></code></pre></div></li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d2-top">P1 · The embedder refactor (prepare / encode / payload)</h2><div class="meta"><p><strong>Spec:</strong> §4.4 "Embedder refactor", H1, §5 "Byte-identity of the inline path"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p1-embedder-refactor.md</div><p><strong>Goal:</strong> <code>MeasureEmbedding</code> runs as three steps: a CPU <code>prepare_regions</code> that cuts and resizes every crop, a backbone-only <code>encode</code>, and <code>payload_from</code>. The inline <code>payload()</code> is those three, and its bytes are P0 T2's golden. Stage 4 (P4) calls the same three steps, with a different encoder in the middle.</p>
+</div><div class="docsrc">p1-embedder-refactor.md</div><p><strong>Goal:</strong> <code>MeasureEmbedding</code> runs as three steps: a CPU <code>prepare_regions</code> that cuts and resizes every crop, a backbone-only <code>encode</code>, and <code>payload_from</code>. The inline <code>payload()</code> is those three, and its bytes are P0 T2's golden. Stage 4 (P4) calls the same three steps, with a different encoder in the middle.</p>
 <p><strong>Depends on:</strong> P0 T2 (the golden is committed).</p>
 <h3 id="d2-task-1-the-three-steps-on-the-abc">Task 1: The three steps on the ABC</h3>
 <p><strong>Files:</strong></p>
@@ -1490,27 +1513,27 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d2-cb8-2"><a href="#d2-cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;refactor(embed): MeasureDinoEmbedding prepares on CPU, encodes through a RegionEncoder (#282 P1)&quot;</span></span></code></pre></div></li>
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d3-top">P2 · Large models, `compute_dtype`, the `BatchEncoder`, determinism</h2><div class="meta"><p><strong>Spec:</strong> §4.4 (BatchEncoder, batch size, determinism, batch invariance), §4.5,</p>
-<p>H7, U6, §5 "Batch invariance, measured on hardware"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p2-large-models-batch-encoder.md</div><p><strong>Goal:</strong> DINOv2-giant and DINOv3 H+ and 7B are usable in reduced precision; every entry records where and how it was computed; a <code>BatchEncoder</code> runs the backbone over crops from many images at a fixed physical shape; and a GPU job on three GPU models measures whether a crop's vector depends on its neighbours.</p>
+<p>H7, U6, U11, §5 "Batch invariance, measured on hardware"</p>
+</div><div class="docsrc">p2-large-models-batch-encoder.md</div><p><strong>Goal:</strong> DINOv2-giant is usable, in reduced precision where needed (DINOv3 H+ and 7B are deferred, U11); every entry records where and how it was computed; a <code>BatchEncoder</code> runs the backbone over crops from many images at a fixed physical shape; and a GPU job on three GPU models measures whether a crop's vector depends on its neighbours.</p>
 <p><strong>Depends on:</strong> P0 T1 (constants), P1.</p>
 <h3 id="d3-task-1-sizes-compute_dtype-and-the-compute-block">Task 1: Sizes, <code>compute_dtype</code>, and the <code>compute</code> block</h3>
 <p><strong>Files:</strong></p>
 <ul>
-<li>Modify: <code>src/phenotypic/sdk_/typing_.py:163</code>. Add <code>EmbeddingDinoSize = Literal["small", "base", "large", "giant", "huge_plus", "7b"]</code> and <code>ComputeDType = Literal["float32", "bfloat16", "float16"]</code>. <code>DinoSize</code> stays as it is (O1, accepted: the detectors do not gain the new sizes).</li>
+<li>Modify: <code>src/phenotypic/sdk_/typing_.py:163</code>. Add <code>EmbeddingDinoSize = Literal["small", "base", "large", "giant"]</code> and <code>ComputeDType = Literal["float32", "bfloat16", "float16"]</code>. <code>DinoSize</code> (<code>Literal["small", "base", "large"]</code> at <code>:163</code> on the merged tree, checked) stays as it is (O1, accepted: the detectors do not gain <code>giant</code>). Under U11 there is no <code>huge_plus</code> and no <code>7b</code>.</li>
 <li>Modify: <code>src/phenotypic/detect/nn/_helper/_dino_support.py</code>
 <ul>
-<li><code>_DINOV3_SIZE_TO_REPO</code> (<code>:43</code>) gains <code>huge_plus</code> and <code>7b</code>; <code>hf_dino_id</code> (<code>:173</code>) maps v2 <code>giant</code> to <code>facebook/dinov2-giant</code>.</li>
+<li><code>hf_dino_id</code> (<code>:173</code>) maps v2 <code>giant</code> to <code>facebook/dinov2-giant</code>. <code>_DINOV3_SIZE_TO_REPO</code> (<code>:43</code>) is unchanged (U11).</li>
 <li><code>load_dino_backbone</code> (<code>:194</code>) gains <code>dtype: ComputeDType = "float32"</code>, passed to <code>AutoModel.from_pretrained</code> as the torch dtype, then <code>.to(device)</code>. No <code>device_map</code>, so no <code>accelerate</code>.</li>
 <li><code>embed_crops</code> (<code>:400</code>) casts the normalised pixels to the model's parameter dtype before the forward pass and pools in float32. A float32 model is unchanged, so the golden holds.</li>
 <li>Add <code>compute_block(*, device: str, stage: Literal["inline", "stage4"], physical_batch: int) -&gt; dict[str, Any]</code>, the <strong>one producer</strong> of every device field (O4's condition). The entry's <code>model.revision</code> comes only from <code>resolved_revision(model)</code> (<code>:257</code>); no #282 code reads <code>config._commit_hash</code> (re-review). It calls <code>backbone_device_name</code> (<code>:361</code>) once, and <code>entry_descriptor_for</code> copies its <code>device</code> and <code>device_name</code> into <code>model.device</code> / <code>model.device_name</code>, so the two places cannot disagree.</li>
 </ul></li>
-<li>Modify: <code>src/phenotypic/detect/nn/_helper/_checkpoint_manager.py</code>. <code>Dinov2CheckpointManager._SIZE_TO_REPO</code> (<code>:678</code>) gains <code>giant</code>; <code>Dinov3CheckpointManager._SIZE_TO_REPO</code> (<code>:721</code>) gains <code>huge_plus</code>, <code>7b</code>.</li>
+<li>Modify: <code>src/phenotypic/detect/nn/_helper/_checkpoint_manager.py</code>. <code>Dinov2CheckpointManager._SIZE_TO_REPO</code> (<code>:678</code>) gains <code>giant</code>, so <code>dino_weight_requirement</code> (<code>:926</code>) can name its weights. <code>Dinov3CheckpointManager</code> is unchanged (U11).</li>
 <li>Modify: <code>src/phenotypic/measure/_measure_dino_embedding.py</code>
 <ul>
 <li>the delegate <code>load_dino_backbone</code> (<code>:44-62</code>) gains <code>dtype: ComputeDType = "float32"</code> and passes it through (plan review I14);</li>
-<li><code>size: EmbeddingDinoSize</code>; <code>_SIZE_LETTER</code> (<code>:41</code>) becomes <code>_MODEL_SLUG</code>, giving <code>vitg14</code>, <code>vith16plus</code>, <code>vit7b16</code> for the new sizes (O2, accepted) and today's <code>vit{s,b,l}{patch}</code> for the rest, pinned by a test;</li>
+<li><code>size: EmbeddingDinoSize</code>; <code>_SIZE_LETTER</code> (<code>:41</code>) gains <code>"giant": "g"</code>, so <code>model_token()</code> (<code>:313</code>) gives <code>dinov2-vitg14</code> (O2, accepted) and today's <code>vit{s,b,l}{patch}</code> tokens are unchanged, pinned by a test;</li>
 <li>new field <code>compute_dtype: Annotated[ComputeDType, TuneSpec(tunable=False)] = "float32"</code>, placed after <code>dtype</code>;</li>
-<li><code>model_validator</code> <code>_size_matches_version</code>: <code>giant</code> needs <code>version=2</code>; <code>huge_plus</code> and <code>7b</code> need <code>version=3</code>. The message names both values and the sizes the version has;</li>
+<li><code>model_validator</code> <code>_size_matches_version</code>: <code>giant</code> needs <code>version=2</code> (DINOv3 has no ViT-g). The message names both values and the sizes version 3 has;</li>
 <li><code>_cached_backbone</code> (<code>:65</code>) keys on <code>(version, size, revision, device, compute_dtype)</code>;</li>
 <li><code>entry_descriptor_for</code> writes top-level <code>compute_dtype</code> and the <code>compute</code> block. The inline <code>entry_descriptor()</code> passes <code>compute_block(device=device, stage="inline", physical_batch=self.batch_size)</code>.</li>
 </ul></li>
@@ -1531,59 +1554,65 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><input type="checkbox" disabled="" />
 <strong>Step 1: Write the failing tests.</strong></li>
 </ul>
-<div class="sourceCode" id="d3-cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb1-1"><a href="#d3-cb1-1" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;size, version&quot;</span>, [(<span class="st">&quot;giant&quot;</span>, <span class="dv">3</span>), (<span class="st">&quot;huge_plus&quot;</span>, <span class="dv">2</span>), (<span class="st">&quot;7b&quot;</span>, <span class="dv">2</span>)])</span>
-<span id="d3-cb1-2"><a href="#d3-cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_impossible_size_version_pairs_are_refused(size, version):</span>
-<span id="d3-cb1-3"><a href="#d3-cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(ValidationError, match<span class="op">=</span><span class="ss">f&quot;</span><span class="sc">{</span>size<span class="sc">}</span><span class="ss">.*version&quot;</span>):</span>
-<span id="d3-cb1-4"><a href="#d3-cb1-4" aria-hidden="true" tabindex="-1"></a>        MeasureDinoEmbedding(size<span class="op">=</span>size, version<span class="op">=</span>version)</span>
+<div class="sourceCode" id="d3-cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb1-1"><a href="#d3-cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_giant_with_version_3_is_refused():</span>
+<span id="d3-cb1-2"><a href="#d3-cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(ValidationError, match<span class="op">=</span><span class="st">&quot;giant.*version&quot;</span>):</span>
+<span id="d3-cb1-3"><a href="#d3-cb1-3" aria-hidden="true" tabindex="-1"></a>        MeasureDinoEmbedding(size<span class="op">=</span><span class="st">&quot;giant&quot;</span>, version<span class="op">=</span><span class="dv">3</span>)</span>
+<span id="d3-cb1-4"><a href="#d3-cb1-4" aria-hidden="true" tabindex="-1"></a>    MeasureDinoEmbedding(size<span class="op">=</span><span class="st">&quot;giant&quot;</span>, version<span class="op">=</span><span class="dv">2</span>)                    <span class="co"># the one valid pair</span></span>
 <span id="d3-cb1-5"><a href="#d3-cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-6"><a href="#d3-cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;size, version, token&quot;</span>, [</span>
-<span id="d3-cb1-7"><a href="#d3-cb1-7" aria-hidden="true" tabindex="-1"></a>    (<span class="st">&quot;giant&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vitg14&quot;</span>), (<span class="st">&quot;huge_plus&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vith16plus&quot;</span>), (<span class="st">&quot;7b&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vit7b16&quot;</span>)])</span>
-<span id="d3-cb1-8"><a href="#d3-cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_new_model_tokens(size, version, token):</span>
-<span id="d3-cb1-9"><a href="#d3-cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span>size, version<span class="op">=</span>version).model_token() <span class="op">==</span> token</span>
+<span id="d3-cb1-6"><a href="#d3-cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;size&quot;</span>, [<span class="st">&quot;huge_plus&quot;</span>, <span class="st">&quot;7b&quot;</span>])</span>
+<span id="d3-cb1-7"><a href="#d3-cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_deferred_sizes_do_not_exist(size):</span>
+<span id="d3-cb1-8"><a href="#d3-cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(ValidationError):                             <span class="co"># U11</span></span>
+<span id="d3-cb1-9"><a href="#d3-cb1-9" aria-hidden="true" tabindex="-1"></a>        MeasureDinoEmbedding(size<span class="op">=</span>size, version<span class="op">=</span><span class="dv">3</span>)</span>
 <span id="d3-cb1-10"><a href="#d3-cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-11"><a href="#d3-cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_compute_dtype_is_descriptor_identity(param_stub_backbone, detected_plate):</span>
-<span id="d3-cb1-12"><a href="#d3-cb1-12" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> MeasureDinoEmbedding().payload(detected_plate).descriptor</span>
-<span id="d3-cb1-13"><a href="#d3-cb1-13" aria-hidden="true" tabindex="-1"></a>    b <span class="op">=</span> MeasureDinoEmbedding(compute_dtype<span class="op">=</span><span class="st">&quot;bfloat16&quot;</span>).payload(detected_plate).descriptor</span>
-<span id="d3-cb1-14"><a href="#d3-cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (a[<span class="st">&quot;compute_dtype&quot;</span>], b[<span class="st">&quot;compute_dtype&quot;</span>]) <span class="op">==</span> (<span class="st">&quot;float32&quot;</span>, <span class="st">&quot;bfloat16&quot;</span>)</span>
-<span id="d3-cb1-15"><a href="#d3-cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> param_stub_backbone.load_calls[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;dtype&quot;</span>] <span class="op">==</span> <span class="st">&quot;bfloat16&quot;</span></span>
+<span id="d3-cb1-11"><a href="#d3-cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_giant_token():</span>
+<span id="d3-cb1-12"><a href="#d3-cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span><span class="st">&quot;giant&quot;</span>, version<span class="op">=</span><span class="dv">2</span>).model_token() <span class="op">==</span> <span class="st">&quot;dinov2-vitg14&quot;</span></span>
+<span id="d3-cb1-13"><a href="#d3-cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-14"><a href="#d3-cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_detectors_do_not_gain_giant():</span>
+<span id="d3-cb1-15"><a href="#d3-cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> get_args(DinoSize) <span class="op">==</span> (<span class="st">&quot;small&quot;</span>, <span class="st">&quot;base&quot;</span>, <span class="st">&quot;large&quot;</span>)          <span class="co"># O1</span></span>
 <span id="d3-cb1-16"><a href="#d3-cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-17"><a href="#d3-cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;size, version, token&quot;</span>, [</span>
-<span id="d3-cb1-18"><a href="#d3-cb1-18" aria-hidden="true" tabindex="-1"></a>    (<span class="st">&quot;small&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vits14&quot;</span>), (<span class="st">&quot;base&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vitb14&quot;</span>), (<span class="st">&quot;large&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vitl14&quot;</span>),</span>
-<span id="d3-cb1-19"><a href="#d3-cb1-19" aria-hidden="true" tabindex="-1"></a>    (<span class="st">&quot;small&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vits16&quot;</span>), (<span class="st">&quot;base&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vitb16&quot;</span>), (<span class="st">&quot;large&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vitl16&quot;</span>)])</span>
-<span id="d3-cb1-20"><a href="#d3-cb1-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_existing_model_tokens_are_unchanged(size, version, token):</span>
-<span id="d3-cb1-21"><a href="#d3-cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span>size, version<span class="op">=</span>version).model_token() <span class="op">==</span> token   <span class="co"># O2&#39;s condition</span></span>
+<span id="d3-cb1-17"><a href="#d3-cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_compute_dtype_is_descriptor_identity(param_stub_backbone, detected_plate):</span>
+<span id="d3-cb1-18"><a href="#d3-cb1-18" aria-hidden="true" tabindex="-1"></a>    a <span class="op">=</span> MeasureDinoEmbedding().payload(detected_plate).descriptor</span>
+<span id="d3-cb1-19"><a href="#d3-cb1-19" aria-hidden="true" tabindex="-1"></a>    b <span class="op">=</span> MeasureDinoEmbedding(compute_dtype<span class="op">=</span><span class="st">&quot;bfloat16&quot;</span>).payload(detected_plate).descriptor</span>
+<span id="d3-cb1-20"><a href="#d3-cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (a[<span class="st">&quot;compute_dtype&quot;</span>], b[<span class="st">&quot;compute_dtype&quot;</span>]) <span class="op">==</span> (<span class="st">&quot;float32&quot;</span>, <span class="st">&quot;bfloat16&quot;</span>)</span>
+<span id="d3-cb1-21"><a href="#d3-cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> param_stub_backbone.load_calls[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;dtype&quot;</span>] <span class="op">==</span> <span class="st">&quot;bfloat16&quot;</span></span>
 <span id="d3-cb1-22"><a href="#d3-cb1-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-23"><a href="#d3-cb1-23" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_model_and_compute_device_fields_agree(param_stub_backbone, detected_plate, monkeypatch):</span>
-<span id="d3-cb1-24"><a href="#d3-cb1-24" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(dino_support, <span class="st">&quot;backbone_device_name&quot;</span>, <span class="kw">lambda</span> device: <span class="st">&quot;NVIDIA RTX 6000 Ada&quot;</span>)</span>
-<span id="d3-cb1-25"><a href="#d3-cb1-25" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> MeasureDinoEmbedding().payload(detected_plate).descriptor</span>
-<span id="d3-cb1-26"><a href="#d3-cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;device&quot;</span>], d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;device_name&quot;</span>]) <span class="op">==</span> (</span>
-<span id="d3-cb1-27"><a href="#d3-cb1-27" aria-hidden="true" tabindex="-1"></a>        d[<span class="st">&quot;compute&quot;</span>][<span class="st">&quot;device&quot;</span>], d[<span class="st">&quot;compute&quot;</span>][<span class="st">&quot;device_name&quot;</span>])                         <span class="co"># O4&#39;s condition</span></span>
+<span id="d3-cb1-23"><a href="#d3-cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">@pytest.mark.parametrize</span>(<span class="st">&quot;size, version, token&quot;</span>, [</span>
+<span id="d3-cb1-24"><a href="#d3-cb1-24" aria-hidden="true" tabindex="-1"></a>    (<span class="st">&quot;small&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vits14&quot;</span>), (<span class="st">&quot;base&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vitb14&quot;</span>), (<span class="st">&quot;large&quot;</span>, <span class="dv">2</span>, <span class="st">&quot;dinov2-vitl14&quot;</span>),</span>
+<span id="d3-cb1-25"><a href="#d3-cb1-25" aria-hidden="true" tabindex="-1"></a>    (<span class="st">&quot;small&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vits16&quot;</span>), (<span class="st">&quot;base&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vitb16&quot;</span>), (<span class="st">&quot;large&quot;</span>, <span class="dv">3</span>, <span class="st">&quot;dinov3-vitl16&quot;</span>)])</span>
+<span id="d3-cb1-26"><a href="#d3-cb1-26" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_existing_model_tokens_are_unchanged(size, version, token):</span>
+<span id="d3-cb1-27"><a href="#d3-cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding(size<span class="op">=</span>size, version<span class="op">=</span>version).model_token() <span class="op">==</span> token   <span class="co"># O2&#39;s condition</span></span>
 <span id="d3-cb1-28"><a href="#d3-cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-29"><a href="#d3-cb1-29" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_bfloat16_load_reaches_the_weights(param_stub_backbone, detected_plate):</span>
-<span id="d3-cb1-30"><a href="#d3-cb1-30" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding(compute_dtype<span class="op">=</span><span class="st">&quot;bfloat16&quot;</span>)<span class="op">;</span> m.payload(detected_plate)</span>
-<span id="d3-cb1-31"><a href="#d3-cb1-31" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> m._backbone()[<span class="dv">0</span>]</span>
-<span id="d3-cb1-32"><a href="#d3-cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">next</span>(model.parameters()).dtype <span class="op">==</span> torch.bfloat16</span>
-<span id="d3-cb1-33"><a href="#d3-cb1-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-34"><a href="#d3-cb1-34" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_revision_comes_from_resolved_revision(monkeypatch, detected_plate):</span>
-<span id="d3-cb1-35"><a href="#d3-cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="co"># transformers &gt;= 5.18 sets no config._commit_hash (#281 defect; gridname&#39;s</span></span>
-<span id="d3-cb1-36"><a href="#d3-cb1-36" aria-hidden="true" tabindex="-1"></a>    <span class="co"># snapshot-path fallback in resolved_revision, _dino_support.py:257-272)</span></span>
-<span id="d3-cb1-37"><a href="#d3-cb1-37" aria-hidden="true" tabindex="-1"></a>    install_stub_backbone(monkeypatch, parametric<span class="op">=</span><span class="va">True</span>, commit_hash<span class="op">=</span><span class="va">None</span>,</span>
-<span id="d3-cb1-38"><a href="#d3-cb1-38" aria-hidden="true" tabindex="-1"></a>                          snapshot_revision<span class="op">=</span><span class="st">&quot;d&quot;</span> <span class="op">*</span> <span class="dv">40</span>)</span>
-<span id="d3-cb1-39"><a href="#d3-cb1-39" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> MeasureDinoEmbedding(device<span class="op">=</span><span class="st">&quot;cpu&quot;</span>).payload(detected_plate).descriptor</span>
-<span id="d3-cb1-40"><a href="#d3-cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;revision&quot;</span>] <span class="op">==</span> <span class="st">&quot;d&quot;</span> <span class="op">*</span> <span class="dv">40</span></span>
-<span id="d3-cb1-41"><a href="#d3-cb1-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-42"><a href="#d3-cb1-42" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_no_282_module_reads_commit_hash_directly():</span>
-<span id="d3-cb1-43"><a href="#d3-cb1-43" aria-hidden="true" tabindex="-1"></a>    offenders <span class="op">=</span> [p <span class="cf">for</span> p <span class="kw">in</span> SRC.rglob(<span class="st">&quot;*.py&quot;</span>)</span>
-<span id="d3-cb1-44"><a href="#d3-cb1-44" aria-hidden="true" tabindex="-1"></a>                 <span class="cf">if</span> <span class="st">&quot;_commit_hash&quot;</span> <span class="kw">in</span> p.read_text(encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>) <span class="kw">and</span> p.name <span class="op">!=</span> <span class="st">&quot;_dino_support.py&quot;</span>]</span>
-<span id="d3-cb1-45"><a href="#d3-cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> offenders <span class="op">==</span> []                                       <span class="co"># only resolved_revision reads it</span></span>
-<span id="d3-cb1-46"><a href="#d3-cb1-46" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-47"><a href="#d3-cb1-47" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_inline_entries_record_their_compute(param_stub_backbone, detected_plate):</span>
-<span id="d3-cb1-48"><a href="#d3-cb1-48" aria-hidden="true" tabindex="-1"></a>    compute <span class="op">=</span> MeasureDinoEmbedding(batch_size<span class="op">=</span><span class="dv">32</span>).payload(detected_plate).descriptor[<span class="st">&quot;compute&quot;</span>]</span>
-<span id="d3-cb1-49"><a href="#d3-cb1-49" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> compute[<span class="st">&quot;stage&quot;</span>] <span class="op">==</span> <span class="st">&quot;inline&quot;</span> <span class="kw">and</span> compute[<span class="st">&quot;physical_batch&quot;</span>] <span class="op">==</span> <span class="dv">32</span></span>
-<span id="d3-cb1-50"><a href="#d3-cb1-50" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> compute[<span class="st">&quot;device&quot;</span>] <span class="op">==</span> <span class="st">&quot;cpu&quot;</span> <span class="kw">and</span> compute[<span class="st">&quot;capability&quot;</span>] <span class="kw">is</span> <span class="va">None</span></span>
-<span id="d3-cb1-51"><a href="#d3-cb1-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d3-cb1-52"><a href="#d3-cb1-52" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_default_float32_keeps_the_281_params_digest():</span>
-<span id="d3-cb1-53"><a href="#d3-cb1-53" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding()._params_sha256() <span class="op">==</span> SHA_281_DEFAULT_EMBEDDER</span></code></pre></div>
+<span id="d3-cb1-29"><a href="#d3-cb1-29" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_model_and_compute_device_fields_agree(param_stub_backbone, detected_plate, monkeypatch):</span>
+<span id="d3-cb1-30"><a href="#d3-cb1-30" aria-hidden="true" tabindex="-1"></a>    monkeypatch.<span class="bu">setattr</span>(dino_support, <span class="st">&quot;backbone_device_name&quot;</span>, <span class="kw">lambda</span> device: <span class="st">&quot;NVIDIA RTX 6000 Ada&quot;</span>)</span>
+<span id="d3-cb1-31"><a href="#d3-cb1-31" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> MeasureDinoEmbedding().payload(detected_plate).descriptor</span>
+<span id="d3-cb1-32"><a href="#d3-cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> (d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;device&quot;</span>], d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;device_name&quot;</span>]) <span class="op">==</span> (</span>
+<span id="d3-cb1-33"><a href="#d3-cb1-33" aria-hidden="true" tabindex="-1"></a>        d[<span class="st">&quot;compute&quot;</span>][<span class="st">&quot;device&quot;</span>], d[<span class="st">&quot;compute&quot;</span>][<span class="st">&quot;device_name&quot;</span>])                         <span class="co"># O4&#39;s condition</span></span>
+<span id="d3-cb1-34"><a href="#d3-cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-35"><a href="#d3-cb1-35" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_bfloat16_load_reaches_the_weights(param_stub_backbone, detected_plate):</span>
+<span id="d3-cb1-36"><a href="#d3-cb1-36" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> MeasureDinoEmbedding(compute_dtype<span class="op">=</span><span class="st">&quot;bfloat16&quot;</span>)<span class="op">;</span> m.payload(detected_plate)</span>
+<span id="d3-cb1-37"><a href="#d3-cb1-37" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> m._backbone()[<span class="dv">0</span>]</span>
+<span id="d3-cb1-38"><a href="#d3-cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="bu">next</span>(model.parameters()).dtype <span class="op">==</span> torch.bfloat16</span>
+<span id="d3-cb1-39"><a href="#d3-cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-40"><a href="#d3-cb1-40" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_revision_comes_from_resolved_revision(monkeypatch, detected_plate):</span>
+<span id="d3-cb1-41"><a href="#d3-cb1-41" aria-hidden="true" tabindex="-1"></a>    <span class="co"># transformers &gt;= 5.18 sets no config._commit_hash (#281 defect; gridname&#39;s</span></span>
+<span id="d3-cb1-42"><a href="#d3-cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="co"># snapshot-path fallback in resolved_revision, _dino_support.py:257-272)</span></span>
+<span id="d3-cb1-43"><a href="#d3-cb1-43" aria-hidden="true" tabindex="-1"></a>    install_stub_backbone(monkeypatch, parametric<span class="op">=</span><span class="va">True</span>, commit_hash<span class="op">=</span><span class="va">None</span>,</span>
+<span id="d3-cb1-44"><a href="#d3-cb1-44" aria-hidden="true" tabindex="-1"></a>                          snapshot_revision<span class="op">=</span><span class="st">&quot;d&quot;</span> <span class="op">*</span> <span class="dv">40</span>)</span>
+<span id="d3-cb1-45"><a href="#d3-cb1-45" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> MeasureDinoEmbedding(device<span class="op">=</span><span class="st">&quot;cpu&quot;</span>).payload(detected_plate).descriptor</span>
+<span id="d3-cb1-46"><a href="#d3-cb1-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> d[<span class="st">&quot;model&quot;</span>][<span class="st">&quot;revision&quot;</span>] <span class="op">==</span> <span class="st">&quot;d&quot;</span> <span class="op">*</span> <span class="dv">40</span></span>
+<span id="d3-cb1-47"><a href="#d3-cb1-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-48"><a href="#d3-cb1-48" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_no_282_module_reads_commit_hash_directly():</span>
+<span id="d3-cb1-49"><a href="#d3-cb1-49" aria-hidden="true" tabindex="-1"></a>    offenders <span class="op">=</span> [p <span class="cf">for</span> p <span class="kw">in</span> SRC.rglob(<span class="st">&quot;*.py&quot;</span>)</span>
+<span id="d3-cb1-50"><a href="#d3-cb1-50" aria-hidden="true" tabindex="-1"></a>                 <span class="cf">if</span> <span class="st">&quot;_commit_hash&quot;</span> <span class="kw">in</span> p.read_text(encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>) <span class="kw">and</span> p.name <span class="op">!=</span> <span class="st">&quot;_dino_support.py&quot;</span>]</span>
+<span id="d3-cb1-51"><a href="#d3-cb1-51" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> offenders <span class="op">==</span> []                                       <span class="co"># only resolved_revision reads it</span></span>
+<span id="d3-cb1-52"><a href="#d3-cb1-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-53"><a href="#d3-cb1-53" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_inline_entries_record_their_compute(param_stub_backbone, detected_plate):</span>
+<span id="d3-cb1-54"><a href="#d3-cb1-54" aria-hidden="true" tabindex="-1"></a>    compute <span class="op">=</span> MeasureDinoEmbedding(batch_size<span class="op">=</span><span class="dv">32</span>).payload(detected_plate).descriptor[<span class="st">&quot;compute&quot;</span>]</span>
+<span id="d3-cb1-55"><a href="#d3-cb1-55" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> compute[<span class="st">&quot;stage&quot;</span>] <span class="op">==</span> <span class="st">&quot;inline&quot;</span> <span class="kw">and</span> compute[<span class="st">&quot;physical_batch&quot;</span>] <span class="op">==</span> <span class="dv">32</span></span>
+<span id="d3-cb1-56"><a href="#d3-cb1-56" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> compute[<span class="st">&quot;device&quot;</span>] <span class="op">==</span> <span class="st">&quot;cpu&quot;</span> <span class="kw">and</span> compute[<span class="st">&quot;capability&quot;</span>] <span class="kw">is</span> <span class="va">None</span></span>
+<span id="d3-cb1-57"><a href="#d3-cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="d3-cb1-58"><a href="#d3-cb1-58" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_default_float32_keeps_the_281_params_digest():</span>
+<span id="d3-cb1-59"><a href="#d3-cb1-59" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> MeasureDinoEmbedding()._params_sha256() <span class="op">==</span> SHA_281_DEFAULT_EMBEDDER</span></code></pre></div>
 <p><code>install_stub_backbone(..., commit_hash=None, snapshot_revision=...)</code> (P0 T2 helper options added here; <code>snapshot_from_revision=True</code> instead takes the revision from the load's <code>revision=</code>, for P5 T2) builds a config with no <code>_commit_hash</code> and a <code>_name_or_path</code> laid out as a hub snapshot, <code>&lt;tmp&gt;/models--facebook--dinov2-base/snapshots/&lt;revision&gt;</code>; spell it as gridname's fallback reads it. <code>SRC</code> is <code>src/phenotypic</code>. The revision test needs that #281 fix merged first; until then it fails, which is correct. <code>SHA_281_DEFAULT_EMBEDDER</code> is a module constant: the digest printed by <code>MeasureDinoEmbedding()._params_sha256()</code> on the #281 merge commit, pasted in by hand with that SHA in a comment.</p>
 <div class="sourceCode" id="d3-cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb2-1"><a href="#d3-cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_compute_never_splits_a_deliverable_group():</span>
 <span id="d3-cb2-2"><a href="#d3-cb2-2" aria-hidden="true" tabindex="-1"></a>    base <span class="op">=</span> {<span class="st">&quot;model&quot;</span>: {<span class="st">&quot;family&quot;</span>: <span class="st">&quot;dinov2&quot;</span>, <span class="st">&quot;revision&quot;</span>: <span class="st">&quot;a&quot;</span> <span class="op">*</span> <span class="dv">40</span>}, <span class="st">&quot;dim&quot;</span>: <span class="dv">768</span>, <span class="st">&quot;dtype&quot;</span>: <span class="st">&quot;float16&quot;</span>,</span>
@@ -1601,16 +1630,16 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 3: Implement</strong> the Files list.</p></li>
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 4: Verify the hub facts before anything uses them</strong> (spec §4.5). From a node with network, for each new repo id, fetch <code>config.json</code> at the default branch with <code>huggingface_hub.hf_hub_download</code> and record <code>hidden_size</code>, <code>num_attention_heads</code>, <code>num_hidden_layers</code>, <code>patch_size</code>, <code>num_register_tokens</code> and the commit. DINOv3 ids need the licence-accepted token (stop point 4). Paste the values into the P0 T1 model table if they differ, re-run <code>physical_batch_size.py</code>, and record the commits in the commit message. Expected: <code>dinov2-giant</code> 1536-d, patch 14, no registers; <code>dinov3-vith16plus</code> 1280-d, <code>dinov3-vit7b16</code> 4096-d, patch 16, 4 registers. Any other value stops the task.</p></li>
+<strong>Step 4: Verify the hub facts before anything uses them</strong> (spec §4.5). From a node with network, for each new repo id, fetch <code>config.json</code> at the default branch with <code>huggingface_hub.hf_hub_download</code> and record <code>hidden_size</code>, <code>num_attention_heads</code>, <code>num_hidden_layers</code>, <code>patch_size</code>, <code>num_register_tokens</code> and the commit. Under U11 the one new repo id is <code>facebook/dinov2-giant</code>, which is ungated. If its values differ from the P0 T1 model table's row, re-run <code>physical_batch_size.py</code> with them, and record the commit in the commit message. Expected: 1536-d, 24 heads, patch 14, no registers. Any other value stops the task.</p></li>
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 5: Confirm the loader keyword and the load footprint.</strong> In the foundation venv, check which of <code>dtype=</code> and <code>torch_dtype=</code> the installed transformers' <code>from_pretrained</code> accepts without a deprecation warning, and use that one. Record the peak RSS of a <code>7b</code> bf16 load in a Slurm job (<code>intel</code>, 4 CPU, 48 GB, 1 h), if the weights are reachable. Expected: below 48 GB.</p></li>
+<strong>Step 5: Confirm the loader keyword and the load footprint.</strong> In the foundation venv, check which of <code>dtype=</code> and <code>torch_dtype=</code> the installed transformers' <code>from_pretrained</code> accepts without a deprecation warning, and use that one. Record the peak RSS of a <code>giant</code> float32 load (about 4.4 GB of weights) in a Slurm job (<code>intel</code>, 4 CPU, 16 GB, 1 h). Expected: below 16 GB.</p></li>
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 6: Run the tests, the golden, the tune gate and the startup guards.</strong></p><div class="sourceCode" id="d3-cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="d3-cb4-1"><a href="#d3-cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">eval</span> <span class="va">$TPT</span> tests/unit/measure tests/unit/detect/nn</span>
 <span id="d3-cb4-2"><a href="#d3-cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">eval</span> <span class="va">$PT</span> tests/unit/cli/test_embedding_grouping_provenance.py tests/unit/tune/test_annotation_coverage.py tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py</span></code></pre></div>
 <p>Expected: all pass; golden <code>7 passed</code> (its descriptor comparison drops <code>compute</code> and <code>compute_dtype</code>, P0 T2).</p></li>
 <li><p><input type="checkbox" disabled="" />
 <strong>Step 7: Commit.</strong></p><div class="sourceCode" id="d3-cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="d3-cb5-1"><a href="#d3-cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add src/phenotypic/sdk_/typing_.py src/phenotypic/detect/nn/_helper/_dino_support.py src/phenotypic/detect/nn/_helper/_checkpoint_manager.py src/phenotypic/measure/_measure_dino_embedding.py src/phenotypic/abc_/_measure_embedding.py src/phenotypic/_cli/_cli_embedding_deliverables.py tests/_tiny_run.py tests/unit/measure/test_measure_dino_embedding_sizes.py tests/unit/cli/test_embedding_grouping_provenance.py</span>
-<span id="d3-cb5-2"><a href="#d3-cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(embed): giant, H+ and 7B, compute_dtype, and the compute provenance block (#282 P2)&quot;</span></span></code></pre></div></li>
+<span id="d3-cb5-2"><a href="#d3-cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat(embed): DINOv2 giant, compute_dtype, and the compute provenance block (#282 P2)&quot;</span></span></code></pre></div></li>
 </ul>
 <h3 id="d3-task-2-determinism-and-the-physical-batch-size">Task 2: Determinism and the physical batch size</h3>
 <p><strong>Files:</strong></p>
@@ -1665,10 +1694,13 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d3-cb6-26"><a href="#d3-cb6-26" aria-hidden="true" tabindex="-1"></a>            check_cublas_workspace()</span>
 <span id="d3-cb6-27"><a href="#d3-cb6-27" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d3-cb6-28"><a href="#d3-cb6-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_weights_that_do_not_fit_are_refused():</span>
-<span id="d3-cb6-29"><a href="#d3-cb6-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>, match<span class="op">=</span><span class="st">&quot;does not fit&quot;</span>):            <span class="co"># 7B fp32 on a 16 GiB card (P0 T1 check 3)</span></span>
-<span id="d3-cb6-30"><a href="#d3-cb6-30" aria-hidden="true" tabindex="-1"></a>        physical_batch_size(batch_size<span class="op">=</span><span class="dv">64</span>, gpu_total_bytes<span class="op">=</span><span class="dv">16</span> <span class="op">&lt;&lt;</span> <span class="dv">30</span>,</span>
-<span id="d3-cb6-31"><a href="#d3-cb6-31" aria-hidden="true" tabindex="-1"></a>                            weight_bytes<span class="op">=</span><span class="dv">6_700_000_000</span> <span class="op">*</span> <span class="dv">4</span>, per_sample<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div>
-<p><code>LOGIC_SCRIPTS</code> is the repo path of P0 T1's folder. This test reads the script, which is allowed: the rule is that the script never imports <code>phenotypic</code>, not the reverse.</p>
+<span id="d3-cb6-29"><a href="#d3-cb6-29" aria-hidden="true" tabindex="-1"></a>    giant_fp32 <span class="op">=</span> <span class="dv">1_100_000_000</span> <span class="op">*</span> <span class="dv">4</span>                                   <span class="co"># about 4.1 GiB of weights</span></span>
+<span id="d3-cb6-30"><a href="#d3-cb6-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> pytest.raises(<span class="pp">ValueError</span>, match<span class="op">=</span><span class="st">&quot;does not fit&quot;</span>):            <span class="co"># an explicit 4 GiB card: 3.2 GiB budget</span></span>
+<span id="d3-cb6-31"><a href="#d3-cb6-31" aria-hidden="true" tabindex="-1"></a>        physical_batch_size(batch_size<span class="op">=</span><span class="dv">64</span>, gpu_total_bytes<span class="op">=</span><span class="dv">4</span> <span class="op">&lt;&lt;</span> <span class="dv">30</span>,</span>
+<span id="d3-cb6-32"><a href="#d3-cb6-32" aria-hidden="true" tabindex="-1"></a>                            weight_bytes<span class="op">=</span>giant_fp32, per_sample<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="d3-cb6-33"><a href="#d3-cb6-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> physical_batch_size(batch_size<span class="op">=</span><span class="dv">64</span>, gpu_total_bytes<span class="op">=</span><span class="dv">16</span> <span class="op">&lt;&lt;</span> <span class="dv">30</span>,</span>
+<span id="d3-cb6-34"><a href="#d3-cb6-34" aria-hidden="true" tabindex="-1"></a>                               weight_bytes<span class="op">=</span>giant_fp32, per_sample<span class="op">=</span><span class="dv">1</span>) <span class="op">==</span> <span class="dv">64</span>   <span class="co"># the same weights fit on 16 GiB</span></span></code></pre></div>
+<p>The refusal uses an explicit small <code>gpu_total_bytes</code>, because under U11 <strong>no DINOv2 combination is unsupported</strong> on P0 T1's GPU table: the committed script's computed unsupported set holds only <code>dinov3-7b</code> rows on the 16 GiB card (run at <code>ccb017c58</code>), and giant in float32 fits there. The second assertion keeps the test able to fail on a rule that refuses everything. <code>LOGIC_SCRIPTS</code> is the repo path of P0 T1's folder. This test reads the script, which is allowed: the rule is that the script never imports <code>phenotypic</code>, not the reverse.</p>
 <div class="sourceCode" id="d3-cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="d3-cb7-1"><a href="#d3-cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_determinism_settings(monkeypatch):</span>
 <span id="d3-cb7-2"><a href="#d3-cb7-2" aria-hidden="true" tabindex="-1"></a>    torch <span class="op">=</span> pytest.importorskip(<span class="st">&quot;torch&quot;</span>)</span>
 <span id="d3-cb7-3"><a href="#d3-cb7-3" aria-hidden="true" tabindex="-1"></a>    applied <span class="op">=</span> configure_determinism()</span>
@@ -1833,14 +1865,14 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <ul class="task-list">
 <li><p><input type="checkbox" disabled="" />
-<strong>Step 1: Write <code>batch_invariance.py &lt;out.json&gt; [--repeat-of &lt;json&gt;]</code>.</strong> Inputs are the three stores spec §2 measured (<code>gpu-baseline/measure_embedding_baseline.py:25</code>), read only, objects and a 96-well grid. Rows: DINOv2-base float32 <code>crop_cls</code>; DINOv2-base float32 <code>masked_dense</code>; DINOv2-large float32; DINOv2-giant bfloat16; DINOv3-7B bfloat16 (when its licence and token are present, stop point 4). For each:</p><ol type="1">
+<strong>Step 1: Write <code>batch_invariance.py &lt;out.json&gt; [--repeat-of &lt;json&gt;]</code>.</strong> Inputs are the three stores spec §2 measured (<code>gpu-baseline/measure_embedding_baseline.py:25</code>), read only, objects and a 96-well grid. Rows, DINOv2 only (U11): DINOv2-base float32 <code>crop_cls</code>; DINOv2-base float32 <code>masked_dense</code>; DINOv2-large float32; DINOv2-giant bfloat16. For each:</p><ol type="1">
 <li><code>warnings.simplefilter("error")</code> around the forward passes, so any determinism warning from <code>use_deterministic_algorithms(warn_only=True)</code> fails the row and is listed (plan review, Minor).</li>
 <li><code>configure_determinism()</code>; compute <code>m</code> with <code>physical_batch_size</code>.</li>
 <li>Embed every input in <strong>reference</strong> order at physical batch <code>m</code>.</li>
 <li>Re-embed under each perturbation, at the same <code>m</code>: reversed order; a seeded shuffle; each crop moved to position 0 and to position <code>m − 1</code>; neighbours from another plate; the set split across two <code>BatchEncoder</code> instances (two "shards"); the last batch padded with 1 vs <code>m − 1</code> zeros; and a <code>max_in_flight_bytes=1</code> run (forced early flushes).</li>
 <li><code>invariant</code> is true when every <strong>stored float16</strong> vector is bit-identical to the reference in every case. The float32 max abs difference is information.</li>
 <li>Re-embed at <code>m/2</code> and record the max cosine distance to the reference as <code>half_m_max_cos</code> (information: OOM halving changes <code>m</code>, S1).</li>
-<li>Record <code>f16_max_abs</code> and whether any value exceeds 65504 (the 7B and ViT-g rows the spec asks for).</li>
+<li>Record <code>f16_max_abs</code> and whether any value exceeds 65504 (the ViT-g row the spec asks for).</li>
 <li>With <code>--repeat-of</code>, compare every vector with the earlier process's file: a separate-process repeat must be bit-identical too.</li>
 </ol></li>
 <li><p><input type="checkbox" disabled="" />
@@ -1865,7 +1897,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 <p><strong>P2 phase gate:</strong> the affected surface (importers of <code>_measure_embedding</code>, <code>_measure_dino_embedding</code>, <code>_dino_support</code>, <code>_batch_encoder</code>, <code>_cli_embedding_deliverables</code>) in both lanes, then the <strong>deep P2 review</strong> (implementation-test-reviewer, Opus), written to <code>reports/2026-11-12-gpu-embedding-staging/review-p2.md</code>.</p>
 </section><section class="doc"><h2 class="doctitle" id="d4-top">P3 · `replace_run_embeddings` and the Stage-4 signal</h2><div class="meta"><p><strong>Spec:</strong> §4.2, §4.8 "Root changed before commit", §5 "<code>replace_run_embeddings</code>"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p3-store-transaction-and-signal.md</div><p><strong>Goal:</strong> Stage 4's two durable writes exist and are tested on their own: the per-key signal under <code>.phenotypic/progress/</code>, and the store transaction that rewrites one run's <code>embeddings</code> block, root last.</p>
+</div><div class="docsrc">p3-store-transaction-and-signal.md</div><p><strong>Goal:</strong> Stage 4's two durable writes exist and are tested on their own: the per-key signal under <code>.phenotypic/progress/</code>, and the store transaction that rewrites one run's <code>embeddings</code> block, root last.</p>
 <p><strong>Depends on:</strong> P1 (payloads). Independent of P2, so it may run while P2 T4's GPU jobs queue.</p>
 <h3 id="d4-task-1-replace_run_embeddings">Task 1: <code>replace_run_embeddings</code></h3>
 <p><strong>Files:</strong></p>
@@ -2063,7 +2095,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul>
 </section><section class="doc"><h2 class="doctitle" id="d5-top">P4 · Local Stage 4: resolver, refusals, deferral, gated recovery, resume</h2><div class="meta"><p><strong>Spec:</strong> U2, U3, U9, H5, H10, §4.1, §4.2, §4.4 (plan, loop, DataLoader),</p>
 <p>§4.6, §4.7 (R1–R3), §4.8, §5 "Local end-to-end with a stub"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p4-local-stage4.md</div><p><strong>Goal:</strong> <code>--embed-stage gpu</code> works on one machine. Stage 3 (or the single-pass core) defers embeddings and the record; a local Stage 4 embeds every pending image backbone by backbone, commits each store, then publishes its record; and an interrupted run resumes from what is on disk, without re-running Stages 1–3 for an image that only needs Stage 4.</p>
+</div><div class="docsrc">p4-local-stage4.md</div><p><strong>Goal:</strong> <code>--embed-stage gpu</code> works on one machine. Stage 3 (or the single-pass core) defers embeddings and the record; a local Stage 4 embeds every pending image backbone by backbone, commits each store, then publishes its record; and an interrupted run resumes from what is on disk, without re-running Stages 1–3 for an image that only needs Stage 4.</p>
 <p><strong>Depends on:</strong> P2 (and P2 T4's measurement, stop rule 3), P3.</p>
 <p><strong>Test fixtures used throughout</strong> (create in Task 1, in <code>tests/_tiny_run.py</code>):</p>
 <ul>
@@ -2618,7 +2650,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Deep review P3–P4</strong> (implementation-test-reviewer, Opus) after the gate: <code>reports/2026-11-12-gpu-embedding-staging/review-p3-p4.md</code>. It checks in particular that every site in Task 2's Files list reads one predicate (<code>stages_1_to_3_done</code> under <code>defers_embeddings</code>), that no inline run's bytes moved (P0 T2's golden, and <code>tests/integration/cli/test_embedding_deliverables.py</code>), and that each crash test dies in a real subprocess.</p>
 </section><section class="doc"><h2 class="doctitle" id="d6-top">P5 · SLURM: controller v2, rounds, worklist, the no-detector plan, preflight</h2><div class="meta"><p><strong>Spec:</strong> U2, U5, U6, U7, H6, §4.1 (SLURM rows), §4.3, §4.7 (the two warnings),</p>
 <p>§4.8 (walltime, fence, cold load), §5 "Controller unit tests", "Live SLURM smoke"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p5-slurm-controller.md</div><p><strong>Goal:</strong> A SLURM run with Stage 4 on goes through the recoverable controller. After the last Stage-3 chunk the controller classifies Stage 4 and submits GPU rounds over a per-round worklist, until nothing is retryable or two rounds make no progress; then it submits the finalizer. A stall ends <strong>unfinished</strong> (U7): the leftover images keep no record and no journal row, and the run exits <code>5</code>. A run with no <code>GpuDetector</code> and <code>--gpu-slurm</code> gets the same controller with phases <code>["stage3", "stage4"]</code>.</p>
+</div><div class="docsrc">p5-slurm-controller.md</div><p><strong>Goal:</strong> A SLURM run with Stage 4 on goes through the recoverable controller. After the last Stage-3 chunk the controller classifies Stage 4 and submits GPU rounds over a per-round worklist, until nothing is retryable or two rounds make no progress; then it submits the finalizer. A stall ends <strong>unfinished</strong> (U7): the leftover images keep no record and no journal row, and the run exits <code>5</code>. A run with no <code>GpuDetector</code> and <code>--gpu-slurm</code> gets the same controller with phases <code>["stage3", "stage4"]</code>.</p>
 <p><strong>Depends on:</strong> P4.</p>
 <h3 id="d6-task-1-controller-v2-stage-4-rounds-and-the-worklist">Task 1: Controller v2, Stage-4 rounds and the worklist</h3>
 <p><strong>Files:</strong></p>
@@ -2966,11 +2998,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d6-cb10-26"><a href="#d6-cb10-26" aria-hidden="true" tabindex="-1"></a>                             embed_stage<span class="op">=</span><span class="st">&quot;gpu&quot;</span>, sinfo_gres<span class="op">=</span>{<span class="st">&quot;intel&quot;</span>: <span class="st">&quot;&quot;</span>})</span>
 <span id="d6-cb10-27"><a href="#d6-cb10-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;PF-GPU-PARTITION&quot;</span> <span class="kw">in</span> codes(findings)</span>
 <span id="d6-cb10-28"><a href="#d6-cb10-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="d6-cb10-29"><a href="#d6-cb10-29" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_dinov3_7b_is_refused_at_preflight_without_the_licence(tmp_path, monkeypatch):</span>
+<span id="d6-cb10-29"><a href="#d6-cb10-29" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_a_dinov3_embedder_is_refused_at_preflight_without_the_licence(tmp_path, monkeypatch):</span>
 <span id="d6-cb10-30"><a href="#d6-cb10-30" aria-hidden="true" tabindex="-1"></a>    monkeypatch.delenv(<span class="st">&quot;PHENOTYPIC_ACCEPT_MODEL_LICENSE&quot;</span>, raising<span class="op">=</span><span class="va">False</span>)</span>
 <span id="d6-cb10-31"><a href="#d6-cb10-31" aria-hidden="true" tabindex="-1"></a>    findings <span class="op">=</span> preflight_for(tmp_path, n_images<span class="op">=</span><span class="dv">1000</span>, embed_stage<span class="op">=</span><span class="st">&quot;gpu&quot;</span>,</span>
-<span id="d6-cb10-32"><a href="#d6-cb10-32" aria-hidden="true" tabindex="-1"></a>                             embedder<span class="op">=</span>MeasureDinoEmbedding(version<span class="op">=</span><span class="dv">3</span>, size<span class="op">=</span><span class="st">&quot;7b&quot;</span>, compute_dtype<span class="op">=</span><span class="st">&quot;bfloat16&quot;</span>))</span>
-<span id="d6-cb10-33"><a href="#d6-cb10-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;PF-LICENSE&quot;</span> <span class="kw">in</span> codes(findings)                   <span class="co"># the existing check, now reaching 7b (spec §4.5)</span></span>
+<span id="d6-cb10-32"><a href="#d6-cb10-32" aria-hidden="true" tabindex="-1"></a>                             embedder<span class="op">=</span>MeasureDinoEmbedding(version<span class="op">=</span><span class="dv">3</span>, size<span class="op">=</span><span class="st">&quot;base&quot;</span>))</span>
+<span id="d6-cb10-33"><a href="#d6-cb10-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;PF-LICENSE&quot;</span> <span class="kw">in</span> codes(findings)       <span class="co"># the existing check reaches a Stage-4 run (spec §4.5; U11: no 7b)</span></span>
 <span id="d6-cb10-34"><a href="#d6-cb10-34" aria-hidden="true" tabindex="-1"></a></span>
 <span id="d6-cb10-35"><a href="#d6-cb10-35" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> test_the_checks_import_no_torch(tmp_path):</span>
 <span id="d6-cb10-36"><a href="#d6-cb10-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">assert</span> <span class="st">&quot;torch&quot;</span> <span class="kw">not</span> <span class="kw">in</span> modules_loaded_by(<span class="kw">lambda</span>: preflight_for(tmp_path, n_images<span class="op">=</span><span class="dv">40</span>, embed_stage<span class="op">=</span><span class="st">&quot;gpu&quot;</span>))</span></code></pre></div>
@@ -3014,7 +3046,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Deep review P5</strong> (implementation-test-reviewer, Opus): <code>reports/2026-11-12-gpu-embedding-staging/review-p5.md</code>, checking in particular the sidecar rule (<code>_cli/CLAUDE.md</code>, "Array trigger routing"), the counter separation, U7's "no record, no journal row", and that a v1 controller config still drives an in-flight #281 run.</p>
 </section><section class="doc"><h2 class="doctitle" id="d7-top">P6 · `--mode measure` through a republish Stage 4</h2><div class="meta"><p><strong>Spec:</strong> U4, U8, U10, §4.1 (<code>--mode measure</code> row), §4.6 "Measure mode", §5</p>
 <p>"Measure mode over a staged run"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p6-measure-republish.md</div><p><strong>Goal:</strong> <code>--mode measure --embed-stage gpu</code> re-embeds an already-certified run on GPUs. The measure core rewrites the run folder's measurement table, <strong>carries the image's existing embeddings forward</strong> (U8), and defers both <code>embed</code> and the record republish. A separate Stage-4 pass, flagged <em>republish</em> in the manifest, replaces the embeddings and then republishes each image's record. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as <code>MEASURE_FAILURE_STAGE</code>, so the run exits <code>3</code>.</p>
+</div><div class="docsrc">p6-measure-republish.md</div><p><strong>Goal:</strong> <code>--mode measure --embed-stage gpu</code> re-embeds an already-certified run on GPUs. The measure core rewrites the run folder's measurement table, <strong>carries the image's existing embeddings forward</strong> (U8), and defers both <code>embed</code> and the record republish. A separate Stage-4 pass, flagged <em>republish</em> in the manifest, replaces the embeddings and then republishes each image's record. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as <code>MEASURE_FAILURE_STAGE</code>, so the run exits <code>3</code>.</p>
 <p><strong>Depends on:</strong> P5.</p>
 <h3 id="d7-task-1-the-measure-core-carries-and-defers-local-republish-stage-4-manifest-v5">Task 1: The measure core carries and defers; local republish Stage 4; manifest v5</h3>
 <p><strong>Files:</strong></p>
@@ -3246,7 +3278,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p><strong>Deep review P6</strong> (implementation-test-reviewer, Opus): <code>reports/2026-11-12-gpu-embedding-staging/review-p6.md</code>. It checks that a republish never changes a record's identity; that a Stage-4 failure keeps the old embeddings and a record that verifies (U8); and that <code>--mode measure</code> without <code>--embed-stage gpu</code> writes what #281 wrote, apart from the entry fields P2 adds (<code>compute</code>, <code>compute_dtype</code>; plan review, Minor).</p>
 </section><section class="doc"><h2 class="doctitle" id="d8-top">P7 · Docs, the simplify pass, and the full regression</h2><div class="meta"><p><strong>Spec:</strong> §4.2 (the "One writer" section and parent D5 gain the Stage-4</p>
 <p>rewrite), §6 P7, §5 "The end-of-change full sharded regression, once"</p>
-</div><div class="docsrc">docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p7-docs-and-regression.md</div><p><strong>Goal:</strong> The module guide, the tracked-state contributor page, the batch tutorial and the embeddings how-to describe Stage 4 as built; one simplify pass runs over the change; then one full sharded regression, both lanes, at the final SHA.</p>
+</div><div class="docsrc">p7-docs-and-regression.md</div><p><strong>Goal:</strong> The module guide, the tracked-state contributor page, the batch tutorial and the embeddings how-to describe Stage 4 as built; one simplify pass runs over the change; then one full sharded regression, both lanes, at the final SHA.</p>
 <p><strong>Depends on:</strong> P6, and every deep review's findings fixed or recorded.</p>
 <h3 id="d8-task-1-docs">Task 1: Docs</h3>
 <p><strong>Files:</strong></p>
@@ -3264,7 +3296,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>Modify: root <code>CLAUDE.md</code>, the "GPU detectors stage automatically" bullet: one sentence pointing at Stage 4 and <code>--embed-stage</code>.</li>
 <li>Modify: <code>docs/source/contrib_guide/tracked_state.md</code>: Stage-4 pending as a derived state (no new tracked state), the per-run terminal stage, and one row each for the Stage-4 signals (<code>progress/stage4_payload/</code>, their fence fields and when they are deleted), the per-round worklist (<code>slurm_scripts/stage4_worklist.json</code>) and the Stage-4 round counters in <code>staged_orchestration.json</code> (plan review, Minor).</li>
 <li>Modify: <code>docs/source/tutorials/pages/cli_batch_processing.md</code>: an "Embedding on GPUs" section (<code>--embed-stage</code>, the resolution table, R1–R3 as the user sees them, <code>--gpu-slurm</code>/<code>--gpu-shards</code> for Stage 4, pre-staged weights and <code>HF_HUB_OFFLINE=1</code>; that a local <code>--embed-stage gpu</code> checks CUDA before Stage 1 and exits <code>1</code> without one, and that this check imports torch, so <code>--dry-run</code> with that flag pays the import too; and that <code>CUBLAS_WORKSPACE_CONFIG</code> may be <code>:4096:8</code> (the default the CLI sets) or <code>:16:8</code>).</li>
-<li>Create or modify: the embeddings how-to page. If #281 merged none, create <code>docs/source/how_to/pages/embeddings.md</code> and add it to the how-to toctree. It covers model sizes and the size/version pairs, <code>compute_dtype</code> (bf16 recommended for 7B, H7), what <code>compute</code> records, mixed GPU models (U6), the measured device distances (spec §2), P2 T4's batch-invariance result stated as S1 restates goal 3 (within one GPU model and physical batch), and U8's measure-mode failure behaviour.</li>
+<li>Create or modify: the embeddings how-to page. If #281 merged none, create <code>docs/source/how_to/pages/embeddings.md</code> and add it to the how-to toctree. It covers model sizes and the size/version pairs, <code>compute_dtype</code> (bf16 recommended for giant, H7 as amended by U11), what <code>compute</code> records, mixed GPU models (U6), the measured device distances (spec §2), P2 T4's batch-invariance result stated as S1 restates goal 3 (within one GPU model and physical batch), and U8's measure-mode failure behaviour.</li>
 <li>Modify: <code>docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md:634</code>, parent D5's writer list: add <code>replace_run_embeddings</code> (spec §4.2).</li>
 </ul>
 <ul class="task-list">
@@ -3308,5 +3340,5 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <span id="d8-cb3-2"><a href="#d8-cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;docs(report): #282 simplify pass and full regression&quot;</span></span></code></pre></div></li>
 </ul>
 </section></main>
-<footer>Rendered from docs/superpowers/plans/2026-11-12-gpu-embedding-staging/README.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p0-validation-and-golden.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p1-embedder-refactor.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p2-large-models-batch-encoder.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p3-store-transaction-and-signal.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p4-local-stage4.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p5-slurm-controller.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p6-measure-republish.md, docs/superpowers/plans/2026-11-12-gpu-embedding-staging/p7-docs-and-regression.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
+<footer>Rendered from README.md, p0-validation-and-golden.md, p1-embedder-refactor.md, p2-large-models-batch-encoder.md, p3-store-transaction-and-signal.md, p4-local-stage4.md, p5-slurm-controller.md, p6-measure-republish.md, p7-docs-and-regression.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
 </div>
