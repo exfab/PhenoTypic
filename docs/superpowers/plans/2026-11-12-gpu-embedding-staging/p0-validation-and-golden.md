@@ -80,13 +80,18 @@ pinned by a unit test in P5 T1, not by a script: plan review, Cuts.)
        review I6.)
     4. `m` never reads free memory: the function takes total bytes only, and two
        calls with the same inputs agree.
+       The upper-bound guard is the budget identity
+       `m · per_sample ≤ SPEC_MEMORY_FRACTION · total − weights − RESERVE_BYTES`,
+       with `SPEC_MEMORY_FRACTION = 0.8` its own literal, not the formula's
+       `MEMORY_FRACTION`. (The earlier `m · per_sample + weights ≤ total` form is
+       too weak: pow2floor slack plus the batch cap let a 1.2 plant fit under it.)
     5. Monotone: more GPU memory never gives a smaller `m`; a larger `crop_px`
        never gives a larger `m`.
     6. DINOv2-base at `crop_px=224`, float32, on Ada: `m == 64` (`batch_size`
        binds).
     7. A planted wrong constant (`MEMORY_FRACTION = 1.2`) makes check 4's
-       upper-bound guard (`m · per_sample + weights ≤ total`) fail; the script
-       runs that self-test last and reports it.
+       budget-identity guard fail (12 combinations trip it); the script runs
+       that self-test last and reports it.
 - [ ] **Step 2: Write `shard_amortization.py`.** Checks:
   1. `AMORTIZE_MIN_IMAGES_PER_SHARD("base") == 439` and `("large") == 297`.
   2. At the threshold, `COLD_LOAD_S ≤ n · WARM_GPU_S_PER_IMAGE`: the load is at
