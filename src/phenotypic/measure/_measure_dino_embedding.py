@@ -368,6 +368,18 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         version = int(self.version)
         return f"dinov{version}-vit{_SIZE_LETTER[self.size]}{_PATCH_SIZE[version]}"
 
+    def backbone_key(self) -> Any:
+        """The model load this embedder needs, for Stage 4 to share it (#282 H10).
+
+        Returns:
+            ``BackboneKey(version, size, revision, compute_dtype)``
+            (``phenotypic.detect.nn._helper._batch_encoder``): embedders with
+            equal keys share one resident model.
+        """
+        from phenotypic.detect.nn._helper._batch_encoder import BackboneKey
+
+        return BackboneKey(int(self.version), self.size, self.revision, self.compute_dtype)
+
     def entry_descriptor(self) -> dict:
         """The model, vector length, stored type and pooling of the table's entry.
 
