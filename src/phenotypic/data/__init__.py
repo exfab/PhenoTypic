@@ -9,6 +9,12 @@ return arrays or ready-to-use `Image`/`GridImage` objects for rapid pipeline tri
 from ._sample_image_data import *
 from ._synthetic_data import *
 from ._synthetic_window_series import make_synthetic_window_series
+from ._example_timeseries import (
+    EXAMPLE_PLATES,
+    load_example_images,
+    load_example_measurements,
+    load_example_metadata,
+)
 
 __all__ = [
     "load_synth_yeast_plate",
@@ -25,4 +31,8 @@ __all__ = [
     "load_fungi_plate",
     "load_yeast_plate_full",
     "load_fungi_plate_full",
+    "EXAMPLE_PLATES",
+    "load_example_metadata",
+    "load_example_measurements",
+    "load_example_images",
 ]
