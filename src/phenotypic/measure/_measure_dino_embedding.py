@@ -176,13 +176,17 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             CPU the vectors do not depend on it; on a GPU, batched kernels may
             round the last float16 bits differently.
         device: ``"auto"`` (CUDA when available, else the CPU), ``"cpu"`` or
-            ``"cuda"``. Set ``"cpu"`` for reproducible vectors: identical
-            runs give byte-identical embedding deliverables only on the same
-            device and the same BLAS path, and ``"auto"`` picks CUDA on some
-            nodes and the CPU on others without changing the pipeline file.
-            Each table's entry records the device that ran (``"cuda"`` or
-            ``"cpu"``), so such a run's deliverable rows carry two
-            ``descriptor_index`` values.
+            ``"cuda"``. Identical runs give byte-identical embedding
+            deliverables only on the same device and the same BLAS path, but
+            the vectors of different devices are interchangeable: a CPU and
+            a GPU embedding of one colony differ by about 1e-6 in cosine
+            distance, far below what hours of growth change, and two GPU
+            models by about the last float16 bit. So the device is
+            provenance, not part of the descriptor: each table's entry
+            records the device that ran (``model.device``, ``"cuda"`` or
+            ``"cpu"``) and on CUDA the GPU's name (``model.device_name``),
+            and a run mixing devices still publishes one
+            ``descriptor_index``.
 
     Examples:
         Construction needs no weights; the backbone loads on the first
@@ -316,12 +320,13 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         loaded.
 
         Returns:
-            ``{model: {family, hf_id, revision, patch_size, device}, dim,
-            dtype, pooling}``, where ``revision`` is the commit loaded and
-            ``device`` (``"cuda"`` or ``"cpu"``) the device it ran on: with
-            ``device="auto"`` the field value is the same on a GPU node and a
-            CPU node, so only this tells their vectors apart (#281 P4 review
-            Q1).
+            ``{model: {family, hf_id, revision, patch_size, device,
+            device_name}, dim, dtype, pooling}``, where ``revision`` is the
+            commit loaded, ``device`` (``"cuda"`` or ``"cpu"``) the device it
+            ran on, and ``device_name`` the GPU's name from
+            ``torch.cuda.get_device_name()`` on CUDA and ``None`` on the CPU.
+            The two device fields are provenance: the run's deliverables
+            group descriptors without them (#281, user decision 2026-11-19).
         """
         from phenotypic.detect.nn._helper._dino_support import (
             backbone_patch_size,
@@ -330,6 +335,11 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         )
 
         model, _, device = self._backbone()
+        device_name: str | None = None
+        if device == "cuda":
+            import torch
+
+            device_name = str(torch.cuda.get_device_name())
         return {
             "model": {
                 "family": f"dinov{int(self.version)}",
@@ -337,6 +347,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
                 "revision": resolved_revision(model),
                 "patch_size": backbone_patch_size(model),
                 "device": device,
+                "device_name": device_name,
             },
             "dim": int(model.config.hidden_size),
             "dtype": self.dtype,

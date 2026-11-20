@@ -21,11 +21,15 @@ split or any TSV (spec E5).
 
 **One key, several descriptors** (review I2, user decision Q1). A key's
 stores may disagree on the entry descriptor -- the entry minus ``binds``,
-``files`` and ``stale``: another resolved revision (``revision=None``
-resolves the hub's latest per process), another device (``device="auto"``
-runs on CUDA on a GPU node and on the CPU elsewhere, and the entry records
-which), another pooling or producer parameter set (a partly re-measured
-tree). Finalization still publishes,
+``files`` and ``stale``, and minus the model's ``device`` and
+``device_name``: another resolved revision (``revision=None`` resolves the
+hub's latest per process), another pooling, layer or producer parameter set
+(a partly re-measured tree). The device is provenance, not part of the
+descriptor (#281, user decision 2026-11-19): a CPU and a GPU embedding
+differ by about 1e-6 in cosine distance and two GPU models by about one
+float16 bit, so a run that ran on both publishes them as one descriptor,
+with no warning; each store's own entry still records its device.
+Finalization still publishes,
 logs one warning per such key naming each descriptor with its store count
 and a few stores, and tags every row with ``descriptor_index``, an
 ``int16`` index into the key's manifest ``descriptors`` list. That list is
@@ -97,6 +101,11 @@ EMBEDDINGS_MANIFEST_PROOF_NAME: Final[str] = "embeddings_manifest"
 #: Entry fields that describe one store's file rather than the table's kind;
 #: the manifest's ``descriptors`` leave them out (spec D3).
 _PER_STORE_FIELDS: Final[frozenset[str]] = frozenset({"binds", "files", "stale"})
+
+#: ``model`` fields that record where an entry ran, not what it is: provenance
+#: (#281, user decision 2026-11-19). The manifest's ``descriptors``, the
+#: grouping and ``descriptor_index`` leave them out.
+_PROVENANCE_MODEL_FIELDS: Final[frozenset[str]] = frozenset({"device", "device_name"})
 
 #: The largest ``descriptor_index`` an ``int16`` holds.
 _MAX_DESCRIPTOR_INDEX: Final[int] = 2**15 - 1
@@ -292,11 +301,27 @@ def _plan_keys(
                 plan.stale.append(relative)
                 continue
             plan.readable.append(run)
-            shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
+            shared = _shared_descriptor(entry)
             canonical = _canonical(shared)
             plan.descriptors.setdefault(canonical, shared)
             plan.descriptor_of[relative] = canonical
     return [plans[key] for key in sorted(plans)], unreadable
+
+
+def _shared_descriptor(entry: Mapping[str, object]) -> dict[str, object]:
+    """*entry* as its key's stores share it: no per-store fields, no device.
+
+    The entry minus :data:`_PER_STORE_FIELDS`, and its ``model`` minus
+    :data:`_PROVENANCE_MODEL_FIELDS`, so stores that differ only in the
+    device they ran on share one descriptor.
+    """
+    shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
+    model = shared.get("model")
+    if isinstance(model, Mapping):
+        shared["model"] = {
+            n: v for n, v in model.items() if n not in _PROVENANCE_MODEL_FIELDS
+        }
+    return shared
 
 
 def _short(value: object) -> str:
@@ -305,28 +330,22 @@ def _short(value: object) -> str:
 
 
 def _descriptor_summary(descriptor: Mapping[str, object]) -> str:
-    """``revision <sha8>, device <d>, pooling <p>, params <sha8>``: one descriptor, briefly.
-
-    ``device`` is left out for an entry that records none (an embedder other
-    than ``MeasureDinoEmbedding``, or one written before it was recorded).
-    """
+    """``revision <sha8>, pooling <p>, params <sha8>``: one descriptor, briefly."""
     model = descriptor.get("model")
     producer = descriptor.get("producer")
     revision = model.get("revision") if isinstance(model, Mapping) else None
-    device = model.get("device") if isinstance(model, Mapping) else None
     params = producer.get("params_sha256") if isinstance(producer, Mapping) else None
     return (
-        f"revision {_short(revision)}"
-        + (f", device {device}" if device else "")
-        + f", pooling {descriptor.get('pooling')}, params {_short(params)}"
+        f"revision {_short(revision)}, pooling {descriptor.get('pooling')}, "
+        f"params {_short(params)}"
     )
 
 
 def _warn_on_mixed_descriptors(plan: _KeyPlan) -> None:
     """Log one warning when *plan*'s stores carry more than one descriptor (Q1).
 
-    Names each descriptor by its manifest index, briefly (revision, device,
-    pooling, producer parameter digest; plus a digest of the whole descriptor when
+    Names each descriptor by its manifest index, briefly (revision, pooling,
+    producer parameter digest; plus a digest of the whole descriptor when
     two would otherwise read alike), with its store count and the first few
     stores. Publication goes on: every row's ``descriptor_index`` says which
     descriptor its vector came from.
@@ -363,8 +382,8 @@ def _warn_on_mixed_descriptors(plan: _KeyPlan) -> None:
         "Embedding key %r mixes %d entry descriptors across its stores, so its "
         "vectors are not all comparable. Publishing all of them; each row's "
         "descriptor_index names its descriptor in manifest.json: %s. Pin "
-        "the embedder's revision to a commit and set its device explicitly "
-        "('cpu' for reproducible vectors) for one descriptor per run.",
+        "the embedder's revision to a commit, and re-measure the whole run "
+        "with one pipeline, for one descriptor per run.",
         plan.key,
         len(plan.descriptors),
         "; ".join(parts),

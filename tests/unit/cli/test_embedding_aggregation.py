@@ -669,58 +669,94 @@ def test_the_readme_explains_the_descriptor_index():
     assert "`descriptors`" in section
 
 
-def test_stores_differing_only_in_device_get_two_descriptors(
+def test_stores_differing_only_in_device_get_one_descriptor_and_no_warning(
     tmp_path, image_with_objects_payload, pipeline_file_a, caplog
 ):
-    """Q1 follow-up: ``device="auto"`` picks CUDA on a GPU node and the CPU
-    elsewhere with the same pipeline, so the entry's ``model.device`` is the
-    only difference, and it must still split the key's descriptors."""
+    """The device is provenance, not descriptor (#281, user decision
+    2026-11-19). ``device="auto"`` picks CUDA on a GPU node and the CPU
+    elsewhere with the same pipeline, and two GPU nodes carry two GPU
+    models, so ``model.device`` and ``model.device_name`` are the only
+    differences: the key publishes one descriptor, every row's
+    ``descriptor_index`` is 0, nothing warns, and each store's own entry
+    still records where it ran."""
     import logging
 
-    import pyarrow.compute as pc
     import pyarrow.parquet as pq
 
     from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+    from phenotypic.sdk_ import list_table_runs
 
-    # One class and one parameter set for both stores: only the device the
-    # (pretend) backbone resolved differs, as with device="auto".
-    ran_on = {"device": "cpu"}
+    # One class and one parameter set for every store: only where the
+    # (pretend) backbone ran differs, as with device="auto".
+    ran_on: dict[str, object] = {}
 
     class Placed(toy_embedder_class()):
         def entry_descriptor(self) -> dict:
             base = super().entry_descriptor()
-            return {**base, "model": {**base["model"], "device": ran_on["device"]}}
+            return {**base, "model": {**base["model"], **ran_on}}
 
     out = tmp_path / "out"
     mirrored = _mirrored_plate(pipeline_file_a)
-    on_cpu = _embed(image_with_objects_payload, Placed())
-    ran_on["device"] = "cuda"
-    on_gpu = _embed(mirrored, Placed())
-    cpu_entry, gpu_entry = (dict(p[KEY].descriptor) for p in (on_cpu, on_gpu))
-    differing = {n for n in cpu_entry if cpu_entry[n] != gpu_entry[n]} - {"binds"}
-    assert differing == {"model"}
-    assert {k for k in cpu_entry["model"] if cpu_entry["model"][k] != gpu_entry["model"][k]} == {
-        "device"
+    placements = {
+        "p1": (image_with_objects_payload, {"device": "cpu", "device_name": None}),
+        "p2": (mirrored, {"device": "cuda", "device_name": "NVIDIA RTX 6000 Ada Generation"}),
+        "p3": (
+            image_with_objects_payload,
+            {"device": "cuda", "device_name": "NVIDIA RTX PRO 6000 Blackwell Server Edition"},
+        ),
     }
-
-    runs = [
-        _latest(_store(out, "p1", image_with_objects_payload, on_cpu)),
-        _latest(_store(out, "p2", mirrored, on_gpu)),
-    ]
+    stores = {}
+    for stem, (image, where) in placements.items():
+        ran_on.clear()
+        ran_on.update(where)
+        stores[stem] = _store(out, stem, image, _embed(image, Placed()))
+    runs = [_latest(store) for store in stores.values()]
     with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
         aggregate_embedding_tables(out, runs)
-    (warning,) = [r.getMessage() for r in caplog.records if "descriptor" in r.getMessage()]
-    assert "[0] revision none, device cpu" in warning
-    assert "[1] revision none, device cuda" in warning
+    assert not [r for r in caplog.records if "descriptor" in r.getMessage()]
     manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
-    assert [d["model"]["device"] for d in manifest["entries"][KEY]["descriptors"]] == ["cpu", "cuda"]
+    (descriptor,) = manifest["entries"][KEY]["descriptors"]
+    assert {"device", "device_name"}.isdisjoint(descriptor["model"])
     table = pq.read_table(out / "deliverables/embeddings/toy-v1/rgb/objects.parquet")
-    for stem, index in (("p1", 0), ("p2", 1)):
-        rows = table.filter(pc.equal(table["Metadata_ImageName"], stem))
-        assert set(rows.column("descriptor_index").to_pylist()) == {index}, stem
+    assert set(table.column("descriptor_index").to_pylist()) == {0}
+    for stem, (_, where) in placements.items():
+        (run,) = list_table_runs(stores[stem])
+        recorded = run.descriptor["embeddings"][KEY]["model"]
+        assert {n: recorded[n] for n in where} == where, stem
 
 
-def test_the_readme_names_the_device_as_a_cause():
+def test_a_revision_still_splits_descriptors(
+    tmp_path, image_with_objects_payload, pipeline_file_a, caplog
+):
+    """Revision, pooling, layer and the producer's parameters stay part of the
+    descriptor: only the device fields are provenance."""
+    import logging
+
+    from phenotypic._cli._cli_embedding_deliverables import aggregate_embedding_tables
+
+    revision: dict[str, object] = {}
+
+    class Pinned(toy_embedder_class()):
+        def entry_descriptor(self) -> dict:
+            base = super().entry_descriptor()
+            return {**base, "model": {**base["model"], **revision, "device": "cpu"}}
+
+    out = tmp_path / "out"
+    mirrored = _mirrored_plate(pipeline_file_a)
+    revision["revision"] = "a" * 40
+    first = _store(out, "p1", image_with_objects_payload, _embed(image_with_objects_payload, Pinned()))
+    revision["revision"] = "b" * 40
+    second = _store(out, "p2", mirrored, _embed(mirrored, Pinned()))
+    with caplog.at_level(logging.WARNING, logger="phenotypic._cli._cli_embedding_deliverables"):
+        aggregate_embedding_tables(out, [_latest(first), _latest(second)])
+    (warning,) = [r.getMessage() for r in caplog.records if "descriptor" in r.getMessage()]
+    assert "[0] revision aaaaaaaa" in warning and "[1] revision bbbbbbbb" in warning
+    assert "device" not in warning
+    manifest = json.loads((out / "deliverables/embeddings/manifest.json").read_text(encoding="utf-8"))
+    assert len(manifest["entries"][KEY]["descriptors"]) == 2
+
+
+def test_the_readme_says_the_device_is_not_a_descriptor():
     from phenotypic import ImagePipeline
     from phenotypic._cli._cli_readme_generator import READMEGenerator
 
@@ -728,7 +764,8 @@ def test_the_readme_names_the_device_as_a_cause():
 
     pipeline = ImagePipeline(meas={"emb": toy_embedder_class()()})
     section = READMEGenerator(make_config(), pipeline)._generate_embeddings_section()
-    assert 'device="auto"' in section
+    assert "The device is not part of the descriptor" in section
+    assert 'device="auto"' not in section
 
 
 # ---------------------------------------------------------------------------

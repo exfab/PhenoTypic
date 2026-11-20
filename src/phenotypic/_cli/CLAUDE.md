@@ -1548,15 +1548,18 @@ like the master, naming every such store, and the image stays `verified`
 which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,
 `phenotypic-wait`'s exit `5` points at `slurm_logs_dir`, where the
 finalizer's log says this). A key whose stores carry **different entry
-descriptors** (entry minus `binds`/`files`/`stale`: an unpinned `revision`
-resolving to different commits, `device="auto"` running on CUDA on some
-nodes and the CPU on others, since `MeasureDinoEmbedding` records the
-resolved `model.device`, a partly re-measured tree) still publishes,
+descriptors** (entry minus `binds`/`files`/`stale` and minus
+`model.device`/`model.device_name`: an unpinned `revision` resolving to
+different commits, a partly re-measured tree) still publishes,
 with one warning per key, and every row carries an `int16`
 `descriptor_index` into the key's manifest `descriptors`, listed in order
 of first appearance over the sorted stores, so bytes stay stable; it is
 `0` everywhere for one descriptor, so the schema never depends on the
-data (Q1). The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
+data (Q1). **The device is provenance, not descriptor** (user decision
+2026-11-19, measured: CPU vs GPU ~1e-6 cosine distance, two GPU models ~one
+float16 bit): each store entry records `model.device` and, on CUDA,
+`model.device_name`, and `_shared_descriptor` drops both before grouping, so a
+run mixing CPU and GPU publishes one descriptor with no warning. The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
 in-scope `MeasureDinoEmbedding(revision=None)`. On the `shard_paths` branch only the
 sources the projection kept contribute. Paths are compared unresolved, so a
 symlinked `results/` and a DVC symlink cache work. Parquet only, never

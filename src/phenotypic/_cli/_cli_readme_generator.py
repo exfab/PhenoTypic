@@ -340,15 +340,16 @@ No measurements configured in this pipeline."""
             "",
             "Each row also carries `descriptor_index` (int16), its 0-based "
             "position in that file's `descriptors` list in the manifest: the "
-            "model id, revision and device, vector length, pooling and parameters "
+            "model id and revision, vector length, pooling and parameters "
             "that produced the vector. It is 0 on every row when all stores "
             "share one descriptor. Stores can differ when `revision` is left "
-            "unpinned (each process loads the hub's latest weights), when "
-            "`device=\"auto\"` ran on CUDA on some nodes and on the CPU on "
-            "others (the descriptor records the device that ran), or when "
+            "unpinned (each process loads the hub's latest weights), or when "
             "part of the run was re-measured with other settings; "
             "finalization then logs a warning. Compare vectors only within "
-            "one `descriptor_index`.",
+            "one `descriptor_index`. The device is not part of the "
+            "descriptor: a CPU and a GPU embedding differ by about 1e-6 in "
+            "cosine distance, so a run that used both is one descriptor; each "
+            "image's store records the device (and GPU name) that ran it.",
             "",
             "| Embedder | File |",
             "|----------|------|",

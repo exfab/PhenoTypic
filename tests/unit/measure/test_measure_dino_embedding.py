@@ -576,7 +576,7 @@ def test_the_pipeline_payload_carries_the_model_entry(stub_backbone, detected_pl
     descriptor = payloads["dinov2-vits14/rgb/objects"].descriptor
     assert descriptor["model"] == {
         "family": "dinov2", "hf_id": "facebook/dinov2-small",
-        "revision": STUB_COMMIT, "patch_size": 14, "device": "cpu",
+        "revision": STUB_COMMIT, "patch_size": 14, "device": "cpu", "device_name": None,
     }
     assert (descriptor["dim"], descriptor["dtype"], descriptor["pooling"]) == (
         STUB_HIDDEN_SIZE, "float16", "crop_cls")
@@ -597,6 +597,22 @@ def test_an_auto_embedder_records_the_device_that_ran(stub_backbone, monkeypatch
     expected = "cuda" if cuda else "cpu"
     assert m.entry_descriptor()["model"]["device"] == expected
     assert stub_backbone.load_calls[-1]["device"] == expected
+
+
+@requires_torch
+def test_a_cuda_entry_records_the_gpu_name(stub_backbone, monkeypatch):
+    """#281: the device is provenance. On CUDA the entry also names the GPU
+    model (``torch.cuda.get_device_name()``); on the CPU ``device_name`` is
+    ``None``. No forward pass runs, so the stub is never moved to a GPU."""
+    import torch
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda *a, **k: "NVIDIA RTX 6000 Ada Generation")
+    model = MeasureDinoEmbedding(size="small", device="auto").entry_descriptor()["model"]
+    assert (model["device"], model["device_name"]) == ("cuda", "NVIDIA RTX 6000 Ada Generation")
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    model = MeasureDinoEmbedding(size="small", device="auto").entry_descriptor()["model"]
+    assert (model["device"], model["device_name"]) == ("cpu", None)
 
 
 @requires_torch
