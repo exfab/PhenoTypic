@@ -264,6 +264,14 @@ def test_entry_descriptor_for_does_not_load(stub_backbone, detected_plate):
 
   Expected: all pass; `test_embedding_inline_golden.py` shows `7 passed` with no
   regeneration.
+
+  **The golden's bytes are checked only on its capture CPU** (C3 gate,
+  2026-11-20): run `test_embedding_inline_golden.py`, stub and `-m slow` real
+  rows, on a Broadwell node (`--constraint=broadwell`, `--partition=short` or
+  `intel`) with `--cpus-per-task=4` and `OMP_NUM_THREADS=4`. The test changes
+  no threading (an explicit `torch.set_num_threads(4)` moves the real rows'
+  bytes); elsewhere the byte tests skip with both environments named, and the
+  always-on cosine check (`>= 1 - 1e-6`) still runs.
 - [ ] **Step 5: Commit.**
 
   ```bash

@@ -236,6 +236,15 @@ Inputs the spec implies but names no test for. Each is pinned in the task named.
   `CUDA_VISIBLE_DEVICES=""` **and patches `torch.cuda.is_available`** (the
   variable alone does nothing once CUDA is initialised), so a GPU node gives the
   same bytes as a CPU node.
+- **The inline golden is CPU-specific.** Its float32 bytes differ by CPU family
+  and torch thread count, so its byte tests run only in the recorded capture
+  environment (`tests/unit/measure/golden/inline_embeddings_281.environment.json`):
+  a gate puts `test_embedding_inline_golden.py` on a Broadwell node
+  (`--constraint=broadwell`, `--partition=short` or `intel`) with
+  `--cpus-per-task=4` and `OMP_NUM_THREADS=4`. The test never calls
+  `torch.set_num_threads`, which moves the real rows' bytes even at 4. In any
+  other environment they skip, naming both, and an always-on cosine check
+  (`>= 1 - 1e-6` per row) runs.
 - **Per-image faults** in Stage 4 are injected through an on-disk trigger
   (`FaultyDinoEmbedding` and `$PHENOTYPIC_TEST_FAULT_DIR`, P4), never a
   monkeypatch, which a spawned loader worker would not see.
