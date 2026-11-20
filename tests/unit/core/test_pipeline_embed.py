@@ -92,16 +92,43 @@ def test_two_named_grid_embedders_of_one_model_coexist(plate):
 def test_a_named_and_an_unnamed_grid_of_one_model_coexist():
     from tests._tiny_run import toy_grid_embedder_of
 
-    ImagePipeline(meas={"a": toy_grid_embedder_of(), "b": toy_grid_embedder_of(grid_name="wells")})
+    ImagePipeline(meas={"a": toy_grid_embedder_of(), "b": toy_grid_embedder_of(name="wells")})
 
 
-def test_two_grid_embedders_with_one_grid_name_are_refused():
+def test_two_named_crop_embedders_of_one_model_coexist(detected_plate):
+    """#281 named regions: two poolings of the colonies, one model, two tables."""
+    from phenotypic.measure import MeasureDinoEmbedding
+    from tests._tiny_run import toy_embedder_class
+
+    pipe = ImagePipeline(
+        meas={
+            "cls": MeasureDinoEmbedding(pooling="crop_cls", name="cls"),
+            "mean": MeasureDinoEmbedding(pooling="crop_mean", name="mean"),
+        }
+    )
+    assert [m.payload_key() for m in pipe._meas.values()] == [
+        "dinov2-vitb14/crops-cls", "dinov2-vitb14/crops-mean",
+    ]
+    with pytest.raises(ValueError, match="dinov2-vitb14/crops"):
+        ImagePipeline(
+            meas={
+                "cls": MeasureDinoEmbedding(pooling="crop_cls"),
+                "mean": MeasureDinoEmbedding(pooling="crop_mean"),
+            }
+        )
+    toy = toy_embedder_class()
+    payloads = ImagePipeline(meas={"a": toy(name="a"), "b": toy(name="b")}).embed(detected_plate)
+    assert list(payloads) == ["toy-v1/crops-a", "toy-v1/crops-b"]
+    assert all(len(p.frame) == detected_plate.num_objects for p in payloads.values())
+
+
+def test_two_embedders_with_one_name_are_refused():
     from tests._tiny_run import toy_grid_embedder_of
 
     with pytest.raises(ValueError, match="wells_a.*wells_b.*toy-v1/grid-wells"):
         ImagePipeline(
             meas={
-                "wells_a": toy_grid_embedder_of(grid_name="wells"),
-                "wells_b": toy_grid_embedder_of(grid_name="wells", token="toy-v1"),
+                "wells_a": toy_grid_embedder_of(name="wells"),
+                "wells_b": toy_grid_embedder_of(name="wells"),
             }
         )

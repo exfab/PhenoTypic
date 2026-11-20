@@ -171,16 +171,16 @@ def test_a_square_leaving_the_image_is_zero_filled_not_stretched(stub_backbone, 
 
 
 def test_the_thirteen_fields_in_the_plans_order():
-    """#281 named grid regions put ``grid_name`` right after ``grid``."""
+    """#281 named regions put ``name`` right after ``grid``."""
     assert list(MeasureDinoEmbedding.model_fields) == [
-        "size", "version", "revision", "regions", "grid", "grid_name", "pooling",
+        "size", "version", "revision", "regions", "grid", "name", "pooling",
         "crop_px", "crop_pad_frac", "mask_background", "dtype", "batch_size", "device",
     ]
 
 
 def test_defaults():
     m = MeasureDinoEmbedding()
-    assert (m.size, m.version, m.revision, m.regions, m.grid, m.grid_name) == (
+    assert (m.size, m.version, m.revision, m.regions, m.grid, m.name) == (
         "base", 2, None, "objects", None, None
     )
     assert (m.pooling, m.crop_px, m.crop_pad_frac, m.mask_background) == ("crop_cls", 224, 0.25, False)
@@ -190,7 +190,7 @@ def test_defaults():
 def test_field_order_reaches_the_json_schema_and_the_pipeline_file():
     schema = MeasureDinoEmbedding.model_json_schema()
     assert list(schema["properties"])[:6] == [
-        "size", "version", "revision", "regions", "grid", "grid_name"
+        "size", "version", "revision", "regions", "grid", "name"
     ]
     params = json.loads(MeasureDinoEmbedding().to_json())["params"]
     assert list(params)[:4] == ["size", "version", "revision", "regions"]
@@ -199,7 +199,7 @@ def test_field_order_reaches_the_json_schema_and_the_pipeline_file():
 def test_field_descriptions_survive_the_reorder():
     assert MeasureDinoEmbedding.model_fields["revision"].description
     assert MeasureDinoEmbedding.model_fields["regions"].description
-    assert MeasureDinoEmbedding.model_fields["grid_name"].description
+    assert MeasureDinoEmbedding.model_fields["name"].description
 
 
 @pytest.mark.parametrize(
@@ -218,20 +218,21 @@ def test_a_grid_embedder_writes_the_grid_folder():
     assert m.requires_objects is False
 
 
-def test_a_named_grid_embedder_writes_its_named_folder():
-    """#281 named grid regions: ``grid-<name>``, and the name is grid-only."""
+def test_a_named_embedder_writes_its_named_folder():
+    """#281 named regions: ``grid-<name>`` and ``crops-<name>``."""
     m = MeasureDinoEmbedding(
         regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
-        grid_name="wells",
+        name="wells",
     )
     assert m.payload_key() == "dinov2-vitb14/grid-wells"
     assert m.requires_objects is False
-    with pytest.raises(ValueError, match="grid_name"):
-        MeasureDinoEmbedding(grid_name="wells")
-    with pytest.raises(ValueError, match="grid_name"):
+    crops = MeasureDinoEmbedding(name="cls")
+    assert crops.payload_key() == "dinov2-vitb14/crops-cls"
+    assert crops.requires_objects is True
+    with pytest.raises(ValueError, match="name must be a lowercase slug"):
         MeasureDinoEmbedding(
             regions="grid", grid=ManualGridFinder(row_edges=[0, 10], col_edges=[0, 10]),
-            grid_name="Wells",
+            name="Wells",
         )
 
 
@@ -286,7 +287,7 @@ def test_tune_annotations_follow_the_plan():
         return next(meta for meta in MeasureDinoEmbedding.model_fields[name].metadata
                     if isinstance(meta, TuneSpec))
 
-    for name in ("size", "version", "revision", "regions", "grid", "grid_name", "dtype",
+    for name in ("size", "version", "revision", "regions", "grid", "name", "dtype",
                  "batch_size", "device"):
         assert spec(name).tunable is False, name
     assert spec("crop_px").categories == (112, 224, 336, 448)

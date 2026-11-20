@@ -43,12 +43,13 @@ tables/<n>-<sha12>/zarr.json
 tables/<n>-<sha12>/measurements/zarr.json
 tables/<n>-<sha12>/measurements/table.parquet
 tables/<n>-<sha12>/metadata/pht-metadata.parquet       (when metadata was joined)
-tables/<n>-<sha12>/embeddings/<model>/{crops,grid,grid-<name>}/    (optional)
+tables/<n>-<sha12>/embeddings/<model>/{crops,grid}[-<name>]/    (optional)
 ```
 
-An embedding region is `crops`, `grid`, or `grid-<name>` for a grid embedder
-with `grid_name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`), so one run
-can hold several grids of one model (rig1: `grid-wells`, `grid-agar`).
+An embedding region is `crops` or `grid`, or `crops-<name>` / `grid-<name>`
+for an embedder with a `name` (a lowercase slug, `^[a-z0-9][a-z0-9_]{0,31}$`),
+so one run can hold several embedders of one model and region (rig1:
+`grid-wells`, `grid-agar`).
 `split_embedding_key` (`sdk_/_table_runs.py`) is the one rule for regions.
 
 Every level is a Zarr v3 group document; every subtable is optional. The

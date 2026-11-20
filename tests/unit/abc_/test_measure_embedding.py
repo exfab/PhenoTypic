@@ -139,33 +139,34 @@ def test_the_grid_round_trips_through_json(toy_grid_embedder):
 
 
 # ---------------------------------------------------------------------------
-# #281 named grid regions: ``grid_name`` (user decision 2026-11-19)
+# #281 named regions: ``name`` (user decisions 2026-11-19)
 # ---------------------------------------------------------------------------
 
 
-def test_grid_name_sits_right_after_grid():
+def test_name_sits_right_after_grid():
     from tests._tiny_run import toy_embedder_class
 
     fields = list(toy_embedder_class().model_fields)
-    assert fields[fields.index("grid") + 1] == "grid_name"
-    assert toy_embedder_class()().grid_name is None
+    assert fields[fields.index("grid") + 1] == "name"
+    assert toy_embedder_class()().name is None
 
 
-def test_grid_name_is_not_tunable():
+def test_name_is_not_tunable():
     from phenotypic.sdk_.typing_ import TuneSpec
 
     (spec,) = [
-        meta for meta in MeasureEmbedding.model_fields["grid_name"].metadata
+        meta for meta in MeasureEmbedding.model_fields["name"].metadata
         if isinstance(meta, TuneSpec)
     ]
     assert spec.tunable is False
 
 
-def test_an_object_embedder_refuses_a_grid_name():
+def test_an_object_embedder_takes_a_name_too(detected_plate):
     from tests._tiny_run import toy_embedder_class
 
-    with pytest.raises(ValueError, match="grid_name is only used with regions='grid'"):
-        toy_embedder_class()(grid_name="wells")
+    embedder = toy_embedder_class()(name="pool2")
+    assert embedder.requires_objects is True
+    assert len(embedder.measure(detected_plate)) == detected_plate.num_objects
 
 
 @pytest.mark.parametrize(
@@ -173,34 +174,38 @@ def test_an_object_embedder_refuses_a_grid_name():
     ["", "Wells", "-wells", "_wells", "wells-a", "wells/a", "we lls", "wells\n",
      "a" * 33, "é"],
 )
-def test_a_grid_name_that_is_not_a_lowercase_slug_is_refused(name):
-    from tests._tiny_run import toy_grid_embedder_of
+def test_a_name_that_is_not_a_lowercase_slug_is_refused(name):
+    from tests._tiny_run import toy_embedder_class, toy_grid_embedder_of
 
-    with pytest.raises(ValueError, match="grid_name must be a lowercase slug"):
-        toy_grid_embedder_of(grid_name=name)
+    with pytest.raises(ValueError, match="name must be a lowercase slug"):
+        toy_grid_embedder_of(name=name)
+    with pytest.raises(ValueError, match="name must be a lowercase slug"):
+        toy_embedder_class()(name=name)
 
 
 @pytest.mark.parametrize("name", ["wells", "agar", "a", "0", "rig1_wells", "a" * 32])
-def test_a_lowercase_slug_grid_name_is_accepted(name):
+def test_a_lowercase_slug_name_is_accepted(name):
     from tests._tiny_run import toy_grid_embedder_of
 
-    assert toy_grid_embedder_of(grid_name=name).grid_name == name
+    assert toy_grid_embedder_of(name=name).name == name
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "key"),
+    ("regions", "name", "key"),
     [
-        ({}, "toy-v1/crops"),
-        ({"grid_name": None}, "toy-v1/grid"),
-        ({"grid_name": "wells"}, "toy-v1/grid-wells"),
-        ({"grid_name": "agar"}, "toy-v1/grid-agar"),
+        ("objects", None, "toy-v1/crops"),
+        ("objects", "pool2", "toy-v1/crops-pool2"),
+        ("grid", None, "toy-v1/grid"),
+        ("grid", "wells", "toy-v1/grid-wells"),
+        ("grid", "agar", "toy-v1/grid-agar"),
     ],
 )
-def test_the_payload_key_names_the_region_and_the_grid(kwargs, key):
+def test_the_payload_key_names_the_region_and_the_name(regions, name, key):
     from tests._tiny_run import toy_embedder_class, toy_grid_embedder_of
 
     embedder = (
-        toy_embedder_class()() if not kwargs else toy_grid_embedder_of(**kwargs)
+        toy_embedder_class()(name=name) if regions == "objects"
+        else toy_grid_embedder_of(name=name)
     )
     assert embedder.payload_key() == key
 
@@ -208,7 +213,7 @@ def test_the_payload_key_names_the_region_and_the_grid(kwargs, key):
 def test_a_named_grid_needs_no_objects(plate):
     from tests._tiny_run import toy_grid_embedder_of
 
-    embedder = toy_grid_embedder_of(grid_name="wells")
+    embedder = toy_grid_embedder_of(name="wells")
     assert embedder.requires_objects is False
     assert len(embedder.measure(plate)) == 4          # no detection ran
 
@@ -236,20 +241,20 @@ def test_each_named_grid_embeds_its_own_cells(plate):
     assert vector[0] not in {cell[0] for cell in wells["embedding"]}
 
 
-def test_the_grid_name_round_trips_through_json():
+def test_the_name_round_trips_through_json():
     import json
 
     from tests._tiny_run import toy_grid_embedder_of
 
-    embedder = toy_grid_embedder_of(grid_name="wells")
+    embedder = toy_grid_embedder_of(name="wells")
     params = json.loads(embedder.to_json())["params"]
-    assert params["grid_name"] == "wells"
+    assert params["name"] == "wells"
     clone = type(embedder).model_validate(params)
     assert clone.payload_key() == "toy-v1/grid-wells"
 
 
-def test_an_unnamed_grid_keeps_its_params_digest():
-    """``grid_name=None`` is left out of ``producer.params_sha256``, so the
+def test_an_unnamed_embedder_keeps_its_params_digest():
+    """``name=None`` is left out of ``producer.params_sha256``, so the
     entry of an embedder that predates the field, and so its deliverable's
     descriptor, are unchanged; a name changes the digest."""
     import hashlib
@@ -259,13 +264,13 @@ def test_an_unnamed_grid_keeps_its_params_digest():
 
     unnamed = toy_grid_embedder_of()
     dumped = unnamed.model_dump(mode="json")
-    assert dumped.pop("grid_name") is None
+    assert dumped.pop("name") is None
     before = hashlib.sha256(
         json.dumps(dumped, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     assert unnamed._params_sha256() == before
-    assert toy_grid_embedder_of(grid_name="wells")._params_sha256() != before
+    assert toy_grid_embedder_of(name="wells")._params_sha256() != before
     assert (
-        toy_grid_embedder_of(grid_name="wells")._params_sha256()
-        != toy_grid_embedder_of(grid_name="agar")._params_sha256()
+        toy_grid_embedder_of(name="wells")._params_sha256()
+        != toy_grid_embedder_of(name="agar")._params_sha256()
     )

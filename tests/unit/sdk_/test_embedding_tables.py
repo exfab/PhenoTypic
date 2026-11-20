@@ -160,10 +160,10 @@ def test_a_payload_key_must_match_its_mapping_key(tmp_path, image_with_crop_payl
     "key",
     [
         "a/b/c", "toy-v1", "toy-v1/", "/crops", "../crops", "a\\b/grid", "toy-v1/tiles",
-        # #281 named grid regions: ``grid-<slug>`` and nothing looser.
+        # #281 named regions: ``<crops|grid>-<slug>`` and nothing looser.
         "toy-v1/grid-", "toy-v1/grid-Wells", "toy-v1/grid-wells-a", "toy-v1/grid-_wells",
         "toy-v1/grid-wells/x", "toy-v1/grid-wells\n", "toy-v1/gridwells", "toy-v1/grid_wells",
-        "toy-v1/crops-wells", "toy-v1/grid-" + "a" * 33,
+        "toy-v1/crops-", "toy-v1/crops-Cls", "toy-v1/tiles-wells", "toy-v1/grid-" + "a" * 33,
     ],
 )
 def test_a_payload_and_a_read_entry_refuse_a_key_by_one_rule(key):
@@ -191,6 +191,7 @@ def test_a_payload_and_a_read_entry_refuse_a_key_by_one_rule(key):
         ("dinov2-vitb14/grid-agar", ("dinov2-vitb14", "grid-agar")),
         ("toy-v1/grid-0", ("toy-v1", "grid-0")),
         ("toy-v1/grid-rig1_wells", ("toy-v1", "grid-rig1_wells")),
+        ("dinov2-vitb14/crops-cls", ("dinov2-vitb14", "crops-cls")),
         ("toy-v1/grid-" + "a" * 32, ("toy-v1", "grid-" + "a" * 32)),
     ],
 )

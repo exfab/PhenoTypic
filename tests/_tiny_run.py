@@ -1621,8 +1621,8 @@ TOY_AGAR_COL_EDGES = (TOY_GRID_COL_EDGES[0], TOY_GRID_COL_EDGES[-1])
 def named_grid_embedders(make, **kw) -> dict:
     """``{"wells": ..., "agar": ...}``: two named grid embedders of one model (#281).
 
-    The rig1 shape of spec E6 at the toy scale: ``grid_name="wells"`` over
-    the 2 x 2 toy grid and ``grid_name="agar"`` over its one outer cell.
+    The rig1 shape of spec E6 at the toy scale: ``name="wells"`` over
+    the 2 x 2 toy grid and ``name="agar"`` over its one outer cell.
 
     Args:
         make: :func:`toy_grid_embedder_of` or :func:`grid_embedder`.
@@ -1634,8 +1634,8 @@ def named_grid_embedders(make, **kw) -> dict:
         row_edges=list(TOY_AGAR_ROW_EDGES), col_edges=list(TOY_AGAR_COL_EDGES)
     )
     return {
-        "wells": make(grid_name="wells", **kw),
-        "agar": make(grid_name="agar", grid=agar, **kw),
+        "wells": make(name="wells", **kw),
+        "agar": make(name="agar", grid=agar, **kw),
     }
 
 

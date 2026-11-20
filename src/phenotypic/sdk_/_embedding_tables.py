@@ -5,7 +5,7 @@ that pipeline's run folder::
 
     tables/<n>-<sha12>/embeddings/<model>/crops/table.parquet   Object_Label | embedding
     tables/<n>-<sha12>/embeddings/<model>/grid/table.parquet    Grid_* keys  | embedding
-    tables/<n>-<sha12>/embeddings/<model>/grid-<name>/table.parquet   a named grid, as grid
+    tables/<n>-<sha12>/embeddings/<model>/<crops|grid>-<name>/...      a named embedder
 
 :class:`EmbeddingPayload` is what :meth:`ImagePipeline.embed` returns and a
 store writer consumes: one table's frame plus the descriptor fields the
@@ -63,7 +63,7 @@ class EmbeddingPayload:
     Attributes:
         key: ``"<model>/<region>"``, the entry's key in the run's
             ``embeddings`` block and its folder under ``embeddings/``; the
-            region is ``crops``, ``grid`` or ``grid-<name>``.
+            region is ``crops`` or ``grid``, either optionally ``-<name>``.
         frame: The table: its key columns (``Object_Label`` for crops, the
             ``Grid_*`` keys for a grid) and ``embedding``, one 1-D
             ``float16`` vector per row.
@@ -102,7 +102,7 @@ class EmbeddingPayload:
 
     @property
     def region(self) -> str:
-        """``"crops"``, ``"grid"`` or ``"grid-<name>"``, the region folder of :attr:`key`."""
+        """``"crops"`` or ``"grid"``, optionally ``-<name>``: the region folder of :attr:`key`."""
         return self.key.partition("/")[2]
 
     @property

@@ -1526,9 +1526,9 @@ declares and enforces both; byte-stable canonical JSON, never read back, so
 not tracked state; `metrics.json`'s `pipeline_sha256` is the digest every
 aggregated table shares and is `null` for v1 flat tables, which record none),
 `embeddings/<model>/<region>.parquet` and `embeddings/manifest.json`
-(the region is `crops`, `grid`, or `grid-<name>` for a grid embedder with a
-`grid_name`, so one pipeline can publish several grids of one model, e.g.
-rig1's `grid-wells` and `grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
+(the region is `crops` or `grid`, or `crops-<name>` / `grid-<name>` for an
+embedder given a `name`, so one pipeline can publish several embedders of one
+model and region, e.g. rig1's `grid-wells` and `grid-agar`; #281 spec E5, `_cli_embedding_deliverables.py`, in the finalizer task
 itself, never in the `0-K` aggregate shards. **Two phases, so a failure
 changes no deliverable** (P4 review I1): `stage_embedding_deliverables`
 runs *before the master is written*, reads every non-stale entry of each

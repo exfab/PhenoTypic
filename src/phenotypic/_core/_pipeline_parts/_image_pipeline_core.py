@@ -349,9 +349,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         A run folder holds one table per ``"<model>/<region>"`` key, so two
         embedders of one model and region -- even with different pooling --
-        would overwrite each other's table. Give them different models, give
-        two grids different ``grid_name`` (``grid-wells`` and ``grid-agar``
-        coexist), or keep one.
+        would overwrite each other's table. Give them different models or
+        different ``name`` (``grid-wells`` and ``grid-agar`` coexist), or keep
+        one.
         """
         owners: Dict[str, str] = {}
         for key, measurer in value.items():
@@ -363,7 +363,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     f"measurers {owners[payload_key]!r} and {key!r} would both "
                     f"write the embedding table {payload_key!r}; a run folder "
                     "holds one table per model and region, so keep one of them, "
-                    "or give two grids different grid_name"
+                    "or give them different names"
                 )
             owners[payload_key] = key
         return value

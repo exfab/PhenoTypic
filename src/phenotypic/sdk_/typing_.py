@@ -69,8 +69,8 @@ InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
 #: What a ``MeasureEmbedding`` embeds (#281 spec E1): ``"objects"`` crops each
 #: detected colony's bounding box and writes ``embeddings/<model>/crops/``;
 #: ``"grid"`` crops each cell of a user-set grid and writes
-#: ``embeddings/<model>/grid/``, or ``embeddings/<model>/grid-<name>/`` with a
-#: ``grid_name``. Literal-only, like ``InputLayer``.
+#: ``embeddings/<model>/grid/``; either gains ``-<name>`` with a ``name``.
+#: Literal-only, like ``InputLayer``.
 EmbeddingRegions: TypeAlias = Literal["objects", "grid"]
 
 #: How ``MeasureDinoEmbedding`` turns a region into one vector (#281 spec E3):
