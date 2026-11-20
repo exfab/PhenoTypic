@@ -50,9 +50,10 @@ pick_partition() {
   for p in "${parts[@]}"; do
     # The controller intermittently answers "Requested node configuration is
     # not available" or "Zero Bytes were transmitted" to a request it accepts
-    # a moment later, so ask up to three times.
+    # a moment later, so ask up to five times, ten seconds apart.
     start=""
-    for _ in 1 2 3; do
+    for attempt in 1 2 3 4 5; do
+      (( attempt > 1 )) && sleep 10
       # shellcheck disable=SC2046
       start=$(sbatch --test-only $(flags_for "$p" "$gpu") --cpus-per-task=8 --mem=64G \
                 --time="$time" --wrap=true 2>&1 | grep -o 'to start at [0-9T:-]*' | awk '{print $4}') || true
