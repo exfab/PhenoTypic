@@ -347,11 +347,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     ) -> Dict[str, MeasureFeatures]:
         """Refuse two embedders that would write one embedding table (#281 spec E2).
 
-        A run folder holds one table per ``"<model>/<layer>/<region>"`` key, so two
-        embedders of one model and region -- even with different pooling --
-        would overwrite each other's table. Give them different models or
-        different ``name`` (``grid-wells`` and ``grid-agar`` coexist), or keep
-        one.
+        A run folder holds one table per ``"<model>/<layer>/<region>"`` key, so
+        two embedders of one model, layer and region -- even with different
+        pooling -- would overwrite each other's table. Give them different
+        models, layers or ``name`` (``rgb/grid-wells``, ``gray/grid-wells``
+        and ``rgb/grid-agar`` coexist), or keep one.
         """
         owners: Dict[str, str] = {}
         for key, measurer in value.items():
@@ -362,8 +362,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 raise ValueError(
                     f"measurers {owners[payload_key]!r} and {key!r} would both "
                     f"write the embedding table {payload_key!r}; a run folder "
-                    "holds one table per model and region, so keep one of them, "
-                    "or give them different names"
+                    "holds one table per model, layer and region, so keep one "
+                    "of them, or give them different names"
                 )
             owners[payload_key] = key
         return value

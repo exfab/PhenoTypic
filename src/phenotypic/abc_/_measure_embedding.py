@@ -46,6 +46,11 @@ _GRID_KEY_COLUMNS: Final[tuple[GRID, ...]] = (
     GRID.COL_INTERVAL_END,
 )
 
+#: Fields added to ``MeasureEmbedding`` after embedders were in use (#281
+#: named embedders / layer), and the default that leaves
+#: :meth:`MeasureEmbedding._params_sha256` where it was before each existed.
+_DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {"name": None, "layer": "rgb"}
+
 #: Descriptor fields :meth:`MeasureEmbedding.entry_descriptor` must return.
 _ENTRY_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
     {"model", "dim", "dtype", "pooling"}
@@ -501,10 +506,18 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     # ------------------------------------------------------------------ #
 
     def _params_sha256(self) -> str:
-        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``)."""
-        canonical = json.dumps(
-            self.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
-        )
+        """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``).
+
+        ``name=None`` and ``layer="rgb"`` are left out
+        (:data:`_DIGEST_NEUTRAL_DEFAULTS`), so an unnamed rgb embedder has the
+        digest it had before either field existed; a name or ``layer="gray"``
+        is part of it.
+        """
+        params = self.model_dump(mode="json")
+        for field, neutral in _DIGEST_NEUTRAL_DEFAULTS.items():
+            if field in params and params[field] == neutral:
+                del params[field]
+        canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def payload(self, image: Image) -> EmbeddingPayload:

@@ -943,3 +943,36 @@ def test_two_named_grids_in_place_add_one_folder_holding_both_tables(kit, tmp_pa
             assert table.column(str(GRID.ROW_INTERVAL_END)).to_pylist() == ends
         tables = store / "tables" / added.run_id / "embeddings" / model / "rgb"
         assert sorted(p.name for p in tables.iterdir() if p.is_dir()) == ["grid-agar", "grid-wells"]
+
+
+def test_both_layers_in_place_add_one_folder_holding_both(kit, tmp_path):
+    """#281 layer: ``wells`` on rgb and on gray, one name, one in-place run,
+    one new folder holding ``<model>/rgb/grid-wells`` and ``<model>/gray/grid-wells``."""
+    import pyarrow.parquet as pq
+
+    from tests._tiny_run import with_meas
+
+    make = toy_grid_embedder_of if kit.model(0).startswith("toy") else grid_embedder
+    pipeline = with_meas(
+        tmp_path, wells_rgb=make(name="wells"), wells_gray=make(name="wells", layer="gray")
+    )
+    result = in_place(kit.tree, pipeline)
+    assert result.exit_code == 0, result.output
+    model = kit.model(0)
+    for store in _stores(kit.tree):
+        runs = list_table_runs(store)
+        assert [r.order for r in runs] == [1, 2]
+        added = runs[-1]
+        entries = added.descriptor["embeddings"]
+        assert set(entries) == {f"{model}/rgb/grid-wells", f"{model}/gray/grid-wells"}
+        for layer in ("rgb", "gray"):
+            entry = entries[f"{model}/{layer}/grid-wells"]
+            assert entry["stale"] is False and entry["input"]["layer"] == layer
+            assert pq.read_metadata(added.embedding_path(f"{model}/{layer}/grid-wells")).num_rows == 4
+        layers = store / "tables" / added.run_id / "embeddings" / model
+        assert sorted(p.name for p in layers.iterdir() if p.is_dir()) == ["gray", "rgb"]
+        rgb, gray = (
+            pq.read_table(added.embedding_path(f"{model}/{layer}/grid-wells")).column("embedding")
+            for layer in ("rgb", "gray")
+        )
+        assert not rgb.equals(gray)

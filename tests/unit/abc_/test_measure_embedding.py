@@ -253,6 +253,24 @@ def test_the_name_round_trips_through_json():
     assert clone.payload_key() == "toy-v1/rgb/grid-wells"
 
 
+def test_an_unnamed_rgb_embedder_keeps_its_params_digest():
+    """``name=None`` and ``layer="rgb"`` are left out of
+    ``producer.params_sha256``, so an embedder that predates both fields keeps
+    its digest, and so its deliverable's descriptor."""
+    import hashlib
+    import json
+
+    from tests._tiny_run import toy_embedder_class, toy_grid_embedder_of
+
+    for embedder in (toy_grid_embedder_of(), toy_embedder_class()()):
+        dumped = embedder.model_dump(mode="json")
+        assert (dumped.pop("name"), dumped.pop("layer")) == (None, "rgb")
+        before = hashlib.sha256(
+            json.dumps(dumped, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        assert embedder._params_sha256() == before
+
+
 def test_name_and_layer_each_change_the_params_digest():
     """``producer.params_sha256`` is the canonical dump, so a name and a layer
     each make a distinct descriptor."""
