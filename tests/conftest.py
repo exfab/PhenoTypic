@@ -29,6 +29,7 @@ from tests._tiny_run import (  # noqa: F401
     image_with_two_models,
     input_store_v2,
     measured_image,
+    param_stub_backbone,
     metadata_bytes,
     old_tree_with_measurements_csv,
     pipeline_file_a,

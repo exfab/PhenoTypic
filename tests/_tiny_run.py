@@ -1230,6 +1230,68 @@ def _build_stub_dino(num_register_tokens: int = 0):
     return _StubDinoModel().eval(), _StubProcessor()
 
 
+def _build_param_stub_dino(num_register_tokens: int = 0, *, leaky: bool = False):
+    """A parametric stand-in for a DINOv2 ``(model, processor)``; needs torch.
+
+    Where :func:`_build_stub_dino` has no weights, this model has real ones, so
+    ``.to(dtype)`` changes what it computes (#282 plan review I14). The pooled
+    patch features are laid out as in the plain stub, the CLS (patch maximum)
+    and the *num_register_tokens* registers
+    (:data:`STUB_REGISTER_VALUE`) are prepended, and every token goes through
+    a fixed-seed ``Linear(STUB_HIDDEN_SIZE, STUB_HIDDEN_SIZE)``, a layer norm
+    and a softmax mixing **within each sample's tokens**. So patch and
+    register tokens reach the CLS output, and a sample's rows never depend on
+    its batch neighbours.
+
+    ``leaky=True`` adds the **batch** mean to every row: a model whose rows
+    depend on their neighbours, which a batch-isolation check must catch
+    (plan review I13). The processor is the plain stub's.
+    """
+    from types import SimpleNamespace
+
+    import torch
+
+    _, processor = _build_stub_dino(num_register_tokens)
+
+    class _ParamStubDinoModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(20261119)
+                self.mix = torch.nn.Linear(STUB_HIDDEN_SIZE, STUB_HIDDEN_SIZE)
+            self.config = SimpleNamespace(
+                patch_size=STUB_PATCH_SIZE,
+                hidden_size=STUB_HIDDEN_SIZE,
+                num_register_tokens=num_register_tokens,
+                _commit_hash=STUB_COMMIT,
+            )
+
+        def forward(self, pixel_values):
+            dtype = self.mix.weight.dtype
+            pooled = torch.nn.functional.avg_pool2d(
+                pixel_values.to(dtype), STUB_PATCH_SIZE
+            )
+            tokens = pooled.flatten(2).transpose(1, 2)  # (B, Hp*Wp, 3)
+            patches = torch.cat([tokens, tokens**2, tokens[..., :2]], dim=-1)
+            cls = patches.amax(dim=1, keepdim=True)
+            registers = torch.full(
+                (patches.shape[0], num_register_tokens, patches.shape[-1]),
+                STUB_REGISTER_VALUE,
+                dtype=dtype,
+            )
+            seq = torch.cat([cls, registers, patches], dim=1)
+            hidden = torch.nn.functional.layer_norm(
+                self.mix(seq), (STUB_HIDDEN_SIZE,)
+            )
+            scores = hidden @ hidden.transpose(1, 2) / STUB_HIDDEN_SIZE**0.5
+            mixed = torch.softmax(scores, dim=-1) @ hidden  # within each sample
+            if leaky:
+                mixed = mixed + mixed.mean(dim=0, keepdim=True)
+            return SimpleNamespace(last_hidden_state=mixed)
+
+    return _ParamStubDinoModel().eval(), processor
+
+
 @pytest.fixture
 def stub_backbone(monkeypatch):
     """Patch ``MeasureDinoEmbedding``'s backbone loader with a tiny stub.
@@ -1254,8 +1316,62 @@ def stub_backbone(monkeypatch):
     module._cached_backbone.cache_clear()
 
 
-def install_stub_backbone(monkeypatch, *, num_register_tokens: int = 0) -> list[dict]:
+@pytest.fixture
+def param_stub_backbone(monkeypatch):
+    """:func:`stub_backbone` with the parametric stub (#282 tests use this).
+
+    Same ``load_calls`` namespace; the backbone cache is cleared afterwards.
+    """
+    from types import SimpleNamespace
+
+    from phenotypic.measure import _measure_dino_embedding as module
+
+    calls = install_stub_backbone(monkeypatch, parametric=True)
+    yield SimpleNamespace(load_calls=calls)
+    module._cached_backbone.cache_clear()
+
+
+def inline_golden_cases() -> dict:
+    """The #282 P0 golden cases: ``{case: ImagePipeline}``, all on ``device="cpu"``.
+
+    Run each under the parametric stub (``registers_mean`` with
+    ``num_register_tokens=4``). Pinned to the CPU so a GPU node cannot move
+    the bytes (plan review I13).
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.grid import ManualGridFinder
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    def _pipe(**kwargs):
+        return ImagePipeline(meas={"emb": MeasureDinoEmbedding(device="cpu", **kwargs)})
+
+    return {
+        "objects_cls": _pipe(),
+        "objects_mean_masked": _pipe(
+            pooling="crop_mean", mask_background=True, crop_pad_frac=0.5
+        ),
+        "objects_dense": _pipe(pooling="masked_dense", crop_px=112),
+        "grid_cls": _pipe(
+            regions="grid",
+            grid=ManualGridFinder(row_edges=[0, 100, 200], col_edges=[0, 150, 300]),
+        ),
+        "gray_objects": _pipe(layer="gray", name="g"),
+        "registers_mean": _pipe(pooling="crop_mean"),
+    }
+
+
+def install_stub_backbone(
+    monkeypatch,
+    *,
+    num_register_tokens: int = 0,
+    parametric: bool = False,
+    leaky: bool = False,
+) -> list[dict]:
     """Patch ``MeasureDinoEmbedding``'s loader with :func:`_build_stub_dino`.
+
+    With ``parametric=True`` the stub is :func:`_build_param_stub_dino` (real
+    weights, so ``dtype`` matters), and ``leaky=True`` makes its rows depend
+    on the batch. The default is the #281 stub, so #281's tests keep it.
 
     Clears the measurer's backbone cache first, so the next measure loads
     this stub. :func:`stub_backbone` is this with no registers; a test that
@@ -1278,6 +1394,8 @@ def install_stub_backbone(monkeypatch, *, num_register_tokens: int = 0) -> list[
                 "revision": revision,
             }
         )
+        if parametric:
+            return _build_param_stub_dino(num_register_tokens, leaky=leaky)
         return _build_stub_dino(num_register_tokens)
 
     module._cached_backbone.cache_clear()
