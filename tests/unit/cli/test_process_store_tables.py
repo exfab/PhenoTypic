@@ -238,4 +238,4 @@ def test_the_grid_entry_records_the_cpu_device(tmp_path, tiny_inputs, stub_backb
     out = tmp_path / "out"
     run_cli(tiny_inputs, out, mode="process", pipeline=grid_process_pipeline(tmp_path), extra=ZARR_RGB)
     (run,) = list_table_runs(_stores(out)[0])
-    assert run.descriptor["embeddings"][f"{DINO_MODEL}/grid"]["model"]["device"] == "cpu"
+    assert run.descriptor["embeddings"][f"{DINO_MODEL}/rgb/grid"]["model"]["device"] == "cpu"

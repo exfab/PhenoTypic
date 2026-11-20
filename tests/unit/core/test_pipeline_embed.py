@@ -59,7 +59,7 @@ def test_the_crop_payload_descriptor_binds_the_objmap(toy_embedder, detected_pla
     descriptor = payload.descriptor
     assert descriptor["key"] == str(OBJECT.LABEL)
     assert descriptor["dim"] == 4
-    assert descriptor["input"] == {"series": "rgb", "level": 0}
+    assert descriptor["input"] == {"series": "rgb", "level": 0, "layer": "rgb"}
     assert descriptor["producer"]["class"] == type(toy_embedder).__name__
     assert len(descriptor["producer"]["params_sha256"]) == 64
     assert descriptor["binds"] == {

@@ -70,7 +70,7 @@ def test_the_entry_carries_the_descriptor_and_is_fresh(tmp_path, image_with_obje
     assert entry["dim"] == TOY_DIM
     assert entry["dtype"] == "float16"
     assert entry["key"] == "Object_Label"
-    assert entry["input"] == {"series": "rgb", "level": 0}
+    assert entry["input"] == {"series": "rgb", "level": 0, "layer": "rgb"}
     assert entry["binds"]["objmap_path"] == "rgb/labels/objmap"
     assert entry["files"] == [
         {
