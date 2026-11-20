@@ -1877,3 +1877,100 @@ def process_store_tree(tmp_path: Path, tiny_inputs: Path, stub_backbone) -> Path
 def toy_process_store_tree(tmp_path: Path, tiny_inputs: Path, registered_toy_embedder) -> Path:
     """:func:`process_store_tree` with :func:`toy_grid_process_pipeline`: torch-free."""
     return _process_store_tree(tmp_path, tiny_inputs, toy_grid_process_pipeline(tmp_path))
+
+
+# ---------------------------------------------------------------------------
+# #282 P3 T1 (C7): ``replace_run_embeddings``, the Stage-4 store transaction
+# ---------------------------------------------------------------------------
+
+
+def _metadata_tables_of_a(store: Path, directory: Path):
+    """Pipeline A's tables for *store*'s own image, with a metadata table.
+
+    The metadata snapshot shares ``Object_Label`` with the measurements, so
+    :func:`~phenotypic._cli._embedded_measurement_tables.prepare_image_tables`
+    reaches its joined arm and the run gets a ``pht-metadata.parquet``.
+    """
+    from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
+
+    frame = _build_tiny_pipeline().measure(_load_store(store))
+    frame["Pipeline_Marker"] = "A"
+    snapshot = Path(directory) / "metadata.csv"
+    snapshot.write_text("Object_Label,Metadata_Strain\n1,WT\n2,MUT\n", encoding="utf-8")
+    tables = prepare_image_tables(frame, snapshot)
+    assert tables.metadata is not None, "the snapshot must join, or the run gets no metadata"
+    return tables
+
+
+@pytest.fixture
+def staged_store_with_tables(tmp_path: Path, measured_image, pipeline_file_a: Path,
+                             pipeline_file_b: Path) -> tuple[Path, str]:
+    """A promoted v2 store as Stage 3 leaves it, and the run Stage 4 embeds into.
+
+    Built with today's writers, never by hand:
+
+    - ``save2zarr`` of :func:`measured_image` with A's tables and an
+      ``upstream`` block (:func:`~phenotypic.sdk_.upstream_entries_for_input`
+      of an input store holding A's run), so the run is ``2-<A>``;
+    - :func:`resave_with_pipeline` with B, which adds folder ``3-<B>``;
+    - :func:`~phenotypic.sdk_.replace_image_tables` of A's run with a
+      metadata table.
+
+    No run holds embeddings.
+
+    Returns:
+        ``(store, run_id)``: ``run_id`` is A's folder, holding a measurement
+        and a metadata table.
+    """
+    import hashlib
+
+    from phenotypic.sdk_ import list_table_runs, replace_image_tables, upstream_entries_for_input
+
+    _close_open_application(measured_image)
+    source = measured_image.save2zarr(
+        tmp_path / "in" / "ds" / "source.ome.zarr",
+        measurement_table=tables_for(measured_image),
+    )
+    upstream = upstream_entries_for_input(source, tmp_path / "in")
+    assert upstream, "the input store must give the staged store an upstream entry"
+    store = measured_image.save2zarr(
+        tmp_path / "out" / "staged.ome.zarr",
+        measurement_table=tables_for(measured_image),
+        upstream=upstream,
+    )
+    resave_with_pipeline(store, pipeline_file_b)
+    sha_a = hashlib.sha256(Path(pipeline_file_a).read_bytes()).hexdigest()
+    run = replace_image_tables(
+        store, _metadata_tables_of_a(store, tmp_path), pipeline_sha256=sha_a
+    )
+    runs = list_table_runs(store)
+    assert len(runs) == 2 and run.run_id in {r.run_id for r in runs}
+    assert run.metadata_path().is_file() and run.measurements_path().is_file()
+    assert not any(r.descriptor.get("embeddings") for r in runs)
+    return store, run.run_id
+
+
+def objects_payload_for(store: Path) -> dict:
+    """A ``toy-v1/rgb/objects`` payload computed from *store*'s own image.
+
+    Its ``binds.objmap_sha256`` is :func:`~phenotypic.sdk_._measurement_tables.objmap_digest`
+    of the store's level-0 objmap, so a write that passes the store's own
+    digests records it ``stale: false``.
+
+    Returns:
+        ``{"toy-v1/rgb/objects": EmbeddingPayload}``.
+    """
+    from phenotypic import ImagePipeline
+
+    image = _load_store(store)
+    _close_open_application(image)
+    payloads = ImagePipeline(meas={"emb": toy_embedder_class()()}).embed(image)
+    assert set(payloads) == {"toy-v1/rgb/objects"}, sorted(payloads)
+    return payloads
+
+
+def root_sha256(store: Path) -> str:
+    """sha256 of *store*'s root ``zarr.json`` bytes."""
+    import hashlib
+
+    return hashlib.sha256((Path(store) / "zarr.json").read_bytes()).hexdigest()

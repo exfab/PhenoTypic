@@ -36,6 +36,7 @@ from tests._tiny_run import (  # noqa: F401
     pipeline_file_b,
     plate,
     process_store_tree,
+    staged_store_with_tables,
     registered_toy_embedder,
     store_with_crop_entry,
     stub_backbone,
