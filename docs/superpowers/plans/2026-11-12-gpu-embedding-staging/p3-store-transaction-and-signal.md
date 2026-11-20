@@ -44,8 +44,13 @@ GPU jobs queue.
   - The run's entry gets `embeddings = write_embedding_tables(part, run_id, payloads, objmap_sha256=..., array_sha256=...)`:
     a total description of this write, as in `replace_image_tables`.
     `stale` is recomputed for **that run only**, against the digests the caller
-    passes. The caller computes them from the store under the same root
-    (P4 T3's loader does), so a fresh payload reads `stale: false`.
+    passes. **The caller computes them by reading the live store**, never from
+    the payloads' own `binds` (plan review I11): P4 T3's commit reads the
+    store's level-0 objmap and each bound series' level-0 array
+    (`objmap_digest`, `array_digest`, `:223-252`) after checking the root, so a
+    payload computed from another image does read `stale: true`.
+    `array_sha256` is a `Mapping[str, str]` keyed by series name, as
+    `refresh_embedding_staleness` takes it (`:255`).
   - Every other run entry, `upstream`, `metadata_table`, figures and the
     journal are byte-equal in the new root.
   - The root is written last and re-consolidated when it was consolidated
@@ -174,8 +179,17 @@ def test_an_unknown_run_is_refused_before_any_part(staged_store_with_tables):
   - `read_stage4_signal(path: Path, *, work_id: str, run_id: str) -> Stage4Signal | None`.
     `None` when the file is absent, unreadable, or fenced to another
     `work_id`/`run_id`; an unreadable file logs one warning naming it.
-  - `stage4_signals_complete(output_dir: Path, dataset: str, stem: str, keys: Iterable[str], *, work_id: str, run_id: str) -> bool`:
-    every key readable under the fence, and all one `root_sha256`.
+  - `classify_stage4_signals(output_dir: Path, dataset: str, stem: str, keys: Iterable[str], *, work_id: str, run_id: str, live_root_sha256: str) -> Stage4SignalState`
+    with `@dataclass(frozen=True) class Stage4SignalState`: `valid: frozenset[str]`
+    (readable, fenced to this work id and run, **and** `root_sha256 == live_root_sha256`)
+    and `stale: frozenset[str]` (present but unreadable, fenced elsewhere, or
+    computed against another root). Per key, so a round reuses the keys it
+    already has (plan review C4), and against the **live** root, so a signal
+    from before a reprocess is never committed (C5).
+  - `stage4_signals_complete(state: Stage4SignalState, keys: Iterable[str]) -> bool`:
+    `state.valid == set(keys)`.
+  - `delete_stage4_signal_keys(output_dir: Path, dataset: str, stem: str, keys: Iterable[str], *, commit_guard: CommitGuard | None = None) -> int`:
+    removes those keys' files only (the stale ones, before re-embedding them).
   - `delete_stage4_signals(output_dir: Path, dataset: str, stem: str, *, commit_guard: CommitGuard | None = None) -> int`:
     removes the stem's file under every key directory of the dataset; returns
     the count.
@@ -201,12 +215,24 @@ def test_the_path_is_keyed_by_model_layer_region(tmp_path):
     assert p.relative_to(tmp_path).parts[-6:] == (
         "stage4_payload", "ds", "dinov2-vitb14", "gray", "grid-wells", "img.parquet")
 
-def test_complete_needs_every_key_and_one_root(tmp_path, image_with_two_models):
+def test_signals_are_classified_per_key_against_the_live_root(tmp_path, image_with_two_models):
     a, b = payloads_of(image_with_two_models).values()
-    write_stage4_signal(tmp_path, "ds", "img", a, work_id="w", run_id="1-x", root_sha256="r1")
-    assert not stage4_signals_complete(tmp_path, "ds", "img", [a.key, b.key], work_id="w", run_id="1-x")
-    write_stage4_signal(tmp_path, "ds", "img", b, work_id="w", run_id="1-x", root_sha256="r2")
-    assert not stage4_signals_complete(tmp_path, "ds", "img", [a.key, b.key], work_id="w", run_id="1-x")
+    write_stage4_signal(tmp_path, "ds", "img", a, work_id="w", run_id="1-x", root_sha256="live")
+    state = classify_stage4_signals(tmp_path, "ds", "img", [a.key, b.key], work_id="w",
+                                    run_id="1-x", live_root_sha256="live")
+    assert state.valid == {a.key} and state.stale == frozenset()          # one key reusable
+    assert not stage4_signals_complete(state, [a.key, b.key])
+    write_stage4_signal(tmp_path, "ds", "img", b, work_id="w", run_id="1-x", root_sha256="old")
+    state = classify_stage4_signals(tmp_path, "ds", "img", [a.key, b.key], work_id="w",
+                                    run_id="1-x", live_root_sha256="live")
+    assert state.valid == {a.key} and state.stale == {b.key}              # computed before a reprocess
+
+def test_only_the_named_keys_are_deleted(tmp_path, image_with_two_models):
+    a, b = payloads_of(image_with_two_models).values()
+    for p in (a, b):
+        write_stage4_signal(tmp_path, "ds", "img", p, work_id="w", run_id="1-x", root_sha256="r")
+    assert delete_stage4_signal_keys(tmp_path, "ds", "img", [b.key]) == 1
+    assert stage4_signal_path(tmp_path, "ds", a.key, "img").is_file()
 
 def test_a_corrupt_signal_reads_as_absent(tmp_path, image_with_objects_payload, caplog):
     payload = payloads_of(image_with_objects_payload)["toy-v1/rgb/objects"]

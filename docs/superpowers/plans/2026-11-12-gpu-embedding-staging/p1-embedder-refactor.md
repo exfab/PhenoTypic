@@ -32,9 +32,11 @@ inline `payload()` is those three, and its bytes are P0 T2's golden. Stage 4
   - `@dataclass(frozen=True) class BackboneInputs`:
     - `kind: Literal["crops", "tiles", "boxes"]`
     - `arrays: tuple[np.ndarray, ...]`. `"crops"`: one `(N, px, px, 3)` uint8
-      array. `"tiles"`: one `(h, w, 3)` uint8 array per tile, each side a
-      multiple of the patch. `"boxes"`: one `(N, 4)` int64 array, for an
-      embedder with no backbone (inline only).
+      array. `"tiles"`: one `(3, h, w)` float32 array per tile, the HF
+      processor's own `pixel_values` (each side a multiple of the patch), so
+      every path normalises a tile exactly as inline does today (plan review
+      I1). `"boxes"`: one `(N, 4)` int64 array, for an embedder with no
+      backbone (inline only).
     - `pooling: Literal["crop_cls", "crop_mean", "patches", "none"]`
   - `@dataclass(frozen=True) class PreparedRegions` (picklable; it crosses
     DataLoader worker processes in P4):
@@ -59,11 +61,14 @@ inline `payload()` is those three, and its bytes are P0 T2's golden. Stage 4
       calls `_embed_object_boxes` / `_embed_boxes` on the given image.
     - `encode(self, prepared: PreparedRegions, encoder: RegionEncoder) -> np.ndarray`:
       `self.vectors_from(prepared, encoder.run(prepared.inputs))`. A
-      zero-region `prepared` returns `(0, D)` without calling `encoder.run`.
+      zero-region `prepared` returns a `(0, 0)` float32 array without calling
+      `encoder.run` **or `_dim()`**: `_dim()` calls `entry_descriptor()`, which
+      would load a second model in Stage 4 (plan review I12).
     - `vectors_from(self, prepared: PreparedRegions, outputs: list[np.ndarray]) -> np.ndarray`:
       `(N, D)` float32, region order.
     - `payload_from(self, prepared: PreparedRegions, vectors: np.ndarray, descriptor: Mapping[str, Any]) -> EmbeddingPayload`:
-      checks shape `(N, descriptor["dim"])`, casts to float16, refuses
+      reshapes a zero-row `vectors` to `(0, descriptor["dim"])`, checks shape
+      `(N, descriptor["dim"])`, casts to float16, refuses
       non-finite values with today's message (`:497-501`), and builds the
       descriptor `{**descriptor, key, input, producer, binds}` exactly as
       `payload()` does (`:565-574`).
@@ -87,12 +92,15 @@ def test_prepared_regions_pickle(toy_grid_embedder, plate):
     again = pickle.loads(pickle.dumps(prepared))
     assert again.key == prepared.key and again.keys.equals(prepared.keys)
 
-def test_zero_regions_never_call_the_encoder(toy_embedder, plate):
+def test_zero_regions_call_neither_the_encoder_nor_dim(toy_embedder, plate, monkeypatch):
     empty = plate.copy(); empty.objmap[:] = 0
     prepared = toy_embedder.prepare_regions(empty)
     class Refuse:
         def run(self, inputs): raise AssertionError("encoder called for zero regions")
-    assert toy_embedder.encode(prepared, Refuse()).shape == (0, 4)
+    monkeypatch.setattr(type(toy_embedder), "_dim", lambda self: pytest.fail("_dim called"))
+    vectors = toy_embedder.encode(prepared, Refuse())
+    payload = toy_embedder.payload_from(prepared, vectors, {**toy_embedder.entry_descriptor()})
+    assert len(payload.frame) == 0 and payload.dim == 4
 
 def test_payload_from_refuses_non_finite_float16(toy_embedder, detected_plate):
     prepared = toy_embedder.prepare_regions(detected_plate)
@@ -140,15 +148,24 @@ def test_grid_outside_the_image_is_raised_by_prepare(plate):
 
 **Files:**
 - Modify: `src/phenotypic/measure/_measure_dino_embedding.py`
-  - `prepare_regions` override: crops through `_crop` (`:477`) and
-    `_square_colony_crop` (`:506`), unchanged, for `crop_cls`/`crop_mean`;
-    patch-aligned tiles for `masked_dense`, cut as `_masked_dense` does today
-    (`:546-600`) with the features grid shape and per-region masks in `pool_plan`.
+  - `prepare_regions(image, *, processor=None)` override: crops through `_crop`
+    (`:477`) and `_square_colony_crop` (`:506`), unchanged, for
+    `crop_cls`/`crop_mean`; for `masked_dense`, patch-aligned tiles cut as
+    `_masked_dense` does today (`:546-600`), each passed through
+    `processor(images=tile, return_tensors="np", **NATIVE_PROCESSOR_KWARGS)`
+    (`_dino_support.py:56`, the call `extract_patch_features` makes at
+    `:342-344`, with `"np"` in place of `"pt"`), with the feature-grid shape and
+    per-region masks in `pool_plan`. `processor=None` loads one through
+    `load_dino_processor` (below).
+  - `_dino_support.py`: add `load_dino_processor(dino_version, dino_size, *, revision=None) -> Any`,
+    `functools.lru_cache`d, loading only `AutoImageProcessor` (no weights), so a
+    DataLoader worker can normalise tiles without a model.
   - private `_InlineDinoEncoder(model, processor, device, batch_size)`
     implementing `RegionEncoder`: `"crops"` call `embed_crops`
     (`detect/nn/_helper/_dino_support.py:400`) once per `batch_size` slice, as
-    `_embed_regions` does (`:442-475`); `"tiles"` call `extract_patch_features`
-    (`_dino_support.py:320`) per tile.
+    `_embed_regions` does (`:442-475`); `"tiles"` run the model on each tile's
+    `pixel_values` and `reshape_patch_tokens` (`:280`), the second half of
+    `extract_patch_features` (`:320-358`).
   - `vectors_from` for `"patches"`: place tiles into the features grid and
     `_pool_under_mask` (`:615`) per region, as `_masked_dense` does.
   - `entry_descriptor_for(self, model: Any, compute: Mapping[str, Any] | None = None) -> dict`:
@@ -163,10 +180,11 @@ def test_grid_outside_the_image_is_raised_by_prepare(plate):
 **Interfaces:**
 - Consumes: Task 1.
 - Produces:
-  - `MeasureDinoEmbedding.prepare_regions(image) -> PreparedRegions` whose
+  - `MeasureDinoEmbedding.prepare_regions(image, *, processor=None) -> PreparedRegions` whose
     `inputs.kind` is `"crops"` (`pooling` `crop_cls`/`crop_mean`) or `"tiles"`
-    (`pooling="patches"`). It calls no torch and loads no model: P4's DataLoader
-    workers run it.
+    (`pooling="patches"`). It loads no model; for crop pooling it imports no
+    torch. P4's DataLoader workers run it.
+  - `load_dino_processor(dino_version, dino_size, *, revision=None) -> Any` (in `_dino_support.py`)
   - `MeasureDinoEmbedding.entry_descriptor_for(model, compute=None) -> dict`
   - `MeasureDinoEmbedding.crop_geometry() -> tuple[int, int]`: `(crop_px, crop_px)`
 
@@ -193,10 +211,22 @@ def test_crops_are_the_inline_crops(stub_backbone, detected_plate):
     assert prepared.inputs.arrays[0].shape == (detected_plate.num_objects, 224, 224, 3)
     assert prepared.inputs.arrays[0].dtype == np.uint8
 
-def test_dense_tiles_are_patch_aligned(stub_backbone, detected_plate):
-    prepared = MeasureDinoEmbedding(pooling="masked_dense", crop_px=112).prepare_regions(detected_plate)
+def test_dense_tiles_are_the_processors_pixels(stub_backbone, detected_plate):
+    m = MeasureDinoEmbedding(pooling="masked_dense", crop_px=112)
+    _, processor = load_dino_backbone(2, "base", "cpu")                      # the stub's
+    prepared = m.prepare_regions(detected_plate, processor=processor)
     assert prepared.inputs.kind == "tiles"
-    assert all(t.shape[0] % 14 == 0 and t.shape[1] % 14 == 0 for t in prepared.inputs.arrays)
+    assert all(t.dtype == np.float32 and t.shape[1] % 14 == 0 and t.shape[2] % 14 == 0
+               for t in prepared.inputs.arrays)
+    first = np.asarray(m._layer_pixels(detected_plate))[:112, :112]
+    ref = processor(images=first, return_tensors="np", **NATIVE_PROCESSOR_KWARGS)["pixel_values"][0]
+    assert np.array_equal(prepared.inputs.arrays[0], ref)                    # same bits as inline
+
+def test_zero_regions_trigger_no_second_load(stub_backbone, plate):
+    m = MeasureDinoEmbedding()
+    empty = plate.copy(); empty.objmap[:] = 0
+    m.encode(m.prepare_regions(empty), object())                             # never .run
+    assert stub_backbone.load_calls == []
 
 def test_entry_descriptor_for_does_not_load(stub_backbone, detected_plate):
     m = MeasureDinoEmbedding(); m.measure(detected_plate)
@@ -206,15 +236,17 @@ def test_entry_descriptor_for_does_not_load(stub_backbone, detected_plate):
     assert len(stub_backbone.load_calls) == n
 ```
 
-  The torch-free test runs in the foundation venv too: it asserts that
+  The torch-free test runs in the foundation venv too: it asserts that crop
   `prepare_regions` itself imports no torch, so a fresh subprocess is the probe.
+  Whether the `masked_dense` path imports torch (through the HF processor) is
+  recorded in the commit message, not asserted.
 - [ ] **Step 2: Run them and confirm they fail.**
 
   ```bash
   eval $TPT tests/unit/measure/test_measure_dino_embedding_steps.py
   ```
 
-  Expected: `AttributeError` or the inherited `"boxes"` kind (5 failed).
+  Expected: `AttributeError` or the inherited `"boxes"` kind (6 failed).
 - [ ] **Step 3: Implement.** Keep the crop loop's memory bound: `prepare_regions`
   builds all `N` crops at once, which at `crop_px=448` on a 1536-colony plate is
   about 0.9 GB (`:463-464`). That is acceptable in a DataLoader worker. The
@@ -233,6 +265,6 @@ def test_entry_descriptor_for_does_not_load(stub_backbone, detected_plate):
 - [ ] **Step 5: Commit.**
 
   ```bash
-  git add src/phenotypic/measure/_measure_dino_embedding.py tests/unit/measure/test_measure_dino_embedding_steps.py
+  git add src/phenotypic/measure/_measure_dino_embedding.py src/phenotypic/detect/nn/_helper/_dino_support.py tests/unit/measure/test_measure_dino_embedding_steps.py
   git commit -m "refactor(embed): MeasureDinoEmbedding prepares on CPU, encodes through a RegionEncoder (#282 P1)"
   ```

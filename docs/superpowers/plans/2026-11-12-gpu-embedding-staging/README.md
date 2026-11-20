@@ -1,12 +1,15 @@
 # GPU Embedding Stage 4 Implementation Plan
 
-**Status:** draft for review · 2026-11-19
+**Status:** revision 2 · 2026-11-19 · revised per `reports/2026-11-12-gpu-embedding-staging/plan-review.md`
+and the spec as amended in `c33b58193` (U5, U7–U10, S1); see "Revision 2" at the end
 **Spec:** `docs/superpowers/specs/2026-11-12-gpu-embedding-staging/design.md` (approved 2026-11-19)
 **Parent:** #281, `docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md`
 **Base:** `feat/gpu-embedding-staging` (PR #282), after the orchestrator merges #281
-(`worktree-dvc-embeddings-refactor` at `d3c54f723` or later) into it. Every
-`file:line` below is read from the #281 worktree at `d3c54f723`, not from the
-#282 branch as it stands today.
+(`worktree-dvc-embeddings-refactor` at `26d7f86a6` or later) into it. Every
+`file:line` below is read from the #281 worktree at `26d7f86a6`, not from the
+#282 branch as it stands today. (`d3c54f723` → `26d7f86a6` changed one test
+file only, so revision 1's anchors carried over; every anchor revision 2 added
+or touched was re-read at `26d7f86a6`.)
 
 ---
 
@@ -14,7 +17,8 @@
 
 **Goal:** Run every `MeasureDinoEmbedding` of a staged run on GPUs, in a Stage 4
 after the store is final. One resident model per GPU shard, batched across
-images, with vectors that do not depend on sharding or batching.
+images, with vectors that, within one GPU model and physical batch size, do not
+depend on sharding or batching (spec goal 3 as restated, S1).
 
 **Architecture:**
 - P1 splits the embedder into a CPU `prepare_regions`, a backbone-only
@@ -38,7 +42,8 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   `model.device` and `model.device_name` are recorded per entry and ignored by
   descriptor grouping (`_cli_embedding_deliverables.py:108`,
   `_PROVENANCE_MODEL_FIELDS`). This plan builds on it and leaves those two
-  fields where they are (open question O4).
+  fields where they are; `compute_block` is their one producer and copies them
+  into `compute` (O4, accepted with that condition).
 - **#281 API this plan starts from, used unchanged:**
   - keys `<model>/<layer>/<region>`;
   - regions `objects | grid | objects-<name> | grid-<name>`;
@@ -53,10 +58,11 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   | full, SLURM, `GpuDetector` or `--gpu-slurm` given | `gpu` |
   | full, SLURM, neither | `inline` |
   | full, local | `inline` |
-  | `--mode measure`, SLURM with `--gpu-slurm` | `gpu` |
+  | `--mode measure`, SLURM with `--gpu-slurm` | `gpu`, on the staged controller (U10) |
   | `--mode measure`, otherwise | `inline` |
   | `--mode process` (copy or in place) | `inline`; an explicit `gpu` is refused (R1) |
-  | a pipeline with no in-scope embedder | `inline` (open question O5) |
+  | an in-scope embedder pinned to `device="cpu"` | `inline`, with a note; an explicit `gpu` is refused (U9, R2) |
+  | a pipeline with no in-scope embedder | `inline`, with a note (O5) |
 
 - The resolved value is recorded as `processing_state.json` config
   `"embed_stage"` and `job_metadata.json` `JobMetadataKey.EMBED_STAGE`
@@ -79,23 +85,51 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   - `torch.backends.cuda.matmul.allow_tf32 = False`, `torch.backends.cudnn.allow_tf32 = False`;
   - `torch.set_float32_matmul_precision("highest")`;
   - `torch.use_deterministic_algorithms(True, warn_only=True)`;
-  - the Stage-4 script prelude exports `CUBLAS_WORKSPACE_CONFIG=:4096:8`.
+  - `CUBLAS_WORKSPACE_CONFIG=:4096:8`: exported by the Stage-4 SLURM script
+    prelude, and set by the CLI right after `--embed-stage` resolves to `gpu`,
+    before any strategy can create a cuBLAS handle (local Stage 4 runs in the
+    CLI process; plan review I4).
 - **Physical batch:**
   `m = min(batch_size, pow2floor((0.8·GPU_mem − weights − 1 GiB) / per_sample))`.
   It depends on the GPU model (total memory), the backbone and `crop_px` only,
   never on free memory. On OOM, m halves once for the shard and is recorded in
   `compute.physical_batch`. At m = 1, or on a second OOM, the shard exits
-  non-zero. Constants live in P0's logic-validation script.
+  non-zero. Constants live in P0's logic-validation script. Because m differs by
+  GPU model and halving changes it, batch invariance is promised **within one GPU
+  model and physical batch** (S1); across them the distance is measured
+  (P2 T4).
 - **Inside Stage 4, an embedder's device is `cuda`.** A missing or unusable CUDA
   fails the shard, never falls back to CPU. The test-only escape is
   `PHENOTYPIC_STAGE4_DEVICE=cpu`.
-- **One writer per artifact.** Stage 3 (and the single-pass core in a Stage-4
-  run) writes the store with its measurements and `stages.stage3`, and writes
-  **no** record and no embeddings. Stage 4 writes the embeddings (one store
-  transaction), then the record, then consumes its signals, in that order.
+- **Nothing is rewritten after the record that certifies it.** Stage 3 (and
+  the single-pass core in a Stage-4 run) writes the store with its measurements
+  and `stages.stage3`, and writes **no** record and no embeddings. Stage 4 writes
+  the embeddings (one store transaction), then the record, then consumes its
+  signals, in that order.
+- **One "done" predicate.** Under deferral, `stages_1_to_3_done` (a Stage-3
+  marker, a store that matches the work id, a measurement table) means Stages
+  1–3 are finished: every recovery shortcut returns early on it and publishes
+  nothing, and every core that re-runs an image deletes that image's Stage-4
+  signals first (P4 T2).
 - **Signals:** `.phenotypic/progress/stage4_payload/<ds>/<model>/<layer>/<region>/<stem>.parquet`,
   atomic, with `work_id`, `run_id` and `root_sha256` in the Parquet key-value
-  metadata.
+  metadata. A signal is valid only at the **live** root; a stale one is deleted
+  and its key re-embedded. Signals are reused **per key**, and a round that wrote
+  signals has made progress (P3 T2, P4 T3, P5 T1).
+- **A stalled Stage 4 ends unfinished** (U7): after two unchanged rounds the
+  finalizer runs, the leftover images keep no record and no journal row, and the
+  run exits `5`. GPU OOM and a changed root are never terminal per-image
+  failures.
+- **Measure mode** (U8, U10): the measure core carries the image's existing
+  embeddings forward; a Stage-4 failure keeps them and a valid record, and is
+  journalled as `MEASURE_FAILURE_STAGE` (exit `3`). SLURM measure runs on the
+  staged controller with a measure-mode finalizer that writes no forward run
+  proof. Republish has **one carrier**, the manifest flag (manifest v5).
+- **U5:** an unpinned revision is resolved once, at a run's first submission,
+  for Stage-4 runs only (O9); a continuation reuses the recorded commit.
+- **Commit pool and loader:** one commit thread; one DataLoader per backbone,
+  `spawn` context, not persistent, identity `collate_fn`, and
+  `resolve_local_worker_count(-1, n) − 1` workers (`_cli_utils.py:88`).
 - **Process mode** (copy and in place) and AutoConvertRaw-GC's direct
   `process_single_apply_only_core` calls stay inline on CPU, byte for byte (H5).
 - No new resource flags: Stage 4 runs on `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)`
@@ -104,7 +138,7 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   `tests/unit/ci/test_startup_imports.py` and `test_deferred_imports.py` stay
   green. `sdk_` never imports `_cli` (`tests/unit/sdk_/test_run_state_layering.py`).
 - **No file under `src/phenotypic/_gui/` changes.** The run-console control for
-  `--embed-stage` is a GUI follow-up (spec §6).
+  `--embed-stage` is a GUI follow-up (spec §6); see "Follow-ups".
 - `MeasurementInfo` members get `label`/`desc` only, never `bio_desc`.
 
 ### Expected-red GUI tests (#283, inherited from #281)
@@ -146,8 +180,10 @@ Inputs the spec implies but names no test for. Each is pinned in the task named.
    the other images go on. Pinned in P4 T3
    (`test_a_loader_worker_error_fails_only_its_image`).
 3. **`--embed-stage gpu` on a machine with no CUDA, locally.** The run must stop
-   with one error line and exit `1`, journal no per-image failure, and leave every
-   image Stage-4 pending, so a re-run on a GPU node finishes it. Pinned in P4 T3
+   with one error line and exit `1` before Stage 1 writes anything, and a Stage 4
+   that meets no CUDA anyway must journal no per-image failure and leave every
+   image pending, so a re-run on a GPU node finishes it. Pinned in P4 T1
+   (`test_no_cuda_stops_before_stage1`) and P4 T3
    (`test_no_cuda_fails_the_stage_without_journalling_images`).
 4. **More GPU shards than retryable images** (`--gpu-shards 4`, one image left
    after a walltime). Empty shards exit `0`, are not progress and not failure, and
@@ -169,15 +205,20 @@ Inputs the spec implies but names no test for. Each is pinned in the task named.
   ```
 
 - **Torch lane.** Tests that use `stub_backbone` (`tests/_tiny_run.py:1234`, it
-  needs torch), `BatchEncoder` or the Stage-4 worker run in the foundation venv,
-  from the worktree root:
+  needs torch) or P0 T2's `param_stub_backbone`, `BatchEncoder` or the Stage-4
+  worker run in the foundation venv, from the worktree root:
 
   ```bash
   TPT='env QT_QPA_PLATFORM=offscreen PYTHONPATH=src:. /bigdata/exfab/anguy344/gate-results/c18/venv-foundation/bin/python -m pytest -q --no-header -p no:randomly -o addopts= -m "not slow"'
   ```
 
   Each task marks its torch tests **[torch]**. A torch test in the shared env
-  must skip through `pytest.importorskip("torch")`, never fail.
+  must skip through `pytest.importorskip("torch")`, never fail. A test whose
+  embedder has `device="auto"` runs under `stage4_cpu`, which also sets
+  `CUDA_VISIBLE_DEVICES=""`, so a GPU node gives the same bytes as a CPU node.
+- **Crash tests** run the CLI in a real subprocess and kill it with
+  `os._exit(137)` right after the named durable write (`run_cli_subprocess`,
+  P4). An exception raised inside the test process is not a crash.
 - **Lint:** `uv run ruff check --fix <the paths you changed>`, never bare.
 - **Commits:** explicit paths, never `git add -A`; end with the session's
   attribution lines.
@@ -238,17 +279,21 @@ line runs **sequentially in one worktree**:
 | `measure/_measure_dino_embedding.py` | P1 P2 |
 | `detect/nn/_helper/_dino_support.py` | P2 |
 | `detect/nn/_helper/_batch_encoder.py` (new) | P2 P4 |
-| `sdk_/_measurement_tables.py` | P3 |
+| `sdk_/_measurement_tables.py` | P3 P6 |
+| `_cli/_cli_output_manager.py` | P6 |
+| `_cli/_cli_checkpoint_handler.py` | P4 P6 |
+| `sdk_/generate_report.py`, `_cli/_dashboard/_manifest_builder.py` | P4 |
 | `_cli/_cli_stage4_signal.py` (new) | P3 P4 |
 | `_cli/_cli_embed_stage.py` (new) | P4 P5 P6 |
 | `_cli/_cli_stage4_worker.py` (new) | P4 P5 P6 |
 | `_cli/_cli_staged_resume.py` | P4 P6 |
 | `_cli/_cli_staged_workers.py` | P4 |
 | `_cli/_cli_staged_strategy.py` | P4 |
+| `_cli/_cli_staged_slurm_worker.py` | P4 P5 P6 |
 | `_cli/_cli_execution_strategies.py` | P4 P5 P6 |
 | `_cli/_cli_process_single.py` | P4 P5 P6 |
 | `_cli/_cli_staged_controller.py` | P5 P6 |
-| `_cli/_cli_staged_slurm.py`, `_cli_staged_slurm_worker.py` | P5 P6 |
+| `_cli/_cli_staged_slurm.py` | P4 P5 P6 |
 | `_cli/_cli_staged_orchestration.py` | P5 P6 |
 | `_cli/_cli_preflight.py` | P5 |
 | `phenotypicCLI.py` | P4 P5 P6 |
@@ -276,14 +321,14 @@ mid tier. A reviewer is never weaker than its implementer.
 | C7 | P3 T1, `replace_run_embeddings` | Keystone | Opus | light, plus independent reader |
 | C8 | P3 T2, Stage-4 signal | Seam | Opus | light |
 | C9 | P4 T1, resolver, R1–R3, recording | Seam | Opus | light, plus `test_cli_preflight_ordering.py` |
-| C10 | P4 T2, deferral and gated shortcuts | Seam, consistency-critical | Opus | light |
+| C10 | P4 T2, deferral, the done-predicate, the completion predicate | Seam, consistency-critical | Opus | light |
 | C11 | P4 T3, local Stage-4 worker | Keystone | Opus | light |
 | C12 | P4 T4, resume, retry, crash injection | Seam | Opus | **deep: P3–P4** |
 | C13 | P5 T1, controller v2, rounds, worklist | Keystone | Opus | light |
 | C14 | P5 T2, scripts, worker `--stage 4`, no-detector plan, U5 pin | Seam | Opus | light |
 | C15 | P5 T3, preflight codes and docs rows | Leaf | Sonnet | light, plus `tests/unit/test_docs_preflight_codes.py` |
 | C16 | P5 T4, live SLURM smoke | orchestrator, **user approves** | — | **deep: P5** |
-| C17 | P6 T1, T2, measure republish | Seam | Opus | **deep: P6** |
+| C17 | P6 T1, T2, measure carry, republish, measure-mode finalizer | Seam | Opus | **deep: P6** |
 | C18 | P7 T1, docs | Leaf | Sonnet | light, docs build (Slurm, `-D nbsphinx_execute=never`) |
 | C19 | P7 T2, simplify then full regression | code-simplifier (Opus), then orchestrator | — | full sharded regression, once |
 
@@ -301,14 +346,15 @@ mid tier. A reviewer is never weaker than its implementer.
   answers.
 
 **Stop points that need the user.**
-1. Any design question the spec does not settle, including O1–O9 below, before
-   the task that consumes it.
+1. Any design question the spec does not settle, before the task that consumes
+   it. O1–O9 are all decided (below); none is open.
 2. **The live SLURM smoke (P5 T4)** spends real GPU time; it runs only on the
    user's go-ahead.
 3. **A batch-invariance measurement that refutes the hypothesis** (P2 T4): any
-   stored float16 bit that changes with neighbours, position or partition on a
-   fixed physical shape. The spec's §5 fallback (an m = 1-per-crop mode) is then a
-   user decision, and P4 does not start.
+   stored float16 bit that changes with neighbours, position, partition or
+   process at one GPU model and physical batch, or any determinism warning. The
+   spec's §5 fallback (an m = 1-per-crop mode) is then a user decision, and P4
+   does not start.
 4. **DINOv3 weights.** The 7B and H+ rows of P2 T4 need the gated licence
    accepted on the Hugging Face account and a token on the cluster. If either is
    missing, the orchestrator asks rather than skipping the rows silently.
@@ -317,83 +363,78 @@ mid tier. A reviewer is never weaker than its implementer.
 
 | Spec item | Task |
 |---|---|
-| §1 goals 1–3 (speed, larger models, consistent embeddings) | P2 T1–T4, P4 T3, P5 T1–T2 |
+| §1 goals 1–3 (speed, larger models, consistent embeddings); goal 3 as restated (S1) | P2 T1–T4, P4 T3, P5 T1–T2; S1 in P2 T4's "What it measures" |
 | §2 measured facts (device is provenance) | Global Constraints; P2 T1 (`compute` excluded from grouping) |
 | U1 GPU Stage 4 after the store is final | P4 T2 (deferral), P4 T3 (worker) |
 | U2 `--embed-stage` default `auto` | P4 T1 |
 | U3 no switching mid-run (R3) | P4 T1 |
 | U4 measure mode uses Stage 4 | P6 T1, T2 |
-| U5 unpinned revision resolved once at submission | P5 T2 |
+| U5 (amended) revision resolved once at first submission; a continuation reuses it; Stage-4 runs only | P5 T2 (`resolve_embed_revisions`, `recorded_embed_revisions`) |
 | U6 mixed GPU models allowed; device provenance per entry | P2 T1 (`compute` block); P5 T2 (no device constraint across shards) |
+| U7 a stall ends unfinished: no record, no journal row, exit 5 | P5 T1 (`test_two_unchanged_rounds_finalize_and_record_nothing`, `test_a_stall_reads_5_to_the_waiter`) |
+| U8 a measure-mode Stage-4 failure keeps the old embeddings, journalled `MEASURE_FAILURE_STAGE`, exit 3 | P6 T1 (`carry_embeddings`, `test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record`) |
+| U9 a CPU pin under `auto` resolves inline with a note; refused with `--embed-stage gpu` (supersedes H9) | P4 T1 (resolver `cpu_pinned`, R2) |
+| U10 SLURM measure on the staged controller, with a measure-mode finalizer | P6 T2 |
 | H1 crop geometry on CPU via `_crop` / `_square_colony_crop` | P1 T2, P4 T3 (loader calls `prepare_regions`) |
-| H5 process mode inline on CPU | P4 T1 (R1), P4 T2 (`test_process_mode_bytes_unchanged`) |
+| H5 process mode inline on CPU | P4 T1 (R1), P4 T2 (`test_process_mode_ignores_embed_stage`) |
 | H6 reuse `--gpu-slurm`, `--gpu-shards` | P5 T2 |
 | H7 `compute_dtype` field in the descriptor | P2 T1 |
-| H9 `device="cpu"` embedder refused when Stage 4 is on (R2) | P4 T1 |
+| H9 superseded by U9 | P4 T1 |
 | H10 backbone-major, one model resident, shared loads | P4 T3 (`plan_stage4`) |
 | §4.1 where Stage 4 runs; recorded config, outside the work id | P4 T1, P5 T2, P6 T1 |
 | §4.2 deferral, signal, `replace_run_embeddings`, record once | P3 T1, P3 T2, P4 T2, P4 T3 |
 | §4.3 controller v2, `_classify_stage4`, rounds, worklist, array over shards, `CUBLAS_WORKSPACE_CONFIG`, `StageTag` and per-run terminal stage | P5 T1, P5 T2, P4 T2 (`StageTag`) |
 | §4.4 plan, loop, DataLoader, `BatchEncoder`, batch size, determinism, embedder refactor, `entry_descriptor_for` | P1 T1–T2, P2 T2–T3, P4 T3 |
 | §4.5 `giant`/`huge_plus`/`7b`, size/version validator, hub verification, licence gate twice, `compute` block | P2 T1, P4 T3 (licence at shard start), P5 T3 (licence at preflight is the existing `PF-LICENSE`) |
-| §4.6 done/pending, `ResumeStage` `"stage4"`, gated shortcuts, interrupted states, Stage-1 re-run deletes signals, `--retry-failures`, measure republish, manifest 4 → 5 | P4 T2, P4 T4, P6 T1 |
+| §4.6 done/pending, `ResumeStage` `"stage4"`, gated shortcuts, interrupted states, Stage-1 re-run deletes signals, `--retry-failures`, measure carry and republish, manifest 4 → 5 | P4 T2, P4 T3 (`stage4_status`), P4 T4, P6 T1 |
 | §4.7 R1–R3, `PF-EMBED-SHARD-AMORTIZE`, `PF-EMBED-RESOURCES` | P4 T1, P5 T3 |
-| §4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load) | P2 T3 (OOM halving), P3 T1 (root changed), P4 T3 (CUDA, corrupt, grid, non-finite, fence), P4 T4 (walltime by crash injection), P5 T1 (rounds), P5 T3 (cold-load warning) |
+| §4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load) | P2 T3 (OOM halving), P3 T1 (root changed), P4 T1 (no CUDA at startup), P4 T3 (CUDA, corrupt, non-finite, root change non-terminal, fence on both seams), P4 T4 (walltime by real-crash injection), P5 T1 (rounds), P5 T3 (cold-load warning) |
 | §5 golden; batch invariance on hardware; transaction tests; local e2e with crash injection; controller fake-scheduler tests; live smoke; measure over staged; full regression | P0 T2 + P1 T2; P2 T4; P3 T1; P4 T4; P5 T1; P5 T4; P6 T2; P7 T2 |
 | §6 phases | this README's phase table |
-| §7 left to the builder: pool sizes, `per_sample`, `accelerate`, internal names | P0 T1 (`per_sample`), P2 T3 (pool sizes), P2 T1 Step 5 (`accelerate`: avoided, see below) |
+| §7 left to the builder: pool sizes, `per_sample`, `accelerate`, internal names | P0 T1 (`per_sample`, memory bounds), P2 T3 (`max_in_flight`), P4 T3 (one commit thread), P2 T1 Step 5 (`accelerate`: avoided, see below) |
 
 **Decisions this plan takes where the spec leaves the builder a choice** (§7):
 - `device_map={"":"cuda"}` needs `accelerate`. The plan loads with
   `from_pretrained(dtype=compute_dtype)` then `.to("cuda")` instead, so the
   `foundation` extra gains no dependency. 7B in bf16 is 13.4 GB of host RAM
   during the load, inside a 48 GB `--mem`. P2 T1 Step 5 records the peak.
-- The commit pool has 2 threads; the DataLoader has `cpus_per_task − 1` workers
-  (local: `len(os.sched_getaffinity(0)) − 1`), `prefetch_factor=2`.
-- A signal carries `root_sha256`, the root its payloads were computed against,
-  so a commit in a later round uses the right `expected_root_sha256`.
+- The commit pool has **one** thread (the spec's §4.4 said two; plan review
+  Cuts: one is enough to overlap the GPU, and it makes per-image ordering
+  trivial). The DataLoader has `resolve_local_worker_count(-1, n) − 1` workers,
+  `spawn`, `prefetch_factor=2`.
+- A signal carries `root_sha256`, the root its payloads were computed against;
+  a commit checks it against the live root and uses it as
+  `expected_root_sha256`.
+- `masked_dense` tiles are normalised by the HF processor in the loader, exactly
+  as inline does, so the two paths share bits on the CPU (plan review I1).
 - Stage 4 reads an unpinned revision from `BackboneKey.revision` and never
   rewrites the embedder's `revision` field, so `producer.params_sha256` is the
   same as an inline run's.
 
-## Open questions
+## Decisions on the open questions
 
-Each blocks only the task named; the plan is written with the recommended
-default and marks it **(pending Ox)**.
+Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pending.
 
-- **O1 (P2 T1). Where the new sizes live.** `DinoSize` (`sdk_/typing_.py:163`)
-  is shared by `DinoSam2Detector`, `FssDinoDetector` and `Insid3Detector`.
-  Extending it, as spec §4.5 says literally, lets those detectors accept and
-  tune-enumerate `giant`/`huge_plus`/`7b`. **Recommended:** a separate
-  `EmbeddingDinoSize` Literal for the embedder only.
-- **O2 (P2 T1). Model tokens for the new sizes.** They become folder names and
-  keys. **Recommended:** the hub's own spelling, `dinov2-vitg14`,
-  `dinov3-vith16plus`, `dinov3-vit7b16`.
-- **O3 (P4 T1). A non-DINO `MeasureEmbedding` in a Stage-4 run.** Stage 4 has
-  backbone code only for DINO. **Recommended:** refuse it under R2's line, since
-  running it inline would mix CPU into a GPU run.
-- **O4 (P2 T1). `compute` beside #281's `model.device`/`model.device_name`.**
-  **Recommended:** keep both; `compute.device` and `compute.device_name` repeat
-  them, so #281 entries keep their shape.
-- **O5 (P4 T1). `--embed-stage gpu` with no in-scope embedder.**
-  **Recommended:** resolve `inline` and print one note line; not a refusal.
-- **O6 (P5 T3). What "too few images per shard to pay off the cold load" means.**
-  **Recommended:** warn when the cold load exceeds the shard's estimated warm GPU
-  time (about 200 images per shard for DINOv2-base at the measured 3.8 s/image
-  and 750 s cold). The alternative, break-even against inline CPU, is about 12.
-- **O7 (P6 T2). SLURM measure mode moves engines.** With Stage 4 on, a SLURM
-  `--mode measure` runs through the staged controller (phases
-  `["stage3","stage4"]`, a measure role) instead of `AutonomousSLURMStrategy`.
-  The spec implies this (U4 and §4.6 need controller rounds) but does not say it.
-- **O8 (P5 T1). The spec's "exit 3" on zero progress.** `phenotypic-wait` exits
-  `3` only when every accepted image is verified or failed. For two unchanged
-  Stage-4 rounds to end at `3`, the controller must journal each remaining image
-  as a terminal `stage4` failure before the finalizer; otherwise the run reads
-  `5`. **Recommended:** journal them, so `--retry-failures` retries only their
-  Stage 4.
-- **O9 (P5 T2). U5's scope.** **Recommended:** resolve at submission only for
-  Stage-4 runs, as the spec places it; inline SLURM runs keep per-process
-  resolution and `PF-EMBED-REVISION-UNPINNED`.
+| # | Question | Decision | Where |
+|---|---|---|---|
+| O1 | Where the new sizes live | Accepted: a separate `EmbeddingDinoSize`; the detectors' `DinoSize` is unchanged | P2 T1 |
+| O2 | Tokens for the new sizes | Accepted: `dinov2-vitg14`, `dinov3-vith16plus`, `dinov3-vit7b16`; the existing tokens are pinned by a test | P2 T1 |
+| O3 | A non-DINO embedder under Stage 4 | Accepted: refused under R2 | P4 T1 |
+| O4 | `compute` beside `model.device` | Accepted with a condition: one producer writes both, and a test asserts they agree | P2 T1 |
+| O5 | `--embed-stage gpu` with no embedder | Accepted: resolves inline with a note | P4 T1 |
+| O6 | The amortisation warning | Accepted with conditions: a GPU-only constant (439 / 297), worded as efficiency | P0 T1, P5 T3 |
+| O7 | SLURM measure on the controller | Became **U10** (user, 2026-11-19), with a measure-mode finalizer | P6 T2 |
+| O8 | Zero-progress leftovers | Became **U7** (user): no record, no journal row, exit 5; revision 1's journalling is removed | P5 T1 |
+| O9 | U5's scope | Accepted: Stage-4 runs only | P5 T2 |
+
+## Follow-ups (not in this plan)
+
+- **The GUI run console** has no `--embed-stage` control, so it launches a
+  no-detector run that resolves inline. The control is the GUI follow-up of
+  spec §6, with its `FEATURES.md` and `WORKFLOWS.md` rows.
+- **`promote_store`'s two renames:** a walltime kill between them can lose a
+  store. Pre-existing; Stage 4 crosses the window once more per image. P7
+  documents it as a known limit; a fix belongs to the store writer, not here.
 
 ## Render
 
@@ -407,5 +448,54 @@ uv run --no-project python ~/.claude/tools/render_md_artifact.py \
   p7-docs-and-regression.md \
   -o ../../artifacts/2026-11-12-gpu-embedding-staging/plan.html \
   --title "GPU Embedding Plan" \
-  --eyebrow "Implementation plan · PhenoTypic #282 · 2026-11-19"
+  --eyebrow "Build plan · PhenoTypic #282 · 2026-11-19"
 ```
+
+## Revision 2
+
+Revised 2026-11-19 against `reports/2026-11-12-gpu-embedding-staging/plan-review.md`
+(plan at `1604d2ff9`, code at `26d7f86a6`) and the spec as amended in
+`c33b58193`. Each finding, and where it is fixed:
+
+| Finding | Fix | Pinned by |
+|---|---|---|
+| **C1** resume re-runs Stages 2–3; SLURM Stage-3 `SystemExit`; no-detector continuation | One predicate, `stages_1_to_3_done`, returns early everywhere and publishes nothing; it also gates Stage 2 (`_cli_staged_strategy.py:250-259`); `run_stage3_step` returns before the prereq check (`:536-552`); explicit no-detector continuation, local and SLURM; a core re-run deletes the image's signals. P4 T2, P4 T4, P5 T2 | `test_a_waiting_image_is_neither_redetected_nor_remeasured`, `test_the_slurm_stage3_step_returns_early_for_a_waiting_image`, `test_a_core_rerun_deletes_the_images_signals`, `test_a_no_detector_continuation_skips_the_core`, `test_the_single_pass_role_skips_a_finished_image` |
+| **C2** local completion counts Stage-3 markers | Under deferral the predicate is record-based (`_unpublished_images` in place of `_stage3_less_images`, `phenotypicCLI.py:1535,4329`); every image Stage 4 is handed ends published or journalled, or the stage raises. P4 T2, P4 T3 | `test_a_stage4_failure_exits_3_and_is_not_staged_complete` |
+| **C3** measure-mode failure atomicity | U8: `replace_image_tables(carry_embeddings=True)`; a republish-mode failure republishes the record and journals `MEASURE_FAILURE_STAGE`. P6 T1 | `test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record`, `test_carry_keeps_the_runs_embedding_files_and_block` |
+| **C4** no progress with several backbones under a walltime | Signals reused per key; the loader prepares only missing keys; the progress digest counts valid signal keys. (The alternative, documenting the walltime, was not taken.) P3 T2, P4 T3, P5 T1 | `test_a_second_round_embeds_only_the_keys_it_lacks`, `test_written_signals_count_as_progress` |
+| **C5** stale signals loop; terminal second `StoreRootChangedError` | Valid = signal root equals live root; stale signals deleted and re-embedded; a root change is never terminal. P3 T2, P4 T3 | `test_signals_are_classified_per_key_against_the_live_root`, `test_a_signal_from_an_old_root_is_deleted_and_reembedded`, `test_a_root_change_at_commit_leaves_the_image_pending` |
+| **I1** tile normalisation differs | Tiles go through the HF processor in `prepare_regions`; real-backbone golden gains `crop_mean` and `masked_dense`; P2 T3 and T4 gain `masked_dense`. P0 T2, P1 T2, P2 T3, P2 T4 | `test_dense_tiles_are_the_processors_pixels`, `test_the_batch_encoder_matches_the_inline_encoder[masked_dense]` |
+| **I2** BatchEncoder holds images and memory | Out-of-order drain, `max_in_flight` flush; memory modelled in `stage4_memory.py`. P0 T1, P2 T3 | `test_a_finished_image_is_drained_before_a_partial_batch`, `test_in_flight_images_are_bounded` |
+| **I3** DataLoader hazards | Per-backbone loader, `spawn`, not persistent, identity `collate_fn`. P4 T3 | `test_loader_items_arrive_as_ndarrays` |
+| **I4** `CUBLAS_WORKSPACE_CONFIG` only in the SLURM prelude | `prepare_stage4_environment` sets it right after resolution. P4 T1 | `test_the_cublas_variable_is_set_before_any_strategy` |
+| **I5** flat order, non-crashing crashes, half a fence | One commit thread and order compared per image; crashes are `os._exit(137)` in a subprocess; the fence test runs on both seams. P4 T3, P4 T4 | `test_commit_then_record_then_signals_per_image`, `test_a_real_crash_resumes_from_disk`, `test_a_fenced_epoch_commits_nothing[active_check/commit_guard]` |
+| **I6** wrong does-not-fit case | The unsupported set is computed; the refusal uses 7B fp32 on 16 GiB. P0 T1, P2 T2 | `physical_batch_size.py` checks 1–3, `test_weights_that_do_not_fit_are_refused` |
+| **I7** orphan cleanup unreachable | `sweep_orphan_stage4_signals` over the whole inventory, locally and in the controller. P4 T3, P5 T1 | `test_orphan_signals_of_a_done_image_are_swept`, `test_orphans_are_swept_before_classifying` |
+| **I8** missed event callers; test file name | All six callers listed; `test_cli_update_state_stage.py`. P4 T2 | `test_stage3_completion_is_not_completion_when_the_run_embeds_on_gpu` |
+| **I9** SLURM measure finalizer not wired | `RUN_MODE: "measure"`; no forward run proof; `measure_failed` from the journal under the epoch. P6 T2 | `test_the_measure_finalizer_publishes_no_run_proof_and_counts_measure_failures` |
+| **I10** API errors | Forward runs use `journal_table_run(store)`; measure uses `owned_table_run_id(block, pipeline_sha256=...)`. P4 T3, P6 T1 | the P4 T3 and P6 T1 suites |
+| **I11** stale recomputation cannot fire | The commit reads the digests from the live store. P3 T1, P4 T3 | `test_stale_is_computed_from_the_live_store` |
+| **I12** zero-region `encode()` loads a model | It returns `(0, 0)` without `_dim()`; `payload_from` reshapes. P1 T1, P1 T2 | `test_zero_regions_call_neither_the_encoder_nor_dim`, `test_zero_regions_trigger_no_second_load` |
+| **I13** non-determinism; tests that cannot fail | Golden embedders pin `device="cpu"`; `stage4_cpu` hides CUDA; the one-value float16 test is gone; registers use `crop_mean`; a leaky stub proves the isolation check can fail. P0 T2, P2 T3, P4 | `test_the_registers_case_differs_from_a_registerless_run`, `test_the_isolation_check_catches_a_leaky_model` |
+| **I14** stub without parameters; delegate missing `dtype` | Parametric stub; the measurer's `load_dino_backbone` delegate gains `dtype`. P0 T2, P2 T1 | `test_a_bfloat16_load_reaches_the_weights` |
+| **I15** `SLURM_CPUS_PER_TASK` `KeyError` | `resolve_local_worker_count`. P4 T3, P5 T2 | `test_an_unset_cpu_count_does_not_raise` |
+| **I16** no-CUDA detected after Stages 1–3 | Local device check at startup. P4 T1 | `test_no_cuda_stops_before_stage1` |
+| Minor: P2 T4 additions | m vs m/2, separate-process repeat, warnings as errors, `masked_dense` row. P2 T4 | the report's table |
+| Minor: OOM once then succeed | P2 T3 | `test_oom_once_halves_and_succeeds` |
+| Minor: amortisation constant | GPU-only: 439 base, 297 large. P0 T1, P5 T3 | `shard_amortization.py` check 1 |
+| Minor: loader memory | Layers and uint16 counted. P0 T1, P5 T3 | `test_a_uint16_plate_needs_more` |
+| Minor: republish byte-identity | P6's review checks equality apart from P2's added entry fields. P6 | deep review P6 |
+| Minor: R3 remedy | Names `--gpu-slurm` on SLURM. P4 T1 | `test_r3_names_the_recorded_flag_and_the_remedy` |
+| Minor: `tracked_state.md` rows | Signals, worklist, counters. P7 T1 | docs build |
+| Minor: promote's two renames | Documented as a known limit, not fixed (pre-existing, the store writer's). P7 T1, Follow-ups | — |
+| Minor: GUI run console | A GUI follow-up; no `_gui/` change here. Follow-ups | — |
+| O1–O9 | See "Decisions on the open questions" | — |
+| Cut: `worklist_partition.py` | Dropped; the rule is a unit test. P0 T1, P5 T1 | `test_the_partition_rule` |
+| Cut: `_journal_stage4_no_progress` | Dropped under U7. P5 T1 | `test_two_unchanged_rounds_finalize_and_record_nothing` |
+| Cut: one republish carrier | The manifest flag; no config key, no `--republish`. P5 T1–T2, P6 T1 | `test_stage4_script_is_one_unchunked_gpu_array`, `test_a_slurm_measure_with_gpu_slurm_uses_the_controller` |
+| Cut: one-thread commit pool | P4 T3 | `test_commit_then_record_then_signals_per_image` |
+| Spec U5 (amended), U7, U8, U9, U10, S1 | See "Spec coverage" | — |
+
+Not adopted: none. Where the review offered alternatives (C4 "or document the
+walltime", I1 "or record the drift", I16 "refuse or warn"), the plan takes the
+first, and says so in the row.

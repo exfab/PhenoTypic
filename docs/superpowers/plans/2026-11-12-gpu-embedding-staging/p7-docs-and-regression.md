@@ -25,17 +25,26 @@ SHA.
   - "Continuation" paragraph (`:618-646`): `stage4` in the classification, the
     three interrupted states, `--retry-failures` for a Stage-4 failure;
   - "SLURM chaining" (`:648-880`): controller config v2, `phases`, the Stage-4
-    rounds and their own counters, the worklist, zero-progress journalling
-    (O8's ruling), the prelude, the no-detector plan, measure's republish role;
-  - "One writer per artifact, per pass" (`:1181-1197`): the Stage-4 rewrite, and
-    why the deferred record keeps the rule (the root is never certified before
-    its last write);
+    rounds and their own signal-aware counters, the worklist, a stall ending
+    unfinished with exit `5` (U7), the prelude, the no-detector plan, the
+    measure role and the measure-mode finalizer (U10);
+  - "One writer per artifact, per pass" (`:1181-1197`): restated as **"nothing
+    is rewritten after the record that certifies it"** (plan review), with the
+    Stage-4 rewrite as the case that needs the restatement: Stage 3 promotes the
+    root, Stage 4 promotes it again, and only then is the record written;
+  - "Known limits" (`:1403`): a walltime kill between `promote_store`'s two
+    renames can lose a store. Pre-existing, but Stage 4 crosses that window once
+    more per image than an inline run (plan review, Minor);
   - "Environment variables" (`:1473`): `PHENOTYPIC_STAGE4_DEVICE`,
     `CUBLAS_WORKSPACE_CONFIG`.
 - Modify: root `CLAUDE.md`, the "GPU detectors stage automatically" bullet: one
   sentence pointing at Stage 4 and `--embed-stage`.
 - Modify: `docs/source/contrib_guide/tracked_state.md`: Stage-4 pending as a
-  derived state (no new tracked state), the per-run terminal stage.
+  derived state (no new tracked state), the per-run terminal stage, and one row
+  each for the Stage-4 signals (`progress/stage4_payload/`, their fence fields
+  and when they are deleted), the per-round worklist
+  (`slurm_scripts/stage4_worklist.json`) and the Stage-4 round counters in
+  `staged_orchestration.json` (plan review, Minor).
 - Modify: `docs/source/tutorials/pages/cli_batch_processing.md`: an
   "Embedding on GPUs" section (`--embed-stage`, the resolution table, R1–R3 as
   the user sees them, `--gpu-slurm`/`--gpu-shards` for Stage 4, pre-staged
@@ -44,7 +53,9 @@ SHA.
   `docs/source/how_to/pages/embeddings.md` and add it to the how-to toctree.
   It covers model sizes and the size/version pairs, `compute_dtype` (bf16
   recommended for 7B, H7), what `compute` records, mixed GPU models (U6), the
-  measured device distances (spec §2) and P2 T4's batch-invariance result.
+  measured device distances (spec §2), P2 T4's batch-invariance result stated
+  as S1 restates goal 3 (within one GPU model and physical batch), and U8's
+  measure-mode failure behaviour.
 - Modify: `docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md:634`,
   parent D5's writer list: add `replace_run_embeddings` (spec §4.2).
 

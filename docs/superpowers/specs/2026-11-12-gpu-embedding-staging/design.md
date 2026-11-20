@@ -173,13 +173,18 @@ parent D5's writer list, gain the Stage-4 rewrite.
   1. Fence check, then filter: an image whose store already holds every key
      fresh, with matching params, goes to publish-only.
   2. `configure_determinism()`.
-  3. For each backbone: load once (`torch_dtype=compute_dtype`,
-     `device_map={"":"cuda"}`), stream images through a `BatchEncoder`, and
-     write signals as each image's key completes. Then free the model.
-  4. A 2-thread commit pool commits images whose signals are complete, under
-     the commit guard, overlapping GPU work.
-- **DataLoader.** One item is one image, with workers `cpus_per_task - 1`,
-  persistent and order-preserving. Workers read the store read-only, compute the
+  3. For each backbone: load once (`dtype=compute_dtype`, then `.to("cuda")`;
+     `device_map` would need `accelerate`, which the foundation extra does not
+     carry), stream images through a `BatchEncoder`, and write signals as each
+     image's key completes. Then free the model.
+  4. A one-thread commit pool commits images whose signals are complete, under
+     the commit guard, overlapping GPU work. (One thread, not two, per plan
+     review I5: per-image call order then holds by construction; commits are
+     I/O-bound and short next to GPU work.)
+- **DataLoader.** One item is one image, with workers `cpus_per_task - 1`
+  (from the CLI's allocation-aware worker count), one loader per backbone,
+  `spawn` context, not persistent, order-preserving, identity `collate_fn`
+  (plan review I3). Workers read the store read-only, compute the
   binds digests and cut and resize every crop through the embedder's own
   functions. For `masked_dense`, they cut patch-aligned tiles.
 - **BatchEncoder.** It keeps one queue per crop geometry. Every forward pass has
