@@ -24,6 +24,10 @@ It drives the shipped code, so it lives beside the plan, not under
         <foundation python> <this file> --threads 0 --rows all --out <dir>
 
 Exits non-zero if any row does not reproduce.
+
+``--cosine`` instead measures, on any CPU, each row's worst ``1 - cosine``
+against the committed ``inline_embeddings_281.vectors.npz``: the evidence for
+the golden test's always-on ``COSINE_FLOOR``.
 """
 
 from __future__ import annotations
@@ -148,14 +152,37 @@ def capture_environment(threads: int, out: Path, golden: Path, which: str) -> in
     return 0
 
 
+def measure_cosine_distance(golden: Path, which: str) -> int:
+    """Print each row's worst per-vector ``1 - cosine`` to the committed vectors."""
+    import numpy as np
+
+    stored = np.load(golden.with_name("inline_embeddings_281.vectors.npz"))
+    worst_overall = 0.0
+    for case, payloads in recompute_rows(which).items():
+        for key, payload in payloads.items():
+            got = np.stack(payload.frame["embedding"].to_list()).astype(np.float16).astype(np.float64)
+            want = stored[f"{case}|{key.replace('/', '|')}"].astype(np.float64)
+            norms = np.linalg.norm(got, axis=1) * np.linalg.norm(want, axis=1)
+            dots = np.einsum("ij,ij->i", got, want)
+            cosine = np.where(norms > 0, dots / np.where(norms > 0, norms, 1), 1.0)
+            distance = float(1 - cosine.min())
+            identical = bool(np.array_equal(got, want))
+            worst_overall = max(worst_overall, distance)
+            print(f"cosine {case} {key} worst_1_minus_cos={distance:.3e} identical={identical}")
+    print(f"cosine worst overall 1 - cos = {worst_overall:.3e}")
+    print(json.dumps({"cpu_model": cpu_model_name(), "omp": os.environ.get("OMP_NUM_THREADS")}))
+    return 0
+
+
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--threads", type=int, required=True,
         help="torch.set_num_threads value; 0 leaves torch's default (OMP_NUM_THREADS)",
     )
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path, default=Path("."))
     parser.add_argument("--rows", choices=("stub", "real", "all"), default="all")
+    parser.add_argument("--cosine", action="store_true", help="measure, write nothing")
     parser.add_argument(
         "--golden",
         type=Path,
@@ -166,4 +193,6 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_arguments(sys.argv[1:])
+    if args.cosine:
+        sys.exit(measure_cosine_distance(args.golden, args.rows))
     sys.exit(capture_environment(args.threads, args.out, args.golden, args.rows))
