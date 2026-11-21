@@ -636,6 +636,19 @@ Stage 3 keeps that figure (see **Per-image figures**). Today the only shipped
 `PlotImage` that is also an operation is `CalibrateColorRpcc`, whose overlay is
 the same either way because it draws from its own `apply()`.
 
+**Stage 4 (local, #282 P4) is fenced exactly as the local strategies are.**
+`run_stage4` holds the local epoch ownership (`_local_epoch_ownership`: the
+processing-state lock plus a `processing_generation` compare) around each
+record and each terminal-journal entry, as `_publish_local_image_success` and
+`_record_local_terminal_failure` do. A new generation (`--restart`,
+`--overwrite`) therefore fences an older process at its next record. Two
+concurrent invocations of the **same** generation are not fenced, in Stage 4
+or in the cores, because a continuation keeps its content-derived generation:
+the store write stays safe (the loser meets `StoreRootChangedError` and leaves
+the image pending), but both can publish one image's record. Concurrent local
+invocations over one `--output` are unsupported; a local run lease would be a
+separate change (P3–P4 review M1).
+
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
 the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
 `status` stays the closed `{started, completed, failed}` set;

@@ -1125,6 +1125,19 @@ def run_stage4(
     Every durable step is preceded by *active_check*, and every durable
     write runs under *commit_guard*.
 
+    **Fencing, locally, is the local strategies' and no more** (review M1).
+    *record_lock* takes the processing-state lock and compares
+    ``processing_generation`` around each record and each journal entry,
+    as ``_publish_local_image_success`` and ``_record_local_terminal_failure``
+    do. So a new generation (``--restart``, ``--overwrite``) fences an older
+    process at its next record, which raises ``RuntimeError("Local lifecycle
+    epoch is stale")`` out of the commit. Two **concurrent invocations of the
+    same generation** are not fenced, in either path: a continuation keeps its
+    content-derived generation. The store write is still safe (a second
+    process meets ``StoreRootChangedError`` and leaves the image pending), but
+    both may publish the same record once; concurrent local invocations over
+    one ``--output`` are unsupported.
+
     Args:
         pipeline_path: The run's pipeline file.
         output_dir: Run output root.
