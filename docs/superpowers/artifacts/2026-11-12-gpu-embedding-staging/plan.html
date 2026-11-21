@@ -855,6 +855,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <ul>
 <li><strong>The GUI run console</strong> has no <code>--embed-stage</code> control, so it launches a no-detector run that resolves inline. The control is the GUI follow-up of spec §6, with its <code>FEATURES.md</code> and <code>WORKFLOWS.md</code> rows.</li>
 <li><strong>DINOv3 H+ and 7B:</strong> needs an accepted licence and a valid HF token; re-add the sizes, hub verification and P2 T4 rows (U11).</li>
+<li><strong>The CLI's startup re-hashes every input before the strategy</strong> (P3–P4 review I4, residual): the legacy-failure migration's <code>valid_work_ids</code>, <code>get_remaining_images_for_datasets</code> and <code>state.config["work_ids"]</code> each compute a work id, so a forward invocation hashes each input 3× on a first run and 4× on a continuation, against 1× from the strategy through Stage 4 (<code>gate-results/c12r-282/proofs/i4-whole-invocation-hash-count.log</code>). Pre-#282, and #282 does not make it worse; carrying one CLI-computed identity into the strategy is a refactor of its own.</li>
 <li><strong><code>promote_store</code>'s two renames:</strong> a walltime kill between them can lose a store. Pre-existing; Stage 4 crosses the window once more per image. P7 documents it as a known limit; a fix belongs to the store writer, not here.</li>
 </ul>
 <h2 id="d0-render">Render</h2>

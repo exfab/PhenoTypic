@@ -127,7 +127,7 @@ The results go to the orchestrator once the jobs end. A finished job does not wa
   - the resume selection (`get_remaining_images_for_datasets`);
   - `state.config["work_ids"]`.
 
-  Carrying one CLI-computed identity into the strategy would remove them. That is a CLI-wide change outside the ruling's scope (`split_stage4_pending`, the strategy, `run_local_stage4`). It is a design question for the orchestrator.
+  Carrying one CLI-computed identity into the strategy would remove them. Orchestrator ruling: not widened in #282, since these sites predate it and it does not make them worse. Recorded as a follow-up in the plan README's "Follow-ups" section: "The CLI's startup re-hashes every input before the strategy, so a forward invocation hashes each input 3× in all on a first run and 4× on a continuation, against 1× from the strategy through Stage 4 (`proofs/i4-whole-invocation-hash-count.log`)."
 - **M7, assigned to P7 and left as it is:**
   - `_cli/CLAUDE.md` "Progress events" still says Stage 3 only. `aggregate_state_from_events` now takes `terminal_stage`.
   - `_cli/CLAUDE.md` "Durability" still says "exactly three write sites". Stage 4's `replace_run_embeddings` is a fourth (I2).

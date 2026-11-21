@@ -495,6 +495,14 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
   spec §6, with its `FEATURES.md` and `WORKFLOWS.md` rows.
 - **DINOv3 H+ and 7B:** needs an accepted licence and a valid HF token;
   re-add the sizes, hub verification and P2 T4 rows (U11).
+- **The CLI's startup re-hashes every input before the strategy** (P3–P4
+  review I4, residual): the legacy-failure migration's `valid_work_ids`,
+  `get_remaining_images_for_datasets` and `state.config["work_ids"]` each
+  compute a work id, so a forward invocation hashes each input 3× on a first
+  run and 4× on a continuation, against 1× from the strategy through Stage 4
+  (`gate-results/c12r-282/proofs/i4-whole-invocation-hash-count.log`).
+  Pre-#282, and #282 does not make it worse; carrying one CLI-computed
+  identity into the strategy is a refactor of its own.
 - **`promote_store`'s two renames:** a walltime kill between them can lose a
   store. Pre-existing; Stage 4 crosses the window once more per image. P7
   documents it as a known limit; a fix belongs to the store writer, not here.
