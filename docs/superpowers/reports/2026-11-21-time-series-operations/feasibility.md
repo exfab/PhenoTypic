@@ -48,6 +48,19 @@ Design A). The second step, only if needed, adds series artifacts computed
 behind a barrier (§4, Design B). A first-class `ImageSeries` type flowing
 through every operation (Design C) is not recommended.
 
+**Follow-up, same day (§10).** The owner confirmed that the target analyses
+reduce whole series, that different kinds of series need their own groupings,
+and that the work should chain BaSiC shading correction over a dataset,
+`SubtractBlank`, and the texture-trajectory calculation of Goldschmidt et al.
+(2022). Examined one by one, those three need less of Design B than §8
+assumed. The texture calculation runs on the measurement table after ordinary
+per-frame measurement, so the existing analysis stage can host it. BaSiC can be
+fitted once per group in a separate step and then read as a file, which keeps
+per-image independence in the forward run. `SubtractBlank` then needs only the
+derived-reference extension, so that its blank receives the same correction as
+its target. The one genuinely new CLI capability is a task that runs once per
+group of images. §10.7 gives the revised sequence.
+
 ## 1. The starting premise needs one correction
 
 `SubtractBlank` does not remove the earliest time point, and it has no notion
@@ -567,13 +580,241 @@ rather than creating it. Design B is comparable to the two changes combined,
 because it adds a new task kind, a new artifact store and a new identity
 composition. Design C would be considerably larger than both.
 
-## 9. Open question for the owner
+## 9. Open question for the owner (answered; see §10)
 
 Which analyses are the target decides how far down this path to go. If they
 compare raw frames, or need a processed frame that is cheap to recompute (a CPU
 segmentation of the last frame, say), Design A is sufficient. If any of them
 reduces a whole series to one quantity, or needs a GPU segmentation shared by
-every frame, Design B is required.
+every frame, Design B is required. The owner's answer is that they do reduce
+whole series; §10 works through what that requires.
+
+## 10. Follow-up: grouped reductions and the three named cases
+
+### 10.1 Two kinds of reduction
+
+The owner's three cases are all reductions, but of two different kinds, and §4
+did not separate them. A *result reduction* ends in a table or a figure that no
+later per-frame operation reads; the texture-trajectory clustering is one. A
+*corrective reduction* produces an artifact that later per-frame operations
+consume; a BaSiC flat-field is one, and a processed blank for `SubtractBlank`
+is a trivial one.
+
+The distinction decides what the CLI must do. A result reduction needs a place
+to run after per-frame work is finished, and for reductions over tables that
+place already exists: `ImagePipeline.analyze` runs once over the whole run's
+measurement mirror at finalization (§2.2). A corrective reduction needs either
+a barrier inside the run, so that every member of a group finishes before any
+member continues, or a separate fit step whose artifact the forward run then
+reads as a file. The second route turns the dependency back into kind 1 (§3).
+It keeps per-image independence, it gives provenance a single digest to
+record, and it stops a newly acquired frame from invalidating every image that
+shares its fit (§6.3).
+
+### 10.2 Groupings, declared per reduction
+
+A grouping says which images a reduction sees together, and the three cases
+need different ones. Each reduction should therefore declare its own: the
+metadata columns that form the group key, an optional column that orders
+members, and a minimum group size. Two reductions in one pipeline may then group
+the same images differently.
+
+| Case | Group key | Order | Kind |
+|---|---|---|---|
+| BaSiC | images sharing one imager position and channel setup, across many plates (for example `Metadata_Dataset`, or a user column naming the imager) | none | corrective |
+| `SubtractBlank` | each target with the blank it names | none | corrective, trivial |
+| Texture trajectories | one colony across frames (plate plus grid cell) for interpolation; the whole run for the PCA and the clustering | `Metadata_Time` | result, on the table |
+
+The CLI already has the right home for a grouping. The startup planner reads the
+metadata table and the input listings without opening images and writes the
+reference manifest (§2.4); group membership is derived the same way and belongs
+in the same kind of run plan. Because it is derived from inputs, it is a plan
+and not a fifth tracked state. Preflight would gain codes for an image with no
+group value, a group below a reduction's minimum size, duplicate or missing
+order values, and mixed shapes or bit depths inside a group.
+
+Crossing groupings have one consequence worth stating. A dataset-wide BaSiC fit
+makes every image in the dataset depend on every other, so any change to one
+image changes the fit. That coupling is inherent in fitting over a collection,
+and it is the main reason §10.4 recommends a separate fit step.
+
+### 10.3 Case 1: texture trajectories (Goldschmidt et al., 2022)
+
+The paper behind arXiv:2201.05259 was published in *Scientific Data*
+(Goldschmidt et al., 2022). Its method was read from the PubMed Central full
+text; the paper contains no equations, and defines its steps in prose. Mapped
+onto PhenoTypic, it divides into one per-frame step and several table steps:
+
+| Paper step | Scope | PhenoTypic home |
+|---|---|---|
+| Segment each colony image (Canny edges, circular Hough transform, convex hull) | per frame | ordinary detectors and refiners |
+| Score texture as the relative frequency of ten LBP categories, eight neighbors | per colony, per frame | a new `MeasureFeatures` built on `skimage.feature.local_binary_pattern` |
+| Bin and interpolate each colony's scores onto shared times, extrapolate to the dataset's median final time | per colony, across frames | an analysis filter on the mirror, grouped by colony, ordered by time |
+| Reduce the scores to three PCA modes fitted over all colonies at all times | whole run | analysis |
+| Compare trajectories by summed Euclidean distance; cluster by minimax linkage; cut by the Calinski-Harabasz index | whole run | analysis |
+| Show each cluster's prototype colony at its latest time | per cluster | a `PlotAnalysis` figure that reads stores |
+
+No step after the per-frame LBP histogram reads pixels, so this case needs no
+image-level cross-frame operation at all. It needs four things: the LBP
+measurer, a cross-frame colony key, a trajectory analyzer, and the shared
+ordering rule of §2.7. The paper's images are single-colony crops whose
+identity comes from the camera gantry's bookkeeping, not from image analysis.
+On a plate image in PhenoTypic the key would be the grid cell, which requires
+the per-plate grid discussed in §6.1. Minimax linkage (Bien & Tibshirani, 2011)
+is not among SciPy's `linkage` methods *(based on SciPy's documentation, from
+general knowledge)*. `pyprotoclust`, an MIT-licensed package by the paper's
+first author, returns a SciPy-compatible linkage matrix with cluster prototypes,
+so it is a candidate to reuse rather than reimplement (its PyPI and GitHub
+listings; not yet checked for maintenance or compatibility).
+
+Two cautions apply. The paper leaves several choices unstated: the LBP radius,
+the LBP variant (ten categories with eight neighbors matches scikit-image's
+`uniform` method, but that is an inference), the grayscale conversion, whether
+background pixels count, and the time-bin width and interpolation. It also
+contradicts itself on the frame interval (every 23 minutes in Methods, hourly
+elsewhere) and on whether trajectory distance is summed or averaged. A port
+must record each choice as a deviation, as the `porting-a-reference-algorithm`
+skill requires. Separately, a PCA fitted on the run's own data moves every
+coordinate when plates are added. The analyzer should therefore publish its
+fitted basis and accept a fixed basis from an earlier run, which is the same
+fit-then-apply split §10.4 proposes for BaSiC.
+
+### 10.4 Case 2: BaSiC over a dataset
+
+BaSiC (Peng et al., 2017) models a measured frame as its true signal scaled by
+a flat-field and offset by a dark-field, with a per-frame scalar baseline for
+time-lapse data. The PubMed Central text available here omits the equation
+bodies, so the following is reconstructed from the paper's prose and from
+BaSiCPy's source rather than copied:
+
+$$I_i^{\mathrm{meas}}(x) = \bigl(B_i + I_i^{F}(x)\bigr)\,S(x) + D(x),
+\qquad
+\hat I_i(x) = \frac{I_i^{\mathrm{meas}}(x) - D(x)}{S(x)} - B_i$$
+
+Here $S$ (flat-field) and $D$ (dark-field) are shared by the whole collection,
+and $B_i$ (baseline) and the foreground $I_i^F$ belong to frame $i$. The fit is
+one joint low-rank-plus-sparse decomposition over every image in the
+collection, done per channel. Both reference implementations work at a default
+of 128 by 128 pixels and upsample the profiles afterwards.
+
+The grouping matters more for BaSiC than for any other case. The paper states
+that "the foreground of every image to be processed should be uncorrelated with
+the foreground of every other image", and that persistent structure is
+otherwise read "as a local increase in S(x), causing removal of the true
+fluorescence variability". Frames of one plate share their agar, rim and
+colonies, so a single plate's time series is the failure case *(inferred from
+that statement)*. Fitting across many different plates imaged at the same
+imager position, which is what "BaSiC on a dataset" means, matches the
+assumption. The paper also notes that in high-content screening "only images at
+the same position of each well share a shading profile", which argues for one
+group per camera or scanner position when an imager has several. The main text
+gives no minimum collection size; it reports improvement "with as few as five
+images" and parity with prospective methods "at around 100 images".
+
+BaSiCPy separates fitting from applying. `BaSiC.fit` estimates the profiles,
+`save_model` and `load_model` persist them, and `transform` applies stored
+profiles to new images, re-estimating the baseline when `is_timelapse=True`. A
+fit step that writes one model per group, and an `ImageCorrector` that applies
+its group's model in the forward run, follows that split directly. The
+correction should act on `rgb` and `gray`, not only on `detect_mat`, so that
+colour and intensity measurements see corrected pixels. That raises a decision
+the port must make explicitly: BaSiCPy returns unclipped float32, whereas
+PhenoTypic stores `rgb` as uint8 or uint16, so corrected values must be
+requantized and the clipping recorded.
+
+Wrapping BaSiCPy is blocked by its dependencies. Version 2.0.0 requires
+`scipy<1.13`, while this repository's lock pins scipy 1.16.3 (`uv.lock`). It
+also requires torch on every platform, while PhenoTypic installs torch only off
+Windows (`pyproject.toml:113`). The original MATLAB implementation is licensed
+CC BY-NC-ND 4.0, "free for academic use", with commercial use by arrangement
+(marrlab/BaSiC `README.md`), so it should not be the porting source either. The
+practical route is a numpy and scipy port from the paper and the MIT-licensed
+BaSiCPy source, following the `porting-a-reference-algorithm` skill, with
+golden fixtures generated by BaSiCPy in an isolated environment that carries
+its own scipy pin. The Supplementary Notes, which hold the exact equations and
+parameter defaults, were not reachable from this session and must be obtained
+before that port begins.
+
+### 10.5 Case 3: chaining BaSiC and `SubtractBlank`
+
+`SubtractBlank` refuses to run after any `ImageCorrector` today (§1), and it is
+right to. A raw blank does not carry the flat-field correction its target does.
+Correct chaining requires the blank to receive the same correction, using the
+same fitted model and the blank's own baseline. Under that condition the
+algebra is simple:
+
+$$\hat I_t - \hat I_0 = \frac{I_t^{\mathrm{meas}} - I_0^{\mathrm{meas}}}{S} - (B_t - B_0)$$
+
+The dark-field cancels. What BaSiC adds before blank subtraction is a gain
+equalization ($1/S$), so a colony in a vignetted corner reads as strongly as one
+at the center, plus removal of baseline drift between the two frames.
+
+It is tempting to skip correcting the blank: subtract the raw blank first, then
+divide by $S$. The companion script `correction_then_blank_order.py` tests this
+against the exact route on synthetic plates. The two agree to float precision
+in one case only: a single-channel or channel-uniform flat-field, a linear
+detect mode, no baseline drift, and the `brighter` polarity. They differ under
+baseline drift (maximum gap 0.050), a per-channel flat-field with a pigmented
+colony (0.0033), a nonlinear lightness projection such as CIE L* (0.0050), and
+the `signed` polarity (0.106). The script also caught an error in an earlier
+draft of this claim: with achromatic growth, a per-channel flat-field cancels
+exactly, so pigment is what breaks the shortcut. The shortcut is therefore not
+a general substitute for correcting the blank.
+
+With a fitted model in hand, correcting the blank costs one per-pixel pass, so
+the derived-reference route (A.2) is the natural implementation. `SubtractBlank`
+would gain the `blank_ops` field the design record already names (R1), and its
+guard would change from "no corrector in the target's history" to "the blank's
+operations reproduce every corrector in the target's history", compared by
+class, parameters and the model's digest. That keeps the guard's purpose, which
+is refusing rather than mis-subtracting, while admitting a pipeline whose
+target and blank were treated alike.
+
+### 10.6 The chain, end to end
+
+With the fit split out, the owner's chain runs in two invocations, neither of
+which needs a barrier between images:
+
+1. A fit run groups images by imager position, runs one BaSiC fit per group,
+   and writes one model per group with its digest.
+2. The forward run applies its group's model to each frame. It then runs
+   `SubtractBlank` with `blank_ops` holding the same correction, followed by
+   detection, refinement and the LBP measurer. Every image is still its own
+   task. At finalization the trajectory analyzer interpolates each colony's
+   scores, fits the PCA, and clusters the trajectories over the whole run.
+
+An in-run barrier (the full Design B of §4) would merge the two invocations into
+one. That is a convenience, and it costs the coupling described in §10.2.
+
+### 10.7 Revised sequence and effort
+
+1. **Groupings and ordering.** One ordering rule shared by the planner,
+   `AddFrameIndex` and the GUI; group planning from metadata into the run plan;
+   preflight codes. Everything below depends on it. Small to medium.
+2. **Series analysis on the table.** The LBP measurer, a cross-frame colony key,
+   and a trajectory, PCA and clustering analyzer, reusing `pyprotoclust` if it
+   holds up. This unlocks case 1 inside the existing analysis stage. Medium.
+3. **Group tasks over pixels.** A CLI task that runs once per group, reads its
+   members' images in tiles, and writes an artifact under a digest of its
+   members' inputs and the reduction's configuration. A BaSiC apply operation
+   that resolves its group's artifact through the reference channel. This
+   unlocks case 2, and it is the reducer phase of Design B without the
+   downstream barrier. It is the largest new piece, comparable in the author's
+   judgment to the nested GPU staging change (§8).
+4. **`SubtractBlank` derived blanks.** The `blank_ops` field and the
+   history-equivalence guard, which unlock case 3. Small to medium.
+5. **Optional in-run barrier.** Fitting and applying in one invocation, as in
+   §4's Design B. Worth building only if two invocations prove impractical.
+
+The BaSiC port itself sits inside step 3 and follows the porting skill; its
+size depends on what the Supplementary Notes specify and is not estimated here.
+
+### 10.8 Open question for the owner
+
+Is a separate fit step acceptable for BaSiC, so that a fit is made once per
+imager group and later runs read it? Or must fitting and applying happen in the
+same invocation? The first answer makes step 5 unnecessary. Step 5 is the most
+expensive piece of CLI machinery this analysis identifies.
 
 ## References
 
@@ -581,6 +822,13 @@ every frame, Design B is required.
   Efficient microbial colony growth dynamics quantification with ColTapp, an
   automated image analysis application. *Scientific Reports*, 10, 16084.
   https://doi.org/10.1038/s41598-020-72979-4
+- Bien, J., & Tibshirani, R. (2011). Hierarchical clustering with prototypes via
+  minimax linkage. *Journal of the American Statistical Association*, 106(495),
+  1075-1084. https://doi.org/10.1198/jasa.2011.tm10183
+- Goldschmidt, A., Kunert-Graf, J., Scott, A. C., Tan, Z., Dudley, A. M., &
+  Kutz, J. N. (2022). Quantifying yeast colony morphologies with feature
+  engineering from time-lapse photography. *Scientific Data*, 9, 216.
+  https://doi.org/10.1038/s41597-022-01340-3 (preprint arXiv:2201.05259)
 - Kamrad, S., Rodríguez-López, M., Cotobal, C., Correia-Melo, C., Ralser, M., &
   Bähler, J. (2020). Pyphe, a python toolbox for assessing microbial growth and
   cell viability in high-throughput colony screens. *eLife*, 9, e55160.
@@ -592,6 +840,10 @@ every frame, Design B is required.
   Balaban, N. Q. (2010). Automated imaging with ScanLag reveals previously
   undetectable bacterial growth phenotypes. *Nature Methods*, 7(9), 737-739.
   https://doi.org/10.1038/nmeth.1485
+- Peng, T., Thorn, K., Schroeder, T., Wang, L., Theis, F. J., Marr, C., &
+  Navab, N. (2017). A BaSiC tool for background and shading correction of
+  optical microscopy images. *Nature Communications*, 8, 14836.
+  https://doi.org/10.1038/ncomms14836
 - Zackrisson, M., Hallin, J., Ottosson, L.-G., Dahl, P., Fernandez-Parada, E.,
   Ländström, E., Fernandez-Ricaud, L., Kaferle, P., Skyman, A., Stenberg, S.,
   Omholt, S., Petrovič, U., Warringer, J., & Blomberg, A. (2016). Scan-o-matic:
