@@ -101,6 +101,41 @@ def test_a_published_store_holds_its_embeddings_fresh(staged_tree, stage4_cpu):
         assert table.column("embedding").type.list_size == STUB_HIDDEN_SIZE
 
 
+@pytest.mark.parametrize("reuse", [False, True], ids=["embedded", "reused-signals"])
+def test_a_committed_images_payloads_are_released(staged_tree, stage4_cpu, monkeypatch, reuse):
+    """Review I3: once an image's commit finishes, nothing in the call holds its vectors.
+
+    A weakref to each payload frame the commit received is dead right after
+    the commit returns, while the call is still running, so memory does not
+    grow with the shard. ``reused-signals`` covers payloads read back from
+    signals (commit only).
+    """
+    import gc
+    import weakref
+
+    from phenotypic._cli import _cli_stage4_worker
+
+    if reuse:
+        write_valid_signals(staged_tree)
+    real = _cli_stage4_worker._commit_image
+    checked: list[list[bool]] = []
+
+    def _spy(ctx, work):
+        frames = [p.frame for p in work.payloads.values()] + [s.payload.frame for s in work.reused.values()]
+        refs = [weakref.ref(frame) for frame in frames]
+        del frames
+        status = real(ctx, work)
+        gc.collect()
+        checked.append([ref() is None for ref in refs])
+        return status
+
+    monkeypatch.setattr(_cli_stage4_worker, "_commit_image", _spy)
+    outcome = run_stage4_over(staged_tree)
+    assert len(outcome.published) == n_images(staged_tree)
+    assert len(checked) == n_images(staged_tree) and all(checked), checked
+    assert all(all(dead) for dead in checked), checked
+
+
 def test_backbone_major_one_load_per_backbone(staged_tree_two_backbones, stage4_cpu):
     outcome = run_stage4_over(staged_tree_two_backbones)
     assert [(c["dino_size"], c["dtype"]) for c in stage4_cpu.load_calls] == [

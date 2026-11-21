@@ -588,7 +588,12 @@ Stage4Action = Literal["commit", "publish", "embed"]
 
 @dataclass
 class _ImageWork:
-    """One image's Stage-4 state in this call."""
+    """One image's Stage-4 state in this call.
+
+    ``payloads`` and ``reused`` hold the image's vectors only until it is
+    done: :meth:`release` drops them once its commit finishes (or it fails),
+    so a call's memory does not grow with the shard (review I3).
+    """
 
     entry: StagedManifestEntry
     run_id: str
@@ -598,6 +603,11 @@ class _ImageWork:
     payloads: dict[str, EmbeddingPayload] = field(default_factory=dict)
     roots: set[str] = field(default_factory=set)
     failed: bool = False
+
+    def release(self) -> None:
+        """Drop this image's payloads and reused signals; nothing reads them again."""
+        self.payloads.clear()
+        self.reused.clear()
 
 
 @dataclass(frozen=True)
@@ -795,7 +805,8 @@ def _commit_image(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
     """Commit one image whose signals are all valid: store, then record, then signals.
 
     Runs on the one commit thread, so per-image order holds by construction
-    (plan review I5).
+    (plan review I5). However it ends, the image's payloads and reused
+    signals are released (:meth:`_ImageWork.release`, review I3).
 
     1. The live root must be the signals' root; otherwise they are deleted
        and the image stays pending (spec §4.8, plan review C5).
@@ -807,6 +818,14 @@ def _commit_image(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
        ``StoreRootChangedError`` leaves the image pending.
     4. The record, then the signals consumed (:func:`_publish`).
     """
+    try:
+        return _commit_image_once(ctx, work)
+    finally:
+        work.release()
+
+
+def _commit_image_once(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
+    """:func:`_commit_image`'s body: the four steps above, in order."""
     from phenotypic.sdk_._measurement_tables import StoreRootChangedError
 
     if work.action == "publish":
@@ -937,6 +956,7 @@ class _BackboneStream:
 
     def _fail(self, work: _ImageWork, exc: BaseException, traceback_text: str = "") -> None:
         work.failed = True
+        work.release()  # its signalled keys are never committed (review I3)
         self.outcome.failed[work.entry.identity] = _fail_image(ctx=self.ctx, entry=work.entry, exc=exc,
                                                                 traceback_text=traceback_text)
 
