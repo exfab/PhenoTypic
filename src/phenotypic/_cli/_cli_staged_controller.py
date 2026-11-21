@@ -639,15 +639,9 @@ def run_staged_controller(config_path: Path) -> None:
             # no Stage 1 or 2 to run: the single-pass core is its "stage3".
             state["phase"] = "stage3_starting"
 
-        if state.get("phase") == "stage4":
-            if "stage4" in phases:
-                _advance_stage4(config, state, successor_id, current_job_id)
-                return
-            # Only a v1 config can meet this (the submitter chose phase
-            # "stage4" from a continuation's plan, but wrote no Stage-4
-            # phase). Its Stage-3 step returns early on a waiting image, so
-            # the run takes the stage3 path, as it did before config v2.
-            state["phase"] = "stage3"
+        if state.get("phase") == "stage4" and "stage4" in phases:
+            _advance_stage4(config, state, successor_id, current_job_id)
+            return
 
         if state.get("phase") == "stage1" and _submit_next_stage1(
             config, state, successor_id, current_job_id

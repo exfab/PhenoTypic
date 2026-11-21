@@ -419,11 +419,17 @@ def test_a_v1_config_drives_stage1_then_stage2(v1_controller_config, fake_schedu
 
 
 def test_a_v1_config_in_phase_stage4_takes_the_stage3_path(v1_controller_config, fake_scheduler):
+    # Unreachable today (phase "stage4" needs embed_stage "gpu" on SLURM, which
+    # the interim gate never resolves, and C14 writes v2 with the lift), so the
+    # controller has no branch for it. Should it happen, the generic path is
+    # safe: every image of an all-Stage-4 plan has stages.stage3, so Stage 2
+    # classifies nothing retryable and the run takes the stage3 path.
+    finish_stage3(v1_controller_config, stage4_pending=2)
     state = load_orchestration_state(v1_controller_config.out)
-    state.update(phase="stage4")
+    state.update(phase="stage4", stage3_index=0)
     save_orchestration_state(v1_controller_config.out, state)
     run_staged_controller(v1_controller_config.config_path)
-    assert fake_scheduler.submitted_roles()[-1] == ("stage3", "stage3-chunk-0")
+    assert _roles(fake_scheduler) == ["controller", "stage3"]
 
 
 def test_no_detector_phases_start_at_stage3(controller_v2_no_detector, fake_scheduler):

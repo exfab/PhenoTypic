@@ -4000,8 +4000,7 @@ def phenotypic_cli(
                 )
                 config.staged_stage3_markers = True
                 # On SLURM an all-Stage-4 continuation starts the controller
-                # at its "stage4" phase (#282 P5 T1); a v1 config, which has
-                # none, takes that as "stage3".
+                # at its "stage4" phase (#282 P5 T1).
                 config.staged_resume_phase = resume_plan.initial_stage
                 datasets = resume_plan.datasets
                 counts = resume_plan.counts
