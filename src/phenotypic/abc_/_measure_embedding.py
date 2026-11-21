@@ -24,6 +24,7 @@ from phenotypic.sdk_._table_runs import (
 )
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
 from phenotypic.sdk_.typing_ import (
+    COMPUTE_DTYPE_DEFAULT,
     EmbeddingLayer,
     EmbeddingRegions,
     OperationField,
@@ -55,7 +56,7 @@ _GRID_KEY_COLUMNS: Final[tuple[GRID, ...]] = (
 _DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {
     "name": None,
     "layer": "rgb",
-    "compute_dtype": "float32",
+    "compute_dtype": COMPUTE_DTYPE_DEFAULT,
 }
 
 #: Descriptor fields :meth:`MeasureEmbedding.entry_descriptor` must return.
@@ -769,6 +770,14 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """
         return self.prepare_regions(image)
 
+    def _inline_entry_descriptor(self, prepared: PreparedRegions) -> dict:
+        """The descriptor :meth:`payload` gives *prepared*'s entry: :meth:`entry_descriptor` (#282).
+
+        An embedder whose descriptor records how this image's passes ran (a
+        ``compute`` block) overrides it.
+        """
+        return self.entry_descriptor()
+
     def inline_encoder(self, image: Image) -> RegionEncoder:
         """The encoder the inline path uses for *image* (#282).
 
@@ -863,7 +872,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         :meth:`ImagePipeline.embed` calls this for each embedder. It is
         :meth:`prepare_regions` (through :meth:`_prepare_inline`), then :meth:`encode` with
         :meth:`inline_encoder`, then :meth:`payload_from` with
-        :meth:`entry_descriptor`; see :meth:`_prepared` for the descriptor's
+        :meth:`entry_descriptor` (through :meth:`_inline_entry_descriptor`); see :meth:`_prepared` for the descriptor's
         ``binds`` and ``input``.
 
         Args:
@@ -879,7 +888,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         try:
             prepared = self._prepare_inline(image)
             vectors = self.encode(prepared, self.inline_encoder(image))
-            return self.payload_from(prepared, vectors, self.entry_descriptor())
+            return self.payload_from(prepared, vectors, self._inline_entry_descriptor(prepared))
         except Exception as exc:
             if is_out_of_memory(exc):
                 raise

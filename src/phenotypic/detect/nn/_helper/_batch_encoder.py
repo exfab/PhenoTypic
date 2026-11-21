@@ -25,17 +25,16 @@ torch is imported inside functions only.
 from __future__ import annotations
 
 import os
-import sys
 from collections import deque
 from collections.abc import Callable, Hashable, Iterator
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Final, NamedTuple
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, get_args
 
 import numpy as np
 
 if TYPE_CHECKING:
     from phenotypic.abc_ import BackboneInputs, RegionEncoder
-    from phenotypic.sdk_.typing_ import ComputeDType
+    from phenotypic.sdk_.typing_ import ComputeDType, EmbeddingDinoSize
 
 # ---------------------------------------------------------------------------
 # The physical batch size (spec §4.4; P0 T1 physical_batch_size.py)
@@ -52,9 +51,14 @@ ACTIVATION_FACTOR: Final[int] = 12
 #: The most output bytes the encoder holds for unfinished images before it
 #: flushes its partial queues: two DINOv3-7B ``masked_dense`` feature grids of
 #: a 4012 x 6016 plate (``(4012 // 16) * (6016 // 16) * 4096 * 4`` bytes each,
-#: about 1.54 GB). Sized for 7B and so conservative for giant (about 0.75 GB a
-#: grid). A crop pipeline holds ``N * D * 4`` bytes an image and never reaches
-#: it. From ``stage4_memory.py``.
+#: about 1.54 GB). Sized for 7B, which #282 deferred (U11), and so conservative
+#: for giant (about 0.75 GB a grid). A crop pipeline holds ``N * D * 4`` bytes
+#: an image and never reaches it. From ``stage4_memory.py``.
+#:
+#: It counts **outputs only**. Not counted: the queued input rows (about
+#: 290 MB of float32 tiles for one 4012 x 6016 plate's ``masked_dense``
+#: ticket), and finished tickets the caller has not drained, so the caller
+#: drains after every :meth:`BatchEncoder.submit` (#282 review M15).
 MAX_IN_FLIGHT_OUTPUT_BYTES: Final[int] = 2 * (4012 // 16) * (6016 // 16) * 4096 * 4
 
 # ---------------------------------------------------------------------------
@@ -85,9 +89,9 @@ class BackboneKey:
     """
 
     version: int
-    size: str
+    size: EmbeddingDinoSize
     revision: str | None
-    compute_dtype: str
+    compute_dtype: ComputeDType
 
     def sort_key(self) -> tuple[int, str, str, str]:
         """The backbone-major order (H10): ``revision or ""``, since ``None`` and a string do not compare."""
@@ -311,10 +315,17 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
 
     Idempotent. Call it once per Stage-4 process, before the first load.
 
+    The settings are **process-global and never restored** (#282 review M13):
+    everything that runs after this in the same process runs with
+    deterministic algorithms (``warn_only``), cuDNN benchmark off and TF32
+    off. A SLURM shard is its own process, so that is the whole shard; a local
+    Stage 4 runs in the CLI process, so the rest of that CLI process runs under
+    them too.
+
     Args:
-        device: ``"cuda"`` or ``"cpu"``, the device Stage 4 runs on. ``None``
-            infers it from ``torch.cuda.is_available()``. The cuBLAS check
-            applies on CUDA only.
+        device: ``"cuda"``, ``"cuda:N"`` or ``"cpu"``, the device Stage 4
+            runs on. ``None`` infers it from ``torch.cuda.is_available()``.
+            The cuBLAS check applies on CUDA only.
 
     Returns:
         The settings as torch reports them after applying them, and the
@@ -325,7 +336,7 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
     """
     import torch
 
-    on_cuda = torch.cuda.is_available() if device is None else device == "cuda"
+    on_cuda = torch.cuda.is_available() if device is None else torch.device(device).type == "cuda"
     if on_cuda:
         check_cublas_workspace()
     torch.backends.cudnn.deterministic = True
@@ -353,8 +364,6 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-#: The ``torch`` dtype name of each ``compute_dtype``.
-_COMPUTE_DTYPES: Final[tuple[str, ...]] = ("float32", "bfloat16", "float16")
 
 #: One queued row: its ticket, its index in that ticket's inputs, its pixels.
 _Row = tuple[Hashable, int, np.ndarray]
@@ -403,15 +412,11 @@ class _Ticket:
 
 
 def _is_device_oom(exc: BaseException) -> bool:
-    """torch's (GPU) ``OutOfMemoryError``; never a host ``MemoryError``, which ends the shard."""
-    torch = sys.modules.get("torch")
-    if torch is None:
-        return False
-    for owner in (torch, getattr(torch, "cuda", None)):
-        oom = getattr(owner, "OutOfMemoryError", None)
-        if isinstance(oom, type) and isinstance(exc, oom):
-            return True
-    return False
+    """torch's (GPU) ``OutOfMemoryError``: :func:`~phenotypic.abc_.is_out_of_memory` without
+    the host ``MemoryError``, which ends the shard (#282 review M7)."""
+    from phenotypic.abc_._measure_embedding import is_out_of_memory
+
+    return not isinstance(exc, MemoryError) and is_out_of_memory(exc)
 
 
 class BatchEncoder:
@@ -456,7 +461,8 @@ class BatchEncoder:
     :meth:`submit` then returns, leaving the rows for the next :meth:`submit`
     or :meth:`flush`; :meth:`flush` retries them at once. A pass that runs
     out of memory when its queue cannot halve raises
-    :class:`Stage4OutOfMemory`.
+    :class:`Stage4OutOfMemory`, which poisons the encoder (below): the shard
+    fails, and the next round starts a fresh encoder.
 
     **Any other error in a forward pass** (a driver fault, a CUDA error that
     is not an ``OutOfMemoryError``, a dtype mismatch) also puts the pass's
@@ -510,8 +516,11 @@ class BatchEncoder:
             rule = lambda h, w: fixed  # noqa: E731
         if max_in_flight_bytes < 1:
             raise ValueError(f"max_in_flight_bytes must be positive, got {max_in_flight_bytes}")
-        if compute_dtype not in _COMPUTE_DTYPES:
-            raise ValueError(f"compute_dtype must be one of {_COMPUTE_DTYPES}, got {compute_dtype!r}")
+        from phenotypic.sdk_.typing_ import ComputeDType
+
+        dtypes = get_args(ComputeDType)
+        if compute_dtype not in dtypes:
+            raise ValueError(f"compute_dtype must be one of {dtypes}, got {compute_dtype!r}")
         dtype = getattr(torch, compute_dtype)
         loaded = backbone_dtype(model)
         if loaded != dtype:
@@ -614,7 +623,8 @@ class BatchEncoder:
 
         Raises:
             Stage4OutOfMemory: If a pass runs out of GPU memory and its
-                queue's ``m`` cannot halve (it already has, or it is 1).
+                queue's ``m`` cannot halve (it already has, or it is 1);
+                the encoder is then poisoned.
             RuntimeError: If the encoder is poisoned (see the class).
         """
         self._refuse_if_failed()
@@ -706,8 +716,8 @@ class BatchEncoder:
                 tile = np.asarray(tile)
                 if tile.ndim == 4 and tile.shape[0] == 1:
                     tile = tile[0]
-                if tile.ndim != 3 or tile.shape[0] != 3:
-                    raise ValueError(f"a tile must be (3, h, w), got {tile.shape}")
+                if tile.ndim != 3 or tile.shape[0] != 3 or tile.dtype != np.float32:
+                    raise ValueError(f"a tile must be (3, h, w) float32, got {tile.shape} {tile.dtype}")
                 h, w = int(tile.shape[1]), int(tile.shape[2])
                 grid_bytes += (h // self._patch) * (w // self._patch) * self._hidden * 4
                 rows.append((("tiles", h, w, "patches"), i, tile))
@@ -749,10 +759,12 @@ class BatchEncoder:
                 raise
             if not self._halve(key):
                 halved = ", after halving once" if key in self._halved else ""
-                raise Stage4OutOfMemory(
+                failure = Stage4OutOfMemory(
                     f"the backbone ran out of GPU memory at physical batch {m}{halved}; "
                     "the shard stops and the next round retries its images"
-                ) from exc
+                )
+                self._failure = failure
+                raise failure from exc
         else:
             self._route(key, batch, tokens, m)
             return True

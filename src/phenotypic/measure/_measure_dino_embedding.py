@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Optional, TypeAlias
 
 import numpy as np
@@ -14,6 +14,7 @@ from phenotypic.abc_._measure_embedding import GridCellOutsideImageError
 from phenotypic.schema import DINO_EMBEDDING, MeasurementInfo
 from phenotypic.sdk_._embedding_tables import EMBEDDING_COLUMN
 from phenotypic.sdk_.typing_ import (
+    COMPUTE_DTYPE_DEFAULT,
     ComputeDType,
     DinoVersion,
     EmbeddingDevice,
@@ -25,6 +26,7 @@ from phenotypic.sdk_.typing_ import (
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
+    from phenotypic.detect.nn._helper._batch_encoder import BackboneKey
     from phenotypic.abc_._requirements import OperationRequirements
 
     # The pydantic mypy plugin resolves the inherited runtime OperationField
@@ -211,7 +213,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             backbone's memory, which suits ``"giant"`` on a GPU, but moves
             the vectors far more than a change of device does, so it is part
             of the table's descriptor (``compute_dtype``): tables computed in
-            different types are never grouped together.
+            different types are never grouped together. ``"float16"`` is
+            accepted but **unmeasured** (#282 P2 T4 measured float32 and
+            bfloat16 only); ViT-g is known to overflow float16 activations,
+            which gives non-finite vectors and so a failure for every image.
         batch_size: Crops per forward pass. Changes speed and memory. On the
             CPU the vectors do not depend on it; on a GPU, batched kernels may
             round the last float16 bits differently.
@@ -294,7 +299,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     crop_pad_frac: Annotated[float, TuneSpec(0.0, 0.5)] = Field(0.25, ge=0.0)
     mask_background: bool = False
     dtype: Annotated[EmbeddingDType, TuneSpec(tunable=False)] = "float16"
-    compute_dtype: Annotated[ComputeDType, TuneSpec(tunable=False)] = "float32"
+    compute_dtype: Annotated[ComputeDType, TuneSpec(tunable=False)] = COMPUTE_DTYPE_DEFAULT
     batch_size: Annotated[int, TuneSpec(tunable=False)] = Field(64, ge=1)
     device: Annotated[EmbeddingDevice, TuneSpec(tunable=False)] = "auto"
 
@@ -368,7 +373,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         version = int(self.version)
         return f"dinov{version}-vit{_SIZE_LETTER[self.size]}{_PATCH_SIZE[version]}"
 
-    def backbone_key(self) -> Any:
+    def backbone_key(self) -> BackboneKey:
         """The model load this embedder needs, for Stage 4 to share it (#282 H10).
 
         Returns:
@@ -404,10 +409,12 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             model: The loaded backbone the vectors came from.
             compute: The entry's ``compute`` block, from
                 :func:`~phenotypic.detect.nn._helper._dino_support.compute_block`.
-                ``None`` (the inline path) builds the inline one: this
-                embedder's resolved ``device``, ``stage="inline"``, and
-                ``batch_size`` inputs per forward pass (one tile for
-                ``masked_dense``, which runs a tile at a time).
+                ``None`` builds a nominal inline one: this embedder's
+                resolved ``device``, ``stage="inline"``, and the
+                ``batch_size`` cap per forward pass (one tile for
+                ``masked_dense``, which runs a tile at a time). A payload's
+                entry records the image's own passes instead
+                (:meth:`_inline_entry_descriptor`, #282 review M10).
 
         Returns:
             ``{model: {family, hf_id, revision, patch_size, device,
@@ -571,12 +578,25 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             ValueError: For ``masked_dense``, if the image is smaller than
                 one patch.
         """
+
+        def processor_of() -> Any:
+            if processor is not None:
+                return processor
+            return load_dino_processor(self.version, self.size, revision=self.revision)
+
+        return self._prepare_regions(image, processor_of=processor_of, materialise=materialise)
+
+    def _prepare_regions(
+        self, image: Image, *, processor_of: Callable[[], Any], materialise: bool
+    ) -> PreparedRegions:
+        """:meth:`prepare_regions`, with the processor read from *processor_of* only when
+        ``masked_dense`` cuts tiles (after the regions, so a grid error still comes first)."""
         keys, boxes, labels = self._regions(image)
         rgb = self._layer_pixels(image)
         needs_mask = self.mask_background or self.pooling == "masked_dense"
         objmap = np.asarray(image.objmap[:]) if labels is not None and needs_mask else None
         if self.pooling == "masked_dense":
-            inputs, pool_plan = self._dense_tiles(rgb, boxes, labels, objmap, processor)
+            inputs, pool_plan = self._dense_tiles(rgb, boxes, labels, objmap, processor_of)
             return self._prepared(image, keys, inputs, pool_plan)
 
         region_labels: list[int | None] = (
@@ -588,8 +608,40 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         return self._prepared(image, keys, inputs)
 
     def _prepare_inline(self, image: Image) -> PreparedRegions:
-        """:meth:`prepare_regions` with the crops deferred to the inline encoder (#282 I4)."""
-        return self.prepare_regions(image, materialise=False)
+        """:meth:`prepare_regions` as the inline path needs it (#282 review I4, M11).
+
+        The crops are deferred to the inline encoder, and ``masked_dense``
+        tiles are normalised by the cached backbone's own processor, the one
+        its weights came with, rather than a second ``from_pretrained``.
+        """
+        return self._prepare_regions(
+            image, processor_of=lambda: self._backbone()[1], materialise=False
+        )
+
+    def _inline_entry_descriptor(self, prepared: PreparedRegions) -> dict:
+        """The inline entry's descriptor, its ``compute`` block stating this image's passes (M10).
+
+        ``physical_batch`` is the pass size the inline encoder actually ran,
+        not the ``batch_size`` cap: a crop image of ``N`` regions runs
+        ``N // batch_size`` passes of ``batch_size`` and, unpadded, one of
+        ``N % batch_size``, and CPU float32 bits depend on that size (C5).
+        ``masked_dense`` runs one tile a pass; an image with no regions runs
+        none.
+        """
+        from phenotypic.detect.nn._helper import _dino_support
+
+        if prepared.n_regions == 0:
+            sizes: list[int] = []
+        elif prepared.inputs.kind == "tiles":
+            sizes = [1]
+        else:
+            sizes = [stop - start for start, stop in _batch_bounds(prepared.n_regions, self.batch_size)]
+        compute = _dino_support.compute_block(
+            device=_dino_support.resolve_backbone_device(self.device),
+            stage="inline",
+            physical_batch=sizes,
+        )
+        return self.entry_descriptor_for(self._backbone()[0], compute)
 
     def _dense_tiles(
         self,
@@ -597,7 +649,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         boxes: np.ndarray,
         labels: np.ndarray | None,
         objmap: np.ndarray | None,
-        processor: Any,
+        processor_of: Callable[[], Any],
     ) -> tuple[BackboneInputs, dict[str, Any] | None]:
         """``masked_dense``'s tiles and the plan to pool their patch grids.
 
@@ -619,8 +671,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             raise ValueError(
                 f"the image is {height} x {width}, smaller than one {patch}-px patch"
             )
-        if processor is None:
-            processor = load_dino_processor(self.version, self.size, revision=self.revision)
+        processor = processor_of()
         tiles: list[np.ndarray] = []
         offsets: list[tuple[int, int]] = []
         tile = self.crop_px
@@ -833,12 +884,12 @@ class _InlineDinoEncoder:
                 _dino_support.embed_crops(
                     self.model,
                     self.processor,
-                    crops[start : start + self.batch_size],
+                    crops[start:stop],
                     pooling=inputs.pooling,  # type: ignore[arg-type]
                     device=self.device,
                     batch_size=self.batch_size,
                 )
-                for start in range(0, len(crops), self.batch_size)
+                for start, stop in _batch_bounds(len(crops), self.batch_size)
             ]
             if not vectors:
                 hidden = int(self.model.config.hidden_size)
@@ -850,6 +901,12 @@ class _InlineDinoEncoder:
                 for tile in inputs.arrays
             ]
         raise ValueError(f"a DINO backbone does not run {inputs.kind!r} inputs")
+
+
+def _batch_bounds(n: int, batch_size: int) -> list[tuple[int, int]]:
+    """The inline encoder's passes over *n* crops: ``(start, stop)``, ``batch_size`` each, the last
+    shorter. Its one definition, read by the encoder and by the entry's ``compute`` block (M10)."""
+    return [(start, min(start + batch_size, n)) for start in range(0, n, batch_size)]
 
 
 def _as_uint8_rgb(array: np.ndarray) -> np.ndarray:

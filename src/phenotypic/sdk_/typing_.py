@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     List,
     Literal,
     Optional,
@@ -172,6 +173,12 @@ EmbeddingDinoSize: TypeAlias = Literal["small", "base", "large", "giant"]
 #: stored vectors stay :data:`EmbeddingDType`; a reduced compute dtype moves
 #: them far more than a device does, so it is part of the table's descriptor.
 ComputeDType: TypeAlias = Literal["float32", "bfloat16", "float16"]
+
+#: ``MeasureDinoEmbedding.compute_dtype``'s default, and so what a #281 entry,
+#: written before the field existed, was computed in. Its one definition (#282
+#: review M7): the field default, the params digest's neutral default and the
+#: deliverables' reading of an entry without the field all read it.
+COMPUTE_DTYPE_DEFAULT: Final[ComputeDType] = "float32"
 
 #: Public top-level CLI execution mode. ``full`` performs the normal
 #: apply-and-measure run, ``measure`` reruns measurement from existing image

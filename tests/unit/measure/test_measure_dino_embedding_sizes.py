@@ -286,13 +286,33 @@ def test_inline_entries_record_their_compute(param_stub_backbone, detected_plate
     compute = MeasureDinoEmbedding(device="cpu", batch_size=32).payload(detected_plate).descriptor[
         "compute"
     ]
+    n = detected_plate.num_objects
+    assert n > 32 and n % 32                          # a full pass of 32 and a shorter last one
     assert set(compute) == {
-        "device", "device_name", "capability", "torch", "cuda", "physical_batch", "stage"
+        "device", "device_name", "capability", "torch", "cuda", "physical_batch",
+        "physical_batches", "stage",
     }
-    assert compute["stage"] == "inline" and compute["physical_batch"] == 32
+    # The passes the inline encoder ran, not the cap (review M10).
+    assert compute["stage"] == "inline" and compute["physical_batch"] is None
+    assert compute["physical_batches"] == [32, n % 32]
     assert compute["device"] == "cpu" and compute["capability"] is None
     assert compute["device_name"] is None and compute["cuda"] is None
     assert compute["torch"] == torch.__version__
+
+
+@requires_torch
+def test_an_inline_entry_of_one_pass_records_its_size(param_stub_backbone, detected_plate):
+    n = detected_plate.num_objects
+    compute = MeasureDinoEmbedding(device="cpu", batch_size=n).payload(detected_plate).descriptor["compute"]
+    assert compute["physical_batch"] == n and "physical_batches" not in compute
+
+
+@requires_torch
+def test_an_inline_entry_with_no_regions_ran_no_pass(param_stub_backbone, plate):
+    empty = plate.copy()
+    empty.objmap[:] = 0
+    compute = MeasureDinoEmbedding(device="cpu").payload(empty).descriptor["compute"]
+    assert compute["physical_batch"] is None and "physical_batches" not in compute
 
 
 @requires_torch
@@ -349,6 +369,25 @@ def test_the_compute_block_refuses_a_nonsense_size(sizes):
 
     with pytest.raises(ValueError, match="positive integers"):
         compute_block(device="cpu", stage="stage4", physical_batch=sizes)
+
+
+@requires_torch
+def test_an_indexed_cuda_device_is_cuda(monkeypatch):
+    """Review M9: ``"cuda:1"`` names GPU 1, not the CPU."""
+    import torch
+
+    from phenotypic.detect.nn._helper._dino_support import backbone_device_name, compute_block
+
+    asked: list = []
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda index=None: asked.append(("name", index)) or "GPU-1")
+    monkeypatch.setattr(torch.cuda, "get_device_capability",
+                        lambda index=None: asked.append(("capability", index)) or (9, 0))
+    monkeypatch.setattr(torch.version, "cuda", "13.0")
+    block = compute_block(device="cuda:1", stage="stage4", physical_batch=8)
+    assert (block["device_name"], block["capability"], block["cuda"]) == ("GPU-1", "9.0", "13.0")
+    assert sorted(asked) == [("capability", 1), ("name", 1)]
+    assert backbone_device_name("cuda") == "GPU-1" and asked[-1] == ("name", None)
+    assert backbone_device_name("cpu") is None
 
 
 @requires_torch

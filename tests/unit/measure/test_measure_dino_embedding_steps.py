@@ -167,6 +167,25 @@ def test_deferred_crops_are_the_materialised_crops(stub_backbone, detected_plate
 
 
 @requires_torch
+def test_inline_dense_tiles_use_the_backbones_own_processor(stub_backbone, detected_plate, monkeypatch):
+    """#282 review M11: the inline ``masked_dense`` path loads no second processor."""
+    from phenotypic.measure import _measure_dino_embedding as module
+
+    loads: list[tuple] = []
+    real = module.load_dino_processor
+
+    def _counting(*args, **kwargs):
+        loads.append(args)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(module, "load_dino_processor", _counting)
+    MeasureDinoEmbedding(pooling="masked_dense", crop_px=112, device="cpu").payload(detected_plate)
+    assert loads == []
+    MeasureDinoEmbedding(pooling="masked_dense", crop_px=112).prepare_regions(detected_plate)
+    assert len(loads) == 1                            # prepare_regions alone still loads one
+
+
+@requires_torch
 def test_dense_vectors_pool_the_encoders_tiles(stub_backbone, detected_plate):
     """``vectors_from`` assembles the tiles the encoder returns: a swapped-in
     encoder that returns the inline encoder's grids gives the inline vectors."""

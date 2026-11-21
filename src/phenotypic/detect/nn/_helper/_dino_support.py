@@ -534,17 +534,28 @@ def _tokens_to_patch_grid(
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
 
 
+def _cuda_index(device: str) -> tuple[bool, int | None]:
+    """Whether *device* is CUDA, and its index: ``"cuda"`` is the current device (``None``),
+    ``"cuda:N"`` is N (#282 review M9). Torch-free."""
+    kind, _, index = device.partition(":")
+    if kind != "cuda":
+        return False, None
+    return True, int(index) if index else None
+
+
 def backbone_device_name(device: str) -> str | None:
     """The GPU's name for a resolved *device*, for an entry's ``model.device_name``.
 
-    ``torch.cuda.get_device_name()`` of the current CUDA device when *device*
-    is ``"cuda"``, ``None`` on the CPU (#281: the device is provenance).
+    ``torch.cuda.get_device_name`` of that CUDA device when *device* is
+    ``"cuda"`` (the current device) or ``"cuda:N"``, ``None`` on the CPU
+    (#281: the device is provenance).
     """
-    if device != "cuda":
+    on_cuda, index = _cuda_index(device)
+    if not on_cuda:
         return None
     import torch
 
-    return str(torch.cuda.get_device_name())
+    return str(torch.cuda.get_device_name(index))
 
 
 def compute_block(
@@ -562,8 +573,8 @@ def compute_block(
     only: the deliverables group descriptors without it.
 
     Args:
-        device: The resolved device that ran the backbone, ``"cuda"`` or
-            ``"cpu"``.
+        device: The resolved device that ran the backbone: ``"cuda"`` (the
+            current CUDA device), ``"cuda:N"`` or ``"cpu"``.
         stage: ``"inline"`` (the measure core) or ``"stage4"`` (the GPU stage).
         physical_batch: Inputs per forward pass: one size, or every size the
             entry's passes ran at (``BatchEncoder.drain``'s
@@ -591,10 +602,10 @@ def compute_block(
     if any(isinstance(m, bool) or int(m) != m or m < 1 for m in sizes):
         raise ValueError(f"physical batch sizes must be positive integers, got {physical_batch!r}")
     distinct = sorted({int(m) for m in sizes}, reverse=True)
-    on_cuda = device == "cuda"
+    on_cuda, index = _cuda_index(device)
     capability = None
     if on_cuda:
-        major, minor = torch.cuda.get_device_capability()
+        major, minor = torch.cuda.get_device_capability(index)
         capability = f"{int(major)}.{int(minor)}"
     block: dict[str, Any] = {
         "device": device,

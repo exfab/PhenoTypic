@@ -265,13 +265,14 @@ def test_the_batch_encoder_matches_the_inline_encoder(param_stub_backbone, detec
     (At ``batch_size=64`` the inline path's last pass is unpadded, and a
     multi-threaded CPU GEMM rounds a row of a 40-row pass differently from the
     same row of a 64-row one: see the next test.) ``masked_dense`` runs a tile
-    a pass inline, and at 64 here.
+    a pass inline, and so at ``physical_batch=1`` here: the same pass shape,
+    not CPU GEMM luck (review M3).
     """
     probe, model, processor = _prepared_on_the_stub(pooling)
     n = probe.prepare_regions(detected_plate, processor=processor).n_regions
     m = probe if pooling == "masked_dense" else _prepared_on_the_stub(pooling, batch_size=n)[0]
     prepared = m.prepare_regions(detected_plate, processor=processor)
-    physical = 64 if pooling == "masked_dense" else n
+    physical = 1 if pooling == "masked_dense" else n  # inline runs one tile a pass (review M3)
     inline = m.encode(prepared, m.inline_encoder(detected_plate))
     batched = m.encode(prepared, BatchEncoder(model, processor, device="cpu",
                        compute_dtype="float32", physical_batch=physical).as_region_encoder())
@@ -525,3 +526,87 @@ def test_a_non_oom_forward_error_requeues_its_rows_and_poisons_the_encoder(stub_
             use()
         assert isinstance(info.value.__cause__, ValueError)
     assert calls == [4, 4]                             # nothing ran after the failure
+
+
+
+# ---------------------------------------------------------------------------
+# #282 review: a bottomed-out OOM poisons (lead ruling), M7, M14
+# ---------------------------------------------------------------------------
+
+
+def test_an_oom_that_cannot_halve_requeues_and_poisons_the_encoder():
+    model, processor, calls = _raising_oom(None)
+    enc = BatchEncoder(model, processor, device="cpu", compute_dtype="float32", physical_batch=2)
+    enc.submit("a", crops(1, seed=1))
+    enc.submit("b", crops(1, seed=2))                  # [a0 b0] runs out: halved to 1, re-queued
+    held = enc.held_bytes
+    with pytest.raises(Stage4OutOfMemory, match="after halving once"):
+        enc.flush()                                    # [a0] runs out at 1: cannot halve
+    assert enc.held_bytes == held == 2 * STUB_HIDDEN_SIZE * 4
+    (queue,) = enc._queues.values()
+    assert [(t, i) for t, i, _ in queue] == [("a", 0), ("b", 0)]
+    for use in (lambda: enc.submit("c", crops(1)), enc.flush, enc.drain):
+        with pytest.raises(RuntimeError, match="unusable") as info:
+            use()
+        assert isinstance(info.value.__cause__, Stage4OutOfMemory)
+    assert calls == [2, 1]
+
+
+def test_only_a_device_oom_halves():
+    from phenotypic.detect.nn._helper._batch_encoder import _is_device_oom
+
+    assert _is_device_oom(torch.OutOfMemoryError("CUDA out of memory."))
+    assert not _is_device_oom(MemoryError())           # the host's: ends the shard (M7)
+    assert not _is_device_oom(RuntimeError("CUDA error: an illegal memory access"))
+
+
+def test_an_unknown_compute_dtype_is_refused(stub_model):
+    with pytest.raises(ValueError, match="compute_dtype must be one of"):
+        BatchEncoder(*stub_model, device="cpu", compute_dtype="int8", physical_batch=2)
+
+
+@pytest.mark.parametrize("inputs, match", [
+    (BackboneInputs(kind="crops", arrays=(np.zeros((1, 112, 112, 3), np.float32),), pooling="crop_cls"), "uint8"),
+    (BackboneInputs(kind="crops", arrays=(np.zeros((1, 112, 112, 4), np.uint8),), pooling="crop_cls"), "uint8"),
+    (BackboneInputs(kind="crops", arrays=(np.zeros((1, 112, 112, 3), np.uint8),), pooling="patches"), "crop_cls"),
+    (BackboneInputs(kind="tiles", arrays=(np.zeros((4, 112, 112), np.float32),), pooling="patches"), r"\(3, h, w\)"),
+    (BackboneInputs(kind="tiles", arrays=(np.zeros((3, 112, 112), np.float64),), pooling="patches"), "float32"),
+    (BackboneInputs(kind="tiles", arrays=(np.zeros((3, 112, 112), np.float32),), pooling="crop_cls"), "patches"),
+])
+def test_inputs_that_are_not_a_backbones_are_refused(stub_model, inputs, match):
+    """M14: ``_admit``'s refusals; a refused submission holds nothing."""
+    enc = encoder(stub_model, 2)
+    with pytest.raises(ValueError, match=match):
+        enc.submit("a", inputs)
+    assert enc.held_bytes == 0 and list(enc.drain()) == []
+
+
+def test_a_batched_tile_is_squeezed(stub_model):
+    """M14: a ``(1, 3, h, w)`` tile, as an HF processor returns it, runs as ``(3, h, w)``."""
+    tile = np.random.default_rng(6).normal(size=(3, 112, 112)).astype(np.float32)
+    outputs = []
+    for array in (tile, tile[None]):
+        enc = encoder(stub_model, 2)
+        enc.submit("t", BackboneInputs(kind="tiles", arrays=(array,), pooling="patches"))
+        enc.flush()
+        outputs.append(outputs_of(enc)["t"][0])
+    assert np.array_equal(outputs[0], outputs[1])
+
+
+def test_the_sync_adaptor_refuses_an_encoder_holding_another_ticket(stub_model):
+    enc = encoder(stub_model, 4)
+    enc.submit("held", crops(1))
+    with pytest.raises(RuntimeError, match="holds no other ticket"):
+        enc.as_region_encoder().run(crops(1, seed=1))
+
+
+def test_bfloat16_dense_batched_matches_inline_at_one_pass_shape(param_stub_backbone, detected_plate):
+    """M14: bf16 ``masked_dense``, inline against the encoder at ``physical_batch=1``: the
+    tile is cast float32 -> bfloat16 on both sides, so the vectors are identical."""
+    m = MeasureDinoEmbedding(pooling="masked_dense", crop_px=112, device="cpu", compute_dtype="bfloat16")
+    model, processor, _ = m._backbone()
+    prepared = m.prepare_regions(detected_plate, processor=processor)
+    inline = m.encode(prepared, m.inline_encoder(detected_plate))
+    batched = m.encode(prepared, BatchEncoder(model, processor, device="cpu", compute_dtype="bfloat16",
+                                              physical_batch=1).as_region_encoder())
+    assert prepared.n_regions > 0 and np.array_equal(inline, batched)
