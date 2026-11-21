@@ -1156,6 +1156,9 @@ def run_entry(store: Path) -> dict:
 #: The stub backbone's geometry: DINOv2's patch, a tiny hidden size.
 STUB_PATCH_SIZE = 14
 STUB_HIDDEN_SIZE = 8
+#: What ``physical_batch_for`` reads from the config (#282 P2 I3); the stub
+#: has no attention, so any positive count gives a valid ``m``.
+STUB_ATTENTION_HEADS = 1
 STUB_COMMIT = "0" * 40
 
 
@@ -1172,6 +1175,37 @@ STUB_SNAPSHOT_ROOT = "/stub-hf-cache"
 def _stub_snapshot_path(dino_size: str, revision: str) -> str:
     """``<root>/models--facebook--dinov2-<size>/snapshots/<revision>``."""
     return f"{STUB_SNAPSHOT_ROOT}/models--facebook--dinov2-{dino_size}/snapshots/{revision}"
+
+
+class _StubInputs(dict):
+    """The stub processor's output: a ``BatchFeature``-like dict with ``.to``."""
+
+    def to(self, device):
+        return _StubInputs({key: value.to(device) for key, value in self.items()})
+
+
+class StubDinoProcessor:
+    """The stub backbones' processor: DINO's ImageNet normalisation, torch out.
+
+    Module level, not local to :func:`_build_stub_dino`, so it pickles: Stage
+    4 pickles a ``masked_dense`` backbone's processor into its loader's
+    dataset for ``spawn`` workers (#282 re-review item 2c).
+    """
+
+    image_mean = [0.485, 0.456, 0.406]
+    image_std = [0.229, 0.224, 0.225]
+    rescale_factor = 1 / 255
+
+    def __call__(self, images, return_tensors="pt", **kwargs):
+        import numpy as np
+        import torch
+
+        arr = np.asarray(images, dtype=np.float32) * self.rescale_factor
+        arr = (arr - np.asarray(self.image_mean, np.float32)) / np.asarray(
+            self.image_std, np.float32
+        )
+        pixels = torch.from_numpy(np.ascontiguousarray(arr.transpose(2, 0, 1)))
+        return _StubInputs(pixel_values=pixels[None])
 
 
 def _build_stub_dino(
@@ -1201,7 +1235,6 @@ def _build_stub_dino(
     """
     from types import SimpleNamespace
 
-    import numpy as np
     import torch
 
     class _StubDinoModel(torch.nn.Module):
@@ -1210,6 +1243,7 @@ def _build_stub_dino(
             self.config = SimpleNamespace(
                 patch_size=STUB_PATCH_SIZE,
                 hidden_size=STUB_HIDDEN_SIZE,
+                num_attention_heads=STUB_ATTENTION_HEADS,
                 num_register_tokens=num_register_tokens,
                 _commit_hash=commit_hash,
                 _name_or_path=name_or_path,
@@ -1229,24 +1263,7 @@ def _build_stub_dino(
                 last_hidden_state=torch.cat([cls, registers, patches], dim=1)
             )
 
-    class _StubInputs(dict):
-        def to(self, device):
-            return _StubInputs({key: value.to(device) for key, value in self.items()})
-
-    class _StubProcessor:
-        image_mean = [0.485, 0.456, 0.406]
-        image_std = [0.229, 0.224, 0.225]
-        rescale_factor = 1 / 255
-
-        def __call__(self, images, return_tensors="pt", **kwargs):
-            arr = np.asarray(images, dtype=np.float32) * self.rescale_factor
-            arr = (arr - np.asarray(self.image_mean, np.float32)) / np.asarray(
-                self.image_std, np.float32
-            )
-            pixels = torch.from_numpy(np.ascontiguousarray(arr.transpose(2, 0, 1)))
-            return _StubInputs(pixel_values=pixels[None])
-
-    return _StubDinoModel().eval(), _StubProcessor()
+    return _StubDinoModel().eval(), StubDinoProcessor()
 
 
 def _build_param_stub_dino(
@@ -1288,6 +1305,7 @@ def _build_param_stub_dino(
             self.config = SimpleNamespace(
                 patch_size=STUB_PATCH_SIZE,
                 hidden_size=STUB_HIDDEN_SIZE,
+                num_attention_heads=STUB_ATTENTION_HEADS,
                 num_register_tokens=num_register_tokens,
                 _commit_hash=commit_hash,
                 _name_or_path=name_or_path,
@@ -2475,3 +2493,443 @@ def stage4_pending_with_signals(tmp_path: Path, tiny_inputs: Path, stage4_cpu, n
     for item in waiting.items:
         plant_stage4_signals(waiting.out, item)
     return waiting
+
+
+# ---------------------------------------------------------------------------
+# #282 P4 T3: Stage-4 worker fixtures
+# ---------------------------------------------------------------------------
+
+
+def _stage4_pipeline_file(directory: Path, stem: str, meas: dict, *, fake_gpu: bool = True) -> Path:
+    """A pipeline file of ``FakeGpuDetector`` (or Otsu) plus ``MeasureSize`` and *meas*."""
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSize
+
+    if fake_gpu:
+        import tests._fakes.register_fake_gpu  # noqa: F401
+        from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+        detector = FakeGpuDetector(threshold=0.3)
+    else:
+        detector = OtsuDetector()
+    pipeline = ImagePipeline(
+        name=stem.replace("_", "-"), ops=[detector], meas={"size": MeasureSize(), **meas}
+    )
+    return _write_pipeline_file(directory, stem, pipeline)
+
+
+def _built_staged_tree(tmp_path: Path, inputs: Path, pipeline: Path) -> Stage4Waiting:
+    """A local ``--embed-stage gpu`` run of *pipeline* stopped before Stage 4.
+
+    ``run_local_stage4`` is stubbed only while the tree is built, so a test
+    can still run the real one over it.
+    """
+    from phenotypic._cli import _cli_stage4_worker
+
+    out = tmp_path / "out"
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(_cli_stage4_worker, "run_local_stage4", lambda *a, **k: {})
+        result = run_cli(inputs, out, pipeline=pipeline, extra=["--embed-stage", "gpu"])
+    assert "Traceback" not in result.output, result.output
+    tree = Stage4Waiting(inputs, out, pipeline)
+    assert len(tree.items) == 2 and all(
+        stage4_status_of(tree, item) == "pending" for item in tree.items
+    ), result.output
+    return tree
+
+
+def stage4_status_of(tree: Stage4Waiting, item: Stage4Item) -> str:
+    """``stage4_status`` of one of *tree*'s images."""
+    from phenotypic._cli._cli_staged_resume import stage4_status
+
+    return stage4_status(tree.out, item.dataset, item.stem, item.work_id)
+
+
+@pytest.fixture
+def staged_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
+    """A staged (``FakeGpuDetector``) run whose two images wait on Stage 4: one DINOv2-base objects key."""
+    return _built_staged_tree(tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path, fake_gpu=True))
+
+
+@pytest.fixture
+def staged_tree_two_backbones(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
+    """:func:`staged_tree` with a second, DINOv2-small, objects embedder: two loads."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    pipeline = _stage4_pipeline_file(
+        tmp_path, "stage4_two_backbones",
+        {"emb": MeasureDinoEmbedding(), "small": MeasureDinoEmbedding(size="small")},
+    )
+    return _built_staged_tree(tmp_path, tiny_inputs, pipeline)
+
+
+@pytest.fixture
+def staged_tree_objects_and_grid(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
+    """:func:`staged_tree` with the 2 x 2 grid embedder on the same backbone: one load."""
+    return _built_staged_tree(
+        tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path, fake_gpu=True, grid=True)
+    )
+
+
+@pytest.fixture
+def staged_tree_faulty(tmp_path: Path, tiny_inputs: Path, stage4_cpu, stage4_faults) -> Stage4Waiting:
+    """:func:`staged_tree` whose objects embedder is ``FaultyDinoEmbedding``."""
+    return _built_staged_tree(
+        tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
+    )
+
+
+@pytest.fixture
+def staged_tree_dense(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
+    """:func:`staged_tree` with a ``masked_dense`` objects embedder (``crop_px=112``)."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    pipeline = _stage4_pipeline_file(
+        tmp_path, "stage4_dense", {"emb": MeasureDinoEmbedding(pooling="masked_dense", crop_px=112)}
+    )
+    return _built_staged_tree(tmp_path, tiny_inputs, pipeline)
+
+
+@pytest.fixture
+def staged_tree_one_empty_plate(staged_tree: Stage4Waiting) -> Stage4Waiting:
+    """:func:`staged_tree` whose first store's level-0 objmap is all zeros.
+
+    A plate with no colonies fails Stage 3 (``measure()`` raises
+    ``NoObjectsError``), so the CLI never hands one to Stage 4. This stands in
+    for an objects embedder over an empty objmap at Stage 4 (README Review
+    Focus 1): the store still finished Stages 1-3, and its objmap holds no
+    object. ``fixture.empty`` is that image.
+    """
+    import zarr
+
+    from phenotypic.sdk_ import ngff_
+
+    item = staged_tree.items[0]
+    store = zarr_store_path_of(staged_tree.out, item)
+    labels = ngff_.read_phenotypic_attributes(store)[ngff_.PhenotypicAttr.LABELS]
+    array = zarr.open_group(str(store), mode="r+")[f"{labels[ngff_.OBJMAP_LABEL]}/0"]
+    array[...] = 0
+    staged_tree.empty = item
+    return staged_tree
+
+
+@pytest.fixture
+def staged_tree_dinov3(staged_tree: Stage4Waiting, tmp_path: Path) -> Stage4Waiting:
+    """:func:`staged_tree` whose Stage 4 reads a DINOv3-base pipeline.
+
+    The licence refusal comes before Stage 4 loads or reads anything, so the
+    tree's own stores (built with DINOv2, which needs no licence or weights)
+    serve it.
+    """
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    staged_tree.pipeline = _stage4_pipeline_file(
+        tmp_path, "stage4_dinov3", {"emb": MeasureDinoEmbedding(version=3, size="base")}
+    )
+    return staged_tree
+
+
+def stage4_epoch(tree: Stage4Waiting) -> str | None:
+    """The local lifecycle epoch *tree*'s records are stamped with."""
+    import json
+
+    from phenotypic.sdk_ import processing_state_path
+
+    state = json.loads(processing_state_path(tree.out).read_text(encoding="utf-8"))
+    return state["config"].get("processing_generation")
+
+
+def stage4_image_type(tree: Stage4Waiting) -> str:
+    """The image class *tree*'s stores were saved as (the run's ``image_type``)."""
+    from phenotypic.sdk_ import ngff_
+
+    store = zarr_store_path_of(tree.out, tree.items[0])
+    return ngff_.read_phenotypic_attributes(store).get(ngff_.PhenotypicAttr.IMAGE_CLASS, "Image")
+
+
+def run_stage4_over(tree: Stage4Waiting, *, num_workers: int = 0, **kwargs):
+    """``run_stage4`` over every image of *tree*, as a local Stage 4 hands them to it."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_stage4_worker import run_stage4
+
+    return run_stage4(
+        tree.pipeline,
+        tree.out,
+        tree.manifest(),
+        image_type=stage4_image_type(tree),
+        epoch=stage4_epoch(tree),
+        num_workers=num_workers,
+        output_manager=OutputManager.from_config(base_dir=tree.out, ext=".tiff"),
+        **kwargs,
+    )
+
+
+def stores_of(tree: Stage4Waiting) -> list[Path]:
+    """*tree*'s stores, in image order."""
+    return [zarr_store_path_of(tree.out, item) for item in tree.items]
+
+
+def identity_of(tree: Stage4Waiting, index: int) -> str:
+    """``StagedManifestEntry.identity`` of *tree*'s image *index*."""
+    return tree.manifest()[index].identity
+
+
+def n_images(tree: Stage4Waiting) -> int:
+    """How many images *tree* has."""
+    return len(tree.items)
+
+
+def embedding_path(store: Path, key: str) -> Path:
+    """*key*'s embedding table in *store*'s journal run."""
+    from phenotypic.sdk_ import journal_table_run
+
+    run = journal_table_run(store)
+    assert run is not None
+    return run.embedding_path(key)
+
+
+def valid_record(tree: Stage4Waiting, item: Stage4Item) -> bool:
+    """Whether *item*'s record is valid."""
+    from phenotypic._cli._cli_completion import valid_image_success
+
+    return valid_image_success(tree.out, dataset=item.dataset, image_stem=item.stem, work_id=item.work_id)
+
+
+def terminal_failures(tree: Stage4Waiting) -> list:
+    """*tree*'s terminal failure records."""
+    from phenotypic._cli._cli_failure_tracker import read_terminal_failures
+
+    return read_terminal_failures(tree.out)
+
+
+def failure_stage(tree: Stage4Waiting, item: Stage4Item) -> str | None:
+    """The ``failed_stage`` of *item*'s terminal record under its work id, or ``None``."""
+    stages = [r.failed_stage for r in terminal_failures(tree) if r.work_id == item.work_id]
+    return stages[-1] if stages else None
+
+
+def stage4_payloads_of(tree: Stage4Waiting, item: Stage4Item) -> dict:
+    """*item*'s payloads for every embedder of *tree*'s pipeline, computed inline on its store."""
+    from phenotypic import ImagePipeline
+
+    image = _load_store(zarr_store_path_of(tree.out, item))
+    image.name = item.stem
+    return ImagePipeline.from_json(tree.pipeline).embed(image)
+
+
+def write_valid_signals(
+    tree: Stage4Waiting,
+    *,
+    keys: Sequence[str] | None = None,
+    root_sha256: str | None = None,
+    binds_from_another_objmap: bool = False,
+) -> int:
+    """Write a Stage-4 signal for each image and key, as an interrupted Stage 4 would have.
+
+    The payloads are computed inline from each store. By default each signal
+    is bound to the live root, so it is valid; *root_sha256* binds them to
+    another root (a signal from before a reprocess), and
+    *binds_from_another_objmap* rebinds each objects payload to an objmap the
+    store does not hold.
+
+    Returns:
+        How many signals were written.
+    """
+    from phenotypic._cli._cli_stage4_signal import write_stage4_signal
+    from phenotypic.sdk_ import journal_table_run
+    from phenotypic.sdk_._embedding_tables import EmbeddingPayload
+
+    written = 0
+    for item in tree.items:
+        store = zarr_store_path_of(tree.out, item)
+        run = journal_table_run(store)
+        assert run is not None
+        for key, payload in stage4_payloads_of(tree, item).items():
+            if keys is not None and key not in keys:
+                continue
+            if binds_from_another_objmap:
+                descriptor = dict(payload.descriptor)
+                descriptor["binds"] = {**descriptor["binds"], "objmap_sha256": "f" * 64}
+                payload = EmbeddingPayload(key=payload.key, frame=payload.frame, descriptor=descriptor)
+            write_stage4_signal(
+                tree.out, item.dataset, item.stem, payload,
+                work_id=item.work_id, run_id=run.run_id,
+                root_sha256=root_sha256 or root_sha256_of_store(store),
+            )
+            written += 1
+    return written
+
+
+def root_sha256_of_store(store: Path) -> str:
+    """sha256 of *store*'s root ``zarr.json`` (alias of :func:`root_sha256`)."""
+    return root_sha256(store)
+
+
+def touch_root_before_commit(monkeypatch, tree: Stage4Waiting | None, *, image: int = 0) -> list[Path]:
+    """Change a store's root bytes right before Stage 4 commits it (a concurrent reprocess).
+
+    Wraps the worker's ``replace_run_embeddings``: its first call (*image* 0;
+    a higher *image* counts that many calls) touches the store's root, so the
+    commit meets ``StoreRootChangedError``. *tree* is unused by the wrapper
+    and may be ``None`` (inside a CLI run).
+
+    Returns:
+        The stores whose root was touched, filled as it happens.
+    """
+    from phenotypic._cli import _cli_stage4_worker as worker
+
+    original = worker.replace_run_embeddings
+    touched: list[Path] = []
+    calls = {"n": 0}
+
+    def _touching(store, *args, **kwargs):
+        if calls["n"] == image:
+            touch_root(store)
+            touched.append(Path(store))
+        calls["n"] += 1
+        return original(store, *args, **kwargs)
+
+    monkeypatch.setattr(worker, "replace_run_embeddings", _touching)
+    return touched
+
+
+def spy_calls_by_image(monkeypatch, tree: Stage4Waiting, names: Sequence[str]) -> dict[str, list[str]]:
+    """Record, per image identity, the order the worker calls each of *names*.
+
+    Each name is wrapped in ``phenotypic._cli._cli_stage4_worker``, where the
+    loop looks it up at each call. Keyed per image (plan review I5), so the
+    one commit thread's order is compared per image, never flat.
+    """
+    from phenotypic._cli import _cli_stage4_worker as worker
+
+    identities = {(entry.dataset, entry.stem): entry.identity for entry in tree.manifest()}
+    calls: dict[str, list[str]] = {}
+
+    def _image_of(name: str, args, kwargs) -> tuple[str, str]:
+        if name == "replace_run_embeddings":
+            return dataset_and_stem(Path(args[0]))
+        if name == "publish_image_success":
+            return kwargs["dataset"], kwargs["image_stem"]
+        if name == "write_stage4_signal":
+            return args[1], args[2]
+        return args[1], args[2]  # delete_stage4_signals(output_dir, dataset, stem)
+
+    for name in names:
+        original = getattr(worker, name)
+
+        def _spy(*args, _name=name, _original=original, **kwargs):
+            calls.setdefault(identities[_image_of(_name, args, kwargs)], []).append(_name)
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(worker, name, _spy)
+    return calls
+
+
+def stage4_signal_dir(tree: Stage4Waiting) -> Path:
+    """``.phenotypic/progress/stage4_payload`` of *tree*."""
+    from phenotypic.sdk_ import progress_dir
+
+    return progress_dir(tree.out) / "stage4_payload"
+
+
+def fence_after_first_signal(tree: Stage4Waiting, seam: str) -> dict:
+    """``run_stage4`` keywords whose *seam* raises once the first signal is on disk.
+
+    *seam* is ``"active_check"`` or ``"commit_guard"``; either raises
+    ``SlurmGenerationInactiveError``, as a fenced epoch's does.
+    """
+    from contextlib import contextmanager
+
+    from phenotypic._cli._cli_slurm_lifecycle import SlurmGenerationInactiveError
+
+    def _fenced() -> bool:
+        return any(stage4_signal_dir(tree).rglob("*.parquet"))
+
+    def _check() -> None:
+        if _fenced():
+            raise SlurmGenerationInactiveError("fenced after the first Stage-4 signal")
+
+    @contextmanager
+    def _guard():
+        _check()
+        yield
+
+    return {"active_check": _check} if seam == "active_check" else {"commit_guard": _guard}
+
+
+def corrupt_one_store(tree: Stage4Waiting) -> Stage4Item:
+    """Overwrite the first store's level-0 objmap chunks with garbage; return its item.
+
+    Not a deletion: zarr reads a missing chunk as the fill value, so a store
+    with its chunks deleted still loads. Garbage bytes fail to decode, so
+    loading the image raises, as a corrupt store at load does (spec §4.8).
+    The root is untouched.
+    """
+    from phenotypic.sdk_ import ngff_
+
+    item = tree.items[0]
+    store = zarr_store_path_of(tree.out, item)
+    labels = ngff_.read_phenotypic_attributes(store)[ngff_.PhenotypicAttr.LABELS]
+    level0 = store / labels[ngff_.OBJMAP_LABEL] / "0"
+    # Chunk keys are "c/..." (a directory) or "c.<i>.<j>" (files), by encoding.
+    chunks = [
+        path
+        for path in level0.rglob("*")
+        if path.is_file() and path.name != "zarr.json"
+    ]
+    assert chunks, sorted(p.name for p in level0.iterdir())
+    for chunk in chunks:
+        chunk.write_bytes(b"not a zarr chunk")
+    return item
+
+
+def capture_dataloader_kwargs(monkeypatch) -> dict:
+    """Record the keywords of every ``torch.utils.data.DataLoader`` built (the last wins)."""
+    import torch.utils.data as torch_data
+
+    seen: dict = {}
+    original = torch_data.DataLoader
+
+    def _capturing(*args, **kwargs):
+        seen.clear()
+        seen.update(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(torch_data, "DataLoader", _capturing)
+    return seen
+
+
+def stage4_dataset_for(tree: Stage4Waiting):
+    """The first backbone's ``Stage4ImageDataset`` over every image of *tree*."""
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_stage4_worker import Stage4ImageDataset, plan_stage4
+
+    ((backbone, group), *_rest) = plan_stage4(ImagePipeline.from_json(tree.pipeline))
+    embedders = {embedder.payload_key(): embedder for _, embedder in group}
+    dense = any(e.pooling == "masked_dense" for e in embedders.values())
+    return Stage4ImageDataset(
+        tree.out,
+        stage4_image_type(tree),
+        [(entry, tuple(embedders)) for entry in tree.manifest()],
+        embedders,
+        {backbone: StubDinoProcessor()} if dense else {},
+        backbone,
+    )
+
+
+def stage4_loader_for(tree: Stage4Waiting, *, num_workers: int):
+    """The worker's DataLoader over :func:`stage4_dataset_for`."""
+    from phenotypic._cli._cli_stage4_worker import _stage4_loader
+
+    return _stage4_loader(stage4_dataset_for(tree), num_workers)
+
+
+def inventory_and_work_ids(tree: Stage4Waiting) -> tuple[dict, dict]:
+    """``(inventory, work_ids)`` for ``sweep_orphan_stage4_signals``, from *tree*'s state."""
+    import json
+
+    from phenotypic.sdk_ import processing_state_path
+
+    work_ids = json.loads(processing_state_path(tree.out).read_text(encoding="utf-8"))["config"]["work_ids"]
+    return {ds: list(images) for ds, images in work_ids.items()}, work_ids

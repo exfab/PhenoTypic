@@ -36,7 +36,8 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -89,10 +90,14 @@ class Stage4SignalState:
         stale: Keys whose file is present but must be deleted and re-embedded:
             unreadable, fenced to another work id or run, filed under another
             key, or computed against another root.
+        signals: The valid keys' signals, as :func:`classify_stage4_signals`
+            read them, so a commit reads each file once (the classification
+            reads every file in full anyway). Not part of equality.
     """
 
     valid: frozenset[str]
     stale: frozenset[str]
+    signals: Mapping[str, Stage4Signal] = dataclasses.field(default_factory=dict, compare=False)
 
 
 def _stage4_dataset_dir(output_dir: Path, dataset: str) -> Path:
@@ -303,9 +308,9 @@ def classify_stage4_signals(
         live_root_sha256: sha256 of the store root ``zarr.json`` as it is now.
 
     Returns:
-        The two key sets.
+        The two key sets, and the valid keys' signals.
     """
-    valid: set[str] = set()
+    signals: dict[str, Stage4Signal] = {}
     stale: set[str] = set()
     for key in keys:
         path = stage4_signal_path(output_dir, dataset, key, stem)
@@ -313,10 +318,12 @@ def classify_stage4_signals(
             continue
         signal = read_stage4_signal(path, work_id=work_id, run_id=run_id)
         if signal is not None and signal.root_sha256 == live_root_sha256:
-            valid.add(key)
+            signals[key] = signal
         else:
             stale.add(key)
-    return Stage4SignalState(valid=frozenset(valid), stale=frozenset(stale))
+    return Stage4SignalState(
+        valid=frozenset(signals), stale=frozenset(stale), signals=signals
+    )
 
 
 def stage4_signals_complete(state: Stage4SignalState, keys: Iterable[str]) -> bool:
@@ -372,12 +379,67 @@ def delete_stage4_signals(
     Returns:
         How many files were removed.
     """
+    return sum(
+        _unlink_signal(region / f"{stem}{_SIGNAL_SUFFIX}", commit_guard)
+        for region in _key_dirs(output_dir, dataset)
+    )
+
+
+def _key_dirs(output_dir: Path, dataset: str) -> list[Path]:
+    """Every ``<model>/<layer>/<region>`` directory of *dataset*'s signals, sorted."""
     base = _stage4_dataset_dir(output_dir, dataset)
     if not base.is_dir():
-        return 0
-    removed = 0
-    for model in sorted(p for p in base.iterdir() if p.is_dir()):
-        for layer in sorted(p for p in model.iterdir() if p.is_dir()):
-            for region in sorted(p for p in layer.iterdir() if p.is_dir()):
-                removed += _unlink_signal(region / f"{stem}{_SIGNAL_SUFFIX}", commit_guard)
-    return removed
+        return []
+    return [
+        region
+        for model in sorted(p for p in base.iterdir() if p.is_dir())
+        for layer in sorted(p for p in model.iterdir() if p.is_dir())
+        for region in sorted(p for p in layer.iterdir() if p.is_dir())
+    ]
+
+
+def delete_stage4_signal_temps(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> int:
+    """Remove this image's leftover signal temp files, ``.<stem>.parquet.*.tmp``.
+
+    :func:`write_stage4_signal` writes through a dot-prefixed sibling temp
+    file (``atomic_write_with_writer``) that a crash before its rename
+    leaves behind. Call this only for an image no writer can still be
+    writing, e.g. one whose record is valid (the orphan sweep); a live
+    writer's temp file is otherwise indistinguishable. Matched by prefix and
+    suffix, never by a glob of the stem.
+
+    Returns:
+        How many files were removed.
+    """
+    prefix, suffix = f".{stem}{_SIGNAL_SUFFIX}.", ".tmp"
+    return sum(
+        _unlink_signal(path, commit_guard)
+        for region in _key_dirs(output_dir, dataset)
+        for path in sorted(region.iterdir())
+        if path.name.startswith(prefix) and path.name.endswith(suffix)
+    )
+
+
+def stage4_signal_stems(output_dir: Path, dataset: str) -> set[str]:
+    """The stems of *dataset* with a signal file or a signal temp file under any key.
+
+    One directory listing per key directory, so a sweep over a large
+    inventory stats each image's files once rather than listing every key
+    directory per image. A temp file ``.<stem>.parquet.<random>.tmp`` names its
+    stem before the last ``.parquet.``.
+    """
+    stems: set[str] = set()
+    for region in _key_dirs(output_dir, dataset):
+        for path in region.iterdir():
+            name = path.name
+            if name.startswith(".") and name.endswith(".tmp") and f"{_SIGNAL_SUFFIX}." in name:
+                stems.add(name[1 : name.rindex(f"{_SIGNAL_SUFFIX}.")])
+            elif not name.startswith(".") and name.endswith(_SIGNAL_SUFFIX):
+                stems.add(name[: -len(_SIGNAL_SUFFIX)])
+    return stems

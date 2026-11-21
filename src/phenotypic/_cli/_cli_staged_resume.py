@@ -201,6 +201,50 @@ def stages_1_to_3_done(
     )
 
 
+Stage4Status = Literal["done", "pending", "not_ready"]
+
+
+def stage4_status(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    work_id: str,
+    *,
+    republish: bool = False,
+) -> Stage4Status:
+    """Where one image of a run that embeds on the GPU stands with Stage 4 (spec §4.6).
+
+    - ``"done"``: its record is valid (``valid_image_success``), so Stage 4
+      has published it, or nothing is left for Stage 4 to do;
+    - ``"pending"``: it finished Stages 1-3 (:func:`stages_1_to_3_done`) and
+      has no valid record, so Stage 4 owns it;
+    - ``"not_ready"``: neither; Stages 1-3 have work left (or failed).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+        work_id: The image's current work id.
+        republish: Reserved for measure mode's republish Stage 4 (#282 P6
+            T1), which re-embeds an image whose record is valid. Not yet
+            supported.
+
+    Raises:
+        NotImplementedError: If *republish* is true (P6 T1 builds it).
+    """
+    if republish:
+        raise NotImplementedError("republish-mode Stage 4 is built in #282 P6 T1")
+    from ._cli_completion import valid_image_success
+
+    if valid_image_success(
+        output_dir, dataset=dataset, image_stem=stem, work_id=work_id
+    ):
+        return "done"
+    if stages_1_to_3_done(output_dir, dataset, stem, work_id):
+        return "pending"
+    return "not_ready"
+
+
 def write_stage3_completion_marker(
     output_dir: Path,
     dataset: str,

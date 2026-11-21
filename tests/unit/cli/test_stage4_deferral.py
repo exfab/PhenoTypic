@@ -220,7 +220,6 @@ def test_a_core_rerun_drops_the_old_stage3_first(stage4_pending_with_signals, mo
     assert not signal_files(out, item)
 
 
-@pytest.mark.xfail(strict=True, reason="needs Stage 4 itself, which #282 P4 T3 builds")
 def test_a_no_detector_local_run_finalizes(tmp_path, tiny_inputs, stage4_cpu):
     out = tmp_path / "out"
     result = run_cli(tiny_inputs, out, pipeline=with_stage4_dino_objects(tmp_path, fake_gpu=False), extra=GPU)

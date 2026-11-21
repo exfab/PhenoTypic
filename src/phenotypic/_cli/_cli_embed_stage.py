@@ -54,6 +54,8 @@ from typing import TYPE_CHECKING, Literal
 import click
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.abc_ import MeasureEmbedding
 
@@ -326,6 +328,32 @@ def load_pipeline_or_none(pipeline_json: Path | None) -> "ImagePipeline | None":
 def defers_embeddings(config: "ExecutionConfig") -> bool:
     """Whether the run's per-image core defers its embeddings to Stage 4."""
     return config.embed_stage == "gpu"
+
+
+def apply_stage4_counts(
+    counts: "dict[str, dict[str, int]]",
+    stage4: "Mapping[str, tuple[int, int]]",
+) -> None:
+    """Move a deferring run's Stage-3 counts to what Stage 4 left, in place (#282 P4 T3).
+
+    Under deferral a Stage-3 success is progress, not completion: Stage 4
+    publishes the record. *counts* are a local strategy's per-dataset
+    ``{"completed", "failed"}`` after its Stage-3 loop, which count an image
+    that finished Stages 1-3 (now or in an earlier invocation) as completed.
+    Each image Stage 4 failed moves from completed to failed; one it
+    published stays completed. ``run_local_stage4`` raises rather than leave
+    an image it was handed pending, so nothing else moves.
+
+    Args:
+        counts: ``{dataset: {"completed": n, "failed": n}}``, updated.
+        stage4: ``run_local_stage4``'s ``{dataset: (published, failed)}``.
+    """
+    for dataset, (_published, failed) in stage4.items():
+        entry = counts.get(dataset)
+        if entry is None or not failed:
+            continue
+        entry["completed"] -= failed
+        entry["failed"] += failed
 
 
 def prepare_stage4_environment(config: "ExecutionConfig") -> None:

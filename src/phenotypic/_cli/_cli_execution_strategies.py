@@ -58,7 +58,7 @@ from ._cli_failure_tracker import (
     work_id_for_image,
     work_identity_for_image,
 )
-from ._cli_embed_stage import defers_embeddings
+from ._cli_embed_stage import apply_stage4_counts, defers_embeddings
 from ._stages import STAGE_MEASURE
 from ._cli_reference import ReferencePin
 from ._cli_completion import (
@@ -456,6 +456,26 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Aggregate results by dataset
         dataset_results = self._aggregate_results(datasets, results)
+        if (
+            defers_embeddings(self.config)
+            and not measure_only
+            and not self.config.process_only_layer
+        ):
+            # Stage 4 (#282 P4 T3): this loop was the run's Stage 3. An image
+            # counts completed only once Stage 4 published its record.
+            from . import _cli_stage4_worker
+
+            stage4 = _cli_stage4_worker.run_local_stage4(
+                self.config, self.output_manager, output_dir, datasets
+            )
+            counts = {
+                name: {"completed": r.completed, "failed": r.failed}
+                for name, r in dataset_results.items()
+            }
+            apply_stage4_counts(counts, stage4)
+            for name, r in dataset_results.items():
+                r.completed = counts[name]["completed"]
+                r.failed = counts[name]["failed"]
 
         end_time = datetime.now()
 

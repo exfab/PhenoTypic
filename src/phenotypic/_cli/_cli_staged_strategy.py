@@ -56,7 +56,7 @@ from ._cli_stage2_token import (
     detector_slot,
     stage2_result_replayable,
 )
-from ._cli_embed_stage import defers_embeddings
+from ._cli_embed_stage import apply_stage4_counts, defers_embeddings
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
@@ -410,6 +410,15 @@ class StagedGpuStrategy(ExecutionStrategy):
                 delayed(_stage3)(ds, img) for ds, img in tasks
             ):
                 results[ds_name]["completed" if ok else "failed"] += 1
+            if deferring:
+                # ---- Stage 4: GPU embedding, then the record (#282 P4 T3) --
+                # An image counts completed only once Stage 4 published it.
+                from . import _cli_stage4_worker
+
+                stage4 = _cli_stage4_worker.run_local_stage4(
+                    cfg, self.output_manager, output_dir, datasets
+                )
+                apply_stage4_counts(results, stage4)
 
         ds_results = {
             name: DatasetResults(
