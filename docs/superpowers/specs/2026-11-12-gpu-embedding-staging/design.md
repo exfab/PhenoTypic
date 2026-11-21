@@ -188,16 +188,27 @@ parent D5's writer list, gain the Stage-4 rewrite.
   (plan review I3). Workers read the store read-only, compute the
   binds digests and cut and resize every crop through the embedder's own
   functions. For `masked_dense`, they cut patch-aligned tiles.
-- **BatchEncoder.** It keeps one queue per crop geometry. Every forward pass has
-  exactly m inputs; the last is zero-padded. Inputs are normalised as
-  `embed_crops` does, cast to `compute_dtype`, run under `inference_mode`, and
-  pooled in float32. Vectors are routed back by `(image, key, row)`.
+- **BatchEncoder.** It keeps one queue per input geometry. Every forward pass
+  of a queue has exactly that queue's m inputs; the last is zero-padded.
+  Inputs are normalised as `embed_crops` does, cast to `compute_dtype`, run
+  under `inference_mode`, and pooled in float32. Vectors are routed back by
+  `(image, key, row)`, and each drained image reports every pass size its rows
+  ran at. After any failed forward pass, the encoder re-queues that pass's
+  rows and refuses all further use, so the shard fails rather than continue
+  with images a failed pass held (2026-11-20, P1/P2 review I6).
 - **Batch size.**
   `m = min(batch_size, pow2floor((0.8·GPU_mem − weights − 1 GiB) / per_sample))`.
-  It is a function of the GPU model, the backbone and `crop_px` only, never of
-  free memory. On OOM, m halves once for the shard, recorded. At m = 1 the shard
-  exits non-zero, and the next round retries. The formula's constants live in a
-  logic-validation script.
+  It is a function of the GPU model, the backbone and the input geometry only,
+  never of free memory. m is **per queue geometry** within one backbone
+  (`crop_px`, or a `masked_dense` tile's h × w): embedders sharing a model load
+  may differ in `crop_px`, and a 448-px crop costs about four times a 224-px
+  one (P1/P2 review I2). One function computes it from the loaded model
+  (`physical_batch_for`, review I3); where embedders share a geometry, the
+  smallest `batch_size` caps it. On OOM, that queue's m halves once for the
+  shard, and every pass size an image's rows ran at is recorded in its
+  `compute` block (§4.5). At m = 1, or on a second OOM in that queue, the shard
+  exits non-zero, and the next round retries. The formula's constants live in
+  a logic-validation script.
 - **Determinism.**
   - cuDNN deterministic, no benchmark.
   - TF32 off for both matmul and cuDNN (DINO's patch embedding is a conv).
@@ -227,7 +238,12 @@ parent D5's writer list, gain the Stage-4 rewrite.
   preflight and again at shard start, before any load.
 - A per-entry provenance block, `compute: {device, device_name, capability,
   torch, cuda, physical_batch, stage}`, is excluded from descriptor grouping.
-  `compute_dtype` is not excluded.
+  `compute_dtype` is not excluded. `physical_batch` is the one pass size the
+  entry's rows ran at. When they ran at several (an OOM halving part-way
+  through the image, or an inline image's shorter last pass),
+  `physical_batch` is null and the block gains `physical_batches`, every size,
+  largest first, e.g. `[64, 32]`; an entry that ran no pass records
+  `physical_batch: null` (P1/P2 review I1, M10).
 
 ### 4.6 Continuation and measure mode
 

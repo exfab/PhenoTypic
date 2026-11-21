@@ -572,7 +572,8 @@ It spends real GPU time. The user also names the input set (below).
 - [ ] **Step 3: Run it and verify**, recording each in the report:
   - the ledger shows `stage4-round-1` ended `TIMEOUT` and a `stage4-round-2`
     that completed;
-  - every image has a valid record; `compute.physical_batch` and
+  - every image has a valid record; `compute.physical_batch` (or, after a
+    halving mid-image, `compute.physical_batches`) and
     `compute.device_name` are recorded per entry; images committed in round 1
     were not re-embedded in round 2 (the shard logs);
   - `phenotypic-wait` exits `0` for both runs;

@@ -209,6 +209,17 @@ def test_no_cuda_stops_before_stage1(tmp_path, tiny_inputs, param_stub_backbone,
   load the staged-GPU refusal probe already does (`uses_staged_gpu_strategy`,
   `phenotypicCLI.py:3165`). A load failure resolves `inline` and is left to the
   pipeline validation below it, as that probe does.
+- [ ] **Step 3a: Refuse a cuBLAS setting that comes too late** (P1/P2 review
+  M12, a P4 hand-off). cuBLAS reads `CUBLAS_WORKSPACE_CONFIG` once, at the
+  process's first handle, and `check_cublas_workspace` cannot tell a variable
+  set after that. So `prepare_stage4_environment`, at the moment it would
+  `setdefault` the variable, raises `click.ClickException` (exit `1`, one line
+  naming the variable) when `"torch" in sys.modules and
+  torch.cuda.is_initialized()` and the variable was not already one of
+  `DETERMINISTIC_CUBLAS_WORKSPACE_CONFIGS`. It never imports torch to ask.
+  Test: `test_a_cublas_setting_after_cuda_initialised_is_refused` (monkeypatch
+  a fake `torch` into `sys.modules` whose `cuda.is_initialized()` is true; a
+  preset `:16:8` is accepted).
 - [ ] **Step 4: Run the tests.** Expected: all pass; the `xfail` reads `XFAIL`.
 - [ ] **Step 5: Commit.**
 
@@ -420,8 +431,10 @@ def test_run_terminal_stage():
 - Test: `tests/unit/cli/test_stage4_worker.py` (new) **[torch]**
 
 **Interfaces:**
-- Consumes: `BatchEncoder`, `BackboneKey`, `physical_batch_size`,
-  `configure_determinism` (P2); `prepare_regions`, `vectors_from`,
+- Consumes: `BatchEncoder` and its `DrainedTicket`, `BackboneKey`,
+  `physical_batch_for`, `Stage4OutOfMemory`, `configure_determinism` (P2, as the
+  P1/P2 review fixes left them); `COMPUTE_DTYPE_DEFAULT` (`sdk_/typing_.py`);
+  `MeasureDinoEmbedding._check_geometry`; `prepare_regions`, `vectors_from`,
   `payload_from`, `entry_descriptor_for`, `compute_block`,
   `load_dino_processor` (P1, P2); `write_stage4_signal`, `read_stage4_signal`,
   `classify_stage4_signals`, `delete_stage4_signal_keys`,
@@ -453,7 +466,10 @@ def test_run_terminal_stage():
     is not copied, so `producer.params_sha256` stays the inline one.
   - `@dataclass class Stage4Outcome`: `published: list[str]`,
     `failed: dict[str, str]` (identity → error type), `pending: list[str]`,
-    `signals_written: int`, `physical_batch: dict[BackboneKey, int]`
+    `signals_written: int`,
+    `physical_batches: dict[BackboneKey, dict[tuple[str, int, int, str], int]]`
+    (each backbone's `BatchEncoder.physical_batches` when its loop ended: the
+    `m` of every queue, `(kind, h, w, pooling)`, halved where an OOM halved it)
   - `sweep_orphan_stage4_signals(output_dir: Path, inventory: Mapping[str, Sequence[str]], work_ids: Mapping[str, Mapping[str, str]], *, commit_guard: CommitGuard | None = None) -> int`:
     every image of the **whole inventory** whose record is valid loses its
     leftover signals (plan review I7; a done image never reaches the loop).
@@ -473,7 +489,8 @@ def test_run_terminal_stage():
 **The loop** (spec §4.4). Every durable step is preceded by `active_check()`,
 and every durable write runs under `commit_guard`.
 1. Licence: for every v3 `BackboneKey`, `require_license_acceptance(..., interactive=False)`
-   before any load. Then `stage4_device()` and `configure_determinism()`.
+   before any load. Then `device = stage4_device()` and
+   `configure_determinism(device=device)`, the device passed explicitly (Step 3b).
 2. Per item, in order, with `run = journal_table_run(store)` (the forward
    run's folder, plan review I10; P6 uses the measure pipeline's) and the live
    root sha:
@@ -482,16 +499,21 @@ and every durable write runs under `commit_guard`.
    - every key valid → **commit only**;
    - the store already holds every key fresh, its files verify
      (`read_embedding_entry`, `sdk_/_embedding_tables.py:417`), and
-     `producer.params_sha256` and `compute_dtype` match → **publish only**
+     `producer.params_sha256` and `compute_dtype` match (an entry without
+     `compute_dtype` reads `COMPUTE_DTYPE_DEFAULT`, its one definition) →
+     **publish only**
      (forward mode only; P6's republish always re-embeds);
    - otherwise → to the loader, for **only the keys without a valid signal**
      (plan review C4).
 3. Per backbone, in plan order: load once through the measurer module's
    `load_dino_backbone` (so the test stub applies; never `_cached_backbone`),
-   with `dtype=key.compute_dtype`; compute `m`; stream the loader's images
-   through one `BatchEncoder`; as each `(image, key)` drains, `vectors_from` →
-   `payload_from(prepared, vectors, entry_descriptor_for(model, compute_block(..., stage="stage4", physical_batch=m)))`
-   → `write_stage4_signal(..., root_sha256=<the root the loader read>)`. Then
+   with `dtype=key.compute_dtype`; check its geometry for every embedder of the
+   backbone (Step 3a); build the physical-batch rule (Step 3c); stream the
+   loader's images through one `BatchEncoder(physical_batch=<the rule>)`; as
+   each `(image, key)` drains (a `DrainedTicket`), `vectors_from` →
+   `payload_from(prepared, vectors, entry_descriptor_for(model, compute_block(..., stage="stage4", physical_batch=drained.physical_batches)))`
+   → `write_stage4_signal(..., root_sha256=<the root the loader read>)`. Any
+   error from the encoder ends the shard (Step 3e). Then
    `del` the model and `torch.cuda.empty_cache()`. A key's signal is written
    when that key drains, so a walltime loses at most the batches in flight.
 4. A **one-thread** commit pool (`ThreadPoolExecutor(max_workers=1)`, plan
@@ -523,7 +545,7 @@ and every durable write runs under `commit_guard`.
    `load_dino_processor` and pickled into the dataset; a worker loads nothing
    (re-review item 2). An item is one image: the worker opens the store read
    only, reads the root sha, and calls each pending key's
-   `prepare_regions(image, processor=...)`. **A per-image exception returns a picklable
+   `prepare_regions(image, processor=...)`, materialised (Step 3d). **A per-image exception returns a picklable
    `FailedImage(identity, error_type, message, traceback)`**; it never raises
    through the loader.
 6. Failures that are the image's: a `FailedImage`, a non-finite float16 → a
@@ -674,7 +696,52 @@ def test_orphan_signals_of_a_done_image_are_swept(staged_tree, stage4_cpu):
   eval $TPT tests/unit/cli/test_stage4_worker.py
   ```
 
-- [ ] **Step 3: Implement** the Interfaces and the loop above.
+- [ ] **Step 3: Implement** the Interfaces and the loop above, with the five
+  P1/P2-review hand-offs below as part of it. Each names the test that pins it;
+  add those to Step 1's list.
+- [ ] **Step 3a: Check each backbone's geometry.** Stage 4 loads through
+  `load_dino_backbone` directly, never `_cached_backbone`, so
+  `MeasureDinoEmbedding._check_geometry` does not run by itself. Call
+  `embedder._check_geometry(model)` for every embedder of the backbone right
+  after the load and before the first pass: `prepare_regions` cuts tiles with
+  `_PATCH_SIZE[version]`, while `BatchEncoder` routes with
+  `backbone_patch_size(model)`, and only this check holds the two equal. A
+  mismatch is node or model state, not an image's: the shard fails, journalling
+  no image. Test: `test_a_patch_size_mismatch_fails_before_any_pass`.
+- [ ] **Step 3b: Pass `configure_determinism` its device.** With no argument it
+  infers CUDA from `torch.cuda.is_available()`, so a
+  `PHENOTYPIC_STAGE4_DEVICE=cpu` test on a GPU node would fire the cuBLAS
+  check. Call `configure_determinism(device=stage4_device())`. Test:
+  `test_a_cpu_stage4_on_a_gpu_node_needs_no_cublas_setting` (monkeypatch
+  `torch.cuda.is_available` true, unset the variable, `stage4_cpu`).
+- [ ] **Step 3c: One `m` per queue geometry, from the one producer.** Build each
+  backbone's rule as
+  `lambda h, w: physical_batch_for(model, crop_px=(h, w), batch_size=<the smallest batch_size of the backbone's embedders whose inputs have that geometry>, compute_dtype=key.compute_dtype, gpu_total_bytes=torch.cuda.get_device_properties(<the device>).total_memory)`
+  (on `stage4_cpu`, a fixed test total). Never a free-memory reading, and
+  never a second derivation of the rule's inputs. Record each backbone's
+  `BatchEncoder.physical_batches` in `Stage4Outcome.physical_batches`. Test:
+  `test_two_crop_px_share_one_load_with_an_m_each` (a 112-px and a 224-px
+  embedder on one `BackboneKey`: one load, two queues, the entries' `compute`
+  blocks record each queue's `m`).
+- [ ] **Step 3d: The loader hands materialised crops only.** Workers call
+  `prepare_regions(image, processor=...)` with its default
+  `materialise=True`. Never `materialise=False`, and never `_prepare_inline`:
+  their `_DeferredCrops` holds the whole plate's pixels and is for the inline
+  encoder in its own process, never for pickling across the loader. Test:
+  `test_the_loader_hands_materialised_crops` (every crop input a worker returns
+  is a `numpy.ndarray`).
+- [ ] **Step 3e: A poisoned encoder fails the shard.** After any failed forward
+  pass (`Stage4OutOfMemory`, or any other error), the encoder has re-queued the
+  pass's rows and refuses further use: `submit`, `flush` and `drain` raise
+  `RuntimeError` chained from the failure. Stage 4 never catches that to carry
+  on with the encoder, and never fails "the image" for it, because a pass holds
+  rows of several images. The backbone's loop ends; the commit pool drains what
+  was already complete; `run_local_stage4` raises `click.ClickException`
+  (exit `1`) and the SLURM shard exits non-zero; every image whose key never
+  drained stays pending, journalling nothing (spec §4.8, U7), and the next
+  round re-embeds it with a fresh encoder. Test:
+  `test_a_failed_forward_pass_fails_the_shard_and_journals_nothing` (a stub
+  whose second pass raises `ValueError`).
 - [ ] **Step 4: Remove Task 1's `xfail`, and run the worker tests, the refusal
   tests, and the startup-import guards.**
 

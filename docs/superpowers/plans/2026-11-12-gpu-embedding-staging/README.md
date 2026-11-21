@@ -83,8 +83,13 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   `compute_dtype`, absent reads `"float32"`). Storage stays `float16`
   (`EmbeddingDType`, `sdk_/typing_.py`).
 - The per-entry **`compute`** block is
-  `{device, device_name, capability, torch, cuda, physical_batch, stage}`. It is
-  excluded from descriptor grouping. `compute_dtype` is not.
+  `{device, device_name, capability, torch, cuda, physical_batch, stage}`, plus
+  `physical_batches` when the entry's rows ran at more than one pass size. It
+  is excluded from descriptor grouping. `compute_dtype` is not.
+  `compute_block(physical_batch=)` takes one size or every size an image ran at
+  (`BatchEncoder.drain()`'s `DrainedTicket.physical_batches`): one size is
+  `physical_batch`; several are `physical_batch: null` plus `physical_batches`,
+  largest first; none (no regions) is `physical_batch: null` (P1/P2 review I1).
 - **Determinism**, set once per Stage-4 process before the first load:
   - `torch.backends.cudnn.deterministic = True`, `torch.backends.cudnn.benchmark = False`;
   - `torch.backends.cuda.matmul.allow_tf32 = False`, `torch.backends.cudnn.allow_tf32 = False`;
@@ -98,13 +103,28 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
     values, so a user's own `:16:8` is kept.
 - **Physical batch:**
   `m = min(batch_size, pow2floor((0.8·GPU_mem − weights − 1 GiB) / per_sample))`.
-  It depends on the GPU model (total memory), the backbone and `crop_px` only,
-  never on free memory. On OOM, m halves once for the shard and is recorded in
-  `compute.physical_batch`. At m = 1, or on a second OOM, the shard exits
+  It depends on the GPU model (total memory), the backbone and the input
+  geometry only, never on free memory. Its one producer is
+  `physical_batch_for(model, *, crop_px, batch_size, compute_dtype, gpu_total_bytes)`
+  (`_batch_encoder.py`), which reads the weight bytes, tokens and heads from the
+  loaded model; the P2 T4 job calls it too (P1/P2 review I3). m is **per queue
+  geometry**: `BatchEncoder(physical_batch=)` takes an int or a rule
+  `(h, w) -> m`, called once per queue, and Stage 4 passes
+  `physical_batch_for(model, crop_px=(h, w), ...)` with the smallest
+  `batch_size` of the backbone's embedders at that geometry (review I2). On
+  OOM, that queue's m halves once for the shard, and each image records every
+  pass size its rows ran at (`compute.physical_batch` /
+  `compute.physical_batches`). At m = 1, or on a second OOM in that queue, the
+  encoder raises `Stage4OutOfMemory`, refuses further use, and the shard exits
   non-zero. Constants live in P0's logic-validation script. Because m differs by
   GPU model and halving changes it, batch invariance is promised **within one GPU
   model and physical batch** (S1); across them the distance is measured
   (P2 T4).
+- **A failed forward pass poisons the encoder.** Any error in a pass (a
+  bottomed-out OOM, a driver fault, a CUDA error that is not an OOM) re-queues
+  the pass's rows, so no ticket or `held_bytes` changes, and every later
+  `submit`, `flush` and `drain` raises `RuntimeError` chained from it (P1/P2
+  review I6). The shard fails; it never continues with that encoder.
 - **Inside Stage 4, an embedder's device is `cuda`.** A missing or unusable CUDA
   fails the shard, never falls back to CPU. The test-only escape is
   `PHENOTYPIC_STAGE4_DEVICE=cpu`.
@@ -586,3 +606,26 @@ Applied as docs-only plan edits:
 - **P7:** float32 is recommended for every size, giant included; bf16 is documented as a memory-bound opt-in (H7, amended 2026-11-20 after P2 T4).
 - **README:** stop point 4 removed; U11 in the decisions table and spec
   coverage; O2 narrowed to `dinov2-vitg14`; a DINOv3 follow-up.
+
+### P1/P2 deep review fixes (2026-11-20)
+
+`reports/2026-11-12-gpu-embedding-staging/review-p1-p2.md`, applied in code
+(`74781a7e3` and after) with the orchestrator's rulings. They change
+interfaces P4 consumes, so the Global Constraints above and P4 T1/T3 now state
+them:
+- **I1:** `BatchEncoder.drain()` yields `DrainedTicket(ticket, outputs, physical_batches)`;
+  `compute_block(physical_batch=)` takes one size or all of them, and records
+  several as `physical_batch: null` plus `physical_batches`.
+- **I2:** m is per queue geometry: `BatchEncoder(physical_batch=int | rule)`,
+  and an OOM halves only that queue's m. The `physical_batch` property and
+  the public `halve()` are gone; `physical_batches` and `halved` replace them.
+- **I3:** `physical_batch_for` / `physical_batch_inputs` are the rule's one
+  producer from a loaded model; the P2 T4 script calls them.
+- **I4:** the inline path cuts crops one `batch_size` slice at a time
+  (`_prepare_inline`, `_DeferredCrops`); `prepare_regions` still materialises
+  by default, for Stage 4's loader.
+- **I5:** every golden config's `params_sha256` is checked on any CPU, without torch.
+- **I6 and the OOM ruling:** any failed forward pass re-queues its rows and
+  poisons the encoder.
+- **Minors:** fixed or assigned in the C5r report. The P4 hand-offs are P4 T1
+  Step 3a and P4 T3 Steps 3a–3e.
