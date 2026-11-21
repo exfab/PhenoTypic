@@ -1014,6 +1014,17 @@ def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         return real_popen(args, *popen_args, **popen_kwargs)
 
     monkeypatch.setattr(subprocess, "Popen", _refuse_scheduler)
+
+    # U5's hub lookup (#282 P5 T2): a SLURM Stage-4 submission resolves the
+    # unpinned revisions in this process. A unit test never reaches the hub;
+    # unanswered, each model falls back to per-process resolution, with its
+    # warning. A test that needs an answer patches `_hub_commit` itself.
+    from phenotypic._cli import _cli_embed_stage
+
+    def _no_hub(hf_id: str) -> str:
+        raise RuntimeError(f"a unit test does not query the hub for {hf_id}")
+
+    monkeypatch.setattr(_cli_embed_stage, "_hub_commit", _no_hub)
     return seen
 
 

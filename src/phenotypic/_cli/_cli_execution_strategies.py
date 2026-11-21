@@ -1472,6 +1472,19 @@ def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:
     return config.process_only_layer in (None, "objmap")
 
 
+def uses_staged_controller(config: ExecutionConfig) -> bool:
+    """Whether *config* runs through ``StagedSlurmStrategy``'s recoverable controller.
+
+    A staged GPU run (:func:`uses_staged_gpu_strategy`), or a SLURM run that
+    embeds in a GPU Stage 4 (#282 P5 T2, spec §4.1), with or without a
+    ``GpuDetector``: without one the controller's phases are ``["stage3",
+    "stage4"]`` and its "stage3" role runs the single-pass core.
+    """
+    return uses_staged_gpu_strategy(config) or (
+        config.is_slurm_mode() and getattr(config, "embed_stage", "inline") == "gpu"
+    )
+
+
 def prepare_store_run_environment(
     output_dir: Path, *, durable_writes: bool | None = None
 ) -> int:
@@ -1535,7 +1548,9 @@ def create_execution_strategy(
         # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).
         # measure-only and process-layer exports keep the per-image
         # AutonomousSLURMStrategy (the staged SLURM path is forward-only).
-        if uses_staged_gpu_strategy(config):
+        # A run that embeds in a GPU Stage 4 takes the staged controller too,
+        # detector or not (#282 P5 T2).
+        if uses_staged_controller(config):
             from ._cli_staged_slurm import StagedSlurmStrategy
 
             return StagedSlurmStrategy(config, output_manager)

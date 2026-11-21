@@ -38,11 +38,16 @@ the read-only half, outside ``--skip-validation`` and above ``--restart``,
   stage differs from the recorded one (U3).
 
 **An interim gate** (#282 P3-P4 review C1): :func:`stage4_supported` says
-which runs have a Stage-4 executor today, only local full runs. Elsewhere
-(SLURM, any mode; ``--mode measure``, local or SLURM) ``auto`` resolves
+which runs have a Stage-4 executor today: full runs, local or on SLURM (P5 T2
+lifted SLURM). In ``--mode measure``, local or SLURM, ``auto`` resolves
 ``inline`` with a one-line note, and an explicit ``--embed-stage gpu`` is one
-usage-error line. P5 T2 lifts SLURM full runs and P6 T1 measure mode, each by
-widening that one predicate.
+usage-error line, until P6 T1 widens that one predicate for it.
+
+**One revision per run** (U5, #282 P5 T2): :func:`resolve_embed_revisions`
+asks the hub once, in the submitting process at a Stage-4 run's first
+invocation, for the commit of every unpinned ``MeasureDinoEmbedding``;
+:func:`recorded_embed_revisions` reads back what an earlier invocation
+recorded, and a continuation reuses it rather than resolving again.
 
 :func:`prepare_stage4_environment` is the startup half of a ``gpu`` run: the
 cuBLAS workspace variable, and for a local run the CUDA check, both before
@@ -263,30 +268,26 @@ def refuse_embed_stage_switch(
 def stage4_supported(config: "ExecutionConfig") -> bool:
     """Whether a Stage-4 executor runs this configuration's embeddings today.
 
-    The interim gate of #282 P3-P4 review C1: only a **local forward run**
-    (``--mode full``, the local strategy, staged or single-pass) has one. A
-    SLURM run of any mode, and ``--mode measure`` local or on SLURM, would
-    defer its embeddings to a Stage 4 that nothing on its path runs, so the
-    run could never finish (or, on the autonomous SLURM path, would embed on
-    the CPU while recording ``gpu``). ``--mode process`` never reaches this:
-    it resolves ``inline`` and R1 refuses ``gpu``.
+    The interim gate of #282 P3-P4 review C1: a **forward run** (``--mode
+    full``) has one, locally (the local strategies, staged or single-pass)
+    and on SLURM (the staged controller's GPU rounds, P5 T2, which routes a
+    SLURM ``gpu`` run to ``StagedSlurmStrategy`` with or without a
+    ``GpuDetector``). ``--mode measure``, local or on SLURM, would defer its
+    embeddings to a Stage 4 that nothing on its path runs, so the run could
+    never finish. ``--mode process`` never reaches this: it resolves
+    ``inline`` and R1 refuses ``gpu``.
 
-    Each later phase lifts its path here, in the commit that builds its
-    executor: P5 T2 the SLURM full run, P6 T1 measure mode. One predicate, so
-    each lift is a one-line change pinned by its own test.
+    P6 T1 lifts measure mode here, in the commit that builds its executor.
     """
     from ._cli_preflight import run_mode_of
 
-    return run_mode_of(config) == "full" and not config.is_slurm_mode()
+    return run_mode_of(config) == "full"
 
 
 def stage4_unavailable_reason(config: "ExecutionConfig") -> str:
     """Why :func:`stage4_supported` is false for *config*: the note's and refusal's words."""
-    from ._cli_preflight import run_mode_of
-
-    if run_mode_of(config) == "measure":
-        return "Stage 4 in --mode measure is not yet available"
-    return "Stage 4 on SLURM is not yet available"
+    del config  # only measure mode is gated now (P5 T2 lifted SLURM)
+    return "Stage 4 in --mode measure is not yet available"
 
 
 def resolve_embed_stage_for_config(
@@ -503,3 +504,126 @@ def _set_cublas_workspace(*, local: bool) -> None:
             f"{CUBLAS_WORKSPACE_DEFAULT}, or unset it"
         )
     os.environ.setdefault(CUBLAS_WORKSPACE_VARIABLE, CUBLAS_WORKSPACE_DEFAULT)
+
+
+#: The ``processing_state.json`` config key holding a Stage-4 run's revisions (U5).
+EMBED_REVISIONS_CONFIG_KEY = "embed_revisions"
+
+
+def _hub_commit(hf_id: str) -> str:
+    """The Hugging Face hub's current commit of *hf_id*'s default branch.
+
+    The one network seam of U5: tests replace it, and nothing else in
+    PhenoTypic asks the hub for a commit.
+
+    Raises:
+        Exception: Whatever ``huggingface_hub`` raises (offline, no
+            network, a gated repo without a token, ...).
+    """
+    from huggingface_hub import HfApi
+
+    sha = HfApi().model_info(hf_id).sha
+    if not sha:
+        raise RuntimeError(f"the hub reported no commit for {hf_id}")
+    return str(sha)
+
+
+def _hub_offline() -> bool:
+    """Whether ``HF_HUB_OFFLINE`` asks for no hub access (``1``/``true``/``yes``/``on``)."""
+    return os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def resolve_embed_revisions(pipeline: "ImagePipeline") -> dict[str, str | None]:
+    """``{hf_id: commit}`` for every unpinned in-scope ``MeasureDinoEmbedding`` (U5).
+
+    Called once, in the submitting process, at a Stage-4 run's first
+    invocation (O9: Stage-4 runs only), so every shard and round, and every
+    continuation (:func:`recorded_embed_revisions`), loads the same weights.
+    An embedder that pins ``revision`` needs nothing and is not listed. Each
+    model is asked once however many embedders share it.
+
+    With ``HF_HUB_OFFLINE`` set, or on any hub error, a model's value is
+    ``None`` and one warning line names it: each process then resolves the
+    revision on its own, the per-process behaviour ``PF-EMBED-REVISION-UNPINNED``
+    already warns of.
+
+    Args:
+        pipeline: The run's pipeline.
+
+    Returns:
+        The map, in ``meas`` order; empty when every embedder is pinned.
+    """
+    from phenotypic.detect.nn._helper._dino_support import hf_dino_id
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    revisions: dict[str, str | None] = {}
+    for _key, embedder in pipeline_embedders(pipeline):
+        if not isinstance(embedder, MeasureDinoEmbedding) or embedder.revision is not None:
+            continue
+        hf_id = hf_dino_id(embedder.version, embedder.backbone_key().size)
+        if hf_id in revisions:
+            continue
+        if _hub_offline():
+            reason = "HF_HUB_OFFLINE is set"
+            commit = None
+        else:
+            try:
+                commit = _hub_commit(hf_id)
+                reason = ""
+            except Exception as exc:  # noqa: BLE001 - any hub failure falls back, U5
+                commit = None
+                reason = f"{type(exc).__name__}: {exc}".splitlines()[0]
+        if commit is None:
+            click.echo(
+                f"Warning: could not resolve the revision of {hf_id} ({reason}); "
+                "each Stage-4 process resolves on its own, so shards may load "
+                "different weights. Pin revision= in the pipeline to avoid this.",
+                err=True,
+            )
+        revisions[hf_id] = commit
+    return revisions
+
+
+def recorded_embed_revisions(output_dir: Path) -> dict[str, str | None] | None:
+    """The revisions an earlier invocation of this run recorded, or ``None`` (U5).
+
+    Read from ``processing_state.json`` config :data:`EMBED_REVISIONS_CONFIG_KEY`,
+    then from ``job_metadata.json`` ``JobMetadataKey.EMBED_REVISIONS``. A
+    continuation, local or on SLURM, reuses them and never re-resolves;
+    ``None`` (a first invocation, a run that embedded inline, a pre-#282
+    run) resolves (:func:`resolve_embed_revisions`).
+    """
+    from phenotypic.sdk_ import JobMetadataKey, progress_dir
+
+    from ._cli_state_management import load_processing_state
+    from ._cli_utils import load_job_metadata
+
+    state = load_processing_state(output_dir)
+    recorded = state.config.get(EMBED_REVISIONS_CONFIG_KEY) if state is not None else None
+    if recorded is None:
+        metadata = load_job_metadata(progress_dir(output_dir))
+        if isinstance(metadata, dict):
+            recorded = metadata.get(JobMetadataKey.EMBED_REVISIONS)
+    if not isinstance(recorded, dict):
+        return None
+    return {str(hf_id): (None if commit is None else str(commit)) for hf_id, commit in recorded.items()}
+
+
+def pin_embed_revisions(config: "ExecutionConfig", output_dir: Path) -> None:
+    """Set ``config.embed_revisions`` for this invocation: reused, resolved, or ``None`` (U5).
+
+    A run that embeds inline gets ``None``. A ``gpu`` continuation reuses
+    what its first invocation recorded; a first invocation (or ``--restart``,
+    which cleared the record) resolves. Called in the mutating half, below
+    the ``--dry-run`` exit, before the processing state is written, so the
+    state and the job metadata record the same map.
+    """
+    if not defers_embeddings(config):
+        config.embed_revisions = None
+        return
+    recorded = recorded_embed_revisions(output_dir) if config.resume else None
+    if recorded is not None:
+        config.embed_revisions = recorded
+        return
+    pipeline = load_pipeline_or_none(config.pipeline_json)
+    config.embed_revisions = {} if pipeline is None else resolve_embed_revisions(pipeline)

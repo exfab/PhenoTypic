@@ -34,26 +34,38 @@ def test_no_cuda_stops_before_stage1(tmp_path, tiny_inputs, param_stub_backbone,
     assert not list(out.rglob("*.ome.zarr")) and read_terminal_failures(out) == []
 
 
-def test_a_slurm_detector_dino_run_resolves_inline_and_finishes(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
-    """Review C1 scenario 1: the most common production shape, all defaults, on SLURM.
+def test_a_slurm_detector_dino_run_resolves_gpu_and_finishes_through_stage4(
+    tmp_path, tiny_inputs, stage4_cpu, monkeypatch
+):
+    """Review C1 scenario 1, flipped by P5 T2: the most common production shape, all defaults, on SLURM.
 
-    A ``GpuDetector`` plus a DINO embedder used to resolve ``gpu``, so every
-    Stage-3 task deferred to a Stage 4 no SLURM path runs, and the run could
-    never finish. Under the interim gate ``auto`` resolves ``inline``, with one
-    note; the staged submitter records that in ``job_metadata.json``, which is
-    where its workers read deferral; and Stages 1-3, run here as the SLURM
-    workers run them, publish every image's record with its embeddings.
-
-    P5 T2 flips this test when it lifts SLURM in ``stage4_supported``.
+    A ``GpuDetector`` plus a DINO embedder resolves ``gpu`` again (C1 had
+    gated it inline until a SLURM Stage 4 existed). The submitter records
+    that and the U5 revisions in ``job_metadata.json``, where its workers
+    read them; Stages 1-3, run here as the SLURM workers run them, publish
+    no record; and the GPU shard's Stage 4 publishes every image's record
+    with its embeddings, under the run's epoch.
     """
     from datetime import datetime
     from pathlib import Path
 
     from phenotypic._cli import _cli_staged_slurm_worker as worker
+    from phenotypic._cli._cli_staged_orchestration import (
+        initialize_orchestration,
+        stage4_worklist_path,
+        write_stage4_worklist,
+    )
     from phenotypic._cli._cli_staged_slurm import _write_staged_job_metadata, staged_manifest_entry
     from phenotypic._cli._cli_types import ExecutionResults
     from phenotypic.sdk_ import RunExitCode
-    from tests._tiny_run import all_records_valid, run_items, store_has_embeddings
+    from tests._tiny_run import (
+        STUB_COMMIT,
+        all_records_valid,
+        read_job_metadata,
+        record_is_valid,
+        run_items,
+        store_has_embeddings,
+    )
 
     seen: dict = {}
 
@@ -72,24 +84,35 @@ def test_a_slurm_detector_dino_run_resolves_inline_and_finishes(tmp_path, tiny_i
     out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
     result = run_cli(tiny_inputs, out, pipeline=pipe, slurm=True, extra=["--skip-validation"])
     assert result.exit_code == RunExitCode.SUBMITTED, result.output
-    assert "Note: Stage 4 on SLURM is not yet available, so --embed-stage auto resolves to inline." in result.output
+    assert "not yet available" not in result.output
     config = seen["config"]
-    assert config.embed_stage == "inline"
+    assert config.embed_stage == "gpu"
+    assert config.embed_revisions == {"facebook/dinov2-base": STUB_COMMIT}
 
+    epoch = "c14-detector-epoch"
+    initialize_orchestration(out, epoch=epoch, mode="fresh", controller_config_path=out / "controller.json")
     _write_staged_job_metadata(
         datasets=seen["datasets"], output_dir=out, config=config,
         scripts={"stage1": [Path("s1.sh")], "stage2": Path("s2.sh"), "stage3": [Path("s3.sh")],
-                 "finalizer": Path("f.sh"), "controller": Path("c.sh")},
-        job_ids=[], start_time=datetime.now(), epoch="unfenced",
+                 "stage4": Path("s4.sh"), "finalizer": Path("f.sh"), "controller": Path("c.sh")},
+        job_ids=[], start_time=datetime.now(), epoch=epoch,
     )
+    assert read_job_metadata(out)["embed_revisions"] == {"facebook/dinov2-base": STUB_COMMIT}
     manifest = [staged_manifest_entry(config, ds.name, image) for ds in seen["datasets"] for image in ds.images]
     assert len(manifest) == 2
-    common = {"pipeline_path": pipe, "output_dir": out, "image_type": "Image", "manifest": manifest}
+    common = {"pipeline_path": pipe, "output_dir": out, "image_type": "Image", "manifest": manifest,
+              "epoch": epoch}
     for index in range(len(manifest)):
         worker.run_stage1_step(**common, index=index)
     worker.run_stage2_shard(**common, shard_index=0, n_shards=1)
     for index in range(len(manifest)):
         worker.run_stage3_step(**common, index=index)
+    assert not any(record_is_valid(out, item) for item in run_items(out))   # Stage 4 owns the record
+
+    worklist = write_stage4_worklist(stage4_worklist_path(out), round_index=1, manifest_path=out / "m.json",
+                                     retryable=manifest, n_shards=1)
+    assert worker.run_stage4_shard(pipe, out, "Image", worklist, 0, epoch=epoch) == 0
 
     assert all_records_valid(out)
     assert all(store_has_embeddings(out, item) for item in run_items(out))
+    assert {c["revision"] for c in stage4_cpu.load_calls} == {STUB_COMMIT}

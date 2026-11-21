@@ -96,11 +96,13 @@ def test_auto_resolves_inline_for_a_non_dino_embedder(make_exec_config, tmp_path
     assert resolve_embed_stage_for_config(config, pipe) == ("inline", [
         f"meas 'toy' ({cls}) has no GPU Stage-4 encoder, so --embed-stage auto resolves to inline"])
     refuse_unstageable_embedders(pipe, "auto", "inline")
-    # The control: the DINO embedder alone would resolve gpu, so the toy is what
-    # decided. Until P5/P6 lift the interim gate (review C1) it resolves inline
-    # through the gate instead, with the gate's note, not the toy's.
+    # The control: the DINO embedder alone resolves gpu on a SLURM full run
+    # (P5 T2 lifted the gate there), so the toy is what decided. Measure mode
+    # stays gated until P6 T1: it resolves inline through the gate instead,
+    # with the gate's note, not the toy's.
     alone = ImagePipeline(ops=ops, meas={"dino": MeasureDinoEmbedding()})
-    assert resolve_embed_stage_for_config(config, alone) == ("inline", [_gate_note(mode)])
+    expected = ("inline", [_gate_note(mode)]) if mode == "measure" else ("gpu", [])
+    assert resolve_embed_stage_for_config(config, alone) == expected
     assert resolve_embed_stage("auto", mode=mode, is_slurm=True, has_gpu_detector=gpu_detector,
                                gpu_slurm_given=gpu_slurm, has_embedders=True, cpu_pinned=False,
                                unstageable=True) == "inline"
@@ -166,18 +168,17 @@ def _gate_note(mode: str) -> str:
     return f"Stage 4 {where} is not yet available, so --embed-stage auto resolves to inline"
 
 
-def test_a_slurm_gpu_detector_pipeline_resolves_inline_through_the_gate(make_exec_config, tmp_path):
-    """Review C1: no SLURM path runs Stage 4 until P5 T2, so ``auto`` stays inline.
+def test_a_slurm_gpu_detector_pipeline_resolves_gpu_now_the_gate_is_lifted(make_exec_config, tmp_path):
+    """Review C1, flipped by P5 T2: the staged controller runs Stage 4 on SLURM, so ``auto`` is ``gpu``.
 
-    P5 T2 flips this test: it lifts SLURM full runs in ``stage4_supported`` and
-    the first assertion becomes ``("gpu", [])``.
+    Measure mode stays gated until P6 T1 (the second half).
     """
     from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
     pipe = ImagePipeline(ops=[FakeGpuDetector()], meas={"emb": MeasureDinoEmbedding()})
     config = _slurm_config(make_exec_config, tmp_path)
-    assert not stage4_supported(config)
-    assert resolve_embed_stage_for_config(config, pipe) == ("inline", [_gate_note("full")])
+    assert stage4_supported(config)
+    assert resolve_embed_stage_for_config(config, pipe) == ("gpu", [])
     measure = _slurm_config(make_exec_config, tmp_path, measure_only=True)
     assert resolve_embed_stage_for_config(measure, pipe) == ("inline", [])   # U10: only --gpu-slurm
     with_profile = _slurm_config(make_exec_config, tmp_path, measure_only=True,
@@ -187,9 +188,10 @@ def test_a_slurm_gpu_detector_pipeline_resolves_inline_through_the_gate(make_exe
 
 @pytest.mark.parametrize("where", ["slurm-full", "slurm-measure", "local-measure"])
 def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config, tmp_path, where):
-    """Review C1: ``--embed-stage gpu`` on SLURM (any mode) or in measure mode is refused.
+    """Review C1: ``--embed-stage gpu`` in measure mode (local or SLURM) is refused.
 
-    P5 T2 flips ``slurm-full`` (it resolves ``gpu``); P6 T1 flips the measure cases.
+    P5 T2 flipped ``slurm-full``: it now resolves ``gpu`` with no note. P6 T1
+    flips the measure cases.
     """
     pipe = ImagePipeline(meas={"emb": MeasureDinoEmbedding()})
     measure = where.endswith("measure")
@@ -198,13 +200,16 @@ def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config
     else:
         config = make_exec_config(pipeline_json=tmp_path / "unused.json", input_path=tmp_path,
                                   measure_only=True, embed_stage_request="gpu")
+    if where == "slurm-full":
+        assert stage4_supported(config)
+        assert resolve_embed_stage_for_config(config, pipe) == ("gpu", [])
+        return
     assert not stage4_supported(config)
     with pytest.raises(click.UsageError) as raised:
         resolve_embed_stage_for_config(config, pipe)
     message = raised.value.message
     assert "\n" not in message and message.endswith("pass --embed-stage inline to embed inline in Stage 3")
-    assert message.startswith(
-        "--embed-stage gpu: Stage 4 " + ("in --mode measure" if measure else "on SLURM") + " is not yet available")
+    assert message.startswith("--embed-stage gpu: Stage 4 in --mode measure is not yet available")
 
 
 def test_a_local_full_run_is_the_one_supported_stage4_path(make_exec_config, tmp_path):

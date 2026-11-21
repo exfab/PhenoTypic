@@ -425,10 +425,26 @@ def create_initial_state(
             # stage writes one folder (figures spec §1a). Configuration, not
             # tracked progress state.
             **run_initiation_config(config.run_initiation),
+            **embed_revisions_config(config),
         }
     )
     
     return state
+
+
+def embed_revisions_config(config: ExecutionConfig) -> dict:
+    """``{"embed_revisions": {hf_id: commit}}`` for a Stage-4 run, else ``{}`` (U5, #282 P5 T2).
+
+    The revisions resolved at the run's first invocation
+    (``_cli_embed_stage.pin_embed_revisions``). Recorded so a continuation,
+    local or on SLURM, reuses them (``recorded_embed_revisions``) and every
+    local Stage 4 loads them. Configuration, never in the work id. A run
+    that embeds inline records nothing.
+    """
+    revisions = getattr(config, "embed_revisions", None)
+    if revisions is None:
+        return {}
+    return {"embed_revisions": dict(revisions)}
 
 
 def update_state_from_events(state: ProcessingState, output_dir: Path) -> ProcessingState:

@@ -283,6 +283,19 @@ class ExecutionConfig:
     # recorded in processing state and job metadata, never in the work id.
     embed_stage_request: EmbedStageRequest = "auto"
     embed_stage: EmbedStage = "inline"
+    # U5 (#282 P5 T2): ``{hf_id: commit}`` for every unpinned
+    # ``MeasureDinoEmbedding`` of a Stage-4 run, resolved once at the run's
+    # first submission (``_cli_embed_stage.resolve_embed_revisions``) and
+    # reused by every continuation (``recorded_embed_revisions``). ``None``
+    # for a run that embeds inline. Recorded in processing state and job
+    # metadata; never in the work id.
+    embed_revisions: Optional[Dict[str, Optional[str]]] = None
+    # The manifest entries a SLURM continuation of a no-detector Stage-4 run
+    # already built, ``{(dataset, image path): StagedManifestEntry}``, so the
+    # staged submitter hands each image the identity the CLI's split used
+    # instead of hashing it again (#282 review I4). ``None``: the submitter
+    # computes them.
+    staged_manifest_entries: Optional[Dict[Any, Any]] = None
 
     @property
     def in_place(self) -> bool:

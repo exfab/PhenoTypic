@@ -1241,7 +1241,8 @@ def run_stage4(
         epoch: The lifecycle epoch records and failures are stamped with;
             ``None`` stamps ``"local-unfenced"``.
         republish: Measure mode's republish Stage 4 (P6 T1); not yet built.
-        revisions: ``{hf_id: commit}`` for unpinned embedders (U5, P5 T2).
+        revisions: ``{hf_id: commit}`` for unpinned embedders, resolved once
+            at the run's first submission (U5, P5 T2).
         num_workers: DataLoader workers; 0 prepares in this process.
         output_manager: The run's output manager (artifact paths).
         active_check: The fence check; raises when the epoch is fenced.
@@ -1564,7 +1565,10 @@ def run_local_stage4(
     ``stages.stage3``, so it reads ``"pending"``), with ``resolve_local_worker_count(config.n_jobs, n) - 1``
     loader workers, so ``--njobs`` is honoured and ``--njobs 1`` prepares
     in-process (re-review item 2a). Every image it is handed ends published
-    or journalled (plan review C2), or this raises.
+    or journalled (plan review C2), or this raises. The revisions are the
+    ones this run recorded in ``processing_state.json`` at its first
+    invocation (U5, ``recorded_embed_revisions``), so a continuation loads
+    the same commits.
 
     Args:
         config: The run's configuration.
@@ -1588,6 +1592,7 @@ def run_local_stage4(
 
     from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
 
+    from ._cli_embed_stage import recorded_embed_revisions
     from ._cli_utils import resolve_local_worker_count
 
     sweep_run_orphan_stage4_signals(output_dir)
@@ -1603,6 +1608,7 @@ def run_local_stage4(
             items,
             image_type=config.image_type,
             epoch=config.processing_generation,
+            revisions=recorded_embed_revisions(output_dir),
             num_workers=num_workers,
             output_manager=output_manager,
             record_lock=_local_record_lock(config, output_dir),

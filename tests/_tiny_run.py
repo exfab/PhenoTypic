@@ -1435,6 +1435,11 @@ def install_stub_backbone(
     preparation uses when given no processor) is patched to the stub's
     processor too, without recording a load.
 
+    The hub stands in too: U5's one network seam,
+    ``_cli_embed_stage._hub_commit`` (#282 P5 T2), answers
+    :data:`STUB_COMMIT`, the stub's own commit, so a Stage-4 CLI run on the
+    stub never queries Hugging Face. A test that cares patches it after this.
+
     Clears the measurer's backbone cache first, so the next measure loads
     this stub. :func:`stub_backbone` is this with no registers; a test that
     compares two stubs calls it twice.
@@ -1477,9 +1482,12 @@ def install_stub_backbone(
         # in ``calls``.
         return _build_stub_dino(num_register_tokens)[1]
 
+    from phenotypic._cli import _cli_embed_stage
+
     module._cached_backbone.cache_clear()
     monkeypatch.setattr(module, "load_dino_backbone", _stub_load)
     monkeypatch.setattr(module, "load_dino_processor", _stub_processor)
+    monkeypatch.setattr(_cli_embed_stage, "_hub_commit", lambda hf_id: STUB_COMMIT)
     return calls
 
 
@@ -3244,3 +3252,228 @@ def spy_restart_clear(monkeypatch):
     with monkeypatch.context() as patch:
         patch.setattr(cli, "clear_machine_state", _clear)
         yield seen
+
+
+# ---------------------------------------------------------------------------
+# #282 P5 T2 (C14): the Stage-4 SLURM scripts, worker, no-detector plan, U5
+# ---------------------------------------------------------------------------
+
+#: Every phase of a ``GpuDetector`` run that embeds on the GPU (controller config v2).
+STAGED_V2 = ["stage1", "stage2", "stage3", "stage4"]
+
+#: The revision :func:`stage4_slurm_tree` records as the submitter's U5 pin.
+RECORDED_REVISION = "c" * 40
+
+#: The CPU profile the C14 script tests submit with.
+_C14_CPU_ARGS = {"slurm_partition": "intel", "slurm_mem": "8G", "slurm_time": "01:00:00"}
+
+
+def staged_script_kwargs(tmp_path: Path, **overrides) -> dict:
+    """``generate_staged_scripts`` keyword arguments for a two-image run, with *overrides*.
+
+    The defaults are a ``GpuDetector`` run embedding on the GPU
+    (:data:`STAGED_V2`), one shard, on :data:`_C14_CPU_ARGS`.
+    ``generate_staged_scripts`` writes scripts and reads no pipeline, so the
+    pipeline path need not exist.
+    """
+    from phenotypic._cli._cli_stage2_token import detector_slot
+    from phenotypic._cli._cli_staged_orchestration import StagedManifestEntry
+
+    kwargs = {
+        "pipeline_path": Path(tmp_path) / "p.json",
+        "detector_slot": detector_slot(("FakeGpuDetector",)),
+        "datasets_manifest": [
+            StagedManifestEntry("ds", f"img{i}.tif", f"img{i}", f"/in/ds/img{i}.tif", work_id=f"w{i}")
+            for i in range(2)
+        ],
+        "output_dir": Path(tmp_path) / "out",
+        "image_type": "Image",
+        "cpu_slurm_args": dict(_C14_CPU_ARGS),
+        "gpu_slurm_args": {},
+        "n_shards": 1,
+        "epoch": "epoch-1",
+        "array_limit": 1000,
+        "phases": list(STAGED_V2),
+    }
+    kwargs.update(overrides)
+    return kwargs
+
+
+def read_job_metadata(out: Path) -> dict:
+    """*out*'s ``job_metadata.json``."""
+    import json
+
+    from phenotypic.sdk_ import job_metadata_path
+
+    return json.loads(job_metadata_path(out).read_text(encoding="utf-8"))
+
+
+def first_entry(out: Path) -> dict:
+    """The first store's (in image order) :data:`DINO_OBJECTS_KEY` embedding entry."""
+    return objects_entry(zarr_store_path_of(out, run_items(out)[0]))
+
+
+def pipeline_with_dino(**embedder) -> "ImagePipeline":
+    """An ``OtsuDetector`` pipeline with one ``MeasureDinoEmbedding(**embedder)`` in ``meas``."""
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+
+    return ImagePipeline(ops=[OtsuDetector()], meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(**embedder)})
+
+
+def dino_pipeline_path(tmp_path: Path) -> Path:
+    """A no-detector DINO pipeline file (:func:`with_stage4_dino_objects`)."""
+    return with_stage4_dino_objects(tmp_path)
+
+
+def output_manager_for(config) -> "object":
+    """An ``OutputManager`` over *config*'s output (or input) directory."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+
+    return OutputManager.from_config(base_dir=config.output_dir or config.input_path, ext=".tiff")
+
+
+def write_tiny_inputs(root: Path) -> Path:
+    """:func:`tiny_inputs`'s two plates under *root*, for helpers that take no fixture."""
+    from PIL import Image as PILImage
+
+    from phenotypic.data import load_synth_yeast_plate
+
+    dataset = Path(root) / "ds"
+    dataset.mkdir(parents=True, exist_ok=True)
+    pixels = load_synth_yeast_plate().rgb[:].astype("uint8")
+    for index in (1, 2):
+        PILImage.fromarray(pixels).save(dataset / f"plate_{index}.tif")
+    return Path(root)
+
+
+def submit_staged_no_detector(tmp_path: Path, *, n_shards: int = 1, extra: Sequence[str] = ()):
+    """Submit a no-detector DINO run on SLURM with ``--gpu-slurm`` (needs ``submissions``).
+
+    ``auto`` resolves ``gpu`` (U2: ``--gpu-slurm`` given), so the run goes
+    through ``StagedSlurmStrategy`` with phases ``["stage3", "stage4"]``. The
+    inputs are written once under ``<tmp_path>/in``; the output is
+    ``<tmp_path>/out``. Running it twice is the same command again.
+
+    Returns:
+        The CLI result.
+    """
+    inputs = Path(tmp_path) / "in"
+    if not inputs.is_dir():
+        write_tiny_inputs(inputs)
+    return run_cli(
+        inputs,
+        Path(tmp_path) / "out",
+        pipeline=dino_pipeline_path(tmp_path),
+        slurm=True,
+        extra=[
+            "--gpu-slurm", "partition=exfab", "--gpu-slurm", "account=exfab",
+            "--gpu-shards", str(n_shards), "--skip-validation", *extra,
+        ],
+    )
+
+
+class Stage4SlurmTree:
+    """A no-detector run whose images finished Stage 3 under a live SLURM epoch (#282 P5 T2).
+
+    Every image waits on Stage 4. The orchestration epoch is active, so a
+    worker's fence admits it; ``job_metadata.json`` carries what the staged
+    submitter records (``EMBED_STAGE = "gpu"``, the read flags, and the U5
+    pin :data:`RECORDED_REVISION`); the round-1 worklist has four shards,
+    the two images in shards 0 and 1 and shards 2 and 3 empty.
+    """
+
+    def __init__(self, waiting: Stage4Waiting, epoch: str, worklist: Path) -> None:
+        self.waiting = waiting
+        self.out = waiting.out
+        self.pipeline = waiting.pipeline
+        self.items = waiting.items
+        self.epoch = epoch
+        self.worklist = worklist
+        self.image_type = stage4_image_type(waiting)
+
+    def manifest(self) -> list:
+        """The run's manifest entries (:meth:`Stage4Waiting.manifest`)."""
+        return self.waiting.manifest()
+
+    def shard_kwargs(self, shard_index: int) -> dict:
+        """``run_stage4_shard``'s arguments for *shard_index*."""
+        return {
+            "pipeline_path": self.pipeline,
+            "output_dir": self.out,
+            "image_type": self.image_type,
+            "worklist_path": self.worklist,
+            "shard_index": shard_index,
+            "epoch": self.epoch,
+        }
+
+    def single_pass_kwargs(self, index: int) -> dict:
+        """``run_single_pass_step``'s arguments for image *index*."""
+        return {
+            "pipeline_path": self.pipeline,
+            "output_dir": self.out,
+            "image_type": self.image_type,
+            "manifest": self.manifest(),
+            "index": index,
+            "epoch": self.epoch,
+        }
+
+    def store(self, index: int) -> Path:
+        """Image *index*'s store."""
+        return zarr_store_path_of(self.out, self.items[index])
+
+
+def record_slurm_job_metadata(out: Path, **values) -> None:
+    """Merge *values* (``JobMetadataKey`` -> value) into *out*'s ``job_metadata.json``."""
+    import json
+
+    from phenotypic.sdk_ import atomic_write_json, job_metadata_path
+
+    path = job_metadata_path(out)
+    metadata = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    metadata.update(values)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(path, metadata)
+
+
+@pytest.fixture
+def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4SlurmTree:
+    """:class:`Stage4SlurmTree`: built by a local run, then handed a live SLURM epoch. [torch]"""
+    from phenotypic._cli._cli_staged_orchestration import (
+        initialize_orchestration,
+        stage4_worklist_path,
+        write_stage4_worklist,
+    )
+    from phenotypic.sdk_ import JobMetadataKey
+
+    waiting = _built_staged_tree(tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path))
+    epoch = "c14-epoch"
+    initialize_orchestration(
+        waiting.out, epoch=epoch, mode="fresh", controller_config_path=waiting.out / "controller.json"
+    )
+    record_slurm_job_metadata(
+        waiting.out,
+        **{
+            JobMetadataKey.EMBED_STAGE: "gpu",
+            JobMetadataKey.EMBED_REVISIONS: {"facebook/dinov2-base": RECORDED_REVISION},
+            JobMetadataKey.NROWS: None,
+            JobMetadataKey.NCOLS: None,
+            JobMetadataKey.BIT_DEPTH: None,
+            JobMetadataKey.DETECT_MODE: "gray",
+        },
+    )
+    worklist = write_stage4_worklist(
+        stage4_worklist_path(waiting.out),
+        round_index=1,
+        manifest_path=waiting.out / "manifest.json",
+        retryable=waiting.manifest(),
+        n_shards=4,
+    )
+    return Stage4SlurmTree(waiting, epoch, worklist)
+
+
+@pytest.fixture
+def staged_tree_single_pass(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
+    """A no-detector (``OtsuDetector``) run whose two images wait on Stage 4. [torch]"""
+    return _built_staged_tree(tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path))

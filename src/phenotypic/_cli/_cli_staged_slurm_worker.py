@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 import os
+import sys
 import traceback
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
@@ -29,6 +30,7 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
+from ._cli_process_single import process_single_image_core
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_reference import ReferencePin
 from ._cli_preload import preload_custom_operation_modules
@@ -684,10 +686,251 @@ def run_stage3_step(
         raise
 
 
+def run_single_pass_step(
+    pipeline_path: Path,
+    output_dir: Path,
+    image_type: ImageTypeName,
+    manifest: Manifest,
+    index: int,
+    ext: str = ".tiff",
+    *,
+    epoch: str | None = None,
+    resume: bool = False,
+    overlay_alpha: float = 0.3,
+    durable_writes: bool | None = None,
+    drop_originals: bool = False,
+    pipeline_identity: Mapping[str, str] | None = None,
+) -> None:
+    """The "stage3" role of a Stage-4 run without a ``GpuDetector`` (#282 spec §4.1).
+
+    Runs the single-pass core with its embeddings deferred
+    (``defer_embeddings=True``) on one manifest image: the store with its
+    measurements, then ``stages.stage3``, and **no** record; Stage 4
+    publishes it once its embeddings commit (spec §4.2).
+
+    It returns at once, touching nothing, when the image's record is valid
+    or it already finished Stages 1-3 (``stages_1_to_3_done``): a
+    continuation must not rewrite a root a Stage-4 signal was computed
+    against (plan review C1). That holds with or without *resume*: a
+    ``--restart`` clears the record and the Stage-3 marker first, so a
+    restarted image is never skipped.
+
+    A scientific failure is journalled under *epoch*, as Stage 3 journals
+    one, and re-raised so the task fails.
+
+    Args:
+        pipeline_path: The run's pipeline file.
+        output_dir: Run output root.
+        image_type: ``"Image"`` or ``"GridImage"``.
+        manifest: The staged manifest.
+        index: The image's absolute manifest index.
+        ext: The run's ``--ext``.
+        epoch: The lifecycle epoch, the fence.
+        resume: Accepted for the stage worker's common arguments; the skip
+            above does not depend on it.
+        overlay_alpha: The overlay alpha.
+        durable_writes: The transported ``--durable-writes`` tri-state.
+        drop_originals: ``--drop-originals``.
+        pipeline_identity: The user pipeline's source identity.
+    """
+    del resume
+    item = _entry(manifest[index])
+    if item.work_id and (
+        valid_image_success(
+            output_dir,
+            dataset=item.dataset,
+            image_stem=item.stem,
+            work_id=item.work_id,
+        )
+        or stages_1_to_3_done(output_dir, item.dataset, item.stem, item.work_id)
+    ):
+        return
+    check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
+    if check is not None:
+        check()
+    # Before anything is written: the input is read as Stage 1 reads it.
+    read_kwargs, cli_nrows, cli_ncols = _recorded_image_read(output_dir)
+    output_manager = OutputManager.from_config(
+        output_dir,
+        ext,
+        overlay_alpha=overlay_alpha,
+        save_overlays=True,
+        durable_writes=durable_writes,
+        run_initiation=recorded_run_initiation(output_dir),
+    )
+    log = event_log_path(output_dir)
+    try:
+        with stage_event(
+            log,
+            item.dataset,
+            item.image_name,
+            STAGE_MEASURE,
+            active_check=check,
+            commit_guard=commit_guard,
+        ):
+            process_single_image_core(
+                pipeline_path=pipeline_path,
+                image_path=Path(item.input_path),
+                output_dir=output_dir,
+                dataset_name=item.dataset,
+                image_type=image_type,
+                read_kwargs=read_kwargs,
+                output_manager=output_manager,
+                cli_nrows=cli_nrows,
+                cli_ncols=cli_ncols,
+                drop_originals=drop_originals,
+                pipeline_identity=pipeline_identity,
+                work_id=item.work_id,
+                active_check=check,
+                commit_guard=commit_guard,
+                reference_pin=_reference_pin(item),
+                input_root=_input_root(item),
+                defer_embeddings=True,
+            )
+    except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        _record_terminal_scientific_failure(
+            output_dir, item, exc, epoch, commit_guard
+        )
+        raise
+
+
+def _recorded_embed_revisions(output_dir: Path) -> dict[str, str | None] | None:
+    """``JobMetadataKey.EMBED_REVISIONS`` as the submitter recorded it (U5), or ``None``."""
+    metadata = load_job_metadata(progress_dir(output_dir))
+    if not isinstance(metadata, dict):
+        return None
+    revisions = metadata.get(JobMetadataKey.EMBED_REVISIONS)
+    return dict(revisions) if isinstance(revisions, dict) else None
+
+
+def run_stage4_shard(
+    pipeline_path: Path,
+    output_dir: Path,
+    image_type: ImageTypeName,
+    worklist_path: Path,
+    shard_index: int,
+    *,
+    epoch: str,
+    ext: str = ".tiff",
+    overlay_alpha: float = 0.3,
+    durable_writes: bool | None = None,
+) -> int:
+    """Embed, commit and publish one shard of the round's Stage-4 worklist on this GPU.
+
+    The shard is ``load_stage4_worklist(worklist_path, shard_index)``, the
+    controller's partition of the round's retryable images (#282 P5 T1). An
+    empty shard (more shards than images) exits ``0`` before loading
+    anything. Otherwise it calls ``run_stage4`` with:
+
+    - ``epoch``, the run's real lifecycle epoch, stamped on every record and
+      failure, and the epoch's fence: ``_active_check`` before each durable
+      step and ``_commit_guard`` around each durable write;
+    - the revisions the submitter recorded in ``job_metadata.json``
+      (``EMBED_REVISIONS``, U5), so every shard of every round loads the same
+      commit;
+    - ``resolve_local_worker_count(-1, n) - 1`` loader workers: the
+      allocation's CPUs, never a bare ``SLURM_CPUS_PER_TASK`` read (plan
+      review I15);
+    - the durability the submitter transported.
+
+    The device, the determinism settings, the licence and the physical
+    batch (from this GPU's total memory) are ``run_stage4``'s, at shard
+    start. Republish (measure mode, U4) is P6 T1's and is not read here.
+
+    Args:
+        pipeline_path: The run's pipeline file.
+        output_dir: Run output root.
+        image_type: ``"Image"`` or ``"GridImage"``.
+        worklist_path: The round's worklist.
+        shard_index: This task's shard (``$SLURM_ARRAY_TASK_ID``).
+        epoch: The lifecycle epoch.
+        ext: The run's ``--ext`` (artifact paths).
+        overlay_alpha: The overlay alpha (the output manager's).
+        durable_writes: The transported ``--durable-writes`` tri-state.
+
+    Returns:
+        ``0`` when the shard ran (per-image failures are journalled, and an
+        image left pending is the next round's); ``1`` on node or model state
+        (no usable CUDA, a GPU or host out of memory, a failed forward pass, a
+        refused licence), journalling no image, so the next round retries.
+
+    Raises:
+        SlurmGenerationInactiveError: The epoch was fenced.
+    """
+    from phenotypic.abc_._measure_embedding import is_out_of_memory
+    from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
+
+    from ._cli_stage4_worker import Stage4DeviceError, Stage4ShardError, run_stage4
+    from ._cli_staged_orchestration import load_stage4_worklist
+    from ._cli_utils import resolve_local_worker_count
+
+    check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
+    if check is not None:
+        check()
+    entries = load_stage4_worklist(worklist_path, shard_index).entries
+    if not entries:
+        return 0
+    output_manager = OutputManager.from_config(
+        output_dir,
+        ext,
+        overlay_alpha=overlay_alpha,
+        save_overlays=True,
+        durable_writes=durable_writes,
+        run_initiation=recorded_run_initiation(output_dir),
+    )
+    try:
+        outcome = run_stage4(
+            pipeline_path,
+            output_dir,
+            entries,
+            image_type=image_type,
+            epoch=epoch,
+            revisions=_recorded_embed_revisions(output_dir),
+            num_workers=resolve_local_worker_count(-1, len(entries)) - 1,
+            output_manager=output_manager,
+            active_check=check,
+            commit_guard=commit_guard,
+        )
+    except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        if not (
+            isinstance(
+                exc, (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError, MemoryError)
+            )
+            or is_out_of_memory(exc)
+        ):
+            raise
+        print(
+            f"Stage 4 shard {shard_index} stopped: {type(exc).__name__}: {exc}. "
+            "No image was recorded as failed; the next round retries them.",
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        f"Stage 4 shard {shard_index}: {len(outcome.published)} published, "
+        f"{len(outcome.failed)} failed, {len(outcome.pending)} left for the next "
+        f"round, {outcome.signals_written} signal(s) written"
+    )
+    return 0
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Dispatch one SLURM array task to its staged worker."""
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")
-    parser.add_argument("--stage", type=int, required=True, choices=(1, 2, 3))
+    parser.add_argument("--stage", type=int, required=True, choices=(1, 2, 3, 4))
+    # Stage 3's role (#282 P5 T2): the staged merge-and-measure, or, in a
+    # Stage-4 run without a GpuDetector, the single-pass core.
+    parser.add_argument(
+        "--stage3-role", choices=("staged", "single_pass"), default="staged"
+    )
+    # Stage 4: the round's worklist; --index is the shard.
+    parser.add_argument("--worklist", type=Path, default=None)
     parser.add_argument("--pipeline", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--image-type", default="Image")
@@ -736,10 +979,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         pipeline_identity = None
 
     preload_custom_operation_modules()
-    manifest = load_staged_manifest(args.manifest)
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"
     )
+    if args.stage == 4:
+        if args.worklist is None:
+            parser.error("--stage 4 needs --worklist")
+        return run_stage4_shard(
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            args.worklist,
+            args.index,
+            epoch=args.epoch,
+            ext=args.ext,
+            overlay_alpha=args.overlay_alpha,
+            durable_writes=args.durable_writes,
+        )
+    manifest = load_staged_manifest(args.manifest)
     common = {
         "epoch": args.epoch,
         "resume": args.reuse_existing,
@@ -772,6 +1029,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.n_shards,
             markers_required=args.stage3_markers_required,
             **stage2_common,
+        )
+    elif args.stage3_role == "single_pass":
+        run_single_pass_step(
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            manifest,
+            args.index,
+            args.ext,
+            overlay_alpha=args.overlay_alpha,
+            drop_originals=args.drop_originals,
+            pipeline_identity=pipeline_identity,
+            **common,
         )
     else:
         run_stage3_step(

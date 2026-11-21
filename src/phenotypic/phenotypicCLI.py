@@ -264,6 +264,7 @@ if TYPE_CHECKING:
     )
     from phenotypic._cli._cli_state_management import (
         create_initial_state,
+        embed_revisions_config,
         exclude_terminal_failures_for_datasets,
         get_remaining_images_for_datasets,
         load_processing_state,
@@ -300,6 +301,7 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
     "phenotypic._cli._cli_output_manager": ("OutputManager",),
     "phenotypic._cli._cli_state_management": (
         "create_initial_state",
+        "embed_revisions_config",
         "exclude_terminal_failures_for_datasets",
         "get_remaining_images_for_datasets",
         "load_processing_state",
@@ -1570,6 +1572,39 @@ def _sweep_finished_run_stage4_orphans(
     )
 
     sweep_run_orphan_stage4_signals(output_dir)
+
+
+def _plan_slurm_no_detector_continuation(
+    config: ExecutionConfig, datasets: Sequence[Any], output_dir: Path
+) -> None:
+    """Plan a SLURM continuation of a Stage-4 run without a ``GpuDetector`` (#282 P5 T2).
+
+    Content-defined, from each remaining image's ``stage4_status``
+    (``split_stage4_pending``): an image that finished Stages 1-3 waits on
+    Stage 4 only, and the single-pass "stage3" role skips it. When every
+    remaining image is such a one, the controller starts at its ``"stage4"``
+    phase (plan review C1), so no Stage-3 chunk is submitted for nothing.
+
+    Each image's identity is computed once, here, and handed to the staged
+    submitter as ``config.staged_manifest_entries``, which builds the
+    manifest from it rather than hashing the input again (review I4).
+    """
+    from phenotypic._cli._cli_stage4_worker import (
+        split_stage4_pending,
+        stage4_entries,
+    )
+
+    entries = stage4_entries(
+        config,
+        [(dataset, image) for dataset in datasets for image in dataset.images],
+        n_jobs=config.n_jobs,
+    )
+    core, pending = split_stage4_pending(datasets, output_dir, entries)
+    config.staged_manifest_entries = entries
+    if pending:
+        click.echo(f"  - {len(pending)} image(s) need Stage 4 only")
+    if pending and not core:
+        config.staged_resume_phase = "stage4"
 
 
 def _finished_run_exit(failed: int) -> RunExitCode:
@@ -4119,6 +4154,14 @@ def phenotypic_cli(
                 click.echo(
                     f"Continuing processing ({remaining_images} images remaining)"
                 )
+                if (
+                    config.is_slurm_mode()
+                    and resume_defers_embeddings
+                    and config.process_only_layer is None
+                ):
+                    _plan_slurm_no_detector_continuation(
+                        config, datasets, output_dir
+                    )
                 if config.retry_failures:
                     click.echo("  - Including previously failed images")
 
@@ -4143,6 +4186,14 @@ def phenotypic_cli(
                     f"Skipping {terminal_skipped} exact terminal failure(s); "
                     "use --retry-failures to retry them."
                 )
+
+        # U5 (#282 P5 T2): a Stage-4 run's unpinned revisions, resolved once at
+        # its first invocation and reused by every continuation. Here, below
+        # the --dry-run exit (it may ask the hub) and before the state and
+        # the job metadata record them.
+        from phenotypic._cli._cli_embed_stage import pin_embed_revisions
+
+        pin_embed_revisions(config, output_dir)
 
         # Create initial state (or update if resuming) — skipped in
         # measure mode, which never mutates processing state.
@@ -4186,6 +4237,8 @@ def phenotypic_cli(
                     # "inline" and R3 refuse a GPU run's own command, and the
                     # event aggregation count Stage-3 completions as done.
                     "embed_stage": config.embed_stage,
+                    # U5: the first invocation's revisions, reused.
+                    **embed_revisions_config(config),
                     # A RESUME IS NOT A RESTART. Same configuration ->
                     # same generation (D3); only `--restart` bumps the
                     # epoch, and therefore the generation.
