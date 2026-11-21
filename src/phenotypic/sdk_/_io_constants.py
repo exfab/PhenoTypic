@@ -851,6 +851,13 @@ DIR_LEGACY_V2: Final[str] = "legacy-v2"
 #: which must keep *not* firing on it -- and belongs beside its siblings.
 DIR_STAGE2_DONE: Final[str] = "stage2_done"
 
+#: ``<progress>/stage4_payload/`` -- the Stage-4 signal's tree (#282 spec §4.2):
+#: ``<ds>/<model>/<layer>/<region>/<stem>.parquet``, one atomic Parquet per
+#: embedder key, written before the store commit and consumed after the record.
+#: A current tree like :data:`DIR_STAGE2_DONE`, never a legacy one, so the
+#: schema gate's directory signals must not name it.
+DIR_STAGE4_PAYLOAD: Final[str] = "stage4_payload"
+
 #: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
 #: of the verification cache (spec §9.1, as reversed back on by U-11).
 #:

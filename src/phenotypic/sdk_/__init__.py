@@ -219,6 +219,7 @@ from ._io_constants import (  # noqa: E402
     DIR_SLURM_SCRIPTS,
     DIR_SPLITS,
     DIR_STAGE2_DONE,
+    DIR_STAGE4_PAYLOAD,
     DIR_ZARR,
     MIGRATION_REMEDY,
     FAILURES_JSONL,
@@ -758,6 +759,7 @@ __all__ = [
     "DIR_SLURM_SCRIPTS",
     "DIR_SPLITS",
     "DIR_STAGE2_DONE",
+    "DIR_STAGE4_PAYLOAD",
     "DIR_ZARR",
     # Namespace classes for JSON keys + dispatch
     "ChunkManifestKey",
