@@ -548,6 +548,7 @@ def _write_staged_job_metadata(
         JobMetadataKey.NCOLS: getattr(config, "ncols", None),
         JobMetadataKey.BIT_DEPTH: getattr(config, "bit_depth", None),
         JobMetadataKey.DETECT_MODE: getattr(config, "detect_mode", "gray"),
+        JobMetadataKey.EMBED_STAGE: getattr(config, "embed_stage", "inline"),
         JobMetadataKey.SLURM_JOB_IDS: {
             str(index): {
                 "job_id": str(job_id),

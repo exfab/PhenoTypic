@@ -241,6 +241,7 @@ from phenotypic.sdk_.typing_ import (
 from phenotypic._startup_perf import load_runtime_dependencies
 
 if TYPE_CHECKING:
+    from phenotypic._cli._cli_embed_stage import EmbedStageRequest
     from phenotypic._cli._cli_execution_strategies import (
         create_execution_strategy,
         uses_staged_gpu_strategy,
@@ -891,6 +892,38 @@ def _refuse_process_meas_it_would_lose(
     skipped = skipped_measurers_warning(pipeline)
     if skipped is not None:
         click.echo(f"Warning: {skipped}.", err=True)
+
+
+def _resolve_embed_stage(config: "ExecutionConfig") -> None:
+    """Resolve ``--embed-stage`` into ``config.embed_stage``, refusing R1 and R2.
+
+    Called in the read-only half, outside ``--skip-validation`` and above
+    ``--restart``/``--overwrite`` handling, ``mint_run_identity`` and the
+    ``--dry-run`` exit (#282 spec §4.7). Prints U9's and O5's notes, one
+    line each. A pipeline that cannot be loaded resolves ``inline`` and is
+    left to the pipeline validation.
+
+    Raises:
+        click.UsageError: R1 (``gpu`` with ``--mode process``) or R2 (an
+            embedder that cannot run in the resolved stage).
+    """
+    from phenotypic._cli._cli_embed_stage import (
+        load_pipeline_or_none,
+        refuse_embed_stage_for_process,
+        refuse_unstageable_embedders,
+        resolve_embed_stage_for_config,
+    )
+    from phenotypic._cli._cli_preflight import run_mode_of
+
+    refuse_embed_stage_for_process(config.embed_stage_request, run_mode_of(config))
+    pipeline = load_pipeline_or_none(config.pipeline_json)
+    config.embed_stage, notes = resolve_embed_stage_for_config(config, pipeline)
+    if pipeline is not None:
+        refuse_unstageable_embedders(
+            pipeline, config.embed_stage_request, config.embed_stage
+        )
+    for note in notes:
+        click.echo(f"Note: {note}.", err=True)
 
 
 def _refuse_in_place_run(
@@ -2372,6 +2405,17 @@ def _print_process_only_dry_run_plan(
     "--slurm (the CPU profile for Stages 1 & 3); auto-adds slurm_gpus_per_node=1.",
 )
 @click.option(
+    "--embed-stage",
+    "embed_stage",
+    type=click.Choice(["auto", "gpu", "inline"]),
+    default="auto",
+    show_default=True,
+    help="Where MeasureDinoEmbedding runs: gpu, in a GPU Stage 4 after each "
+    "store is final; inline, beside the other measurers. auto is gpu on SLURM "
+    "when the run already has a GPU profile (a GpuDetector, or --gpu-slurm), "
+    "else inline. A continuation must resolve as the run started.",
+)
+@click.option(
     "--force-local",
     is_flag=True,
     help="Ignore any --slurm options and run locally (the CLI already runs "
@@ -2528,6 +2572,7 @@ def phenotypic_cli(
     gpu_workers_per_gpu: int,
     gpu_shards: int,
     gpu_slurm_args: Sequence[str],
+    embed_stage: str,
     force_local: bool,
     ext: str,
     overlay_alpha: float,
@@ -3155,6 +3200,7 @@ def phenotypic_cli(
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
             gpu_slurm_args=gpu_slurm_args_dict,
+            embed_stage_request=cast("EmbedStageRequest", embed_stage),
         )
         # Refuse an unstageable GpuDetector HERE, before anything touches
         # --output: every later step (overwrite clearing, run identity,
@@ -3183,6 +3229,10 @@ def phenotypic_cli(
             layer=process_only_layer,
             process_format=resolved_process_format,
         )
+        # --embed-stage: resolved once, here, with R1 and R2 beside the other
+        # un-skippable refusals (#282 spec §4.7). R3 needs the recorded state
+        # and sits in the continuation load below.
+        _resolve_embed_stage(config)
         manifest_snapshot = None
         if image_manifest is not None:
             try:
@@ -3228,6 +3278,18 @@ def phenotypic_cli(
                     err=True,
                 )
                 sys.exit(RunExitCode.ERROR)
+            # R3 (#282 U3): before the compatibility check, which would
+            # otherwise report a switched continuation in its own words.
+            from phenotypic._cli._cli_embed_stage import (
+                EMBED_STAGE_CONFIG_KEY,
+                refuse_embed_stage_switch,
+            )
+
+            refuse_embed_stage_switch(
+                resume_state.config.get(EMBED_STAGE_CONFIG_KEY),
+                config.embed_stage,
+                is_slurm=config.is_slurm_mode(),
+            )
             if resume_state.config.get("success_markers_required", False):
                 is_compatible, compatibility_error = (
                     validate_resume_compatibility(resume_state, config)
@@ -3250,6 +3312,15 @@ def phenotypic_cli(
                     sys.exit(RunExitCode.ERROR)
 
             click.echo(f"✓ Continuing from {output_dir}")
+
+        # A gpu run's process environment: the cuBLAS workspace variable and,
+        # locally, the CUDA check (exit 1). After the three refusals, so a
+        # refused option reads as one; before any strategy, so nothing has
+        # initialised CUDA yet, and before Stage 1 writes anything (#282 plan
+        # review I4, I16).
+        from phenotypic._cli._cli_embed_stage import prepare_stage4_environment
+
+        prepare_stage4_environment(config)
 
         # Refuse a restart that would exchange the approved image subset while
         # preserving an earlier subset's outputs. Gated on the recorded digest,

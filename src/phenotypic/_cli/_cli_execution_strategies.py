@@ -1166,6 +1166,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.PROCESSING_GENERATION: (
                 self.config.processing_generation
             ),
+            JobMetadataKey.EMBED_STAGE: self.config.embed_stage,
             **finalizer_aggregation_options(self.config),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,

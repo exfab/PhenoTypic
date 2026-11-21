@@ -445,3 +445,114 @@ def test_an_in_place_refusal_comes_before_the_mutating_half(
     errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
     assert len(errors) == 1 and needle in errors[0], result.output
     assert _tree_digest(image_tree) == before
+
+
+def _dino_pipeline(tmp_path: Path, *, device: str) -> Path:
+    """A pipeline whose ``meas`` holds a DINO embedder on *device*; nothing loads it."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    path = tmp_path / f"dino-{device}.json"
+    pipeline = ImagePipeline(
+        ops={"det": OtsuDetector()},
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(device=device)},
+    )
+    path.write_text(pipeline.to_json(), encoding="utf-8")
+    return path
+
+
+_REFUSAL_FLAGS = [
+    ("--overwrite",), ("--restart",), ("--dry-run",), ("--skip-validation",),
+    ("--overwrite", "--dry-run"),
+]
+
+
+@pytest.mark.parametrize("extra", _REFUSAL_FLAGS, ids=" ".join)
+def test_r1_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 R1: ``--embed-stage gpu`` with ``--mode process``, above every mutation."""
+    from tests._tiny_run import grid_embedder, with_meas
+
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(previous_run)
+
+    result = _invoke(
+        "--mode", "process", "--layer", "rgb", "--process-format", "zarr",
+        "--pipeline", str(with_meas(tmp_path, grid=grid_embedder())),
+        "--input", str(image_tree), "--output", str(previous_run),
+        "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "does not apply to --mode process" in errors[0], result.output
+    assert _tree_digest(previous_run) == before
+
+
+@pytest.mark.parametrize("extra", _REFUSAL_FLAGS, ids=" ".join)
+def test_r2_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 R2 (U9): ``--embed-stage gpu`` over a ``device="cpu"`` pin, above every mutation.
+
+    Torch-free: the refusal comes before the CUDA check, which imports torch.
+    """
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(previous_run)
+
+    result = _invoke(
+        "--pipeline", str(_dino_pipeline(tmp_path, device="cpu")),
+        "--input", str(image_tree), "--output", str(previous_run),
+        "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "is pinned to device='cpu'" in errors[0], result.output
+    assert _tree_digest(previous_run) == before
+
+
+@pytest.mark.parametrize("recorded", ["inline", None], ids=["recorded", "pre-282-state"])
+@pytest.mark.parametrize("extra", [(), ("--dry-run",), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
+def test_r3_is_refused_before_the_mutating_half(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path,
+    recorded: str | None, extra: tuple[str, ...],
+) -> None:
+    """#282 R3 (U3): a continuation switched to ``gpu`` is refused, the run byte-unchanged.
+
+    A real finished run records ``embed_stage: "inline"``; a state written before
+    #282 has no key, which reads as ``"inline"``. Torch-free: the refusal comes
+    before the CUDA check.
+    """
+    import json
+
+    from phenotypic.sdk_ import processing_state_path
+
+    output_dir = tmp_path / "run"
+    first = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(output_dir), "--njobs", "1",
+    )
+    assert first.exit_code == 0, first.output
+    state_path = processing_state_path(output_dir)
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["config"]["embed_stage"] == "inline"
+    if recorded is None:
+        del state["config"]["embed_stage"]
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+    before = _tree_digest(output_dir)
+
+    result = _invoke(
+        "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--input", str(image_tree), "--output", str(output_dir),
+        "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "started with --embed-stage inline" in errors[0], result.output
+    assert _tree_digest(output_dir) == before

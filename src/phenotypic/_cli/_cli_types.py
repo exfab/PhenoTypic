@@ -22,6 +22,8 @@ from phenotypic.sdk_.typing_ import (
 if TYPE_CHECKING:
     from phenotypic.sdk_._image_figures import RunInitiation
 
+    from ._cli_embed_stage import EmbedStage, EmbedStageRequest
+
 
 @dataclass
 class Dataset:
@@ -274,6 +276,13 @@ class ExecutionConfig:
     # Stage-2 GPU SBATCH resources; inherits/deltas over slurm_args (the CPU
     # profile used by Stages 1 & 3).
     gpu_slurm_args: Dict[str, Any] = field(default_factory=dict)
+
+    # --- GPU embedding Stage 4 (#282 spec §4.1) -------------------------------
+    # The ``--embed-stage`` value, and what it resolved to
+    # (``_cli_embed_stage.resolve_embed_stage``). The resolved value is
+    # recorded in processing state and job metadata, never in the work id.
+    embed_stage_request: EmbedStageRequest = "auto"
+    embed_stage: EmbedStage = "inline"
 
     @property
     def in_place(self) -> bool:

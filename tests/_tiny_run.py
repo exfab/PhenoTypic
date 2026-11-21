@@ -1974,3 +1974,210 @@ def root_sha256(store: Path) -> str:
     import hashlib
 
     return hashlib.sha256((Path(store) / "zarr.json").read_bytes()).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# #282 P4: Stage-4 fixtures (local Stage 4, refusals, faults, crashes)
+# ---------------------------------------------------------------------------
+
+#: Where :func:`plant_stage4_fault` writes its triggers; set by :func:`stage4_faults`.
+STAGE4_FAULT_DIR_ENV = "PHENOTYPIC_TEST_FAULT_DIR"
+
+#: The self-registering test modules a fresh process imports to read P4's pipelines.
+STAGE4_PRELOAD_MODULES = (
+    "tests._fakes.register_fake_gpu",
+    "tests._fakes.register_faulty_dino_embedder",
+)
+
+
+def with_stage4_dino_objects(
+    directory: Path, *, fake_gpu: bool = False, grid: bool = False, faulty: bool = False
+) -> Path:
+    """A pipeline file like :func:`with_dino_objects`, with ``device="auto"`` (#282 P4).
+
+    ``meas["emb"]`` is ``MeasureDinoEmbedding()`` with ``device="auto"``, which
+    U9 lets resolve to Stage 4 (a ``device="cpu"`` pin resolves inline). Run
+    it under :func:`stage4_cpu`, so ``auto`` is the CPU on a GPU node too.
+
+    Args:
+        directory: Where to write the file.
+        fake_gpu: The detector is ``FakeGpuDetector(threshold=0.3)`` instead of
+            ``OtsuDetector``, so the run is staged. Its registering module is
+            imported here; a fresh process needs
+            ``PHENOTYPIC_PRELOAD_MODULES`` (:data:`STAGE4_PRELOAD_MODULES`,
+            which :func:`run_cli_subprocess` sets).
+        grid: Add ``meas["grid"]``, a 2 x 2 ``ManualGridFinder`` embedder on
+            the same backbone (:data:`DINO_GRID_KEY`).
+        faulty: ``meas["emb"]`` is ``FaultyDinoEmbedding``, which fails an
+            image planted with :func:`plant_stage4_fault`.
+
+    Returns:
+        ``<directory>/stage4_dino[_gpu][_grid][_faulty].pht-pipe.json``.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.grid import ManualGridFinder
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+
+    if fake_gpu:
+        import tests._fakes.register_fake_gpu  # noqa: F401
+        from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+        detector = FakeGpuDetector(threshold=0.3)
+    else:
+        detector = OtsuDetector()
+    if faulty:
+        import tests._fakes.register_faulty_dino_embedder  # noqa: F401
+        from tests._fakes.faulty_dino_embedder import FaultyDinoEmbedding
+
+        objects = FaultyDinoEmbedding()
+    else:
+        objects = MeasureDinoEmbedding()
+    meas: dict = {"size": MeasureSize(), "emb": objects}
+    if grid:
+        meas["grid"] = MeasureDinoEmbedding(
+            regions="grid",
+            grid=ManualGridFinder(
+                row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+            ),
+        )
+    stem = "stage4_dino" + "".join(
+        suffix for suffix, on in (("_gpu", fake_gpu), ("_grid", grid), ("_faulty", faulty)) if on
+    )
+    pipeline = ImagePipeline(name=stem.replace("_", "-"), ops=[detector], meas=meas)
+    path = Path(directory) / f"{stem}.pht-pipe.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(pipeline.to_json() or "", encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def stage4_faults(monkeypatch, tmp_path: Path) -> Path:
+    """Point ``$PHENOTYPIC_TEST_FAULT_DIR`` at an empty directory; return it."""
+    fault_dir = tmp_path / "stage4_faults"
+    fault_dir.mkdir()
+    monkeypatch.setenv(STAGE4_FAULT_DIR_ENV, str(fault_dir))
+    return fault_dir
+
+
+def plant_stage4_fault(stem: str) -> None:
+    """Make ``FaultyDinoEmbedding.prepare_regions`` fail image *stem* (needs :func:`stage4_faults`)."""
+    import os
+
+    (Path(os.environ[STAGE4_FAULT_DIR_ENV]) / stem).write_text("fault", encoding="utf-8")
+
+
+def clear_stage4_fault(stem: str) -> None:
+    """Remove :func:`plant_stage4_fault`'s trigger for *stem*."""
+    import os
+
+    (Path(os.environ[STAGE4_FAULT_DIR_ENV]) / stem).unlink(missing_ok=True)
+
+
+def nth_stem(inputs: Path, index: int) -> str:
+    """The stem of the *index*-th input file under *inputs*, in sorted path order."""
+    return sorted(path for path in Path(inputs).rglob("*") if path.is_file())[index].stem
+
+
+@pytest.fixture
+def stage4_cpu(monkeypatch, param_stub_backbone):
+    """Run Stage 4 and ``device="auto"`` on the CPU, on any node; yield the stub's namespace.
+
+    Sets ``PHENOTYPIC_STAGE4_DEVICE=cpu`` and ``CUDA_VISIBLE_DEVICES=""``, and
+    patches ``torch.cuda.is_available`` to ``False``: the variable alone does
+    nothing once the process has initialised CUDA (#282 re-review item 5).
+    Needs torch; skips without it.
+    """
+    torch = pytest.importorskip("torch")
+    monkeypatch.setenv("PHENOTYPIC_STAGE4_DEVICE", "cpu")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    yield param_stub_backbone
+
+
+#: One CLI run in a fresh interpreter on the parametric stub, CUDA hidden.
+#: ``argv[1]`` is a JSON object: inputs, out, pipeline, extra, crash_after.
+_STAGE4_SUBPROCESS_RUN = """
+import json, os, sys, traceback
+from pathlib import Path
+import pytest
+import torch
+torch.cuda.is_available = lambda: False
+from tests._tiny_run import install_stub_backbone, run_cli
+args = json.loads(sys.argv[1])
+install_stub_backbone(pytest.MonkeyPatch(), parametric=True)
+if args["crash_after"]:
+    from phenotypic._cli import _cli_stage4_worker as worker
+    original = getattr(worker, args["crash_after"])
+    def _crash_after(*a, **k):
+        result = original(*a, **k)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(137)
+    setattr(worker, args["crash_after"], _crash_after)
+result = run_cli(Path(args["inputs"]), Path(args["out"]), pipeline=Path(args["pipeline"]),
+                 extra=args["extra"])
+sys.stdout.write(result.output)
+if result.exception is not None and not isinstance(result.exception, SystemExit):
+    traceback.print_exception(result.exception)
+sys.exit(result.exit_code)
+"""
+
+
+def run_cli_subprocess(
+    inputs: Path,
+    out: Path,
+    *,
+    pipeline: Path,
+    extra: Sequence[str] = (),
+    crash_after: str | None = None,
+):
+    """One :func:`run_cli` in a fresh interpreter, for crash tests (#282 plan review I5).
+
+    The child installs the parametric stub backbone, sets
+    ``PHENOTYPIC_STAGE4_DEVICE=cpu`` and ``CUDA_VISIBLE_DEVICES=""``, and
+    patches ``torch.cuda.is_available`` to ``False`` before anything touches
+    CUDA; ``PYTHONPATH`` reaches ``src/`` and the repo root, and
+    ``PHENOTYPIC_PRELOAD_MODULES`` gains :data:`STAGE4_PRELOAD_MODULES`. The
+    caller's ``$PHENOTYPIC_TEST_FAULT_DIR`` is inherited.
+
+    Args:
+        inputs: The ``--input`` root.
+        out: The ``--output`` root.
+        pipeline: The ``--pipeline`` file.
+        extra: Further CLI arguments.
+        crash_after: A function of ``phenotypic._cli._cli_stage4_worker``.
+            Right after its first call returns, the child calls
+            ``os._exit(137)``: a real crash between two durable writes, not
+            an exception a caller could catch.
+
+    Returns:
+        The :class:`subprocess.CompletedProcess`, text mode, output captured.
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(root / "src"), str(root), *filter(None, [env.get("PYTHONPATH")])]
+    )
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    env["PHENOTYPIC_STAGE4_DEVICE"] = "cpu"
+    env["CUDA_VISIBLE_DEVICES"] = ""
+    env["PHENOTYPIC_PRELOAD_MODULES"] = ",".join(
+        [*filter(None, env.get("PHENOTYPIC_PRELOAD_MODULES", "").split(",")), *STAGE4_PRELOAD_MODULES]
+    )
+    args = {
+        "inputs": str(inputs),
+        "out": str(out),
+        "pipeline": str(pipeline),
+        "extra": list(extra),
+        "crash_after": crash_after,
+    }
+    return subprocess.run(
+        [sys.executable, "-c", _STAGE4_SUBPROCESS_RUN, json.dumps(args)],
+        cwd=root, env=env, capture_output=True, text=True, timeout=900,
+    )

@@ -382,6 +382,11 @@ def create_initial_state(
             ),
             "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
+            # Where the run embeds (#282 spec §4.1): configuration, not
+            # tracked state, and never in the work id. A state without it
+            # reads as "inline"; a continuation that resolves otherwise is
+            # refused (R3, `_cli_embed_stage.refuse_embed_stage_switch`).
+            "embed_stage": config.embed_stage,
             "success_markers_required": True,
             # D3: content-derived, not `uuid4().hex`. Same inputs -> same
             # token, so a worker starting cold fences itself correctly
