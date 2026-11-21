@@ -68,9 +68,49 @@ def test_r2_refuses_a_cpu_pin_only_with_an_explicit_gpu():
 
 
 def test_r2_refuses_a_non_dino_embedder_under_gpu(toy_embedder):
+    """O3 (amended 2026-11-20): only an explicit ``--embed-stage gpu`` is refused."""
+    pipe = ImagePipeline(meas={"emb": toy_embedder})
+    cls = type(toy_embedder).__name__
+    with pytest.raises(click.UsageError, match=(
+        rf"^--embed-stage gpu was given, but meas 'emb' \({cls}\) has no GPU Stage-4 "
+        r"encoder; pass --embed-stage inline$"
+    )):
+        refuse_unstageable_embedders(pipe, "gpu", "gpu")
+    refuse_unstageable_embedders(pipe, "auto", "inline")       # auto resolved inline, accepted
+
+
+@pytest.mark.parametrize("mode, gpu_detector, gpu_slurm", [
+    ("full", True, False), ("full", False, True), ("measure", False, True),
+], ids=["detector", "gpu-slurm", "measure-gpu-slurm"])
+def test_auto_resolves_inline_for_a_non_dino_embedder(make_exec_config, tmp_path, toy_embedder,
+                                                       mode, gpu_detector, gpu_slurm):
+    """O3 as U9: a run that would be gpu under auto is inline, with one note naming the embedder."""
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    ops = [FakeGpuDetector()] if gpu_detector else []
+    pipe = ImagePipeline(ops=ops, meas={"dino": MeasureDinoEmbedding(), "toy": toy_embedder})
+    config = _slurm_config(make_exec_config, tmp_path, measure_only=mode == "measure",
+                           gpu_slurm_args={"slurm_partition": "exfab"} if gpu_slurm else {})
+    cls = type(toy_embedder).__name__
+    assert resolve_embed_stage_for_config(config, pipe) == ("inline", [
+        f"meas 'toy' ({cls}) has no GPU Stage-4 encoder, so --embed-stage auto resolves to inline"])
+    refuse_unstageable_embedders(pipe, "auto", "inline")
+    # The control: the DINO embedder alone resolves gpu, so the toy is what decided.
+    alone = ImagePipeline(ops=ops, meas={"dino": MeasureDinoEmbedding()})
+    assert resolve_embed_stage_for_config(config, alone) == ("gpu", [])
+    assert resolve_embed_stage("auto", mode=mode, is_slurm=True, has_gpu_detector=gpu_detector,
+                               gpu_slurm_given=gpu_slurm, has_embedders=True, cpu_pinned=False,
+                               unstageable=True) == "inline"
+
+
+def test_explicit_gpu_with_a_non_dino_embedder_resolves_gpu_and_r2_refuses(make_exec_config, tmp_path, toy_embedder):
+    pipe = ImagePipeline(meas={"toy": toy_embedder})
+    config = make_exec_config(pipeline_json=tmp_path / "unused.json", input_path=tmp_path,
+                              embed_stage_request="gpu")
+    stage, notes = resolve_embed_stage_for_config(config, pipe)
+    assert (stage, notes) == ("gpu", [])
     with pytest.raises(click.UsageError, match="has no GPU Stage-4 encoder"):
-        refuse_unstageable_embedders(ImagePipeline(meas={"emb": toy_embedder}), "auto", "gpu")
-    refuse_unstageable_embedders(ImagePipeline(meas={"emb": toy_embedder}), "auto", "inline")
+        refuse_unstageable_embedders(pipe, "gpu", stage)
 
 
 def test_r3_names_the_recorded_flag_and_the_remedy():

@@ -21,6 +21,7 @@ full, local                                               ``inline``
 ``--mode measure``, otherwise                             ``inline``
 ``--mode process``                                        ``inline`` (R1 refuses ``gpu``)
 an in-scope embedder pinned to ``device="cpu"``           ``inline``, with a note (R2 refuses ``gpu``)
+an in-scope embedder with no Stage-4 encoder              ``inline``, with a note (R2 refuses ``gpu``)
 no in-scope embedder                                      ``inline`` (``gpu`` too, with a note)
 ========================================================  ======================
 
@@ -31,8 +32,8 @@ the read-only half, outside ``--skip-validation`` and above ``--restart``,
 - **R1** (:func:`refuse_embed_stage_for_process`): ``--embed-stage gpu`` with
   ``--mode process``, which stays inline on the CPU (H5).
 - **R2** (:func:`refuse_unstageable_embedders`): ``--embed-stage gpu`` with
-  an embedder pinned to ``device="cpu"`` (U9), or a run resolved to ``gpu``
-  holding an embedder with no Stage-4 encoder (O3).
+  an embedder pinned to ``device="cpu"`` (U9) or an embedder with no
+  Stage-4 encoder (O3). Under ``auto`` either resolves the run inline.
 - **R3** (:func:`refuse_embed_stage_switch`): a continuation whose resolved
   stage differs from the recorded one (U3).
 
@@ -94,6 +95,21 @@ def _cpu_pinned_key(pipeline: "ImagePipeline") -> str | None:
     return None
 
 
+def _has_stage4_encoder(embedder: "MeasureEmbedding") -> bool:
+    """Whether Stage 4 can batch *embedder*: today only ``MeasureDinoEmbedding`` (O3)."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    return isinstance(embedder, MeasureDinoEmbedding)
+
+
+def _unstageable_embedder(pipeline: "ImagePipeline") -> tuple[str, str] | None:
+    """The first in-scope embedder with no Stage-4 encoder, as ``(key, class)``, or ``None``."""
+    for key, embedder in pipeline_embedders(pipeline):
+        if not _has_stage4_encoder(embedder):
+            return key, type(embedder).__name__
+    return None
+
+
 def resolve_embed_stage(
     requested: EmbedStageRequest,
     *,
@@ -103,6 +119,7 @@ def resolve_embed_stage(
     gpu_slurm_given: bool,
     has_embedders: bool,
     cpu_pinned: bool,
+    unstageable: bool = False,
 ) -> EmbedStage:
     """Resolve ``--embed-stage`` to where the run embeds (spec §4.1).
 
@@ -120,6 +137,10 @@ def resolve_embed_stage(
         cpu_pinned: Whether an in-scope embedder is pinned to
             ``device="cpu"``. Under ``auto`` the pin wins (U9); an explicit
             ``gpu`` resolves ``gpu`` and R2 refuses it.
+        unstageable: Whether an in-scope embedder has no Stage-4 encoder
+            (anything but ``MeasureDinoEmbedding``). Treated as a CPU pin:
+            ``auto`` resolves ``inline``, and R2 refuses an explicit ``gpu``
+            (O3, amended 2026-11-20).
 
     Returns:
         ``"gpu"`` or ``"inline"``.
@@ -128,7 +149,7 @@ def resolve_embed_stage(
         return "inline"
     if requested == "gpu":
         return "gpu"
-    if cpu_pinned or not is_slurm:
+    if cpu_pinned or unstageable or not is_slurm:
         return "inline"
     gpu_profile = gpu_slurm_given or (mode == "full" and has_gpu_detector)
     return "gpu" if gpu_profile else "inline"
@@ -150,30 +171,38 @@ def refuse_embed_stage_for_process(requested: EmbedStageRequest, mode: "RunMode"
 def refuse_unstageable_embedders(
     pipeline: "ImagePipeline", requested: EmbedStageRequest, resolved: EmbedStage
 ) -> None:
-    """R2: refuse an embedder that cannot run in the stage the run resolved to.
+    """R2: refuse ``--embed-stage gpu`` over an embedder Stage 4 cannot run.
 
-    - ``--embed-stage gpu`` with an in-scope embedder pinned to
-      ``device="cpu"`` (U9). Under ``auto`` the pin resolves the run inline
-      instead, so it is accepted.
-    - A run resolved to ``gpu`` holding a ``MeasureEmbedding`` that is not a
-      ``MeasureDinoEmbedding``: only DINO has a Stage-4 encoder (O3).
+    - An in-scope embedder pinned to ``device="cpu"`` (U9).
+    - A ``MeasureEmbedding`` that is not a ``MeasureDinoEmbedding``: only
+      DINO has a Stage-4 encoder (O3).
+
+    Only an explicit ``gpu`` is refused. Under ``auto`` either resolves the
+    run inline instead (:func:`resolve_embed_stage`), so a SLURM detector
+    pipeline carrying such an embedder keeps running as it did.
+
+    Args:
+        pipeline: The run's pipeline.
+        requested: The ``--embed-stage`` value.
+        resolved: What it resolved to; nothing is refused for ``inline``
+            (a pipeline with no embedder resolves so, O5).
 
     Raises:
         click.UsageError: Naming the first such ``meas`` key and its class.
     """
-    from phenotypic.measure import MeasureDinoEmbedding
-
+    if requested != "gpu" or resolved != "gpu":
+        return
     for key, embedder in pipeline_embedders(pipeline):
         cls = type(embedder).__name__
-        if requested == "gpu" and getattr(embedder, "device", None) == "cpu":
+        if getattr(embedder, "device", None) == "cpu":
             raise click.UsageError(
                 f"--embed-stage gpu was given, but meas '{key}' ({cls}) is "
                 "pinned to device='cpu'; set device='auto' or 'cuda', or drop "
                 "--embed-stage gpu to embed inline"
             )
-        if resolved == "gpu" and not isinstance(embedder, MeasureDinoEmbedding):
+        if not _has_stage4_encoder(embedder):
             raise click.UsageError(
-                f"--embed-stage resolves to gpu, but meas '{key}' ({cls}) has "
+                f"--embed-stage gpu was given, but meas '{key}' ({cls}) has "
                 "no GPU Stage-4 encoder; pass --embed-stage inline"
             )
 
@@ -218,8 +247,9 @@ def resolve_embed_stage_for_config(
 
     Returns:
         The resolved stage, and the one-line notes to print: U9's when a CPU
-        pin is what made ``auto`` resolve inline, O5's when ``--embed-stage
-        gpu`` meets a pipeline with no embedder.
+        pin, and O3's when an embedder with no Stage-4 encoder, is what made
+        ``auto`` resolve inline; O5's when ``--embed-stage gpu`` meets a
+        pipeline with no embedder.
     """
     from ._cli_preflight import run_mode_of
 
@@ -229,10 +259,11 @@ def resolve_embed_stage_for_config(
     mode = run_mode_of(config)
     embedders = pipeline_embedders(pipeline)
     pinned = _cpu_pinned_key(pipeline)
+    unstageable = _unstageable_embedder(pipeline)
     is_slurm = config.is_slurm_mode()
     has_gpu_detector = _has_gpu_detector(pipeline)
 
-    def _resolve(cpu_pinned: bool) -> EmbedStage:
+    def _resolve(cpu_pinned: bool, unstageable: bool) -> EmbedStage:
         return resolve_embed_stage(
             requested,
             mode=mode,
@@ -241,15 +272,25 @@ def resolve_embed_stage_for_config(
             gpu_slurm_given=bool(config.gpu_slurm_args),
             has_embedders=bool(embedders),
             cpu_pinned=cpu_pinned,
+            unstageable=unstageable,
         )
 
-    resolved = _resolve(pinned is not None)
+    resolved = _resolve(pinned is not None, unstageable is not None)
     notes: list[str] = []
-    if pinned is not None and requested == "auto" and _resolve(False) == "gpu":
-        notes.append(
-            f"meas '{pinned}' is pinned to device='cpu', so --embed-stage auto "
-            "resolves to inline"
-        )
+    # A note only when the embedder decided the outcome: auto would otherwise
+    # have been gpu. A local auto run is inline anyway and says nothing.
+    if requested == "auto" and resolved == "inline" and _resolve(False, False) == "gpu":
+        if pinned is not None:
+            notes.append(
+                f"meas '{pinned}' is pinned to device='cpu', so --embed-stage "
+                "auto resolves to inline"
+            )
+        if unstageable is not None:
+            key, cls = unstageable
+            notes.append(
+                f"meas '{key}' ({cls}) has no GPU Stage-4 encoder, so "
+                "--embed-stage auto resolves to inline"
+            )
     if requested == "gpu" and not embedders and mode != "process":
         notes.append(
             "--embed-stage gpu: the pipeline has no embedder, so nothing runs "
