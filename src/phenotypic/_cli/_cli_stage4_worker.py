@@ -15,7 +15,13 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Sequence
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ._cli_output_manager import OutputManager
+    from ._cli_types import Dataset, ExecutionConfig
 
 #: Test-only: ``cpu`` runs Stage 4 on the CPU, so a CPU node can exercise it.
 STAGE4_DEVICE_ENV: Final[str] = "PHENOTYPIC_STAGE4_DEVICE"
@@ -102,3 +108,21 @@ def has_kernels_for(major: int, minor: int, arches: Sequence[str]) -> bool:
         if kind == "compute" and (arch_major, arch_minor) <= (major, minor):
             return True
     return False
+
+
+def run_local_stage4(
+    config: "ExecutionConfig",
+    output_manager: "OutputManager",
+    output_dir: "Path",
+    datasets: "Sequence[Dataset]",
+) -> dict[str, tuple[int, int]]:
+    """Run Stage 4 in this process over *datasets*: ``{dataset: (published, failed)}``.
+
+    A placeholder until #282 P4 T3 builds the loop; nothing calls it yet.
+    The deferral tests patch it out (``no_stage4``), so their meaning holds
+    once T3 wires it in after the Stage-3 loop.
+
+    Raises:
+        NotImplementedError: Always, until P4 T3.
+    """
+    raise NotImplementedError("Stage 4 is built in #282 P4 T3")

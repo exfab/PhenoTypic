@@ -1586,6 +1586,37 @@ def _stage3_less_images(
     }
 
 
+def _unpublished_images(
+    output_dir: Path, inventory: Mapping[str, Sequence[Any]]
+) -> set[tuple[str, str]]:
+    """The ``(dataset, image stem)`` pairs of a run with no valid per-image record.
+
+    The local completion predicate of a run that embeds on the GPU (#282 plan
+    review C2), in place of :func:`_stage3_less_images`: there Stage 3 writes
+    ``stages.stage3`` and **no** record, and Stage 4 publishes the record, so
+    a Stage-3 marker says nothing about completion. An image counts as
+    published only with a ``verified`` verdict from ``resolve_run_state``,
+    the one producer of that verdict (``valid_image_success`` asks the same
+    ``record_rejection``).
+
+    Args:
+        output_dir: Run output root.
+        inventory: The run's full ``dataset -> images`` inventory.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    verified = {
+        (image.dataset, image.image_stem)
+        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        if image.verdict == "verified"
+    }
+    return {
+        (dataset, source_image_stem(Path(image)))
+        for dataset, images in inventory.items()
+        for image in images
+    } - verified
+
+
 def _all_current_terminal_failures(
     output_dir: Path, images: set[tuple[str, str]]
 ) -> bool:
@@ -1598,7 +1629,8 @@ def _all_current_terminal_failures(
     Args:
         output_dir: Run output root.
         images: ``(dataset, image stem)`` pairs, from
-            :func:`_stage3_less_images`.
+            :func:`_stage3_less_images` or, under deferral,
+            :func:`_unpublished_images`.
     """
     from phenotypic.sdk_ import resolve_run_state
 
@@ -4098,6 +4130,11 @@ def phenotypic_cli(
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
                     "no_qc": config.no_qc,
+                    # Kept on resume as `create_initial_state` records it:
+                    # dropping it would make the next continuation read
+                    # "inline" and R3 refuse a GPU run's own command, and the
+                    # event aggregation count Stage-3 completions as done.
+                    "embed_stage": config.embed_stage,
                     # A RESUME IS NOT A RESTART. Same configuration ->
                     # same generation (D3); only `--restart` bumps the
                     # epoch, and therefore the generation.
@@ -4266,9 +4303,16 @@ def phenotypic_cli(
 
         # Only a local run reaches this point: every SLURM run exited or was
         # refused above.
-        local_staged_publication = (
+        # A local run that defers its embeddings to Stage 4 publishes like a
+        # staged one, detector or not: completion is record-based and the run
+        # is marked staged-complete (#282 P4 T2). Measure mode's deferral is
+        # P6's, so it is not one here.
+        from phenotypic._cli._cli_embed_stage import defers_embeddings
+
+        deferring = defers_embeddings(config)
+        local_staged_publication = config.process_only_layer is None and (
             uses_staged_gpu_strategy(config)
-            and config.process_only_layer is None
+            or (deferring and not measure_only)
         )
 
         # Process-only (apply-only) runs export image layers + a progress
@@ -4332,9 +4376,15 @@ def phenotypic_cli(
             )
         )
         if should_finalize_measurements:
-            if local_staged_publication and config.staged_stage3_markers:
-                # Guarded by `local_staged_publication`, which is only true
-                # for a staged GPU run, so the pipeline has a GpuDetector.
+            if (
+                local_staged_publication
+                and config.staged_stage3_markers
+                and uses_staged_gpu_strategy(config)
+            ):
+                # Its own GpuDetector guard: `local_staged_publication` is
+                # also true for a no-detector run that defers its embeddings
+                # (#282), whose pipeline `staged_detector_slot` refuses and
+                # which has no Stage-2 signal to consume (re-review item 1).
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
@@ -4397,8 +4447,15 @@ def phenotypic_cli(
         staged_complete = False
         staged_terminal_incomplete = False
         if local_staged_publication:
-            unfinished = _stage3_less_images(
-                output_dir, config.full_dataset_inventory
+            # Under deferral the predicate is record-based: a Stage-3 marker
+            # is not completion, and a Stage-4 failure exits 3 rather than 1
+            # (#282 plan review C2).
+            unfinished = (
+                _unpublished_images(output_dir, config.full_dataset_inventory)
+                if deferring
+                else _stage3_less_images(
+                    output_dir, config.full_dataset_inventory
+                )
             )
             staged_complete = (
                 finalization_succeeded
@@ -4407,8 +4464,8 @@ def phenotypic_cli(
             )
             # The local twin of the SLURM finalizer's `terminal_incomplete`
             # close (#281 spec C10, review I3/F3): every image without a
-            # Stage-3 marker failed terminally, so the run finished with
-            # failures. It is not marked staged-complete, and a re-run, which
+            # Stage-3 marker (under deferral, without a record) failed
+            # terminally, so the run finished with failures. It is not marked staged-complete, and a re-run, which
             # skips those images, re-finalizes and ends here again.
             staged_terminal_incomplete = (
                 finalization_succeeded

@@ -159,6 +159,48 @@ def stage3_completion_exists(
     return isinstance(stages, dict) and STAGE_STAGE3 in stages
 
 
+def stages_1_to_3_done(
+    output_dir: Path, dataset: str, stem: str, work_id: str
+) -> bool:
+    """Whether one image of a run that embeds on the GPU has finished Stages 1-3.
+
+    **The one "done" predicate under deferral** (#282 plan review C1). When
+    ``defers_embeddings`` holds, Stage 3 (or the single-pass core) writes the
+    store with its measurements and ``stages.stage3``, and writes no record and
+    no embeddings; Stage 4 owns the image from there. So every recovery
+    shortcut that used to publish such an image returns early on this and
+    publishes nothing, and every stage loop skips it: publishing would certify
+    an image with no embeddings, and re-running a stage would re-detect or
+    re-measure it, with its Stage-2 signal already consumed.
+
+    All three conjuncts are needed:
+
+    - ``stages.stage3`` in the record (:func:`stage3_completion_exists`): the
+      core reached its last write. A core that re-runs drops it first.
+    - a store bound to *work_id* (:func:`staged_store_matches_work_id`): the
+      store is this configuration's, not a previous one's.
+    - a measurement table in the store's journal run
+      (``journal_measurement_table``): the final save, not Stage 1's, is on
+      disk.
+
+    It says nothing about Stage 4: an image whose record is valid is both
+    done here and finished (``valid_image_success``).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+        work_id: The image's current work id.
+    """
+    if not stage3_completion_exists(output_dir, dataset, stem):
+        return False
+    store = zarr_store_path(output_dir, dataset, stem)
+    return (
+        staged_store_matches_work_id(store, work_id)
+        and journal_measurement_table(store) is not None
+    )
+
+
 def write_stage3_completion_marker(
     output_dir: Path,
     dataset: str,
@@ -221,6 +263,29 @@ def remove_stage3_completion_marker(
         STAGE_STAGE3,
         commit_guard=commit_guard,
     )
+
+
+def drop_stages_1_to_3_done(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
+    """Undo :func:`stages_1_to_3_done` before a core re-runs one image (#282 P4 T2).
+
+    Removes ``stages.stage3`` first, then the image's Stage-4 signals. A core
+    that defers its embeddings calls this before its first write, so a crash
+    anywhere inside it leaves an image that is not done, never one that a
+    later invocation would hand to Stage 4 over a half-rewritten store; and
+    signals computed against the store being replaced are gone before it is.
+    """
+    from ._cli_stage4_signal import delete_stage4_signals
+
+    remove_stage3_completion_marker(
+        output_dir, dataset, stem, commit_guard=commit_guard
+    )
+    delete_stage4_signals(output_dir, dataset, stem, commit_guard=commit_guard)
 
 
 def classify_staged_image(
@@ -522,12 +587,14 @@ __all__ = [
     "build_staged_resume_plan",
     "classify_staged_image",
     "clear_downstream_artifacts_for_stage1",
+    "drop_stages_1_to_3_done",
     "migrate_legacy_stage3_markers",
     "pipeline_content_digest",
     "reconcile_stage3_publications",
     "remove_stage3_completion_marker",
     "stage3_completion_exists",
     "staged_store_matches_work_id",
+    "stages_1_to_3_done",
     "valid_stage1_store",
     "valid_staged_store",
     "write_stage3_completion_marker",

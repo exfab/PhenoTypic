@@ -7,6 +7,7 @@ import pytest
 
 from phenotypic._cli._cli_update_state import append_event, parse_event_line
 from phenotypic._cli._stages import (
+    STAGE_EMBED,
     STAGE_GPU_DETECT,
     STAGE_MEASURE,
     STAGE_PREPROCESS,
@@ -21,13 +22,14 @@ def test_validate_stage_tag_accepts_known_tags_and_legacy_none() -> None:
     assert validate_stage_tag("stage1") == STAGE_PREPROCESS
     assert validate_stage_tag("stage2") == STAGE_GPU_DETECT
     assert validate_stage_tag("stage3") == STAGE_MEASURE
+    assert validate_stage_tag("stage4") == STAGE_EMBED  # the GPU embedding stage (#282)
     assert STAGED_TERMINAL_STAGE == STAGE_MEASURE
 
 
 def test_validate_stage_tag_rejects_unknown_tag() -> None:
     """Unknown non-empty stage tags are malformed staged events."""
     with pytest.raises(ValueError, match="Invalid stage tag"):
-        validate_stage_tag("stage4")
+        validate_stage_tag("stage5")
 
 
 def test_parse_event_line_keeps_legacy_no_stage_rows() -> None:
@@ -47,7 +49,7 @@ def test_parse_event_line_validates_stage_field() -> None:
 
     with pytest.raises(ValueError, match="Invalid stage tag"):
         parse_event_line(
-            "2026-07-03T12:00:00|ds|img.tiff|completed||||stage4"
+            "2026-07-03T12:00:00|ds|img.tiff|completed||||stage5"
         )
 
 
@@ -56,6 +58,6 @@ def test_append_event_rejects_invalid_stage_without_writing(tmp_path: Path) -> N
     event_log = tmp_path / "processing_events.log"
 
     with pytest.raises(ValueError, match="Invalid stage tag"):
-        append_event(event_log, "ds", "img.tiff", "started", stage="stage4")
+        append_event(event_log, "ds", "img.tiff", "started", stage="stage5")
 
     assert not event_log.exists()

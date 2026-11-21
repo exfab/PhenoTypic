@@ -58,6 +58,8 @@ from ._cli_failure_tracker import (
     work_id_for_image,
     work_identity_for_image,
 )
+from ._cli_embed_stage import defers_embeddings
+from ._stages import STAGE_MEASURE
 from ._cli_reference import ReferencePin
 from ._cli_completion import (
     image_data_artifact,
@@ -536,8 +538,15 @@ class LocalParallelStrategy(ExecutionStrategy):
             Tuple of (dataset_name, image_name, success, error_message)
         """
         attempt_id = uuid4().hex
+        # Under deferral this core is the run's Stage 3: it writes no record,
+        # and its events are tagged so a Stage-3 completion is progress, not
+        # completion (#282 P4 T2). An inline run's events stay untagged.
+        deferring = defers_embeddings(self.config)
+        stage = STAGE_MEASURE if deferring else None
         # Log "started" event
-        append_event(event_log, dataset.name, image_path.name, "started")
+        append_event(
+            event_log, dataset.name, image_path.name, "started", stage=stage
+        )
 
         work_identity: tuple[str, str] | None = None
 
@@ -569,21 +578,28 @@ class LocalParallelStrategy(ExecutionStrategy):
                     source_image_stem(image_path), identity.reference_digest
                 ),
                 input_root=self.config.input_path,
+                defer_embeddings=deferring,
             )
 
-            _publish_local_image_success(
-                self.config,
-                self.output_manager,
-                output_dir,
-                dataset.name,
-                image_path,
-                attempt_id,
-                work_identity=work_identity,
-            )
+            if not deferring:
+                # Under deferral Stage 4 publishes the record (spec §4.2).
+                _publish_local_image_success(
+                    self.config,
+                    self.output_manager,
+                    output_dir,
+                    dataset.name,
+                    image_path,
+                    attempt_id,
+                    work_identity=work_identity,
+                )
 
             # Log success
             append_completion_event(
-                event_log, dataset.name, image_path.name, "completed"
+                event_log,
+                dataset.name,
+                image_path.name,
+                "completed",
+                stage=stage,
             )
             return (dataset.name, image_path.name, True, "")
 
@@ -621,6 +637,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 image_path.name,
                 "failed",
                 truncated_msg,
+                stage=stage,
             )
 
             # Write structured failure record

@@ -61,6 +61,7 @@ from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
     staged_store_matches_work_id,
+    stages_1_to_3_done,
     valid_stage1_store,
     write_stage3_completion_marker,
 )
@@ -218,6 +219,33 @@ def _recorded_image_read(
     )
 
 
+def _recorded_defers_embeddings(output_dir: Path) -> bool:
+    """Whether the run embeds in Stage 4, as the submitter recorded it (#282).
+
+    The worker never re-derives deferral from flags: it reads
+    ``JobMetadataKey.EMBED_STAGE`` from ``job_metadata.json``, which the
+    submitter writes before Controller 0 (``_write_staged_job_metadata``).
+    A file without the key, or no readable file (a run written before #282,
+    or a hand-built test tree), reads as ``"inline"``, which is what such a
+    run did.
+    """
+    metadata = load_job_metadata(progress_dir(output_dir))
+    if not isinstance(metadata, dict):
+        return False
+    return metadata.get(JobMetadataKey.EMBED_STAGE) == "gpu"
+
+
+def _waiting_on_stage4(
+    output_dir: Path, item: StagedManifestEntry, *, deferring: bool
+) -> bool:
+    """Whether *item* finished Stages 1-3 of a deferring run (``stages_1_to_3_done``)."""
+    return bool(
+        deferring
+        and item.work_id
+        and stages_1_to_3_done(output_dir, item.dataset, item.stem, item.work_id)
+    )
+
+
 def run_stage1_step(
     pipeline_path: Path,
     output_dir: Path,
@@ -339,10 +367,14 @@ def run_stage2_shard(
         for record in read_terminal_failures(output_dir)
         if epoch is not None and record.lifecycle_epoch == epoch
     }
+    # An image waiting on Stage 4 has consumed its Stage-2 signal; without
+    # this it would be re-detected (#282 plan review C1).
+    deferring = _recorded_defers_embeddings(output_dir)
     candidates = [
         item
         for item in shard
         if item.work_id not in terminal
+        if not _waiting_on_stage4(output_dir, item, deferring=deferring)
         if not stage2_result_replayable(
             output_dir, item.dataset, item.stem, slot
         )
@@ -486,8 +518,16 @@ def run_stage3_step(
             commit_guard=commit_guard,
         )
         return
+    deferring = _recorded_defers_embeddings(output_dir)
+    if _waiting_on_stage4(output_dir, item, deferring=deferring):
+        # Stages 1-3 are done and Stage 4 owns the image: publish nothing,
+        # and return before the Stage-2 prereq check below, which would
+        # otherwise SystemExit(1) on the signal Stage 3 already consumed
+        # (#282 plan review C1).
+        return
     if (
-        resume
+        not deferring
+        and resume
         and item.work_id
         and stage3_completion_exists(output_dir, item.dataset, item.stem)
         and staged_store_matches_work_id(store, item.work_id)
@@ -572,8 +612,10 @@ def run_stage3_step(
                 image_name=item.image_name,
                 work_id=item.work_id,
                 reference_pin=_reference_pin(item),
+                defer_embeddings=deferring,
             )
-            if item.work_id:
+            # Under deferral Stage 4 publishes the record (spec §4.2).
+            if item.work_id and not deferring:
                 data_key, data_path = image_data_artifact(
                     output_dir, output_manager, item.dataset, item.stem
                 )

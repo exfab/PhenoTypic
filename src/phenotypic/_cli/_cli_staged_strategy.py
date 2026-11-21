@@ -56,10 +56,12 @@ from ._cli_stage2_token import (
     detector_slot,
     stage2_result_replayable,
 )
+from ._cli_embed_stage import defers_embeddings
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
     staged_store_matches_work_id,
+    stages_1_to_3_done,
     valid_stage1_store,
     write_stage3_completion_marker,
 )
@@ -109,6 +111,9 @@ class StagedGpuStrategy(ExecutionStrategy):
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
         read_kwargs = input_read_settings(cfg.bit_depth, cfg.detect_mode)
+        # One fact for every gate below (#282 P4 T2): under deferral Stage 3
+        # writes no record and no embeddings, and Stage 4 owns the image.
+        deferring = defers_embeddings(cfg)
 
         def _has_measurement_table(ds_name: str, stem: str) -> bool:
             """Whether the store holds the table its own Stage-3 save wrote."""
@@ -120,7 +125,14 @@ class StagedGpuStrategy(ExecutionStrategy):
             )
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
-            """Return whether the image has its durable terminal artifact."""
+            """Return whether the image has its durable terminal artifact.
+
+            Under deferral the answer is "a valid record, or Stages 1-3
+            done" (``stages_1_to_3_done``), and nothing is published: this
+            one function gates Stage 2 as well as Stage 3, so an image waiting
+            on Stage 4, whose Stage-2 signal is already consumed, is neither
+            re-detected nor re-measured (#282 plan review C1).
+            """
             work_id, _ = work_id_for_image(cfg, ds_name, img)
             if valid_image_success(
                 output_dir,
@@ -129,6 +141,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                 work_id=work_id,
             ):
                 return True
+            if deferring:
+                return stages_1_to_3_done(
+                    output_dir, ds_name, source_image_stem(img), work_id
+                )
             store = zarr_store_path(
                 output_dir, ds_name, source_image_stem(img)
             )
@@ -341,16 +357,20 @@ class StagedGpuStrategy(ExecutionStrategy):
                         image_name=img.name,
                         work_id=identity.work_id,
                         reference_pin=_reference_pin(img, identity),
+                        defer_embeddings=deferring,
                     )
-                    _publish_local_image_success(
-                        cfg,
-                        self.output_manager,
-                        output_dir,
-                        ds.name,
-                        img,
-                        attempt_id,
-                        work_identity=_record_identity(identity),
-                    )
+                    if not deferring:
+                        # Under deferral Stage 4 publishes the record, once,
+                        # after its embeddings commit (spec §4.2).
+                        _publish_local_image_success(
+                            cfg,
+                            self.output_manager,
+                            output_dir,
+                            ds.name,
+                            img,
+                            attempt_id,
+                            work_identity=_record_identity(identity),
+                        )
                     write_stage3_completion_marker(
                         output_dir,
                         ds.name,

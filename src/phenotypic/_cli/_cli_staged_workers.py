@@ -61,7 +61,10 @@ from ._cli_stage2_token import (
     write_stage2_raw,
     write_stage2_token,
 )
-from ._cli_staged_resume import write_stage3_completion_marker
+from ._cli_staged_resume import (
+    drop_stages_1_to_3_done,
+    write_stage3_completion_marker,
+)
 from ._stages import (
     STAGE_GPU_DETECT,
     STAGE_MEASURE,
@@ -584,16 +587,28 @@ def stage3_merge_measure_core(
     image_name: str | None = None,
     work_id: str | None = None,
     reference_pin: ReferencePin | None = None,
+    defer_embeddings: bool = False,
 ) -> None:
     """Replay the raw result, measure, re-promote the store, consume both.
 
     ``reference_pin`` carries the reference digest *work_id* was computed
     from; both the replay apply and the measure refuse a manifest that has
     re-planned the image since.
+
+    ``defer_embeddings`` is the run's ``defers_embeddings`` (#282): the
+    embeddings go to Stage 4, so ``embed()`` is not called and the store is
+    saved with none. It first drops the image's ``stages.stage3`` and its
+    Stage-4 signals (:func:`drop_stages_1_to_3_done`). The caller then writes
+    ``stages.stage3`` and **no** record.
     """
     image_cls = _image_class(image_type)
     slot = detector_slot(plan.gpu_path)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
+    if defer_embeddings:
+        _check_active(active_check)
+        drop_stages_1_to_3_done(
+            output_dir, dataset_name, image_stem, commit_guard=commit_guard
+        )
     image = image_cls.load_zarr(store)
     image.name = image_stem
 
@@ -655,7 +670,10 @@ def stage3_merge_measure_core(
             measurements = replay_pipeline.measure(image, apply_post=False)
             # Beside measure(), into the same run folder (#281 spec E2). The
             # objmap is the replayed one, so Stage 1's zeros never bind them.
-            embeddings = replay_pipeline.embed(image)
+            # Under deferral Stage 4 writes them into this run's folder.
+            embeddings = (
+                None if defer_embeddings else replay_pipeline.embed(image)
+            )
 
         if output_manager.save_overlays:
             _check_active(active_check)

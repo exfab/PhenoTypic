@@ -2181,3 +2181,297 @@ def run_cli_subprocess(
         [sys.executable, "-c", _STAGE4_SUBPROCESS_RUN, json.dumps(args)],
         cwd=root, env=env, capture_output=True, text=True, timeout=900,
     )
+
+
+# ---------------------------------------------------------------------------
+# #282 P4 T2: deferral helpers
+# ---------------------------------------------------------------------------
+
+#: The modules whose bindings :func:`count_calls` wraps: every caller of the
+#: per-image cores and of ``publish_image_success`` on a local run.
+_COUNTED_MODULES = (
+    "phenotypic.phenotypicCLI",
+    "phenotypic._cli._cli_completion",
+    "phenotypic._cli._cli_execution_strategies",
+    "phenotypic._cli._cli_process_single",
+    "phenotypic._cli._cli_staged_slurm_worker",
+    "phenotypic._cli._cli_staged_strategy",
+    "phenotypic._cli._cli_staged_workers",
+)
+
+
+def count_calls(monkeypatch, names: Sequence[str]) -> dict[str, int]:
+    """Count the calls of each named function, wherever a CLI module binds it.
+
+    Each name is wrapped in every module of :data:`_COUNTED_MODULES` that
+    binds it (a ``from x import f`` copies the binding, so patching only the
+    defining module misses its callers). The returned dict is live: read it
+    after the run.
+
+    Args:
+        monkeypatch: pytest's ``monkeypatch``; the wrappers are undone with it.
+        names: Function names, e.g. ``"stage3_merge_measure_core"``.
+    """
+    import functools
+    import importlib
+
+    counts = {name: 0 for name in names}
+    for module_name in _COUNTED_MODULES:
+        module = importlib.import_module(module_name)
+        for name in names:
+            original = module.__dict__.get(name)
+            if not callable(original):
+                continue
+
+            def _counting(*args, _name=name, _original=original, **kwargs):
+                counts[_name] += 1
+                return _original(*args, **kwargs)
+
+            monkeypatch.setattr(module, name, functools.wraps(original)(_counting))
+    return counts
+
+
+def store_root_bytes(out: Path) -> dict[Path, bytes]:
+    """Every per-image store's root ``zarr.json`` bytes, by path."""
+    return {
+        path: path.read_bytes()
+        for path in sorted(Path(out).glob("results/*/zarr/*.ome.zarr/zarr.json"))
+    }
+
+
+def dataset_and_stem(store: Path) -> tuple[str, str]:
+    """``(dataset, stem)`` of a store at ``results/<ds>/zarr/<stem>.ome.zarr``."""
+    return store.parent.parent.name, store.name.removesuffix(".ome.zarr")
+
+
+class Stage4Item:
+    """One image of a run, as the deferral tests address it (#282 P4 T2)."""
+
+    def __init__(self, dataset: str, image_name: str, work_id: str) -> None:
+        self.dataset = dataset
+        self.image_name = image_name
+        self.stem = Path(image_name).stem
+        self.work_id = work_id
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return f"Stage4Item({self.dataset}/{self.image_name})"
+
+
+def run_items(out: Path) -> list[Stage4Item]:
+    """Every image of the run at *out*, with its recorded work id, in name order."""
+    import json
+
+    from phenotypic.sdk_ import processing_state_path
+
+    state = json.loads(processing_state_path(out).read_text(encoding="utf-8"))
+    return [
+        Stage4Item(dataset, image_name, work_id)
+        for dataset, images in sorted(state["config"]["work_ids"].items())
+        for image_name, work_id in sorted(images.items())
+    ]
+
+
+def invalidate_store(out: Path, item: Stage4Item) -> None:
+    """Rebind *item*'s store root to another work id, so its core must re-run.
+
+    The record keeps ``stages.stage3`` and the store keeps its table; only
+    ``staged_store_matches_work_id`` stops holding, so ``stages_1_to_3_done``
+    is false and every continuation re-runs the image's core.
+    """
+    import json
+
+    root = zarr_store_path_of(out, item) / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"]["work_id"] = "invalidated-" + item.work_id
+    root.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def zarr_store_path_of(out: Path, item: Stage4Item) -> Path:
+    """*item*'s per-image store."""
+    from phenotypic.sdk_ import zarr_store_path
+
+    return zarr_store_path(out, item.dataset, item.stem)
+
+
+#: Two keys a planted signal goes under: the pipeline's own, and one it no
+#: longer has (``delete_stage4_signals`` walks directories, not keys).
+PLANTED_STAGE4_KEYS = ("dinov2-vitb14/rgb/objects", "dinov2-vits14/gray/grid")
+
+
+def plant_stage4_signals(out: Path, item: Stage4Item) -> list[Path]:
+    """Write placeholder signal files for *item* under :data:`PLANTED_STAGE4_KEYS`."""
+    from phenotypic._cli._cli_stage4_signal import stage4_signal_path
+
+    paths = []
+    for key in PLANTED_STAGE4_KEYS:
+        path = stage4_signal_path(out, item.dataset, key, item.stem)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"planted")
+        paths.append(path)
+    return paths
+
+
+def signal_files(out: Path, item: Stage4Item) -> list[Path]:
+    """*item*'s Stage-4 signal files, under any key."""
+    from phenotypic.sdk_ import progress_dir
+
+    base = progress_dir(out) / "stage4_payload" / item.dataset
+    return sorted(base.glob(f"*/*/*/{item.stem}.parquet"))
+
+
+def publish_waiting_records(out: Path) -> int:
+    """Publish the record of every image that finished Stages 1-3, as Stage 4 would.
+
+    Stands in for Stage 4's publication (P4 T3) in tests that need a
+    published deferral run before Stage 4 exists: the same artifacts as
+    ``_publish_local_image_success``, with no embeddings committed.
+
+    Returns:
+        How many records were published.
+    """
+    import json
+    from uuid import uuid4
+
+    from phenotypic._cli._cli_completion import (
+        image_data_artifact,
+        image_measurement_artifact,
+        publish_image_success,
+    )
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_staged_resume import stages_1_to_3_done
+    from phenotypic.sdk_ import processing_state_path
+
+    state = json.loads(processing_state_path(out).read_text(encoding="utf-8"))
+    manager = OutputManager.from_config(base_dir=out, ext=".tiff")
+    published = 0
+    for item in run_items(out):
+        if not stages_1_to_3_done(out, item.dataset, item.stem, item.work_id):
+            continue
+        data_key, data_path = image_data_artifact(out, manager, item.dataset, item.stem)
+        artifacts = {
+            "measurements": image_measurement_artifact(out, item.dataset, item.stem),
+            data_key: data_path,
+        }
+        overlay = manager.get_output_path(item.dataset, "overlays", item.stem)
+        if Path(overlay).is_file():
+            artifacts["overlay"] = overlay
+        publish_image_success(
+            out,
+            work_id=item.work_id,
+            dataset=item.dataset,
+            relative_image_path=f"{item.dataset}/{item.image_name}",
+            image_stem=item.stem,
+            mode="full",
+            attempt_id=uuid4().hex,
+            lifecycle_epoch=state["config"].get("processing_generation") or "local-unfenced",
+            artifacts=artifacts,
+        )
+        published += 1
+    return published
+
+
+@pytest.fixture
+def no_stage4(monkeypatch):
+    """Stage 4 does nothing: ``run_local_stage4`` returns ``{}`` (#282 P4 T2).
+
+    Every image of a ``--embed-stage gpu`` run then stops after Stages 1-3,
+    waiting on Stage 4. Before P4 T3 nothing calls it; the patch keeps these
+    tests' meaning once T3 wires it in.
+    """
+    from phenotypic._cli import _cli_stage4_worker
+
+    monkeypatch.setattr(_cli_stage4_worker, "run_local_stage4", lambda *a, **k: {})
+
+
+class Stage4Waiting:
+    """A finished-but-for-Stage-4 run: every image passed Stages 1-3 and waits."""
+
+    def __init__(self, inputs: Path, out: Path, pipeline: Path) -> None:
+        self.inputs = inputs
+        self.out = out
+        self.pipeline = pipeline
+        self.items = run_items(out)
+        self.cli_args = (inputs, out)
+        self.cli_kwargs = {"pipeline": pipeline}
+
+    def __iter__(self):
+        """``out, item = fixture``: the output root and the first image."""
+        return iter((self.out, self.items[0]))
+
+    def rerun(self, *extra: str):
+        """The same ``--embed-stage gpu`` command again, with *extra* appended."""
+        return run_cli(*self.cli_args, **self.cli_kwargs, extra=["--embed-stage", "gpu", *extra])
+
+    def manifest(self) -> list:
+        """The run's images as staged SLURM manifest entries."""
+        from phenotypic._cli._cli_staged_orchestration import StagedManifestEntry
+
+        root = Path(self.inputs)
+        return [
+            StagedManifestEntry(
+                dataset=item.dataset,
+                image_name=item.image_name,
+                stem=item.stem,
+                input_path=str((root / item.dataset / item.image_name).absolute()),
+                work_id=item.work_id,
+                relative_image_path=f"{item.dataset}/{item.image_name}",
+            )
+            for item in self.items
+        ]
+
+    def stage3_kwargs(self, index: int, *, resume: bool = True) -> dict:
+        """``run_stage3_step``'s arguments for image *index*, unfenced."""
+        return {
+            "pipeline_path": self.pipeline,
+            "output_dir": self.out,
+            "image_type": "Image",
+            "manifest": self.manifest(),
+            "index": index,
+            "resume": resume,
+        }
+
+
+def record_embed_stage_in_job_metadata(out: Path, embed_stage: str) -> None:
+    """Record ``EMBED_STAGE`` in *out*'s ``job_metadata.json``, as a staged submitter does."""
+    import json
+
+    from phenotypic.sdk_ import JobMetadataKey, atomic_write_json, job_metadata_path
+
+    path = job_metadata_path(out)
+    metadata = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    metadata[JobMetadataKey.EMBED_STAGE] = embed_stage
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(path, metadata)
+
+
+def _waiting_run(tmp_path: Path, inputs: Path, *, fake_gpu: bool) -> Stage4Waiting:
+    out = tmp_path / "out"
+    pipeline = with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu)
+    run_cli(inputs, out, pipeline=pipeline, extra=["--embed-stage", "gpu"])
+    return Stage4Waiting(inputs, out, pipeline)
+
+
+@pytest.fixture
+def stage4_slurm_waiting(tmp_path: Path, tiny_inputs: Path, stage4_cpu, no_stage4) -> Stage4Waiting:
+    """A staged (``FakeGpuDetector``) tree whose images all wait on Stage 4, as a SLURM worker sees it.
+
+    Built by a local ``--embed-stage gpu`` run with Stage 4 stubbed out, then
+    ``EMBED_STAGE = "gpu"`` recorded in ``job_metadata.json``, where the
+    staged SLURM worker reads deferral.
+    """
+    waiting = _waiting_run(tmp_path, tiny_inputs, fake_gpu=True)
+    record_embed_stage_in_job_metadata(waiting.out, "gpu")
+    return waiting
+
+
+@pytest.fixture
+def stage4_pending_with_signals(tmp_path: Path, tiny_inputs: Path, stage4_cpu, no_stage4) -> Stage4Waiting:
+    """A single-pass tree whose images all wait on Stage 4, each with planted signals.
+
+    ``out, item = fixture`` gives the output root and the first image;
+    ``fixture.items[1]`` is another pending image with signals of its own.
+    """
+    waiting = _waiting_run(tmp_path, tiny_inputs, fake_gpu=False)
+    for item in waiting.items:
+        plant_stage4_signals(waiting.out, item)
+    return waiting
