@@ -125,6 +125,48 @@ def test_the_inline_encoder_feeds_one_batch_at_a_time(stub_backbone, detected_pl
 
 
 @requires_torch
+def test_the_inline_path_cuts_crops_one_batch_at_a_time(stub_backbone, detected_plate, monkeypatch):
+    """#282 review I4: on the inline path, host memory holds one batch of crops, not the
+    image's. When ``embed_crops`` receives its k-th slice, exactly k * batch_size crops
+    (all n at the last) have been cut."""
+    from phenotypic.detect.nn._helper import _dino_support
+
+    cut: list[int] = []
+    at_each_batch: list[int] = []
+    real_crop, real_embed = MeasureDinoEmbedding._crop, _dino_support.embed_crops
+
+    def _counting_crop(self, *args):
+        cut.append(1)
+        return real_crop(self, *args)
+
+    def _spy(model, processor, crops, **kwargs):
+        at_each_batch.append(len(cut))
+        return real_embed(model, processor, crops, **kwargs)
+
+    monkeypatch.setattr(MeasureDinoEmbedding, "_crop", _counting_crop)
+    monkeypatch.setattr(_dino_support, "embed_crops", _spy)
+    n = detected_plate.num_objects
+    assert n > 30
+    MeasureDinoEmbedding(crop_px=112, batch_size=10, device="cpu").payload(detected_plate)
+    assert at_each_batch == [min(10 * (k + 1), n) for k in range(-(-n // 10))]
+
+
+@requires_torch
+@pytest.mark.parametrize("pooling", ["crop_cls", "crop_mean"])
+def test_deferred_crops_are_the_materialised_crops(stub_backbone, detected_plate, pooling):
+    """The inline path's deferred crops are the same bytes, so its vectors are too."""
+    m = MeasureDinoEmbedding(crop_px=112, batch_size=10, device="cpu", pooling=pooling,
+                             mask_background=True)
+    whole = m.prepare_regions(detected_plate)
+    deferred = m.prepare_regions(detected_plate, materialise=False)
+    (array,), (lazy,) = whole.inputs.arrays, deferred.inputs.arrays
+    assert not isinstance(lazy, np.ndarray) and lazy.shape == array.shape and len(lazy) == len(array)
+    assert np.array_equal(np.asarray(lazy), array) and np.array_equal(lazy[3:17], array[3:17])
+    encoder = m.inline_encoder(detected_plate)
+    assert np.array_equal(m.encode(whole, encoder), m.encode(deferred, encoder))
+
+
+@requires_torch
 def test_dense_vectors_pool_the_encoders_tiles(stub_backbone, detected_plate):
     """``vectors_from`` assembles the tiles the encoder returns: a swapped-in
     encoder that returns the inline encoder's grids gives the inline vectors."""

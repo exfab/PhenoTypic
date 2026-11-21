@@ -553,7 +553,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         )
 
     def _operate(self, image: Image) -> pd.DataFrame:  # type: ignore[override]
-        prepared = self.prepare_regions(image)
+        prepared = self._prepare_inline(image)
         vectors = self.encode(prepared, self.inline_encoder(image))
         return self._frame(
             prepared, self._stored_vectors(vectors, prepared.n_regions, self._dim())
@@ -758,6 +758,17 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             pool_plan=pool_plan,
         )
 
+    def _prepare_inline(self, image: Image) -> PreparedRegions:
+        """The prepared regions the inline path encodes: :meth:`prepare_regions` (#282 I4).
+
+        :meth:`measure` and :meth:`payload` prepare through this, never a GPU
+        stage. An embedder whose inline encoder can cut its inputs a batch at
+        a time overrides it to defer them, so host memory holds one batch,
+        not the whole image's inputs; the bytes must be
+        :meth:`prepare_regions`'.
+        """
+        return self.prepare_regions(image)
+
     def inline_encoder(self, image: Image) -> RegionEncoder:
         """The encoder the inline path uses for *image* (#282).
 
@@ -850,7 +861,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """Embed *image* and describe the table, for a store writer (spec D3).
 
         :meth:`ImagePipeline.embed` calls this for each embedder. It is
-        :meth:`prepare_regions`, then :meth:`encode` with
+        :meth:`prepare_regions` (through :meth:`_prepare_inline`), then :meth:`encode` with
         :meth:`inline_encoder`, then :meth:`payload_from` with
         :meth:`entry_descriptor`; see :meth:`_prepared` for the descriptor's
         ``binds`` and ``input``.
@@ -866,7 +877,7 @@ class MeasureEmbedding(MeasureFeatures, ABC):
             MemoryError: Re-raised unwrapped, as :meth:`measure` does.
         """
         try:
-            prepared = self.prepare_regions(image)
+            prepared = self._prepare_inline(image)
             vectors = self.encode(prepared, self.inline_encoder(image))
             return self.payload_from(prepared, vectors, self.entry_descriptor())
         except Exception as exc:

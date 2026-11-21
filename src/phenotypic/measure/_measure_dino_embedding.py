@@ -531,7 +531,7 @@ class MeasureDinoEmbedding(MeasureEmbedding):
     # ------------------------------------------------------------------ #
 
     def prepare_regions(
-        self, image: Image, *, processor: Any = None
+        self, image: Image, *, processor: Any = None, materialise: bool = True
     ) -> PreparedRegions:
         """Cut *image*'s regions for the backbone, on the CPU, loading no model (#282).
 
@@ -539,10 +539,12 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         :meth:`_crop` and :meth:`_square_colony_crop`, as one
         ``(N, crop_px, crop_px, 3)`` uint8 array (``"crops"``). That is every
         crop at once, about 0.9 GB at ``crop_px=448`` on a 1536-colony plate,
-        which a DataLoader worker can hold; the inline encoder still feeds
-        the backbone one ``batch_size`` slice at a time, so peak device
-        memory is what it was when crops were built per batch. Imports no
-        torch.
+        which a DataLoader worker can hold. The inline path passes
+        ``materialise=False`` instead (:meth:`_prepare_inline`, #282 I4): the
+        crops are then cut one ``batch_size`` slice at a time as its encoder
+        reads them, so host memory holds one batch of crops, as it did before
+        #282; the bytes are the same ``_crop`` calls in the same order.
+        Imports no torch.
 
         ``masked_dense``: the plate cut into ``crop_px`` tiles aligned to the
         patch grid, each normalised by the backbone's processor exactly as
@@ -556,6 +558,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
             processor: The backbone's processor, for ``masked_dense``.
                 ``None`` loads one (:func:`load_dino_processor`), without the
                 weights. Crop pooling reads none.
+            materialise: ``False`` defers the crops: ``arrays[0]`` is then a
+                :class:`_DeferredCrops`, which holds the image's pixels and is
+                for the inline encoder in this process only, never for
+                pickling to a worker. ``masked_dense`` tiles ignore it.
 
         Returns:
             The prepared regions, in table order.
@@ -576,11 +582,14 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         region_labels: list[int | None] = (
             [None] * len(boxes) if labels is None else [int(v) for v in labels]
         )
-        crops = np.empty((len(boxes), self.crop_px, self.crop_px, 3), dtype=np.uint8)
-        for i in range(len(boxes)):
-            crops[i] = self._crop(rgb, boxes[i], region_labels[i], objmap)
+        deferred = _DeferredCrops(self, rgb, boxes, region_labels, objmap)
+        crops = deferred[:] if materialise else deferred
         inputs = BackboneInputs(kind="crops", arrays=(crops,), pooling=self.pooling)  # type: ignore[arg-type]
         return self._prepared(image, keys, inputs)
+
+    def _prepare_inline(self, image: Image) -> PreparedRegions:
+        """:meth:`prepare_regions` with the crops deferred to the inline encoder (#282 I4)."""
+        return self.prepare_regions(image, materialise=False)
 
     def _dense_tiles(
         self,
@@ -751,12 +760,57 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         return canvas
 
 
+class _DeferredCrops:
+    """An image's ``(N, crop_px, crop_px, 3)`` uint8 crops, cut when a slice is read (#282 I4).
+
+    What the inline path's ``"crops"`` input holds: slicing ``[a:b]`` cuts
+    crops ``a..b-1`` through :meth:`MeasureDinoEmbedding._crop`, in order,
+    into a new array, so :class:`_InlineDinoEncoder` holds one ``batch_size``
+    slice of crops at a time. ``[:]`` (and ``numpy.asarray``) cuts them all,
+    which is what :meth:`MeasureDinoEmbedding.prepare_regions` returns by
+    default. It holds the image's pixels: not for pickling to a worker.
+    """
+
+    dtype = np.dtype(np.uint8)
+    ndim = 4
+
+    def __init__(
+        self,
+        embedder: MeasureDinoEmbedding,
+        rgb: np.ndarray,
+        boxes: np.ndarray,
+        labels: list[int | None],
+        objmap: np.ndarray | None,
+    ) -> None:
+        self._embedder, self._rgb, self._boxes = embedder, rgb, boxes
+        self._labels, self._objmap = labels, objmap
+        px = int(embedder.crop_px)
+        self.shape = (len(boxes), px, px, 3)
+
+    def __len__(self) -> int:
+        return self.shape[0]
+
+    def __getitem__(self, index: slice) -> np.ndarray:
+        if not isinstance(index, slice):
+            raise TypeError(f"deferred crops are read by slice, got {index!r}")
+        rows = range(len(self))[index]
+        crops = np.empty((len(rows), *self.shape[1:]), dtype=np.uint8)
+        for j, i in enumerate(rows):
+            crops[j] = self._embedder._crop(self._rgb, self._boxes[i], self._labels[i], self._objmap)
+        return crops
+
+    def __array__(self, dtype: Any = None, copy: bool | None = None) -> np.ndarray:
+        crops = self[:]
+        return crops if dtype is None else crops.astype(dtype, copy=False)
+
+
 class _InlineDinoEncoder:
     """The inline :class:`~phenotypic.abc_.RegionEncoder` of a loaded DINO backbone.
 
     ``"crops"``: :func:`~phenotypic.detect.nn._helper._dino_support.embed_crops`,
     called once per ``batch_size`` slice of the crops, so the device holds one
-    batch at a time. ``"tiles"``: the backbone over each tile's processed
+    batch at a time, and so does the host when the crops are deferred
+    (:class:`_DeferredCrops`). ``"tiles"``: the backbone over each tile's processed
     pixels (:func:`~phenotypic.detect.nn._helper._dino_support.patch_features_from_pixels`).
 
     Args:
