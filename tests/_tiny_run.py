@@ -2034,9 +2034,9 @@ def with_stage4_dino_objects(
             the same backbone (:data:`DINO_GRID_KEY`).
         faulty: ``meas["emb"]`` is ``FaultyDinoEmbedding``, which fails an
             image planted with :func:`plant_stage4_fault`.
-        batch_size: Every embedder's ``batch_size``; :data:`ONE_PASS_BATCH`
-            makes each side of an inline/Stage-4 comparison run one pass
-            (spec §5). ``None`` keeps the default.
+        batch_size: Every embedder's ``batch_size``; :data:`ONE_ROW_BATCH`
+            makes both sides of an inline/Stage-4 comparison run the same
+            physical pass shape (spec §5). ``None`` keeps the default.
 
     Returns:
         ``<directory>/stage4_dino[_gpu][_grid][_faulty][_b<n>].pht-pipe.json``.
@@ -2986,12 +2986,15 @@ def inventory_and_work_ids(tree: Stage4Waiting) -> tuple[dict, dict]:
 # #282 P4 T4: resume, retry, crash injection
 # ---------------------------------------------------------------------------
 
-#: An embedder ``batch_size`` no tiny run's region count reaches, so inline
-#: and Stage 4 each run every queue in one pass (spec §5 as amended: byte
-#: equality holds only at the same pass shape). A tiny plate has one object
-#: under ``FakeGpuDetector(threshold=0.3)`` and a few dozen under Otsu; the
-#: 2 x 2 grid adds four cells.
-ONE_PASS_BATCH = 512
+#: An embedder ``batch_size`` of one row, so inline and Stage 4 run the same
+#: physical pass shape: inline cuts ``(1, 3, h, w)`` passes and Stage 4 runs
+#: ``m = 1``, unpadded (#282 P3-P4 review I1). Byte equality needs that
+#: shape: "one pass each side" (an inline ``batch_size`` at least the region
+#: count) is not it, because Stage 4 pads its pass to ``m`` and batches the
+#: rows of several images together, and CPU GEMM bits depend on the row count
+#: (5 of 2,056 float32 values differ between a 1-row and a larger pass of the
+#: stub's ``Linear(8, 8)``, measured on ``i29``, torch 2.11).
+ONE_ROW_BATCH = 1
 
 
 def embedding_deliverables(out: Path) -> list[Path]:
@@ -3019,6 +3022,36 @@ def manifest_without_compute(out: Path) -> dict:
 
     path = Path(out) / "deliverables" / "embeddings" / "manifest.json"
     return _strip(json.loads(path.read_text(encoding="utf-8")))
+
+
+def deliverable_row_cosines(a: Path, b: Path) -> dict[str, list[float]]:
+    """Per-row cosine similarity of two runs' embedding deliverables, key by key.
+
+    The two runs must publish the same keys with the same rows in the same
+    order (dataset, image, object label or grid cell); this asserts it. The
+    float16 vectors are compared in float64.
+    """
+    import numpy as np
+    import pyarrow.parquet as pq
+
+    relative = embedding_deliverables(a)
+    assert relative == embedding_deliverables(b)
+    cosines: dict[str, list[float]] = {}
+    for rel in relative:
+        left, right = pq.read_table(Path(a) / rel), pq.read_table(Path(b) / rel)
+        identity = [name for name in left.column_names if name not in ("embedding", "descriptor_index")]
+        assert left.select(identity).equals(right.select(identity)), rel
+        assert left.num_rows > 0, rel
+
+        def _matrix(table):
+            column = table.column("embedding").combine_chunks()
+            flat = column.flatten().to_numpy(zero_copy_only=False).astype(np.float64)
+            return flat.reshape(table.num_rows, -1)
+
+        x, y = _matrix(left), _matrix(right)
+        norms = np.linalg.norm(x, axis=1) * np.linalg.norm(y, axis=1)
+        cosines[str(rel)] = [float(c) for c in (x * y).sum(axis=1) / norms]
+    return cosines
 
 
 def stage4_signal_leftovers(out: Path) -> list[Path]:

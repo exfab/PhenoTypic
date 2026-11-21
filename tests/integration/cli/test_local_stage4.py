@@ -26,11 +26,12 @@ pytest.importorskip("torch")
 from phenotypic._cli._cli_staged_orchestration import staged_completion_path  # noqa: E402
 from phenotypic.sdk_ import resolve_run_state  # noqa: E402
 from tests._tiny_run import (  # noqa: E402
-    ONE_PASS_BATCH,
+    ONE_ROW_BATCH,
     STAGE4_DURABLE_WRITES,
     clear_stage4_fault,
     count_calls,
     crashed_image,
+    deliverable_row_cosines,
     embedding_deliverables,
     invalidate_store,
     manifest_without_compute,
@@ -60,15 +61,30 @@ GPU = ["--embed-stage", "gpu"]
 
 
 # ---------------------------------------------------------------------------
-# The deliverable: byte-equal to an inline run at the same pass shape
+# The deliverable: byte-equal to an inline run at the same physical pass shape
 # ---------------------------------------------------------------------------
+
+#: The per-row cosine floor between a Stage-4 and an inline deliverable at the
+#: default ``batch_size`` (64), where the pass shapes differ: inline runs one
+#: unpadded pass per image and key, Stage 4 one pass of both images' rows
+#: padded to ``m``. Measured on ``i29`` (Broadwell, torch 2.11, 2026-11-20):
+#: the two runs differ in 0 float16 values, min cosine 1 - 2.2e-16. Moving
+#: every stored value of these rows one float16 ULP gives at most
+#: 1 - cos = 3.9e-7 (computed from the rows), so the floor admits a one-ULP
+#: drift in every value, which another CPU family or BLAS kernel can cause.
+DEFAULT_BATCH_COSINE_FLOOR = 1 - 1e-6
 
 
 @pytest.mark.parametrize("fake_gpu", [True, False], ids=["staged", "single-pass"])
 def test_local_stage4_matches_inline_deliverables(tmp_path, tiny_inputs, stage4_cpu, fake_gpu):
-    # One pass on each side (spec §5): inline runs its last pass unpadded while
-    # Stage 4 pads to m, and CPU GEMM bits depend on the row count (C5 finding).
-    pipe = with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu, grid=True, batch_size=ONE_PASS_BATCH)
+    """Byte-equal at the same physical pass shape: ``batch_size=1`` on both sides (review I1).
+
+    Inline then runs ``(1, 3, 224, 224)`` passes and Stage 4 runs ``m = 1``,
+    unpadded, one row per pass. "One pass each side" is not the same shape:
+    Stage 4 pads to ``m`` and batches across images, and CPU GEMM bits depend
+    on the row count (spec §5).
+    """
+    pipe = with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu, grid=True, batch_size=ONE_ROW_BATCH)
     inline, gpu = tmp_path / "inline", tmp_path / "gpu"
     first = run_cli(tiny_inputs, inline, pipeline=pipe)
     assert first.exit_code == 0, first.output
@@ -81,8 +97,40 @@ def test_local_stage4_matches_inline_deliverables(tmp_path, tiny_inputs, stage4_
         assert (gpu / rel).read_bytes() == (inline / rel).read_bytes(), rel
     assert manifest_without_compute(gpu) == manifest_without_compute(inline)
     assert resolve_run_state(gpu, depth="deep").diagnostics.failed == 0
-    # The control: the two runs did embed differently, so the equality is earned.
+    # The control: Stage 4 really ran (it loaded the backbone itself), at m = 1.
     assert stage4_cpu.load_calls, "Stage 4 never loaded the backbone"
+    assert _physical_batches(gpu) == {1}
+
+
+def _physical_batches(out) -> set:
+    """Every ``compute.physical_batch`` the run's store entries record, over every key."""
+    from tests._tiny_run import run_entry
+
+    stores = sorted(out.glob("results/*/zarr/*.ome.zarr"))
+    assert stores
+    return {
+        entry["compute"]["physical_batch"]
+        for store in stores
+        for entry in run_entry(store)["embeddings"].values()
+    }
+
+
+@pytest.mark.parametrize("fake_gpu", [True, False], ids=["staged", "single-pass"])
+def test_local_stage4_agrees_with_inline_at_the_default_batch(tmp_path, tiny_inputs, stage4_cpu, fake_gpu):
+    """Always on: at the default ``batch_size`` every row's cosine to inline is above the floor.
+
+    The pass shapes differ here, so bytes may not match; the cosine is the
+    guard (review I1), and the byte test above holds only where shapes match.
+    """
+    pipe = with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu, grid=True)
+    inline, gpu = tmp_path / "inline", tmp_path / "gpu"
+    assert run_cli(tiny_inputs, inline, pipeline=pipe).exit_code == 0
+    second = run_cli(tiny_inputs, gpu, pipeline=pipe, extra=GPU)
+    assert second.exit_code == 0, second.output
+    assert stage4_cpu.load_calls, "Stage 4 never loaded the backbone"
+    cosines = deliverable_row_cosines(inline, gpu)
+    for rel, values in cosines.items():
+        assert values and min(values) >= DEFAULT_BATCH_COSINE_FLOOR, (rel, min(values))
 
 
 # ---------------------------------------------------------------------------

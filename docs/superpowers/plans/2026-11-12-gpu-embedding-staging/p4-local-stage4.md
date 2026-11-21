@@ -829,10 +829,13 @@ def test_orphan_signals_of_a_done_image_are_swept(staged_tree, stage4_cpu):
 ```python
 @pytest.mark.parametrize("fake_gpu", [True, False], ids=["staged", "single-pass"])
 def test_local_stage4_matches_inline_deliverables(tmp_path, tiny_inputs, stage4_cpu, fake_gpu):
-    # One pass on each side (spec §5): inline runs its last pass unpadded while
-    # Stage 4 pads to m, and CPU GEMM bits depend on the row count (C5 finding).
+    # The same physical pass shape on each side (spec §5 as amended by the
+    # P3-P4 review I1): batch_size=1, so inline runs 1-row passes and Stage 4
+    # runs m = 1, unpadded. "One pass each side" is not that shape: Stage 4
+    # pads to m and batches across images. A sibling test checks every row's
+    # cosine at the default batch size, always on.
     pipe = with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu, grid=True,
-                                    batch_size=ONE_PASS_BATCH)  # >= the fixture's region count
+                                    batch_size=ONE_ROW_BATCH)
     inline, gpu = tmp_path / "inline", tmp_path / "gpu"
     assert run_cli(tiny_inputs, inline, pipeline=pipe).exit_code == 0
     assert run_cli(tiny_inputs, gpu, pipeline=pipe, extra=["--embed-stage", "gpu"]).exit_code == 0

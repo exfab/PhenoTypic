@@ -318,11 +318,19 @@ New preflight warnings, each with `HINTS` and a docs row:
 - **Local end-to-end with a stub** (`PHENOTYPIC_STAGE4_DEVICE=cpu`), with crash
   injection after the signal, after the promote and after the record. The
   deliverable must be byte-equal to an inline run's **when both run the same
-  pass shape** (the inline embedder's `batch_size` at least its region count,
-  so each side runs one pass). Otherwise they agree only within the cosine
-  bound: inline runs its last pass unpadded while Stage 4 pads to `m`, and
-  CPU GEMM bits depend on row count (measured by C5, 2026-11-20: max 4.77e-7
-  in float32, thread-count dependent).
+  physical pass shape**: `batch_size=1` on every embedder, so inline runs
+  `(1, 3, h, w)` passes and Stage 4 runs `m = 1`, unpadded, one row per pass.
+  "One pass each side" (an inline `batch_size` at least its region count) is
+  **not** the same shape: Stage 4 pads its pass to `m` and batches the rows of
+  several images together, and CPU GEMM bits depend on the row count
+  (measured, P3–P4 review I1, `i29`, torch 2.11: row 0 of the stub's
+  `Linear(8, 8)` over 257 tokens differs in **5 of 2,056** float32 values,
+  max 5.96e-8, between a 1-row pass and passes of 2, 8, 64 and 512 rows, at
+  1 and 4 threads; C5 measured up to 4.77e-7, thread-count dependent).
+  Byte equality at a larger batch is then float16 rounding absorbing that
+  difference, and another CPU family can flip a bit. At any other shape the
+  two agree within an always-on per-row cosine floor (`>= 1 − 1e-6`), which
+  is the guard; the byte check holds only where the shapes truly match.
 - **Controller unit tests with a fake scheduler:**
   - rounds and zero-progress;
   - no Stage-2/Stage-4 counter crosstalk;
