@@ -420,6 +420,40 @@ class LocalParallelStrategy(ExecutionStrategy):
             f"[bold]{len(datasets)} datasets[/bold]\n"
         )
 
+        # The no-detector continuation (#282 P4 T4, plan review C1): under
+        # deferral an image that finished Stages 1-3 skips the core, which
+        # would re-measure it and drop its Stage-4 signals; Stage 4 below
+        # picks it up. It counts as the core's success, as the staged
+        # strategy's Stage 3 counts it.
+        core_tasks = all_tasks
+        core_done: list[tuple[str, str, bool, str]] = []
+        if (
+            self.config.resume
+            and defers_embeddings(self.config)
+            and not measure_only
+            and not self.config.process_only_layer
+        ):
+            from ._cli_stage4_worker import split_stage4_pending
+
+            core_datasets, _stage4_items = split_stage4_pending(
+                datasets, output_dir, self.config
+            )
+            needs_core = {
+                (dataset.name, image_path)
+                for dataset in core_datasets
+                for image_path in dataset.images
+            }
+            core_done = [
+                (dataset.name, image_path.name, True, "")
+                for dataset, image_path in all_tasks
+                if (dataset.name, image_path) not in needs_core
+            ]
+            core_tasks = [
+                (dataset, image_path)
+                for dataset, image_path in all_tasks
+                if (dataset.name, image_path) in needs_core
+            ]
+
         from ._cli_validation import pipeline_requires_gpu
 
         # Measure mode skips detection entirely; no pipeline ops are applied,
@@ -451,8 +485,9 @@ class LocalParallelStrategy(ExecutionStrategy):
             worker = self._process_single_local
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
             delayed(worker)(dataset, image_path, output_dir, event_log)
-            for dataset, image_path in all_tasks
+            for dataset, image_path in core_tasks
         )
+        results = [*results, *core_done]
 
         # Aggregate results by dataset
         dataset_results = self._aggregate_results(datasets, results)

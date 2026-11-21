@@ -1243,6 +1243,83 @@ def sweep_orphan_stage4_signals(
     return swept
 
 
+def split_stage4_pending(
+    datasets: Sequence[Dataset], output_dir: Path, config: ExecutionConfig
+) -> tuple[list[Dataset], list[StagedManifestEntry]]:
+    """Split a deferring run's worklist into the images that still need the core and Stage 4's.
+
+    Content-defined (spec §4.6), from each image's ``stage4_status``:
+
+    - ``"not_ready"``: Stages 1-3 have work left, so the image goes to the
+      core (the single-pass core, or the staged stages);
+    - ``"pending"``: Stages 1-3 are done and only Stage 4 is left. The image
+      skips the core, which would re-measure it and drop its Stage-4 signals
+      (plan review C1), and is one of the returned Stage-4 items;
+    - ``"done"``: its record is valid; it needs neither.
+
+    The no-detector continuation's planner (#282 P4 T4), the counterpart of
+    :func:`~phenotypic._cli._cli_staged_resume.build_staged_resume_plan` for a
+    run without a ``GpuDetector``; P5 T2 reuses it for the SLURM one.
+
+    Args:
+        datasets: The worklist.
+        output_dir: Run output root.
+        config: The run's configuration (its work ids).
+
+    Returns:
+        ``(core datasets, Stage-4 items)``: the datasets with only their
+        ``"not_ready"`` images (a dataset left empty is dropped), and every
+        ``"pending"`` image as a manifest entry, in worklist order.
+    """
+    from ._cli_staged_resume import stage4_status
+    from ._cli_staged_slurm import staged_manifest_entry
+    from ._cli_types import Dataset
+
+    core: list[Dataset] = []
+    pending: list[StagedManifestEntry] = []
+    for dataset in datasets:
+        images = []
+        for image in dataset.images:
+            entry = staged_manifest_entry(config, dataset.name, image)
+            status = stage4_status(output_dir, dataset.name, entry.stem, entry.work_id)
+            if status == "not_ready":
+                images.append(image)
+            elif status == "pending":
+                pending.append(entry)
+        if images:
+            core.append(
+                Dataset(
+                    name=dataset.name,
+                    images=images,
+                    input_dir=dataset.input_dir,
+                    output_dir=dataset.output_dir,
+                )
+            )
+    return core, pending
+
+
+def sweep_run_orphan_stage4_signals(output_dir: Path) -> int:
+    """:func:`sweep_orphan_stage4_signals` over the run's whole recorded inventory.
+
+    The inventory and the work ids are ``processing_state.json``'s
+    ``work_ids``. Called by a local Stage 4 before it starts, and by the CLI
+    before a finished continuation exits (``"All images already
+    processed!"``), which never reaches Stage 4 (plan review I7).
+
+    Returns:
+        How many images lost leftovers (``0`` without a processing state).
+    """
+    from ._cli_state_management import load_processing_state
+
+    state = load_processing_state(output_dir)
+    work_ids = (state.config.get("work_ids") if state is not None else None) or {}
+    if not isinstance(work_ids, Mapping):
+        return 0
+    return sweep_orphan_stage4_signals(
+        output_dir, {dataset: list(images) for dataset, images in work_ids.items()}, work_ids
+    )
+
+
 def _local_record_lock(config: ExecutionConfig, output_dir: Path) -> CommitGuard:
     """The local epoch ownership each local record and failure is published under."""
     from ._cli_execution_strategies import _local_epoch_ownership
@@ -1260,7 +1337,10 @@ def run_local_stage4(
 
     Sweeps the whole inventory's orphan signals first, then hands every image
     of *datasets* whose ``stage4_status`` is ``"pending"`` to
-    :func:`run_stage4`, with ``resolve_local_worker_count(config.n_jobs, n) - 1``
+    :func:`run_stage4`, except one with an exact terminal failure unless
+    ``--retry-failures`` (a finished continuation hands this the whole
+    inventory, the failed image included; its Stage-4 failure kept
+    ``stages.stage3``, so it reads ``"pending"``), with ``resolve_local_worker_count(config.n_jobs, n) - 1``
     loader workers, so ``--njobs`` is honoured and ``--njobs 1`` prepares
     in-process (re-review item 2a). Every image it is handed ends published
     or journalled (plan review C2), or this raises.
@@ -1275,22 +1355,14 @@ def run_local_stage4(
 
     from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
 
-    from ._cli_staged_resume import stage4_status
-    from ._cli_staged_slurm import staged_manifest_entry
-    from ._cli_state_management import load_processing_state
+    from ._cli_failure_tracker import terminal_failure_index
     from ._cli_utils import resolve_local_worker_count
 
-    state = load_processing_state(output_dir)
-    work_ids = (state.config.get("work_ids") if state is not None else None) or {}
-    sweep_orphan_stage4_signals(
-        output_dir, {dataset: list(images) for dataset, images in work_ids.items()}, work_ids
-    )
-    items = []
-    for dataset in datasets:
-        for image in dataset.images:
-            entry = staged_manifest_entry(config, dataset.name, image)
-            if stage4_status(output_dir, dataset.name, entry.stem, entry.work_id) == "pending":
-                items.append(entry)
+    sweep_run_orphan_stage4_signals(output_dir)
+    _core, items = split_stage4_pending(datasets, output_dir, config)
+    if not config.retry_failures:
+        terminal = terminal_failure_index(output_dir)
+        items = [entry for entry in items if entry.work_id not in terminal]
     if not items:
         return {}
     num_workers = resolve_local_worker_count(config.n_jobs, len(items)) - 1

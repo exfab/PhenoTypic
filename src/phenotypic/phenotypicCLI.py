@@ -1551,6 +1551,27 @@ def _run_failure_count(output_dir: Path, failed_now: int = 0) -> int:
     return resolve_run_state(output_dir, depth="shallow").diagnostics.failed
 
 
+def _sweep_finished_run_stage4_orphans(
+    config: ExecutionConfig, output_dir: Path
+) -> None:
+    """Under deferral, sweep the whole inventory's orphan Stage-4 signals (#282 P4 T4).
+
+    A finished continuation exits at "All images already processed!" and
+    never reaches Stage 4, whose own sweep would otherwise remove the signals
+    a crash left between an image's record and their consumption (plan
+    review I7). A no-op for a run that embeds inline.
+    """
+    from phenotypic._cli._cli_embed_stage import defers_embeddings
+
+    if not defers_embeddings(config):
+        return
+    from phenotypic._cli._cli_stage4_worker import (
+        sweep_run_orphan_stage4_signals,
+    )
+
+    sweep_run_orphan_stage4_signals(output_dir)
+
+
 def _finished_run_exit(failed: int) -> RunExitCode:
     """The exit code of a run that finished in this process (spec #281 C10).
 
@@ -3892,6 +3913,11 @@ def phenotypic_cli(
                         )
                     )
 
+            from phenotypic._cli._cli_embed_stage import (
+                defers_embeddings as _defers_embeddings,
+            )
+
+            resume_defers_embeddings = _defers_embeddings(config)
             staged_gpu_resume = uses_staged_gpu_strategy(config)
             if staged_gpu_resume:
                 if config.retry_failures:
@@ -3929,6 +3955,7 @@ def phenotypic_cli(
                         }
                         for dataset in datasets
                     },
+                    defers_embeddings=resume_defers_embeddings,
                 )
                 if not marker_contract:
                     migrate_legacy_stage3_markers(output_dir, resume_plan)
@@ -3961,6 +3988,14 @@ def phenotypic_cli(
                 )
                 config.staged_stage3_markers = True
                 config.staged_resume_phase = resume_plan.initial_stage
+                if (
+                    resume_plan.initial_stage == "stage4"
+                    and config.is_slurm_mode()
+                ):
+                    # The SLURM controller has no Stage-4 phase until #282 P5
+                    # T1; its Stage-3 step returns early on such an image
+                    # (`stages_1_to_3_done`), which is today's behaviour.
+                    config.staged_resume_phase = "stage3"
                 datasets = resume_plan.datasets
                 counts = resume_plan.counts
                 remaining_images = sum(
@@ -3997,6 +4032,7 @@ def phenotypic_cli(
                         _repair_incremental_manifest(
                             config, resume_state, output_dir
                         )
+                        _sweep_finished_run_stage4_orphans(config, output_dir)
                         click.echo("✓ All images already processed!")
                         sys.exit(
                             _finished_run_exit(_run_failure_count(output_dir))
@@ -4016,6 +4052,11 @@ def phenotypic_cli(
                         f"Stage 1 {counts['stage1']}, "
                         f"Stage 2 {counts['stage2']}, "
                         f"Stage 3 {counts['stage3']}"
+                        + (
+                            f", Stage 4 {counts['stage4']}"
+                            if resume_defers_embeddings
+                            else ""
+                        )
                     )
             else:
                 datasets = get_remaining_images_for_datasets(
@@ -4051,6 +4092,7 @@ def phenotypic_cli(
                     _repair_incremental_manifest(
                         config, resume_state, output_dir
                     )
+                    _sweep_finished_run_stage4_orphans(config, output_dir)
                     # The run's own failures, the count its exit code uses,
                     # not the whole journal: since #281 P2 C11d the journal
                     # also holds `--mode measure` rows, keyed by measure work
@@ -4065,8 +4107,26 @@ def phenotypic_cli(
                     else:
                         click.echo("✓ All images already processed!")
                     sys.exit(_finished_run_exit(skipped_failures))
+                stage4_only = 0
+                if resume_defers_embeddings and not measure_only:
+                    # The no-detector continuation (plan review C1): an image
+                    # that finished Stages 1-3 needs Stage 4 only, and the
+                    # local strategy skips its core (`split_stage4_pending`).
+                    from phenotypic._cli._cli_stage4_worker import (
+                        split_stage4_pending,
+                    )
+
+                    stage4_only = len(
+                        split_stage4_pending(datasets, output_dir, config)[1]
+                    )
                 click.echo(
-                    f"Continuing processing ({remaining_images} images remaining)"
+                    f"Continuing processing ({remaining_images} images remaining"
+                    + (
+                        f", {stage4_only} of them need Stage 4 only"
+                        if stage4_only
+                        else ""
+                    )
+                    + ")"
                 )
                 if config.retry_failures:
                     click.echo("  - Including previously failed images")

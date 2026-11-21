@@ -15,6 +15,7 @@ from phenotypic._cli._cli_stage2_token import (
 )
 from phenotypic._cli._cli_staged_resume import (
     build_staged_resume_plan,
+    classify_staged_image,
     clear_downstream_artifacts_for_stage1,
     migrate_legacy_stage3_markers,
     stage3_completion_exists,
@@ -82,6 +83,7 @@ def test_resume_plan_classifies_each_durable_stage(tmp_path: Path) -> None:
         "stage1": 1,
         "stage2": 1,
         "stage3": 1,
+        "stage4": 0,
         "complete": 1,
     }
     assert [image.name for image in plan.datasets[0].images] == [
@@ -403,3 +405,83 @@ def test_reconcile_consumes_the_token_and_the_raw_array(
         output_dir, "plate", "done", STAGE2_SLOT
     ).exists()
     assert parquet.is_file()
+
+
+# ---------------------------------------------------------------------------
+# #282 P4 T4: "stage4" -- Stages 1-3 done, no record, under deferral
+# ---------------------------------------------------------------------------
+
+_WORK_ID = "w-stage4"
+
+
+def _stage3_only(tmp_path: Path) -> tuple[Path, Dataset]:
+    """One image whose store is bound to :data:`_WORK_ID`, with a table and
+    ``stages.stage3``, and no record: what a deferring Stage 3 leaves."""
+    output_dir = tmp_path / "out"
+    dataset = _dataset(tmp_path, ["waiting.tif"])
+    store = _valid_store(output_dir, "waiting", work_id=_WORK_ID)
+    plant_measurement_table(store, b"measurements")
+    write_stage3_completion_marker(output_dir, "plate", "waiting.tif", "waiting")
+    return output_dir, dataset
+
+
+def _classify(output_dir: Path, dataset: Dataset, **kwargs):
+    return classify_staged_image(
+        output_dir=output_dir,
+        dataset="plate",
+        image=dataset.images[0],
+        slot=STAGE2_SLOT,
+        input_root=dataset.input_dir,
+        process_only_layer=None,
+        markers_required=True,
+        expected_work_id=_WORK_ID,
+        **kwargs,
+    )
+
+
+def test_stage3_complete_without_a_record_classifies_stage4(tmp_path: Path) -> None:
+    output_dir, dataset = _stage3_only(tmp_path)
+    assert _classify(output_dir, dataset, defers_embeddings=True) == "stage4"
+    assert _classify(output_dir, dataset) == "stage3"  # inline: unchanged
+
+
+def test_a_store_of_another_work_id_is_stage1_even_under_deferral(tmp_path: Path) -> None:
+    """The control: "stage4" needs the store bound to the image's work id."""
+    output_dir, dataset = _stage3_only(tmp_path)
+    store = zarr_store_path(output_dir, "plate", "waiting")
+    _valid_store(output_dir, "waiting", work_id="another")
+    plant_measurement_table(store, b"measurements")
+    assert _classify(output_dir, dataset, defers_embeddings=True) == "stage1"
+
+
+def test_an_all_stage4_plan_starts_at_stage4(tmp_path: Path) -> None:
+    output_dir, dataset = _stage3_only(tmp_path)
+    plan = build_staged_resume_plan(
+        datasets=[dataset],
+        output_dir=output_dir,
+        slot=STAGE2_SLOT,
+        input_root=tmp_path,
+        process_only_layer=None,
+        markers_required=True,
+        work_ids={"plate": {"waiting.tif": _WORK_ID}},
+        defers_embeddings=True,
+    )
+    assert plan.initial_stage == "stage4"
+    assert plan.counts["stage4"] == 1
+    assert [image.name for image in plan.datasets[0].images] == ["waiting.tif"]
+
+
+def test_a_stage1_rerun_clears_the_images_stage4_signals(tmp_path: Path) -> None:
+    from phenotypic._cli._cli_stage4_signal import stage4_signal_path
+
+    output_dir = tmp_path / "out"
+    signal = stage4_signal_path(output_dir, "plate", "dinov2-vitb14/rgb/objects", "redo")
+    signal.parent.mkdir(parents=True, exist_ok=True)
+    signal.write_bytes(b"planted")
+    kept = signal.with_name("other.parquet")
+    kept.write_bytes(b"planted")
+
+    clear_downstream_artifacts_for_stage1(output_dir, "plate", "redo", STAGE2_SLOT)
+
+    assert not signal.exists()
+    assert kept.is_file()  # another image's signals are not this re-run's

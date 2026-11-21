@@ -9,6 +9,7 @@ packaging-integrity CI job), where ``phenotypic`` may be absent.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
@@ -2009,7 +2010,12 @@ STAGE4_PRELOAD_MODULES = (
 
 
 def with_stage4_dino_objects(
-    directory: Path, *, fake_gpu: bool = False, grid: bool = False, faulty: bool = False
+    directory: Path,
+    *,
+    fake_gpu: bool = False,
+    grid: bool = False,
+    faulty: bool = False,
+    batch_size: int | None = None,
 ) -> Path:
     """A pipeline file like :func:`with_dino_objects`, with ``device="auto"`` (#282 P4).
 
@@ -2028,9 +2034,12 @@ def with_stage4_dino_objects(
             the same backbone (:data:`DINO_GRID_KEY`).
         faulty: ``meas["emb"]`` is ``FaultyDinoEmbedding``, which fails an
             image planted with :func:`plant_stage4_fault`.
+        batch_size: Every embedder's ``batch_size``; :data:`ONE_PASS_BATCH`
+            makes each side of an inline/Stage-4 comparison run one pass
+            (spec §5). ``None`` keeps the default.
 
     Returns:
-        ``<directory>/stage4_dino[_gpu][_grid][_faulty].pht-pipe.json``.
+        ``<directory>/stage4_dino[_gpu][_grid][_faulty][_b<n>].pht-pipe.json``.
     """
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
@@ -2048,20 +2057,22 @@ def with_stage4_dino_objects(
         import tests._fakes.register_faulty_dino_embedder  # noqa: F401
         from tests._fakes.faulty_dino_embedder import FaultyDinoEmbedding
 
-        objects = FaultyDinoEmbedding()
+        embedder_class = FaultyDinoEmbedding
     else:
-        objects = MeasureDinoEmbedding()
-    meas: dict = {"size": MeasureSize(), "emb": objects}
+        embedder_class = MeasureDinoEmbedding
+    sized = {} if batch_size is None else {"batch_size": batch_size}
+    meas: dict = {"size": MeasureSize(), "emb": embedder_class(**sized)}
     if grid:
         meas["grid"] = MeasureDinoEmbedding(
             regions="grid",
             grid=ManualGridFinder(
                 row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
             ),
+            **sized,
         )
     stem = "stage4_dino" + "".join(
         suffix for suffix, on in (("_gpu", fake_gpu), ("_grid", grid), ("_faulty", faulty)) if on
-    )
+    ) + ("" if batch_size is None else f"_b{batch_size}")
     pipeline = ImagePipeline(name=stem.replace("_", "-"), ops=[detector], meas=meas)
     path = Path(directory) / f"{stem}.pht-pipe.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2113,6 +2124,15 @@ def stage4_cpu(monkeypatch, param_stub_backbone):
     yield param_stub_backbone
 
 
+#: The worker's four durable writes, in the order one image goes through
+#: them (spec §4.2): the signal, the store, the record, the signals consumed.
+STAGE4_DURABLE_WRITES = (
+    "write_stage4_signal",
+    "replace_run_embeddings",
+    "publish_image_success",
+    "delete_stage4_signals",
+)
+
 #: One CLI run in a fresh interpreter on the parametric stub, CUDA hidden.
 #: ``argv[1]`` is a JSON object: inputs, out, pipeline, extra, crash_after.
 _STAGE4_SUBPROCESS_RUN = """
@@ -2121,9 +2141,27 @@ from pathlib import Path
 import pytest
 import torch
 torch.cuda.is_available = lambda: False
-from tests._tiny_run import install_stub_backbone, run_cli
+from tests._tiny_run import STAGE4_DURABLE_WRITES, install_stub_backbone, run_cli
 args = json.loads(sys.argv[1])
 install_stub_backbone(pytest.MonkeyPatch(), parametric=True)
+if args.get("spy_stem"):
+    from phenotypic._cli import _cli_stage4_worker as worker
+    def _stem_of(name, a, k):
+        if name == "replace_run_embeddings":
+            return Path(a[0]).name.removesuffix(".ome.zarr")
+        if name == "publish_image_success":
+            return k["image_stem"]
+        return a[2]  # write_stage4_signal / delete_stage4_signals(output_dir, dataset, stem)
+    def _spying(name, original):
+        def _spy(*a, **k):
+            result = original(*a, **k)
+            if _stem_of(name, a, k) == args["spy_stem"]:
+                with open(args["spy_path"], "a", encoding="utf-8") as log:
+                    log.write(name + "\\n")
+            return result
+        return _spy
+    for name in STAGE4_DURABLE_WRITES:
+        setattr(worker, name, _spying(name, getattr(worker, name)))
 if args["crash_after"]:
     from phenotypic._cli import _cli_stage4_worker as worker
     original = getattr(worker, args["crash_after"])
@@ -2149,6 +2187,8 @@ def run_cli_subprocess(
     pipeline: Path,
     extra: Sequence[str] = (),
     crash_after: str | None = None,
+    spy_stem: str | None = None,
+    spy_path: Path | None = None,
 ):
     """One :func:`run_cli` in a fresh interpreter, for crash tests (#282 plan review I5).
 
@@ -2168,6 +2208,11 @@ def run_cli_subprocess(
             Right after its first call returns, the child calls
             ``os._exit(137)``: a real crash between two durable writes, not
             an exception a caller could catch.
+        spy_stem: With *spy_path*: append the name of each
+            :data:`STAGE4_DURABLE_WRITES` call that concerns this stem to
+            *spy_path*, one per line, as it returns
+            (:func:`run_cli_subprocess_spying`).
+        spy_path: The file the spy appends to.
 
     Returns:
         The :class:`subprocess.CompletedProcess`, text mode, output captured.
@@ -2194,6 +2239,8 @@ def run_cli_subprocess(
         "pipeline": str(pipeline),
         "extra": list(extra),
         "crash_after": crash_after,
+        "spy_stem": spy_stem,
+        "spy_path": None if spy_path is None else str(spy_path),
     }
     return subprocess.run(
         [sys.executable, "-c", _STAGE4_SUBPROCESS_RUN, json.dumps(args)],
@@ -2933,3 +2980,203 @@ def inventory_and_work_ids(tree: Stage4Waiting) -> tuple[dict, dict]:
 
     work_ids = json.loads(processing_state_path(tree.out).read_text(encoding="utf-8"))["config"]["work_ids"]
     return {ds: list(images) for ds, images in work_ids.items()}, work_ids
+
+
+# ---------------------------------------------------------------------------
+# #282 P4 T4: resume, retry, crash injection
+# ---------------------------------------------------------------------------
+
+#: An embedder ``batch_size`` no tiny run's region count reaches, so inline
+#: and Stage 4 each run every queue in one pass (spec §5 as amended: byte
+#: equality holds only at the same pass shape). A tiny plate has one object
+#: under ``FakeGpuDetector(threshold=0.3)`` and a few dozen under Otsu; the
+#: 2 x 2 grid adds four cells.
+ONE_PASS_BATCH = 512
+
+
+def embedding_deliverables(out: Path) -> list[Path]:
+    """Every published embedding table under ``deliverables/embeddings/``, relative to *out*."""
+    base = Path(out) / "deliverables" / "embeddings"
+    found = sorted(path.relative_to(out) for path in base.rglob("*.parquet"))
+    assert found, f"no embedding deliverable under {base}"
+    return found
+
+
+def manifest_without_compute(out: Path) -> dict:
+    """``deliverables/embeddings/manifest.json`` with every ``compute`` block removed.
+
+    ``compute`` (device, torch, ``stage``, physical batch) is the one part a
+    Stage-4 run and an inline run may differ in (#282 P2 T1).
+    """
+    import json
+
+    def _strip(value):
+        if isinstance(value, dict):
+            return {key: _strip(item) for key, item in value.items() if key != "compute"}
+        if isinstance(value, list):
+            return [_strip(item) for item in value]
+        return value
+
+    path = Path(out) / "deliverables" / "embeddings" / "manifest.json"
+    return _strip(json.loads(path.read_text(encoding="utf-8")))
+
+
+def stage4_signal_leftovers(out: Path) -> list[Path]:
+    """Every Stage-4 signal file and signal temp file under *out*."""
+    from phenotypic.sdk_ import progress_dir
+
+    base = progress_dir(out) / "stage4_payload"
+    return sorted(path for path in base.rglob("*") if path.is_file()) if base.is_dir() else []
+
+
+def no_stage4_signals(out: Path) -> bool:
+    """Whether *out* holds no Stage-4 signal file and no signal temp file."""
+    return not stage4_signal_leftovers(out)
+
+
+def record_is_valid(out: Path, item: Stage4Item) -> bool:
+    """Whether *item*'s record under its recorded work id is valid."""
+    from phenotypic._cli._cli_completion import valid_image_success
+
+    return valid_image_success(out, dataset=item.dataset, image_stem=item.stem, work_id=item.work_id)
+
+
+def all_records_valid(out: Path) -> bool:
+    """Whether every image of the run at *out* has a valid record."""
+    return all(record_is_valid(out, item) for item in run_items(out))
+
+
+def store_has_embeddings(out: Path, item: Stage4Item) -> bool:
+    """Whether *item*'s store journal run carries an ``embeddings`` block."""
+    from phenotypic.sdk_ import journal_table_run
+
+    run = journal_table_run(zarr_store_path_of(out, item))
+    return bool(run is not None and run.descriptor.get("embeddings"))
+
+
+def crashed_image(out: Path, crash_after: str) -> Stage4Item:
+    """The one image whose state on disk shows a crash right after *crash_after*.
+
+    Read from the disk, never from the test: signals but no commit
+    (``write_stage4_signal``); a commit but no record
+    (``replace_run_embeddings``); a record with its signals still there
+    (``publish_image_success``).
+    """
+    def _shows(item: Stage4Item) -> bool:
+        signals = bool(signal_files(out, item))
+        committed = store_has_embeddings(out, item)
+        recorded = record_is_valid(out, item)
+        if crash_after == "write_stage4_signal":
+            return signals and not committed and not recorded
+        if crash_after == "replace_run_embeddings":
+            return committed and not recorded
+        if crash_after == "publish_image_success":
+            return recorded and signals
+        raise ValueError(crash_after)
+
+    (crashed,) = [item for item in run_items(out) if _shows(item)]
+    return crashed
+
+
+class SpiedRun:
+    """A :func:`run_cli_subprocess_spying` result: the process and the spied sequence."""
+
+    def __init__(self, completed, sequence: list[str]) -> None:
+        self.completed = completed
+        self.returncode = completed.returncode
+        self.stdout = completed.stdout
+        self.stderr = completed.stderr
+        self.sequence = sequence
+
+
+def run_cli_subprocess_spying(
+    inputs: Path, out: Path, *, pipeline: Path, extra: Sequence[str] = (), stem: str
+) -> SpiedRun:
+    """:func:`run_cli_subprocess`, recording the order of the four durable writes for *stem*."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory(dir=Path(out).parent) as scratch:
+        spy_path = Path(scratch) / "stage4_calls.txt"
+        spy_path.touch()
+        completed = run_cli_subprocess(
+            inputs, out, pipeline=pipeline, extra=extra, spy_stem=stem, spy_path=spy_path
+        )
+        sequence = spy_path.read_text(encoding="utf-8").split()
+    return SpiedRun(completed, sequence)
+
+
+def plant_signals(out: Path, *, image: int) -> list[Path]:
+    """Planted signal files for the run's image *image* (:func:`plant_stage4_signals`)."""
+    return plant_stage4_signals(out, run_items(out)[image])
+
+
+@contextlib.contextmanager
+def stage4_stubbed_out(monkeypatch):
+    """While open, ``run_local_stage4`` does nothing and returns ``{}``.
+
+    Every ``--embed-stage gpu`` image then stops after Stages 1-3, so a test
+    can look at the disk before Stage 4 would run.
+    """
+    from phenotypic._cli import _cli_stage4_worker
+
+    with monkeypatch.context() as patch:
+        patch.setattr(_cli_stage4_worker, "run_local_stage4", lambda *a, **k: {})
+        yield
+
+
+def other_item(tree: Stage4Waiting) -> Stage4Item:
+    """A second pending image of *tree*, besides ``tree.items[0]``."""
+    return tree.items[1]
+
+
+def tail_events(out: Path) -> int:
+    """How many lines the run's event log has now (a mark for :func:`new_events`)."""
+    from phenotypic.sdk_ import event_log_path
+
+    path = event_log_path(out)
+    return len(path.read_text(encoding="utf-8").splitlines()) if path.is_file() else 0
+
+
+def new_events(out: Path, *, after: int) -> list[list[str]]:
+    """The event-log lines appended since mark *after*, split on ``|``."""
+    from phenotypic.sdk_ import event_log_path
+
+    lines = event_log_path(out).read_text(encoding="utf-8").splitlines()[after:]
+    return [line.split("|") for line in lines if line.strip()]
+
+
+def stages_of(events: list[list[str]], *, image: str) -> list[str]:
+    """The distinct stage tags of *events* for image file *image*, in first-seen order.
+
+    Field 8 (index 7) is the stage; an untagged event reads ``""``.
+    """
+    seen: list[str] = []
+    for fields in events:
+        if len(fields) > 2 and fields[2] == image:
+            stage = fields[7] if len(fields) > 7 else ""
+            if stage not in seen:
+                seen.append(stage)
+    return seen
+
+
+@contextlib.contextmanager
+def spy_restart_clear(monkeypatch):
+    """Wrap the CLI's ``--restart`` clear; yield a namespace whose
+    ``saw_no_stage4_payload`` says whether ``progress/stage4_payload`` was gone
+    right after it (``None`` if it never ran)."""
+    import types
+
+    import phenotypic.phenotypicCLI as cli
+    from phenotypic.sdk_ import progress_dir
+
+    seen = types.SimpleNamespace(saw_no_stage4_payload=None)
+    original = cli.clear_machine_state
+
+    def _clear(output_dir, *args, **kwargs):
+        result = original(output_dir, *args, **kwargs)
+        seen.saw_no_stage4_payload = not (progress_dir(output_dir) / "stage4_payload").exists()
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(cli, "clear_machine_state", _clear)
+        yield seen
