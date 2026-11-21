@@ -3999,15 +3999,10 @@ def phenotypic_cli(
                     namespace="continuation-preflight",
                 )
                 config.staged_stage3_markers = True
+                # On SLURM an all-Stage-4 continuation starts the controller
+                # at its "stage4" phase (#282 P5 T1); a v1 config, which has
+                # none, takes that as "stage3".
                 config.staged_resume_phase = resume_plan.initial_stage
-                if (
-                    resume_plan.initial_stage == "stage4"
-                    and config.is_slurm_mode()
-                ):
-                    # The SLURM controller has no Stage-4 phase until #282 P5
-                    # T1; its Stage-3 step returns early on such an image
-                    # (`stages_1_to_3_done`), which is today's behaviour.
-                    config.staged_resume_phase = "stage3"
                 datasets = resume_plan.datasets
                 counts = resume_plan.counts
                 remaining_images = sum(

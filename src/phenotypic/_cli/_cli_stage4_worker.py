@@ -1511,13 +1511,17 @@ def stage4_entries(
     }
 
 
-def sweep_run_orphan_stage4_signals(output_dir: Path) -> int:
+def sweep_run_orphan_stage4_signals(
+    output_dir: Path, *, commit_guard: CommitGuard | None = None
+) -> int:
     """:func:`sweep_orphan_stage4_signals` over the run's whole recorded inventory.
 
     The inventory and the work ids are ``processing_state.json``'s
-    ``work_ids``. Called by a local Stage 4 before it starts, and by the CLI
+    ``work_ids``. Called by a local Stage 4 before it starts, by the CLI
     before a finished continuation exits (``"All images already
-    processed!"``), which never reaches Stage 4 (plan review I7).
+    processed!"``), which never reaches Stage 4 (plan review I7), and by the
+    staged SLURM controller before it classifies Stage 4, with its epoch's
+    *commit_guard* (#282 P5 T1).
 
     Returns:
         How many images lost leftovers (``0`` without a processing state).
@@ -1529,7 +1533,10 @@ def sweep_run_orphan_stage4_signals(output_dir: Path) -> int:
     if not isinstance(work_ids, Mapping):
         return 0
     return sweep_orphan_stage4_signals(
-        output_dir, {dataset: list(images) for dataset, images in work_ids.items()}, work_ids
+        output_dir,
+        {dataset: list(images) for dataset, images in work_ids.items()},
+        work_ids,
+        commit_guard=commit_guard,
     )
 
 

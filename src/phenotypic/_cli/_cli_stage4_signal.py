@@ -443,3 +443,30 @@ def stage4_signal_stems(output_dir: Path, dataset: str) -> set[str]:
             elif not name.startswith(".") and name.endswith(_SIGNAL_SUFFIX):
                 stems.add(name[: -len(_SIGNAL_SUFFIX)])
     return stems
+
+
+def stage4_signal_mtimes(
+    output_dir: Path, dataset: str, stems: Iterable[str]
+) -> dict[str, dict[str, int]]:
+    """``{stem: {key: st_mtime_ns}}`` of each of *stems*' signal files, under any key.
+
+    The SLURM controller's progress probe (#282 P5 T1): one walk of
+    *dataset*'s key directories, then **one** ``stat`` per stem and key
+    directory. No file is opened and no Parquet footer is read -- at 33k
+    images and three keys that would be about 100k opens per transition.
+    Validity against the live root is not checked here; the Stage-4 worker
+    deletes a stale signal before re-embedding its key, so a rewritten
+    signal shows as a new mtime. A stem with no signal maps to ``{}``.
+    """
+    key_dirs = _key_dirs(output_dir, dataset)
+    found: dict[str, dict[str, int]] = {}
+    for stem in stems:
+        mtimes: dict[str, int] = {}
+        for region in key_dirs:
+            try:
+                stat = (region / f"{stem}{_SIGNAL_SUFFIX}").stat()
+            except FileNotFoundError:
+                continue
+            mtimes[_key_of_signal_path(region / f"{stem}{_SIGNAL_SUFFIX}")] = stat.st_mtime_ns
+        found[stem] = mtimes
+    return found
