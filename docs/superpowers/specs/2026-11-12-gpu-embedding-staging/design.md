@@ -275,7 +275,7 @@ These are each one usage-error line in the read-only half, outside
 `--dry-run`:
 
 - **R1:** `--embed-stage gpu` with `--mode process`.
-- **R2 (U9):** `--embed-stage gpu` with an in-scope embedder pinned to `device="cpu"`. (Under `auto`, the pin resolves the run inline instead.)
+- **R2 (U9, O3):** `--embed-stage gpu` with an in-scope embedder pinned to `device="cpu"`, or with an in-scope embedder that has no Stage-4 encoder (any `MeasureEmbedding` but `MeasureDinoEmbedding`). Under `auto`, either resolves the run inline instead, with a one-line note naming the embedder (O3 amended 2026-11-20).
 - **R3 (U3):** a continuation whose `embed_stage` differs from the recorded one.
 
 New preflight warnings, each with `HINTS` and a docs row:

@@ -67,6 +67,7 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   | `--mode measure`, otherwise | `inline` |
   | `--mode process` (copy or in place) | `inline`; an explicit `gpu` is refused (R1) |
   | an in-scope embedder pinned to `device="cpu"` | `inline`, with a note; an explicit `gpu` is refused (U9, R2) |
+  | an in-scope embedder with no Stage-4 encoder (not a `MeasureDinoEmbedding`) | `inline`, with a note; an explicit `gpu` is refused (O3, R2) |
   | a pipeline with no in-scope embedder | `inline`, with a note (O5) |
 
 - The resolved value is recorded as `processing_state.json` config
@@ -470,7 +471,7 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
 |---|---|---|---|
 | O1 | Where the new sizes live | Accepted: a separate `EmbeddingDinoSize`; the detectors' `DinoSize` is unchanged | P2 T1 |
 | O2 | Tokens for the new sizes | Accepted for the one new size under U11: `dinov2-vitg14`; the existing tokens are pinned by a test | P2 T1 |
-| O3 | A non-DINO embedder under Stage 4 | Accepted: refused under R2 | P4 T1 |
+| O3 | A non-DINO embedder under Stage 4 | **Amended 2026-11-20** (orchestrator): treated as U9 treats a CPU pin. Under `auto` the run resolves **inline**, with a one-line note naming the embedder; only an explicit `--embed-stage gpu` is refused under R2, naming `--embed-stage inline`. (Revision 3 refused it under `auto` too, which would have broken every SLURM detector pipeline carrying such an embedder.) | P4 T1 |
 | O4 | `compute` beside `model.device` | Accepted with a condition: one producer writes both, and a test asserts they agree | P2 T1 |
 | O5 | `--embed-stage gpu` with no embedder | Accepted: resolves inline with a note | P4 T1 |
 | O6 | The amortisation warning | Accepted with conditions: a GPU-only constant (439 / 297), worded as efficiency | P0 T1, P5 T3 |

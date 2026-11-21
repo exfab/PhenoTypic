@@ -65,8 +65,10 @@ for an image that only needs Stage 4.
   - R3 right after `load_processing_state` (`:3224`), before
     `validate_resume_compatibility`;
   - when the resolved value is `gpu`, `prepare_stage4_environment(config)`
-    right after resolution, before any strategy can initialise CUDA (plan
-    review I4, I16).
+    after the continuation load (so after R3: a refused option reads as exit
+    `2`, not as the exit-`1` CUDA check), still in the read-only half and
+    before any strategy can initialise CUDA (plan review I4, I16; placement
+    accepted 2026-11-20).
 - Modify: `src/phenotypic/_cli/_cli_state_management.py:362-385`: config gains
   `"embed_stage": config.embed_stage`.
 - Modify: `src/phenotypic/sdk_/_io_constants.py:2990`: `JobMetadataKey` gains
@@ -84,15 +86,22 @@ for an image that only needs Stage 4.
   - `EmbedStage = Literal["gpu", "inline"]`, `EmbedStageRequest = Literal["auto", "gpu", "inline"]`
   - `pipeline_embedders(pipeline: ImagePipeline) -> list[tuple[str, MeasureEmbedding]]`:
     root `meas` embedders, in `meas` order (`_image_pipeline_core.py:1413-1417`)
-  - `resolve_embed_stage(requested: EmbedStageRequest, *, mode: RunMode, is_slurm: bool, has_gpu_detector: bool, gpu_slurm_given: bool, has_embedders: bool, cpu_pinned: bool) -> EmbedStage`:
+  - `resolve_embed_stage(requested: EmbedStageRequest, *, mode: RunMode, is_slurm: bool, has_gpu_detector: bool, gpu_slurm_given: bool, has_embedders: bool, cpu_pinned: bool, unstageable: bool = False) -> EmbedStage`:
     the README's resolution table. `mode="process"` gives `"inline"`. Under
     `auto`, `cpu_pinned` (an in-scope embedder with `device="cpu"`) gives
-    `"inline"` (U9). No embedder gives `"inline"` (O5).
+    `"inline"` (U9), and so does `unstageable` (an in-scope embedder that is
+    not a `MeasureDinoEmbedding`, O3 as amended 2026-11-20). No embedder
+    gives `"inline"` (O5).
+  - `resolve_embed_stage_for_config(config, pipeline) -> tuple[EmbedStage, list[str]]`:
+    the facts from the loaded pipeline and the flags, and the note lines; a
+    pipeline that failed to load resolves `inline` (built in `0984233bd`).
   - `refuse_embed_stage_for_process(requested: EmbedStageRequest, mode: RunMode) -> None` (R1)
   - `refuse_unstageable_embedders(pipeline: ImagePipeline, requested: EmbedStageRequest, resolved: EmbedStage) -> None` (R2):
-    `requested == "gpu"` with an embedder pinned to `device="cpu"` (U9); or
-    `resolved == "gpu"` with a `MeasureEmbedding` that is not a
-    `MeasureDinoEmbedding` (O3).
+    only an explicit `--embed-stage gpu` (resolved `gpu`), over an embedder
+    pinned to `device="cpu"` (U9) or a `MeasureEmbedding` that is not a
+    `MeasureDinoEmbedding` (O3). Under `auto` both resolve inline instead,
+    so a SLURM detector pipeline carrying such an embedder keeps running as
+    it did (O3 amended 2026-11-20, orchestrator ruling).
   - `refuse_embed_stage_switch(recorded: str | None, resolved: EmbedStage, *, is_slurm: bool) -> None` (R3);
     `None` reads `"inline"`.
   - `defers_embeddings(config: ExecutionConfig) -> bool`: `config.embed_stage == "gpu"`
@@ -100,7 +109,8 @@ for an image that only needs Stage 4.
     `os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")` (it must be in
     the environment before the process's first cuBLAS handle; local Stage 4 runs
     in the CLI process, which Stage 2 may already have put on the GPU), then,
-    **for a local run only**, `stage4_device()` (Task 3). A local run with no
+    **for a local run only**, `stage4_device()` (built in this task, in
+    `_cli_stage4_worker.py`; see Task 3). A local run with no
     usable CUDA stops here with **exit `1`**, an environment error per the exit
     table (`RunExitCode.ERROR`, `_cli/CLAUDE.md` "Exit codes"), as one line,
     before Stage 1 writes anything (plan review I16). It raises
@@ -112,10 +122,13 @@ for an image that only needs Stage 4.
   - The exact copy:
     - R1: `--embed-stage gpu does not apply to --mode process: process mode embeds inline on the CPU`
     - R2 (U9): `--embed-stage gpu was given, but meas '<key>' (<Class>) is pinned to device='cpu'; set device='auto' or 'cuda', or drop --embed-stage gpu to embed inline`
-    - R2 (O3): `--embed-stage resolves to gpu, but meas '<key>' (<Class>) has no GPU Stage-4 encoder; pass --embed-stage inline`
+    - R2 (O3): `--embed-stage gpu was given, but meas '<key>' (<Class>) has no GPU Stage-4 encoder; pass --embed-stage inline`
     - R3: `this run was started with --embed-stage <recorded>; continuing it as <resolved> would mix CPU and GPU embeddings. Re-run with --embed-stage <recorded>, or re-embed the finished run with --mode measure --embed-stage gpu`,
       plus `(on SLURM, also --gpu-slurm)` when `is_slurm` (plan review, Minor)
     - U9 note: `meas '<key>' is pinned to device='cpu', so --embed-stage auto resolves to inline`
+    - O3 note: `meas '<key>' (<Class>) has no GPU Stage-4 encoder, so --embed-stage auto resolves to inline`
+    - Both notes print (as `Note: <line>.` on stderr) only when the embedder
+      decided the outcome, i.e. `auto` would otherwise have been `gpu`.
     - O5 note: `--embed-stage gpu: the pipeline has no embedder, so nothing runs in Stage 4`
 
 - [ ] **Step 1: Write the failing tests.**
@@ -151,7 +164,12 @@ def test_r2_refuses_a_cpu_pin_only_with_an_explicit_gpu():
 
 def test_r2_refuses_a_non_dino_embedder_under_gpu(toy_embedder):
     with pytest.raises(click.UsageError, match="has no GPU Stage-4 encoder"):
-        refuse_unstageable_embedders(ImagePipeline(meas={"emb": toy_embedder}), "auto", "gpu")
+        refuse_unstageable_embedders(ImagePipeline(meas={"emb": toy_embedder}), "gpu", "gpu")
+    refuse_unstageable_embedders(ImagePipeline(meas={"emb": toy_embedder}), "auto", "inline")
+
+def test_auto_resolves_inline_for_a_non_dino_embedder(...):
+    # SLURM with a GpuDetector or --gpu-slurm, a DINO and a non-DINO embedder:
+    # ("inline", [O3 note]); the DINO embedder alone resolves "gpu" (the control).
 
 def test_r3_names_the_recorded_flag_and_the_remedy():
     with pytest.raises(click.UsageError, match=r"started with --embed-stage inline.*--mode measure --embed-stage gpu"):
@@ -194,9 +212,10 @@ def test_no_cuda_stops_before_stage1(tmp_path, tiny_inputs, param_stub_backbone,
     assert not list(out.rglob("*.ome.zarr")) and read_terminal_failures(out) == []
 ```
 
-  `test_no_cuda_stops_before_stage1` passes only once Task 3 provides
-  `stage4_device`; mark it `pytest.mark.xfail(strict=True, reason="P4 T3")` and
-  remove the mark in Task 3 Step 4.
+  `test_no_cuda_stops_before_stage1` passes in Task 1: `stage4_device`,
+  `Stage4DeviceError`, `check_cuda_usable` and `has_kernels_for` were built
+  here, in `_cli_stage4_worker.py` (`0984233bd`, orchestrator ruling), so it
+  carries **no** `xfail` and Task 3 has none to remove.
 - [ ] **Step 2: Run them and confirm they fail.**
 
   ```bash
@@ -217,10 +236,15 @@ def test_no_cuda_stops_before_stage1(tmp_path, tiny_inputs, param_stub_backbone,
   naming the variable) when `"torch" in sys.modules and
   torch.cuda.is_initialized()` and the variable was not already one of
   `DETERMINISTIC_CUBLAS_WORKSPACE_CONFIGS`. It never imports torch to ask.
+  A **local** run whose variable is preset to a non-deterministic value is
+  refused here too (exit `1`, one line), rather than by
+  `check_cublas_workspace` after Stages 1-3 (accepted 2026-11-20); a SLURM
+  submitter only `setdefault`s it, as the shard checks its own.
+  Test: `test_a_local_nondeterministic_cublas_preset_is_refused`.
   Test: `test_a_cublas_setting_after_cuda_initialised_is_refused` (monkeypatch
   a fake `torch` into `sys.modules` whose `cuda.is_initialized()` is true; a
   preset `:16:8` is accepted).
-- [ ] **Step 4: Run the tests.** Expected: all pass; the `xfail` reads `XFAIL`.
+- [ ] **Step 4: Run the tests.** Expected: all pass.
 - [ ] **Step 5: Commit.**
 
   ```bash
@@ -377,8 +401,8 @@ def test_process_mode_ignores_embed_stage(tmp_path, tiny_inputs, stage4_cpu):
 
   `crash_inside_the_core` makes the core raise right after its first write;
   `read_events(out)` parses the event log. `stage4_worker_module` is
-  `phenotypic._cli._cli_stage4_worker`, created in
-  this task importable, with a `run_local_stage4` placeholder that raises
+  `phenotypic._cli._cli_stage4_worker`, which Task 1 created (with the
+  device half); this task adds a `run_local_stage4` placeholder that raises
   `NotImplementedError`, so the monkeypatch target exists; Task 3 fills it.
   Create (helpers): `count_calls(monkeypatch, names) -> dict[str, int]`,
   `store_root_bytes(out) -> dict[Path, bytes]`, `dataset_and_stem(store)`,
@@ -421,7 +445,8 @@ def test_run_terminal_stage():
 ### Task 3: The Stage-4 worker
 
 **Files:**
-- Modify: `src/phenotypic/_cli/_cli_stage4_worker.py` (created in Task 2)
+- Modify: `src/phenotypic/_cli/_cli_stage4_worker.py` (created in Task 1 with
+  the device half; Task 2 adds the `run_local_stage4` placeholder)
 - Modify: `src/phenotypic/_cli/_cli_staged_resume.py`: add `stage4_status`.
 - Modify: `src/phenotypic/_cli/_cli_staged_strategy.py`: after the Stage-3
   `Parallel` loop (`:389-395`), `run_local_stage4` when deferring; an image
@@ -448,12 +473,20 @@ def test_run_terminal_stage():
   `require_license_acceptance` (`_checkpoint_manager.py:791`);
   `resolve_local_worker_count` (`_cli_utils.py:88`).
 - Produces:
-  - `class Stage4DeviceError(RuntimeError)`
-  - `stage4_device() -> str`: `"cuda"`, or `"cpu"` when
+  - **Already built in Task 1** (`0984233bd`), reuse as they are:
+    `class Stage4DeviceError(RuntimeError)`; `STAGE4_DEVICE_ENV`;
+    `stage4_device() -> str`: `"cuda"`, or `"cpu"` when
     `PHENOTYPIC_STAGE4_DEVICE=cpu`. With `"cuda"`, `check_cuda_usable()` first:
-    CUDA available, and `f"sm_{major}{minor}"` of device 0 in
-    `torch.cuda.get_arch_list()`; else `Stage4DeviceError` naming the device and
-    the arch list (spec §4.8, the P100 case).
+    torch importable, CUDA available, and `has_kernels_for(major, minor,
+    torch.cuda.get_arch_list())` for device 0; else `Stage4DeviceError`
+    naming the device and the arch list (spec §4.8, the P100 case).
+    **`has_kernels_for` follows CUDA binary compatibility, not an exact
+    match:** an `sm_XY` entry runs on a device of the same major and a minor
+    `>= Y`; a `compute_XY` (PTX) entry on any capability `>= XY`. An exact
+    `f"sm_{major}{minor}" in get_arch_list()` test would refuse every Ada GPU:
+    the cluster's torch 2.11+cu130 lists `sm_75 sm_80 sm_86 sm_90 sm_100
+    sm_120`, with no `sm_89` (ada6000, `exfab`'s only GPU). P100 (`sm_60`) is
+    still refused. Pinned by `test_has_kernels_for` (`test_cli_embed_stage.py`).
   - `stage4_status(output_dir: Path, dataset: str, stem: str, work_id: str, *, republish: bool = False) -> Literal["done", "pending", "not_ready"]`
     in `_cli_staged_resume.py` (spec §4.6): `done` = the record is valid
     (`valid_image_success`, `_cli_completion.py:342`); `pending` =
@@ -742,8 +775,9 @@ def test_orphan_signals_of_a_done_image_are_swept(staged_tree, stage4_cpu):
   round re-embeds it with a fresh encoder. Test:
   `test_a_failed_forward_pass_fails_the_shard_and_journals_nothing` (a stub
   whose second pass raises `ValueError`).
-- [ ] **Step 4: Remove Task 1's `xfail`, and run the worker tests, the refusal
-  tests, and the startup-import guards.**
+- [ ] **Step 4: Run the worker tests, the refusal tests, and the startup-import
+  guards.** (Task 1 left no `xfail`: `test_no_cuda_stops_before_stage1` already
+  passes.)
 
   ```bash
   eval $TPT tests/unit/cli/test_stage4_worker.py tests/integration/cli/test_embed_stage_refusals.py

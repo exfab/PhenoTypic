@@ -374,7 +374,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <p>These are each one usage-error line in the read-only half, outside <code>--skip-validation</code>, above <code>--restart</code>, <code>--overwrite</code>, <code>mint_run_identity</code> and <code>--dry-run</code>:</p>
 <ul>
 <li><strong>R1:</strong> <code>--embed-stage gpu</code> with <code>--mode process</code>.</li>
-<li><strong>R2 (U9):</strong> <code>--embed-stage gpu</code> with an in-scope embedder pinned to <code>device="cpu"</code>. (Under <code>auto</code>, the pin resolves the run inline instead.)</li>
+<li><strong>R2 (U9, O3):</strong> <code>--embed-stage gpu</code> with an in-scope embedder pinned to <code>device="cpu"</code>, or with an in-scope embedder that has no Stage-4 encoder (any <code>MeasureEmbedding</code> but <code>MeasureDinoEmbedding</code>). Under <code>auto</code>, either resolves the run inline instead, with a one-line note naming the embedder (O3 amended 2026-11-20).</li>
 <li><strong>R3 (U3):</strong> a continuation whose <code>embed_stage</code> differs from the recorded one.</li>
 </ul>
 <p>New preflight warnings, each with <code>HINTS</code> and a docs row:</p>
