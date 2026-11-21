@@ -556,3 +556,56 @@ def test_r3_is_refused_before_the_mutating_half(
     errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
     assert len(errors) == 1 and "started with --embed-stage inline" in errors[0], result.output
     assert _tree_digest(output_dir) == before
+
+
+@pytest.mark.parametrize("extra", _REFUSAL_FLAGS, ids=" ".join)
+def test_the_slurm_stage4_gate_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 review C1: SLURM ``--embed-stage gpu`` (no Stage 4 there until P5 T2), above every mutation.
+
+    Torch-free: the refusal is in the resolution, before the CUDA check.
+    """
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(previous_run)
+
+    result = _invoke(
+        "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--input", str(image_tree), "--output", str(previous_run),
+        "--slurm", "partition=intel", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "Stage 4 on SLURM is not yet available" in errors[0], result.output
+    assert _tree_digest(previous_run) == before
+
+
+@pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
+def test_the_measure_stage4_gate_is_refused_before_the_mutating_half(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 review C1: local ``--mode measure --embed-stage gpu`` (no Stage 4 there until P6 T1).
+
+    Over a real finished run, which stays byte-unchanged. Torch-free.
+    ``--dry-run`` is not a case: measure mode refuses it on its own.
+    """
+    output_dir = tmp_path / "run"
+    first = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(output_dir), "--njobs", "1",
+    )
+    assert first.exit_code == 0, first.output
+    before = _tree_digest(output_dir)
+
+    result = _invoke(
+        "--mode", "measure", "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--output", str(output_dir), "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "Stage 4 in --mode measure is not yet available" in errors[0], result.output
+    assert _tree_digest(output_dir) == before

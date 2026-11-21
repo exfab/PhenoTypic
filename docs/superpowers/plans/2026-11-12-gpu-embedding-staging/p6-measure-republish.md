@@ -17,6 +17,18 @@ failure leaves the previous embeddings and a valid record, and is journalled as
 
 ### Task 1: The measure core carries and defers; local republish Stage 4; manifest v5
 
+> **Lifts the interim measure gate** (P3–P4 review C1, `reports/…/p3-p4-review-fixes.md`).
+> In the commit that wires republish-mode Stage 4, widen `stage4_supported`
+> (`_cli_embed_stage.py`) to admit `--mode measure` (local, and SLURM once
+> T2's controller path lands), and flip
+> `test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line[local-measure]`
+> and `[slurm-measure]`, the measure half of
+> `test_a_slurm_gpu_detector_pipeline_resolves_inline_through_the_gate`, and
+> `test_the_measure_stage4_gate_is_refused_before_the_mutating_half`. R3's
+> remedy (`refuse_embed_stage_switch`) then regains its second remedy,
+> "or re-embed the finished run with `--mode measure --embed-stage gpu`",
+> and `test_r3_never_names_a_command_that_cannot_run` its matching case.
+
 **Files:**
 - Modify: `src/phenotypic/sdk_/_measurement_tables.py:1460-1645`.
   `replace_image_tables` gains

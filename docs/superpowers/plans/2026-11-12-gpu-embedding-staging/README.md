@@ -70,6 +70,14 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   | an in-scope embedder with no Stage-4 encoder (not a `MeasureDinoEmbedding`) | `inline`, with a note; an explicit `gpu` is refused (O3, R2) |
   | a pipeline with no in-scope embedder | `inline`, with a note (O5) |
 
+  **Interim gate until P5/P6** (P3–P4 review C1): `stage4_supported(config)`
+  (`_cli_embed_stage.py`) admits only local full runs. On SLURM (any mode) and
+  in `--mode measure` (local or SLURM) a row above that reads `gpu` resolves
+  `inline` under `auto`, with one note ("Stage 4 on SLURM is not yet
+  available" / "Stage 4 in --mode measure is not yet available"), and an
+  explicit `--embed-stage gpu` is one usage-error line. P5 T2 lifts SLURM full
+  runs and P6 T1 measure mode, each in the commit that builds its executor.
+
 - The resolved value is recorded as `processing_state.json` config
   `"embed_stage"` and `job_metadata.json` `JobMetadataKey.EMBED_STAGE`
   (`"embed_stage"`). It is **never** in the work-id digest

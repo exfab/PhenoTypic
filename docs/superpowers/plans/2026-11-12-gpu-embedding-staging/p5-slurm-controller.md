@@ -231,6 +231,19 @@ def test_no_detector_phases_start_at_stage3(controller_v2_no_detector, fake_sche
 
 ### Task 2: Scripts, the worker's `--stage 4`, the no-detector plan, and the revision pin
 
+> **Lifts the interim SLURM gate** (P3–P4 review C1, `reports/…/p3-p4-review-fixes.md`).
+> In the commit that wires the SLURM Stage-4 executor, widen `stage4_supported`
+> (`_cli_embed_stage.py`) to admit a SLURM **full** run (measure stays gated
+> until P6 T1), and flip the tests that pin the gate:
+> `test_a_slurm_gpu_detector_pipeline_resolves_inline_through_the_gate` (its
+> first assertion becomes `("gpu", [])`),
+> `test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line[slurm-full]`
+> (now resolves `gpu`), `test_the_slurm_stage4_gate_is_refused_before_the_mutating_half`
+> (delete; R2's ordering test covers the remaining refusal), and
+> `test_a_slurm_detector_dino_run_resolves_inline_and_finishes` (it must now
+> finish through Stage 4). Not before: lifting it early makes every SLURM
+> detector + DINO run unfinishable.
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_staged_slurm.py`
   - `_write_stage_script` (`:219-252`) gains `prelude: str = SLURM_THREAD_PIN_BASH`;

@@ -37,6 +37,13 @@ the read-only half, outside ``--skip-validation`` and above ``--restart``,
 - **R3** (:func:`refuse_embed_stage_switch`): a continuation whose resolved
   stage differs from the recorded one (U3).
 
+**An interim gate** (#282 P3-P4 review C1): :func:`stage4_supported` says
+which runs have a Stage-4 executor today, only local full runs. Elsewhere
+(SLURM, any mode; ``--mode measure``, local or SLURM) ``auto`` resolves
+``inline`` with a one-line note, and an explicit ``--embed-stage gpu`` is one
+usage-error line. P5 T2 lifts SLURM full runs and P6 T1 measure mode, each by
+widening that one predicate.
+
 :func:`prepare_stage4_environment` is the startup half of a ``gpu`` run: the
 cuBLAS workspace variable, and for a local run the CUDA check, both before
 anything could initialise CUDA.
@@ -210,16 +217,27 @@ def refuse_unstageable_embedders(
 
 
 def refuse_embed_stage_switch(
-    recorded: str | None, resolved: EmbedStage, *, is_slurm: bool
+    recorded: str | None,
+    resolved: EmbedStage,
+    *,
+    is_slurm: bool,
+    stage4_available: bool,
 ) -> None:
     """R3: refuse a continuation that would embed elsewhere than it started (U3).
+
+    The remedy names only a command that can run now: ``--embed-stage
+    <recorded>`` when this invocation could honour it, otherwise
+    ``--restart``, which starts the run over and re-resolves its stage
+    (review C1: a run recorded ``gpu`` where Stage 4 is gated cannot be
+    continued as ``gpu``).
 
     Args:
         recorded: The state's recorded ``embed_stage``; ``None`` (a state
             written before #282) reads as ``"inline"``.
         resolved: What this invocation resolved to.
-        is_slurm: Whether this invocation is a SLURM run; the remedy then
-            also names ``--gpu-slurm``, which ``auto`` resolves from.
+        is_slurm: Whether this invocation is a SLURM run; a ``gpu`` remedy
+            then also names ``--gpu-slurm``, which ``auto`` resolves from.
+        stage4_available: :func:`stage4_supported` for this invocation.
 
     Raises:
         click.UsageError: The two differ.
@@ -227,14 +245,48 @@ def refuse_embed_stage_switch(
     recorded_stage = DEFAULT_EMBED_STAGE if recorded is None else recorded
     if recorded_stage == resolved:
         return
-    remedy = f"Re-run with --embed-stage {recorded_stage}"
-    if is_slurm:
-        remedy += " (on SLURM, also --gpu-slurm)"
+    if recorded_stage == "gpu" and not stage4_available:
+        remedy = (
+            "Stage 4 cannot run this invocation yet, so start the run over "
+            "with --restart"
+        )
+    else:
+        remedy = f"Re-run with --embed-stage {recorded_stage}"
+        if recorded_stage == "gpu" and is_slurm:
+            remedy += " (on SLURM, also --gpu-slurm)"
     raise click.UsageError(
         f"this run was started with --embed-stage {recorded_stage}; continuing "
-        f"it as {resolved} would mix CPU and GPU embeddings. {remedy}, or "
-        "re-embed the finished run with --mode measure --embed-stage gpu"
+        f"it as {resolved} would mix CPU and GPU embeddings. {remedy}"
     )
+
+
+def stage4_supported(config: "ExecutionConfig") -> bool:
+    """Whether a Stage-4 executor runs this configuration's embeddings today.
+
+    The interim gate of #282 P3-P4 review C1: only a **local forward run**
+    (``--mode full``, the local strategy, staged or single-pass) has one. A
+    SLURM run of any mode, and ``--mode measure`` local or on SLURM, would
+    defer its embeddings to a Stage 4 that nothing on its path runs, so the
+    run could never finish (or, on the autonomous SLURM path, would embed on
+    the CPU while recording ``gpu``). ``--mode process`` never reaches this:
+    it resolves ``inline`` and R1 refuses ``gpu``.
+
+    Each later phase lifts its path here, in the commit that builds its
+    executor: P5 T2 the SLURM full run, P6 T1 measure mode. One predicate, so
+    each lift is a one-line change pinned by its own test.
+    """
+    from ._cli_preflight import run_mode_of
+
+    return run_mode_of(config) == "full" and not config.is_slurm_mode()
+
+
+def stage4_unavailable_reason(config: "ExecutionConfig") -> str:
+    """Why :func:`stage4_supported` is false for *config*: the note's and refusal's words."""
+    from ._cli_preflight import run_mode_of
+
+    if run_mode_of(config) == "measure":
+        return "Stage 4 in --mode measure is not yet available"
+    return "Stage 4 on SLURM is not yet available"
 
 
 def resolve_embed_stage_for_config(
@@ -247,11 +299,19 @@ def resolve_embed_stage_for_config(
     ``inline``, and the pipeline validation reports the failure in its own
     words.
 
+    A run :func:`stage4_supported` refuses is the interim gate's (review
+    C1): ``auto`` that would have resolved ``gpu`` resolves ``inline`` with
+    a note, and an explicit ``gpu`` is refused.
+
     Returns:
         The resolved stage, and the one-line notes to print: U9's when a CPU
         pin, and O3's when an embedder with no Stage-4 encoder, is what made
         ``auto`` resolve inline; O5's when ``--embed-stage gpu`` meets a
-        pipeline with no embedder.
+        pipeline with no embedder; the gate's when only the gate did.
+
+    Raises:
+        click.UsageError: ``--embed-stage gpu`` on a run with no Stage-4
+            executor yet (:func:`stage4_supported`).
     """
     from ._cli_preflight import run_mode_of
 
@@ -298,6 +358,15 @@ def resolve_embed_stage_for_config(
             "--embed-stage gpu: the pipeline has no embedder, so nothing runs "
             "in Stage 4"
         )
+    if resolved == "gpu" and not stage4_supported(config):
+        why = stage4_unavailable_reason(config)
+        if requested == "gpu":
+            raise click.UsageError(
+                f"--embed-stage gpu: {why}; pass --embed-stage inline to embed "
+                "inline in Stage 3"
+            )
+        notes.append(f"{why}, so --embed-stage auto resolves to inline")
+        resolved = "inline"
     return resolved, notes
 
 

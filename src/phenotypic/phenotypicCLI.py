@@ -3336,12 +3336,14 @@ def phenotypic_cli(
             from phenotypic._cli._cli_embed_stage import (
                 EMBED_STAGE_CONFIG_KEY,
                 refuse_embed_stage_switch,
+                stage4_supported,
             )
 
             refuse_embed_stage_switch(
                 resume_state.config.get(EMBED_STAGE_CONFIG_KEY),
                 config.embed_stage,
                 is_slurm=config.is_slurm_mode(),
+                stage4_available=stage4_supported(config),
             )
             if resume_state.config.get("success_markers_required", False):
                 is_compatible, compatibility_error = (
