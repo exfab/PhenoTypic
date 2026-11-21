@@ -851,6 +851,13 @@ DIR_LEGACY_V2: Final[str] = "legacy-v2"
 #: which must keep *not* firing on it -- and belongs beside its siblings.
 DIR_STAGE2_DONE: Final[str] = "stage2_done"
 
+#: ``<progress>/stage4_payload/`` -- the Stage-4 signal's tree (#282 spec §4.2):
+#: ``<ds>/<model>/<layer>/<region>/<stem>.parquet``, one atomic Parquet per
+#: embedder key, written before the store commit and consumed after the record.
+#: A current tree like :data:`DIR_STAGE2_DONE`, never a legacy one, so the
+#: schema gate's directory signals must not name it.
+DIR_STAGE4_PAYLOAD: Final[str] = "stage4_payload"
+
 #: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
 #: of the verification cache (spec §9.1, as reversed back on by U-11).
 #:
@@ -3042,6 +3049,15 @@ class JobMetadataKey:
     #: dropped before). The text, not a parsed dict, because YAML types such as
     #: dates do not survive a JSON round trip.
     STUDY_YAML: Final[str] = "study_yaml"
+    #: Where the run embeds, ``"gpu"`` (Stage 4) or ``"inline"`` (#282 spec
+    #: §4.1): the resolved ``--embed-stage``. Absent reads as ``"inline"``.
+    EMBED_STAGE: Final[str] = "embed_stage"
+    #: ``{hf_id: commit}`` for each unpinned embedder revision, resolved once
+    #: at a Stage-4 run's first submission (#282 U5).
+    EMBED_REVISIONS: Final[str] = "embed_revisions"
+    #: The run mode a SLURM finalizer serves, ``"full"`` or ``"measure"``
+    #: (#282 U10).
+    RUN_MODE: Final[str] = "run_mode"
 
 
 class DashboardManifestKey:

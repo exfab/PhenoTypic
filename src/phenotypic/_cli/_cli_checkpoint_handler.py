@@ -16,6 +16,7 @@ import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata, logged_step, parse_study_yaml
+from ._stages import STAGED_TERMINAL_STAGE, StageTag, run_terminal_stage
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     DashboardManifestKey,
@@ -241,6 +242,9 @@ def _run_finalize(
                 generation=job_metadata.get(
                     JobMetadataKey.PROCESSING_GENERATION
                 ),
+                # The submitter recorded EMBED_STAGE in this same file, under
+                # the key processing_state.json's config uses (#282 I8).
+                terminal_stage=run_terminal_stage(job_metadata),
                 timeout=600,
             )
 
@@ -522,6 +526,7 @@ def _wait_for_completion(
     inventory: dict[str, frozenset[str]] | None,
     total_expected: int,
     generation: str | None,
+    terminal_stage: StageTag = STAGED_TERMINAL_STAGE,
     timeout: int = 600,
 ) -> None:
     """Poll event log until all images are done or timeout.
@@ -533,6 +538,8 @@ def _wait_for_completion(
             ``None`` for legacy count-only metadata.
         total_expected: Total number of expected images.
         generation: Durable processing generation.
+        terminal_stage: The run's terminal stage (``run_terminal_stage``), so
+            a Stage-3 completion of a run that embeds on the GPU is not done.
         timeout: Maximum seconds to wait.
     """
     from ._cli_update_state import aggregate_state_from_events
@@ -545,6 +552,7 @@ def _wait_for_completion(
             event_log,
             inventory=inventory,
             generation=generation,
+            terminal_stage=terminal_stage,
         )
         completed = sum(len(ds.completed) for ds in dataset_states.values())
         failed = sum(len(ds.failed) for ds in dataset_states.values())

@@ -73,6 +73,10 @@ from ._cli_slurm_lifecycle import (
     generation_publication_guard,
     slurm_generation_inactive_cause,
 )
+from ._cli_staged_resume import (
+    drop_stages_1_to_3_done,
+    write_stage3_completion_marker,
+)
 from ._cli_types import is_in_place_process, writes_process_store
 from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extension
 from phenotypic.sdk_ import (
@@ -216,6 +220,7 @@ def process_single_image_core(
     commit_guard: CommitGuard | None = None,
     reference_pin: ReferencePin | None = None,
     input_root: Path | None = None,
+    defer_embeddings: bool = False,
 ) -> bool:
     """
     Core processing logic for a single image.
@@ -244,6 +249,14 @@ def process_single_image_core(
             store with table runs, the result store records them as its
             ``tables.upstream``, with ``source`` relative to this root
             (#281 spec D8). ``None`` records the input's name.
+        defer_embeddings: The run's ``defers_embeddings`` (#282): this core
+            is the run's Stage 3 and Stage 4 embeds. It first drops the
+            image's old ``stages.stage3`` and its Stage-4 signals
+            (``drop_stages_1_to_3_done``), so a crash anywhere inside it
+            leaves an image that is not done; it then skips ``embed()``,
+            saves the store with no embeddings, and after the copy-out
+            writes ``stages.stage3``. The caller publishes **no** record:
+            Stage 4 does, after its embeddings commit.
 
     Returns:
         True if successful. This function always returns True on success;
@@ -258,6 +271,13 @@ def process_single_image_core(
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image: Image | GridImage | None = None
     checkpoint_ready = False
+    if defer_embeddings:
+        # Before the first write: from here until the final stages.stage3,
+        # the image is not done (#282 P4 T2, plan re-review Minor).
+        _check_active(active_check)
+        drop_stages_1_to_3_done(
+            output_dir, dataset_name, image_stem, commit_guard=commit_guard
+        )
 
     def _write_checkpoint(
         updated: Image, *, journal_only: bool = False
@@ -364,8 +384,9 @@ def process_single_image_core(
                 image, inplace=True, apply_post=False
             )
             # Beside measure(), never inside it: the embedding tables go into
-            # the same run folder as the measurements (#281 spec E2).
-            embeddings = pipeline.embed(image)
+            # the same run folder as the measurements (#281 spec E2). Under
+            # deferral Stage 4 writes them into that folder.
+            embeddings = None if defer_embeddings else pipeline.embed(image)
         if output_manager.save_overlays:
             _check_active(active_check)
             output_manager.save_overlay(
@@ -420,6 +441,17 @@ def process_single_image_core(
             dataset=dataset_name,
             image_stem=image_stem,
         )
+        if defer_embeddings:
+            # The core's last write: Stages 1-3 are done (stages_1_to_3_done),
+            # and the record is Stage 4's to publish.
+            _check_active(active_check)
+            write_stage3_completion_marker(
+                output_dir,
+                dataset_name,
+                image_path.name,
+                image_stem,
+                commit_guard=commit_guard,
+            )
     except SlurmGenerationInactiveError:
         raise
     except (MemoryError, ReferencePlanStaleError):

@@ -28,6 +28,7 @@ from phenotypic._cli._cli_types import (
     ImageFailure,
 )
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
+from phenotypic._cli._stages import run_terminal_stage
 from phenotypic.sdk_ import (
     processing_report_html_path,
     resolve_event_log_path,
@@ -80,7 +81,14 @@ def generate_cli_report(output_dir: Path):
 
     # Aggregate state from event log
     click.echo("Aggregating processing events...")
-    datasets_state = aggregate_state_from_events(event_log)
+    # A run that embeds on the GPU finishes at Stage 4, not Stage 3 (#282 I8).
+    report_state = _load_state_for_report(output_dir)
+    datasets_state = aggregate_state_from_events(
+        event_log,
+        terminal_stage=run_terminal_stage(
+            report_state.get("config") if report_state is not None else None
+        ),
+    )
 
     if not datasets_state:
         click.echo("Warning: No events found in log", err=True)
@@ -136,8 +144,8 @@ def generate_cli_report(output_dir: Path):
         )
 
     # Create ExecutionResults
-    # Try to read timestamps from state file if it exists
-    state_dict = _load_state_for_report(output_dir)
+    # Read timestamps from the state file, if it exists (loaded above)
+    state_dict = report_state
     if state_dict is not None:
         start_time = datetime.fromisoformat(state_dict["timestamp"])
         end_time = datetime.now()

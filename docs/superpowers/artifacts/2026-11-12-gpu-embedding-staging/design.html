@@ -1,0 +1,519 @@
+<title>GPU Embedding Stage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky contents rail beside one reading column; the rail folds above the text on phones. */
+:root {
+  --bg: #FBFEF8; --surface: #ffffff; --fg: #2e3a4e; --heading: #003660; --muted: #6d7684;
+  --border: #dde3ed; --rule: #e8ecf2; --accent: #1b73b9; --gold: #926a00; --code-bg: #edf2f7;
+  --ok: #006B4F; --ok-soft: #e3f4ee;
+  --sans: "Nunito Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #152132; --fg: #d3dae5; --heading: #a9cdf0; --muted: #94a0b2;
+  --border: #283a52; --rule: #1f2e42; --accent: #6cbdf0; --gold: #f2c75c; --code-bg: #1a2839;
+  --ok: #43c9a2; --ok-soft: #12352c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 16px; line-height: 1.62; }
+.wrap { max-width: 80rem; margin: 0 auto; padding-block: 2.25rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .6rem; border-bottom: 1px solid var(--rule); padding-bottom: 1.25rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+header.top h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -.02em; color: var(--heading); text-wrap: balance; }
+.meta { font-size: .9rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem; }
+.meta p { margin: 0; max-width: none; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); max-height: calc(100vh - 2rem); overflow-y: auto; font-size: .86rem; }
+nav.toc b { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: .9rem 0 .35rem; }
+nav.toc b:first-child { margin-top: 0; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+nav.toc li.l3 { padding-left: .9rem; font-size: .82rem; }
+nav.toc a { color: var(--fg); text-decoration: none; display: block; padding: .08rem 0; }
+nav.toc li.l2 > a { color: var(--heading); font-weight: 700; margin-top: .3rem; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { min-width: 0; max-width: 56rem; display: flex; flex-direction: column; gap: .9rem; }
+section.doc { display: flex; flex-direction: column; gap: .9rem; }
+section.doc + section.doc { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 3px solid var(--rule); }
+.doctitle { font-size: 1.7rem; color: var(--heading); margin: 0; line-height: 1.15; }
+.docsrc { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+main h2 { font-size: 1.45rem; line-height: 1.2; color: var(--heading); margin: 2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--rule); text-wrap: balance; }
+main h3 { font-size: 1.12rem; color: var(--heading); margin: 1.4rem 0 0; }
+main h4 { font-size: 1rem; color: var(--heading); margin: 1rem 0 0; }
+main p, main li { max-width: 72ch; }
+main p { margin: 0; }
+main ul, main ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; }
+main li > ul, main li > ol { margin-top: .3rem; }
+main strong { color: var(--heading); }
+main ul.task-list, main li.task-list-item { list-style: none; }
+main input[type="checkbox"] { margin-right: .45rem; accent-color: var(--ok); }
+code { font-family: var(--mono); font-size: .84em; background: var(--code-bg); padding: .06em .32em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: .2rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; overflow-x: auto; font-size: .8rem; line-height: 1.55; }
+pre code { background: none; padding: 0; overflow-wrap: normal; font-size: inherit; }
+blockquote { margin: 0; padding: .6rem 1rem; border-left: 4px solid var(--gold); background: var(--surface); border-radius: 0 6px 6px 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: .2rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 36rem; }
+th, td { text-align: left; vertical-align: top; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); }
+th { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { color: var(--heading); font-weight: 600; }
+footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  nav.toc { position: static; max-height: none; border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; background: var(--surface); }
+  nav.toc li.l3 { display: none; }
+}
+</style>
+<div class="wrap">
+<header class="top"><div class="eyebrow">Design spec · PhenoTypic #282 · 2026-11-19</div><h1>Design: GPU embedding stage (Stage 4)</h1><div class="meta"></div></header>
+<nav class="toc" aria-label="Contents"><b>GPU Embedding Stage</b><ul><li class="l2"><a href="#1-intent">1. Intent</a></li><li class="l2"><a href="#2-measured-facts-2026-11-19">2. Measured facts (2026-11-19)</a></li><li class="l2"><a href="#3-decisions">3. Decisions</a></li><li class="l3"><a href="#made-by-the-user-2026-11-19">Made by the user (2026-11-19)</a></li><li class="l3"><a href="#defaults-taken-the-user-did-not-object">Defaults taken (the user did not object)</a></li><li class="l2"><a href="#4-design">4. Design</a></li><li class="l3"><a href="#41-where-stage-4-runs">4.1 Where Stage 4 runs</a></li><li class="l3"><a href="#42-work-unit-and-one-writer-per-artifact">4.2 Work unit and one writer per artifact</a></li><li class="l3"><a href="#43-controller">4.3 Controller</a></li><li class="l3"><a href="#44-worker">4.4 Worker</a></li><li class="l3"><a href="#45-larger-models">4.5 Larger models</a></li><li class="l3"><a href="#46-continuation-and-measure-mode">4.6 Continuation and measure mode</a></li><li class="l3"><a href="#47-refusals-and-preflight">4.7 Refusals and preflight</a></li><li class="l3"><a href="#48-failure-modes">4.8 Failure modes</a></li><li class="l2"><a href="#5-verification">5. Verification</a></li><li class="l2"><a href="#6-build-phases">6. Build phases</a></li><li class="l2"><a href="#7-left-to-the-builder">7. Left to the builder</a></li></ul></nav>
+<main><section class="doc"><p><strong>Status:</strong> draft for approval · 2026-11-19 · supersedes the 2026-11-12 scoping stub <strong>Parent:</strong> <code>docs/superpowers/specs/2026-11-12-dvc-embeddings-refactor/design.md</code> (#281). This change is stacked on it as #282. <strong>Option:</strong> C, a GPU Stage 4 (user choice, 2026-11-19). <strong>Blueprint:</strong> a read-only architecture pass over #281's code (2026-11-19). File anchors below are from that pass. Lines marked <em>inferred</em> were reasoned, not read, and are verified during the build.</p>
+<h2 id="1-intent">1. Intent</h2>
+<p>#281 ships <code>MeasureDinoEmbedding</code> on <strong>CPU</strong>, run inline by every per-image writer. That is fine for AutoConvertRaw-GC: two grid embedders add about 7% to its roughly 612 s per image. It is not fine for full PhenoTypic runs, where crops and wells cost about 64 s per image on four cores. Over 33,000 images that is about 590 CPU-node-hours, against about 16 hours on one GPU.</p>
+<p>This change runs embedding on GPUs, in its own stage, with three goals the user set:</p>
+<ol type="1">
+<li><strong>Speed.</strong> One resident model per GPU worker processes many images, batched across images. The cold model load is paid once per shard, not once per process.</li>
+<li><strong>Larger models.</strong> DINOv2-large and -giant, in reduced precision where needed. (DINOv3 H+ and 7B are deferred, U11.)</li>
+<li><strong>Consistent embeddings.</strong> A staged run embeds every image on GPUs, never mixing in CPU. Mixed GPU models on SLURM are fine. Within one GPU model and physical batch size, vectors must not depend on how images were sharded or batched (restated 2026-11-19, plan review S1: m is chosen per GPU model and OOM halving changes it, so an absolute guarantee cannot hold; across GPU models the measured difference is about 1e-7).</li>
+</ol>
+<h2 id="2-measured-facts-2026-11-19">2. Measured facts (2026-11-19)</h2>
+<p>The measurements used real 4012 × 6016 corrected plates (66 colonies, 96 wells), from code at <code>d1bc6febe</code>. Logs are in <code>/bigdata/exfab/anguy344/gate-results/gpu-baseline/</code>.</p>
+<p><strong>Warm time per image:</strong></p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th></th>
+<th>CPU, 4 cores, base</th>
+<th>GPU (RTX 6000 Ada), base</th>
+<th>GPU, large</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Object crops (66)</td>
+<td>26.1 s</td>
+<td>0.72 s</td>
+<td>1.05 s</td>
+</tr>
+<tr class="even">
+<td>Wells grid (96 cells)</td>
+<td>37.9 s</td>
+<td>0.99 s</td>
+<td>1.48 s</td>
+</tr>
+<tr class="odd">
+<td>Agar cell (1)</td>
+<td>5.5 s</td>
+<td>2.1 s</td>
+<td>2.1 s</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>The agar cell's time is a CPU resize</strong> of a 3224 × 4836 crop, on either device.</li>
+<li><strong>Cold first call:</strong> 650–750 s (imports plus weights from GPFS). The large model on a warm node took 33 s.</li>
+<li><strong>Peak RSS:</strong> about 6 GB.</li>
+</ul>
+<p><strong>Device differences</strong> (DINOv2-base, 198 crops, 288 cells, stored float16 vectors; cosine distance):</p>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th>Median</th>
+<th>Max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CPU vs GPU</td>
+<td>2e-6</td>
+<td>1.4e-5</td>
+</tr>
+<tr class="even">
+<td>GPU vs GPU (Blackwell vs Ada)</td>
+<td>about 0</td>
+<td>1.2e-7 (last float16 bit)</td>
+</tr>
+<tr class="odd">
+<td>CPU vs CPU, two nodes</td>
+<td>bit-identical</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Same colony 6 h later</td>
+<td>0.125</td>
+<td>min 0.025</td>
+</tr>
+</tbody>
+</table></div>
+<p>The device is therefore provenance, not descriptor identity (parent E5, D3).</p>
+<h2 id="3-decisions">3. Decisions</h2>
+<h3 id="made-by-the-user-2026-11-19">Made by the user (2026-11-19)</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>U1</td>
+<td>Option C: a GPU Stage 4 after the store is final.</td>
+</tr>
+<tr class="even">
+<td>U2</td>
+<td><strong>Opt-in is <code>auto</code>.</strong> A new <code>--embed-stage {auto,gpu,inline}</code> defaults to <code>auto</code>. On SLURM, <code>auto</code> resolves to <code>gpu</code> when the run already has a GPU profile (a <code>GpuDetector</code>, or <code>--gpu-slurm</code> given), otherwise <code>inline</code>. A local run resolves <code>inline</code> unless <code>--embed-stage gpu</code>.</td>
+</tr>
+<tr class="odd">
+<td>U3</td>
+<td><strong>No switching mid-run.</strong> A continuation whose resolved <code>embed_stage</code> differs from the recorded one is refused, naming the recorded flag, and <code>--mode measure --embed-stage gpu</code> to re-embed.</td>
+</tr>
+<tr class="even">
+<td>U4</td>
+<td><strong><code>--mode measure</code> uses Stage 4 in v1.</strong> It is the documented remedy for an unreadable embedding (parent E5), and re-embedding a GPU run must stay on GPU.</td>
+</tr>
+<tr class="odd">
+<td>U5</td>
+<td><strong>An unpinned <code>revision</code> is resolved once, at a run's first submission,</strong> and recorded in job metadata, so every shard and round loads the same commit; a continuation reuses the recorded commit rather than re-resolving (2026-11-19). It applies to Stage-4 runs only. Offline, it falls back to per-process resolution with the existing warning.</td>
+</tr>
+<tr class="even">
+<td>U7</td>
+<td><strong>A stalled Stage-4 round ends unfinished</strong> (2026-11-19, plan review O8): after two unchanged retryable sets the finalizer runs, the leftover images keep no record and no journal row, and the run exits 5 ("re-run the same command"); a plain re-run retries them. GPU OOM and a changed root are node or concurrency state, never terminal per-image failures.</td>
+</tr>
+<tr class="odd">
+<td>U8</td>
+<td><strong>A measure-mode Stage-4 failure keeps the old embeddings</strong> (2026-11-19, plan review C3): the measure core carries the image's existing embeddings block forward (still valid, since measure never writes the objmap); Stage 4 replaces it. A Stage-4 failure leaves the previous embeddings and a valid record, and is journalled as <code>MEASURE_FAILURE_STAGE</code>, so the run exits 3.</td>
+</tr>
+<tr class="even">
+<td>U9</td>
+<td><strong>An explicit <code>device="cpu"</code> pin wins</strong> (2026-11-19): under <code>auto</code>, a run whose in-scope embedder is pinned to CPU resolves <code>inline</code>, with a one-line note; <code>--embed-stage gpu</code> with such a pin is refused.</td>
+</tr>
+<tr class="odd">
+<td>U10</td>
+<td><strong>SLURM <code>--mode measure</code> moves onto the staged controller</strong> (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (<code>measure_failed</code>, no forward run proof).</td>
+</tr>
+<tr class="even">
+<td>U11</td>
+<td><strong>DINOv2 only for now</strong> (2026-11-20). The new size this PR adds is DINOv2 <code>giant</code> (ViT-g/14). DINOv3 H+ and 7B are deferred to a follow-up, because their gated weights and hub configs need a licence and a valid token, which the cluster does not have; nothing about them could be verified. Existing DINOv3 sizes are untouched. The batch-invariance job (§5) runs DINOv2 models only.</td>
+</tr>
+<tr class="odd">
+<td>U6</td>
+<td><strong>Mixed GPU models are allowed.</strong> <code>device</code> and <code>device_name</code> are provenance, recorded per entry.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="defaults-taken-the-user-did-not-object">Defaults taken (the user did not object)</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>H1</td>
+<td><strong>Crop geometry and the skimage resize stay on the CPU,</strong> in DataLoader workers, through the same <code>_crop</code> / <code>_square_colony_crop</code> functions the inline path uses. The GPU runs only the backbone. CPU and GPU vectors then differ only by backbone arithmetic.</td>
+</tr>
+<tr class="even">
+<td>H5</td>
+<td><strong>Process mode, copy and in place, stays inline on CPU in v1.</strong> That covers AutoConvertRaw-GC's direct <code>process_single_apply_only_core</code> calls. Process stores are write-once and byte-reproducible, and Stage 4 would add a second, device-dependent transaction. A GPU in-place backfill is a v2 candidate.</td>
+</tr>
+<tr class="odd">
+<td>H6</td>
+<td><strong><code>--gpu-slurm</code> and <code>--gpu-shards</code> are reused.</strong> No new resource flags in v1.</td>
+</tr>
+<tr class="even">
+<td>H7</td>
+<td><strong><code>compute_dtype: Literal["float32","bfloat16","float16"] = "float32"</code></strong> is a new field. It is part of the descriptor, because bf16 moves vectors far more than 1e-6. Storage stays float16 (parent D1). The docs recommend float32 for every DINOv2 size, giant included; it fits on every cluster GPU (2026-11-20). bf16 is an opt-in for memory-bound models only, documented with P2 T4's measurement: within a bf16 run, mixed GPU models differ by up to 3.2e-4 in 1 − cos and an OOM batch halving by up to 4.3e-4, against ≤ 2.3e-7 and ≤ 6e-9 in float32. No warning or refusal; documentation only (user, 2026-11-20).</td>
+</tr>
+<tr class="odd">
+<td>H9</td>
+<td>Superseded by U9: an explicit CPU pin makes the run resolve inline; refused only with <code>--embed-stage gpu</code>.</td>
+</tr>
+<tr class="even">
+<td>H10</td>
+<td><strong>Backbone-major.</strong> One model is resident at a time. Embedders sharing a backbone share one load.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="4-design">4. Design</h2>
+<h3 id="41-where-stage-4-runs">4.1 Where Stage 4 runs</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Mode</th>
+<th>Embedding</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Full, <code>GpuDetector</code>, SLURM</td>
+<td>Stage 4; Stage 3 defers</td>
+</tr>
+<tr class="even">
+<td>Full, <code>GpuDetector</code>, local</td>
+<td>inline in Stage 3, unless <code>--embed-stage gpu</code></td>
+</tr>
+<tr class="odd">
+<td>Full, no <code>GpuDetector</code>, SLURM with <code>--gpu-slurm</code></td>
+<td>Stage 4, through the staged controller with phases <code>["stage3", "stage4"]</code>; the "stage3" role runs the single-pass core with <code>defer_embeddings=True</code></td>
+</tr>
+<tr class="even">
+<td>Full, no <code>GpuDetector</code>, SLURM without <code>--gpu-slurm</code></td>
+<td>inline (<code>AutonomousSLURMStrategy</code>), as today</td>
+</tr>
+<tr class="odd">
+<td>Full, local</td>
+<td>inline, unless <code>--embed-stage gpu</code></td>
+</tr>
+<tr class="even">
+<td><code>--mode measure</code></td>
+<td>Stage 4 under the same <code>auto</code> rule, where only <code>--gpu-slurm</code> counts as a GPU profile; republish mode (§4.6)</td>
+</tr>
+<tr class="odd">
+<td><code>--mode process</code>, copy and in place</td>
+<td>always inline on CPU; <code>--embed-stage gpu</code> refused</td>
+</tr>
+<tr class="even">
+<td><code>--layer objmap</code>, recompile, migrate</td>
+<td>no embedder runs</td>
+</tr>
+</tbody>
+</table></div>
+<p>The resolved value goes into <code>processing_state.json</code> config and into <code>job_metadata.json</code> (<code>EMBED_STAGE</code>). It is a config value, not a new tracked state, and it stays out of the work-id digest.</p>
+<h3 id="42-work-unit-and-one-writer-per-artifact">4.2 Work unit and one writer per artifact</h3>
+<p><strong>Stage 3 defers two things:</strong> <code>embed()</code> and the per-image record. This applies to the single-pass core too, in a Stage-4 run. It still writes the store with its measurements, and writes <code>stages.stage3</code>.</p>
+<p>Stage 4 reads that store read-only, computes the payloads, and writes one <strong>Stage-4 signal</strong> per embedder key: <code>.phenotypic/progress/stage4_payload/&lt;ds&gt;/&lt;model&gt;/&lt;layer&gt;/&lt;region&gt;/&lt;stem&gt;.parquet</code>. Each signal is atomic and fenced, with the <code>work_id</code> and <code>run_id</code> in its key-value metadata. Then Stage 4 commits:</p>
+<ol type="1">
+<li><strong>The store.</strong> <code>replace_run_embeddings(store, run_id, payloads, expected_root_sha256=…)</code>, a new function on <code>_rewrite_store_tables</code>.
+<ul>
+<li><code>clear_table_run=f"{run_id}/embeddings"</code>.</li>
+<li>Measurements, metadata, other runs and <code>upstream</code> are carried, as hard links.</li>
+<li>It rewrites only that run's <code>embeddings</code> block, with <code>stale</code> recomputed against the store's own objmap and array digests (D7).</li>
+<li>The root is written last, and re-consolidated if it was consolidated.</li>
+</ul></li>
+<li><strong>The record,</strong> published for the first and only time in this pass.</li>
+<li><strong>The signals,</strong> consumed.</li>
+</ol>
+<p>Deferring the record, rather than republishing it, keeps "one writer per artifact, per pass" true (<code>_cli/CLAUDE.md</code>). Each Parquet has one writer, the record is written once, and the root is never certified before its last write. An image whose Stage 4 fails keeps <strong>no</strong> record, so the run reads unfinished, never verified with a silent hole. The spec of the "One writer" section, and parent D5's writer list, gain the Stage-4 rewrite.</p>
+<h3 id="43-controller">4.3 Controller</h3>
+<ul>
+<li><strong>Config version goes 1 → 2,</strong> with a <code>phases</code> list: <code>["stage1","stage2", "stage3","stage4"]</code>, or <code>["stage3","stage4"]</code> without a detector.</li>
+<li><strong>After the last Stage-3 chunk,</strong> the controller classifies Stage 4 and either submits a GPU shard round or the finalizer.</li>
+<li><strong><code>_classify_stage4</code>:</strong>
+<ul>
+<li>done when the record is valid;</li>
+<li>terminal on a recorded failure, missing <code>stages.stage3</code>, a store that doesn't match its work id, or a changed reference digest;</li>
+<li>retryable otherwise.</li>
+</ul></li>
+<li><strong>Rounds</strong> use their own counters: two unchanged retryable sets in a row go to the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is <code>stage4</code> and the token <code>stage4-round-&lt;n&gt;</code>, so <code>live_slurm_job_ids</code> sees them.</li>
+<li><strong>A per-round worklist</strong> (<code>stage4_worklist.json</code>) partitions only the retryable set across shards. After a walltime, the leftover work spreads over every GPU.</li>
+<li><strong>Stage 4 is an array over shards and is never chunked.</strong> It has no trigger entries and no sidecar jobs. Its resources are the Stage-2 GPU profile. The script prelude sets <code>CUBLAS_WORKSPACE_CONFIG=:4096:8</code>.</li>
+<li><strong>Progress:</strong> <code>StageTag</code> gains <code>"stage4"</code>, and the terminal stage for event counting becomes per-run.</li>
+</ul>
+<h3 id="44-worker">4.4 Worker</h3>
+<ul>
+<li><p><strong>Plan.</strong> The <code>(meas_key, embedder)</code> pairs are grouped by <code>BackboneKey(version, size, revision, compute_dtype)</code> in sorted order. Inside Stage 4, an embedder's device is forced to <code>cuda</code>. A missing CUDA fails the shard, never falling back to CPU, except for a test-only <code>PHENOTYPIC_STAGE4_DEVICE=cpu</code>.</p></li>
+<li><p><strong>Loop.</strong></p>
+<ol type="1">
+<li>Fence check, then filter: an image whose store already holds every key fresh, with matching params, goes to publish-only.</li>
+<li><code>configure_determinism()</code>.</li>
+<li>For each backbone: load once (<code>dtype=compute_dtype</code>, then <code>.to("cuda")</code>; <code>device_map</code> would need <code>accelerate</code>, which the foundation extra does not carry), stream images through a <code>BatchEncoder</code>, and write signals as each image's key completes. Then free the model.</li>
+<li>A one-thread commit pool commits images whose signals are complete, under the commit guard, overlapping GPU work. (One thread, not two, per plan review I5: per-image call order then holds by construction; commits are I/O-bound and short next to GPU work.)</li>
+</ol></li>
+<li><p><strong>DataLoader.</strong> One item is one image, with workers <code>cpus_per_task - 1</code> (from the CLI's allocation-aware worker count), one loader per backbone, <code>spawn</code> context, not persistent, order-preserving, identity <code>collate_fn</code> (plan review I3). Workers read the store read-only, compute the binds digests and cut and resize every crop through the embedder's own functions. For <code>masked_dense</code>, they cut patch-aligned tiles.</p></li>
+<li><p><strong>BatchEncoder.</strong> It keeps one queue per input geometry. Every forward pass of a queue has exactly that queue's m inputs; the last is zero-padded. Inputs are normalised as <code>embed_crops</code> does, cast to <code>compute_dtype</code>, run under <code>inference_mode</code>, and pooled in float32. Vectors are routed back by <code>(image, key, row)</code>, and each drained image reports every pass size its rows ran at. After any failed forward pass, the encoder re-queues that pass's rows and refuses all further use, so the shard fails rather than continue with images a failed pass held (2026-11-20, P1/P2 review I6).</p></li>
+<li><p><strong>Batch size.</strong> <code>m = min(batch_size, pow2floor((0.8·GPU_mem − weights − 1 GiB) / per_sample))</code>. It is a function of the GPU model, the backbone and the input geometry only, never of free memory. m is <strong>per queue geometry</strong> within one backbone (<code>crop_px</code>, or a <code>masked_dense</code> tile's h × w): embedders sharing a model load may differ in <code>crop_px</code>, and a 448-px crop costs about four times a 224-px one (P1/P2 review I2). One function computes it from the loaded model (<code>physical_batch_for</code>, review I3); where embedders share a geometry, the smallest <code>batch_size</code> caps it. On OOM, that queue's m halves once for the shard, and every pass size an image's rows ran at is recorded in its <code>compute</code> block (§4.5). At m = 1, or on a second OOM in that queue, the shard exits non-zero, and the next round retries. The formula's constants live in a logic-validation script.</p></li>
+<li><p><strong>Determinism.</strong></p>
+<ul>
+<li>cuDNN deterministic, no benchmark.</li>
+<li>TF32 off for both matmul and cuDNN (DINO's patch embedding is a conv).</li>
+<li><code>set_float32_matmul_precision("highest")</code>.</li>
+<li><code>use_deterministic_algorithms(True, warn_only=True)</code>.</li>
+</ul></li>
+<li><p><strong>Batch invariance is a hypothesis until measured</strong> (§5). At a fixed physical shape, a row's vector should be bit-identical whatever its batch neighbours, position or shard.</p></li>
+<li><p><strong>Embedder refactor.</strong> <code>MeasureEmbedding</code> splits into three steps:</p>
+<ul>
+<li><code>prepare_regions(image)</code> (CPU), which produces keys, inputs, binds and input;</li>
+<li><code>encode(prepared, encoder)</code>;</li>
+<li><code>payload_from(prepared, vectors, descriptor)</code>.</li>
+</ul>
+<p>The inline <code>payload()</code> becomes prepare, inline encode, then <code>payload_from</code>, so CPU bytes are unchanged; a golden pins that. <code>entry_descriptor_for(model, compute)</code> avoids a second model load.</p></li>
+</ul>
+<h3 id="45-larger-models">4.5 Larger models</h3>
+<ul>
+<li>The embedding size type gains <code>giant</code>: DINOv2 only, ViT-g/14, 1536-d. (<code>huge_plus</code>, ViT-H+/16, and <code>7b</code>, ViT-7B/16, both DINOv3, are deferred: U11.)</li>
+<li>A validator refuses impossible size/version pairs.</li>
+<li>Repository ids and dimensions are verified against the hub before use.</li>
+<li>DINOv3 stays licence-gated (<code>require_license_acceptance</code>), refused at preflight and again at shard start, before any load.</li>
+<li>A per-entry provenance block, <code>compute: {device, device_name, capability, torch, cuda, physical_batch, stage}</code>, is excluded from descriptor grouping. <code>compute_dtype</code> is not excluded. <code>physical_batch</code> is the one pass size the entry's rows ran at. When they ran at several (an OOM halving part-way through the image, or an inline image's shorter last pass), <code>physical_batch</code> is null and the block gains <code>physical_batches</code>, every size, largest first, e.g. <code>[64, 32]</code>; an entry that ran no pass records <code>physical_batch: null</code> (P1/P2 review I1, M10).</li>
+</ul>
+<h3 id="46-continuation-and-measure-mode">4.6 Continuation and measure mode</h3>
+<ul>
+<li><strong>Done.</strong> "Stage 4 done" means the record is valid. "Stage 4 pending" means <code>stages.stage3</code> is present, the store matches the work id, a measurement table exists, and there is no record. <code>ResumeStage</code> gains <code>"stage4"</code>.</li>
+<li><strong>Recovery shortcuts.</strong> Those that publish today (local <code>_terminal_output_exists</code>, SLURM <code>run_stage3_step</code>, and Stage 3's own publish) are gated on <code>defers_embeddings</code>. Otherwise they would certify an image with no embeddings.</li>
+<li><strong>Interrupted states resume content-defined:</strong>
+<ul>
+<li>signals complete but no commit: commit only;</li>
+<li>store promoted but no record: publish only;</li>
+<li>record published but signals remaining: orphan cleanup.</li>
+</ul></li>
+<li><strong>A Stage-1 re-run deletes the image's Stage-4 signals.</strong> <code>--restart</code> clears them with <code>progress/</code>.</li>
+<li><strong><code>--retry-failures</code></strong> re-runs only the GPU embedding of a Stage-4 failure.</li>
+<li><strong>Measure mode (U4, U8, U10).</strong> The measure core carries the existing embeddings forward and defers <code>embed</code> and <code>_republish_table_marker</code>. Stage 4 runs in <em>republish</em> mode, flagged in the manifest (version 4 → 5), so it rewrites an already-certified store's embeddings and then republishes its record. That is a separate invocation, so "one writer per pass" holds.</li>
+</ul>
+<h3 id="47-refusals-and-preflight">4.7 Refusals and preflight</h3>
+<p>These are each one usage-error line in the read-only half, outside <code>--skip-validation</code>, above <code>--restart</code>, <code>--overwrite</code>, <code>mint_run_identity</code> and <code>--dry-run</code>:</p>
+<ul>
+<li><strong>R1:</strong> <code>--embed-stage gpu</code> with <code>--mode process</code>.</li>
+<li><strong>R2 (U9, O3):</strong> <code>--embed-stage gpu</code> with an in-scope embedder pinned to <code>device="cpu"</code>, or with an in-scope embedder that has no Stage-4 encoder (any <code>MeasureEmbedding</code> but <code>MeasureDinoEmbedding</code>). Under <code>auto</code>, either resolves the run inline instead, with a one-line note naming the embedder (O3 amended 2026-11-20).</li>
+<li><strong>R3 (U3):</strong> a continuation whose <code>embed_stage</code> differs from the recorded one.</li>
+</ul>
+<p>New preflight warnings, each with <code>HINTS</code> and a docs row:</p>
+<ul>
+<li><code>PF-EMBED-SHARD-AMORTIZE</code>: too few images per shard to pay off the cold load;</li>
+<li><code>PF-EMBED-RESOURCES</code>: <code>--mem</code> too low for the loader.</li>
+</ul>
+<h3 id="48-failure-modes">4.8 Failure modes</h3>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Failure</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GPU OOM</td>
+<td>Halve m once; at m = 1 the shard exits. Node state, never a terminal per-image record; the next round retries</td>
+</tr>
+<tr class="even">
+<td>Host OOM (loader)</td>
+<td>The shard dies; the next round retries</td>
+</tr>
+<tr class="odd">
+<td>No usable CUDA (e.g. a P100 without <code>gpu_latest</code>)</td>
+<td>Checked at shard start against the torch arch list; fails fast</td>
+</tr>
+<tr class="even">
+<td>Corrupt store at load</td>
+<td>Per-image scientific failure (<code>stage4</code>); the shard continues</td>
+</tr>
+<tr class="odd">
+<td><code>GridCellOutsideImageError</code>, non-finite float16</td>
+<td>Per-image failure, as inline</td>
+</tr>
+<tr class="even">
+<td>Root changed before commit</td>
+<td><code>StoreRootChangedError</code>, the part removed; a plain retry next round</td>
+</tr>
+<tr class="odd">
+<td>Walltime mid-batch</td>
+<td>Uncommitted images untouched (root-last); written signals survive; the next round reclassifies</td>
+</tr>
+<tr class="even">
+<td>Epoch fenced</td>
+<td>Nothing is published after the fence</td>
+</tr>
+<tr class="odd">
+<td>Cold load</td>
+<td>Paid once per shard per round; a preflight warning when shards are too small; pre-staged weights and <code>HF_HUB_OFFLINE=1</code> recommended</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="5-verification">5. Verification</h2>
+<ul>
+<li><strong>Byte-identity of the inline path.</strong> A golden of today's inline CPU bytes (objects and grid, stub backbone, and a real small backbone where cached) stays identical through the refactor.</li>
+<li><strong>Batch invariance, measured on hardware.</strong> On <code>exfab</code> and on <code>short_gpu --constraint=gpu_latest</code> (Ada, A100, Blackwell), a crop's vector stays bit-identical when its batch neighbours, position or partition change. The job also reports cross-GPU distance and float16 range for ViT-g. The spec's "vectors don't depend on sharding" rests on this measurement. If it fails, the fallback is an m = 1-per-crop mode for runs that need byte stability.</li>
+<li><strong><code>replace_run_embeddings</code>:</strong>
+<ul>
+<li>root-last;</li>
+<li>measurement and metadata inodes carried;</li>
+<li>other runs and <code>upstream</code> byte-equal;</li>
+<li><code>stale</code> recomputed;</li>
+<li>root-change retry;</li>
+<li>re-consolidation;</li>
+<li>checked by an independent reader (zarr-python, pyarrow).</li>
+</ul></li>
+<li><strong>Local end-to-end with a stub</strong> (<code>PHENOTYPIC_STAGE4_DEVICE=cpu</code>), with crash injection after the signal, after the promote and after the record. The deliverable must be byte-equal to an inline run's <strong>when both run the same physical pass shape</strong>: <code>batch_size=1</code> on every embedder, so inline runs <code>(1, 3, h, w)</code> passes and Stage 4 runs <code>m = 1</code>, unpadded, one row per pass. "One pass each side" (an inline <code>batch_size</code> at least its region count) is <strong>not</strong> the same shape: Stage 4 pads its pass to <code>m</code> and batches the rows of several images together, and CPU GEMM bits depend on the row count (measured, P3–P4 review I1, <code>i29</code>, torch 2.11: row 0 of the stub's <code>Linear(8, 8)</code> over 257 tokens differs in <strong>5 of 2,056</strong> float32 values, max 5.96e-8, between a 1-row pass and passes of 2, 8, 64 and 512 rows, at 1 and 4 threads; C5 measured up to 4.77e-7, thread-count dependent). Byte equality at a larger batch is then float16 rounding absorbing that difference, and another CPU family can flip a bit. At any other shape the two agree within an always-on per-row cosine floor (<code>&gt;= 1 − 1e-6</code>), which is the guard; the byte check holds only where the shapes truly match.</li>
+<li><strong>Controller unit tests with a fake scheduler:</strong>
+<ul>
+<li>rounds and zero-progress;</li>
+<li>no Stage-2/Stage-4 counter crosstalk;</li>
+<li>ledger roles;</li>
+<li>sidecar absence.</li>
+</ul></li>
+<li><strong>Live SLURM smoke on <code>exfab</code>.</strong> A short <code>--time</code> forces a walltime kill, and recovery happens by round. Also a no-detector run with <code>--gpu-slurm</code>.</li>
+<li><strong>Measure mode over a staged run</strong> re-embeds on GPU, republishes, and exits 0.</li>
+<li><strong>The end-of-change full sharded regression,</strong> once.</li>
+</ul>
+<h2 id="6-build-phases">6. Build phases</h2>
+<div class="scroll"><table>
+<thead>
+<tr class="header">
+<th>Phase</th>
+<th>Content</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>P0</td>
+<td>Logic-validation script for m, amortisation and partition; inline CPU golden</td>
+<td>per-step guards</td>
+</tr>
+<tr class="even">
+<td>P1</td>
+<td>Embedder refactor (prepare / encode / payload)</td>
+<td>golden byte-identical</td>
+</tr>
+<tr class="odd">
+<td>P2</td>
+<td>Large models, <code>compute_dtype</code>, <code>BatchEncoder</code>, determinism, batch size</td>
+<td>unit tests, plus the GPU batch-invariance job across three GPU models</td>
+</tr>
+<tr class="even">
+<td>P3</td>
+<td><code>replace_run_embeddings</code>, Stage-4 signal</td>
+<td>store-transaction tests, independent reader</td>
+</tr>
+<tr class="odd">
+<td>P4</td>
+<td>Local Stage 4: resolver, refusals, deferral, gated recovery, resume</td>
+<td>local end-to-end and crash injection</td>
+</tr>
+<tr class="even">
+<td>P5</td>
+<td>SLURM: controller v2, rounds, worklist, no-detector plan, preflight</td>
+<td>fake-scheduler tests, live <code>exfab</code> smoke</td>
+</tr>
+<tr class="odd">
+<td>P6</td>
+<td>Measure mode, republish Stage 4</td>
+<td>measure-over-staged end-to-end</td>
+</tr>
+<tr class="even">
+<td>P7</td>
+<td>Docs (<code>_cli/CLAUDE.md</code>, <code>tracked_state.md</code>, the batch-processing tutorial, the embeddings how-to), then the full regression</td>
+<td>full sharded regression</td>
+</tr>
+</tbody>
+</table></div>
+<p>A run-console control for <code>--embed-stage</code> is a GUI follow-up. It needs the FEATURES.md and WORKFLOWS.md ledgers.</p>
+<h2 id="7-left-to-the-builder">7. Left to the builder</h2>
+<ul>
+<li>Exact pool sizes, and the <code>per_sample</code> constant (validated by the P0 script and the P2 measurement).</li>
+<li>Whether <code>accelerate</code> is needed for <code>device_map</code> loading, which is a dependency question for the <code>foundation</code> extra.</li>
+<li>Internal names, beyond those other modules consume.</li>
+</ul>
+</section></main>
+<footer>Rendered from docs/superpowers/specs/2026-11-12-gpu-embedding-staging/design.md. The Markdown is the source of truth: changes go there first, then this page is re-rendered.</footer>
+</div>

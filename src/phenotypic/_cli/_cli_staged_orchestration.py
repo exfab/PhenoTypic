@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
+    slurm_scripts_dir,
     source_image_stem,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -58,6 +59,8 @@ _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
 _COMPLETION_FILENAME = "staged_finalization_complete.json"
 _LOCK_FILENAME = ".staged_orchestration.lock"
+_STAGE4_WORKLIST_FILENAME = "stage4_worklist.json"
+_STAGE4_WORKLIST_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -154,6 +157,11 @@ def initialize_orchestration(
         "last_retryable_digest": None,
         "last_retryable_count": None,
         "zero_progress_rounds": 0,
+        # Stage 4's rounds have their own counters (#282 spec §4.3): a GPU
+        # embedding round never inherits Stage 2's zero-progress count.
+        "stage4_round": 0,
+        "stage4_last_progress_digest": None,
+        "stage4_zero_progress_rounds": 0,
         "active_job_id": None,
         "expected_controller_id": None,
         "controller_config": str(controller_config_path),
@@ -280,6 +288,91 @@ def retryable_digest(
     identities = sorted(entry.identity for entry in entries)
     digest = hashlib.sha256("\n".join(identities).encode("utf-8")).hexdigest()
     return digest, len(identities)
+
+
+def stage4_worklist_path(output_dir: Path) -> Path:
+    """``<output>/.phenotypic/slurm_scripts/stage4_worklist.json``: the current round's worklist."""
+    return slurm_scripts_dir(output_dir) / _STAGE4_WORKLIST_FILENAME
+
+
+@dataclass(frozen=True)
+class Stage4Shard:
+    """One GPU shard's slice of a Stage-4 round's worklist (#282 spec §4.3).
+
+    Attributes:
+        round_index: The round the worklist was written for.
+        manifest_path: The staged manifest the entries come from.
+        entries: The images this shard embeds; empty for a shard with no
+            work, which exits ``0``.
+    """
+
+    round_index: int
+    manifest_path: Path
+    entries: list[StagedManifestEntry]
+
+
+def write_stage4_worklist(
+    path: Path,
+    *,
+    round_index: int,
+    manifest_path: Path,
+    retryable: Sequence[StagedManifestEntry],
+    n_shards: int,
+) -> Path:
+    """Atomically write one Stage-4 round's worklist over *n_shards* GPU shards.
+
+    Only the *retryable* set is partitioned, so after a walltime the leftover
+    work spreads over every GPU rather than staying on the shard that held it.
+    The set is sorted by identity before the split, so the partition does
+    not depend on the order the classifier produced it in; ``partition_shards``
+    keeps every image exactly once, and shard sizes differ by at most one.
+    Shards beyond the work are written empty.
+
+    Payload: ``{"version": 1, "round": n, "manifest": path, "shards": [[entry, ...], ...]}``.
+
+    Returns:
+        *path*.
+    """
+    from ._cli_staged_slurm import partition_shards
+
+    ordered = sorted(retryable, key=lambda entry: entry.identity)
+    shards = partition_shards(ordered, max(1, int(n_shards)))
+    atomic_write_json(
+        path,
+        {
+            "version": _STAGE4_WORKLIST_VERSION,
+            "round": int(round_index),
+            "manifest": str(manifest_path),
+            "shards": [[asdict(entry) for entry in shard] for shard in shards],
+        },
+    )
+    return path
+
+
+def load_stage4_worklist(path: Path, shard_index: int) -> Stage4Shard:
+    """Read shard *shard_index* of the Stage-4 worklist at *path*.
+
+    Raises:
+        ValueError: If the worklist is of another version or malformed, or
+            *shard_index* names no shard: a script and a worklist written
+            for different shard counts are a submitter skew, never "no work".
+    """
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("version") != _STAGE4_WORKLIST_VERSION:
+        raise ValueError(f"Unsupported Stage-4 worklist version in {path}")
+    shards = raw.get("shards")
+    if not isinstance(shards, list) or not all(isinstance(s, list) for s in shards):
+        raise ValueError(f"Stage-4 worklist {path} has no shard list")
+    if not 0 <= shard_index < len(shards):
+        raise ValueError(
+            f"Stage-4 worklist {path} has {len(shards)} shards; "
+            f"shard {shard_index} does not exist"
+        )
+    return Stage4Shard(
+        round_index=int(raw["round"]),
+        manifest_path=Path(raw["manifest"]),
+        entries=[StagedManifestEntry(**entry) for entry in shards[shard_index]],
+    )
 
 
 def snapshot_inventory_parquets(
@@ -985,6 +1078,7 @@ def current_slurm_job_id() -> str:
 
 __all__ = [
     "LiveSlurmJobs",
+    "Stage4Shard",
     "StagedManifestEntry",
     "active_ledger_job_ids",
     "append_job_ledger",
@@ -998,6 +1092,7 @@ __all__ = [
     "initialize_orchestration",
     "live_slurm_job_ids",
     "load_orchestration_state",
+    "load_stage4_worklist",
     "load_staged_manifest",
     "mark_local_staged_complete",
     "mark_staged_complete",
@@ -1013,11 +1108,13 @@ __all__ = [
     "scheduler_job_is_active",
     "snapshot_inventory_parquets",
     "stage2_failure_journal_path",
+    "stage4_worklist_path",
     "staged_completion_path",
     "staged_completion_matches",
     "staged_job_ledger_path",
     "submit_with_intent",
     "terminal_stage2_identities",
     "update_job_dependency",
+    "write_stage4_worklist",
     "write_staged_manifest",
 ]

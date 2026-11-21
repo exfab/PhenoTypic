@@ -52,7 +52,12 @@ if _TYPE_CHECKING:
 from phenotypic.schema import MeasurementInfo  # noqa: E402
 from phenotypic.sdk_ import FootprintMixin  # noqa: E402
 from ._measure_features import MeasureFeatures  # noqa: E402
-from ._measure_embedding import MeasureEmbedding  # noqa: E402
+from ._measure_embedding import (  # noqa: E402
+    BackboneInputs,
+    MeasureEmbedding,
+    PreparedRegions,
+    RegionEncoder,
+)
 from ._image_operation import ImageOperation  # noqa: E402
 from ._image_enhancer import DetectionClearedWarning, ImageEnhancer  # noqa: E402
 from ._image_denoiser import ImageDenoiser  # noqa: E402
@@ -83,6 +88,9 @@ from ._ref_metadata import RefMetadata  # noqa: E402
 __all__ = [
     "MeasureFeatures",
     "MeasureEmbedding",
+    "BackboneInputs",
+    "PreparedRegions",
+    "RegionEncoder",
     "ImageOperation",
     "ImageEnhancer",
     "DetectionClearedWarning",

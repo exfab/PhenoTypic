@@ -669,7 +669,7 @@ class Dinov2CheckpointManager:
 
     DINOv2 is Apache-2.0 and ungated — no license-acceptance handshake and no
     token are required. The ``size`` maps to the Hugging Face id
-    (``facebook/dinov2-{small|base|large}``).
+    (``facebook/dinov2-{small|base|large|giant}``).
 
     All ``huggingface_hub`` imports are deferred to
     :func:`snapshot_download`.
@@ -679,6 +679,9 @@ class Dinov2CheckpointManager:
         "small": "facebook/dinov2-small",
         "base": "facebook/dinov2-base",
         "large": "facebook/dinov2-large",
+        # ViT-g/14, for MeasureDinoEmbedding only (#282 U11); DinoSize, the
+        # detectors' size type, does not offer it.
+        "giant": "facebook/dinov2-giant",
     }
 
     def __init__(self, *, size: str = "base") -> None:

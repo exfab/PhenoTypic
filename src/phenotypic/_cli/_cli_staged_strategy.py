@@ -47,7 +47,6 @@ from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import (
     PerImageScientificError,
     WorkIdentity,
-    work_id_for_image,
     work_identity_for_image,
 )
 from ._cli_stage2_token import (
@@ -56,10 +55,12 @@ from ._cli_stage2_token import (
     detector_slot,
     stage2_result_replayable,
 )
+from ._cli_embed_stage import apply_stage4_counts, defers_embeddings
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
     staged_store_matches_work_id,
+    stages_1_to_3_done,
     valid_stage1_store,
     write_stage3_completion_marker,
 )
@@ -109,6 +110,9 @@ class StagedGpuStrategy(ExecutionStrategy):
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
         read_kwargs = input_read_settings(cfg.bit_depth, cfg.detect_mode)
+        # One fact for every gate below (#282 P4 T2): under deferral Stage 3
+        # writes no record and no embeddings, and Stage 4 owns the image.
+        deferring = defers_embeddings(cfg)
 
         def _has_measurement_table(ds_name: str, stem: str) -> bool:
             """Whether the store holds the table its own Stage-3 save wrote."""
@@ -120,8 +124,18 @@ class StagedGpuStrategy(ExecutionStrategy):
             )
 
         def _terminal_output_exists(ds_name: str, img: Path) -> bool:
-            """Return whether the image has its durable terminal artifact."""
-            work_id, _ = work_id_for_image(cfg, ds_name, img)
+            """Return whether the image has its durable terminal artifact.
+
+            Under deferral the answer is "a valid record, or Stages 1-3
+            done" (``stages_1_to_3_done``), and nothing is published: this
+            one function gates Stage 2 as well as Stage 3, so an image waiting
+            on Stage 4, whose Stage-2 signal is already consumed, is neither
+            re-detected nor re-measured (#282 plan review C1).
+
+            Called only after Stage 1, with Stage 1's identity for the image
+            (``identities``): it never re-hashes the input (#282 review I4).
+            """
+            work_id = identities[(ds_name, img)].work_id
             if valid_image_success(
                 output_dir,
                 dataset=ds_name,
@@ -129,6 +143,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                 work_id=work_id,
             ):
                 return True
+            if deferring:
+                return stages_1_to_3_done(
+                    output_dir, ds_name, source_image_stem(img), work_id
+                )
             store = zarr_store_path(
                 output_dir, ds_name, source_image_stem(img)
             )
@@ -341,16 +359,20 @@ class StagedGpuStrategy(ExecutionStrategy):
                         image_name=img.name,
                         work_id=identity.work_id,
                         reference_pin=_reference_pin(img, identity),
+                        defer_embeddings=deferring,
                     )
-                    _publish_local_image_success(
-                        cfg,
-                        self.output_manager,
-                        output_dir,
-                        ds.name,
-                        img,
-                        attempt_id,
-                        work_identity=_record_identity(identity),
-                    )
+                    if not deferring:
+                        # Under deferral Stage 4 publishes the record, once,
+                        # after its embeddings commit (spec §4.2).
+                        _publish_local_image_success(
+                            cfg,
+                            self.output_manager,
+                            output_dir,
+                            ds.name,
+                            img,
+                            attempt_id,
+                            work_identity=_record_identity(identity),
+                        )
                     write_stage3_completion_marker(
                         output_dir,
                         ds.name,
@@ -390,6 +412,26 @@ class StagedGpuStrategy(ExecutionStrategy):
                 delayed(_stage3)(ds, img) for ds, img in tasks
             ):
                 results[ds_name]["completed" if ok else "failed"] += 1
+            if deferring:
+                # ---- Stage 4: GPU embedding, then the record (#282 P4 T3) --
+                # An image counts completed only once Stage 4 published it.
+                from . import _cli_stage4_worker
+
+                from ._cli_staged_slurm import manifest_entry_for_identity
+
+                # Stage 1's identities, the run's one per image: Stage 4
+                # recomputes none after Stages 1-3 (review I4).
+                stage4 = _cli_stage4_worker.run_local_stage4(
+                    cfg,
+                    self.output_manager,
+                    output_dir,
+                    datasets,
+                    {
+                        key: manifest_entry_for_identity(key[0], key[1], identity)
+                        for key, identity in identities.items()
+                    },
+                )
+                apply_stage4_counts(results, stage4)
 
         ds_results = {
             name: DatasetResults(

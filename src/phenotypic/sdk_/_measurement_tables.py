@@ -1646,6 +1646,138 @@ def replace_image_tables(
     return run
 
 
+def replace_run_embeddings(
+    store_path: Path,
+    run_id: str,
+    payloads: Mapping[str, EmbeddingPayload],
+    *,
+    expected_root_sha256: str,
+    objmap_sha256: str | None,
+    array_sha256: Mapping[str, str],
+    durable: bool | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> TableRun:
+    """Rewrite the ``embeddings`` block of one run of a promoted store, root last.
+
+    Stage 4's store transaction (#282 spec §4.2). Only
+    ``tables/<run_id>/embeddings/`` is rewritten, as new files. Every other
+    file -- pixels, labels, figures, the run's measurement and metadata
+    tables, every other run folder -- is carried by
+    :func:`_rewrite_store_tables`' hard-link copy, and the root's ``upstream``
+    block, ``metadata_table`` blocks, figures descriptor, journal and every
+    other run entry are carried unchanged.
+
+    **The run's ``embeddings`` block is a total description of this write**,
+    as in :func:`replace_image_tables`: an entry the run held before and
+    *payloads* lacks is dropped with its files. Empty *payloads* leave the run
+    with no ``embeddings`` key.
+
+    **``stale`` is recomputed for this run only** (spec D7), against
+    *objmap_sha256* and *array_sha256*. The caller computes those by reading
+    the **live** store's level-0 arrays (:func:`objmap_digest`,
+    :func:`array_digest`), never from the payloads' own ``binds``, so a
+    payload computed from another image is written ``stale: true`` (#282
+    plan review I11). Other runs' entries keep their ``stale`` as recorded.
+
+    The root is written last, and re-consolidated when it was consolidated
+    (:func:`_rewrite_store_tables`).
+
+    Args:
+        store_path: A promoted ``*.ome.zarr`` store with a v2 ``tables``
+            descriptor.
+        run_id: The run folder whose embeddings this write replaces; it must
+            already be declared in the root.
+        payloads: ``{"<model>/<layer>/<region>": EmbeddingPayload}``, each
+            mapping key equal to its payload's key.
+        expected_root_sha256: sha256 of the root bytes the payloads were
+            computed against. Checked when the root is read and again
+            immediately before the promote.
+        objmap_sha256: :func:`objmap_digest` of the store's level-0 objmap,
+            or ``None`` when it has none (objects entries then read stale).
+        array_sha256: :func:`array_digest` of each level-0 series, keyed by
+            series name, as :func:`refresh_embedding_staleness` takes it.
+        durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+        commit_guard: Publication guard, checked at the commit point.
+
+    Returns:
+        The run, as the promoted root declares it.
+
+    Raises:
+        ValueError: Before any part exists, when the store's tables
+            descriptor is not schema 2 or declares no run *run_id* (or is a
+            version this build does not read); inside the transaction, when a
+            payload does not fit its key (the part is removed).
+        StoreRootChangedError: When the live root is not
+            *expected_root_sha256* at either check; the part is removed and
+            the store is unchanged.
+    """
+    from . import ngff_
+    from ._embedding_tables import write_embedding_tables
+    from ._table_runs import (
+        EMBEDDINGS_KEY,
+        RUNS_KEY,
+        TableRun,
+        _run_of_block,
+        tables_schema_of_block,
+    )
+
+    store_path = Path(store_path)
+    selected: dict[str, TableRun] = {}
+
+    def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
+        schema = tables_schema_of_block(phenotypic)
+        run = _run_of_block(store_path, phenotypic, run_id) if schema == 2 else None
+        if run is None:
+            raise ValueError(
+                f"{store_path} has no run {run_id!r} to replace the embeddings "
+                f"of: its tables descriptor is schema {schema}, and an embedding "
+                "write needs schema 2 with that run declared"
+            )
+        tables = phenotypic[ngff_.PhenotypicAttr.TABLES]
+        assert isinstance(tables, dict)
+        runs = tables[RUNS_KEY]
+        assert isinstance(runs, dict)
+
+        def _populate(part: Path) -> None:
+            entry = {
+                key: deepcopy(value)
+                for key, value in run.descriptor.items()
+                if key != EMBEDDINGS_KEY
+            }
+            if payloads:
+                # A Mapping, never None, so ``stale`` is always recomputed
+                # against the caller's live digests, even when it is empty.
+                entry[EMBEDDINGS_KEY] = write_embedding_tables(
+                    part,
+                    run_id,
+                    payloads,
+                    objmap_sha256=objmap_sha256,
+                    array_sha256=dict(array_sha256),
+                )
+            # Replace this one entry in place: every other run entry and the
+            # upstream block stay the objects (and so the bytes) they were.
+            runs[run_id] = entry
+            selected["run"] = TableRun(
+                store=store_path,
+                run_id=run.run_id,
+                order=run.order,
+                pipeline_sha256=run.pipeline_sha256,
+                descriptor=deepcopy(entry),
+            )
+
+        return _populate
+
+    _rewrite_store_tables(
+        store_path,
+        plan=_plan,
+        durable=durable,
+        commit_guard=commit_guard,
+        clear_table_run=f"{run_id}/{EMBEDDINGS_KEY}",
+        expected_root_sha256=expected_root_sha256,
+    )
+    return selected["run"]
+
+
 def _v1_run_entry(
     phenotypic: Mapping[str, object],
 ) -> tuple[str, dict[str, object]]:

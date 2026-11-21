@@ -523,10 +523,14 @@ def test_an_embedder_that_runs_out_of_memory_records_no_terminal_failure(
 
     from tests._tiny_run import run_cli, with_dino_objects
 
-    def _oom(self, image):
+    def _oom(self, image, **kwargs):
         raise MemoryError("the node ran out")
 
-    monkeypatch.setattr(MeasureDinoEmbedding, "_operate", _oom)
+    # _prepare_regions is the first step of every preparation: measure() and
+    # payload() reach it through _prepare_inline, Stage 4 through the public
+    # prepare_regions (#282 P1, review I4/M11). Patching the public method
+    # alone no longer reaches the inline path.
+    monkeypatch.setattr(MeasureDinoEmbedding, "_prepare_regions", _oom)
     out = tmp_path / "out"
     result = run_cli(tiny_inputs, out, pipeline=with_dino_objects(tmp_path), extra=["--skip-validation"])
     assert result.exit_code != 0

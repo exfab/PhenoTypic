@@ -33,12 +33,15 @@ from ._cli_stage2_token import (
 )
 from ._cli_types import Dataset
 
-ResumeStage = Literal["stage1", "stage2", "stage3", "complete"]
+#: ``"stage4"`` (#282 P4 T4): Stages 1-3 are done and the record is not, in a
+#: run that defers its embeddings to Stage 4 (spec §4.6).
+ResumeStage = Literal["stage1", "stage2", "stage3", "stage4", "complete"]
 _STAGE_ORDER: dict[ResumeStage, int] = {
     "stage1": 0,
     "stage2": 1,
     "stage3": 2,
-    "complete": 3,
+    "stage4": 3,
+    "complete": 4,
 }
 
 
@@ -62,12 +65,7 @@ class StagedResumePlan:
     @property
     def counts(self) -> dict[ResumeStage, int]:
         """Return image counts grouped by required stage."""
-        counts: dict[ResumeStage, int] = {
-            "stage1": 0,
-            "stage2": 0,
-            "stage3": 0,
-            "complete": 0,
-        }
+        counts: dict[ResumeStage, int] = dict.fromkeys(_STAGE_ORDER, 0)
         for item in self.items:
             counts[item.stage] += 1
         return counts
@@ -159,6 +157,92 @@ def stage3_completion_exists(
     return isinstance(stages, dict) and STAGE_STAGE3 in stages
 
 
+def stages_1_to_3_done(
+    output_dir: Path, dataset: str, stem: str, work_id: str
+) -> bool:
+    """Whether one image of a run that embeds on the GPU has finished Stages 1-3.
+
+    **The one "done" predicate under deferral** (#282 plan review C1). When
+    ``defers_embeddings`` holds, Stage 3 (or the single-pass core) writes the
+    store with its measurements and ``stages.stage3``, and writes no record and
+    no embeddings; Stage 4 owns the image from there. So every recovery
+    shortcut that used to publish such an image returns early on this and
+    publishes nothing, and every stage loop skips it: publishing would certify
+    an image with no embeddings, and re-running a stage would re-detect or
+    re-measure it, with its Stage-2 signal already consumed.
+
+    All three conjuncts are needed:
+
+    - ``stages.stage3`` in the record (:func:`stage3_completion_exists`): the
+      core reached its last write. A core that re-runs drops it first.
+    - a store bound to *work_id* (:func:`staged_store_matches_work_id`): the
+      store is this configuration's, not a previous one's.
+    - a measurement table in the store's journal run
+      (``journal_measurement_table``): the final save, not Stage 1's, is on
+      disk.
+
+    It says nothing about Stage 4: an image whose record is valid is both
+    done here and finished (``valid_image_success``).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+        work_id: The image's current work id.
+    """
+    if not stage3_completion_exists(output_dir, dataset, stem):
+        return False
+    store = zarr_store_path(output_dir, dataset, stem)
+    return (
+        staged_store_matches_work_id(store, work_id)
+        and journal_measurement_table(store) is not None
+    )
+
+
+Stage4Status = Literal["done", "pending", "not_ready"]
+
+
+def stage4_status(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    work_id: str,
+    *,
+    republish: bool = False,
+) -> Stage4Status:
+    """Where one image of a run that embeds on the GPU stands with Stage 4 (spec §4.6).
+
+    - ``"done"``: its record is valid (``valid_image_success``), so Stage 4
+      has published it, or nothing is left for Stage 4 to do;
+    - ``"pending"``: it finished Stages 1-3 (:func:`stages_1_to_3_done`) and
+      has no valid record, so Stage 4 owns it;
+    - ``"not_ready"``: neither; Stages 1-3 have work left (or failed).
+
+    Args:
+        output_dir: Run output root.
+        dataset: Dataset name.
+        stem: Image stem.
+        work_id: The image's current work id.
+        republish: Reserved for measure mode's republish Stage 4 (#282 P6
+            T1), which re-embeds an image whose record is valid. Not yet
+            supported.
+
+    Raises:
+        NotImplementedError: If *republish* is true (P6 T1 builds it).
+    """
+    if republish:
+        raise NotImplementedError("republish-mode Stage 4 is built in #282 P6 T1")
+    from ._cli_completion import valid_image_success
+
+    if valid_image_success(
+        output_dir, dataset=dataset, image_stem=stem, work_id=work_id
+    ):
+        return "done"
+    if stages_1_to_3_done(output_dir, dataset, stem, work_id):
+        return "pending"
+    return "not_ready"
+
+
 def write_stage3_completion_marker(
     output_dir: Path,
     dataset: str,
@@ -223,6 +307,29 @@ def remove_stage3_completion_marker(
     )
 
 
+def drop_stages_1_to_3_done(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    *,
+    commit_guard: CommitGuard | None = None,
+) -> None:
+    """Undo :func:`stages_1_to_3_done` before a core re-runs one image (#282 P4 T2).
+
+    Removes ``stages.stage3`` first, then the image's Stage-4 signals. A core
+    that defers its embeddings calls this before its first write, so a crash
+    anywhere inside it leaves an image that is not done, never one that a
+    later invocation would hand to Stage 4 over a half-rewritten store; and
+    signals computed against the store being replaced are gone before it is.
+    """
+    from ._cli_stage4_signal import delete_stage4_signals
+
+    remove_stage3_completion_marker(
+        output_dir, dataset, stem, commit_guard=commit_guard
+    )
+    delete_stage4_signals(output_dir, dataset, stem, commit_guard=commit_guard)
+
+
 def classify_staged_image(
     *,
     output_dir: Path,
@@ -233,8 +340,16 @@ def classify_staged_image(
     process_only_layer: str | None,
     markers_required: bool,
     expected_work_id: str | None = None,
+    defers_embeddings: bool = False,
 ) -> ResumeStage:
     """Return the earliest stage required by one image's durable artifacts.
+
+    With *defers_embeddings* (the run's ``defers_embeddings``, #282 P4 T4), an
+    image that finished Stages 1-3 for *expected_work_id* -- ``stages.stage3``,
+    a store bound to the work id and a measurement table, the conjuncts of
+    :func:`stages_1_to_3_done` -- and has no valid record is ``"stage4"``:
+    only Stage 4 is left, and no earlier stage may re-run it (plan review C1).
+    Without it the same image is ``"stage3"``, as before.
 
     ``slot`` is an ordinary parameter, handed down by the caller, because this
     is a **pure classifier**: it has no ``StagePlan`` to derive one from and it
@@ -289,7 +404,9 @@ def classify_staged_image(
         and stage3_completion_exists(output_dir, dataset, stem)
         and journal_measurement_table(store) is not None
     ):
-        return "stage3"
+        # `store_valid` above is `staged_store_matches_work_id`, so this is
+        # `stages_1_to_3_done` exactly.
+        return "stage4" if defers_embeddings else "stage3"
 
     if (
         process_only_layer is None
@@ -328,8 +445,13 @@ def build_staged_resume_plan(
     process_only_layer: str | None,
     markers_required: bool,
     work_ids: Mapping[str, Mapping[str, str]] | None = None,
+    defers_embeddings: bool = False,
 ) -> StagedResumePlan:
     """Build a filtered worklist and earliest global resume stage.
+
+    *defers_embeddings* is passed to :func:`classify_staged_image` for every
+    image, so an image waiting only on Stage 4 is ``"stage4"`` and stays in
+    the worklist (it is not ``"complete"``).
 
     Relocates each image's pre-slot-keying Stage-2 signal **before**
     classifying it. This is the single funnel every resume passes through and
@@ -364,6 +486,7 @@ def build_staged_resume_plan(
                 process_only_layer=process_only_layer,
                 markers_required=markers_required,
                 expected_work_id=expected_work_id,
+                defers_embeddings=defers_embeddings,
             )
             items.append(StagedResumeItem(dataset.name, image, stage))
             if stage != "complete":
@@ -439,7 +562,13 @@ def clear_downstream_artifacts_for_stage1(
     Token first, then the raw array -- deleting the raw and leaving the token
     makes the next Stage 3 replay into a ``FileNotFoundError``, while the
     reverse merely orphans a ``.npy`` that Stage 2 overwrites.
+
+    The image's Stage-4 signals go last (#282 P4 T4, spec §4.6): they were
+    computed against the store Stage 1 is about to replace, so none of them
+    can be valid at the new root.
     """
+    from ._cli_stage4_signal import delete_stage4_signals
+
     delete_stage2_token(
         output_dir, dataset, image_stem, slot, commit_guard=commit_guard
     )
@@ -451,6 +580,9 @@ def clear_downstream_artifacts_for_stage1(
         dataset,
         image_stem,
         commit_guard=commit_guard,
+    )
+    delete_stage4_signals(
+        output_dir, dataset, image_stem, commit_guard=commit_guard
     )
 
 
@@ -522,12 +654,14 @@ __all__ = [
     "build_staged_resume_plan",
     "classify_staged_image",
     "clear_downstream_artifacts_for_stage1",
+    "drop_stages_1_to_3_done",
     "migrate_legacy_stage3_markers",
     "pipeline_content_digest",
     "reconcile_stage3_publications",
     "remove_stage3_completion_marker",
     "stage3_completion_exists",
     "staged_store_matches_work_id",
+    "stages_1_to_3_done",
     "valid_stage1_store",
     "valid_staged_store",
     "write_stage3_completion_marker",

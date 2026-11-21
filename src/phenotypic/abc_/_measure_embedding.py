@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Union
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Literal, Protocol, Union
 
 import numpy as np
 import pandas as pd
@@ -22,6 +24,7 @@ from phenotypic.sdk_._table_runs import (
 )
 from phenotypic.sdk_.funcs_ import validate_measure_integrity
 from phenotypic.sdk_.typing_ import (
+    COMPUTE_DTYPE_DEFAULT,
     EmbeddingLayer,
     EmbeddingRegions,
     OperationField,
@@ -46,10 +49,15 @@ _GRID_KEY_COLUMNS: Final[tuple[GRID, ...]] = (
     GRID.COL_INTERVAL_END,
 )
 
-#: Fields added to ``MeasureEmbedding`` after embedders were in use (#281
-#: named embedders / layer), and the default that leaves
-#: :meth:`MeasureEmbedding._params_sha256` where it was before each existed.
-_DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {"name": None, "layer": "rgb"}
+#: Fields added to embedders after they were in use (#281 named embedders /
+#: layer; #282 ``MeasureDinoEmbedding.compute_dtype``), and the default that
+#: leaves :meth:`MeasureEmbedding._params_sha256` where it was before each
+#: existed, so a #281 table does not read stale.
+_DIGEST_NEUTRAL_DEFAULTS: Final[dict[str, object]] = {
+    "name": None,
+    "layer": "rgb",
+    "compute_dtype": COMPUTE_DTYPE_DEFAULT,
+}
 
 #: Descriptor fields :meth:`MeasureEmbedding.entry_descriptor` must return.
 _ENTRY_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
@@ -107,6 +115,114 @@ class GridCellOutsideImageError(ValueError):
         return (type(self), (self.row, self.col, self.rows, self.cols, self.shape))
 
 
+@dataclass(frozen=True, eq=False)
+class BackboneInputs:
+    """What an encoder runs on: one image's regions, prepared on the CPU (#282).
+
+    ``kind`` says what ``arrays`` hold:
+
+    - ``"crops"``: one ``(N, px, px, 3)`` uint8 array, each region's crop
+      already resized to the backbone's input size;
+    - ``"tiles"``: one ``(3, h, w)`` float32 array per tile of the plate, the
+      HF processor's own ``pixel_values`` (each side a multiple of the patch),
+      so every encoder normalises a tile exactly as the inline path does;
+    - ``"boxes"``: the ``(N, 4)`` int64 ``(r0, c0, r1, c1)`` boxes, followed,
+      for ``regions="objects"``, by the ``(N,)`` int64 ``Object_Label`` of
+      each box. For an embedder with no backbone; inline only.
+
+    ``pooling`` is what an encoder does with the backbone's tokens:
+    ``"crop_cls"`` / ``"crop_mean"`` pool each crop to one vector,
+    ``"patches"`` returns each tile's patch grid for
+    :meth:`MeasureEmbedding.vectors_from` to pool under the regions' masks,
+    and ``"none"`` is the ``"boxes"`` kind's, which has no tokens.
+
+    Equality is identity (``eq=False``): an array has no single truth value.
+    """
+
+    kind: Literal["crops", "tiles", "boxes"]
+    arrays: tuple[np.ndarray, ...]
+    pooling: Literal["crop_cls", "crop_mean", "patches", "none"]
+
+
+@dataclass(frozen=True, eq=False)
+class PreparedRegions:
+    """One image's regions, ready to encode: everything but the vectors (#282).
+
+    :meth:`MeasureEmbedding.prepare_regions` builds it on the CPU, with no
+    model loaded, and :meth:`MeasureEmbedding.payload_from` turns it and the
+    encoder's vectors into the table's payload. It pickles, so a DataLoader
+    worker process can build it for a GPU encoder in another process.
+
+    Attributes:
+        key: The payload key, ``<model>/<layer>/<region>``
+            (:meth:`MeasureEmbedding.payload_key`).
+        keys: The table's key columns, one row per region, in table order
+            (``Object_Label``, or the ``Grid_*`` columns), index ``0..N-1``.
+        key_column: The entry's ``key``: ``Object_Label`` or
+            ``Grid_RowMajorIdx``.
+        inputs: What the encoder runs on.
+        binds: The digests binding the vectors to this image (spec D7).
+        input: The series, level and layer the regions were read from.
+        pool_plan: What :meth:`MeasureEmbedding.vectors_from` needs after the
+            backbone, for an embedder that pools patch grids (tile offsets,
+            the plate's feature-grid shape, the regions' masks); ``None``
+            otherwise.
+    """
+
+    key: str
+    keys: pd.DataFrame
+    key_column: str
+    inputs: BackboneInputs
+    binds: dict[str, Any]
+    input: dict[str, Any]
+    pool_plan: Mapping[str, Any] | None = None
+
+    @property
+    def n_regions(self) -> int:
+        """The number of regions, ``N``: the rows the table will have."""
+        return len(self.keys)
+
+
+class RegionEncoder(Protocol):
+    """Runs a backbone over :class:`BackboneInputs` (#282).
+
+    :meth:`MeasureEmbedding.inline_encoder` gives the one the inline path
+    uses; #282's Stage 4 brings a batched GPU one. Either is called only for
+    an image with at least one region.
+    """
+
+    def run(self, inputs: BackboneInputs) -> list[np.ndarray]:
+        """The backbone's outputs for *inputs*.
+
+        Returns:
+            For ``"crops"``, one ``(N, D)`` float32 array, already pooled.
+            For ``"tiles"``, one ``(h // p, w // p, D)`` float32 patch grid
+            per tile. For ``"boxes"``, one ``(N, D)`` array.
+        """
+        ...
+
+
+class _InlineBoxEncoder:
+    """The ABC's inline :class:`RegionEncoder`: the subclass's ``_embed_*`` hooks."""
+
+    def __init__(self, embedder: MeasureEmbedding, image: Image) -> None:
+        self._embedder = embedder
+        self._image = image
+
+    def run(self, inputs: BackboneInputs) -> list[np.ndarray]:
+        if inputs.kind != "boxes":
+            raise ValueError(
+                f"{type(self._embedder).__name__} prepared {inputs.kind!r} inputs "
+                "but has no encoder for them; override inline_encoder"
+            )
+        boxes = inputs.arrays[0]
+        if len(inputs.arrays) == 1:
+            vectors = self._embedder._embed_boxes(self._image, boxes)
+        else:
+            vectors = self._embedder._embed_object_boxes(self._image, boxes, inputs.arrays[1])
+        return [np.asarray(vectors)]
+
+
 class MeasureEmbedding(MeasureFeatures, ABC):
     """Embed detected colonies, or the cells of a fixed grid, as feature vectors.
 
@@ -144,7 +260,9 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
     To implement one, subclass this and define three methods:
 
-    - :meth:`_embed_boxes` turns ``(N, 4)`` boxes into ``(N, D)`` vectors;
+    - :meth:`_embed_boxes` turns ``(N, 4)`` boxes into ``(N, D)`` vectors
+      (or, for an embedder with a backbone, override the steps below
+      instead);
     - :meth:`model_token` names the model folder (``"dinov2-vitb14"``);
     - :meth:`entry_descriptor` describes the model and the vectors.
 
@@ -152,6 +270,14 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     its own pixels (a background mask, a masked pool), and list the fields
     that name the model in ``_leading_fields`` to put them before
     ``regions``, ``grid``, ``name`` and ``layer`` in the field order.
+
+    **Three steps.** :meth:`payload` and :meth:`measure` run
+    :meth:`prepare_regions` (CPU: keys, binds and the backbone's inputs),
+    :meth:`encode` (the backbone, through a :class:`RegionEncoder`) and
+    :meth:`payload_from` (checks, ``float16``, the descriptor). An embedder
+    with a backbone overrides :meth:`prepare_regions` to cut its crops,
+    :meth:`inline_encoder` to run them, and :meth:`vectors_from` if it pools
+    patch grids, so a GPU stage can swap only the encoder.
 
     Args:
         regions: ``"objects"`` to embed detected colonies, ``"grid"`` to
@@ -263,9 +389,13 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     # The subclass contract
     # ------------------------------------------------------------------ #
 
-    @abstractmethod
     def _embed_boxes(self, image: Image, boxes: np.ndarray) -> np.ndarray:
         """Embed each box of *image*.
+
+        The ABC's inline encoder calls it (through
+        :meth:`_embed_object_boxes` for objects). Define it, or override
+        :meth:`prepare_regions` and :meth:`inline_encoder` instead, as an
+        embedder with a backbone does; one of the two is required.
 
         Args:
             image: The image being measured.
@@ -274,7 +404,14 @@ class MeasureEmbedding(MeasureFeatures, ABC):
 
         Returns:
             An ``(N, D)`` float array, ``D == entry_descriptor()["dim"]``.
+
+        Raises:
+            NotImplementedError: If the subclass defines neither route.
         """
+        raise NotImplementedError(
+            f"{type(self).__name__} defines neither _embed_boxes nor its own "
+            "prepare_regions and inline_encoder"
+        )
 
     def _layer_pixels(self, image: Image) -> np.ndarray:
         """The ``(H, W, 3)`` pixels this embedder reads: its ``layer`` of *image*.
@@ -352,7 +489,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         return embedding_key(self.model_token(), self.layer, self.region)
 
     def _dim(self) -> int:
-        descriptor = self.entry_descriptor()
+        return self._descriptor_dim(self.entry_descriptor())
+
+    def _descriptor_dim(self, descriptor: Mapping[str, Any]) -> int:
+        """*descriptor*'s ``dim``, after checking it has every required field."""
         missing = _ENTRY_DESCRIPTOR_FIELDS - set(descriptor)
         if missing:
             raise ValueError(
@@ -402,24 +542,44 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         except Exception as exc:
             if is_out_of_memory(exc):
                 raise
-            raise OperationFailedError(
-                operation=type(self).__name__,
-                image_name=image.name,
-                err_type=type(exc),
-                message=str(exc),
-            ) from exc
+            raise self._image_failure(image, exc) from exc
+
+    def _image_failure(self, image: Image, exc: Exception) -> OperationFailedError:
+        """*exc* as the image's failure: what :meth:`measure` and :meth:`payload` raise."""
+        return OperationFailedError(
+            operation=type(self).__name__,
+            image_name=image.name,
+            err_type=type(exc),
+            message=str(exc),
+        )
 
     def _operate(self, image: Image) -> pd.DataFrame:  # type: ignore[override]
+        prepared = self._prepare_inline(image)
+        vectors = self.encode(prepared, self.inline_encoder(image))
+        return self._frame(
+            prepared, self._stored_vectors(vectors, prepared.n_regions, self._dim())
+        )
+
+    @staticmethod
+    def _frame(prepared: PreparedRegions, stored: np.ndarray) -> pd.DataFrame:
+        """The table's frame: *prepared*'s key columns, then ``embedding``."""
+        frame = prepared.keys.reset_index(drop=True)
+        frame["embedding"] = list(stored)
+        return frame
+
+    def _regions(self, image: Image) -> tuple[pd.DataFrame, np.ndarray, np.ndarray | None]:
+        """The key columns, the ``(N, 4)`` boxes, and the labels (objects) or ``None``.
+
+        Raises:
+            GridCellOutsideImageError: As :meth:`_grid_cells`.
+        """
         labels: np.ndarray | None = None
         if self.regions == "objects":
             keys, boxes = self._object_boxes(image)
             labels = keys[str(OBJECT.LABEL)].to_numpy(dtype=np.int64)
         else:
             keys, boxes = self._grid_cells(image)
-        vectors = self._embed_vectors(image, boxes, labels)
-        frame = keys.reset_index(drop=True)
-        frame["embedding"] = list(vectors)
-        return frame
+        return keys.reset_index(drop=True), boxes, labels
 
     @staticmethod
     def _object_boxes(image: Image) -> tuple[pd.DataFrame, np.ndarray]:
@@ -473,25 +633,28 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         ].to_numpy(dtype=np.int64)
         return keys, boxes
 
-    def _embed_vectors(
-        self, image: Image, boxes: np.ndarray, labels: np.ndarray | None = None
-    ) -> np.ndarray:
-        """Embed *boxes*, checked for shape and cast to ``float16``.
+    @staticmethod
+    def _stored_vectors(vectors: np.ndarray, n: int, dim: int) -> np.ndarray:
+        """*vectors*, checked to be ``(n, dim)`` and finite, as ``float16``.
 
-        :meth:`_embed_object_boxes` when *labels* are given (objects), else
-        :meth:`_embed_boxes` (grid cells).
+        A zero-row *vectors* (``encode``'s ``(0, 0)``) becomes ``(0, dim)``.
+
+        Args:
+            vectors: The encoder's vectors, region order.
+            n: The number of regions.
+            dim: The descriptor's ``dim``.
+
+        Raises:
+            ValueError: If the shape is not ``(n, dim)``, or a value is not
+                finite once stored as ``float16``.
         """
-        dim = self._dim()
-        if len(boxes) == 0:
-            return np.zeros((0, dim), dtype=np.float16)
-        if labels is None:
-            vectors = np.asarray(self._embed_boxes(image, boxes))
-        else:
-            vectors = np.asarray(self._embed_object_boxes(image, boxes, labels))
-        if vectors.ndim != 2 or vectors.shape != (len(boxes), dim):
+        vectors = np.asarray(vectors)
+        if n == 0 and vectors.ndim == 2 and vectors.shape[0] == 0:
+            vectors = vectors.reshape(0, dim)
+        if vectors.ndim != 2 or vectors.shape != (n, dim):
             raise ValueError(
-                f"_embed_boxes returned shape {vectors.shape} for {len(boxes)} "
-                f"boxes; expected ({len(boxes)}, dim={dim})"
+                f"the encoder returned shape {vectors.shape} for {n} regions; "
+                f"expected ({n}, dim={dim})"
             )
         stored = vectors.astype(np.float16)
         if not np.isfinite(stored).all():
@@ -508,10 +671,10 @@ class MeasureEmbedding(MeasureFeatures, ABC):
     def _params_sha256(self) -> str:
         """sha256 of this embedder's parameters, canonical JSON (``producer.params_sha256``).
 
-        ``name=None`` and ``layer="rgb"`` are left out
-        (:data:`_DIGEST_NEUTRAL_DEFAULTS`), so an unnamed rgb embedder has the
-        digest it had before either field existed; a name or ``layer="gray"``
-        is part of it.
+        ``name=None``, ``layer="rgb"`` and ``compute_dtype="float32"`` are
+        left out (:data:`_DIGEST_NEUTRAL_DEFAULTS`), so an unnamed rgb
+        float32 embedder has the digest it had before those fields existed;
+        a name, ``layer="gray"`` or a reduced ``compute_dtype`` is part of it.
         """
         params = self.model_dump(mode="json")
         for field, neutral in _DIGEST_NEUTRAL_DEFAULTS.items():
@@ -520,39 +683,63 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def payload(self, image: Image) -> EmbeddingPayload:
-        """Embed *image* and describe the table, for a store writer (spec D3).
+    def prepare_regions(self, image: Image) -> PreparedRegions:
+        """Everything about *image*'s regions an encoder does not compute (#282).
 
-        :meth:`ImagePipeline.embed` calls this for each embedder. The
-        descriptor's ``binds`` are digests of the image the vectors were
+        The key columns, the inputs, and the descriptor's ``binds`` and
+        ``input``, on the CPU and with no model loaded. The ABC's inputs are
+        ``"boxes"``: the regions' boxes (and, for objects, their labels), for
+        :meth:`inline_encoder` to hand to :meth:`_embed_boxes` /
+        :meth:`_embed_object_boxes`. An embedder with a backbone overrides
+        this to cut its crops or tiles here, so a GPU stage can run the same
+        preparation as the inline path.
+
+        Args:
+            image: The image to embed.
+
+        Returns:
+            The prepared regions, in table order.
+
+        Raises:
+            GridCellOutsideImageError: Unwrapped, as :meth:`_grid_cells`
+                raises it; :meth:`payload` and :meth:`measure` wrap it.
+        """
+        keys, boxes, labels = self._regions(image)
+        arrays = (boxes,) if labels is None else (boxes, labels)
+        return self._prepared(
+            image, keys, BackboneInputs(kind="boxes", arrays=arrays, pooling="none")
+        )
+
+    def _prepared(
+        self,
+        image: Image,
+        keys: pd.DataFrame,
+        inputs: BackboneInputs,
+        pool_plan: Mapping[str, Any] | None = None,
+    ) -> PreparedRegions:
+        """A :class:`PreparedRegions` of *keys* and *inputs*, with *image*'s binds.
+
+        The descriptor's ``binds`` are digests of the image the vectors are
         computed from, so a writer can tell whether the store it writes still
         holds that image (spec D7): for objects the objmap, for a grid the
         level-0 array of the series read and the grid edges. ``input`` names
         that series and the ``layer`` read; a ``gray`` grid still binds the
         primary series' array, the stored pixels gray is computed from, so
         staleness tracks the store's pixels.
-
-        Args:
-            image: The image to embed.
-
-        Returns:
-            The payload, keyed :meth:`payload_key`.
         """
         from phenotypic.sdk_ import ngff_
-        from phenotypic.sdk_._embedding_tables import EmbeddingPayload
         from phenotypic.sdk_._measurement_tables import array_digest, objmap_digest
 
-        frame = self.measure(image)
         series = ngff_.primary_series(image._series_names())
         binds: dict[str, Any]
         if self.regions == "objects":
-            key = str(OBJECT.LABEL)
+            key_column = str(OBJECT.LABEL)
             binds = {
                 "objmap_path": ngff_.objmap_path(series),
                 "objmap_sha256": objmap_digest(image.objmap[:]),
             }
         else:
-            key = str(GRID.ROW_MAJOR_IDX)
+            key_column = str(GRID.ROW_MAJOR_IDX)
             row_edges, col_edges = self._grid_edges(image)
             edges = json.dumps(
                 {"row_edges": row_edges.tolist(), "col_edges": col_edges.tolist()},
@@ -562,14 +749,147 @@ class MeasureEmbedding(MeasureFeatures, ABC):
                 "array_sha256": array_digest(image._store_series_array(series)),
                 "grid_sha256": hashlib.sha256(edges.encode("utf-8")).hexdigest(),
             }
-        descriptor = {
-            **self.entry_descriptor(),
-            "key": key,
-            "input": {"series": series, "level": 0, "layer": self.layer},
+        return PreparedRegions(
+            key=self.payload_key(),
+            keys=keys,
+            key_column=key_column,
+            inputs=inputs,
+            binds=binds,
+            input={"series": series, "level": 0, "layer": self.layer},
+            pool_plan=pool_plan,
+        )
+
+    def _prepare_inline(self, image: Image) -> PreparedRegions:
+        """The prepared regions the inline path encodes: :meth:`prepare_regions` (#282 I4).
+
+        :meth:`measure` and :meth:`payload` prepare through this, never a GPU
+        stage. An embedder whose inline encoder can cut its inputs a batch at
+        a time overrides it to defer them, so host memory holds one batch,
+        not the whole image's inputs; the bytes must be
+        :meth:`prepare_regions`'.
+        """
+        return self.prepare_regions(image)
+
+    def _inline_entry_descriptor(self, prepared: PreparedRegions) -> dict:
+        """The descriptor :meth:`payload` gives *prepared*'s entry: :meth:`entry_descriptor` (#282).
+
+        An embedder whose descriptor records how this image's passes ran (a
+        ``compute`` block) overrides it.
+        """
+        return self.entry_descriptor()
+
+    def inline_encoder(self, image: Image) -> RegionEncoder:
+        """The encoder the inline path uses for *image* (#282).
+
+        The ABC's calls :meth:`_embed_object_boxes` (objects) or
+        :meth:`_embed_boxes` (a grid) on *image*. An embedder whose
+        :meth:`prepare_regions` cuts crops or tiles overrides this.
+        """
+        return _InlineBoxEncoder(self, image)
+
+    def encode(self, prepared: PreparedRegions, encoder: RegionEncoder) -> np.ndarray:
+        """*prepared*'s vectors from *encoder*: ``(N, D)``, region order (#282).
+
+        An image with no regions returns a ``(0, 0)`` float32 array without
+        calling ``encoder.run`` or :meth:`_dim` (whose descriptor would load a
+        model); :meth:`payload_from` gives it the descriptor's ``dim``.
+        """
+        if prepared.n_regions == 0:
+            return np.zeros((0, 0), dtype=np.float32)
+        return self.vectors_from(prepared, encoder.run(prepared.inputs))
+
+    def vectors_from(
+        self, prepared: PreparedRegions, outputs: list[np.ndarray]
+    ) -> np.ndarray:
+        """The ``(N, D)`` vectors, region order, from an encoder's *outputs* (#282).
+
+        The ABC's inputs are pooled by the encoder already, so its one output
+        is the vectors, returned as they are (no cast: :meth:`payload_from`
+        casts once, to ``float16``). An embedder whose encoder returns patch
+        grids (``pooling="patches"``) overrides this to pool them under the
+        regions' masks (``prepared.pool_plan``).
+
+        Raises:
+            NotImplementedError: For ``"patches"`` outputs, which need an
+                override.
+            ValueError: If there is not exactly one output.
+        """
+        if prepared.inputs.pooling == "patches":
+            raise NotImplementedError(
+                f"{type(self).__name__} prepares patch grids; it must override vectors_from"
+            )
+        if len(outputs) != 1:
+            raise ValueError(
+                f"a {prepared.inputs.kind!r} encoder returns one array, got {len(outputs)}"
+            )
+        return np.asarray(outputs[0])
+
+    def payload_from(
+        self,
+        prepared: PreparedRegions,
+        vectors: np.ndarray,
+        descriptor: Mapping[str, Any],
+    ) -> EmbeddingPayload:
+        """The payload of *prepared*'s regions and their *vectors* (spec D3, #282).
+
+        Args:
+            prepared: From :meth:`prepare_regions`.
+            vectors: From :meth:`encode`, ``(N, descriptor["dim"])``, or
+                ``(0, 0)`` for an image with no regions.
+            descriptor: The model's part of the entry
+                (:meth:`entry_descriptor`).
+
+        Returns:
+            The payload, keyed :meth:`payload_key`, with ``float16`` vectors
+            and the descriptor ``{**descriptor, key, input, producer, binds}``.
+
+        Raises:
+            ValueError: If *descriptor* lacks a required field, the vectors
+                are not ``(N, dim)``, or one is not finite in ``float16``.
+        """
+        from phenotypic.sdk_._embedding_tables import EmbeddingPayload
+
+        dim = self._descriptor_dim(descriptor)
+        stored = self._stored_vectors(vectors, prepared.n_regions, dim)
+        entry = {
+            **descriptor,
+            "key": prepared.key_column,
+            "input": dict(prepared.input),
             "producer": {
                 "class": type(self).__name__,
                 "params_sha256": self._params_sha256(),
             },
-            "binds": binds,
+            "binds": dict(prepared.binds),
         }
-        return EmbeddingPayload(key=self.payload_key(), frame=frame, descriptor=descriptor)
+        return EmbeddingPayload(
+            key=prepared.key, frame=self._frame(prepared, stored), descriptor=entry
+        )
+
+    @validate_measure_integrity()
+    def payload(self, image: Image) -> EmbeddingPayload:
+        """Embed *image* and describe the table, for a store writer (spec D3).
+
+        :meth:`ImagePipeline.embed` calls this for each embedder. It is
+        :meth:`prepare_regions` (through :meth:`_prepare_inline`), then :meth:`encode` with
+        :meth:`inline_encoder`, then :meth:`payload_from` with
+        :meth:`entry_descriptor` (through :meth:`_inline_entry_descriptor`); see :meth:`_prepared` for the descriptor's
+        ``binds`` and ``input``.
+
+        Args:
+            image: The image to embed.
+
+        Returns:
+            The payload, keyed :meth:`payload_key`.
+
+        Raises:
+            OperationFailedError: As :meth:`measure`.
+            MemoryError: Re-raised unwrapped, as :meth:`measure` does.
+        """
+        try:
+            prepared = self._prepare_inline(image)
+            vectors = self.encode(prepared, self.inline_encoder(image))
+            return self.payload_from(prepared, vectors, self._inline_entry_descriptor(prepared))
+        except Exception as exc:
+            if is_out_of_memory(exc):
+                raise
+            raise self._image_failure(image, exc) from exc

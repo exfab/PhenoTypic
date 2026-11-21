@@ -439,6 +439,7 @@ here when you add a consumer.
 |---|---|---|---|
 | `phenotypicCLI.py:2590` | `diagnostics.verified`, `diagnostics.accepted` | `deep` | Whether startup must refresh publication |
 | `phenotypicCLI.py:3063` | `diagnostics.verified` | `deep` | Whether to finalize measurements |
+| `phenotypicCLI.py` (`_unpublished_images`) | each image's `verdict` | `deep` | Under `--embed-stage gpu`, which images a local run has not published: its staged-complete mark and exit code (`1`, or `3` when every one failed terminally). Stage 3 writes `stages.stage3` and no record there, so a Stage-3 marker is not completion (#282) |
 | `phenotypicCLI.py:714` (`_output_was_migrated`) | `migration_manifest.json` | — | Whether to refuse continuation and name `--restart` |
 | `_cli/_cli_checkpoint_handler.py:310` | `diagnostics.verified` | `deep` | Raise vs. close a terminal-incomplete lifecycle |
 | `_cli/_cli_completion.py` | the three proofs | — | Publishes them; the writer side |
