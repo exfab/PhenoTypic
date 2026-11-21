@@ -2089,11 +2089,16 @@ def stage4_faults(monkeypatch, tmp_path: Path) -> Path:
     return fault_dir
 
 
-def plant_stage4_fault(stem: str) -> None:
-    """Make ``FaultyDinoEmbedding.prepare_regions`` fail image *stem* (needs :func:`stage4_faults`)."""
+def plant_stage4_fault(stem: str, kind: str = "fault") -> None:
+    """Make ``FaultyDinoEmbedding.prepare_regions`` fail image *stem* (needs :func:`stage4_faults`).
+
+    *kind* is ``fault`` (a per-image ``ValueError``), ``oom-once`` (a
+    ``MemoryError``, once) or ``die`` (the spawned loader worker exits); see
+    ``tests/_fakes/faulty_dino_embedder.py``.
+    """
     import os
 
-    (Path(os.environ[STAGE4_FAULT_DIR_ENV]) / stem).write_text("fault", encoding="utf-8")
+    (Path(os.environ[STAGE4_FAULT_DIR_ENV]) / stem).write_text(kind, encoding="utf-8")
 
 
 def clear_stage4_fault(stem: str) -> None:
@@ -2171,6 +2176,27 @@ if args["crash_after"]:
         sys.stderr.flush()
         os._exit(137)
     setattr(worker, args["crash_after"], _crash_after)
+if args.get("crash_inside") == "replace_run_embeddings":
+    # After the part is built, before the promote swaps it in: the store
+    # transaction's one window (P3-P4 review M6).
+    from phenotypic._cli import _cli_stage4_worker as worker
+    from phenotypic.sdk_ import ngff_
+    inside = {"on": False}
+    original_replace, original_promote = worker.replace_run_embeddings, ngff_.promote_store
+    def _flagged(*a, **k):
+        inside["on"] = True
+        try:
+            return original_replace(*a, **k)
+        finally:
+            inside["on"] = False
+    def _crash_before_promote(*a, **k):
+        if inside["on"]:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(137)
+        return original_promote(*a, **k)
+    worker.replace_run_embeddings = _flagged
+    ngff_.promote_store = _crash_before_promote
 result = run_cli(Path(args["inputs"]), Path(args["out"]), pipeline=Path(args["pipeline"]),
                  extra=args["extra"])
 sys.stdout.write(result.output)
@@ -2187,6 +2213,7 @@ def run_cli_subprocess(
     pipeline: Path,
     extra: Sequence[str] = (),
     crash_after: str | None = None,
+    crash_inside: str | None = None,
     spy_stem: str | None = None,
     spy_path: Path | None = None,
 ):
@@ -2208,6 +2235,9 @@ def run_cli_subprocess(
             Right after its first call returns, the child calls
             ``os._exit(137)``: a real crash between two durable writes, not
             an exception a caller could catch.
+        crash_inside: ``"replace_run_embeddings"``: crash inside Stage 4's
+            store transaction, after its part is built and before the
+            promote, so a ``.part`` is left beside an unchanged store.
         spy_stem: With *spy_path*: append the name of each
             :data:`STAGE4_DURABLE_WRITES` call that concerns this stem to
             *spy_path*, one per line, as it returns
@@ -2239,6 +2269,7 @@ def run_cli_subprocess(
         "pipeline": str(pipeline),
         "extra": list(extra),
         "crash_after": crash_after,
+        "crash_inside": crash_inside,
         "spy_stem": spy_stem,
         "spy_path": None if spy_path is None else str(spy_path),
     }

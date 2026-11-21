@@ -139,25 +139,53 @@ def test_local_stage4_agrees_with_inline_at_the_default_batch(tmp_path, tiny_inp
 
 
 @pytest.mark.parametrize(
-    "crash_after, resumed_by",
+    "crash_after, grid, resumed_by",
     [
-        ("write_stage4_signal", ["replace_run_embeddings", "publish_image_success", "delete_stage4_signals"]),
-        ("replace_run_embeddings", ["publish_image_success", "delete_stage4_signals"]),
-        ("publish_image_success", ["delete_stage4_signals"]),
+        ("write_stage4_signal", False, ["replace_run_embeddings", "publish_image_success", "delete_stage4_signals"]),
+        # Two keys per image: the crash falls between them, so the re-run
+        # embeds only the key without a signal (plan review C4, M6).
+        ("write_stage4_signal", True,
+         ["write_stage4_signal", "replace_run_embeddings", "publish_image_success", "delete_stage4_signals"]),
+        ("replace_run_embeddings", False, ["publish_image_success", "delete_stage4_signals"]),
+        ("publish_image_success", False, ["delete_stage4_signals"]),
     ],
+    ids=["after-signal", "between-two-keys", "after-commit", "after-record"],
 )
-def test_a_real_crash_resumes_from_disk(tmp_path, tiny_inputs, stage4_cpu, crash_after, resumed_by):
-    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+def test_a_real_crash_resumes_from_disk(tmp_path, tiny_inputs, stage4_cpu, crash_after, grid, resumed_by):
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, grid=grid)
     first = run_cli_subprocess(tiny_inputs, out, pipeline=pipe, extra=GPU, crash_after=crash_after)
     assert first.returncode == 137, first.stdout + first.stderr          # the process really died
     crashed = crashed_image(out, crash_after)                            # read from disk, not the test
     assert not record_is_valid(out, crashed) or crash_after == "publish_image_success"
+    if grid:
+        assert len(signal_files(out, crashed)) == 1                       # one of its two keys
     rerun = run_cli_subprocess_spying(tiny_inputs, out, pipeline=pipe, extra=GPU, stem=crashed.stem)
     assert rerun.returncode == 0, rerun.stdout + rerun.stderr
     assert rerun.sequence == resumed_by                                  # never re-embedded
     assert no_stage4_signals(out) and all_records_valid(out)
     assert terminal_failures_of(out) == []
     assert staged_completion_path(out).is_file()
+
+
+def test_a_crash_inside_the_store_transaction_leaves_a_part_and_resumes(tmp_path, tiny_inputs, stage4_cpu):
+    """Review M6: a crash after ``replace_run_embeddings`` built its part, before the promote.
+
+    The live store is untouched (no embeddings, its root unchanged), a
+    ``.part`` is left beside it, the signals survive, and a plain re-run
+    commits them without re-embedding.
+    """
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+    first = run_cli_subprocess(tiny_inputs, out, pipeline=pipe, extra=GPU, crash_inside="replace_run_embeddings")
+    assert first.returncode == 137, first.stdout + first.stderr
+    parts = list(out.glob("results/*/zarr/.*.ome.zarr.*.part"))
+    assert len(parts) == 1, sorted(p.name for p in out.glob("results/*/zarr/*"))
+    (crashed,) = [item for item in run_items(out) if parts[0].name.startswith(f".{item.stem}.ome.zarr.")]
+    assert signal_files(out, crashed)                                   # its vectors survive
+    assert not store_has_embeddings(out, crashed) and not record_is_valid(out, crashed)
+    rerun = run_cli_subprocess_spying(tiny_inputs, out, pipeline=pipe, extra=GPU, stem=crashed.stem)
+    assert rerun.returncode == 0, rerun.stdout + rerun.stderr
+    assert rerun.sequence == ["replace_run_embeddings", "publish_image_success", "delete_stage4_signals"]
+    assert no_stage4_signals(out) and all_records_valid(out) and terminal_failures_of(out) == []
 
 
 def terminal_failures_of(out):
@@ -327,3 +355,157 @@ def test_each_input_is_hashed_once_from_the_strategy_through_stage4(
     assert result.exit_code == 0, result.output
     assert all_records_valid(out) and all(store_has_embeddings(out, item) for item in run_items(out))
     assert hashed == Counter({path: 1 for path in inputs}), hashed
+
+
+# ---------------------------------------------------------------------------
+# Node state: one line, exit 1, nothing journalled, a plain re-run finishes
+# ---------------------------------------------------------------------------
+
+
+def _fail_once(monkeypatch, owner, name, exc):
+    """Make ``owner.name`` raise *exc* on its first call only, in this process."""
+    real = getattr(owner, name)
+    calls = {"n": 0}
+
+    def _once(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise exc
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(owner, name, _once)
+
+
+@pytest.mark.parametrize("failure, njobs", [
+    ("loader-oom", 1), ("loader-oom", 2), ("loader-death", 2), ("torch-oom", 1), ("encoder-oom", 1),
+], ids=["loader-oom-in-process", "loader-oom-spawned", "loader-worker-death", "torch-oom", "encoder-oom"])
+def test_node_state_exits_1_in_one_line_and_a_rerun_finishes(
+    tmp_path, tiny_inputs, stage4_cpu, stage4_faults, monkeypatch, failure, njobs
+):
+    """Review M3/M6: running out of memory, or a dead loader worker, is the node's, never an image's.
+
+    - ``loader-oom``: the loader's ``prepare_regions`` raises ``MemoryError``
+      (a ``FailedImage(node_state=True)``), in this process and in a spawned
+      worker; planted on disk, once.
+    - ``loader-worker-death``: the spawned worker exits (``os._exit``), as a
+      host OOM kill ends it: "DataLoader worker ... exited unexpectedly".
+    - ``torch-oom``: ``vectors_from`` raises torch's ``OutOfMemoryError``, a
+      ``RuntimeError``, not a ``MemoryError``.
+    - ``encoder-oom``: the encoder raises ``Stage4OutOfMemory``.
+
+    Each is one ``Error:`` line, exit 1, no traceback, no journal row, every
+    image still pending; the same command again finishes.
+    """
+    import torch
+
+    from phenotypic._cli._cli_staged_resume import stage4_status
+    from phenotypic.detect.nn._helper._batch_encoder import BatchEncoder, Stage4OutOfMemory
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
+    extra = [*GPU, "--njobs", str(njobs)]
+    with monkeypatch.context() as patched:
+        if failure == "loader-oom":
+            plant_stage4_fault(nth_stem(tiny_inputs, 0), "oom-once")
+        elif failure == "loader-death":
+            plant_stage4_fault(nth_stem(tiny_inputs, 0), "die")
+        elif failure == "torch-oom":
+            _fail_once(patched, MeasureDinoEmbedding, "vectors_from", torch.OutOfMemoryError("CUDA out of memory"))
+        else:
+            assert failure == "encoder-oom", failure
+            _fail_once(patched, BatchEncoder, "submit", Stage4OutOfMemory("a queue cannot halve again"))
+        result = run_cli(tiny_inputs, out, pipeline=pipe, extra=extra)
+    assert result.exit_code == 1, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and errors[0].startswith("Error: Stage 4 stopped:"), result.output
+    assert "No image was recorded as failed" in errors[0]
+    if failure == "loader-death":
+        assert "the Stage-4 loader failed" in errors[0], errors[0]
+    assert "Traceback" not in result.output and "Unexpected error" not in result.output, result.output
+    assert terminal_failures_of(out) == []
+    assert {stage4_status(out, i.dataset, i.stem, i.work_id) for i in run_items(out)} == {"pending"}
+    clear_stage4_fault(nth_stem(tiny_inputs, 0))
+    rerun = run_cli(tiny_inputs, out, pipeline=pipe, extra=extra)
+    assert rerun.exit_code == 0, rerun.output
+    assert all_records_valid(out) and terminal_failures_of(out) == []
+
+
+# ---------------------------------------------------------------------------
+# Counts and the completion predicate (review M5)
+# ---------------------------------------------------------------------------
+
+
+def test_the_core_counts_only_images_stage4_will_take(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
+    """Review M5: a skipped image is a core success only when Stage 4 takes it.
+
+    The local strategy is handed a done image (its record valid) and a
+    pending one; Stage 4 is stubbed out. Only the pending image counts as
+    completed: the done one is not this invocation's work.
+    """
+    from phenotypic._cli import _cli_execution_strategies
+    from phenotypic._cli._cli_types import Dataset
+    from tests._tiny_run import Stage4Waiting
+
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=False)
+    with stage4_stubbed_out(monkeypatch):
+        run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+    tree = Stage4Waiting(tiny_inputs, out, pipe)
+    done, waiting = tree.items
+    assert run_stage4_over_one(tree, 0).published                        # image 0: done
+    assert record_is_valid(out, done) and not record_is_valid(out, waiting)
+    seen = {}
+    real_execute = _cli_execution_strategies.LocalParallelStrategy.execute
+
+    def _with_both_images(self, datasets, output_dir):
+        (dataset,) = datasets
+        everything = sorted((tiny_inputs / dataset.name).glob("*.tif"))
+        seen["result"] = real_execute(
+            self, [Dataset(dataset.name, everything, dataset.input_dir, dataset.output_dir)], output_dir
+        )
+        return seen["result"]
+
+    monkeypatch.setattr(_cli_execution_strategies.LocalParallelStrategy, "execute", _with_both_images)
+    with stage4_stubbed_out(monkeypatch):
+        run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+    assert seen["result"].total_images == 2
+    assert seen["result"].total_completed == 1 and seen["result"].total_failed == 0
+
+
+def run_stage4_over_one(tree, index):
+    """``run_stage4`` over *tree*'s image *index* only."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_stage4_worker import run_stage4
+    from tests._tiny_run import stage4_epoch, stage4_image_type
+
+    return run_stage4(
+        tree.pipeline, tree.out, [tree.manifest()[index]], image_type=stage4_image_type(tree),
+        epoch=stage4_epoch(tree), num_workers=0,
+        output_manager=OutputManager.from_config(base_dir=tree.out, ext=".tiff"),
+    )
+
+
+def test_the_completion_predicate_resolves_the_run_once(tmp_path, tiny_inputs, stage4_cpu, stage4_faults, monkeypatch):
+    """Review M5: under deferral one deep ``resolve_run_state`` serves both completion questions.
+
+    A Stage-4 failure leaves one image unpublished, so the CLI asks both
+    ``_unpublished_images`` and ``_all_current_terminal_failures``; neither
+    resolves the run itself.
+    """
+    import inspect
+
+    import phenotypic.sdk_ as sdk
+
+    real = sdk.resolve_run_state
+    callers: list[str] = []
+
+    def _counting(*args, **kwargs):
+        if kwargs.get("depth") == "deep":
+            callers.append(inspect.stack()[1].function)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(sdk, "resolve_run_state", _counting)
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True, faulty=True)
+    plant_stage4_fault(nth_stem(tiny_inputs, 0))
+    result = run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+    assert result.exit_code == 3, result.output                          # both helpers were asked
+    assert "_unpublished_images" not in callers and "_all_current_terminal_failures" not in callers, callers

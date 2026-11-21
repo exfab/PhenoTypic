@@ -1608,7 +1608,9 @@ def _stage3_less_images(
 
 
 def _unpublished_images(
-    output_dir: Path, inventory: Mapping[str, Sequence[Any]]
+    output_dir: Path,
+    inventory: Mapping[str, Sequence[Any]],
+    snapshot: Any = None,
 ) -> set[tuple[str, str]]:
     """The ``(dataset, image stem)`` pairs of a run with no valid per-image record.
 
@@ -1623,12 +1625,17 @@ def _unpublished_images(
     Args:
         output_dir: Run output root.
         inventory: The run's full ``dataset -> images`` inventory.
+        snapshot: ``resolve_run_state(output_dir, depth="deep")`` when the
+            caller holds it, so one deep pass serves this and
+            :func:`_all_current_terminal_failures` (#282 review M5).
     """
     from phenotypic.sdk_ import resolve_run_state
 
+    if snapshot is None:
+        snapshot = resolve_run_state(output_dir, depth="deep")
     verified = {
         (image.dataset, image.image_stem)
-        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        for image in snapshot.images.values()
         if image.verdict == "verified"
     }
     return {
@@ -1639,7 +1646,7 @@ def _unpublished_images(
 
 
 def _all_current_terminal_failures(
-    output_dir: Path, images: set[tuple[str, str]]
+    output_dir: Path, images: set[tuple[str, str]], snapshot: Any = None
 ) -> bool:
     """Whether every image in *images* has a current terminal failure record.
 
@@ -1652,12 +1659,15 @@ def _all_current_terminal_failures(
         images: ``(dataset, image stem)`` pairs, from
             :func:`_stage3_less_images` or, under deferral,
             :func:`_unpublished_images`.
+        snapshot: A deep ``resolve_run_state`` the caller already holds.
     """
     from phenotypic.sdk_ import resolve_run_state
 
+    if snapshot is None:
+        snapshot = resolve_run_state(output_dir, depth="deep")
     failed = {
         (image.dataset, image.image_stem)
-        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        for image in snapshot.images.values()
         if image.verdict == "failed"
     }
     return images <= failed
@@ -4497,8 +4507,16 @@ def phenotypic_cli(
             # Under deferral the predicate is record-based: a Stage-3 marker
             # is not completion, and a Stage-4 failure exits 3 rather than 1
             # (#282 plan review C2).
+            # One deep pass for both questions under deferral (review M5).
+            run_snapshot = None
+            if deferring:
+                from phenotypic.sdk_ import resolve_run_state
+
+                run_snapshot = resolve_run_state(output_dir, depth="deep")
             unfinished = (
-                _unpublished_images(output_dir, config.full_dataset_inventory)
+                _unpublished_images(
+                    output_dir, config.full_dataset_inventory, run_snapshot
+                )
                 if deferring
                 else _stage3_less_images(
                     output_dir, config.full_dataset_inventory
@@ -4517,7 +4535,9 @@ def phenotypic_cli(
             staged_terminal_incomplete = (
                 finalization_succeeded
                 and bool(unfinished)
-                and _all_current_terminal_failures(output_dir, unfinished)
+                and _all_current_terminal_failures(
+                    output_dir, unfinished, run_snapshot
+                )
             )
         if staged_complete:
             from phenotypic._cli._cli_staged_orchestration import (

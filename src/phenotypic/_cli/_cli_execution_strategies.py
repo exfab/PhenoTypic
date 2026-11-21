@@ -429,7 +429,9 @@ class LocalParallelStrategy(ExecutionStrategy):
         # The no-detector continuation (#282 P4 T4, plan review C1): an image
         # that finished Stages 1-3 skips the core, which would re-measure it
         # and drop its Stage-4 signals; Stage 4 below picks it up. It counts
-        # as the core's success, as the staged strategy's Stage 3 counts it.
+        # as the core's success, as the staged strategy's Stage 3 counts it,
+        # only when Stage 4 will take it (review M5): an image already done,
+        # or a skipped terminal failure, is not this invocation's work.
         deferring_run = (
             defers_embeddings(self.config)
             and not measure_only
@@ -454,9 +456,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 for image_path in dataset.images
             }
             core_done = [
-                (dataset.name, image_path.name, True, "")
-                for dataset, image_path in all_tasks
-                if (dataset.name, image_path) not in needs_core
+                (entry.dataset, entry.image_name, True, "")
+                for entry in _cli_stage4_worker.without_terminal_failures(
+                    self.config, output_dir, stage4_only
+                )
             ]
             core_tasks = [
                 (dataset, image_path)

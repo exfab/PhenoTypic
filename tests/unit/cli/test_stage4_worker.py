@@ -26,6 +26,8 @@ from phenotypic._cli._cli_stage4_worker import (  # noqa: E402
     sweep_orphan_stage4_signals,
 )
 from phenotypic.measure import MeasureDinoEmbedding  # noqa: E402
+from pathlib import Path  # noqa: E402
+
 from tests._tiny_run import (  # noqa: E402
     STUB_HIDDEN_SIZE,
     _built_staged_tree,
@@ -55,6 +57,7 @@ from tests._tiny_run import (  # noqa: E402
     valid_record,
     with_stage4_dino_objects,
     write_valid_signals,
+    zarr_store_path_of,
 )
 
 OBJECTS = "dinov2-vitb14/rgb/objects"
@@ -241,11 +244,142 @@ def test_stale_signals_are_deleted_before_the_first_load(staged_tree, stage4_cpu
 
 
 def test_a_local_run_left_pending_exits_1(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
-    touch_root_before_commit(monkeypatch, None, image=0)            # inside the CLI run
-    result = run_cli(tiny_inputs, tmp_path / "out", pipeline=with_stage4_dino_objects(tmp_path, fake_gpu=True),
-                     extra=GPU)
+    """A root change is never terminal: exit 1, nothing journalled, and a plain re-run finishes (M6)."""
+    from phenotypic._cli._cli_failure_tracker import read_terminal_failures
+    from tests._tiny_run import all_records_valid
+
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+    with monkeypatch.context() as patched:
+        touch_root_before_commit(patched, None, image=0)            # inside the CLI run
+        result = run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
     assert result.exit_code == 1, result.output
-    assert "still need Stage 4" in result.output
+    assert "1 image(s) still need Stage 4 (a store changed during the run)" in result.output
+    assert read_terminal_failures(out) == []
+    rerun = run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+    assert rerun.exit_code == 0, rerun.output
+    assert all_records_valid(out)
+
+
+def _raise_on_digest_read(monkeypatch, exc: BaseException) -> None:
+    from phenotypic._cli import _cli_stage4_worker
+
+    def _raising(*args, **kwargs):
+        raise exc
+
+    monkeypatch.setattr(_cli_stage4_worker, "_live_store_digests", _raising)
+
+
+@pytest.mark.parametrize("kind", ["host-oom", "torch-oom"])
+def test_running_out_of_memory_reading_the_digests_is_node_state(staged_tree, stage4_cpu, monkeypatch, kind):
+    """Review M2: an OOM reading the live digests is re-raised; nothing is journalled or dropped."""
+    import torch
+
+    exc = MemoryError("digests") if kind == "host-oom" else torch.OutOfMemoryError("CUDA out of memory")
+    _raise_on_digest_read(monkeypatch, exc)
+    with pytest.raises(type(exc)):
+        run_stage4_over(staged_tree)
+    assert terminal_failures(staged_tree) == [] and _all_pending(staged_tree)
+
+
+def test_an_unreadable_store_at_commit_stays_pending_with_its_signals(staged_tree, stage4_cpu, monkeypatch):
+    """Review M2: an ``OSError`` reading the digests (a transient GPFS error) is never terminal.
+
+    The image is left pending, its signals kept (they are still bound to the
+    live root), and the next round commits them without re-embedding.
+    """
+    from phenotypic._cli._cli_stage4_worker import PENDING_UNREADABLE
+
+    with monkeypatch.context() as patched:
+        _raise_on_digest_read(patched, OSError(5, "Input/output error"))
+        outcome = run_stage4_over(staged_tree)
+    assert sorted(outcome.pending) == sorted(identity_of(staged_tree, i) for i in range(n_images(staged_tree)))
+    assert set(outcome.pending_reasons.values()) == {PENDING_UNREADABLE}
+    assert terminal_failures(staged_tree) == [] and _all_pending(staged_tree)
+    assert all(signal_files(staged_tree.out, item) for item in staged_tree.items)
+    loads = len(stage4_cpu.load_calls)
+    again = run_stage4_over(staged_tree)
+    assert len(again.published) == n_images(staged_tree)
+    assert len(stage4_cpu.load_calls) == loads                        # committed from the kept signals
+
+
+def test_a_digest_decode_error_is_the_images_own(staged_tree, stage4_cpu, monkeypatch):
+    """The control: an error that is not node state is journalled as the image's ``stage4`` failure."""
+    _raise_on_digest_read(monkeypatch, ValueError("cannot decode chunk"))
+    outcome = run_stage4_over(staged_tree)
+    assert len(outcome.failed) == n_images(staged_tree)
+    assert {failure_stage(staged_tree, item) for item in staged_tree.items} == {"stage4"}
+
+
+def test_a_publish_removes_the_images_leftover_signal_temps(staged_tree, stage4_cpu):
+    """Review M4: a temp an earlier crash left goes when its image publishes, not at the next sweep."""
+    from tests._tiny_run import stage4_signal_leftovers
+
+    write_valid_signals(staged_tree)
+    for item in staged_tree.items:
+        (signal,) = signal_files(staged_tree.out, item)
+        (signal.parent / f".{signal.name}.deadbeef.tmp").write_bytes(b"half a signal")
+    outcome = run_stage4_over(staged_tree)
+    assert len(outcome.published) == n_images(staged_tree)
+    assert stage4_signal_leftovers(staged_tree.out) == []
+
+
+def test_a_store_with_no_journal_run_fails_the_image(staged_tree, stage4_cpu, monkeypatch):
+    """Review M4: not "pending" for ever with a wrong message; a terminal ``stage4`` failure."""
+    from phenotypic._cli import _cli_stage4_worker
+
+    real = _cli_stage4_worker.journal_table_run
+    first = zarr_store_path_of(staged_tree.out, staged_tree.items[0])
+    monkeypatch.setattr(_cli_stage4_worker, "journal_table_run",
+                        lambda store: None if Path(store) == first else real(store))
+    outcome = run_stage4_over(staged_tree)
+    assert outcome.failed == {identity_of(staged_tree, 0): "Stage4ImageError"}
+    assert failure_stage(staged_tree, staged_tree.items[0]) == "stage4"
+    assert outcome.published == [identity_of(staged_tree, 1)] and outcome.pending == []
+
+
+def test_a_store_with_no_root_is_left_pending_with_its_own_reason(staged_tree, stage4_cpu):
+    """Review M4: a missing root (a promote in flight) is pending, and says so."""
+    from phenotypic._cli._cli_stage4_worker import PENDING_NO_ROOT
+
+    root = zarr_store_path_of(staged_tree.out, staged_tree.items[1]) / "zarr.json"
+    saved = root.read_bytes()
+    root.unlink()                                                   # the second: the helper reads the first
+    try:
+        outcome = run_stage4_over(staged_tree)
+    finally:
+        root.write_bytes(saved)
+    assert outcome.pending == [identity_of(staged_tree, 1)]
+    assert outcome.pending_reasons == {identity_of(staged_tree, 1): PENDING_NO_ROOT}
+    assert terminal_failures(staged_tree) == []
+
+
+@pytest.mark.parametrize("change", ["params", "compute_dtype", "control"])
+def test_publish_only_needs_the_embedders_own_entry(staged_tree, stage4_cpu, monkeypatch, change):
+    """Review M6: a store whose entry another embedder wrote is re-embedded, never published as is.
+
+    ``_store_holds_fresh_embeddings`` decides "publish only"; an entry with a
+    different ``producer.params_sha256`` or ``compute_dtype`` must not pass.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_stage4_worker import _store_holds_fresh_embeddings
+    from phenotypic.sdk_ import journal_table_run
+
+    run_stage4_over(staged_tree)                                   # every store holds its entry
+    (embedder,) = [e for e in ImagePipeline.from_json(staged_tree.pipeline).get_meas().values()
+                   if isinstance(e, MeasureDinoEmbedding)]
+    if change == "params":
+        embedder = embedder.model_copy(update={"layer": "gray"})
+        embedders = {OBJECTS: embedder}                             # same key, other parameters
+    elif change == "compute_dtype":
+        # The entry's own compute_dtype check, isolated: the digest is made to
+        # match, so only compute_dtype differs (it is in params_sha256 too).
+        stored = embedder._params_sha256()
+        monkeypatch.setattr(MeasureDinoEmbedding, "_params_sha256", lambda self: stored)
+        embedders = {OBJECTS: embedder.model_copy(update={"compute_dtype": "bfloat16"})}
+    else:
+        embedders = {OBJECTS: embedder}
+    for store in stores_of(staged_tree):
+        assert _store_holds_fresh_embeddings(store, journal_table_run(store), embedders) is (change == "control")
 
 
 @pytest.mark.parametrize("flag, expected", [
@@ -537,3 +671,45 @@ def test_the_sweep_keeps_a_pending_images_signals(staged_tree, stage4_cpu):
     plant_stage4_signals(staged_tree.out, pending)
     assert sweep_orphan_stage4_signals(staged_tree.out, *inventory_and_work_ids(staged_tree)) == 0
     assert signal_files(staged_tree.out, pending)
+
+
+def test_a_failed_commit_stops_the_backbone_at_the_next_item(tmp_path, tiny_inputs, stage4_cpu, monkeypatch, caplog):
+    """Review M3: a commit error is noticed after the next loader item, and logged on the way out.
+
+    One row a pass (``batch_size=1``), so image 0 commits while image 1 is
+    still to come. Image 0's commit raises; the loader holds image 1 back
+    until it has. Image 1 must then never be signalled, and the error path
+    must log the commit's own exception.
+    """
+    import logging
+    import threading
+
+    from phenotypic._cli import _cli_stage4_worker
+
+    tree = _built_staged_tree(tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path, fake_gpu=True, batch_size=1))
+    failed = threading.Event()
+
+    def _failing_commit(ctx, work):
+        try:
+            raise RuntimeError("commit boom")
+        finally:
+            failed.set()
+
+    real_items = _cli_stage4_worker._loader_items
+
+    def _held_back(loader):
+        for index, item in enumerate(real_items(loader)):
+            if index:
+                assert failed.wait(30), "image 0 was never committed"
+                import time
+
+                time.sleep(0.2)                                        # its future is done
+            yield item
+
+    monkeypatch.setattr(_cli_stage4_worker, "_commit_image", _failing_commit)
+    monkeypatch.setattr(_cli_stage4_worker, "_loader_items", _held_back)
+    with caplog.at_level(logging.ERROR, logger=_cli_stage4_worker.__name__):
+        with pytest.raises(RuntimeError, match="commit boom"):
+            run_stage4_over(tree)
+    assert signal_files(tree.out, tree.items[0]) and not signal_files(tree.out, tree.items[1])
+    assert f"Stage 4's commit of {identity_of(tree, 0)} also failed" in caplog.text

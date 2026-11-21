@@ -204,7 +204,9 @@ class Stage4Outcome:
         failed: Identity -> error type, for each image this call failed as a
             per-image ``stage4`` failure (journalled when terminal).
         pending: Identities left for another round: their store root changed
-            under the call (spec §4.8; never terminal).
+            under the call, or could not be read (spec §4.8; never terminal).
+        pending_reasons: Identity -> why it was left pending, one short
+            phrase (the run's one-line message names them).
         signals_written: How many Stage-4 signals this call wrote.
         physical_batches: Each loaded backbone's
             ``BatchEncoder.physical_batches`` when its loop ended: the ``m``
@@ -215,6 +217,7 @@ class Stage4Outcome:
     published: list[str] = field(default_factory=list)
     failed: dict[str, str] = field(default_factory=dict)
     pending: list[str] = field(default_factory=list)
+    pending_reasons: dict[str, str] = field(default_factory=dict)
     signals_written: int = 0
     physical_batches: dict[BackboneKey, dict[tuple[str, int, int, str], int]] = field(
         default_factory=dict
@@ -718,23 +721,47 @@ def _store_holds_fresh_embeddings(
     return True
 
 
+#: Why an image was left pending: one short phrase each, for the run's message.
+PENDING_ROOT_CHANGED: Final[str] = "a store changed during the run"
+PENDING_UNREADABLE: Final[str] = "a store could not be read"
+PENDING_NO_ROOT: Final[str] = "a store had no root zarr.json"
+
+
 def _classify_image(
     ctx: _Stage4Context,
     entry: StagedManifestEntry,
     embedders: Mapping[str, MeasureDinoEmbedding],
 ) -> _ImageWork | str:
-    """What *entry* needs (spec §4.4 loop step 1, §4.6), or ``"pending"``.
+    """What *entry* needs (spec §4.4 loop step 1, §4.6), or why it is left pending.
 
     Its signals are classified per key against the live root, and the stale
     ones deleted (plan review C5). Every key valid: commit only. The store
     already holding every key fresh: publish only. Otherwise the keys without
     a valid signal go to the loader (plan review C4).
+
+    A store with no root right now (another process between a promote's two
+    renames) is left pending, :data:`PENDING_NO_ROOT`. A root with no forward
+    journal run cannot be what Stages 1-3 wrote for this work id, so the image
+    fails, terminally, as spec §4.3 fails a store that does not match its work
+    id (review M4); a plain re-run would otherwise repeat a wrong message for
+    ever.
+
+    Returns:
+        The image's work, or a ``PENDING_*`` reason, or ``"failed"`` (the
+        failure already journalled).
     """
     store = zarr_store_path(ctx.output_dir, entry.dataset, entry.stem)
     live = _live_root_sha256(store)
-    run = journal_table_run(store) if live is not None else None
-    if live is None or run is None:
-        return "pending"
+    if live is None:
+        logger.warning("Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name, PENDING_NO_ROOT)
+        return PENDING_NO_ROOT
+    run = journal_table_run(store)
+    if run is None:
+        _fail_image(ctx, entry, Stage4ImageError(
+            f"{store} holds no forward journal run, so it is not the store Stages 1-3 "
+            "wrote for this image"
+        ))
+        return "failed"
     keys = list(embedders)
     state = classify_stage4_signals(
         ctx.output_dir, entry.dataset, entry.stem, keys,
@@ -789,16 +816,33 @@ def _publish(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
         )
     ctx.check()
     delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
+    # A temp an earlier crash left mid-write: no writer can hold this image
+    # now, so it goes with the signals rather than at the next sweep (M4).
+    delete_stage4_signal_temps(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
     _event(ctx, entry, "completed")
     return "published", ""
 
 
-def _leave_pending(ctx: _Stage4Context, entry: StagedManifestEntry, why: str) -> CommitStatus:
-    """Drop *entry*'s signals and leave it for another round (a root change: never terminal)."""
+def _leave_pending(
+    ctx: _Stage4Context,
+    entry: StagedManifestEntry,
+    why: str,
+    *,
+    reason: str = PENDING_ROOT_CHANGED,
+    keep_signals: bool = False,
+) -> CommitStatus:
+    """Leave *entry* for another round: never terminal.
+
+    A root change (*reason* :data:`PENDING_ROOT_CHANGED`) makes its signals
+    stale, so they are dropped. A store that could not be read
+    (:data:`PENDING_UNREADABLE`) keeps them: they are still bound to the live
+    root, and the next round commits them without re-embedding.
+    """
     logger.warning("Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name, why)
-    ctx.check()
-    delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
-    return "pending", why
+    if not keep_signals:
+        ctx.check()
+        delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
+    return "pending", reason
 
 
 def _commit_image(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
@@ -843,6 +887,20 @@ def _commit_image_once(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
     try:
         objmap_sha256, array_sha256 = _live_store_digests(store, list(payloads.values()))
     except Exception as exc:
+        # Review M2: running out of memory reading ~100-200 MB of level-0
+        # arrays is the node's state (re-raised, nothing journalled), and an
+        # OSError (a transient GPFS error) is never terminal: the image stays
+        # pending with its signals. Only a decode or format error is the
+        # image's own.
+        from phenotypic.abc_._measure_embedding import is_out_of_memory
+
+        if is_out_of_memory(exc):
+            raise
+        if isinstance(exc, OSError):
+            return _leave_pending(
+                ctx, entry, f"its store could not be read: {type(exc).__name__}: {exc}",
+                reason=PENDING_UNREADABLE, keep_signals=True,
+            )
         return "failed", _fail_image(ctx, entry, exc)
     wrong = _bound_elsewhere(payloads, objmap_sha256, array_sha256)
     if wrong:
@@ -923,18 +981,25 @@ class _BackboneStream:
         device: str,
         outcome: Stage4Outcome,
         on_complete: Callable[[_ImageWork], None],
+        check_commits: Callable[[], None] = lambda: None,
     ) -> None:
         self.ctx, self.encoder, self.model = ctx, encoder, model
         self.embedders = embedders
         self.by_identity = {work.entry.identity: work for work in works}
         self.device, self.outcome, self.on_complete = device, outcome, on_complete
+        self.check_commits = check_commits
         self.held: dict[tuple[str, str], tuple[PreparedRegions, str]] = {}
 
     def run(self, loader: Any) -> None:
-        """Stream every loader item through the encoder, then flush and drain the rest."""
+        """Stream every loader item through the encoder, then flush and drain the rest.
+
+        A failed commit is noticed after each item, not only before the next
+        backbone (review M3).
+        """
         import numpy as np
 
-        for item in loader:
+        for item in _loader_items(loader):
+            self.check_commits()
             if isinstance(item, FailedImage):
                 self._loader_failure(item)
                 continue
@@ -1027,6 +1092,34 @@ class _BackboneStream:
             self.on_complete(work)
 
 
+def _loader_items(loader: Any) -> Any:
+    """Iterate *loader*, turning a failure of the loader itself into a shard failure (M3).
+
+    A per-image error comes back as a :class:`FailedImage`, so anything the
+    iteration raises is the loader's: a DataLoader worker that died (a host
+    out-of-memory kill: "DataLoader worker ... exited unexpectedly") is node
+    state (spec §4.8, "Host OOM (loader)"), so it becomes
+    :class:`Stage4ShardError` and nothing is journalled. An out-of-memory
+    error is re-raised as it is.
+    """
+    from phenotypic.abc_._measure_embedding import is_out_of_memory
+
+    iterator = iter(loader)
+    while True:
+        try:
+            item = next(iterator)
+        except StopIteration:
+            return
+        except Exception as exc:
+            if is_out_of_memory(exc):
+                raise
+            raise Stage4ShardError(
+                f"the Stage-4 loader failed ({type(exc).__name__}: {exc}); the "
+                "images it held stay pending for the next attempt"
+            ) from exc
+        yield item
+
+
 def _embed_backbone(
     ctx: _Stage4Context,
     backbone: BackboneKey,
@@ -1038,6 +1131,7 @@ def _embed_backbone(
     num_workers: int,
     outcome: Stage4Outcome,
     on_complete: Callable[[_ImageWork], None],
+    check_commits: Callable[[], None] = lambda: None,
 ) -> None:
     """Load one backbone once and run its images through one ``BatchEncoder`` (H10).
 
@@ -1080,6 +1174,7 @@ def _embed_backbone(
         _BackboneStream(
             ctx, encoder, model, embedders, works,
             device=device, outcome=outcome, on_complete=on_complete,
+            check_commits=check_commits,
         ).run(_stage4_loader(dataset, num_workers))
         outcome.physical_batches[backbone] = encoder.physical_batches
     finally:
@@ -1205,8 +1300,11 @@ def run_stage4(
         for entry in items:
             ctx.check()
             work = _classify_image(ctx, entry, embedders)
-            if isinstance(work, str):
+            if work == "failed":
+                outcome.failed[entry.identity] = Stage4ImageError.__name__
+            elif isinstance(work, str):
                 outcome.pending.append(entry.identity)
+                outcome.pending_reasons[entry.identity] = work
             elif work.action == "embed":
                 to_embed.append(work)
             else:
@@ -1220,18 +1318,38 @@ def run_stage4(
             _embed_backbone(
                 ctx, backbone, group, works, device=device, image_type=image_type,
                 num_workers=num_workers, outcome=outcome, on_complete=_submit,
+                check_commits=lambda: _raise_commit_failure(futures),
             )
-    finally:
+    except BaseException:
         pool.shutdown(wait=True)
+        _log_commit_failures(futures, identities)
+        raise
+    pool.shutdown(wait=True)
     for identity, future in zip(identities, futures):
         status, detail = future.result()
         if status == "published":
             outcome.published.append(identity)
         elif status == "pending":
             outcome.pending.append(identity)
+            outcome.pending_reasons[identity] = detail
         else:
             outcome.failed[identity] = detail
     return outcome
+
+
+def _log_commit_failures(futures: Sequence[Future[CommitStatus]], identities: Sequence[str]) -> None:
+    """On the error path, log every commit that raised, so no error is lost (review M3).
+
+    The exception that stops the stage propagates; a commit's own exception
+    would otherwise never be read.
+    """
+    for identity, future in zip(identities, futures):
+        if future.done() and not future.cancelled() and future.exception() is not None:
+            exc = future.exception()
+            logger.error(
+                "Stage 4's commit of %s also failed: %s: %s", identity, type(exc).__name__, exc,
+                exc_info=exc,
+            )
 
 
 def sweep_orphan_stage4_signals(
@@ -1342,6 +1460,22 @@ def split_stage4_pending(
     return core, pending
 
 
+def without_terminal_failures(
+    config: ExecutionConfig, output_dir: Path, items: Sequence[StagedManifestEntry]
+) -> list[StagedManifestEntry]:
+    """*items* minus those with an exact terminal failure, unless ``--retry-failures``.
+
+    The images a local Stage 4 actually takes; the local strategy counts the
+    same set as its core's successes (review M5).
+    """
+    from ._cli_failure_tracker import terminal_failure_index
+
+    if config.retry_failures:
+        return list(items)
+    terminal = terminal_failure_index(output_dir)
+    return [entry for entry in items if entry.work_id not in terminal]
+
+
 def stage4_entries(
     config: ExecutionConfig,
     tasks: Sequence[tuple[Dataset, Path]],
@@ -1435,23 +1569,23 @@ def run_local_stage4(
             under; Stage 4 never recomputes a work id (review I4).
 
     Raises:
-        click.ClickException: Exit ``1``, after the commit pool drains and
-            journalling no image: no usable CUDA, a GPU or host out of
-            memory, a failed forward pass or another shard failure, or any
-            image left pending (its store changed during the run).
+        click.ClickException: Exit ``1``, one line, after the commit pool
+            drains and journalling no image: no usable CUDA, a GPU or host
+            out of memory (``MemoryError`` or torch's ``OutOfMemoryError``,
+            :func:`~phenotypic.abc_._measure_embedding.is_out_of_memory`), a
+            failed forward pass, a dead loader worker or another shard
+            failure; or any image left pending, the message naming why
+            (``PENDING_*``).
     """
     import click
 
     from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
 
-    from ._cli_failure_tracker import terminal_failure_index
     from ._cli_utils import resolve_local_worker_count
 
     sweep_run_orphan_stage4_signals(output_dir)
     _core, items = split_stage4_pending(datasets, output_dir, entries)
-    if not config.retry_failures:
-        terminal = terminal_failure_index(output_dir)
-        items = [entry for entry in items if entry.work_id not in terminal]
+    items = without_terminal_failures(config, output_dir, items)
     if not items:
         return {}
     num_workers = resolve_local_worker_count(config.n_jobs, len(items)) - 1
@@ -1466,15 +1600,27 @@ def run_local_stage4(
             output_manager=output_manager,
             record_lock=_local_record_lock(config, output_dir),
         )
-    except (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError, MemoryError) as exc:
+    except Exception as exc:
+        # Node or model state, never an image's (spec §4.8): one line, exit 1.
+        # A torch OutOfMemoryError is a RuntimeError, so it is classified by
+        # is_out_of_memory, not by type (review M3).
+        from phenotypic.abc_._measure_embedding import is_out_of_memory
+
+        if not (
+            isinstance(exc, (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError))
+            or is_out_of_memory(exc)
+        ):
+            raise
+        detail = str(exc) or type(exc).__name__
         raise click.ClickException(
-            f"Stage 4 stopped: {exc}. No image was recorded as failed; run the "
+            f"Stage 4 stopped: {detail}. No image was recorded as failed; run the "
             "same command again"
         ) from exc
     if outcome.pending:
+        why = "; ".join(sorted(set(outcome.pending_reasons.values()))) or PENDING_ROOT_CHANGED
         raise click.ClickException(
-            f"{len(outcome.pending)} image(s) still need Stage 4 because their store "
-            "changed during the run; run the same command again"
+            f"{len(outcome.pending)} image(s) still need Stage 4 ({why}); run the "
+            "same command again"
         )
     counts = {dataset.name: [0, 0] for dataset in datasets}
     by_identity = {entry.identity: entry.dataset for entry in items}
