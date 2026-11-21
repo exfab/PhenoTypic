@@ -802,7 +802,8 @@ def _commit_image(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
     2. The digests come from the **live** store (plan review I11). A payload
        bound to another image fails the image; nothing is committed or
        published (never a published-then-dropped entry).
-    3. ``replace_run_embeddings``, fenced on the signals' root; a
+    3. ``replace_run_embeddings``, fenced on the signals' root and durable
+       as the run's ``--durable-writes`` says (``output_manager``); a
        ``StoreRootChangedError`` leaves the image pending.
     4. The record, then the signals consumed (:func:`_publish`).
     """
@@ -843,6 +844,10 @@ def _commit_image(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
             expected_root_sha256=root,
             objmap_sha256=objmap_sha256,
             array_sha256=array_sha256,
+            # The run's --durable-writes tri-state, from the OutputManager like
+            # every other store writer (``_cli/CLAUDE.md`` "Durability"); None
+            # is auto-detect, resolved in ``ngff_._resolve_durability`` only.
+            durable=ctx.output_manager.durable_writes,
             commit_guard=ctx.commit_guard,
         )
     except StoreRootChangedError as exc:

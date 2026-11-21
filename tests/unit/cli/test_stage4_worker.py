@@ -213,6 +213,31 @@ def test_a_local_run_left_pending_exits_1(tmp_path, tiny_inputs, stage4_cpu, mon
     assert "still need Stage 4" in result.output
 
 
+@pytest.mark.parametrize("flag, expected", [
+    ("--durable-writes", True), ("--no-durable-writes", False), (None, None),
+], ids=["durable", "no-durable", "auto"])
+def test_the_durable_writes_flag_reaches_the_stage4_commit(tmp_path, tiny_inputs, stage4_cpu, monkeypatch,
+                                                           flag, expected):
+    """Review I2: Stage 4's store write is durable as the run says, not auto-detected regardless.
+
+    ``None`` (no flag) is carried through, so ``ngff_`` alone resolves it.
+    """
+    from phenotypic._cli import _cli_stage4_worker
+
+    seen = []
+    real = _cli_stage4_worker.replace_run_embeddings
+
+    def _spy(*args, **kwargs):
+        seen.append(kwargs.get("durable", "missing"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_cli_stage4_worker, "replace_run_embeddings", _spy)
+    result = run_cli(tiny_inputs, tmp_path / "out", pipeline=with_stage4_dino_objects(tmp_path, fake_gpu=True),
+                     extra=[*GPU, *([flag] if flag else [])])
+    assert result.exit_code == 0, result.output
+    assert seen == [expected] * len(seen) and len(seen) == 2, seen
+
+
 def test_a_payload_bound_to_another_image_fails_the_image(staged_tree, stage4_cpu):
     write_valid_signals(staged_tree, binds_from_another_objmap=True)   # checked against the live store
     outcome = run_stage4_over(staged_tree)
