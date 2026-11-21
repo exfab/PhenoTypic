@@ -18,7 +18,9 @@ SHA=$(git -C "$REPO" rev-parse --verify "${1:?commit}^{commit}")
 shift
 SHORT=${SHA:0:9}
 D=/bigdata/exfab/anguy344/gate-results/c6-282
-TREE=/bigdata/exfab/anguy344/gate-worktrees/c6-$SHORT
+# One tree per submission, never shared (#282 review M5): a finalizer's
+# `worktree remove` must never pull a tree from under another submission's jobs.
+TREE=/bigdata/exfab/anguy344/gate-worktrees/c6-$SHORT-$(date +%Y%m%d%H%M%S)-$$
 PLAN=docs/superpowers/plans/2026-11-12-gpu-embedding-staging
 PY=/bigdata/exfab/anguy344/gate-results/c18/venv-foundation/bin/python
 SMOKE=0
@@ -31,7 +33,8 @@ for size in base large giant; do
     || { echo "dinov2-$size weights are not cached; pre-stage them first"; exit 1; }
 done
 mkdir -p "$D"
-[ -d "$TREE" ] || git -C "$REPO" worktree add --detach "$TREE" "$SHA" >/dev/null
+[ -e "$TREE" ] && { echo "$TREE already exists; refusing to share it"; exit 1; }
+git -C "$REPO" worktree add --detach "$TREE" "$SHA" >/dev/null
 [[ $(git -C "$TREE" rev-parse HEAD) == "$SHA" ]] || { echo "$TREE is not at $SHA"; exit 1; }
 
 # flags_for <partition> <gpu-type>: the sbatch flags for one GPU on that partition.

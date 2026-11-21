@@ -8,7 +8,7 @@ is measured and reported, not required to be zero.
 
 This drives the shipped code (``MeasureDinoEmbedding.prepare_regions`` /
 ``vectors_from``, ``BatchEncoder``, ``configure_determinism``,
-``physical_batch_size``), so it lives beside the plan, not under
+``physical_batch_for``), so it lives beside the plan, not under
 ``logic_validation_scripts/``. Run it from a detached worktree at a fixed
 commit (``submit_batch_invariance.sh``), never from a tree being edited.
 
@@ -221,9 +221,10 @@ def run_sequence(enc: Any, rows: RowSet, seq: list[tuple[Ref, str]],
                  on_out: Callable[[Ref, str, np.ndarray], None]) -> None:
     """Submit each row of *seq* as its own ticket, in order; route every output to *on_out*."""
     def drain() -> None:
-        for (_, j), outs in enc.drain():
+        for done in enc.drain():
+            _, j = done.ticket
             ref, label = seq[j]
-            on_out(ref, label, rows.single_output(outs))
+            on_out(ref, label, rows.single_output(done.outputs))
 
     for j, (ref, _) in enumerate(seq):
         enc.submit(("occ", j), rows.single(ref))
@@ -237,11 +238,11 @@ def run_units(enc: Any, rows: RowSet, units: list[Hashable]) -> dict[Ref, np.nda
     pass_: dict[Ref, np.ndarray] = {}
     for unit in units:
         enc.submit(unit, rows.unit_inputs[unit])
-        for done, outs in enc.drain():
-            pass_.update(rows.unit_outputs(done, outs))
+        for done in enc.drain():
+            pass_.update(rows.unit_outputs(done.ticket, done.outputs))
     enc.flush()
-    for done, outs in enc.drain():
-        pass_.update(rows.unit_outputs(done, outs))
+    for done in enc.drain():
+        pass_.update(rows.unit_outputs(done.ticket, done.outputs))
     return pass_
 
 
@@ -296,8 +297,13 @@ def cosine_distance(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def compare_stored(ref: dict, other: dict) -> dict[str, Any]:
-    """Stored float16 identity of two passes' pooled vectors, every (region, image)."""
+    """Stored float16 identity of two passes' pooled vectors, every (region, image).
+
+    ``rows_by_region`` counts the vectors compared per region, so
+    :func:`stored_invariant` can refuse a comparison that compared none.
+    """
     mismatch_rows, total, max_abs, cos = 0, 0, 0.0, [0.0]
+    rows_by_region = dict.fromkeys(REGIONS, 0)
     for key, a in ref.items():
         b = other[key]
         if a.size == 0:
@@ -305,12 +311,22 @@ def compare_stored(ref: dict, other: dict) -> dict[str, Any]:
         diff_rows = np.any(f16_bits(a) != f16_bits(b), axis=1)
         mismatch_rows += int(diff_rows.sum())
         total += len(a)
+        rows_by_region[key[0]] += len(a)
         max_abs = max(max_abs, float(np.max(np.abs(a - b))))
         d = cosine_distance(a.astype(np.float16), b.astype(np.float16))
         d[~diff_rows] = 0.0          # identical stored bits: no rounding residue
         cos.extend(d.tolist())
-    return {"rows": total, "f16_mismatch_rows": mismatch_rows,
+    return {"rows": total, "rows_by_region": rows_by_region, "f16_mismatch_rows": mismatch_rows,
             "f32_max_abs": max_abs, "f16_max_cos": float(np.max(cos))}
+
+
+def stored_invariant(stats: dict[str, Any]) -> bool:
+    """No stored vector differs, and every region compared at least one (#282 review M4).
+
+    A detection with no colonies would otherwise make the ``objects`` half
+    pass vacuously.
+    """
+    return stats["f16_mismatch_rows"] == 0 and all(n > 0 for n in stats["rows_by_region"].values())
 
 
 class OccurrenceCheck:
@@ -344,29 +360,20 @@ class OccurrenceCheck:
 # --------------------------------------------------------------------------- #
 
 
-def physical_batch_for(model: Any, embedder: Any) -> tuple[int, dict[str, Any]]:
+def m_for(model: Any, embedder: Any) -> tuple[int, dict[str, Any]]:
+    """``m`` and its inputs, from the shipped producer Stage 4 also calls (#282 review I3)."""
     import torch
 
     from phenotypic.detect.nn._helper._batch_encoder import (
-        per_sample_bytes,
-        physical_batch_size,
-        tokens_for,
+        physical_batch_for,
+        physical_batch_inputs,
     )
-    from phenotypic.detect.nn._helper._dino_support import backbone_patch_size
 
-    cfg = model.config
-    params = list(model.parameters())
-    weight_bytes = sum(p.numel() * p.element_size() for p in params)
-    dtype_bytes = params[0].element_size()
-    tokens = tokens_for(embedder.crop_px, backbone_patch_size(model),
-                        int(getattr(cfg, "num_register_tokens", 0) or 0))
-    per = per_sample_bytes(tokens=tokens, hidden=int(cfg.hidden_size),
-                           heads=int(cfg.num_attention_heads), dtype_bytes=dtype_bytes)
     total = int(torch.cuda.get_device_properties(0).total_memory)
-    m = physical_batch_size(batch_size=embedder.batch_size, gpu_total_bytes=total,
-                            weight_bytes=weight_bytes, per_sample=per)
+    kw = dict(crop_px=embedder.crop_px, compute_dtype=embedder.compute_dtype)
+    m = physical_batch_for(model, batch_size=embedder.batch_size, gpu_total_bytes=total, **kw)
     return m, {"batch_size": embedder.batch_size, "gpu_total_bytes": total,
-               "weight_bytes": weight_bytes, "per_sample_bytes": per, "tokens": tokens}
+               **physical_batch_inputs(model, **kw)}
 
 
 def measure_row(row: str, images: list[dict[str, Any]], reference_only: bool) -> tuple[dict, dict]:
@@ -384,7 +391,7 @@ def measure_row(row: str, images: list[dict[str, Any]], reference_only: bool) ->
     t0 = time.perf_counter()
     rows = RowSet(embedders, images, processor)
     result["prepare_s"] = round(time.perf_counter() - t0, 2)
-    m, m_inputs = physical_batch_for(model, embedders["objects"])
+    m, m_inputs = m_for(model, embedders["objects"])
     result.update(m=m, m_inputs=m_inputs, kind=rows.kind, encoder_rows=len(rows.all_rows),
                   geometries={str(k[0]): len(v) for k, v in rows.groups.items()},
                   regions={f"{r}/{i}": p.n_regions for (r, i), p in rows.prepared.items()})
@@ -397,7 +404,7 @@ def measure_row(row: str, images: list[dict[str, Any]], reference_only: bool) ->
     t0 = time.perf_counter()
     enc = encoder()
     ref_out = run_units(enc, rows, rows.units)
-    assert enc.physical_batch == m, "the reference halved m (out of memory)"
+    assert not enc.halved, "the reference halved m (out of memory)"
     ref = rows.stored(ref_out)
     cases["reference"] = {"seconds": round(time.perf_counter() - t0, 2)}
     all_ref = np.concatenate([v for v in ref.values() if v.size], axis=0)
@@ -426,14 +433,14 @@ def measure_row(row: str, images: list[dict[str, Any]], reference_only: bool) ->
         check = OccurrenceCheck(rows, ref_out, keeps[name])
         enc = encoder()
         run_sequence(enc, rows, seq, check)
-        record: dict[str, Any] = {"halved": enc.physical_batch != m, **check.summary()}
+        record: dict[str, Any] = {"halved": enc.halved, **check.summary()}
         passes = {}
         for label, pass_ in check.passes.items():
             missing = len(rows.all_rows) - len(pass_)
             assert missing == 0, f"{name}/{label}: {missing} rows have no occurrence"
             passes[label] = compare_stored(ref, rows.stored(pass_))
         record["passes"] = passes
-        f16_ok = all(p["f16_mismatch_rows"] == 0 for p in passes.values())
+        f16_ok = bool(passes) and all(stored_invariant(p) for p in passes.values())
         if rows.kind == "crops":
             f16_ok = f16_ok and check.f16_mismatch == 0
         record["invariant"] = bool(f16_ok and not record["halved"])
@@ -455,17 +462,17 @@ def measure_row(row: str, images: list[dict[str, Any]], reference_only: bool) ->
     enc_a, enc_b = encoder(), encoder()
     shard_pass = {**run_units(enc_a, rows, shard_a), **run_units(enc_b, rows, shard_b)}
     stats = compare_stored(ref, rows.stored(shard_pass))
-    halved = enc_a.physical_batch != m or enc_b.physical_batch != m
+    halved = enc_a.halved or enc_b.halved
     cases["shards"] = {**stats, "halved": halved, "shard_units": [len(shard_a), len(shard_b)],
-                       "invariant": stats["f16_mismatch_rows"] == 0 and not halved,
+                       "invariant": stored_invariant(stats) and not halved,
                        "seconds": round(time.perf_counter() - t0, 2)}
     del shard_pass, enc_a, enc_b
 
     t0 = time.perf_counter()
     enc = encoder(max_in_flight_bytes=1)
     stats = compare_stored(ref, rows.stored(run_units(enc, rows, rows.units)))
-    cases["in_flight_1"] = {**stats, "halved": enc.physical_batch != m,
-                            "invariant": stats["f16_mismatch_rows"] == 0 and enc.physical_batch == m,
+    cases["in_flight_1"] = {**stats, "halved": enc.halved,
+                            "invariant": stored_invariant(stats) and not enc.halved,
                             "seconds": round(time.perf_counter() - t0, 2)}
 
     if m >= 2:
@@ -549,6 +556,9 @@ def measure(args: argparse.Namespace) -> int:
             print(f"repeat on {result['gpu']!r}, not {prev_json.get('gpu')!r}", file=sys.stderr)
             return 2
         rows = [r for r in rows if r in prev_json["models"] and "error" not in prev_json["models"][r]]
+        if not rows:  # #282 review M4: an empty repeat must not print PASS
+            print(f"no row of {args.repeat_of} finished; there is nothing to repeat", file=sys.stderr)
+            return 1
     t0 = time.perf_counter()
     images = load_images(args.images)
     result["images"] = [{"store": i["store"], "detect_s": i["detect_s"]} for i in images]
@@ -572,16 +582,24 @@ def measure(args: argparse.Namespace) -> int:
     result["total_s"] = round(time.perf_counter() - t0, 2)
     out.write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
 
-    ok = True
-    for row, record in result["models"].items():
-        if "error" in record or record["determinism_warnings"]:
-            ok = False
-        elif previous is None and not record["invariant"]:
-            ok = False
-        elif previous is not None and not record.get("repeat_identical", False):
-            ok = False
+    ok = verdict(result["models"], repeat=previous is not None)
     print(f"VERDICT {'PASS' if ok else 'FAIL'}", flush=True)
     return 0 if ok else 1
+
+
+def verdict(models: dict[str, dict[str, Any]], *, repeat: bool) -> bool:
+    """PASS: at least one row ran, and every row is invariant (or repeat-identical) with no
+    error and no determinism warning. No row is a FAIL, never a vacuous PASS (#282 review M4)."""
+    if not models:
+        return False
+    for record in models.values():
+        if "error" in record or record["determinism_warnings"]:
+            return False
+        if not repeat and not record["invariant"]:
+            return False
+        if repeat and not record.get("repeat_identical", False):
+            return False
+    return True
 
 
 def compare(out: Path, runs: list[Path]) -> int:
