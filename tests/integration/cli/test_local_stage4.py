@@ -270,3 +270,60 @@ def test_retry_failures_reruns_only_stage4(tmp_path, tiny_inputs, stage4_cpu, st
     assert retried.exit_code == 0, retried.output
     assert stages_of(new_events(out, after=mark), image=f"{bad}.tif") == ["stage4"]
     assert all_records_valid(out) and staged_completion_path(out).is_file()
+
+
+# ---------------------------------------------------------------------------
+# One identity per image per invocation (review I4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("continuation", [False, True], ids=["first-run", "continuation"])
+@pytest.mark.parametrize("fake_gpu", [True, False], ids=["staged", "single-pass"])
+def test_each_input_is_hashed_once_from_the_strategy_through_stage4(
+    tmp_path, tiny_inputs, stage4_cpu, monkeypatch, fake_gpu, continuation
+):
+    """Review I4: the strategy, the split and Stage 4 hash each input once, together.
+
+    ``file_sha256`` of an input is what a work id costs (a whole-plate read on
+    GPFS). From the strategy's ``execute`` through Stage 4, each input is
+    hashed exactly once: Stage 1's identity (staged) or the strategy's
+    (single-pass) is handed to the core and to Stage 4, never recomputed.
+    The CLI's own startup hashing, before the strategy, is not counted.
+    """
+    from collections import Counter
+    from pathlib import Path
+
+    from phenotypic._cli import _cli_execution_strategies, _cli_failure_tracker, _cli_staged_strategy
+
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=fake_gpu)
+    if continuation:
+        with stage4_stubbed_out(monkeypatch):                   # Stages 1-3 done, Stage 4 pending
+            run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+        assert not all_records_valid(out)
+    inputs = {path.resolve() for path in tiny_inputs.rglob("*.tif")}
+    assert len(inputs) == 2
+    hashed: Counter = Counter()
+    inside = [False]
+    real_hash = _cli_failure_tracker.file_sha256
+
+    def _counting_hash(path):
+        if inside[0] and Path(path).resolve() in inputs:
+            hashed[Path(path).resolve()] += 1
+        return real_hash(path)
+
+    def _counted(execute):
+        def _execute(self, *args, **kwargs):
+            inside[0] = True
+            try:
+                return execute(self, *args, **kwargs)
+            finally:
+                inside[0] = False
+        return _execute
+
+    monkeypatch.setattr(_cli_failure_tracker, "file_sha256", _counting_hash)
+    for cls in (_cli_execution_strategies.LocalParallelStrategy, _cli_staged_strategy.StagedGpuStrategy):
+        monkeypatch.setattr(cls, "execute", _counted(cls.execute))
+    result = run_cli(tiny_inputs, out, pipeline=pipe, extra=GPU)
+    assert result.exit_code == 0, result.output
+    assert all_records_valid(out) and all(store_has_embeddings(out, item) for item in run_items(out))
+    assert hashed == Counter({path: 1 for path in inputs}), hashed

@@ -47,7 +47,6 @@ from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import (
     PerImageScientificError,
     WorkIdentity,
-    work_id_for_image,
     work_identity_for_image,
 )
 from ._cli_stage2_token import (
@@ -132,8 +131,11 @@ class StagedGpuStrategy(ExecutionStrategy):
             one function gates Stage 2 as well as Stage 3, so an image waiting
             on Stage 4, whose Stage-2 signal is already consumed, is neither
             re-detected nor re-measured (#282 plan review C1).
+
+            Called only after Stage 1, with Stage 1's identity for the image
+            (``identities``): it never re-hashes the input (#282 review I4).
             """
-            work_id, _ = work_id_for_image(cfg, ds_name, img)
+            work_id = identities[(ds_name, img)].work_id
             if valid_image_success(
                 output_dir,
                 dataset=ds_name,
@@ -415,8 +417,19 @@ class StagedGpuStrategy(ExecutionStrategy):
                 # An image counts completed only once Stage 4 published it.
                 from . import _cli_stage4_worker
 
+                from ._cli_staged_slurm import manifest_entry_for_identity
+
+                # Stage 1's identities, the run's one per image: Stage 4
+                # recomputes none after Stages 1-3 (review I4).
                 stage4 = _cli_stage4_worker.run_local_stage4(
-                    cfg, self.output_manager, output_dir, datasets
+                    cfg,
+                    self.output_manager,
+                    output_dir,
+                    datasets,
+                    {
+                        key: manifest_entry_for_identity(key[0], key[1], identity)
+                        for key, identity in identities.items()
+                    },
                 )
                 apply_stage4_counts(results, stage4)
 

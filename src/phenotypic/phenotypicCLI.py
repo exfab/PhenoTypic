@@ -4109,26 +4109,11 @@ def phenotypic_cli(
                     else:
                         click.echo("✓ All images already processed!")
                     sys.exit(_finished_run_exit(skipped_failures))
-                stage4_only = 0
-                if resume_defers_embeddings and not measure_only:
-                    # The no-detector continuation (plan review C1): an image
-                    # that finished Stages 1-3 needs Stage 4 only, and the
-                    # local strategy skips its core (`split_stage4_pending`).
-                    from phenotypic._cli._cli_stage4_worker import (
-                        split_stage4_pending,
-                    )
-
-                    stage4_only = len(
-                        split_stage4_pending(datasets, output_dir, config)[1]
-                    )
+                # How many of them need Stage 4 only is the local strategy's
+                # to say, from its own split: counting it here re-hashed
+                # every input once more (#282 review I4).
                 click.echo(
-                    f"Continuing processing ({remaining_images} images remaining"
-                    + (
-                        f", {stage4_only} of them need Stage 4 only"
-                        if stage4_only
-                        else ""
-                    )
-                    + ")"
+                    f"Continuing processing ({remaining_images} images remaining)"
                 )
                 if config.retry_failures:
                     click.echo("  - Including previously failed images")

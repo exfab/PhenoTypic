@@ -1269,7 +1269,9 @@ def sweep_orphan_stage4_signals(
 
 
 def split_stage4_pending(
-    datasets: Sequence[Dataset], output_dir: Path, config: ExecutionConfig
+    datasets: Sequence[Dataset],
+    output_dir: Path,
+    entries: Mapping[tuple[str, Path], StagedManifestEntry],
 ) -> tuple[list[Dataset], list[StagedManifestEntry]]:
     """Split a deferring run's worklist into the images that still need the core and Stage 4's.
 
@@ -1286,10 +1288,15 @@ def split_stage4_pending(
     :func:`~phenotypic._cli._cli_staged_resume.build_staged_resume_plan` for a
     run without a ``GpuDetector``; P5 T2 reuses it for the SLURM one.
 
+    It hashes no input (review I4): *entries* carry each image's one
+    identity for the invocation, computed once by the caller
+    (:func:`stage4_entries`, or the identities a strategy already holds).
+
     Args:
         datasets: The worklist.
         output_dir: Run output root.
-        config: The run's configuration (its work ids).
+        entries: ``{(dataset name, image path): manifest entry}`` for every
+            image of *datasets*.
 
     Returns:
         ``(core datasets, Stage-4 items)``: the datasets with only their
@@ -1297,7 +1304,6 @@ def split_stage4_pending(
         ``"pending"`` image as a manifest entry, in worklist order.
     """
     from ._cli_staged_resume import stage4_status
-    from ._cli_staged_slurm import staged_manifest_entry
     from ._cli_types import Dataset
 
     core: list[Dataset] = []
@@ -1305,7 +1311,7 @@ def split_stage4_pending(
     for dataset in datasets:
         images = []
         for image in dataset.images:
-            entry = staged_manifest_entry(config, dataset.name, image)
+            entry = entries[(dataset.name, image)]
             status = stage4_status(output_dir, dataset.name, entry.stem, entry.work_id)
             if status == "not_ready":
                 images.append(image)
@@ -1321,6 +1327,41 @@ def split_stage4_pending(
                 )
             )
     return core, pending
+
+
+def stage4_entries(
+    config: ExecutionConfig,
+    tasks: Sequence[tuple[Dataset, Path]],
+    *,
+    n_jobs: int = 1,
+) -> dict[tuple[str, Path], StagedManifestEntry]:
+    """Each task's manifest entry under its **one** identity for this invocation (review I4).
+
+    ``work_identity_for_image`` hashes the input; this is the only place a
+    deferring local run without a ``GpuDetector`` computes it. The core is
+    then handed the same identity (never recomputing it), and so is Stage 4,
+    after Stages 1-3. Threads, not processes: ``hashlib`` releases the GIL.
+
+    Args:
+        config: The run's configuration.
+        tasks: ``[(dataset, image path)]``.
+        n_jobs: joblib's ``n_jobs`` for the hashing threads.
+
+    Returns:
+        ``{(dataset name, image path): entry}``.
+    """
+    from joblib import Parallel, delayed
+
+    from ._cli_failure_tracker import work_identity_for_image
+    from ._cli_staged_slurm import manifest_entry_for_identity
+
+    identities = Parallel(n_jobs=n_jobs, prefer="threads")(
+        delayed(work_identity_for_image)(config, dataset.name, image) for dataset, image in tasks
+    )
+    return {
+        (dataset.name, image): manifest_entry_for_identity(dataset.name, image, identity)
+        for (dataset, image), identity in zip(tasks, identities)
+    }
 
 
 def sweep_run_orphan_stage4_signals(output_dir: Path) -> int:
@@ -1357,6 +1398,7 @@ def run_local_stage4(
     output_manager: OutputManager,
     output_dir: Path,
     datasets: Sequence[Dataset],
+    entries: Mapping[tuple[str, Path], StagedManifestEntry],
 ) -> dict[str, tuple[int, int]]:
     """Run Stage 4 in this process over *datasets*: ``{dataset: (published, failed)}``.
 
@@ -1369,6 +1411,15 @@ def run_local_stage4(
     loader workers, so ``--njobs`` is honoured and ``--njobs 1`` prepares
     in-process (re-review item 2a). Every image it is handed ends published
     or journalled (plan review C2), or this raises.
+
+    Args:
+        config: The run's configuration.
+        output_manager: The run's output manager.
+        output_dir: Run output root.
+        datasets: The worklist.
+        entries: ``{(dataset name, image path): manifest entry}`` for every
+            image of *datasets*, built from the identity Stages 1-3 ran
+            under; Stage 4 never recomputes a work id (review I4).
 
     Raises:
         click.ClickException: Exit ``1``, after the commit pool drains and
@@ -1384,7 +1435,7 @@ def run_local_stage4(
     from ._cli_utils import resolve_local_worker_count
 
     sweep_run_orphan_stage4_signals(output_dir)
-    _core, items = split_stage4_pending(datasets, output_dir, config)
+    _core, items = split_stage4_pending(datasets, output_dir, entries)
     if not config.retry_failures:
         terminal = terminal_failure_index(output_dir)
         items = [entry for entry in items if entry.work_id not in terminal]

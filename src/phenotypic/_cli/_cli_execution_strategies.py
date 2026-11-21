@@ -22,7 +22,7 @@ import click
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
-    pass
+    from ._cli_staged_orchestration import StagedManifestEntry
 
 from ._cli_types import (
     Dataset,
@@ -53,6 +53,7 @@ from ._cli_update_state import (
 )
 from ._cli_failure_tracker import (
     PerImageScientificError,
+    WorkIdentity,
     append_failure,
     append_terminal_failure,
     work_id_for_image,
@@ -420,23 +421,32 @@ class LocalParallelStrategy(ExecutionStrategy):
             f"[bold]{len(datasets)} datasets[/bold]\n"
         )
 
-        # The no-detector continuation (#282 P4 T4, plan review C1): under
-        # deferral an image that finished Stages 1-3 skips the core, which
-        # would re-measure it and drop its Stage-4 signals; Stage 4 below
-        # picks it up. It counts as the core's success, as the staged
-        # strategy's Stage 3 counts it.
-        core_tasks = all_tasks
-        core_done: list[tuple[str, str, bool, str]] = []
-        if (
-            self.config.resume
-            and defers_embeddings(self.config)
+        # Under deferral (#282) every image gets its one identity for this
+        # invocation here, once (review I4): the core is handed it, and so is
+        # Stage 4 after the core, so no input is hashed twice and no work id
+        # is recomputed after Stages 1-3.
+        #
+        # The no-detector continuation (#282 P4 T4, plan review C1): an image
+        # that finished Stages 1-3 skips the core, which would re-measure it
+        # and drop its Stage-4 signals; Stage 4 below picks it up. It counts
+        # as the core's success, as the staged strategy's Stage 3 counts it.
+        deferring_run = (
+            defers_embeddings(self.config)
             and not measure_only
             and not self.config.process_only_layer
-        ):
-            from ._cli_stage4_worker import split_stage4_pending
+        )
+        stage4_entries: dict = {}
+        core_tasks = all_tasks
+        core_done: list[tuple[str, str, bool, str]] = []
+        if deferring_run:
+            from . import _cli_stage4_worker
 
-            core_datasets, _stage4_items = split_stage4_pending(
-                datasets, output_dir, self.config
+            stage4_entries = _cli_stage4_worker.stage4_entries(
+                self.config, all_tasks, n_jobs=self.config.n_jobs
+            )
+        if deferring_run and self.config.resume:
+            core_datasets, stage4_only = _cli_stage4_worker.split_stage4_pending(
+                datasets, output_dir, stage4_entries
             )
             needs_core = {
                 (dataset.name, image_path)
@@ -453,6 +463,10 @@ class LocalParallelStrategy(ExecutionStrategy):
                 for dataset, image_path in all_tasks
                 if (dataset.name, image_path) in needs_core
             ]
+            if stage4_only:
+                console.print(
+                    f"  {len(stage4_only)} image(s) need Stage 4 only"
+                )
 
         from ._cli_validation import pipeline_requires_gpu
 
@@ -484,24 +498,32 @@ class LocalParallelStrategy(ExecutionStrategy):
         else:
             worker = self._process_single_local
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
-            delayed(worker)(dataset, image_path, output_dir, event_log)
+            delayed(worker)(
+                dataset,
+                image_path,
+                output_dir,
+                event_log,
+                **(
+                    {"entry": stage4_entries[(dataset.name, image_path)]}
+                    if stage4_entries
+                    else {}
+                ),
+            )
             for dataset, image_path in core_tasks
         )
         results = [*results, *core_done]
 
         # Aggregate results by dataset
         dataset_results = self._aggregate_results(datasets, results)
-        if (
-            defers_embeddings(self.config)
-            and not measure_only
-            and not self.config.process_only_layer
-        ):
+        if deferring_run:
             # Stage 4 (#282 P4 T3): this loop was the run's Stage 3. An image
             # counts completed only once Stage 4 published its record.
-            from . import _cli_stage4_worker
-
             stage4 = _cli_stage4_worker.run_local_stage4(
-                self.config, self.output_manager, output_dir, datasets
+                self.config,
+                self.output_manager,
+                output_dir,
+                datasets,
+                stage4_entries,
             )
             counts = {
                 name: {"completed": r.completed, "failed": r.failed}
@@ -585,9 +607,14 @@ class LocalParallelStrategy(ExecutionStrategy):
         image_path: Path,
         output_dir: Path,
         event_log: Path,
+        entry: "StagedManifestEntry | None" = None,
     ) -> tuple[str, str, bool, str]:
         """
         Process single image locally.
+
+        *entry*, under deferral, carries the image's one identity for the
+        invocation (#282 review I4); without it the identity is computed
+        here, once, before the apply.
 
         Returns:
             Tuple of (dataset_name, image_name, success, error_message)
@@ -612,9 +639,16 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             # Process. One identity per image, before the apply: its reference
             # digest pins the context, and its work-id is what is published.
-            identity = work_identity_for_image(
-                self.config, dataset.name, image_path
-            )
+            if entry is not None:
+                identity = WorkIdentity(
+                    entry.work_id,
+                    entry.relative_image_path,
+                    entry.reference_digest,
+                )
+            else:
+                identity = work_identity_for_image(
+                    self.config, dataset.name, image_path
+                )
             work_identity = (identity.work_id, identity.relative_path)
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,

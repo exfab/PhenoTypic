@@ -34,7 +34,7 @@ from ._cli_execution_strategies import (
     echo_slurm_monitor_commands,
     finalizer_aggregation_options,
 )
-from ._cli_failure_tracker import work_identity_for_image
+from ._cli_failure_tracker import WorkIdentity, work_identity_for_image
 from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
@@ -583,7 +583,21 @@ def staged_manifest_entry(
     Returns:
         The manifest entry the stage workers read.
     """
-    identity = work_identity_for_image(config, dataset_name, image)
+    return manifest_entry_for_identity(
+        dataset_name, image, work_identity_for_image(config, dataset_name, image)
+    )
+
+
+def manifest_entry_for_identity(
+    dataset_name: str, image: Path, identity: WorkIdentity
+) -> StagedManifestEntry:
+    """The manifest entry of *image* under an identity already computed for it.
+
+    Hashes nothing: a caller that holds the image's one identity for the run
+    (a local strategy, Stage 1) builds its entry from it, rather than
+    recomputing a work id after Stages 1-3 (#282 review I4; ``_cli/CLAUDE.md``
+    "Reference metadata").
+    """
     return StagedManifestEntry(
         dataset=dataset_name,
         image_name=image.name,
