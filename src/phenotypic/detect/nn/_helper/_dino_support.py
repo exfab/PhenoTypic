@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import functools
 import re
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, List, Literal, Tuple
 
 if TYPE_CHECKING:
@@ -547,7 +548,10 @@ def backbone_device_name(device: str) -> str | None:
 
 
 def compute_block(
-    *, device: str, stage: Literal["inline", "stage4"], physical_batch: int
+    *,
+    device: str,
+    stage: Literal["inline", "stage4"],
+    physical_batch: int | Collection[int],
 ) -> dict[str, Any]:
     """Where and how an embedding entry was computed: its ``compute`` block (#282 §4.5).
 
@@ -561,7 +565,10 @@ def compute_block(
         device: The resolved device that ran the backbone, ``"cuda"`` or
             ``"cpu"``.
         stage: ``"inline"`` (the measure core) or ``"stage4"`` (the GPU stage).
-        physical_batch: Inputs per forward pass.
+        physical_batch: Inputs per forward pass: one size, or every size the
+            entry's passes ran at (``BatchEncoder.drain``'s
+            ``physical_batches``), which differ when an OOM halved the batch
+            part-way through the image (#282 I1).
 
     Returns:
         ``{device, device_name, capability, torch, cuda, physical_batch,
@@ -569,23 +576,38 @@ def compute_block(
         ``capability`` the GPU's ``"<major>.<minor>"`` compute capability on
         CUDA and ``None`` on the CPU; ``torch`` the torch version; ``cuda``
         ``torch.version.cuda`` on CUDA (``None`` on the CPU, which ran none).
+        ``physical_batch`` is the one size when there is one. When the
+        entry's rows ran at several, it is ``None`` and the block gains
+        ``physical_batches``, every size largest first (e.g. ``[64, 32]``),
+        so no entry states a single pass shape it does not have. An entry
+        that ran no pass (no regions) records ``physical_batch: None``.
+
+    Raises:
+        ValueError: If a size is not a positive integer.
     """
     import torch
 
+    sizes = [physical_batch] if isinstance(physical_batch, int) else list(physical_batch)
+    if any(isinstance(m, bool) or int(m) != m or m < 1 for m in sizes):
+        raise ValueError(f"physical batch sizes must be positive integers, got {physical_batch!r}")
+    distinct = sorted({int(m) for m in sizes}, reverse=True)
     on_cuda = device == "cuda"
     capability = None
     if on_cuda:
         major, minor = torch.cuda.get_device_capability()
         capability = f"{int(major)}.{int(minor)}"
-    return {
+    block: dict[str, Any] = {
         "device": device,
         "device_name": backbone_device_name(device),
         "capability": capability,
         "torch": str(torch.__version__),
         "cuda": torch.version.cuda if on_cuda else None,
-        "physical_batch": int(physical_batch),
+        "physical_batch": distinct[0] if len(distinct) == 1 else None,
         "stage": stage,
     }
+    if len(distinct) > 1:
+        block["physical_batches"] = distinct
+    return block
 
 
 def backbone_dtype(model: Any) -> Any:

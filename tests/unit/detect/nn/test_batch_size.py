@@ -1,6 +1,7 @@
 """Stage 4's physical batch rule, ``BackboneKey`` and the cuBLAS check (#282 P2 T2).
 
-No torch: the rule is arithmetic, and the cuBLAS check reads one variable.
+No torch, except :func:`physical_batch_for`'s tests, which skip without it: the
+rule is arithmetic, and the cuBLAS check reads one variable.
 The rule's constants are copied from the P0 logic-validation script, which
 these tests load by path to hold the two to each other (the script never
 imports ``phenotypic``; nothing forbids the reverse).
@@ -23,6 +24,8 @@ from phenotypic.detect.nn._helper._batch_encoder import (
     BackboneKey,
     check_cublas_workspace,
     per_sample_bytes,
+    physical_batch_for,
+    physical_batch_inputs,
     physical_batch_size,
     tokens_for,
 )
@@ -92,6 +95,84 @@ def test_tokens_count_the_cls_and_the_registers():
     assert tokens_for(224, 14, 0) == 16 * 16 + 1
     assert tokens_for(224, 16, 4) == 14 * 14 + 1 + 4
     assert tokens_for(230, 14, 0) == 16 * 16 + 1      # the patch embedding floors
+    assert tokens_for((224, 98), 14, 0) == 16 * 7 + 1  # a masked_dense edge tile
+
+
+# ---------------------------------------------------------------------------
+# physical_batch_for: the rule's one producer from a loaded backbone (#282 review I3)
+# ---------------------------------------------------------------------------
+
+
+def _meta_backbone(params, hidden, heads, patch, registers, dtype):
+    """A backbone with *params* parameters on the ``meta`` device: sized, never allocated."""
+    torch = pytest.importorskip("torch")
+    from types import SimpleNamespace
+
+    class _MetaBackbone(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = torch.nn.Parameter(
+                torch.empty(int(params), device="meta", dtype=getattr(torch, dtype)), requires_grad=False
+            )
+            self.config = SimpleNamespace(hidden_size=hidden, num_attention_heads=heads,
+                                          num_register_tokens=registers, patch_size=patch)
+
+    return _MetaBackbone()
+
+
+def test_physical_batch_for_gives_the_scripts_m_for_every_combination():
+    """Every model row, GPU, crop and dtype ``physical_batch_size.py`` checks: the script's
+    ``m`` (or its refusal) from a loaded backbone of that row's size and config."""
+    pbs = _load_script("physical_batch_size.py")
+    checked = refused = 0
+    for model_name, (params, hidden, heads, patch, registers) in pbs.MODELS.items():
+        for dtype, dtype_bytes in pbs.DTYPE_BYTES.items():
+            model = _meta_backbone(params, hidden, heads, patch, registers, dtype)
+            for gpu, total in pbs.GPUS.items():
+                for crop in pbs.CROPS:
+                    inputs = physical_batch_inputs(model, crop_px=crop, compute_dtype=dtype)
+                    assert inputs == {
+                        "weight_bytes": int(pbs.weights_bytes(model_name, dtype)),
+                        "per_sample_bytes": pbs.per_sample_bytes(model_name, crop, dtype),
+                        "tokens": pbs.tokens(crop, patch, registers),
+                    }
+                    expected = pbs.physical_batch(model_name, total, crop, dtype)
+                    kwargs = dict(crop_px=crop, batch_size=pbs.BATCH_SIZE, compute_dtype=dtype,
+                                  gpu_total_bytes=total)
+                    if expected == 0:
+                        with pytest.raises(ValueError, match="does not fit"):
+                            physical_batch_for(model, **kwargs)
+                        refused += 1
+                    else:
+                        assert physical_batch_for(model, **kwargs) == expected, (model_name, gpu, crop, dtype)
+                    checked += 1
+    assert checked == len(pbs.MODELS) * len(pbs.GPUS) * len(pbs.CROPS) * len(pbs.DTYPE_BYTES)
+    assert 0 < refused < checked
+
+
+def test_physical_batch_for_reads_the_c6_runs_inputs():
+    """The inputs P2 T4 recorded for base float32 on the Ada (``gate-results/c6-282/ada6000.json``,
+    ``m_inputs``), from a backbone of that size: m is 64, as T4 ran."""
+    model = _meta_backbone(346_321_920 // 4, 768, 12, 14, 0, "float32")
+    kw = dict(crop_px=224, compute_dtype="float32")
+    assert physical_batch_inputs(model, **kw) == {
+        "weight_bytes": 346_321_920, "per_sample_bytes": 12_644_400, "tokens": 257}
+    assert physical_batch_for(model, batch_size=64, gpu_total_bytes=50_867_404_800, **kw) == 64
+
+
+def test_physical_batch_for_refuses_a_model_in_another_dtype():
+    model = _meta_backbone(1000, 8, 1, 14, 0, "float32")
+    with pytest.raises(ValueError, match="bfloat16"):
+        physical_batch_for(model, crop_px=224, batch_size=64, compute_dtype="bfloat16",
+                           gpu_total_bytes=48 << 30)
+
+
+def test_a_tile_geometry_counts_its_own_tokens():
+    model = _meta_backbone(1000, 768, 12, 14, 0, "float32")
+    edge = physical_batch_inputs(model, crop_px=(224, 98), compute_dtype="float32")
+    assert edge["tokens"] == 16 * 7 + 1
+    assert edge["per_sample_bytes"] < physical_batch_inputs(
+        model, crop_px=224, compute_dtype="float32")["per_sample_bytes"]
 
 
 @pytest.mark.parametrize("value, ok", [(":4096:8", True), (":16:8", True), (":0:0", False), (None, False)])

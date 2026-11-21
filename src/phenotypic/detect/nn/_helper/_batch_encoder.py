@@ -7,7 +7,8 @@ resident model per shard and crops from many images in each forward pass
 - :class:`BackboneKey`, the identity of one model load, and its
   backbone-major order (H10);
 - the **physical batch** rule, :func:`physical_batch_size`, a function of the
-  GPU's total memory, the backbone and ``crop_px`` only, never of free memory;
+  GPU's total memory, the backbone and ``crop_px`` only, never of free memory,
+  and :func:`physical_batch_for`, its one producer from a loaded backbone;
 - :func:`configure_determinism`, the settings Stage 4 runs under, and
   :func:`check_cublas_workspace`, its cuBLAS half;
 - :class:`BatchEncoder`, which runs one backbone over regions from many
@@ -26,9 +27,9 @@ from __future__ import annotations
 import os
 import sys
 from collections import deque
-from collections.abc import Hashable, Iterator
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final
+from collections.abc import Callable, Hashable, Iterator
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Final, NamedTuple
 
 import numpy as np
 
@@ -93,18 +94,20 @@ class BackboneKey:
         return (self.version, self.size, self.revision or "", self.compute_dtype)
 
 
-def tokens_for(crop_px: int, patch: int, registers: int) -> int:
-    """Tokens a ViT sees for a ``crop_px`` square crop: the patches, the CLS and the registers.
+def tokens_for(crop_px: int | tuple[int, int], patch: int, registers: int) -> int:
+    """Tokens a ViT sees for one input: the patches, the CLS and the registers.
 
-    The patch embedding floors, so ``crop_px`` need not be a multiple of
-    *patch* here (the embedder refuses one that is not).
+    *crop_px* is a square crop's side, or an input's ``(h, w)`` (a
+    ``masked_dense`` tile). The patch embedding floors, so a side need not be
+    a multiple of *patch* here (the embedder refuses a ``crop_px`` that is not).
     """
-    if crop_px < 1 or patch < 1 or registers < 0:
+    h, w = (crop_px, crop_px) if isinstance(crop_px, int) else crop_px
+    if h < 1 or w < 1 or patch < 1 or registers < 0:
         raise ValueError(
             f"crop_px and patch must be positive and registers not negative, got "
             f"crop_px={crop_px}, patch={patch}, registers={registers}"
         )
-    return (crop_px // patch) ** 2 + 1 + registers
+    return (h // patch) * (w // patch) + 1 + registers
 
 
 def per_sample_bytes(*, tokens: int, hidden: int, heads: int, dtype_bytes: int) -> int:
@@ -171,6 +174,101 @@ def physical_batch_size(
             "compute_dtype='bfloat16'"
         )
     return min(batch_size, fit)
+
+
+def physical_batch_inputs(
+    model: Any, *, crop_px: int | tuple[int, int], compute_dtype: ComputeDType
+) -> dict[str, int]:
+    """What :func:`physical_batch_for` feeds the rule, read from a loaded backbone (#282 I3).
+
+    - ``weight_bytes``: the loaded parameters' exact bytes, never a table's
+      nominal size;
+    - ``tokens``: :func:`tokens_for` the geometry, with
+      :func:`backbone_patch_size` and ``config.num_register_tokens``;
+    - ``per_sample_bytes``: :func:`per_sample_bytes` with
+      ``config.hidden_size`` and ``config.num_attention_heads``, in units of
+      *compute_dtype*.
+
+    Args:
+        model: The loaded backbone, its parameters in *compute_dtype*.
+        crop_px: The input's side (a crop), or its ``(h, w)`` (a tile).
+        compute_dtype: The dtype *model*'s parameters are in.
+
+    Returns:
+        ``{"weight_bytes", "per_sample_bytes", "tokens"}``.
+
+    Raises:
+        ValueError: If *model*'s parameters are not in *compute_dtype*.
+    """
+    import torch
+
+    from phenotypic.detect.nn._helper._dino_support import (
+        backbone_dtype,
+        backbone_patch_size,
+    )
+
+    dtype = getattr(torch, compute_dtype)
+    loaded = backbone_dtype(model)
+    if loaded != dtype:
+        raise ValueError(
+            f"the backbone's parameters are {loaded}, not compute_dtype={compute_dtype!r}; "
+            "its weight and activation bytes would be misstated"
+        )
+    config = model.config
+    tokens = tokens_for(
+        crop_px, backbone_patch_size(model), int(getattr(config, "num_register_tokens", 0) or 0)
+    )
+    return {
+        "weight_bytes": sum(p.numel() * p.element_size() for p in model.parameters()),
+        "per_sample_bytes": per_sample_bytes(
+            tokens=tokens,
+            hidden=int(config.hidden_size),
+            heads=int(config.num_attention_heads),
+            dtype_bytes=dtype.itemsize,
+        ),
+        "tokens": tokens,
+    }
+
+
+def physical_batch_for(
+    model: Any,
+    *,
+    crop_px: int | tuple[int, int],
+    batch_size: int,
+    compute_dtype: ComputeDType,
+    gpu_total_bytes: int,
+) -> int:
+    """``m`` for one input geometry of a loaded backbone: the rule's one producer (#282 I3).
+
+    Every caller that needs ``m`` (Stage 4's worker, the P2 T4
+    batch-invariance job) calls this, so the ``m`` T4 measured is the ``m``
+    production runs at: :func:`physical_batch_size` of
+    :func:`physical_batch_inputs`.
+
+    Args:
+        model: The loaded backbone, its parameters in *compute_dtype*.
+        crop_px: The input's side (a crop), or its ``(h, w)`` (a tile).
+        batch_size: The cap: the embedder's ``batch_size``, or the smallest
+            of the embedders that share this geometry.
+        compute_dtype: The dtype *model*'s parameters are in.
+        gpu_total_bytes: The GPU's **total** memory, e.g.
+            ``torch.cuda.get_device_properties(index).total_memory``; never
+            its free memory.
+
+    Returns:
+        ``m``.
+
+    Raises:
+        ValueError: As :func:`physical_batch_inputs` and
+            :func:`physical_batch_size`.
+    """
+    inputs = physical_batch_inputs(model, crop_px=crop_px, compute_dtype=compute_dtype)
+    return physical_batch_size(
+        batch_size=batch_size,
+        gpu_total_bytes=gpu_total_bytes,
+        weight_bytes=inputs["weight_bytes"],
+        per_sample=inputs["per_sample_bytes"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +352,7 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
 # The encoder (spec §4.4)
 # ---------------------------------------------------------------------------
 
+
 #: The ``torch`` dtype name of each ``compute_dtype``.
 _COMPUTE_DTYPES: Final[tuple[str, ...]] = ("float32", "bfloat16", "float16")
 
@@ -264,12 +363,33 @@ _QueueKey = tuple[str, int, int, str]
 
 
 class Stage4OutOfMemory(RuntimeError):
-    """The backbone ran out of GPU memory and the physical batch cannot halve again.
+    """The backbone ran out of GPU memory and a queue's physical batch cannot halve again.
 
-    Raised by a forward pass at ``m = 1``, or after ``m`` has already halved
-    once for the shard (spec §4.8). Running out is the node's state, never the
-    image's: the shard exits non-zero, and the next round retries its images.
+    Raised by a forward pass at ``m = 1``, or after that queue's ``m`` has
+    already halved once (spec §4.8). Running out is the node's state, never
+    the image's: the shard exits non-zero, and the next round retries its
+    images. The pass's rows are back in their queue.
     """
+
+
+class DrainedTicket(NamedTuple):
+    """A finished ticket, as :meth:`BatchEncoder.drain` yields it.
+
+    Attributes:
+        ticket: The caller's key, as submitted.
+        outputs: Shaped as :meth:`~phenotypic.abc_.RegionEncoder.run` returns
+            them: for crops one ``(N, D)`` float32 array, for tiles one
+            ``(h // p, w // p, D)`` float32 grid per tile.
+        physical_batches: Every physical batch size a pass that held one of
+            the ticket's rows ran at, largest first: one size, unless an OOM
+            halved a queue part-way through the ticket or its rows sat in
+            queues of different ``m`` (#282 I1). Empty for a zero-row
+            submission, which ran no pass.
+    """
+
+    ticket: Hashable
+    outputs: list[Any]
+    physical_batches: tuple[int, ...]
 
 
 @dataclass
@@ -279,6 +399,7 @@ class _Ticket:
     outputs: list[Any]
     remaining: int
     output_bytes: int
+    physical_batches: set[int] = field(default_factory=set)
 
 
 def _is_device_oom(exc: BaseException) -> bool:
@@ -297,8 +418,12 @@ class BatchEncoder:
     """One resident backbone over regions from many images, at a fixed physical shape (spec §4.4).
 
     Rows are queued by geometry, ``(kind, h, w, pooling)``, one queue per
-    key. **Every forward pass has exactly** :attr:`physical_batch` inputs:
-    a full queue runs at once, and :meth:`flush` zero-pads the partial ones.
+    key. **Every forward pass of a queue has exactly that queue's** ``m``
+    inputs: a full queue runs at once, and :meth:`flush` zero-pads the
+    partial ones. ``m`` is per queue (#282 I2): embedders that share one
+    model load (:class:`BackboneKey`) may differ in ``crop_px``, and a 448-px
+    crop costs about four times a 224-px one, so *physical_batch* may be a
+    rule of the geometry, normally :func:`physical_batch_for` of the model.
     Crops are normalised as
     :func:`~phenotypic.detect.nn._helper._dino_support.embed_crops`
     normalises them; ``masked_dense`` tiles arrive normalised by the HF
@@ -310,37 +435,53 @@ class BatchEncoder:
 
     A submission is a *ticket*, the caller's key (e.g. ``(image, key)``);
     :meth:`drain` yields each ticket as soon as all its rows are done, in
-    completion order, and drops it. So a finished image never waits behind
-    another image's partial batch.
+    completion order, with every physical batch size its rows ran at
+    (:class:`DrainedTicket`), and drops it. So a finished image never waits
+    behind another image's partial batch, and its ``compute`` block can
+    state the pass shape it has.
 
     **In-flight bound.** The output bytes held for unfinished tickets
     (:attr:`held_bytes`) are bounded by *max_in_flight_bytes*: when a
     submission takes them over, every partial queue is flushed. A crop
     ticket holds ``N * D * 4`` bytes, so crop pipelines never reach the
     default bound and keep full batches; a ``masked_dense`` ticket holds its
-    feature grid, so only dense grids flush early (re-review item 4).
+    feature grid, so only dense grids flush early (re-review item 4). The
+    bound counts outputs only, not queued input rows, and not finished
+    tickets the caller has not drained: drain after every :meth:`submit`.
 
-    **Out of memory.** A pass that runs out of GPU memory halves the physical
-    batch once (:meth:`halve`) and puts its rows back at the head of their
-    queue, so no row is lost and every later pass has the halved size. A run
-    started by :meth:`submit` then returns, leaving the rows for the next
-    :meth:`submit` or :meth:`flush`; :meth:`flush` retries them at once. A pass
-    that runs out of memory when the batch cannot halve raises
+    **Out of memory.** A pass that runs out of GPU memory halves its queue's
+    ``m`` once, for the encoder's life, and puts its rows back at the head of
+    that queue, so no row is lost and every later pass of that queue has the
+    halved size; other queues keep their ``m``. A run started by
+    :meth:`submit` then returns, leaving the rows for the next :meth:`submit`
+    or :meth:`flush`; :meth:`flush` retries them at once. A pass that runs
+    out of memory when its queue cannot halve raises
     :class:`Stage4OutOfMemory`.
+
+    **Any other error in a forward pass** (a driver fault, a CUDA error that
+    is not an ``OutOfMemoryError``, a dtype mismatch) also puts the pass's
+    rows back, so :attr:`held_bytes` and every ticket stay as they were, and
+    then **poisons** the encoder: the error propagates, and every later
+    :meth:`submit`, :meth:`flush` and :meth:`drain` raises ``RuntimeError``
+    naming it (#282 I6). The caller fails the shard rather than continue
+    with images whose rows a failed pass held.
 
     Args:
         model: The loaded backbone, on *device*, in *compute_dtype*.
         processor: Its processor; only ``rescale_factor``, ``image_mean`` and
             ``image_std`` are read, for crops.
-        device: The device *model* is on, ``"cuda"`` or ``"cpu"``.
+        device: The device *model* is on, e.g. ``"cuda"`` or ``"cpu"``.
         compute_dtype: The dtype *model*'s parameters are in.
-        physical_batch: ``m``, from :func:`physical_batch_size`.
+        physical_batch: ``m`` for every geometry, or a rule
+            ``(h, w) -> m`` called once per queue, at its first row. A caller
+            whose embedders share a geometry but differ in ``batch_size``
+            passes the smallest cap for it.
         max_in_flight_bytes: The bound on :attr:`held_bytes`.
 
     Raises:
-        ValueError: If *physical_batch* or *max_in_flight_bytes* is not
-            positive, *compute_dtype* is not one of the three, or *model*'s
-            parameters are in another dtype.
+        ValueError: If *physical_batch* (or a value of its rule) or
+            *max_in_flight_bytes* is not positive, *compute_dtype* is not one
+            of the three, or *model*'s parameters are in another dtype.
     """
 
     def __init__(
@@ -350,7 +491,7 @@ class BatchEncoder:
         *,
         device: str,
         compute_dtype: ComputeDType,
-        physical_batch: int,
+        physical_batch: int | Callable[[int, int], int],
         max_in_flight_bytes: int = MAX_IN_FLIGHT_OUTPUT_BYTES,
     ) -> None:
         import torch
@@ -360,8 +501,13 @@ class BatchEncoder:
             backbone_patch_size,
         )
 
-        if physical_batch < 1:
-            raise ValueError(f"physical_batch must be positive, got {physical_batch}")
+        if callable(physical_batch):
+            rule: Callable[[int, int], int] = physical_batch
+        else:
+            fixed = int(physical_batch)
+            if fixed < 1:
+                raise ValueError(f"physical_batch must be positive, got {physical_batch}")
+            rule = lambda h, w: fixed  # noqa: E731
         if max_in_flight_bytes < 1:
             raise ValueError(f"max_in_flight_bytes must be positive, got {max_in_flight_bytes}")
         if compute_dtype not in _COMPUTE_DTYPES:
@@ -374,6 +520,7 @@ class BatchEncoder:
                 "load it in the compute dtype"
             )
         self._model, self._device, self._dtype = model, device, dtype
+        self._on_cuda = torch.device(device).type == "cuda"
         self._patch = backbone_patch_size(model)
         self._registers = int(getattr(model.config, "num_register_tokens", 0) or 0)
         self._hidden = int(model.config.hidden_size)
@@ -383,8 +530,10 @@ class BatchEncoder:
         std = torch.tensor(processor.image_std, dtype=torch.float32, device=device)
         self._mean, self._std = mean.view(1, 3, 1, 1), std.view(1, 3, 1, 1)
 
-        self._m = int(physical_batch)
-        self._halved = False
+        self._rule = rule
+        self._m: dict[_QueueKey, int] = {}
+        self._halved: set[_QueueKey] = set()
+        self._failure: BaseException | None = None
         self._max_in_flight_bytes = int(max_in_flight_bytes)
         self._queues: dict[_QueueKey, deque[_Row]] = {}
         self._tickets: dict[Hashable, _Ticket] = {}
@@ -396,9 +545,14 @@ class BatchEncoder:
     # ------------------------------------------------------------------ #
 
     @property
-    def physical_batch(self) -> int:
-        """``m``: the inputs in every forward pass (halved once after an OOM)."""
-        return self._m
+    def physical_batches(self) -> dict[_QueueKey, int]:
+        """Each queue's ``m`` so far, ``{(kind, h, w, pooling): m}`` (halved after an OOM)."""
+        return dict(self._m)
+
+    @property
+    def halved(self) -> bool:
+        """Whether any queue's ``m`` has halved after an OOM."""
+        return bool(self._halved)
 
     @property
     def held_bytes(self) -> int:
@@ -409,18 +563,6 @@ class BatchEncoder:
     def max_in_flight_bytes(self) -> int:
         """The bound on :attr:`held_bytes`."""
         return self._max_in_flight_bytes
-
-    def halve(self) -> bool:
-        """Halve the physical batch, once for the encoder's life.
-
-        Returns:
-            ``True`` if it halved; ``False`` when it already has, or ``m`` is 1.
-        """
-        if self._halved or self._m <= 1:
-            return False
-        self._m //= 2
-        self._halved = True
-        return True
 
     # ------------------------------------------------------------------ #
     # Submit, flush, drain
@@ -441,12 +583,18 @@ class BatchEncoder:
 
         Raises:
             ValueError: If *ticket* is held (submitted and not yet drained),
-                or *inputs* are not a backbone's.
+                *inputs* are not a backbone's, or the physical-batch rule
+                gives a new geometry no positive ``m``.
             Stage4OutOfMemory: As :meth:`flush`, from a pass this runs.
+            RuntimeError: If the encoder is poisoned (see the class).
         """
+        self._refuse_if_failed()
         if ticket in self._tickets:
             raise ValueError(f"ticket {ticket!r} is already held; drain it before reusing it")
         entry, rows = self._admit(inputs)
+        for key in dict.fromkeys(key for key, _, _ in rows):
+            if key not in self._m:
+                self._m[key] = self._physical_batch_of(key)
         self._tickets[ticket] = entry
         if entry.remaining == 0:
             self._done.append(ticket)
@@ -459,31 +607,33 @@ class BatchEncoder:
             self.flush()
 
     def flush(self) -> None:
-        """Run every queue to empty, the last pass of each zero-padded to exactly ``m``.
+        """Run every queue to empty, the last pass of each zero-padded to exactly its ``m``.
 
-        A pass that runs out of memory halves ``m`` and its rows are retried
-        at once, at the halved size.
+        A pass that runs out of memory halves its queue's ``m`` and its rows
+        are retried at once, at the halved size.
 
         Raises:
-            Stage4OutOfMemory: If a pass runs out of GPU memory and ``m``
-                cannot halve (it already has, or it is 1).
+            Stage4OutOfMemory: If a pass runs out of GPU memory and its
+                queue's ``m`` cannot halve (it already has, or it is 1).
+            RuntimeError: If the encoder is poisoned (see the class).
         """
+        self._refuse_if_failed()
         self._run_queues(partial=True)
 
-    def drain(self) -> Iterator[tuple[Hashable, list[np.ndarray]]]:
-        """Yield each finished ticket and its outputs, in completion order, and drop it.
+    def drain(self) -> Iterator[DrainedTicket]:
+        """Yield each finished ticket, in completion order, and drop it.
 
         Runs nothing: a ticket with rows still queued stays held.
 
-        Yields:
-            ``(ticket, outputs)``, the outputs shaped as
-            :meth:`~phenotypic.abc_.RegionEncoder.run` returns them: for crops
-            one ``(N, D)`` float32 array, for tiles one ``(h // p, w // p, D)``
-            float32 grid per tile.
+        Returns:
+            An iterator of :class:`DrainedTicket`.
+
+        Raises:
+            RuntimeError: If the encoder is poisoned (see the class), at the
+                call, before anything is yielded.
         """
-        while self._done:
-            ticket = self._done.popleft()
-            yield ticket, self._tickets.pop(ticket).outputs
+        self._refuse_if_failed()
+        return self._drain()
 
     def as_region_encoder(self) -> RegionEncoder:
         """A synchronous :class:`~phenotypic.abc_.RegionEncoder` on this encoder.
@@ -496,6 +646,40 @@ class BatchEncoder:
     # ------------------------------------------------------------------ #
     # Internals
     # ------------------------------------------------------------------ #
+
+    def _refuse_if_failed(self) -> None:
+        failure = self._failure
+        if failure is not None:
+            raise RuntimeError(
+                "this BatchEncoder is unusable: a forward pass failed with "
+                f"{type(failure).__name__}: {failure}. The pass's rows are back in "
+                "their queue, but the encoder never retries them; fail the shard, and "
+                "the next round re-embeds its images"
+            ) from failure
+
+    def _drain(self) -> Iterator[DrainedTicket]:
+        while self._done:
+            ticket = self._done.popleft()
+            entry = self._tickets.pop(ticket)
+            yield DrainedTicket(
+                ticket, entry.outputs, tuple(sorted(entry.physical_batches, reverse=True))
+            )
+
+    def _physical_batch_of(self, key: _QueueKey) -> int:
+        """A new queue's ``m``, from the rule, checked positive."""
+        _, h, w, _ = key
+        m = self._rule(h, w)
+        if isinstance(m, bool) or not isinstance(m, (int, np.integer)) or m < 1:
+            raise ValueError(f"the physical batch of a {h} x {w} input must be a positive int, got {m!r}")
+        return int(m)
+
+    def _halve(self, key: _QueueKey) -> bool:
+        """Halve *key*'s ``m``, once for the encoder's life; ``False`` if it has, or ``m`` is 1."""
+        if key in self._halved or self._m[key] <= 1:
+            return False
+        self._m[key] //= 2
+        self._halved.add(key)
+        return True
 
     def _admit(self, inputs: BackboneInputs) -> tuple[_Ticket, list[tuple[_QueueKey, int, np.ndarray]]]:
         """A ticket for *inputs*, with its preallocated outputs, and its rows by queue."""
@@ -534,56 +718,69 @@ class BatchEncoder:
     def _run_queues(self, *, partial: bool) -> None:
         """Run full queues (and, with *partial*, every queue) until none is left to run.
 
-        After an out-of-memory pass that halved ``m``, a run started by
-        :meth:`submit` (``partial=False``) returns; :meth:`flush` goes on.
+        After an out-of-memory pass that halved a queue's ``m``, a run
+        started by :meth:`submit` (``partial=False``) returns; :meth:`flush`
+        goes on.
         """
         while True:
             key = next(
-                (k for k, q in self._queues.items() if len(q) >= self._m or (partial and q)),
+                (k for k, q in self._queues.items() if len(q) >= self._m[k] or (partial and q)),
                 None,
             )
             if key is None:
                 return
             queue = self._queues[key]
-            batch = [queue.popleft() for _ in range(min(self._m, len(queue)))]
+            batch = [queue.popleft() for _ in range(min(self._m[key], len(queue)))]
             if not queue:
                 del self._queues[key]
             if not self._forward(key, batch) and not partial:
                 return
 
     def _forward(self, key: _QueueKey, batch: list[_Row]) -> bool:
-        """One pass of exactly ``m`` inputs; ``False`` if it ran out of memory and was re-queued."""
+        """One pass of exactly the queue's ``m``; ``False`` if it ran out of memory and was re-queued."""
+        m = self._m[key]
+        try:
+            tokens = self._tokens_of(key, batch, m)
+        except Exception as exc:
+            # Every row goes back at the head of its queue, in order: no row is lost.
+            self._queues.setdefault(key, deque()).extendleft(reversed(batch))
+            if not _is_device_oom(exc):
+                self._failure = exc
+                raise
+            if not self._halve(key):
+                halved = ", after halving once" if key in self._halved else ""
+                raise Stage4OutOfMemory(
+                    f"the backbone ran out of GPU memory at physical batch {m}{halved}; "
+                    "the shard stops and the next round retries its images"
+                ) from exc
+        else:
+            self._route(key, batch, tokens, m)
+            return True
+        # Released here, not inside the except: by now the traceback, and the
+        # failed pass's tensors in its frames, are gone, so the cache can free them.
+        if self._on_cuda:
+            import torch
+
+            torch.cuda.empty_cache()
+        return False
+
+    def _tokens_of(self, key: _QueueKey, batch: list[_Row], m: int) -> np.ndarray:
+        """The backbone's float32 tokens for *batch*, zero-padded to *m* inputs."""
         import torch
 
         kind, h, w, _ = key
         n = len(batch)
-        try:
-            with torch.inference_mode():
-                pixels = torch.zeros((self._m, 3, h, w), dtype=torch.float32, device=self._device)
-                stacked = torch.from_numpy(np.stack([row for _, _, row in batch])).to(self._device)
-                if kind == "crops":
-                    stacked = (stacked.permute(0, 3, 1, 2).to(torch.float32) * self._scale - self._mean) / self._std
-                pixels[:n] = stacked
-                del stacked
-                tokens = self._model(pixel_values=pixels.to(self._dtype)).last_hidden_state
-                tokens = tokens.detach().to(torch.float32).cpu().numpy()
-        except Exception as exc:
-            if not _is_device_oom(exc):
-                raise
-            self._queues.setdefault(key, deque()).extendleft(reversed(batch))
-            if self._device == "cuda":
-                torch.cuda.empty_cache()
-            if not self.halve():
-                halved = ", after halving once" if self._halved else ""
-                raise Stage4OutOfMemory(
-                    f"the backbone ran out of GPU memory at physical batch {self._m}{halved}; "
-                    "the shard stops and the next round retries its images"
-                ) from exc
-            return False
-        self._route(key, batch, tokens)
-        return True
+        with torch.inference_mode():
+            pixels = torch.zeros((m, 3, h, w), dtype=torch.float32, device=self._device)
+            stacked = torch.from_numpy(np.stack([row for _, _, row in batch])).to(self._device)
+            if kind == "crops":
+                stacked = (stacked.permute(0, 3, 1, 2).to(torch.float32) * self._scale - self._mean) / self._std
+            pixels[:n] = stacked
+            del stacked
+            tokens = self._model(pixel_values=pixels.to(self._dtype)).last_hidden_state
+            return tokens.detach().to(torch.float32).cpu().numpy()
 
-    def _route(self, key: _QueueKey, batch: list[_Row], tokens: np.ndarray) -> None:
+    def _route(self, key: _QueueKey, batch: list[_Row], tokens: np.ndarray, m: int) -> None:
         """Put each row's pooled output in its ticket, pooled as the inline encoder pools it."""
         from phenotypic.detect.nn._helper._dino_support import (
             patch_grid_hw,
@@ -594,6 +791,7 @@ class BatchEncoder:
         grid_hw = patch_grid_hw((h, w), self._patch)
         for position, (ticket, index, _) in enumerate(batch):
             entry = self._tickets[ticket]
+            entry.physical_batches.add(m)
             one = tokens[position]
             if pooling == "crop_cls":
                 entry.outputs[0][index] = one[0]
@@ -623,6 +821,6 @@ class _SyncRegionEncoder:
         ticket = object()
         encoder.submit(ticket, inputs)
         encoder.flush()
-        ((done, outputs),) = list(encoder.drain())
+        ((done, outputs, _),) = list(encoder.drain())
         assert done is ticket
         return outputs

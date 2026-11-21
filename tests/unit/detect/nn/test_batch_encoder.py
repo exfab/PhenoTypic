@@ -22,8 +22,14 @@ import pytest
 from phenotypic.abc_ import BackboneInputs
 from phenotypic.detect.nn._helper._batch_encoder import (
     MAX_IN_FLIGHT_OUTPUT_BYTES,
+    MEMORY_FRACTION,
+    RESERVE_BYTES,
     BatchEncoder,
     Stage4OutOfMemory,
+    per_sample_bytes,
+    physical_batch_for,
+    physical_batch_size,
+    tokens_for,
 )
 from phenotypic.measure import MeasureDinoEmbedding
 from tests._tiny_run import STUB_HIDDEN_SIZE, STUB_PATCH_SIZE, _build_param_stub_dino
@@ -123,6 +129,17 @@ def encoder(model_pair, m, **kwargs):
     return BatchEncoder(*model_pair, device="cpu", compute_dtype="float32", physical_batch=m, **kwargs)
 
 
+def outputs_of(enc):
+    """``{ticket: outputs}`` of every finished ticket."""
+    return {done.ticket: done.outputs for done in enc.drain()}
+
+
+def only_m(enc):
+    """The one ``m`` of an encoder whose rows all sat in one queue."""
+    (m,) = set(enc.physical_batches.values())
+    return m
+
+
 # ---------------------------------------------------------------------------
 # The plan's tests (P2 T3 Step 1)
 # ---------------------------------------------------------------------------
@@ -143,7 +160,7 @@ def test_vectors_route_back_by_ticket_and_row(stub_model):
     enc.submit("a", a)
     enc.submit("b", b)
     enc.flush()
-    out = dict(enc.drain())
+    out = outputs_of(enc)
     assert np.array_equal(out["a"][0], embed_alone(stub_model, a, 4))
     assert np.array_equal(out["b"][0], embed_alone(stub_model, b, 4))
     assert not np.array_equal(out["a"][0], out["b"][0][:3])       # the two are told apart
@@ -157,7 +174,7 @@ def rows_are_isolated(model_pair) -> bool:
         enc.submit("n", crops(seed + 1, seed=seed))
         enc.submit("p", probe)
         enc.flush()
-        vectors.append(dict(enc.drain())["p"][0])
+        vectors.append(outputs_of(enc)["p"][0])
     return all(np.array_equal(v, vectors[0]) for v in vectors)
 
 
@@ -173,7 +190,7 @@ def test_a_finished_image_is_drained_before_a_partial_batch(stub_model):
     enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32", physical_batch=4)
     enc.submit("full", crops(4))
     enc.submit("partial", crops(1))
-    assert [t for t, _ in enc.drain()] == ["full"]              # not held behind "partial"
+    assert [d.ticket for d in enc.drain()] == ["full"]              # not held behind "partial"
 
 
 def test_crop_pipelines_keep_full_batches(stub_model):
@@ -190,10 +207,13 @@ def test_dense_grids_flush_on_the_byte_bound(stub_model):
     one_grid = tile_output_bytes(stub_model, px=112)             # the stub's grid for one 112-px tile
     enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32", physical_batch=8,
                        max_in_flight_bytes=2 * one_grid)
-    for t in "abc":
-        enc.submit(t, tiles(1, px=112))
-    assert {t for t, _ in enc.drain()} >= {"a", "b"}             # the third ticket crossed the bound
-    assert enc.held_bytes <= 2 * one_grid
+    enc.submit("a", tiles(1, px=112))
+    enc.submit("b", tiles(1, px=112))
+    assert list(enc.drain()) == [] and seen == []                # at the bound is not over it
+    assert enc.held_bytes == 2 * one_grid
+    enc.submit("c", tiles(1, px=112))                            # the third ticket crosses it
+    assert {d.ticket for d in enc.drain()} == {"a", "b", "c"}
+    assert enc.held_bytes == 0
     assert seen == [8]                                           # one padded pass, at m
 
 
@@ -210,7 +230,7 @@ def test_an_empty_input_completes_without_a_forward_pass(stub_model):
     seen = record_batch_sizes(stub_model)
     enc = BatchEncoder(*stub_model, device="cpu", compute_dtype="float32", physical_batch=4)
     enc.submit("empty", crops(0))
-    assert [t for t, _ in enc.drain()] == ["empty"] and seen == []
+    assert [d.ticket for d in enc.drain()] == ["empty"] and seen == []
 
 
 def test_oom_once_halves_and_succeeds(stub_model):
@@ -218,8 +238,8 @@ def test_oom_once_halves_and_succeeds(stub_model):
     a = crops(8)
     enc.submit("a", a)
     enc.flush()
-    assert enc.physical_batch == 4
-    assert np.array_equal(dict(enc.drain())["a"][0], embed_alone(stub_model, a, 4))
+    assert only_m(enc) == 4
+    assert np.array_equal(outputs_of(enc)["a"][0], embed_alone(stub_model, a, 4))
 
 
 def test_oom_twice_raises(stub_model):
@@ -227,7 +247,7 @@ def test_oom_twice_raises(stub_model):
     enc.submit("a", crops(8))
     with pytest.raises(Stage4OutOfMemory):
         enc.flush()
-    assert enc.physical_batch == 4
+    assert only_m(enc) == 4
 
 
 def _prepared_on_the_stub(pooling, **kwargs):
@@ -293,9 +313,9 @@ def test_an_oom_requeues_rows_of_several_tickets_and_routes_them_back(stub_model
     a, b = crops(3, seed=1), crops(3, seed=2)
     enc.submit("a", a)
     enc.submit("b", b)  # [a0 a1 a2 b0] runs out of memory, is re-queued
-    assert enc.physical_batch == 2 and enc.held_bytes > 0
+    assert only_m(enc) == 2 and enc.held_bytes > 0
     enc.flush()
-    out = dict(enc.drain())
+    out = outputs_of(enc)
     assert calls == [4, 2, 2, 2]                    # the failed pass, then every row at m / 2
     assert np.array_equal(out["a"][0], embed_alone(stub_model, a, 2))
     assert np.array_equal(out["b"][0], embed_alone(stub_model, b, 2))
@@ -308,8 +328,8 @@ def test_an_oom_inside_flush_is_retried_at_once(stub_model):
     a = crops(5, seed=3)
     enc.submit("a", a)                               # [a0..a3] runs; a4 waits
     enc.flush()                                      # [a4 + 3 pads] runs out, retried at 2
-    assert calls == [4, 4, 2] and enc.physical_batch == 2
-    (vectors,) = dict(enc.drain())["a"]
+    assert calls == [4, 4, 2] and only_m(enc) == 2
+    (vectors,) = outputs_of(enc)["a"]
     assert np.array_equal(vectors[:4], embed_alone(stub_model, crops(4, seed=3), 4))
     assert np.array_equal(vectors[4:], embed_alone(
         stub_model, BackboneInputs(kind="crops", arrays=(a.arrays[0][4:],), pooling="crop_cls"), 2))
@@ -321,14 +341,6 @@ def test_an_oom_at_m_1_raises_at_once(stub_model):
         enc.submit("a", crops(1))
 
 
-def test_halve_halves_once_and_never_below_1(stub_model):
-    enc = encoder(stub_model, 8)
-    assert enc.halve() and enc.physical_batch == 4
-    assert not enc.halve() and enc.physical_batch == 4
-    one = encoder(stub_model, 1)
-    assert not one.halve() and one.physical_batch == 1
-
-
 def test_crop_mean_and_tiles_route_back_too(stub_model):
     enc = encoder(stub_model, 4)
     mean = crops(3, seed=4, pooling="crop_mean")
@@ -336,7 +348,7 @@ def test_crop_mean_and_tiles_route_back_too(stub_model):
     enc.submit("mean", mean)
     enc.submit("grid", grid)
     enc.flush()
-    out = dict(enc.drain())
+    out = outputs_of(enc)
     assert np.array_equal(out["mean"][0], embed_alone(stub_model, mean, 4))
     side = 112 // STUB_PATCH_SIZE
     assert [g.shape for g in out["grid"]] == [(side, side, STUB_HIDDEN_SIZE)] * 2
@@ -356,10 +368,10 @@ def test_a_drained_ticket_is_dropped_and_its_id_reusable(stub_model):
     enc.submit("a", crops(2))
     with pytest.raises(ValueError, match="already"):
         enc.submit("a", crops(1))                    # still held: not drained yet
-    assert [t for t, _ in enc.drain()] == ["a"]
+    assert [d.ticket for d in enc.drain()] == ["a"]
     assert list(enc.drain()) == []
     enc.submit("a", crops(2))                         # drained: the ticket can be used again
-    assert [t for t, _ in enc.drain()] == ["a"]
+    assert [d.ticket for d in enc.drain()] == ["a"]
 
 
 def test_the_default_bound_is_the_memory_scripts(stub_model):
@@ -385,5 +397,131 @@ def test_a_bfloat16_model_takes_bfloat16_inputs_and_returns_float32(stub_model):
     enc = BatchEncoder(model, processor, device="cpu", compute_dtype="bfloat16", physical_batch=2)
     enc.submit("a", crops(1, px=112))
     enc.flush()
-    (vectors,) = dict(enc.drain())["a"]
+    (vectors,) = outputs_of(enc)["a"]
     assert seen == [torch.bfloat16] and vectors.dtype == np.float32
+
+
+# ---------------------------------------------------------------------------
+# #282 P1/P2 review: per-ticket pass sizes (I1), m per queue (I2), a poisoned encoder (I6)
+# ---------------------------------------------------------------------------
+
+
+def test_a_halving_mid_ticket_records_every_pass_size():
+    """I1: a ticket whose rows ran at 4 and then, after an OOM, at 2 reports both."""
+    from phenotypic.detect.nn._helper._dino_support import compute_block
+
+    model, processor, calls = _raising_oom(None, on_call=2)
+    enc = BatchEncoder(model, processor, device="cpu", compute_dtype="float32", physical_batch=4)
+    enc.submit("a", crops(6, seed=1))                 # [a0..a3] runs at 4; a4, a5 wait
+    enc.flush()                                       # [a4 a5 + 2 pads] runs out; retried at 2
+    enc.submit("b", crops(2, seed=2))                 # after the halving: at 2 only
+    enc.flush()
+    drained = {d.ticket: d.physical_batches for d in enc.drain()}
+    assert calls == [4, 4, 2, 2]
+    assert drained == {"a": (4, 2), "b": (2,)}
+    block = compute_block(device="cpu", stage="stage4", physical_batch=drained["a"])
+    assert block["physical_batch"] is None and block["physical_batches"] == [4, 2]
+    assert compute_block(device="cpu", stage="stage4", physical_batch=drained["b"])["physical_batch"] == 2
+
+
+def test_a_zero_row_ticket_ran_no_pass(stub_model):
+    enc = encoder(stub_model, 4)
+    enc.submit("empty", crops(0))
+    assert [d.physical_batches for d in enc.drain()] == [()]
+
+
+def _stub_heads(model, heads=1):
+    """The stub's config has no attention heads; the physical-batch rule reads them."""
+    model.config.num_attention_heads = heads
+    return model
+
+
+def test_embedders_sharing_a_backbone_get_an_m_per_crop_px(param_stub_backbone, detected_plate):
+    """I2: one model load, two ``crop_px``; each queue runs at its own geometry's ``m``."""
+    small = MeasureDinoEmbedding(device="cpu", crop_px=112)
+    big = MeasureDinoEmbedding(device="cpu", crop_px=224)
+    assert small.backbone_key() == big.backbone_key()          # one load serves both (H10)
+    model, processor, _ = small._backbone()
+    _stub_heads(model)
+    weights = sum(p.numel() * p.element_size() for p in model.parameters())
+
+    def per(px):
+        return per_sample_bytes(tokens=tokens_for(px, STUB_PATCH_SIZE, 0), hidden=STUB_HIDDEN_SIZE,
+                                heads=1, dtype_bytes=4)
+
+    # A GPU on which two and a half 224-px inputs fit beside the weights.
+    total = int((RESERVE_BYTES + weights + 2.5 * per(224)) / MEMORY_FRACTION) + 1
+
+    def rule(h, w):
+        return physical_batch_for(model, crop_px=(h, w), batch_size=64,
+                                  compute_dtype="float32", gpu_total_bytes=total)
+
+    m_small, m_big = rule(112, 112), rule(224, 224)
+    assert m_big == 2 and m_small > m_big                      # the rule depends on crop_px
+    assert m_small == physical_batch_size(batch_size=64, gpu_total_bytes=total,
+                                          weight_bytes=weights, per_sample=per(112))
+    seen = record_batch_shapes((model, processor))
+    enc = BatchEncoder(model, processor, device="cpu", compute_dtype="float32", physical_batch=rule)
+    enc.submit("small", small.prepare_regions(detected_plate).inputs)
+    enc.submit("big", big.prepare_regions(detected_plate).inputs)
+    enc.flush()
+    assert {s[0] for s in seen if s[2] == 112} == {m_small}
+    assert {s[0] for s in seen if s[2] == 224} == {m_big}
+    assert {d.ticket: d.physical_batches for d in enc.drain()} == {"small": (m_small,), "big": (m_big,)}
+
+
+def test_an_oom_halves_only_its_own_queue(stub_model):
+    """I2: running out at 224 px halves the 224-px queue; the 112-px queue keeps its m."""
+    model, processor = stub_model
+    calls = []
+
+    def hook(module, args, kwargs):
+        shape = tuple(kwargs["pixel_values"].shape)
+        calls.append(shape)
+        if shape[2] == 224 and sum(c[2] == 224 for c in calls) == 1:
+            raise torch.OutOfMemoryError("CUDA out of memory. (test)")
+
+    model.register_forward_pre_hook(hook, with_kwargs=True)
+    enc = encoder(stub_model, 4)
+    enc.submit("small", crops(4, px=112, seed=1))
+    enc.submit("big", crops(4, px=224, seed=2))        # runs out at 4; halved to 2, re-queued
+    enc.submit("small2", crops(4, px=112, seed=3))
+    enc.flush()
+    assert enc.physical_batches == {("crops", 112, 112, "crop_cls"): 4, ("crops", 224, 224, "crop_cls"): 2}
+    assert [c[0] for c in calls if c[2] == 112] == [4, 4]
+    drained = {d.ticket: d.physical_batches for d in enc.drain()}
+    assert drained == {"small": (4,), "big": (2,), "small2": (4,)}
+
+
+def test_a_rule_that_gives_no_positive_m_is_refused(stub_model):
+    enc = encoder(stub_model, lambda h, w: 0)
+    with pytest.raises(ValueError, match="positive int"):
+        enc.submit("a", crops(1, px=112))
+    assert enc.held_bytes == 0 and list(enc.drain()) == []
+
+
+def test_a_non_oom_forward_error_requeues_its_rows_and_poisons_the_encoder(stub_model):
+    """I6: a pass holding rows of two tickets fails; no row is lost, and the encoder refuses use."""
+    model, processor = stub_model
+    calls = []
+
+    def hook(module, args, kwargs):
+        calls.append(int(kwargs["pixel_values"].shape[0]))
+        if len(calls) == 2:
+            raise ValueError("an illegal memory access (test)")
+
+    model.register_forward_pre_hook(hook, with_kwargs=True)
+    enc = encoder(stub_model, 4)
+    enc.submit("a", crops(4, seed=1))                  # pass 1 runs: "a" is done
+    enc.submit("b", crops(3, seed=2))
+    held = enc.held_bytes
+    with pytest.raises(ValueError, match="illegal memory access"):
+        enc.submit("c", crops(3, seed=3))              # pass 2, [b0 b1 b2 c0], fails
+    assert enc.held_bytes == held + 3 * STUB_HIDDEN_SIZE * 4
+    (queue,) = enc._queues.values()
+    assert [(t, i) for t, i, _ in queue] == [("b", 0), ("b", 1), ("b", 2), ("c", 0), ("c", 1), ("c", 2)]
+    for use in (lambda: enc.submit("d", crops(1)), enc.flush, enc.drain):
+        with pytest.raises(RuntimeError, match="unusable") as info:
+            use()
+        assert isinstance(info.value.__cause__, ValueError)
+    assert calls == [4, 4]                             # nothing ran after the failure

@@ -11,6 +11,7 @@ rest run everywhere.
 from __future__ import annotations
 
 import importlib.util
+import itertools
 from pathlib import Path
 from typing import get_args
 
@@ -266,13 +267,16 @@ def test_no_282_module_reads_commit_hash_directly():
 def test_model_and_compute_device_fields_agree(param_stub_backbone, detected_plate, monkeypatch):
     from phenotypic.detect.nn._helper import _dino_support as dino_support
 
-    monkeypatch.setattr(dino_support, "backbone_device_name", lambda device: "NVIDIA RTX 6000 Ada")
+    # A new name on every call, so a second producer of the field would disagree (review M2).
+    calls = itertools.count()
+    monkeypatch.setattr(dino_support, "backbone_device_name", lambda device: f"GPU-{next(calls)}")
     d = MeasureDinoEmbedding().payload(detected_plate).descriptor
     assert (d["model"]["device"], d["model"]["device_name"]) == (
         d["compute"]["device"],
         d["compute"]["device_name"],
     )  # O4's condition
-    assert d["compute"]["device_name"] == "NVIDIA RTX 6000 Ada"
+    assert d["compute"]["device_name"] == "GPU-0"
+    assert next(calls) == 1                           # called once for the descriptor
 
 
 @requires_torch
@@ -321,6 +325,30 @@ def test_a_cuda_compute_block_names_the_gpu(monkeypatch):
         "physical_batch": 128,
         "stage": "stage4",
     }
+
+
+@requires_torch
+@pytest.mark.parametrize(
+    "sizes, physical_batch, physical_batches",
+    [(64, 64, None), ((64,), 64, None), ([64, 64], 64, None), ((32, 64), None, [64, 32]), ((), None, None)],
+)
+def test_the_compute_block_states_every_pass_size(sizes, physical_batch, physical_batches):
+    """#282 review I1: one size is ``physical_batch``; several (an OOM halving mid-image)
+    are ``physical_batches``, largest first, and ``physical_batch`` is ``None``."""
+    from phenotypic.detect.nn._helper._dino_support import compute_block
+
+    block = compute_block(device="cpu", stage="stage4", physical_batch=sizes)
+    assert block["physical_batch"] == physical_batch
+    assert block.get("physical_batches") == physical_batches
+
+
+@requires_torch
+@pytest.mark.parametrize("sizes", [0, (64, 0), (True,), (2.5,)])
+def test_the_compute_block_refuses_a_nonsense_size(sizes):
+    from phenotypic.detect.nn._helper._dino_support import compute_block
+
+    with pytest.raises(ValueError, match="positive integers"):
+        compute_block(device="cpu", stage="stage4", physical_batch=sizes)
 
 
 @requires_torch
