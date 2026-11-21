@@ -19,6 +19,7 @@ real files below.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 import subprocess
@@ -148,6 +149,7 @@ def test_too_few_images_per_shard_warns(tmp_path):
     (f,) = [f for f in findings if f.code == "PF-EMBED-SHARD-AMORTIZE"]
     assert f.severity == "warning" and "10 per shard" in f.message and "correct either way" in f.message
     assert "439" in f.message and "750 s" in f.message
+    assert "measured for base/large; small and giant use the nearest measured size" in f.message
 
 
 def test_enough_images_per_shard_is_silent(tmp_path):
@@ -248,13 +250,28 @@ def test_mem_per_cpu_counts_for_every_cpu(tmp_path):
     assert check_embed_loader_memory(_context(tmp_path, n_images=10, embed_stage="gpu", gpu_slurm=short))
 
 
-def test_no_mem_request_or_no_shape_is_not_guessed(tmp_path):
-    """DefMemPerCPU is not read, and a header without a shape is skipped, not assumed."""
+def test_no_mem_request_or_no_shape_is_skipped_visibly(tmp_path, caplog):
+    """DefMemPerCPU is not read, and a header without a shape is not assumed; each skip logs why."""
+    caplog.set_level("DEBUG", logger=_cli_preflight.logger.name)
     unset = {"slurm_cpus_per_task": 8}
     assert check_embed_loader_memory(_context(tmp_path, n_images=10, embed_stage="gpu", gpu_slurm=unset)) == []
+    assert "neither --mem nor --mem-per-cpu" in caplog.text
     context = _context(tmp_path, n_images=10, embed_stage="gpu", gpu_slurm={"mem_gb": 1})
     context.scratch["headers"] = [InputHeader(h.path, channels=3, bits=8) for h in context.scratch["headers"]]
     assert check_embed_loader_memory(context) == []
+    assert "no input header gives a plate shape" in caplog.text
+
+
+def test_a_given_grid_shape_bounds_the_crops(tmp_path):
+    """``--nrows/--ncols`` replace the 1536-crop bound: a 96-format plate needs less."""
+    low = {"mem_gb": 1, "slurm_cpus_per_task": 8}
+    bound = check_embed_loader_memory(_context(tmp_path, n_images=10, embed_stage="gpu", gpu_slurm=low))
+    plate96 = _context(tmp_path, n_images=10, embed_stage="gpu", gpu_slurm=low)
+    plate96 = PreflightContext(
+        config=dataclasses.replace(plate96.config, nrows=8, ncols=12), pipeline=plate96.pipeline,
+        datasets=plate96.datasets, mode="full", scratch=plate96.scratch,
+    )
+    assert needed_gb(check_embed_loader_memory(plate96)) < needed_gb(bound)
 
 
 def test_inline_runs_get_neither(tmp_path):

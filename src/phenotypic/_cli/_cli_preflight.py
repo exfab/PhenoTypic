@@ -1132,9 +1132,10 @@ _LOADER_BASE_BYTES = 6 << 30
 #: ``detect.nn._helper._batch_encoder.MAX_IN_FLIGHT_OUTPUT_BYTES``, copied so
 #: the preflight imports nothing under ``detect.nn``.
 _MAX_IN_FLIGHT_OUTPUT_BYTES = 2 * (4012 // 16) * (6016 // 16) * 4096 * 4
-#: Crops one loader worker is assumed to hold for a crop pipeline: the
-#: preflight reads no pixels, so it cannot count colonies, and 1536 is the
-#: densest standard pinning format. A bound, not an estimate.
+#: Crops one loader worker is assumed to hold for a crop pipeline when the
+#: run gives no ``--nrows``/``--ncols``: the preflight reads no pixels, so it
+#: cannot count colonies, and 1536 is the densest standard pinning format. A
+#: bound, not an estimate.
 _LOADER_CROP_REGIONS = 1536
 #: Bytes per RGB sample by the header's bit depth; an unknown depth counts
 #: float32's 4, the widest a decode holds.
@@ -1206,8 +1207,9 @@ def check_embed_shard_amortization(context: PreflightContext) -> list[PreflightF
     return [PreflightFinding(
         "PF-EMBED-SHARD-AMORTIZE", "warning",
         f"{n_images} images over {shards} GPU {plural} is about "
-        f"{round(n_images / shards)} per shard; below about {threshold} (for the "
-        f"{size} backbone), loading the model (about {_COLD_LOAD_S:.0f} s) takes "
+        f"{round(n_images / shards)} per shard; below about {threshold} for the "
+        f"{size} backbone (measured for base/large; small and giant use the "
+        f"nearest measured size), loading the model (about {_COLD_LOAD_S:.0f} s) takes "
         "more than half of each shard's GPU time. The run is correct either way",
     )]
 
@@ -1243,11 +1245,14 @@ def check_embed_loader_memory(context: PreflightContext) -> list[PreflightFindin
     in-flight output bound. The need is
     ``_LOADER_BASE_BYTES + (cpus - 1) * _loader_per_worker(H, W, sample_bytes, crops)``
     ``[+ _MAX_IN_FLIGHT_OUTPUT_BYTES]`` for the largest plate whose header
-    gives a shape, and the embedder whose crops are largest. A warning: a host
-    OOM kills the shard, and the next round retries.
+    gives a shape, and the embedder whose crops are largest. A crop pipeline
+    counts ``nrows * ncols`` crops when the run gives both, else
+    :data:`_LOADER_CROP_REGIONS`; ``masked_dense`` counts the plate as float32
+    tiles. A warning: a host OOM kills the shard, and the next round retries.
 
-    Reads headers only, never a pixel; a profile with no ``--mem`` or
-    ``--mem-per-cpu`` is not checked (the cluster default is not read).
+    Reads headers only, never a pixel. Skipped, with a debug line saying why,
+    when no header gives a shape or the profile sets no ``--mem`` or
+    ``--mem-per-cpu`` (the cluster default is not read).
     """
     if not _stage4_slurm_run(context):
         return []
@@ -1257,7 +1262,13 @@ def check_embed_loader_memory(context: PreflightContext) -> list[PreflightFindin
         for h in _input_headers(context)
         if h.height and h.width
     ]
-    if not embedders or not plates:
+    if not embedders:
+        return []
+    if not plates:
+        logger.debug(
+            "PF-EMBED-RESOURCES skipped: no input header gives a plate shape "
+            "(RAW files and stores do not), so the loader's need is unknown"
+        )
         return []
     profile = _stage4_profile(context)
     from phenotypic.sdk_.slurm import effective_sbatch_option
@@ -1270,12 +1281,22 @@ def check_embed_loader_memory(context: PreflightContext) -> list[PreflightFindin
         cpus = 1
     requested = _requested_mem_bytes(profile, cpus)
     if requested is None:
+        logger.debug(
+            "PF-EMBED-RESOURCES skipped: the Stage-4 GPU profile sets neither "
+            "--mem nor --mem-per-cpu, and the cluster's DefMemPerCPU is not read"
+        )
         return []
+    config = context.config
+    regions = (
+        int(config.nrows) * int(config.ncols)
+        if config.nrows and config.ncols
+        else _LOADER_CROP_REGIONS
+    )
 
     def crop_bytes(embedder: Any, height: int, width: int) -> int:
         if embedder.pooling == "masked_dense":
             return height * width * 3 * 4  # the plate as float32 tiles
-        return _LOADER_CROP_REGIONS * 3 * int(embedder.crop_px) ** 2 * 4
+        return regions * 3 * int(embedder.crop_px) ** 2 * 4
 
     _, height, width, sample_bytes = max(plates, key=lambda plate: (plate[0], plate[3]))
     per_worker = max(
