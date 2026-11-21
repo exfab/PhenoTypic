@@ -296,3 +296,33 @@ def test_real_small_vectors_are_near_the_golden(real_small_payloads):
     """Any CPU: each real row's cosine to the golden vector is >= 1 - 1e-6."""
     for case, payloads in real_small_payloads.items():
         _assert_near_golden(case, payloads)
+
+
+# ---------------------------------------------------------------------------
+# Digests, on any CPU and without torch (#282 review I5)
+# ---------------------------------------------------------------------------
+
+
+def _golden_embedders() -> dict:
+    """Every golden row's embedder, ``{case: MeasureDinoEmbedding}``, built as the rows build it."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    embedders = {case: pipe.meas["emb"] for case, pipe in inline_golden_cases().items()}
+    for case, kwargs in _REAL_KWARGS.items():
+        embedders[f"real_small_{case}"] = MeasureDinoEmbedding(size="small", device="cpu", **kwargs)
+    return embedders
+
+
+def test_every_golden_row_has_a_digest_check():
+    assert sorted(_golden_embedders()) == sorted(_load_golden())
+
+
+@pytest.mark.parametrize("case", sorted(_golden_embedders()))
+def test_every_golden_config_keeps_its_281_params_digest(case):
+    """The descriptor's ``producer.params_sha256`` does not depend on the CPU, so it is
+    checked everywhere, not only where the bytes are: a field added without a
+    ``_DIGEST_NEUTRAL_DEFAULTS`` entry would make every #281 table read stale (H7)."""
+    recorded = {
+        record["descriptor"]["producer"]["params_sha256"] for record in _load_golden()[case].values()
+    }
+    assert recorded == {_golden_embedders()[case]._params_sha256()}
