@@ -229,20 +229,23 @@ def resolve_embed_stage_for_config(
     mode = run_mode_of(config)
     embedders = pipeline_embedders(pipeline)
     pinned = _cpu_pinned_key(pipeline)
-    facts = {
-        "mode": mode,
-        "is_slurm": config.is_slurm_mode(),
-        "has_gpu_detector": _has_gpu_detector(pipeline),
-        "gpu_slurm_given": bool(config.gpu_slurm_args),
-        "has_embedders": bool(embedders),
-    }
-    resolved = resolve_embed_stage(requested, cpu_pinned=pinned is not None, **facts)
+    is_slurm = config.is_slurm_mode()
+    has_gpu_detector = _has_gpu_detector(pipeline)
+
+    def _resolve(cpu_pinned: bool) -> EmbedStage:
+        return resolve_embed_stage(
+            requested,
+            mode=mode,
+            is_slurm=is_slurm,
+            has_gpu_detector=has_gpu_detector,
+            gpu_slurm_given=bool(config.gpu_slurm_args),
+            has_embedders=bool(embedders),
+            cpu_pinned=cpu_pinned,
+        )
+
+    resolved = _resolve(pinned is not None)
     notes: list[str] = []
-    if (
-        pinned is not None
-        and requested == "auto"
-        and resolve_embed_stage(requested, cpu_pinned=False, **facts) == "gpu"
-    ):
+    if pinned is not None and requested == "auto" and _resolve(False) == "gpu":
         notes.append(
             f"meas '{pinned}' is pinned to device='cpu', so --embed-stage auto "
             "resolves to inline"
