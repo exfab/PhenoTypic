@@ -89,7 +89,7 @@ add_tree() {
   git -C "$REPO" worktree add --detach "$tree" "$sha" >/dev/null
   [[ $(git -C "$tree" rev-parse HEAD) == "$sha" ]] || die "$tree is not at $sha"
   local resolved
-  resolved=$(cd /tmp && PYTHONPATH=$tree/src:$tree "$PY" -c 'import phenotypic; print(phenotypic.__file__)')
+  resolved=$(cd "$ROOT" && PYTHONSAFEPATH=1 PYTHONPATH=$tree/src:$tree "$PY" -c 'import phenotypic; print(phenotypic.__file__)')
   [[ $resolved == "$tree/src/phenotypic/__init__.py" ]] || die "phenotypic resolves to $resolved, not $tree"
 }
 
@@ -142,7 +142,7 @@ cmd_pipelines() {
   add_tree "$tree" "$sha"
   local shape
   shape=$("$PY" -c "import json;print(next(iter(json.load(open('$ROOT/input/subset_summary.json'))['rgb_level0_shapes'])))")
-  (cd /tmp && PYTHONPATH=$tree/src:$tree "$PY" - "$ROOT/pipelines/$v" "$REVISION" "$shape" "$v" <<'PY'
+  (cd "$ROOT" && PYTHONSAFEPATH=1 PYTHONPATH=$tree/src:$tree "$PY" - "$ROOT/pipelines/$v" "$REVISION" "$shape" "$v" <<'PY'
 import pathlib, sys
 import phenotypic
 from phenotypic import ImagePipeline
