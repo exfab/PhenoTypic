@@ -559,6 +559,7 @@ class LocalParallelStrategy(ExecutionStrategy):
 
         # Aggregate results by dataset
         dataset_results = self._aggregate_results(datasets, results)
+        stage4: dict[str, tuple[int, int]] | None = None
         if deferring_run:
             # Stage 4 (#282 P4 T3): this loop was the run's Stage 3. An image
             # counts completed only once Stage 4 published its record.
@@ -569,15 +570,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 datasets,
                 stage4_entries,
             )
-            counts = {
-                name: {"completed": r.completed, "failed": r.failed}
-                for name, r in dataset_results.items()
-            }
-            apply_stage4_counts(counts, stage4)
-            for name, r in dataset_results.items():
-                r.completed = counts[name]["completed"]
-                r.failed = counts[name]["failed"]
-        if republishing:
+        elif republishing:
             # Stage 4 over the stores this loop measured; its failures join
             # the measure failures, which become the CLI's `measure_failed`.
             measured = {(name, image) for name, image, ok, _ in results if ok}
@@ -601,6 +594,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 stage4_entries,
                 republish=True,
             )
+        if stage4 is not None:
             counts = {
                 name: {"completed": r.completed, "failed": r.failed}
                 for name, r in dataset_results.items()
