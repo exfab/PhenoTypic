@@ -81,6 +81,19 @@ large late ones, and a GPU is available. The CLI splits the run into CPU
 preprocessing, GPU detection and CPU measurement on its own. The crop
 defaults fit one imager, so check them against your plates first.
 
+To try it, use the bacterial sample plate. It is already colour-corrected and
+denoised, and the default crop fits it. The first call downloads the image
+(about 100 MB) and caches it.
+
+```python
+from phenotypic.data import load_bacteria_plate_full
+from phenotypic.prefab import BacterSamPipeline
+
+plate = load_bacteria_plate_full()  # GridImage, 8 x 12
+measurements = BacterSamPipeline().apply_and_measure(plate)
+len(measurements)  # 54 colonies; some grid positions are empty
+```
+
 The GUI pipeline builder cannot load this prefab yet, because it does not
 offer GPU detectors. Use it from Python or the CLI.
 
