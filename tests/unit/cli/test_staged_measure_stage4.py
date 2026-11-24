@@ -215,6 +215,19 @@ def test_a_slurm_measure_resolves_only_a_model_the_run_never_recorded(
         "facebook/dinov2-base": "d" * 40}
 
 
+def test_a_measure_pipeline_naming_another_model_resolves_it(
+    tmp_path, finished_tiny_run, submissions, monkeypatch
+):
+    """U17: a complete record of other models is not a measure's whole answer; its own model is resolved."""
+    _record_forward_revisions(finished_tiny_run, {"facebook/dinov2-small": "c" * 40})
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "d" * 40)
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True,
+                     pipeline=with_stage4_dino_objects(tmp_path), extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert read_job_metadata(finished_tiny_run)[JobMetadataKey.EMBED_REVISIONS] == {
+        "facebook/dinov2-base": "d" * 40}
+
+
 def test_an_explicit_revision_is_never_overridden_by_the_recorded_one(
     tmp_path, finished_tiny_run, submissions, monkeypatch
 ):

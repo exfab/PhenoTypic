@@ -414,3 +414,64 @@ def test_main_dispatches_the_measure_role(measured_slurm_tree, stage4_cpu):
     ])
     assert code == 0
     assert owned_run(tree.store(1), pipeline_sha(tree.pipeline)).has_measurements
+
+
+def test_stage4_never_republishes_an_unmarked_image(measured_slurm_tree, stage4_cpu):
+    """#282 U18, at the writer: a store re-measured without this pass's marker (the step died) is left pending.
+
+    The worklist names both stores, as one written before the kill would.
+    Store 1's table was rewritten by a core whose step never wrote its
+    measure-done marker: Stage 4 must not certify it, and leaves its record
+    as it was.
+    """
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_process_single import process_single_store_measure_core
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step, run_stage4_shard
+    from tests._tiny_run import record_certifies_root, record_digest
+
+    tree = measured_slurm_tree
+    run_measure_step(**tree.measure_kwargs(index=0))
+    killed = tree.entries[1]
+    process_single_store_measure_core(
+        pipeline_path=tree.pipeline, store_path=tree.store(1), output_dir=tree.out,
+        dataset_name=killed.dataset, image_type="GridImage",
+        output_manager=OutputManager.from_config(tree.out, ".tiff", save_overlays=False),
+        defer_embeddings=True,
+    )                                                     # the table rewrite; then the step died
+    before = record_digest(tree.store(1))
+    assert run_stage4_shard(**tree.shard_kwargs(shard_index=0)) == 0
+    assert record_certifies_root(tree.out, tree.store(0))
+    assert record_digest(tree.store(1)) == before and not record_certifies_root(tree.out, tree.store(1))
+    assert read_terminal_failures(tree.out) == []
+
+
+def test_a_failure_republish_that_raises_leaves_the_image_journalled(measured_slurm_tree, stage4_cpu, monkeypatch):
+    """#282 P6 review M4: the failure is journalled first; a republish that cannot hash an artifact
+    is logged, and the shard goes on to commit the other image."""
+    from phenotypic._cli._cli_failure_tracker import MEASURE_FAILURE_STAGE
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step, run_stage4_shard
+    from tests._tiny_run import record_certifies_root
+
+    tree = measured_slurm_tree
+    for index in range(2):
+        run_measure_step(**tree.measure_kwargs(index=index))
+    victim = tree.entries[0]
+    real_commit, real_republish = _cli_stage4_worker._commit_image_once, _cli_stage4_worker._republish_record
+
+    def _fail_victim(ctx, work):
+        if work.entry.stem == victim.stem:
+            return "failed", _cli_stage4_worker._fail_image(
+                ctx, work.entry, _cli_stage4_worker.Stage4ImageError("planted"), run_id=work.run_id)
+        return real_commit(ctx, work)
+
+    def _republish(ctx, entry, run_id):
+        if entry.stem == victim.stem:
+            raise FileNotFoundError("planted: an artifact the record declares is gone")
+        return real_republish(ctx, entry, run_id)
+
+    monkeypatch.setattr(_cli_stage4_worker, "_commit_image_once", _fail_victim)
+    monkeypatch.setattr(_cli_stage4_worker, "_republish_record", _republish)
+    assert run_stage4_shard(**tree.shard_kwargs(shard_index=0)) == 0
+    rows = read_terminal_failures(tree.out)
+    assert [(r.work_id, r.failed_stage) for r in rows] == [(victim.work_id, MEASURE_FAILURE_STAGE)]
+    assert record_certifies_root(tree.out, tree.store(1))

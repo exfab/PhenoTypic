@@ -138,6 +138,22 @@ def test_a_journalled_image_and_a_republished_one_exit_3(tmp_path, finished_tiny
     assert code is RunExitCode.COMPLETE_WITH_FAILURES, lines
 
 
+def test_a_journalled_measure_step_failure_is_not_unfinished(tmp_path, finished_tiny_run, monkeypatch):
+    """A measure step that failed before writing is journalled and never republished: a failure, not a leftover.
+
+    Same pipeline, so its forward record still verifies and the run state
+    reads complete: only the journal row stops U16 counting it, and the
+    pass exits 3.
+    """
+    tree = build_measure_epoch_tree(tmp_path, finished_tiny_run, prior_pass=True,
+                                    pipeline=_forward_pipeline(finished_tiny_run))
+    tree.republish(0)
+    journal_measure_failure(tree, image=1)
+    code, lines = _finalize_and_wait(tree, monkeypatch)
+    assert code is RunExitCode.COMPLETE_WITH_FAILURES, lines
+    assert not fence_of(tree.out).get("terminal_status")
+
+
 def test_an_image_with_no_forward_record_is_not_the_pass_s_to_count(tmp_path, finished_tiny_run, monkeypatch):
     """U16 counts forward-published images only: one the forward run never certified is its own state's."""
     from phenotypic.sdk_ import image_record_path
