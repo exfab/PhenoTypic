@@ -53,6 +53,12 @@ failure leaves the previous embeddings and a valid record, and is journalled as
      then fails for that image, the image is journalled as
      `MEASURE_FAILURE_STAGE` and the run exits `3`, as for any other failure;
      its new run folder simply has no table under that key.
+
+  **Amended by the P6 review (I2, 2026-11-24):** a candidate is carried only
+  when `read_embedding_entry` accepts it (present, its sha256 matching, not
+  stale); otherwise the next candidate is tried, then rule 3. A missing
+  embedding folder made the store transaction raise, so the E5 remedy could
+  never re-embed the image, and a missing file carried a dangling entry.
   The core builds the pairs with
   `measure_embedding_carry(store, record_path, embedders) -> list[tuple[str, str]]`
   (new, in `_cli_process_single.py`).
@@ -98,8 +104,11 @@ failure leaves the previous embeddings and a valid record, and is journalled as
   current root; `done` = it does. A record with no `artifacts` (never
   forward-published) is `not_ready`.
   **Amended by C17 (lead ruling, 2026-11-24):** `done` also needs the record's `lifecycle_epoch` to be this pass's generation (`stage4_status(..., epoch=)`; `None` locally, so nothing is done there). A same-pipeline core over a root last written by a table rewrite left the root and table byte-identical, so the old record still verified: measured, exit 0 and 0 backbone loads, no re-embedding.
+  **Amended by the P6 review (U18, 2026-11-24):** on SLURM (`epoch` given) an image with no measure-done marker of this epoch (`progress/measure_done/<epoch>/<ds>/<stem>.json`, written by `run_measure_step` after its table rewrite) is `not_ready`, whatever its run folder says.
 - Modify: `src/phenotypic/_cli/_cli_staged_orchestration.py:54-275`.
-  `_MANIFEST_VERSION = 5`; `_READABLE_MANIFEST_VERSIONS = (2, 3, 4, 5)`;
+  `_MANIFEST_VERSION = 5`; `_READABLE_MANIFEST_VERSIONS = (2, 3, 4, 5)`
+  (amended by the P6 review, M7: only a republish manifest is written as
+  version 5; a forward one stays version 4, which #281/P5 code reads);
   `write_staged_manifest(path, entries, *, republish: bool = False)` writes
   top-level `"republish"`; add `staged_manifest_republishes(path) -> bool`
   (`False` below version 5). **This flag is republish's one carrier** (plan
@@ -391,3 +400,22 @@ republish never changes a record's identity; that a Stage-4 failure keeps the
 old embeddings and a record that verifies (U8); and that `--mode measure`
 without `--embed-stage gpu` writes what #281 wrote, apart from the entry fields
 P2 adds (`compute`, `compute_dtype`; plan review, Minor).
+
+### P6 deep review fixes (2026-11-24)
+
+Applied by cluster C17r from `reports/2026-11-12-gpu-embedding-staging/review-p6.md`
+and the user's decisions U16–U19 (spec §3). Summary in the README, "P6 deep
+review fixes".
+
+- **The measure finalizer** (Task 2) no longer always closes `complete`: it
+  counts the manifest images it left neither republished under its epoch
+  nor journalled (`unfinished_measure_entries`), logs each by name, and
+  closes the fence failed by the finalizer, so `phenotypic-wait` exits `5`
+  (U16). `test_checkpoint_measure_finalizer.py` keeps its three cases; the
+  end-to-end exit codes are `tests/unit/cli/test_measure_pass_completion.py`.
+- **`run_measure_step`** writes the measure-done marker after the core, and
+  takes the measure pipeline's sha256 from the controller config
+  (`recorded_measure_pipeline_sha256`), refusing an edited file (U18, M6).
+- **`pin_embed_revisions`** reuses the run's recorded commits in measure
+  mode (U17).
+- Step 5's optional live check is unchanged, and still not run.

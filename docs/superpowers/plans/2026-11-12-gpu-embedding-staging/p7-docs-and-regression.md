@@ -27,7 +27,12 @@ SHA.
   - "SLURM chaining" (`:648-880`): controller config v2, `phases`, the Stage-4
     rounds and their own signal-aware counters, the worklist, a stall ending
     unfinished with exit `5` (U7), the prelude, the no-detector plan, the
-    measure role and the measure-mode finalizer (U10);
+    measure role and the measure-mode finalizer (U10), which closes by its
+    own leftovers (U16), the measure-done marker (U18) and the measure's
+    recorded revisions (U17);
+  - "Stage 4 (local)" fencing paragraph: U19, local measure keeps #281's
+    fencing with no lease, and its failure journal now takes the
+    processing-state lock;
   - "One writer per artifact, per pass" (`:1181-1197`): restated as **"nothing
     is rewritten after the record that certifies it"** (plan review), with the
     Stage-4 rewrite as the case that needs the restatement: Stage 3 promotes the
@@ -44,7 +49,9 @@ SHA.
   each for the Stage-4 signals (`progress/stage4_payload/`, their fence fields
   and when they are deleted), the per-round worklist
   (`slurm_scripts/stage4_worklist.json`) and the Stage-4 round counters in
-  `staged_orchestration.json` (plan review, Minor).
+  `staged_orchestration.json` (plan review, Minor). The measure-done marker
+  row (`progress/measure_done/`, U18) was added by the P6 review fixes;
+  check it against the code as built.
 - Modify: `docs/source/tutorials/pages/cli_batch_processing.md`: an
   "Embedding on GPUs" section (`--embed-stage`, the resolution table, R1–R3 as
   the user sees them, `--gpu-slurm`/`--gpu-shards` for Stage 4, pre-staged
@@ -70,6 +77,15 @@ SHA.
     submission, the trailing recovery controller included, has ended; Stage-1
     and Stage-3 tasks killed without a result are resubmitted, with exit `5`
     after two unchanged rounds.
+  - From the P6 deep review (2026-11-24), for `--mode measure --embed-stage
+    gpu`: **U16**, exit `0` means every image was re-measured and
+    re-embedded; any image left neither republished nor recorded as failed
+    (a stall, a dead measure step) makes the pass exit `5`, and the
+    finalizer's log names each (locally, exit `1`). **U17**, an unpinned
+    `revision` reuses the run's recorded commit; pin `revision=` to move.
+    **U18**, a measure step killed before it finished is re-run, never
+    certified. **U19**, local measure has no lease: concurrent local
+    invocations over one `--output` are unsupported, as before #282.
 - Create or modify: the embeddings how-to page. If #281 merged none, create
   `docs/source/how_to/pages/embeddings.md` and add it to the how-to toctree.
   It covers model sizes and the size/version pairs, `compute_dtype` (float32

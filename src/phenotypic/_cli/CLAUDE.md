@@ -651,7 +651,11 @@ or in the cores, because a continuation keeps its content-derived generation:
 the store write stays safe (the loser meets `StoreRootChangedError` and leaves
 the image pending), but both can publish one image's record. Concurrent local
 invocations over one `--output` are unsupported; a local run lease would be a
-separate change (P3–P4 review M1).
+separate change (P3–P4 review M1). **The same holds for local `--mode measure`
+(#282 U19), by decision, with no lease:** its republish Stage 4 records and
+its failure journal take only the processing-state lock, with no generation
+compare, because measure mode keeps no run state and its content-derived
+generation is the forward run's only when its pipeline is.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
 the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
@@ -731,7 +735,17 @@ site, never a bare literal.
   poll. Published means one of: that fence was closed with
   `closed_by: "finalizer"` (`FENCE_CLOSED_BY_FINALIZER`) and no
   `terminal_status`; the run proof's `execution_epoch` is that generation; or
-  the current aggregate proof's `execution_epoch` is that generation. The
+  the current aggregate proof's `execution_epoch` is that generation. **A
+  fence of that generation carrying a `terminal_status` overrides all three**
+  (#282 U16): a SLURM `--mode measure` finalizer closes so, in one
+  `mark_generation_failed(..., closed_by=FENCE_CLOSED_BY_FINALIZER)` write,
+  when its pass left any forward-published manifest image neither
+  republished under its epoch nor journalled (`unfinished_measure_entries`),
+  and logs each such image by name. Those images keep forward records that
+  verify, so the run state alone reads `complete`; the waiter exits `5`. The
+  pass's measure steps write a per-epoch measure-done marker
+  (`progress/measure_done/<epoch>/<ds>/<stem>.json`, #282 U18) after their
+  table rewrite, and an image without one is never republished. The
   finalizer is the only writer of both fields. It passes `execution_epoch=`
   through `aggregate_measurements`/`finalize_run` to
   `publish_aggregate_snapshot`, and `closed_by=` to the fence close. A cancel

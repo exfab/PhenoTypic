@@ -223,6 +223,22 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>U15</td>
 <td><strong>Fixed in #282 by the user's choice</strong> (2026-11-23, P5 review D4, D5). (a) <code>phenotypic-wait</code> returns only once every job in the generation's ledger is terminal, the trailing pre-armed recovery controller included (smoke F1): after the run's outcome is decided it keeps polling the ledgered job ids, under its poll interval and timeout, and then returns that outcome. (b) The controller re-classifies after the last Stage-1 and the last Stage-3 chunk and resubmits only the tasks whose images have no stage result, record or journal row (an OOM or node failure, smoke F2), a chunk at a time, in rounds bounded by the zero-progress rule on that stage's own counters (§4.3).</td>
 </tr>
+<tr class="even">
+<td>U16</td>
+<td><strong>A measure pass ends by its own leftovers</strong> (2026-11-24, P6 review D1/C1). A <code>--mode measure</code> pass that leaves any forward-published manifest image neither republished under its epoch nor journalled ends unfinished: <code>phenotypic-wait</code> returns <strong>5</strong>, and the measure finalizer logs each such image by name. Such an image keeps its forward record, which verifies, so the run state alone reads complete; the finalizer counts them (<code>unfinished_measure_entries</code>) and closes its fence failed (<code>closed_by: finalizer</code> and a <code>terminal_status</code> in one write), which the waiter never reads as published. <strong>Exit 0 means every image really was re-measured and re-embedded.</strong> It covers a Stage-4 stall (U7), a measure step U15 gave up on, and an image Stage 4 never reached, whatever the pipeline. An image with no forward record is not the pass's to republish; the forward run's own state accounts for it. A local measure uses the same rule: a measured image that Stage 4 cannot take ends the invocation with exit 1, named, as an image Stage 4 left pending does.</td>
+</tr>
+<tr class="odd">
+<td>U17</td>
+<td><strong>An unpinned <code>revision</code> in <code>--mode measure</code> reuses the run's recorded commit</strong> (2026-11-24, P6 review D2/I3; U5 extended). A measure never re-resolves the hub for a model the run recorded (the forward run's <code>processing_state.json</code>, else an earlier measure's <code>job_metadata.json</code>); it resolves only a model recorded <code>None</code> or not at all. An explicit <code>revision=</code> is the way to move. So U8's carry, which matches on <code>params_sha256</code> (<code>revision: None</code> for an unpinned embedder), stays comparable: a partial Stage-4 failure cannot leave two commits under one key. A forward run that embedded inline recorded no commit, so a measure over it resolves once at its submission.</td>
+</tr>
+<tr class="even">
+<td>U18</td>
+<td><strong>A killed same-pipeline measure step is detected</strong> (2026-11-24, P6 review D3/I1) by a <strong>per-epoch measure-done marker</strong>, one small file per image, <code>.phenotypic/progress/measure_done/&lt;epoch&gt;/&lt;ds&gt;/&lt;stem&gt;.json</code>, written by the measure step after its table rewrite. An image with no marker for the current epoch is not measure-done: it is resubmitted under U15, counts toward U16's exit 5, and is never republished by Stage 4 (the controller does not list it, and the worker refuses it). The marker lives beside the other per-image progress state, never inside the store; a new measure submission clears earlier passes' markers.</td>
+</tr>
+<tr class="odd">
+<td>U19</td>
+<td><strong>Local measure keeps #281's level of fencing, with no lease</strong> (2026-11-24, P6 review D4/M3). Concurrent local invocations over one <code>--output</code> stay unsupported: the store transactions are root-fenced, so a concurrent rewrite leaves an image pending (exit 1), and the processing-state lock serialises record writes and, since the P6 review, the measure core's failure journal too. No per-invocation lease.</td>
+</tr>
 </tbody>
 </table></div>
 <h3 id="defaults-taken-the-user-did-not-object">Defaults taken (the user did not object)</h3>
@@ -386,7 +402,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </ul></li>
 <li><strong>A Stage-1 re-run deletes the image's Stage-4 signals.</strong> <code>--restart</code> clears them with <code>progress/</code>.</li>
 <li><strong><code>--retry-failures</code></strong> re-runs only the GPU embedding of a Stage-4 failure.</li>
-<li><strong>Measure mode (U4, U8, U10).</strong> The measure core carries the existing embeddings forward and defers <code>embed</code> and <code>_republish_table_marker</code>. Stage 4 runs in <em>republish</em> mode, flagged in the manifest (version 4 → 5), so it rewrites an already-certified store's embeddings and then republishes its record. That is a separate invocation, so "one writer per pass" holds.</li>
+<li><strong>Measure mode (U4, U8, U10, U16–U18).</strong> The measure core carries the existing embeddings forward (only an entry a reader accepts: present, its sha256 matching, not stale) and defers <code>embed</code> and <code>_republish_table_marker</code>. Stage 4 runs in <em>republish</em> mode, flagged in the manifest (version 5; a forward manifest stays version 4), so it rewrites an already-certified store's embeddings and then republishes its record. That is a separate invocation, so "one writer per pass" holds. On SLURM the measure step writes a measure-done marker after its table rewrite (U18); "done" is a record this pass republished, stamped with its epoch; and the measure finalizer ends the pass unfinished, exit 5, when any image is neither done nor journalled (U16). The revisions are the run's recorded commits (U17), and the measure pipeline's sha256 has one producer, the CLI's <code>pipeline_identity</code>, which the controller config carries to every worker.</li>
 </ul>
 <h3 id="47-refusals-and-preflight">4.7 Refusals and preflight</h3>
 <p>These are each one usage-error line in the read-only half, outside <code>--skip-validation</code>, above <code>--restart</code>, <code>--overwrite</code>, <code>mint_run_identity</code> and <code>--dry-run</code>:</p>
@@ -449,6 +465,18 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <td>Stage-1 or Stage-3 task killed (host OOM, node failure)</td>
 <td>No result, record or journal row: the controller resubmits that task, in rounds bounded by the zero-progress rule (U15b); a second unchanged round leaves the image unrecorded, exit 5</td>
 </tr>
+<tr class="odd">
+<td>Measure step killed, any pipeline (U18)</td>
+<td>No measure-done marker under the epoch: the controller resubmits it (U15b); Stage 4 never republishes it; if the retries give up, the measure finalizer counts it, exit 5 (U16)</td>
+</tr>
+<tr class="even">
+<td>Measure pass leaves an image neither republished nor journalled (a stall, a dead step)</td>
+<td>Its forward record still verifies, so the finalizer counts it, names it in its log, and closes the fence failed: exit 5, "re-run the same command" (U16)</td>
+</tr>
+<tr class="odd">
+<td>Measure pipeline file edited mid-pass</td>
+<td>The measure step and Stage 4 take the submitter's recorded sha256 and refuse a file that no longer hashes to it; nothing is journalled, and the image stays unfinished (exit 5 on SLURM, exit 1 locally)</td>
+</tr>
 </tbody>
 </table></div>
 <p><strong>Known limitations (U14, out of scope for #282).</strong> Two cases end badly under U7's stall rule, and neither has a round cap or a per-image strike count:</p>
@@ -479,7 +507,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>sidecar absence.</li>
 </ul></li>
 <li><strong>Live SLURM smoke on <code>exfab</code>.</strong> A short <code>--time</code> forces a walltime kill, and recovery happens by round. Also a no-detector run with <code>--gpu-slurm</code>.</li>
-<li><strong>Measure mode over a staged run</strong> re-embeds on GPU, republishes, and exits 0.</li>
+<li><strong>Measure mode over a staged run</strong> re-embeds on GPU, republishes, and exits 0; and a measure pass that leaves an image neither republished nor journalled (a same-pipeline Stage-4 stall, dead measure steps U15 gave up on, a differing-pipeline stall) exits 5, end to end through the finalizer and <code>phenotypic-wait</code> (U16).</li>
 <li><strong>The end-of-change full sharded regression,</strong> once.</li>
 </ul>
 <h2 id="6-build-phases">6. Build phases</h2>

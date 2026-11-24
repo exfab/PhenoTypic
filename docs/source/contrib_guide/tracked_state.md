@@ -115,6 +115,26 @@ section **(c) Derived, and by what**.
 source: an image verdict of `failed`, which comes only from this journal. Every
 other fact about a run can be re-derived by looking at the tree; this cannot.
 
+### Under entry 3: the measure-done marker (#282 U18)
+
+A SLURM `--mode measure` pass writes down one more fact of entry 3's kind,
+scoped to the pass:
+
+| State | Path helper | Writer | Why it cannot be derived |
+|---|---|---|---|
+| Measure-done marker, one per image per pass | `measure_done_marker_path(output_dir, epoch, dataset, stem)` → `.phenotypic/progress/measure_done/<epoch>/<ds>/<stem>.json` (`DIR_MEASURE_DONE`) | `write_measure_done_marker` (`_cli/_cli_staged_resume.py`), called by `run_measure_step` after the measure core returns, under the epoch's commit guard | A same-pipeline measure core can leave the store root and table byte-identical, so the store cannot tell a finished step from one the scheduler killed before its table rewrite. As with entry 3, a killed worker leaves no trace of having run. |
+
+An image with no marker under the pass's epoch is not measure-done:
+`_republish_stage4_status` reads it `not_ready`, so the controller resubmits
+it (U15), Stage 4 never takes it (and its worker refuses it,
+`PENDING_NOT_MEASURED`), and the measure finalizer counts it unfinished (U16).
+**`resolve_run_state` never reads it**: it is not a verdict input, only the
+measure pass's own question of which images it finished. Every reader names
+its own epoch, so an earlier pass's markers mean nothing; the next measure
+submission deletes them (`clear_measure_done_markers`) before it publishes its
+epoch, and `--restart` clears them with the rest of `progress/`. A local
+measure writes none: one process sees its own measure loop.
+
 ### What survives `--restart`
 
 `clear_machine_state` deletes everything under `.phenotypic/` except
@@ -219,6 +239,11 @@ cannot answer that: a `--mode measure` resubmission keeps no run state, so an
 earlier run's proofs still match it after its own finalizer dies. Neither field
 is a verdict input: `resolve_run_state` never reads them. An aggregate proof or
 fence written before the fields existed reads as "not this submission".
+A fence of the generation that carries a `terminal_status` is never "this
+submission published", whichever proof names it: the `--mode measure`
+finalizer writes `closed_by: "finalizer"` and `terminal_status` together when
+its pass left images neither republished nor journalled (#282 U16), after it
+has already stamped the aggregate proof.
 
 ---
 
@@ -448,7 +473,8 @@ here when you add a consumer.
 | `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
 | `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
-| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
+| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by` and `terminal_status`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with. A fence of the generation carrying a `terminal_status` is never published, whatever the proofs say: the measure finalizer closes so when its pass left images neither republished nor journalled, whose forward records still verify (#282 U16) |
+| `_cli/_cli_staged_controller.py` (`unfinished_measure_entries`, `_dead_measure_indices`, `_classify_stage4`) | the measure-done marker; each record's `artifacts` and `lifecycle_epoch`; the terminal journal under the epoch | — | Which images a SLURM measure pass resubmits (U15), hands to Stage 4, and leaves unfinished, which closes the pass failed (U16) |
 
 ### Consumers that deliberately ask something else
 

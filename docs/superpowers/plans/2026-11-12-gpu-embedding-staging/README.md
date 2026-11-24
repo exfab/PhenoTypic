@@ -159,13 +159,19 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   finalizer runs, the leftover images keep no record and no journal row, and the
   run exits `5`. GPU OOM and a changed root are never terminal per-image
   failures.
-- **Measure mode** (U8, U10): the measure core carries the image's existing
-  embeddings forward; a Stage-4 failure keeps them and a valid record, and is
-  journalled as `MEASURE_FAILURE_STAGE` (exit `3`). SLURM measure runs on the
-  staged controller with a measure-mode finalizer that writes no forward run
-  proof. Republish has **one carrier**, the manifest flag (manifest v5).
+- **Measure mode** (U8, U10, U16, U18): the measure core carries the image's
+  existing readable embeddings forward; a Stage-4 failure keeps them and a
+  valid record, and is journalled as `MEASURE_FAILURE_STAGE` (exit `3`). SLURM
+  measure runs on the staged controller with a measure-mode finalizer that
+  writes no forward run proof, and ends the pass unfinished (exit `5`) when
+  any forward-published image is neither republished under its epoch nor
+  journalled (U16). A measure step writes a per-epoch measure-done marker
+  after its table rewrite; an image without one is not measure-done (U18).
+  Republish has **one carrier**, the manifest flag (manifest v5; a forward
+  manifest stays v4).
 - **U5:** an unpinned revision is resolved once, at a run's first submission,
-  for Stage-4 runs only (O9); a continuation reuses the recorded commit.
+  for Stage-4 runs only (O9); a continuation reuses the recorded commit, and
+  so does `--mode measure` (U17).
 - **Commit pool and loader:** one commit thread; one DataLoader per backbone,
   `spawn` context, not persistent, identity `collate_fn`, processors loaded in
   the main process and pickled into the dataset. Workers:
@@ -520,6 +526,16 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
   to a round or a shard without matching time windows against `sacct`.
   Defaulting both from `SLURM_ARRAY_JOB_ID`/`SLURM_JOB_ID` and
   `SLURM_ARRAY_TASK_ID` inside `stage_event` is the cheap fix. Pre-#282.
+- **A SLURM measure finalizer posts with the forward run's pipeline** (P6
+  review M10, traced, not executed): `_run_finalize` aggregates with
+  `pipeline=None`, and `finalize_run` loads `deliverables/pipeline.pht-pipe.json`,
+  so a differing measure pipeline's `post` chain is not applied on SLURM.
+  Pre-#282, in #281's measure finalizer.
+- **A committed but unrepublished image re-embeds** (P6 review M2): a
+  walltime between `replace_run_embeddings` and the republish makes the next
+  round's signals stale, so the image's embeddings are written twice in one
+  pass. Sound (the record is written once, last); a provenance stamp of the
+  pass epoch in `compute` would let the publish-only shortcut take it.
 - **`promote_store`'s two renames:** a walltime kill between them can lose a
   store. Pre-existing; Stage 4 crosses the window once more per image. P7
   documents it as a known limit; a fix belongs to the store writer, not here.
@@ -546,6 +562,43 @@ with the user's decisions U12–U15 (spec §3). Applied by cluster C16r:
 - **Minors:** M5, M6, M7, M8, M10, M11, M12, M13, M14, M15 fixed; M2 and M4
   documented in `_cli/CLAUDE.md`; M3 is a follow-up (F5, above); M9 moot
   (U13); M16 stays with P7 T1.
+
+### P6 deep review fixes (2026-11-24)
+
+`reports/2026-11-12-gpu-embedding-staging/review-p6.md`, with the user's
+decisions U16–U19 (spec §3). Applied by cluster C17r:
+- **U16 (D1, C1):** the measure finalizer counts the images it left neither
+  republished under its epoch nor journalled (`unfinished_measure_entries`,
+  `_cli_staged_controller.py`), logs each by name, and closes the fence
+  failed, `closed_by: finalizer` and `terminal_status` in one
+  `mark_generation_failed` write; `_published` (`_cli_wait.py`) never reads
+  such a fence as published, so the waiter exits `5`. Locally, a measured
+  image Stage 4 cannot take is exit `1`, named (`_refuse_unfinished_measure`).
+- **U17 (D2, I3):** `pin_embed_revisions` seeds a measure from
+  `recorded_embed_revisions` and resolves only what is missing.
+- **U18 (D3, I1):** `progress/measure_done/<epoch>/<ds>/<stem>.json`
+  (`DIR_MEASURE_DONE`), written by `run_measure_step` after the core and
+  read by `_republish_stage4_status` (so `_dead_measure_indices`,
+  `_classify_stage4` and U16) and by the worker (`PENDING_NOT_MEASURED`). A
+  measure submission clears earlier passes' markers. Row in
+  `tracked_state.md`.
+- **U19 (D4, M3):** no lease; spec and P7 T1.
+- **I2:** `measure_embedding_carry` carries only what `read_embedding_entry`
+  accepts.
+- **Minors fixed:** M1 (`sweep_republished_stage4_signals`; local republish
+  skips the forward sweep), M3 (a measure failure journals under the state
+  lock), M4 (the failure republish is guarded), M5 (the `finalizing` branch
+  keeps the phase the finalizer recorded), M6 (one producer of the measure
+  pipeline's sha256: the CLI's `pipeline_identity`, carried by the controller
+  config, `recorded_measure_pipeline_sha256`; an edited file is refused), M7
+  (forward manifests v4), M8 (`_staged_manifest_entries`, threads), M9
+  (tests), M11 (`initialize_orchestration(keep_completion_marker=)`).
+- **Not fixed:** M2, optional in the review: a committed but unrepublished
+  image re-embeds once more after a walltime in that window; the record is
+  still written once and last, so the verification cache stays sound, and
+  the fix needs a new provenance stamp in the entry's `compute` block. M10
+  is out of P6's scope and pre-existing (#281's measure finalizer); a
+  follow-up below.
 
 ## Render
 
