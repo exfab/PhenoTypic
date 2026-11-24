@@ -109,7 +109,12 @@ def test_a_slurm_detector_dino_run_resolves_gpu_and_finishes_through_stage4(
         worker.run_stage3_step(**common, index=index)
     assert not any(record_is_valid(out, item) for item in run_items(out))   # Stage 4 owns the record
 
-    worklist = write_stage4_worklist(stage4_worklist_path(out), round_index=1, manifest_path=out / "m.json",
+    # The shard reads republish from the manifest its worklist names (#282 P6
+    # T2, C14); the controller always writes it, so this test does too.
+    from phenotypic._cli._cli_staged_orchestration import write_staged_manifest
+
+    worklist = write_stage4_worklist(stage4_worklist_path(out), round_index=1,
+                                     manifest_path=write_staged_manifest(out / "m.json", manifest),
                                      retryable=manifest, n_shards=1)
     assert worker.run_stage4_shard(pipe, out, "Image", worklist, 0, epoch=epoch) == 0
 
