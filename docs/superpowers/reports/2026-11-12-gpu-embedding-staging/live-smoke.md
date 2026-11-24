@@ -378,3 +378,142 @@ From `attempt-3/verify-det.json`, `failed_checks: []`:
    The script gained `pipelines v3`, `verify`, ledger-aware `cleanup` and `-` (skip a run)
    during the smoke. The copies that ran are kept beside the results
    (`attempt-*/live_smoke.verify.sh`, `live_smoke.sh`, `live_smoke.verify-final.sh`).
+
+## #282 P6 Task 2 Step 5: SLURM `--mode measure --embed-stage gpu` over attempt 2 (2026-11-24)
+
+**Verdict: pass.** A same-pipeline SLURM measure resubmission over attempt 2's nodet
+output measured and re-embedded all 400 images on GPUs. It republished every record under
+the measure epoch, and `phenotypic-wait` returned 0. `measure-verify` (job 32427337) exited
+0 with `failed_checks: []`. I found no product defect.
+
+- **Code under test:** `d2730b345db268c2448a71a8aa924bef0ef75c52`, in one detached
+  worktree, `/bigdata/exfab/anguy344/gate-worktrees/c16-d2730b345-measure`. The waiter
+  printed `phenotypic=<tree>/src/phenotypic/__init__.py` and `dirty=0`.
+- **The forward run** was written by `e82dedefa` (attempt 2, manifest version 4). So this
+  is also a v4-manifest run measured by newer code.
+- **Environment:** as in P5, with `PYTHONSAFEPATH=1` added. The cwd was
+  `attempt-5-measure/`, which is user-owned. `HF_HUB_OFFLINE=1` and
+  `HF_HUB_DISABLE_IMPLICIT_TOKEN=1` were set, and no token file was read.
+- **Script:** `live_smoke.sh` gains `measure-snapshot`, `measure-dryrun`, `measure-launch`
+  and `measure-verify`. The copy that ran, and every file below, are in
+  `/bigdata/exfab/anguy344/gate-results/c16-live-smoke-20261121/attempt-5-measure/`.
+  The checks are in `verify-measure.json`.
+
+### What ran
+
+- **Command:** `phenotypic-wait --output attempt-2/nodet -- python -m phenotypic --mode measure
+  --pipeline pipelines/v2/nodet.json --output attempt-2/nodet --image-type gridimage
+  --embed-stage gpu`, with `--gpu-shards 2`.
+  - CPU profile: `--slurm` intel, 2 CPU, `mem_gb=16`, `time=60`.
+  - GPU profile: `--gpu-slurm slurm_partition=exfab slurm_account=exfab time=30
+    slurm_cpus_per_task=2 mem_gb=24`.
+  - **Same pipeline:** the file's sha256 is `8bf15eec937d…`, which names the forward
+    run's folder `1-8bf15eec937d`.
+- **Partition:** at 08:07, `--test-only` predicted exfab 08:56:49 and short_gpu
+  14:13:48. The Stage-4 array started on exfab at 08:31:48 and was never moved.
+- **No preview:** `--mode measure` refuses `--dry-run` (`phenotypicCLI.py:2812`; probe job
+  32426674 exited 2). So the first measure invocation was the real one.
+- **Before the submit:**
+  - `measure-launch` copied the forward run's `slurm_scripts/`, records, `progress/*.json`,
+    `slurm_jobs.jsonl` and `processing_state.json` to `before-state/`, since the pass
+    rewrites them.
+  - It then wrote `before.json`: for every image, the record's sha256 and identity, the
+    root `zarr.json` sha256, and each embedding entry's `compute` block, revision,
+    `params_sha256` and file inode. It also holds the measurement table's sha256 and inode.
+  - `before.json` read 400 images, manifest v4, `embed_revisions` `None` in
+    `processing_state.json` and `{}` in `job_metadata.json`. Both embedders are pinned.
+
+### Ledger (epoch `97e8d426fdcd4f569a1d86ae45a451b7`, rows appended to the forward run's)
+
+| Role | Token | Job | Result |
+|---|---|---|---|
+| controller-initial | | 32426792 | COMPLETED (0:23) |
+| controller | `controller-after-32426792` | 32426803 | COMPLETED |
+| stage3 (measure) | `stage3-chunk-0` | 32426804 | 400 COMPLETED, 08:14:04–08:19:28, 13–156 s each, MaxRSS 1722.50M |
+| controller | `controller-after-32426803` | 32427225 | COMPLETED |
+| stage4 | `stage4-round-1` | 32427226 | COMPLETED ×2 (15:41, 11:41), gpu12, exfab |
+| finalizer | | 32427329 | COMPLETED (2:39) |
+| controller (trailing) | `controller-after-32427225` | 32427328 | COMPLETED (0:03) |
+
+- **Submit:** the waiter launched at 08:08:56, and the initial controller was submitted at
+  08:13:40, which is 4 min 44 s. P5's three forward submissions took 31–37 min (F8). This
+  is not a like-for-like comparison: the inputs are the run's own 400 stores rather than
+  the Maresca ones, the waiter had 8 CPUs rather than 2, and P6 M8 now hashes on threads.
+- **Stage 4:** the two shards ran one after the other on gpu12. Each logged `200
+  published, 0 failed, 0 left for the next round, 400 signal(s) written`.
+  - From the event log: shard 0's first commit came 303 s after it started, and shard 1's
+    87 s after. Both then ran at 3.1 s per image. MaxRSS was 16188688K and 15948772K,
+    against `mem_gb=24`.
+- **The waiter** exited `COMPLETE (exit 0)` at 09:04:05, which is after the trailing
+  controller ended (09:03:43). This is U15/F1 working live: the waiter outlasts the last
+  ledgered job.
+  - Every poll read `completion=complete`, from the first, 6 s in. The forward records
+    verify throughout, so the outcome came from the fence and the live jobs, as U16
+    intends.
+- **The cleanup** (32426726, `afterany` on the waiter, ledger-aware, run from the copy in
+  `attempt-5-measure/`) logged `worktree removed: …/c16-d2730b345-measure`. It had no
+  ledgered job left to wait on.
+
+### Checks (`verify-measure.json`; stdlib, zarr 3.1.5, pyarrow, no `phenotypic` import)
+
+- **`phenotypic-wait` exit 0.**
+- **Controller and manifest:** the controller has `stage3_role: measure` and `phases:
+  ["stage3", "stage4"]`. The manifest is version 5 with `republish: true` and 400
+  images.
+- **Fence:** `slurm_lifecycle.json` has the generation of the measure epoch,
+  `closed_by: finalizer`, `active: false` and no `terminal_status`.
+- **Job metadata and journal:** `job_metadata.json` has `run_mode: measure`. There are 0
+  terminal-failure rows under the epoch.
+- **Records:** 400 of 400 are valid.
+  - Each record's sha256 differs from `before.json`, and its `lifecycle_epoch` is the
+    measure epoch.
+  - Each record's identity is unchanged: `work_id`, `attempt_id`, `relative_image_path`,
+    `mode`, `provenance` and `source_provenance`.
+  - Every artifact's sha256 and size match the bytes on disk, and the store digest equals
+    sha256 of the root `zarr.json`.
+  - A direct record comparison with `before-state/` shows that exactly `completed_at`,
+    `lifecycle_epoch` and `stages.measured.at` changed, in all 400.
+- **Stores:**
+  - All 400 have the measure pipeline's run as their latest run (`8bf15eec937d`), with
+    exactly `dinov2-vits14/rgb/grid` and `dinov2-vits14/rgb/objects`.
+  - Every entry has `stale: false`, `compute.stage == "stage4"` and `device: cuda`.
+  - All 800 entries ran on "NVIDIA RTX 6000 Ada Generation", 8.9, torch 2.11.0+cu130,
+    cuda 13.0, with `physical_batch` 64.
+  - **Every embedding file has a new inode** compared with `before.json`, and its sha256
+    matches its bytes.
+  - The vectors are 384-d and finite. Each objects table's labels equal its measurement
+    table's, and each grid table has 4 rows.
+- **U17:** every entry's `model.revision` equals the revision `before.json` recorded,
+  which is the pinned `ed25f3a31f01632728cabb09d1542f84ab7b0056`. Its
+  `producer.params_sha256` is also unchanged. After the pass, `job_metadata.json` still
+  has `embed_revisions: {}`.
+- **U18:** there are 400 measure-done markers, all under
+  `progress/measure_done/97e8d426…/`, one per image, each naming the epoch.
+- **Signals:** 0 Stage-4 signal files are left.
+- **Events after the snapshot:** 400 each of `stage3 started`, `stage3 completed`,
+  `stage4 started` and `stage4 completed`.
+- **Deliverables:** `metrics.json` has `accepted 400, failed 0, succeeded 400`, objects
+  `measured 17335`, and embedding rows 17335 (objects) and 1600 (grid).
+- **Inputs untouched:** the newest Maresca subset root `zarr.json` mtime is still
+  2026-09-25T16:18:54.
+
+### Observations (no defect)
+
+**M1. The pass rewrote the files and changed none of their bytes. That is the C17 case,
+and it was told apart from a no-op by the epoch and the markers.**
+- All 400 root `zarr.json` were byte-identical before and after (`root_changed: 0`).
+- All 800 embedding files were byte-identical to the forward run's
+  (`embedding_bytes_identical_to_before: 800`), and so were all 400 measurement tables.
+- Yet every embedding file and every measurement table has a new inode, and 400
+  `stage4 completed` events fall inside the shards' windows. So the images were re-measured
+  and re-embedded, and the same model on the same GPU type produced the same bytes.
+- This is the case the C17 ruling describes, a same-pipeline core leaving the root and
+  table byte-identical. Only the record's `lifecycle_epoch` and the per-epoch markers
+  distinguish "republished by this pass" from "still the forward record".
+- A check on root or file digests alone would have read this pass as having done nothing.
+  The inode check is what shows that new files were written.
+
+**M2. `--mode measure` has no `--dry-run`.** This is refused by design
+(`phenotypicCLI.py:2812`). Because the refusal comes before the other usage checks, a
+first live measure cannot be previewed. Any later refusal would still come back as code 2
+before anything is submitted.

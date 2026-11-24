@@ -536,10 +536,329 @@ PY
   )
 }
 
+# --- #282 P6 Task 2 Step 5: a SLURM `--mode measure --embed-stage gpu` pass over a
+# finished forward run of this smoke (attempt 2's nodet), with the same pipeline.
+#
+#   live_smoke.sh measure-snapshot <run-dir> <out.json>
+#   live_smoke.sh measure-dryrun   <adir> <commit> <run-dir> <pipeline>
+#   live_smoke.sh measure-launch   <adir> <commit> <run-dir> <pipeline> <exfab|short_gpu> <gpu-min>
+#   live_smoke.sh measure-verify   <run-dir> <wait-log> <before.json>
+#
+# The tree is <commit>'s own (a detached worktree), not input/sha.txt's: the
+# forward run was written by older code on purpose. Never `preempt`.
+
+# measure_tree <commit>: the worktree path for a measure attempt at <commit>.
+measure_tree() { echo "/bigdata/exfab/anguy344/gate-worktrees/c16-${1:0:9}-measure"; }
+
+# measure_args <run-dir> <pipeline>: the CLI argv after `-m phenotypic`. No --input:
+# measure mode discovers the stores under <run-dir>/results/.
+measure_args() {
+  echo "--mode measure --pipeline $2 --output $1 --image-type gridimage --embed-stage gpu"
+}
+
+measure_profiles() {
+  local gpu=$1 t=$2 gpu_flags
+  case $gpu in
+    exfab) gpu_flags="--gpu-slurm slurm_partition=exfab --gpu-slurm slurm_account=exfab" ;;
+    short_gpu)
+      (( t <= 120 )) || die "short_gpu caps at 120 minutes"
+      gpu_flags="--gpu-slurm slurm_partition=short_gpu --gpu-slurm slurm_constraint=gpu_latest --gpu-slurm slurm_qos=short_gpu" ;;
+    *) die "GPU partition must be exfab or short_gpu (never preempt)" ;;
+  esac
+  echo "--slurm slurm_partition=$CPU_PARTITION --slurm slurm_cpus_per_task=2 --slurm mem_gb=16 --slurm time=60 $gpu_flags --gpu-slurm time=$t --gpu-slurm slurm_cpus_per_task=2 --gpu-slurm mem_gb=24 --gpu-shards 2"
+}
+
+# measure-snapshot <run-dir> <out.json>: per image, the record's digest and identity,
+# the store's root zarr.json sha256, and every embedding entry's compute block, model
+# revision and file inode, plus the measurement table's. Independent reader (stdlib
+# only, `python -I`, from a user-owned cwd); refuses to overwrite <out.json>.
+cmd_measure_snapshot() {
+  local run=${1:?run dir} dest=${2:?out.json}
+  [[ -e $dest ]] && die "$dest exists; a snapshot is taken once"
+  (cd "$(dirname "$dest")" && "$PY" -I - "$run" "$dest" <<'PY'
+import hashlib, json, os, pathlib, sys
+run, dest = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+ph = run / ".phenotypic"
+def sha(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+manifest = json.loads((ph / "slurm_scripts" / "staged_manifest.json").read_text())
+images = {}
+for e in manifest["images"]:
+    rec_path = ph / "progress" / "images" / e["dataset"] / f"{e['stem']}.json"
+    rec = json.loads(rec_path.read_text())
+    store = run / rec["artifacts"]["store"]["path"]
+    root = json.loads((store / "zarr.json").read_text())
+    tables = root["attributes"]["phenotypic"]["tables"]
+    runs = {}
+    for run_id, block in tables["runs"].items():
+        emb = {}
+        for key, entry in block.get("embeddings", {}).items():
+            emb[key] = {"compute": entry["compute"], "revision": entry["model"]["revision"],
+                        "params_sha256": entry["producer"]["params_sha256"],
+                        "files": [{"path": f["path"], "sha256": f["sha256"],
+                                   "inode": os.stat(store / f["path"]).st_ino}
+                                  for f in entry["files"]]}
+        mpath = store / block["measurements"]["path"]
+        runs[run_id] = {"order": block["order"], "pipeline_sha256": block.get("pipeline_sha256"),
+                        "measurements": {"path": block["measurements"]["path"], "sha256": sha(mpath),
+                                         "inode": os.stat(mpath).st_ino},
+                        "embeddings": emb}
+    images[e["stem"]] = {
+        "dataset": e["dataset"], "record_path": str(rec_path.relative_to(run)),
+        "record_sha256": sha(rec_path),
+        "identity": {k: rec.get(k) for k in ("work_id", "attempt_id", "relative_image_path",
+                                             "mode", "provenance", "source_provenance")},
+        "lifecycle_epoch": rec.get("lifecycle_epoch"), "completed_at": rec.get("completed_at"),
+        "record_store_sha256": rec["artifacts"]["store"]["sha256"],
+        "store": rec["artifacts"]["store"]["path"],
+        "root_zarr_json_sha256": "sha256:" + sha(store / "zarr.json"), "runs": runs}
+ps = json.loads((ph / "processing_state.json").read_text())
+jm = json.loads((ph / "progress" / "job_metadata.json").read_text())
+out = {"run": str(run), "taken_at": __import__("datetime").datetime.now().astimezone().isoformat(),
+       "manifest_version": manifest["version"], "images": images,
+       "lifecycle": json.loads((ph / "progress" / "slurm_lifecycle.json").read_text()),
+       "processing_state_embed_revisions": ps.get("embed_revisions"),
+       "job_metadata_embed_revisions": jm.get("embed_revisions")}
+dest.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
+print(f"snapshot: {len(images)} images, manifest v{manifest['version']}, "
+      f"embed_revisions state={ps.get('embed_revisions')} job={jm.get('embed_revisions')} -> {dest}")
+PY
+  )
+}
+
+# measure-dryrun <adir> <commit> <run-dir> <pipeline>: one CPU job, the measure pass
+# with --dry-run (submits nothing), in its own throwaway tree.
+cmd_measure_dryrun() {
+  local adir=${1:?adir} sha run=${3:?run dir} pipe=${4:?pipeline}
+  sha=$(git -C "$REPO" rev-parse --verify "${2:?commit}^{commit}")
+  local tree="$(measure_tree "$sha")-dryrun"
+  mkdir -p "$adir"
+  add_tree "$tree" "$sha"
+  {
+    echo "#!/bin/bash"
+    echo "set -uo pipefail"
+    echo "export PYTHONSAFEPATH=1"
+    echo "cd $adir"
+    env_block "$tree"
+    echo "$PY -m phenotypic $(measure_args "$run" "$pipe") $(measure_profiles exfab 30) --dry-run; echo \"exit=\$?\""
+  } > "$adir/dryrun.sbatch"
+  local jid cid
+  jid=$(submit --job-name=c16-measure-dryrun --partition=$CPU_PARTITION --cpus-per-task=2 --mem=16G \
+        --time=00:45:00 --output="$adir/dryrun-%j.log" "$adir/dryrun.sbatch")
+  cid=$(submit --job-name=c16-measure-dryrun-cleanup --partition=$CPU_PARTITION --cpus-per-task=1 --mem=2G \
+        --time=00:15:00 --dependency=afterany:$jid --output="$adir/dryrun-cleanup-%j.log" \
+        --wrap="git -C $REPO worktree remove --force $tree; git -C $REPO worktree prune; test ! -e $tree && echo 'worktree removed: $tree'")
+  echo "dry-run job $jid, cleanup $cid" | tee "$adir/dryrun_job_ids.txt"
+}
+
+# measure-launch <adir> <commit> <run-dir> <pipeline> <gpu> <gpu-min>: copy the
+# forward run's state aside, snapshot before.json, then submit the waiter and a
+# ledger-aware cleanup that runs from a copy of this script in <adir>.
+cmd_measure_launch() {
+  local adir=${1:?adir} sha run=${3:?run dir} pipe=${4:?pipeline} gpu=${5:?gpu} t=${6:?gpu minutes}
+  sha=$(git -C "$REPO" rev-parse --verify "${2:?commit}^{commit}")
+  [[ -e $adir/before.json ]] && die "$adir/before.json exists; each measure attempt gets a new folder"
+  [[ -d $run/.phenotypic ]] || die "$run is not a run"
+  local profiles tree
+  profiles=$(measure_profiles "$gpu" "$t")
+  tree=$(measure_tree "$sha")
+  mkdir -p "$adir/before-state"
+  cp "$0" "$adir/live_smoke.sh"
+  add_tree "$tree" "$sha"
+  # The pass rewrites slurm_scripts/, the orchestration state and the records: keep
+  # the forward run's copies beside the results.
+  cp -a "$run/.phenotypic/slurm_scripts" "$run/.phenotypic/processing_state.json" "$adir/before-state/"
+  cp -a "$run/.phenotypic/progress/images" "$run/.phenotypic/progress"/*.json \
+        "$run/.phenotypic/progress/slurm_jobs.jsonl" "$adir/before-state/"
+  cmd_measure_snapshot "$run" "$adir/before.json"
+  {
+    echo "#!/bin/bash"
+    echo "set -uo pipefail"
+    echo "export PYTHONSAFEPATH=1"
+    echo "cd $adir"
+    env_block "$tree"
+    echo "$WAIT --output $run -- $PY -m phenotypic $(measure_args "$run" "$pipe") $profiles"
+    echo "rc=\$?; echo \"phenotypic-wait exit=\$rc\"; date -Is; exit \$rc"
+  } > "$adir/wait-measure.sbatch"
+  local wid cid
+  wid=$(submit --job-name=c16-wait-measure --partition=$CPU_PARTITION --cpus-per-task=8 --mem=16G \
+        --time=2-00:00:00 --output="$adir/wait-measure-%j.log" "$adir/wait-measure.sbatch")
+  cid=$(submit --job-name=c16-cleanup-measure --partition=$CPU_PARTITION --cpus-per-task=1 --mem=2G \
+        --time=04:00:00 --dependency=afterany:$wid --output="$adir/cleanup-%j.log" \
+        --wrap="bash $adir/live_smoke.sh cleanup $tree $run")
+  printf 'commit=%s run=%s pipeline=%s gpu=%s gpu_time=%s\nwait_measure=%s\ncleanup=%s\ntree=%s\n' \
+    "$sha" "$run" "$pipe" "$gpu" "$t" "$wid" "$cid" "$tree" | tee "$adir/launch.txt"
+}
+
+# measure-verify <run-dir> <wait-log> <before.json>: the P6 Step-5 checks, by an
+# independent reader (stdlib, zarr, pyarrow; no `phenotypic` import). Writes
+# <before.json's dir>/verify-measure.json; exits non-zero on a failed check.
+cmd_measure_verify() {
+  local run=${1:?run dir} wait_log=${2:?waiter log} before=${3:?before.json}
+  (cd "$(dirname "$before")" && "$PY" -I - "$run" "$wait_log" "$before" "$ROOT/input/subset.txt" "$ROOT/input/sha.txt" "$REVISION" <<'PY'
+import collections, datetime as dt, hashlib, json, math, os, pathlib, re, subprocess, sys
+import pyarrow.parquet as pq
+import zarr
+
+run, wait_log, before_path, subset_path, sha_path = (pathlib.Path(a) for a in sys.argv[1:6])
+pinned = sys.argv[6]
+ph = run / ".phenotypic"
+before = json.loads(before_path.read_text())
+fails, out = [], {"run": str(run)}
+def check(ok, what):
+    if not ok:
+        fails.append(what)
+    return ok
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+m = re.findall(r"^phenotypic-wait exit=(\d+)$", wait_log.read_text(), re.M)
+out["phenotypic_wait_exit"] = int(m[-1]) if m else None
+check(out["phenotypic_wait_exit"] == 0, "phenotypic-wait did not exit 0")
+
+cfg = json.loads((ph / "slurm_scripts" / "staged_controller.json").read_text())
+epoch = cfg["epoch"]
+out["controller"] = {k: cfg.get(k) for k in ("version", "phases", "stage3_role", "pipeline_sha256", "epoch")}
+check(cfg.get("stage3_role") == "measure" and cfg.get("phases") == ["stage3", "stage4"], "not a measure controller")
+check(epoch != before["lifecycle"]["generation"], "the measure epoch is the forward run's")
+manifest = json.loads((ph / "slurm_scripts" / "staged_manifest.json").read_text())
+out["manifest"] = {"version": manifest["version"], "republish": manifest.get("republish"), "images": len(manifest["images"])}
+check(manifest["version"] == 5 and manifest.get("republish") is True, "the manifest is not a v5 republish manifest")
+lifecycle = json.loads((ph / "progress" / "slurm_lifecycle.json").read_text())
+out["lifecycle"] = lifecycle
+check(lifecycle.get("generation") == epoch and lifecycle.get("closed_by") == "finalizer"
+      and "terminal_status" not in lifecycle and lifecycle.get("active") is False,
+      "the fence is not this epoch's, closed by the finalizer with no terminal_status")
+jm = json.loads((ph / "progress" / "job_metadata.json").read_text())
+out["job_metadata"] = {k: jm.get(k) for k in ("run_mode", "embed_revisions")}
+check(jm.get("run_mode") == "measure", "job_metadata run_mode is not measure")
+
+# --- the ledger of this epoch, with sacct per task
+rows = [json.loads(l) for l in (ph / "progress" / "slurm_jobs.jsonl").read_text().splitlines() if l.strip()]
+jobs = {}
+for r in rows:
+    if r.get("epoch") == epoch and r.get("job_id"):
+        jobs.setdefault(r["job_id"], (r["role"], r["token"]))
+def sacct(job):
+    text = subprocess.run(["sacct", "-j", job, "-n", "-P", "-X", "--format=JobID,State,Start,End,Elapsed,NodeList,Partition"],
+                          capture_output=True, text=True).stdout
+    return [dict(zip(("id", "state", "start", "end", "elapsed", "node", "partition"), l.split("|"))) for l in text.splitlines() if l]
+out["ledger"] = [{"job_id": j, "role": r, "token": t, "tasks": sacct(j)} for j, (r, t) in jobs.items()]
+
+# --- per image
+journal_path = ph / "terminal_failures.jsonl"
+journal = [json.loads(l) for l in journal_path.read_text().splitlines() if l.strip()] if journal_path.is_file() else []
+out["journal_rows_this_epoch"] = sum(1 for r in journal if r.get("lifecycle_epoch") == epoch)
+check(out["journal_rows_this_epoch"] == 0, "terminal failures journalled under the measure epoch")
+counts = collections.Counter()
+compute_seen = collections.Counter()
+for e in manifest["images"]:
+    stem, b = e["stem"], before["images"].get(e["stem"])
+    if not check(b is not None, f"not in before.json: {stem}"):
+        continue
+    rec_path = run / b["record_path"]
+    rec = json.loads(rec_path.read_text())
+    ok = True
+    ok &= check(sha(rec_path) != b["record_sha256"], f"record unchanged: {stem}")
+    ok &= check(rec.get("lifecycle_epoch") == epoch, f"record not under the measure epoch: {stem}")
+    ok &= check({k: rec.get(k) for k in b["identity"]} == b["identity"], f"record identity changed: {stem}")
+    ok &= check(rec.get("version") == 1 and "stage3" in rec.get("stages", {}), f"record shape: {stem}")
+    for name, art in rec["artifacts"].items():
+        p = run / art["path"]
+        if art["kind"] == "store":
+            ok &= check(art["sha256"] == "sha256:" + sha(p / "zarr.json"), f"store digest != root zarr.json: {stem}")
+        else:
+            ok &= check(art["sha256"] == sha(p) and art["size"] == p.stat().st_size, f"artifact {name} bytes: {stem}")
+    store = run / rec["artifacts"]["store"]["path"]
+    root_sha = "sha256:" + sha(store / "zarr.json")
+    counts["root_changed"] += root_sha != b["root_zarr_json_sha256"]
+    root = zarr.open_group(str(store), mode="r")
+    tables = root.attrs["phenotypic"]["tables"]
+    latest_id, latest = max(tables["runs"].items(), key=lambda kv: kv[1]["order"])
+    ok &= check(latest.get("pipeline_sha256") == cfg["pipeline_sha256"], f"latest run is not the measure pipeline's: {stem}")
+    counts[f"latest_run={latest_id.split('-', 1)[1]}"] += 1
+    ok &= check(rec["artifacts"]["measurements"]["path"].endswith(latest["measurements"]["path"]),
+                f"record does not certify the latest run's table: {stem}")
+    meas = pq.read_table(store / latest["measurements"]["path"])
+    labels = sorted(meas.column("Object_Label").to_pylist())
+    emb = latest.get("embeddings", {})
+    b_emb = b["runs"].get(latest_id, {}).get("embeddings", {})
+    ok &= check(sorted(emb) == sorted(b_emb) == ["dinov2-vits14/rgb/grid", "dinov2-vits14/rgb/objects"],
+                f"embedding keys: {stem}")
+    for key, block in emb.items():
+        c = block["compute"]
+        ok &= check(block["stale"] is False and c["stage"] == "stage4" and c["device"] == "cuda",
+                    f"{key} compute/stale: {stem}")
+        compute_seen[(c["device_name"], c["capability"], c["torch"], c["cuda"], str(c.get("physical_batch")))] += 1
+        # U17: the model commit is the recorded one, and the producer parameters are unchanged
+        ok &= check(block["model"]["revision"] == b_emb[key]["revision"] == pinned, f"{key} revision: {stem}")
+        ok &= check(block["producer"]["params_sha256"] == b_emb[key]["params_sha256"], f"{key} params_sha256: {stem}")
+        old_inodes = {f["path"]: f["inode"] for f in b_emb[key]["files"]}
+        for f in block["files"]:
+            p = store / f["path"]
+            ok &= check(f["sha256"] == sha(p), f"{key} file sha256: {stem}")
+            ok &= check(os.stat(p).st_ino != old_inodes.get(f["path"]), f"{key} file is the old inode: {stem}")
+            counts["embedding_bytes_identical_to_before"] += f["sha256"] in {g["sha256"] for g in b_emb[key]["files"]}
+            t = pq.read_table(p)
+            vec = t.column("embedding").to_pylist()
+            ok &= check(all(len(v) == block["dim"] and all(math.isfinite(x) for x in v) for v in vec), f"{key} vectors: {stem}")
+            if key.endswith("/objects"):
+                ok &= check(sorted(t.column("Object_Label").to_pylist()) == labels, f"{key} labels: {stem}")
+            else:
+                ok &= check(t.num_rows == 4, f"{key} grid rows: {stem}")
+    # U18: this epoch's measure-done marker
+    marker = ph / "progress" / "measure_done" / epoch / e["dataset"] / f"{stem}.json"
+    ok &= check(marker.is_file() and json.loads(marker.read_text()).get("epoch") == epoch, f"no measure-done marker: {stem}")
+    counts["valid"] += bool(ok)
+out["images"] = len(manifest["images"])
+out["counts"] = dict(counts)
+out["compute"] = [{"device_name": k[0], "capability": k[1], "torch": k[2], "cuda": k[3], "physical_batch": k[4], "entries": v}
+                  for k, v in compute_seen.items()]
+md = ph / "progress" / "measure_done"
+out["measure_done_markers"] = {d.name: sum(1 for p in d.rglob("*.json")) for d in md.iterdir()} if md.is_dir() else {}
+out["stage4_signals_left"] = sum(1 for p in (ph / "progress" / "stage4_payload").rglob("*") if p.is_file())
+check(out["stage4_signals_left"] == 0, "Stage-4 signals were left behind")
+# events after the snapshot
+taken = dt.datetime.fromisoformat(before["taken_at"]).replace(tzinfo=None)
+ev = collections.Counter()
+for l in (ph / "processing_events.log").read_text().splitlines():
+    f = l.split("|")
+    if len(f) > 7 and dt.datetime.fromisoformat(f[0]).replace(tzinfo=None) >= taken:
+        ev[f"{f[7] or '-'} {f[3]}"] += 1
+out["events_since_snapshot"] = dict(sorted(ev.items()))
+logs = sorted((ph / "logs" / "slurm").glob("stage4_*.log"), key=lambda p: p.stat().st_mtime)
+out["shard_summaries"] = {p.name: [l for l in p.read_text().splitlines() if l.startswith("Stage 4 shard")]
+                          for p in logs if p.stat().st_mtime >= dt.datetime.fromisoformat(before["taken_at"]).timestamp()}
+# the read-only Maresca input
+setup_time = sha_path.stat().st_mtime
+newest = max((pathlib.Path(l) / "zarr.json").stat().st_mtime for l in subset_path.read_text().splitlines() if l.strip())
+out["inputs_newest_root_mtime"] = dt.datetime.fromtimestamp(newest).isoformat()
+check(newest < setup_time, "an input store's root changed after setup")
+check(counts["valid"] == out["images"] == len(before["images"]), "not every image verifies")
+out["failed_checks"] = fails
+dest = before_path.parent / "verify-measure.json"
+dest.write_text(json.dumps(out, indent=1) + "\n")
+print(json.dumps({k: v for k, v in out.items() if k != "ledger"}, indent=1)[:20000])
+print("ledger:")
+for j in out["ledger"]:
+    print(" ", j["role"], j["token"], j["job_id"], [(x["id"], x["state"], x["elapsed"], x["node"], x["partition"]) for x in j["tasks"]])
+sys.exit(1 if fails else 0)
+PY
+  )
+}
+
 case ${1:-} in
   setup) shift; cmd_setup "$@" ;;
   verify) shift; cmd_verify "$@" ;;
   cleanup) shift; cmd_cleanup "$@" ;;
+  measure-snapshot) shift; cmd_measure_snapshot "$@" ;;
+  measure-dryrun) shift; cmd_measure_dryrun "$@" ;;
+  measure-launch) shift; cmd_measure_launch "$@" ;;
+  measure-verify) shift; cmd_measure_verify "$@" ;;
   pipelines) shift; cmd_pipelines "$@" ;;
   probe) shift; cmd_probe "$@" ;;
   launch) shift; cmd_launch "$@" ;;
