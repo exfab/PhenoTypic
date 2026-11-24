@@ -209,6 +209,8 @@ def stage4_status(
     work_id: str,
     *,
     republish: bool = False,
+    pipeline_sha256: str | None = None,
+    epoch: str | None = None,
 ) -> Stage4Status:
     """Where one image of a run that embeds on the GPU stands with Stage 4 (spec §4.6).
 
@@ -218,20 +220,24 @@ def stage4_status(
       has no valid record, so Stage 4 owns it;
     - ``"not_ready"``: neither; Stages 1-3 have work left (or failed).
 
+    **Republish mode** (``--mode measure``, #282 P6 T1) asks of the measure
+    pipeline's run folder instead (:func:`_republish_stage4_status`): the
+    record already exists, and its ``work_id`` is the forward one, never
+    *work_id* (the measure work id).
+
     Args:
         output_dir: Run output root.
         dataset: Dataset name.
         stem: Image stem.
-        work_id: The image's current work id.
-        republish: Reserved for measure mode's republish Stage 4 (#282 P6
-            T1), which re-embeds an image whose record is valid. Not yet
-            supported.
-
-    Raises:
-        NotImplementedError: If *republish* is true (P6 T1 builds it).
+        work_id: The image's current work id (unused in republish mode).
+        republish: Measure mode's republish Stage 4.
+        pipeline_sha256: The measure pipeline file's sha256, whose run
+            folder republish mode asks about; ``None`` outside it.
+        epoch: Republish mode: the SLURM generation of the measure pass,
+            which a republished record is stamped with; ``None`` locally.
     """
     if republish:
-        raise NotImplementedError("republish-mode Stage 4 is built in #282 P6 T1")
+        return _republish_stage4_status(output_dir, dataset, stem, pipeline_sha256, epoch)
     from ._cli_completion import valid_image_success
 
     if valid_image_success(
@@ -241,6 +247,74 @@ def stage4_status(
     if stages_1_to_3_done(output_dir, dataset, stem, work_id):
         return "pending"
     return "not_ready"
+
+
+def _republish_stage4_status(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    pipeline_sha256: str | None,
+    epoch: str | None,
+) -> Stage4Status:
+    """:func:`stage4_status` in republish mode.
+
+    - ``"not_ready"``: the image's record has no ``artifacts`` (never
+      forward-published), or its store has no run folder of the measure
+      pipeline declaring a measurement table (the measure core has not
+      written one);
+    - ``"done"``: **this pass's** Stage 4 republished it: the record
+      verifies against the store as it is (``valid_image_success`` under
+      the record's own ``work_id``), certifies that folder's table, and
+      carries *epoch* as its ``lifecycle_epoch``;
+    - ``"pending"``: otherwise.
+
+    **The epoch is what makes "done" mean re-embedded.** A record that
+    merely verifies does not: a same-pipeline measure core that carries
+    the embeddings forward writes a root byte-identical to the one the
+    forward record certified (the carried entries keep their sha256, and a
+    measurements descriptor holds no content digest), so the forward
+    record still verifies before any re-embedding. A republish stamps the
+    SLURM generation; the measure core never writes the record. Locally
+    (*epoch* ``None``) the record keeps its own epoch, so nothing is ever
+    ``"done"``: a local Stage 4 takes exactly the stores its invocation
+    measured.
+    """
+    from phenotypic.sdk_ import image_record_path, ngff_, zarr_store_path
+    from phenotypic.sdk_._image_record import read_image_record
+    from phenotypic.sdk_._table_runs import _run_of_block, owned_table_run_id
+
+    from ._cli_completion import valid_image_success
+    from ._cli_recompile_recovery import certified_table_run
+
+    record = read_image_record(output_dir, dataset, stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    if not isinstance(artifacts, dict) or not artifacts:
+        return "not_ready"
+    store = zarr_store_path(output_dir, dataset, stem)
+    try:
+        block = ngff_.read_phenotypic_attributes(store)
+    except (OSError, KeyError, ValueError):
+        return "not_ready"
+    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
+    run = None if run_id is None else _run_of_block(store, block, run_id)
+    if run is None or not run.has_measurements:
+        return "not_ready"
+    work_id = record.get("work_id")
+    certified = certified_table_run(
+        output_dir, image_record_path(output_dir, dataset, stem)
+    )
+    if (
+        epoch is not None
+        and record.get("lifecycle_epoch") == epoch
+        and isinstance(work_id, str)
+        and valid_image_success(
+            output_dir, dataset=dataset, image_stem=stem, work_id=work_id
+        )
+        and certified is not None
+        and certified.run_id == run.run_id
+    ):
+        return "done"
+    return "pending"
 
 
 def write_stage3_completion_marker(

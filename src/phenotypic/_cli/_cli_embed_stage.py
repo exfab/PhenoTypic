@@ -39,9 +39,10 @@ the read-only half, outside ``--skip-validation`` and above ``--restart``,
 
 **An interim gate** (#282 P3-P4 review C1): :func:`stage4_supported` says
 which runs have a Stage-4 executor today: full runs, local or on SLURM (P5 T2
-lifted SLURM). In ``--mode measure``, local or SLURM, ``auto`` resolves
-``inline`` with a one-line note, and an explicit ``--embed-stage gpu`` is one
-usage-error line, until P6 T1 widens that one predicate for it.
+lifted SLURM), and local ``--mode measure`` (P6 T1). In a SLURM ``--mode
+measure``, ``auto`` resolves ``inline`` with a one-line note, and an explicit
+``--embed-stage gpu`` is one usage-error line, until P6 T2 widens that one
+predicate for it.
 
 **One revision per run** (U5, #282 P5 T2): :func:`resolve_embed_revisions`
 asks the hub once, in the submitting process at a Stage-4 run's first
@@ -349,22 +350,24 @@ def stage4_supported(config: "ExecutionConfig") -> bool:
     full``) has one, locally (the local strategies, staged or single-pass)
     and on SLURM (the staged controller's GPU rounds, P5 T2, which routes a
     SLURM ``gpu`` run to ``StagedSlurmStrategy`` with or without a
-    ``GpuDetector``). ``--mode measure``, local or on SLURM, would defer its
+    ``GpuDetector``). A **local** ``--mode measure`` has one since P6 T1:
+    the republish-mode Stage 4 ``LocalParallelStrategy`` runs after its
+    measure loop. A SLURM ``--mode measure`` would still defer its
     embeddings to a Stage 4 that nothing on its path runs, so the run could
-    never finish. ``--mode process`` never reaches this: it resolves
-    ``inline`` and R1 refuses ``gpu``.
-
-    P6 T1 lifts measure mode here, in the commit that builds its executor.
+    never finish; P6 T2 lifts it with the staged controller's measure role.
+    ``--mode process`` never reaches this: it resolves ``inline`` and R1
+    refuses ``gpu``.
     """
     from ._cli_preflight import run_mode_of
 
-    return run_mode_of(config) == "full"
+    mode = run_mode_of(config)
+    return mode == "full" or (mode == "measure" and not config.is_slurm_mode())
 
 
 def stage4_unavailable_reason(config: "ExecutionConfig") -> str:
     """Why :func:`stage4_supported` is false for *config*: the note's and refusal's words."""
-    del config  # only measure mode is gated now (P5 T2 lifted SLURM)
-    return "Stage 4 in --mode measure is not yet available"
+    del config  # only SLURM measure mode is gated now (P6 T1 lifted local measure)
+    return "Stage 4 in SLURM --mode measure is not yet available"
 
 
 def resolve_embed_stage_for_config(

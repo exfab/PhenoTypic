@@ -51,9 +51,12 @@ from ._cli_slurm_lifecycle import (
 
 # 4 added ``StagedManifestEntry.reference_digest``. The bump is what makes a
 # version-3 reader stop at its own version check instead of failing on an
-# unexpected keyword; 2 and 3 still load, with the digest ``None``.
-_MANIFEST_VERSION = 4
-_READABLE_MANIFEST_VERSIONS = (2, 3, _MANIFEST_VERSION)
+# unexpected keyword; 2 and 3 still load, with the digest ``None``. 5 adds
+# the top-level ``"republish"`` flag (#282 P6 T1); 4 and below read forward.
+_MANIFEST_VERSION = 5
+_READABLE_MANIFEST_VERSIONS = (2, 3, 4, _MANIFEST_VERSION)
+#: The first manifest version that records ``"republish"`` (#282 P6 T1).
+_REPUBLISH_MANIFEST_VERSION = 5
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
@@ -281,17 +284,50 @@ def epoch_is_active(output_dir: Path, epoch: str) -> bool:
 
 
 def write_staged_manifest(
-    path: Path, entries: Sequence[StagedManifestEntry]
+    path: Path, entries: Sequence[StagedManifestEntry], *, republish: bool = False
 ) -> Path:
-    """Write the versioned staged manifest atomically."""
+    """Write the versioned staged manifest atomically.
+
+    Args:
+        path: The manifest file.
+        entries: One entry per image.
+        republish: Whether the run's Stage 4 runs in measure mode's
+            *republish* mode (#282 P6 T1, spec §4.6): it re-embeds an
+            already-certified store and then republishes its record. The
+            manifest's top-level ``"republish"`` is that mode's **one
+            carrier**: the controller and the Stage-4 shard both read it
+            here (:func:`staged_manifest_republishes`), and no config key or
+            CLI option repeats it.
+    """
     atomic_write_json(
         path,
         {
             "version": _MANIFEST_VERSION,
+            "republish": bool(republish),
             "images": [asdict(entry) for entry in entries],
         },
     )
     return path
+
+
+def staged_manifest_republishes(path: Path) -> bool:
+    """Whether the manifest at *path* flags a republish-mode Stage 4 (#282 P6 T1).
+
+    ``False`` below version 5, which predates the flag: every such manifest
+    is a forward run's.
+
+    Raises:
+        ValueError: As :func:`load_staged_manifest`, for a manifest of a
+            version this build does not read.
+    """
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("version") not in _READABLE_MANIFEST_VERSIONS:
+        raise ValueError(
+            f"Unsupported staged manifest version in {path}; expected one of "
+            f"{', '.join(map(str, _READABLE_MANIFEST_VERSIONS))}"
+        )
+    version = raw["version"]
+    return version >= _REPUBLISH_MANIFEST_VERSION and raw.get("republish") is True
 
 
 def load_staged_manifest(path: Path) -> list[StagedManifestEntry]:

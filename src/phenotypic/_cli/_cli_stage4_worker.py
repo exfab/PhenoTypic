@@ -623,6 +623,17 @@ class _Stage4Context:
     active_check: Callable[[], None] | None
     commit_guard: CommitGuard | None
     record_lock: CommitGuard | None = None
+    #: Measure mode's republish Stage 4 (#282 P6 T1): the run is the measure
+    #: pipeline's own folder, there is no publish-only shortcut, the record
+    #: is republished rather than first published, and a per-image failure
+    #: is journalled as ``MEASURE_FAILURE_STAGE`` and still republishes.
+    republish: bool = False
+    #: The measure pipeline file's sha256 (republish only): its run folder.
+    pipeline_sha256: str | None = None
+    #: The epoch a republished record is stamped with: the SLURM generation
+    #: on SLURM; ``None`` keeps the record's own (locally, U8; mirrors
+    #: ``process_single_store_measure_core``).
+    republish_epoch: str | None = None
 
     def check(self) -> None:
         """The fence check that precedes every durable step."""
@@ -653,17 +664,29 @@ def _event(ctx: _Stage4Context, entry: StagedManifestEntry, status: str, error: 
 
 
 def _fail_image(
-    ctx: _Stage4Context, entry: StagedManifestEntry, exc: BaseException, traceback_text: str = ""
+    ctx: _Stage4Context,
+    entry: StagedManifestEntry,
+    exc: BaseException,
+    traceback_text: str = "",
+    *,
+    run_id: str | None = None,
 ) -> str:
-    """Fail *entry* as a per-image ``stage4`` failure: journal it, drop its signals.
+    """Fail *entry* as a per-image Stage-4 failure: journal it, drop its signals.
 
     Terminal when the exception is (``append_terminal_failure`` refuses an
-    out-of-memory one). Nothing is committed and nothing is published.
+    out-of-memory one). Forward, nothing is committed and nothing is
+    published, and the journal's stage is ``stage4``.
+
+    **In republish mode** (U8) the journal's stage is
+    ``MEASURE_FAILURE_STAGE``, under the entry's measure work id, and the
+    record is then still republished over run *run_id* (the measure core's
+    folder, with whatever embeddings it carried), so the image keeps a
+    record that verifies.
 
     Returns:
         The error type, for :attr:`Stage4Outcome.failed`.
     """
-    from ._cli_failure_tracker import append_terminal_failure
+    from ._cli_failure_tracker import MEASURE_FAILURE_STAGE, append_terminal_failure
     from ._stages import STAGE_EMBED
 
     logger.warning(
@@ -676,17 +699,62 @@ def _fail_image(
             work_id=entry.work_id,
             dataset=entry.dataset,
             relative_image_path=entry.relative_image_path or entry.image_name,
-            failed_stage=STAGE_EMBED,
+            failed_stage=MEASURE_FAILURE_STAGE if ctx.republish else STAGE_EMBED,
             exception=exc,  # type: ignore[arg-type]
             attempt_id=entry.attempt_id or uuid4().hex,
             lifecycle_epoch=ctx.lifecycle_epoch,
             traceback=traceback_text or "".join(traceback_module.format_exception(exc)),
             commit_guard=ctx.commit_guard,
         )
+    if ctx.republish and run_id is not None:
+        _republish_record(ctx, entry, run_id)
     ctx.check()
     delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
     _event(ctx, entry, "failed", f"{type(exc).__name__}: {exc}")
     return type(exc).__name__
+
+
+def _republish_run(store: Path, pipeline_sha256: str | None) -> Any:
+    """The measure pipeline's own run folder in *store* (republish), or ``None``.
+
+    ``owned_table_run_id(block, pipeline_sha256=...)`` over the live root:
+    the folder the measure core just wrote (plan review I10).
+    """
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import _run_of_block, owned_table_run_id
+
+    try:
+        block = ngff_.read_phenotypic_attributes(store)
+    except (OSError, KeyError, ValueError):
+        return None
+    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
+    return None if run_id is None else _run_of_block(store, block, run_id)
+
+
+def _republish_record(ctx: _Stage4Context, entry: StagedManifestEntry, run_id: str) -> None:
+    """Republish *entry*'s record over run *run_id*'s measurements (republish mode, U8).
+
+    ``_republish_table_marker`` keeps the record's identity verbatim
+    (``work_id``, ``attempt_id``, ``relative_image_path``, ``mode``,
+    ``provenance``, ``source_provenance``), rehashes every artifact, and
+    declares the measure core's table, so the record certifies the root as
+    this pass left it. The epoch is :attr:`_Stage4Context.republish_epoch`.
+    """
+    from phenotypic.sdk_ import image_record_path
+    from phenotypic.sdk_._table_runs import measurement_table_relative_path
+
+    from ._cli_recompile_tables import _republish_table_marker
+
+    store = zarr_store_path(ctx.output_dir, entry.dataset, entry.stem)
+    ctx.check()
+    with publication_commit(ctx.record_lock):
+        _republish_table_marker(
+            ctx.output_dir,
+            image_record_path(ctx.output_dir, entry.dataset, entry.stem),
+            commit_guard=ctx.commit_guard,
+            lifecycle_epoch=ctx.republish_epoch,
+            measurements=store / measurement_table_relative_path(run_id),
+        )
 
 
 def _store_holds_fresh_embeddings(
@@ -755,10 +823,13 @@ def _classify_image(
     if live is None:
         logger.warning("Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name, PENDING_NO_ROOT)
         return PENDING_NO_ROOT
-    run = journal_table_run(store)
+    run = _republish_run(store, ctx.pipeline_sha256) if ctx.republish else journal_table_run(store)
     if run is None:
         _fail_image(ctx, entry, Stage4ImageError(
-            f"{store} holds no forward journal run, so it is not the store Stages 1-3 "
+            f"{store} holds no run folder of the measure pipeline, so the measure "
+            "core did not write it"
+            if ctx.republish
+            else f"{store} holds no forward journal run, so it is not the store Stages 1-3 "
             "wrote for this image"
         ))
         return "failed"
@@ -775,7 +846,9 @@ def _classify_image(
         )
     if state.valid == set(keys):
         return _ImageWork(entry, run.run_id, "commit", reused=dict(state.signals))
-    if _store_holds_fresh_embeddings(store, run, embedders):
+    # No publish-only shortcut in republish mode: it always re-embeds, as an
+    # inline --mode measure does, and carried embeddings must not satisfy it.
+    if not ctx.republish and _store_holds_fresh_embeddings(store, run, embedders):
         return _ImageWork(entry, run.run_id, "publish")
     return _ImageWork(
         entry, run.run_id, "embed",
@@ -787,8 +860,19 @@ CommitStatus = tuple[Literal["published", "pending", "failed"], str]
 
 
 def _publish(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
-    """The record, then the signals consumed (spec §4.2 steps 2-3)."""
+    """The record, then the signals consumed (spec §4.2 steps 2-3).
+
+    In republish mode the record is republished (:func:`_republish_record`),
+    its identity kept, rather than published for the first time.
+    """
     entry = work.entry
+    if ctx.republish:
+        _republish_record(ctx, entry, work.run_id)
+        ctx.check()
+        delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
+        delete_stage4_signal_temps(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
+        _event(ctx, entry, "completed")
+        return "published", ""
     data_key, data_path = image_data_artifact(
         ctx.output_dir, ctx.output_manager, entry.dataset, entry.stem
     )
@@ -901,7 +985,7 @@ def _commit_image_once(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
                 ctx, entry, f"its store could not be read: {type(exc).__name__}: {exc}",
                 reason=PENDING_UNREADABLE, keep_signals=True,
             )
-        return "failed", _fail_image(ctx, entry, exc)
+        return "failed", _fail_image(ctx, entry, exc, run_id=work.run_id)
     wrong = _bound_elsewhere(payloads, objmap_sha256, array_sha256)
     if wrong:
         return "failed", _fail_image(
@@ -911,6 +995,7 @@ def _commit_image_once(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
                 f"the Stage-4 payloads {wrong} are bound to another objmap or array "
                 "than the store holds"
             ),
+            run_id=work.run_id,
         )
     ctx.check()
     try:
@@ -1022,8 +1107,9 @@ class _BackboneStream:
     def _fail(self, work: _ImageWork, exc: BaseException, traceback_text: str = "") -> None:
         work.failed = True
         work.release()  # its signalled keys are never committed (review I3)
-        self.outcome.failed[work.entry.identity] = _fail_image(ctx=self.ctx, entry=work.entry, exc=exc,
-                                                                traceback_text=traceback_text)
+        self.outcome.failed[work.entry.identity] = _fail_image(
+            ctx=self.ctx, entry=work.entry, exc=exc, traceback_text=traceback_text, run_id=work.run_id
+        )
 
     def _loader_failure(self, item: FailedImage) -> None:
         if item.node_state:
@@ -1194,6 +1280,7 @@ def run_stage4(
     image_type: ImageTypeName,
     epoch: str | None,
     republish: bool = False,
+    republish_epoch: str | None = None,
     revisions: Mapping[str, str | None] | None = None,
     num_workers: int,
     output_manager: OutputManager,
@@ -1240,7 +1327,24 @@ def run_stage4(
         image_type: ``"Image"`` or ``"GridImage"``.
         epoch: The lifecycle epoch records and failures are stamped with;
             ``None`` stamps ``"local-unfenced"``.
-        republish: Measure mode's republish Stage 4 (P6 T1); not yet built.
+        republish: Measure mode's republish Stage 4 (#282 P6 T1, U8): *items*
+            are images a deferring measure core just re-measured
+            (``stage4_status(republish=True) == "pending"``, each entry's
+            ``work_id`` its measure work id). The run is the measure
+            pipeline's own folder, ``owned_table_run_id(block,
+            pipeline_sha256=pipeline_source_identity(pipeline_path)["sha256"])``,
+            the sha the measure core computes, so the two agree by
+            construction. Every image re-embeds (no publish-only shortcut,
+            as an inline ``--mode measure``). Its record is republished
+            through ``_republish_table_marker`` with the folder's
+            measurements, identity kept. A per-image failure (a loader
+            ``FailedImage``, a non-finite vector, a payload bound to another
+            image) still republishes it, certifying whatever the core
+            carried, and is journalled as ``MEASURE_FAILURE_STAGE``. Node
+            state and a changed root republish and journal nothing.
+        republish_epoch: The epoch a republished record is stamped with:
+            the SLURM generation on SLURM; ``None`` (locally) keeps the
+            record's own.
         revisions: ``{hf_id: commit}`` for unpinned embedders, resolved once
             at the run's first submission (U5, P5 T2).
         num_workers: DataLoader workers; 0 prepares in this process.
@@ -1262,14 +1366,11 @@ def run_stage4(
         Stage4OutOfMemory: A queue cannot halve again (nothing journalled).
         MemoryError: The host ran out (nothing journalled).
         Stage4ShardError: As the class says (nothing journalled).
-        NotImplementedError: For *republish* (P6 T1).
         Exception: Whatever *active_check* or *commit_guard* raise.
     """
     from phenotypic import ImagePipeline
     from phenotypic.detect.nn._helper._batch_encoder import configure_determinism
 
-    if republish:
-        raise NotImplementedError("republish-mode Stage 4 is built in #282 P6 T1")
     outcome = Stage4Outcome()
     if not items:
         return outcome
@@ -1287,6 +1388,9 @@ def run_stage4(
         active_check=active_check,
         commit_guard=commit_guard,
         record_lock=record_lock,
+        republish=republish,
+        pipeline_sha256=_measure_pipeline_sha256(pipeline_path) if republish else None,
+        republish_epoch=republish_epoch,
     )
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage4-commit")
     futures: list[Future[CommitStatus]] = []
@@ -1336,6 +1440,18 @@ def run_stage4(
         else:
             outcome.failed[identity] = detail
     return outcome
+
+
+def _measure_pipeline_sha256(pipeline_path: Path) -> str | None:
+    """The measure pipeline file's sha256, as the measure core computes it.
+
+    ``pipeline_source_identity(pipeline_path)["sha256"]``
+    (``process_single_store_measure_core``), so the run folder Stage 4
+    re-embeds is the one the core wrote.
+    """
+    from phenotypic._core._provenance import pipeline_source_identity
+
+    return pipeline_source_identity(pipeline_path)["sha256"]
 
 
 def _log_commit_failures(futures: Sequence[Future[CommitStatus]], identities: Sequence[str]) -> None:
@@ -1404,6 +1520,10 @@ def split_stage4_pending(
     datasets: Sequence[Dataset],
     output_dir: Path,
     entries: Mapping[tuple[str, Path], StagedManifestEntry],
+    *,
+    republish: bool = False,
+    pipeline_sha256: str | None = None,
+    epoch: str | None = None,
 ) -> tuple[list[Dataset], list[StagedManifestEntry]]:
     """Split a deferring run's worklist into the images that still need the core and Stage 4's.
 
@@ -1429,6 +1549,11 @@ def split_stage4_pending(
         output_dir: Run output root.
         entries: ``{(dataset name, image path): manifest entry}`` for every
             image of *datasets*.
+        republish: Classify in measure mode's republish sense
+            (``stage4_status(republish=True)``, #282 P6 T1).
+        pipeline_sha256: The measure pipeline's sha256, with *republish*.
+        epoch: With *republish*, the measure pass's SLURM generation;
+            ``None`` locally, where every measured store is pending.
 
     Returns:
         ``(core datasets, Stage-4 items)``: the datasets with only their
@@ -1444,7 +1569,10 @@ def split_stage4_pending(
         images = []
         for image in dataset.images:
             entry = entries[(dataset.name, image)]
-            status = stage4_status(output_dir, dataset.name, entry.stem, entry.work_id)
+            status = stage4_status(
+                output_dir, dataset.name, entry.stem, entry.work_id,
+                republish=republish, pipeline_sha256=pipeline_sha256, epoch=epoch,
+            )
             if status == "not_ready":
                 images.append(image)
             elif status == "pending":
@@ -1541,10 +1669,22 @@ def sweep_run_orphan_stage4_signals(
     )
 
 
-def _local_record_lock(config: ExecutionConfig, output_dir: Path) -> CommitGuard:
-    """The local epoch ownership each local record and failure is published under."""
-    from ._cli_execution_strategies import _local_epoch_ownership
+def _local_record_lock(
+    config: ExecutionConfig, output_dir: Path, *, republish: bool = False
+) -> CommitGuard:
+    """The local epoch ownership each local record and failure is published under.
 
+    In republish mode only the processing-state lock, with no generation
+    compare: ``--mode measure`` keeps no run state, and its content-derived
+    generation is the forward run's only when its pipeline is, so the
+    compare would refuse every record of a measure with another pipeline.
+    The inline measure core republishes under no lock at all; this keeps the
+    serialisation.
+    """
+    from ._cli_execution_strategies import _local_epoch_ownership, _local_state_lock
+
+    if republish:
+        return lambda: _local_state_lock(output_dir)
     return lambda: _local_epoch_ownership(config, output_dir)
 
 
@@ -1554,6 +1694,8 @@ def run_local_stage4(
     output_dir: Path,
     datasets: Sequence[Dataset],
     entries: Mapping[tuple[str, Path], StagedManifestEntry],
+    *,
+    republish: bool = False,
 ) -> dict[str, tuple[int, int]]:
     """Run Stage 4 in this process over *datasets*: ``{dataset: (published, failed)}``.
 
@@ -1578,6 +1720,13 @@ def run_local_stage4(
         entries: ``{(dataset name, image path): manifest entry}`` for every
             image of *datasets*, built from the identity Stages 1-3 ran
             under; Stage 4 never recomputes a work id (review I4).
+        republish: Measure mode (#282 P6 T1): *datasets* are the stores a
+            deferring measure core just re-measured, each entry's
+            ``work_id`` its measure work id. Every one ``"pending"`` in the
+            republish sense goes to :func:`run_stage4` (``republish=True``),
+            journalled failures included: measure mode keeps no
+            continuation, so it never skips one. Each record keeps its own
+            epoch (U8).
 
     Raises:
         click.ClickException: Exit ``1``, one line, after the commit pool
@@ -1596,8 +1745,12 @@ def run_local_stage4(
     from ._cli_utils import resolve_local_worker_count
 
     sweep_run_orphan_stage4_signals(output_dir)
-    _core, items = split_stage4_pending(datasets, output_dir, entries)
-    items = without_terminal_failures(config, output_dir, items)
+    _core, items = split_stage4_pending(
+        datasets, output_dir, entries, republish=republish,
+        pipeline_sha256=_measure_pipeline_sha256(config.pipeline_json) if republish else None,
+    )
+    if not republish:
+        items = without_terminal_failures(config, output_dir, items)
     if not items:
         return {}
     num_workers = resolve_local_worker_count(config.n_jobs, len(items)) - 1
@@ -1608,10 +1761,13 @@ def run_local_stage4(
             items,
             image_type=config.image_type,
             epoch=config.processing_generation,
-            revisions=recorded_embed_revisions(output_dir),
+            republish=republish,
+            # Measure mode keeps no run state: its revisions are this
+            # invocation's (pin_embed_revisions), resolved at its start.
+            revisions=config.embed_revisions if republish else recorded_embed_revisions(output_dir),
             num_workers=num_workers,
             output_manager=output_manager,
-            record_lock=_local_record_lock(config, output_dir),
+            record_lock=_local_record_lock(config, output_dir, republish=republish),
         )
     except Exception as exc:
         # Node or model state, never an image's (spec §4.8): one line, exit 1.

@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import shutil
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -1457,6 +1457,96 @@ def _rewrite_store_tables(
     return store_path
 
 
+def _carried_embedding_entries(
+    phenotypic: Mapping[str, object],
+    pairs: Sequence[tuple[str, str]],
+    embeddings: Mapping[str, object] | None,
+) -> dict[str, tuple[str, dict[str, object]]]:
+    """Validate :func:`replace_image_tables`' *carry_embeddings* against the live root.
+
+    Runs inside the plan, before any part exists, so a refusal costs nothing.
+
+    Returns:
+        ``{key: (source run id, a copy of its entry)}``, in *pairs* order.
+
+    Raises:
+        ValueError: A pair whose run the store does not declare, or whose
+            run declares no entry under its key; a key named twice; a key
+            *embeddings* also writes; or an entry whose files do not lie in
+            its run's folder.
+    """
+    from . import ngff_
+    from ._table_runs import EMBEDDINGS_KEY, RUNS_KEY, table_run_relative_path
+
+    tables = phenotypic.get(ngff_.PhenotypicAttr.TABLES)
+    runs = tables.get(RUNS_KEY) if isinstance(tables, Mapping) else None
+    runs = runs if isinstance(runs, Mapping) else {}
+    carried: dict[str, tuple[str, dict[str, object]]] = {}
+    for source_run, key in pairs:
+        run = runs.get(source_run)
+        block = run.get(EMBEDDINGS_KEY) if isinstance(run, Mapping) else None
+        entry = block.get(key) if isinstance(block, Mapping) else None
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"cannot carry embedding {key!r} from run {source_run!r}: the "
+                "store declares no such run or no such entry in it"
+            )
+        if key in carried or (embeddings and key in embeddings):
+            raise ValueError(f"embedding {key!r} is written twice in one table write")
+        prefix = f"{table_run_relative_path(source_run).as_posix()}/"
+        files = entry.get("files")
+        if not isinstance(files, list) or not all(
+            isinstance(f, Mapping) and str(f.get("path", "")).startswith(prefix) for f in files
+        ):
+            raise ValueError(
+                f"cannot carry embedding {key!r} from run {source_run!r}: its "
+                f"files do not all lie under {prefix}"
+            )
+        carried[key] = (source_run, deepcopy(dict(entry)))
+    return carried
+
+
+def _link_carried_embedding(
+    store: Path,
+    part: Path,
+    source_run: str,
+    run_id: str,
+    key: str,
+    entry: dict[str, object],
+) -> dict[str, object]:
+    """Hard-link one carried embedding's folder into *part* under *run_id*; return its entry.
+
+    The live store's ``tables/<source_run>/embeddings/<model>/<layer>/<region>/``
+    is linked file by file into the part's ``tables/<run_id>/...``, its
+    parent groups made where the part has none, and the entry's ``files``
+    paths re-rooted at *run_id*, every other field (``stale`` and each
+    ``sha256`` included) as it was.
+    """
+    from . import ngff_
+    from ._table_runs import embedding_table_relative_path, table_run_relative_path
+
+    source_dir = Path(store) / embedding_table_relative_path(source_run, key).parent
+    target_dir = Path(part) / embedding_table_relative_path(run_id, key).parent
+    if not source_dir.is_dir():
+        raise FileNotFoundError(
+            f"cannot carry embedding {key!r} from run {source_run!r}: {source_dir} is missing"
+        )
+    shutil.rmtree(target_dir, ignore_errors=True)
+    # embeddings/, embeddings/<model>/, embeddings/<model>/<layer>/
+    for group in (target_dir.parents[2], target_dir.parents[1], target_dir.parent):
+        if not (group / ngff_.STORE_ROOT_JSON).is_file():
+            _ensure_group(group)
+    _link_tree(source_dir, target_dir)
+    old = f"{table_run_relative_path(source_run).as_posix()}/"
+    new = f"{table_run_relative_path(run_id).as_posix()}/"
+    files = entry["files"]
+    assert isinstance(files, list)
+    entry["files"] = [
+        {**file, "path": new + str(file["path"])[len(old):]} for file in files
+    ]
+    return entry
+
+
 def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
@@ -1467,6 +1557,7 @@ def replace_image_tables(
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
     embeddings: Mapping[str, EmbeddingPayload] | None = None,
+    carry_embeddings: Sequence[tuple[str, str]] = (),
 ) -> TableRun:
     """Refresh the measurement AND metadata tables of one pipeline's run folder.
 
@@ -1525,6 +1616,15 @@ def replace_image_tables(
         embeddings: The pipeline's embedding tables for this image
             (:meth:`ImagePipeline.embed`), written into the run folder beside
             *tables*. ``None`` (or empty) writes none, and the run keeps none.
+        carry_embeddings: ``(source_run_id, key)`` pairs to carry into this
+            run's ``embeddings`` block instead of dropping them (#282 U8, the
+            measure core under ``--embed-stage gpu``). Each named entry keeps
+            its fields as they were, its ``files`` paths moved to this run's
+            folder and their sha256 unchanged, and its files are hard links
+            (:func:`_clone_file_without_pixel_rewrite`) of the source run's.
+            Its ``stale`` stays valid because this write writes no objmap and
+            no array. The source may be this run itself, or any other run
+            the store declares.
 
     Returns:
         The run folder written, as the promoted root declares it. Its
@@ -1533,11 +1633,15 @@ def replace_image_tables(
 
     Raises:
         ValueError: If the store declares no objmap target, or its tables
-            descriptor is corrupt or a version this build does not read.
+            descriptor is corrupt or a version this build does not read; or,
+            before any part exists, if a *carry_embeddings* pair names a run
+            or key the store does not declare, names one key twice, or names
+            a key *embeddings* also writes.
     """
 
     from . import ngff_
     from ._table_runs import (
+        EMBEDDINGS_KEY,
         RUNS_KEY,
         UPSTREAM_KEY,
         TABLE_RUN_ID_RE,
@@ -1551,6 +1655,9 @@ def replace_image_tables(
     def _plan(phenotypic: dict[str, object]) -> Callable[[Path], None]:
         target = _resolve_objmap_target(phenotypic, objmap_target)
         schema = tables_schema_of_block(phenotypic)
+        carried = _carried_embedding_entries(
+            phenotypic if schema == 2 else {}, carry_embeddings, embeddings
+        )
         # A v1 flat store numbers as an empty one: its flat tables are not
         # run folders, and the rewrite replaces them whole.
         run_id = choose_table_run_id(
@@ -1590,6 +1697,13 @@ def replace_image_tables(
                 objmap_target=target,
                 embeddings=embeddings,
             )
+            if carried:
+                block = dict(own.get(EMBEDDINGS_KEY) or {})
+                for key, (source_run, entry) in carried.items():
+                    block[key] = _link_carried_embedding(
+                        Path(store_path), part, source_run, run_id, key, entry
+                    )
+                own[EMBEDDINGS_KEY] = block
             apply_image_tables_attributes(
                 phenotypic, {**kept, run_id: own}, upstream=upstream
             )

@@ -86,14 +86,22 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
-    """Fence a local authoritative write against later invocations."""
-    from ._cli_state_management import load_processing_state
+def _local_state_lock(output_dir: Path):
+    """Hold the run's processing-state lock: the serialisation every local record write takes."""
     from phenotypic.sdk_ import resolve_processing_state_path
 
     state_path = resolve_processing_state_path(output_dir)
     lock_path = state_path.with_name(f".{state_path.name}.lock")
     with exclusive_path_lock(lock_path, timeout=60.0):
+        yield
+
+
+@contextmanager
+def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
+    """Fence a local authoritative write against later invocations."""
+    from ._cli_state_management import load_processing_state
+
+    with _local_state_lock(output_dir):
         state = load_processing_state(output_dir)
         expected = config.processing_generation
         if state is None and not expected:
@@ -437,10 +445,16 @@ class LocalParallelStrategy(ExecutionStrategy):
             and not measure_only
             and not self.config.process_only_layer
         )
+        # Measure mode under deferral (#282 P6 T1, U8): the core carries the
+        # old embeddings and defers the republish; Stage 4 below re-embeds
+        # and republishes every store it measured. Each store's measure work
+        # id is computed once, here, so a measure-step failure and a Stage-4
+        # failure of one invocation journal under the same id.
+        republishing = defers_embeddings(self.config) and measure_only
         stage4_entries: dict = {}
         core_tasks = all_tasks
         core_done: list[tuple[str, str, bool, str]] = []
-        if deferring_run:
+        if deferring_run or republishing:
             from . import _cli_stage4_worker
 
             stage4_entries = _cli_stage4_worker.stage4_entries(
@@ -527,6 +541,38 @@ class LocalParallelStrategy(ExecutionStrategy):
                 output_dir,
                 datasets,
                 stage4_entries,
+            )
+            counts = {
+                name: {"completed": r.completed, "failed": r.failed}
+                for name, r in dataset_results.items()
+            }
+            apply_stage4_counts(counts, stage4)
+            for name, r in dataset_results.items():
+                r.completed = counts[name]["completed"]
+                r.failed = counts[name]["failed"]
+        if republishing:
+            # Stage 4 over the stores this loop measured; its failures join
+            # the measure failures, which become the CLI's `measure_failed`.
+            measured = {(name, image) for name, image, ok, _ in results if ok}
+            stage4 = _cli_stage4_worker.run_local_stage4(
+                self.config,
+                self.output_manager,
+                output_dir,
+                [
+                    Dataset(
+                        name=dataset.name,
+                        images=[
+                            image
+                            for image in dataset.images
+                            if (dataset.name, image.name) in measured
+                        ],
+                        input_dir=dataset.input_dir,
+                        output_dir=dataset.output_dir,
+                    )
+                    for dataset in datasets
+                ],
+                stage4_entries,
+                republish=True,
             )
             counts = {
                 name: {"completed": r.completed, "failed": r.failed}
@@ -899,6 +945,7 @@ class LocalParallelStrategy(ExecutionStrategy):
         image_path: Path,
         output_dir: Path,
         event_log: Path,
+        entry: "StagedManifestEntry | None" = None,
     ) -> tuple[str, str, bool, str]:
         """
         Rerun ``pipeline.measure()`` on one already-processed image store.
@@ -917,6 +964,10 @@ class LocalParallelStrategy(ExecutionStrategy):
             output_dir: Base output directory (passed through; measure path
                 does not use it directly).
             event_log: Path to the processing event log.
+            entry: Under deferral (#282 P6 T1), the store's one measure
+                identity for the invocation; the core then defers its
+                embeddings and its republish to Stage 4, and a failure is
+                journalled under the entry's work id.
 
         Returns:
             Tuple of ``(dataset_name, store_name, success, error_or_tb)``
@@ -946,6 +997,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                     dataset_name=dataset.name,
                     image_type=self.config.image_type,  # type: ignore[arg-type]
                     output_manager=self.output_manager,
+                    defer_embeddings=entry is not None,
                 )
 
             append_completion_event(
@@ -971,6 +1023,11 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=(
+                    None
+                    if entry is None
+                    else (entry.work_id, entry.relative_image_path)
+                ),
             ) and isinstance(e, PerImageScientificError):
                 logger.warning(
                     "Measure failure for %s/%s was not journalled as terminal",

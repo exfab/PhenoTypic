@@ -585,19 +585,28 @@ def test_the_slurm_measure_stage4_gate_is_refused_before_the_mutating_half(
 
     assert result.exit_code == 2, result.output
     errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
-    assert len(errors) == 1 and "Stage 4 in --mode measure is not yet available" in errors[0], result.output
+    assert len(errors) == 1 and "Stage 4 in SLURM --mode measure is not yet available" in errors[0], result.output
     assert _tree_digest(output_dir) == before
 
 
 @pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
 def test_the_measure_stage4_gate_is_refused_before_the_mutating_half(
-    valid_pipeline: Path, image_tree: Path, tmp_path: Path, extra: tuple[str, ...]
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path, monkeypatch, extra: tuple[str, ...]
 ) -> None:
-    """#282 review C1: local ``--mode measure --embed-stage gpu`` (no Stage 4 there until P6 T1).
+    """#282 review C1, flipped by P6 T1: local ``--mode measure --embed-stage gpu`` now runs Stage 4.
 
-    Over a real finished run, which stays byte-unchanged. Torch-free.
-    ``--dry-run`` is not a case: measure mode refuses it on its own.
+    The gate refused it above every mutation; P6 T1 built its executor (the
+    republish Stage 4 after the measure loop), so the gate admits it. What
+    stops it now on a machine with no usable CUDA is the CUDA check
+    (``prepare_stage4_environment``), one line and exit 1, still above every
+    mutation: over a real finished run that stays byte-unchanged. Torch-free:
+    the check is the stub below, whatever this node has.
     """
+    from phenotypic._cli import _cli_stage4_worker
+
+    def _no_cuda() -> None:
+        raise _cli_stage4_worker.Stage4DeviceError("no CUDA device is usable (stubbed)")
+
     output_dir = tmp_path / "run"
     first = _invoke(
         "--pipeline", str(valid_pipeline), "--input", str(image_tree),
@@ -606,12 +615,16 @@ def test_the_measure_stage4_gate_is_refused_before_the_mutating_half(
     assert first.exit_code == 0, first.output
     before = _tree_digest(output_dir)
 
+    monkeypatch.delenv("PHENOTYPIC_STAGE4_DEVICE", raising=False)
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8")   # restored after the test
+    monkeypatch.setattr(_cli_stage4_worker, "check_cuda_usable", _no_cuda)
     result = _invoke(
         "--mode", "measure", "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
         "--output", str(output_dir), "--njobs", "1", "--embed-stage", "gpu", *extra,
     )
 
-    assert result.exit_code == 2, result.output
+    assert result.exit_code == 1, result.output
     errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
-    assert len(errors) == 1 and "Stage 4 in --mode measure is not yet available" in errors[0], result.output
+    assert len(errors) == 1 and "--embed-stage gpu runs Stage 4 on this machine" in errors[0], result.output
+    assert "not yet available" not in result.output
     assert _tree_digest(output_dir) == before

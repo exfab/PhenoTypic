@@ -214,7 +214,7 @@ def _slurm_config(make_exec_config, tmp_path: Path, **overrides: Any):
 
 
 def _gate_note(mode: str) -> str:
-    where = "in --mode measure" if mode == "measure" else "on SLURM"
+    where = "in SLURM --mode measure" if mode == "measure" else "on SLURM"
     return f"Stage 4 {where} is not yet available, so --embed-stage auto resolves to inline"
 
 
@@ -238,10 +238,11 @@ def test_a_slurm_gpu_detector_pipeline_resolves_gpu_now_the_gate_is_lifted(make_
 
 @pytest.mark.parametrize("where", ["slurm-full", "slurm-measure", "local-measure"])
 def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config, tmp_path, where):
-    """Review C1: ``--embed-stage gpu`` in measure mode (local or SLURM) is refused.
+    """Review C1: ``--embed-stage gpu`` in SLURM measure mode is refused.
 
-    P5 T2 flipped ``slurm-full``: it now resolves ``gpu`` with no note. P6 T1
-    flips the measure cases.
+    P5 T2 flipped ``slurm-full`` and P6 T1 ``local-measure`` (the republish
+    Stage 4 after the local measure loop): both resolve ``gpu`` with no
+    note. P6 T2 flips ``slurm-measure``.
     """
     pipe = ImagePipeline(meas={"emb": MeasureDinoEmbedding()})
     measure = where.endswith("measure")
@@ -250,7 +251,7 @@ def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config
     else:
         config = make_exec_config(pipeline_json=tmp_path / "unused.json", input_path=tmp_path,
                                   measure_only=True, embed_stage_request="gpu")
-    if where == "slurm-full":
+    if where in ("slurm-full", "local-measure"):
         assert stage4_supported(config)
         assert resolve_embed_stage_for_config(config, pipe) == ("gpu", [])
         return
@@ -259,7 +260,7 @@ def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config
         resolve_embed_stage_for_config(config, pipe)
     message = raised.value.message
     assert "\n" not in message and message.endswith("pass --embed-stage inline to embed inline in Stage 3")
-    assert message.startswith("--embed-stage gpu: Stage 4 in --mode measure is not yet available")
+    assert message.startswith("--embed-stage gpu: Stage 4 in SLURM --mode measure is not yet available")
 
 
 def test_a_local_full_run_is_the_one_supported_stage4_path(make_exec_config, tmp_path):

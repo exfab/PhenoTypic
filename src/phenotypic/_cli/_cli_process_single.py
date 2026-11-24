@@ -15,7 +15,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any, Callable, Iterator, Mapping, cast
+from typing import TYPE_CHECKING, Optional, Dict, Any, Callable, Iterator, Mapping, Sequence, cast
 from uuid import uuid4
 
 import matplotlib
@@ -77,11 +77,13 @@ from ._cli_staged_resume import (
     drop_stages_1_to_3_done,
     write_stage3_completion_marker,
 )
+from ._cli_embed_stage import pipeline_embedders
 from ._cli_types import is_in_place_process, writes_process_store
 from ._cli_utils import image_read_kwargs, input_read_settings, normalize_extension
 from phenotypic.sdk_ import (
     CommitGuard,
     EnvVar,
+    image_record_path,
     load_image_from_store,
     progress_dir,
     source_image_stem,
@@ -95,6 +97,9 @@ from phenotypic.sdk_.typing_ import (
     ProcessFormat,
     ProcessOnlyLayer,
 )
+
+if TYPE_CHECKING:
+    from phenotypic.abc_ import MeasureEmbedding
 
 logger = logging.getLogger(__name__)
 
@@ -501,6 +506,79 @@ def measure_scientific_boundary() -> Iterator[None]:
         raise PerImageScientificError(MEASURE_FAILURE_STAGE, exc) from exc
 
 
+def measure_embedding_carry(
+    store: Path,
+    record_path: Path,
+    embedders: "Sequence[MeasureEmbedding]",
+    *,
+    output_dir: Path,
+    pipeline_sha256: str | None,
+) -> list[tuple[str, str]]:
+    """The ``(run_id, key)`` pairs a deferring measure core carries forward (#282 U8).
+
+    For each of the measure pipeline's embedders, with ``key =
+    payload_key()`` and ``params = _params_sha256()``, the first run whose
+    entry under ``key`` has ``producer.params_sha256 == params``:
+
+    1. the measure pipeline's own run folder (``owned_table_run_id`` for
+       *pipeline_sha256*), when the store has one;
+    2. otherwise the run the image's record last certified
+       (:func:`~phenotypic._cli._cli_recompile_recovery.certified_table_run`).
+       Its entry is as valid as one of the own run's, because a measure
+       write writes no objmap;
+    3. otherwise none: there is nothing comparable to keep, and the new run
+       folder has no table under ``key`` until Stage 4 writes one.
+
+    Args:
+        store: The image's promoted store.
+        record_path: The image's per-image record.
+        embedders: The measure pipeline's in-scope embedders.
+        output_dir: Run output root (the record's artifact paths are
+            relative to it).
+        pipeline_sha256: The measure pipeline file's sha256.
+
+    Returns:
+        One pair per embedder that has a comparable entry, in *embedders*
+        order.
+    """
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._table_runs import (
+        EMBEDDINGS_KEY,
+        list_table_runs,
+        owned_table_run_id,
+    )
+
+    from ._cli_recompile_recovery import certified_table_run
+
+    try:
+        block = ngff_.read_phenotypic_attributes(Path(store))
+        runs = {run.run_id: run for run in list_table_runs(Path(store))}
+    except (OSError, KeyError, ValueError):
+        return []
+    candidates = []
+    own = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
+    if own is not None and own in runs:
+        candidates.append(runs[own])
+    certified = (
+        certified_table_run(Path(output_dir), Path(record_path))
+        if Path(record_path).is_file()
+        else None
+    )
+    if certified is not None and certified.run_id != own:
+        candidates.append(certified)
+    pairs: list[tuple[str, str]] = []
+    for embedder in embedders:
+        key, params = embedder.payload_key(), embedder._params_sha256()
+        for run in candidates:
+            entries = run.descriptor.get(EMBEDDINGS_KEY)
+            entry = entries.get(key) if isinstance(entries, Mapping) else None
+            producer = entry.get("producer") if isinstance(entry, Mapping) else None
+            if isinstance(producer, Mapping) and producer.get("params_sha256") == params:
+                pairs.append((run.run_id, key))
+                break
+    return pairs
+
+
 def process_single_store_measure_core(
     pipeline_path: Path,
     store_path: Path,
@@ -509,6 +587,7 @@ def process_single_store_measure_core(
     image_type: ImageTypeName,
     output_manager: OutputManager,
     commit_guard: CommitGuard | None = None,
+    defer_embeddings: bool = False,
 ) -> bool:
     """Rerun pipeline.measure() on an already-processed OME-Zarr store.
 
@@ -528,6 +607,13 @@ def process_single_store_measure_core(
         image_type: ``"Image"`` or ``"GridImage"`` — the fallback used when the
             store's ``phenotypic`` block carries no ``image_class``.
         output_manager: :class:`OutputManager` for writing the parquet.
+        commit_guard: Publication guard, checked at each commit point.
+        defer_embeddings: ``--embed-stage gpu`` (#282 P6, U8): skip
+            ``pipeline.embed``, carry the image's comparable embeddings
+            forward into the run folder (:func:`measure_embedding_carry`),
+            and leave the record's republish to the republish-mode Stage 4,
+            which re-embeds and then republishes it. The record therefore
+            does not certify the store this call leaves.
 
     Returns:
         ``True`` on success. Exceptions propagate to the caller, which is
@@ -550,8 +636,10 @@ def process_single_store_measure_core(
     measurements = pipeline.measure(image, apply_post=False)
     # The run folder's entry describes this write whole, so the embeddings
     # must be passed or the same-pipeline rewrite drops them (review OQ5,
-    # #281 spec E2). The store's own objmap is what they are bound to.
-    embeddings = pipeline.embed(image)
+    # #281 spec E2). The store's own objmap is what they are bound to. Under
+    # deferral Stage 4 computes them; the comparable old ones are carried
+    # meanwhile (U8), so a Stage-4 failure leaves them and a valid record.
+    embeddings = None if defer_embeddings else pipeline.embed(image)
 
     # ``store_stem``, never ``Path.stem``: ``.ome.zarr`` is a double suffix,
     # so ``.stem`` would name the parquet ``<stem>.ome.parquet`` and key the
@@ -614,6 +702,17 @@ def process_single_store_measure_core(
         commit_guard=commit_guard,
         figures=figures,
         embeddings=embeddings,
+        carry_embeddings=(
+            measure_embedding_carry(
+                store_path,
+                image_record_path(output_dir, dataset_name, stem),
+                [embedder for _key, embedder in pipeline_embedders(pipeline)],
+                output_dir=output_dir,
+                pipeline_sha256=pipeline_sha256,
+            )
+            if defer_embeddings
+            else ()
+        ),
     )
     PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
         store_path,
@@ -658,9 +757,12 @@ def process_single_store_measure_core(
     # Non-empty `artifacts` is the property that makes the payload
     # republishable, and it is the same clause `record_rejection` calls
     # CAN-23 -- a record with no artifacts certifies nothing.
-    from phenotypic.sdk_ import image_record_path
     from phenotypic.sdk_._image_record import read_image_record
 
+    if defer_embeddings:
+        # Stage 4 republishes the record once it has re-embedded (U8); a
+        # republish here would certify a root Stage 4 then rewrites.
+        return True
     record_path = image_record_path(output_dir, dataset_name, stem)
     record = read_image_record(output_dir, dataset_name, stem)
     artifacts = record.get("artifacts") if record is not None else None

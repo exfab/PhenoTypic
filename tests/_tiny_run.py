@@ -2205,8 +2205,8 @@ if args.get("crash_inside") == "replace_run_embeddings":
         return original_promote(*a, **k)
     worker.replace_run_embeddings = _flagged
     ngff_.promote_store = _crash_before_promote
-result = run_cli(Path(args["inputs"]), Path(args["out"]), pipeline=Path(args["pipeline"]),
-                 extra=args["extra"])
+result = run_cli(None if args["inputs"] is None else Path(args["inputs"]), Path(args["out"]),
+                 pipeline=Path(args["pipeline"]), extra=args["extra"])
 sys.stdout.write(result.output)
 if result.exception is not None and not isinstance(result.exception, SystemExit):
     traceback.print_exception(result.exception)
@@ -2215,7 +2215,7 @@ sys.exit(result.exit_code)
 
 
 def run_cli_subprocess(
-    inputs: Path,
+    inputs: Path | None,
     out: Path,
     *,
     pipeline: Path,
@@ -2235,7 +2235,8 @@ def run_cli_subprocess(
     caller's ``$PHENOTYPIC_TEST_FAULT_DIR`` is inherited.
 
     Args:
-        inputs: The ``--input`` root.
+        inputs: The ``--input`` root, or ``None`` to omit ``--input``, as
+            :func:`run_cli` does (``--mode measure``).
         out: The ``--output`` root.
         pipeline: The ``--pipeline`` file.
         extra: Further CLI arguments.
@@ -2272,7 +2273,7 @@ def run_cli_subprocess(
         [*filter(None, env.get("PHENOTYPIC_PRELOAD_MODULES", "").split(",")), *STAGE4_PRELOAD_MODULES]
     )
     args = {
-        "inputs": str(inputs),
+        "inputs": None if inputs is None else str(inputs),
         "out": str(out),
         "pipeline": str(pipeline),
         "extra": list(extra),
@@ -2751,8 +2752,10 @@ def run_stage4_over(tree: Stage4Waiting, *, num_workers: int = 0, **kwargs):
     )
 
 
-def stores_of(tree: Stage4Waiting) -> list[Path]:
-    """*tree*'s stores, in image order."""
+def stores_of(tree: "Stage4Waiting | Path") -> list[Path]:
+    """*tree*'s stores, in image order; for a run's output root, its stores in path order."""
+    if isinstance(tree, Path):
+        return sorted(tree.glob("results/*/zarr/*.ome.zarr"))
     return [zarr_store_path_of(tree.out, item) for item in tree.items]
 
 
@@ -3493,3 +3496,145 @@ def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Sl
 def staged_tree_single_pass(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Waiting:
     """A no-detector (``OtsuDetector``) run whose two images wait on Stage 4. [torch]"""
     return _built_staged_tree(tmp_path, tiny_inputs, with_stage4_dino_objects(tmp_path))
+
+
+# ---------------------------------------------------------------------------
+# #282 P6 T1: --mode measure through a republish Stage 4
+# ---------------------------------------------------------------------------
+
+
+def store_of(out: Path, index: int = 0) -> Path:
+    """The *index*-th store of the run at *out*, in path order (:func:`stores_of`)."""
+    return stores_of(out)[index]
+
+
+def stem_of(store: Path) -> str:
+    """The image stem of *store* (``<stem>.ome.zarr``)."""
+    return dataset_and_stem(store)[1]
+
+
+def _output_of(store: Path) -> Path:
+    """The run output root a store at ``<out>/results/<ds>/zarr/<stem>.ome.zarr`` belongs to."""
+    return store.parents[3]
+
+
+def _record_of(out: Path, store: Path) -> dict:
+    import json
+
+    from phenotypic.sdk_ import image_record_path
+
+    dataset, stem = dataset_and_stem(store)
+    return json.loads(image_record_path(out, dataset, stem).read_text(encoding="utf-8"))
+
+
+def record_digest(store: Path) -> str:
+    """sha256 of the bytes of *store*'s per-image record."""
+    import hashlib
+
+    from phenotypic.sdk_ import image_record_path
+
+    dataset, stem = dataset_and_stem(store)
+    return hashlib.sha256(image_record_path(_output_of(store), dataset, stem).read_bytes()).hexdigest()
+
+
+#: The record fields a republish keeps verbatim (``_republish_table_marker``).
+RECORD_IDENTITY_FIELDS = (
+    "work_id", "attempt_id", "relative_image_path", "mode", "provenance", "source_provenance",
+)
+
+
+def record_identity(out: Path, store: Path) -> dict:
+    """*store*'s record's identity fields (:data:`RECORD_IDENTITY_FIELDS`); absent reads ``None``."""
+    record = _record_of(out, store)
+    return {field: record.get(field) for field in RECORD_IDENTITY_FIELDS}
+
+
+def record_certifies_root(out: Path, store: Path) -> bool:
+    """Whether *store*'s record verifies against the store as it is, under its own work id."""
+    from phenotypic._cli._cli_completion import valid_image_success
+
+    record = _record_of(out, store)
+    dataset, stem = dataset_and_stem(store)
+    return valid_image_success(out, dataset=dataset, image_stem=stem, work_id=str(record.get("work_id")))
+
+
+def certified_run_id(out: Path, store: Path) -> str | None:
+    """The run folder *store*'s record certifies, or ``None``."""
+    from phenotypic._cli._cli_recompile_recovery import certified_table_run
+    from phenotypic.sdk_ import image_record_path
+
+    dataset, stem = dataset_and_stem(store)
+    run = certified_table_run(out, image_record_path(out, dataset, stem))
+    return None if run is None else run.run_id
+
+
+def embedding_bytes(store: Path, key: str, *, run: "TableRun | None" = None) -> bytes:
+    """The bytes of embedding table *key*: of *run*, or of the latest run declaring it."""
+    from phenotypic.sdk_ import list_table_runs
+
+    if run is None:
+        runs = [r for r in list_table_runs(store) if key in (r.descriptor.get("embeddings") or {})]
+        assert runs, f"{store} declares no embedding {key!r}"
+        run = runs[-1]
+    entry = run.descriptor["embeddings"][key]
+    return (store / entry["files"][0]["path"]).read_bytes()
+
+
+def pipeline_sha(path: Path) -> str:
+    """The pipeline file's sha256, as the measure core computes it."""
+    from phenotypic._core._provenance import pipeline_source_identity
+
+    return pipeline_source_identity(path)["sha256"]
+
+
+def owned_run(store: Path, sha: str) -> "TableRun":
+    """*store*'s run folder owned by pipeline *sha* (it must exist)."""
+    run = owned_table_run(store, sha)
+    assert run is not None, f"{store} has no run of pipeline {sha[:12]}"
+    return run
+
+
+def with_measure_pipeline(directory: Path, *, keep: str, add_grid_named: str) -> Path:
+    """A measure pipeline beside :func:`with_stage4_dino_objects` ``(fake_gpu, faulty, grid)``.
+
+    Its objects embedder (*keep* must be ``"objects"``) is the forward one,
+    ``FaultyDinoEmbedding()`` with default parameters, so its
+    ``producer.params_sha256`` matches; the forward unnamed grid embedder is
+    replaced by a new grid embedder named *add_grid_named*, whose key the
+    forward run never wrote. The file and its sha differ from the forward
+    pipeline's, so a measure with it writes a new run folder.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.grid import ManualGridFinder
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+
+    import tests._fakes.register_fake_gpu  # noqa: F401
+    import tests._fakes.register_faulty_dino_embedder  # noqa: F401
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+    from tests._fakes.faulty_dino_embedder import FaultyDinoEmbedding
+
+    assert keep == "objects"
+    meas: dict = {
+        "size": MeasureSize(),
+        "emb": FaultyDinoEmbedding(),
+        add_grid_named: MeasureDinoEmbedding(
+            regions="grid",
+            name=add_grid_named,
+            grid=ManualGridFinder(
+                row_edges=list(TOY_GRID_ROW_EDGES), col_edges=list(TOY_GRID_COL_EDGES)
+            ),
+        ),
+    }
+    pipeline = ImagePipeline(
+        name=f"measure-{add_grid_named}", ops=[FakeGpuDetector(threshold=0.3)], meas=meas
+    )
+    path = Path(directory) / f"measure_{keep}_{add_grid_named}.pht-pipe.json"
+    path.write_text(pipeline.to_json() or "", encoding="utf-8")
+    return path
+
+
+def measure_terminal_failures(out: Path) -> list:
+    """The run's terminal failure records (``read_terminal_failures``)."""
+    from phenotypic._cli._cli_failure_tracker import read_terminal_failures
+
+    return read_terminal_failures(out)
