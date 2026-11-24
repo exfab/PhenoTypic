@@ -167,6 +167,17 @@ def test_slurm_dispatch_follows_the_resolved_embed_stage(make_exec_config, tmp_p
     assert isinstance(create_execution_strategy(config, output_manager_for(config)), strategy)
 
 
+@pytest.mark.parametrize("embed_stage, label", [("inline", "SLURM (autonomous)"),
+                                                ("gpu", "SLURM (staged controller)")])
+def test_the_dry_run_names_the_backend_the_run_takes(make_exec_config, tmp_path, capsys, embed_stage, label):
+    """Smoke F7, review M1: the preview's label follows the same predicate as the dispatch."""
+    from phenotypic._cli._cli_interactive import _display_execution_backend
+
+    config = dataclasses.replace(_slurm_config(make_exec_config, tmp_path), embed_stage=embed_stage)
+    assert _display_execution_backend(config) == "slurm"
+    assert f"Selected backend: {label}" in capsys.readouterr().out
+
+
 def test_a_local_gpu_run_does_not_take_the_controller(make_exec_config, tmp_path):
     config = make_exec_config(pipeline_json=dino_pipeline_path(tmp_path), input_path=tmp_path,
                               embed_stage="gpu")
@@ -190,8 +201,11 @@ def test_a_no_detector_submission_writes_the_two_phase_plan(tmp_path, monkeypatc
     assert config["phases"] == ["stage3", "stage4"] and config["n_shards"] == 3
     state = load_orchestration_state(out)
     assert state["phase"] == "stage3"
-    # The finalizer derives a detector slot only for a run that has one.
-    assert state["stage3_markers_required"] is False
+    # Stage-3 markers are this run's completion contract too (review I2): the
+    # flag is not inverted to steer the finalizer, which reads the recorded
+    # detector slot instead, and there is none.
+    assert state["stage3_markers_required"] is True
+    assert "detector_slot" not in config
     stage4 = Path(config["stage4_script"]).read_text(encoding="utf-8")
     assert "#SBATCH --partition=exfab" in stage4 and "#SBATCH --account=exfab" in stage4
     assert "#SBATCH --array=0-2" in stage4
@@ -215,6 +229,23 @@ def test_a_continuation_reuses_the_recorded_revision(tmp_path, monkeypatch, subm
     _end_submitted_run(tmp_path / "out")
     monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("re-resolved"))
     again = submit_staged_no_detector(tmp_path, n_shards=3)                    # the same command again
+    assert again.exit_code == RunExitCode.SUBMITTED, again.output
+    assert "Continuing" in again.output
+    assert read_job_metadata(tmp_path / "out")["embed_revisions"] == {"facebook/dinov2-base": COMMIT}
+    assert recorded_embed_revisions(tmp_path / "out") == {"facebook/dinov2-base": COMMIT}
+
+
+def test_a_continuation_resolves_a_revision_first_recorded_offline(tmp_path, monkeypatch, submissions):
+    """Review M10: a recorded None was the offline fallback, never a pin, so an online re-run pins it."""
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("asked the hub offline"))
+    first = submit_staged_no_detector(tmp_path, n_shards=3)
+    assert first.exit_code == RunExitCode.SUBMITTED, first.output
+    assert recorded_embed_revisions(tmp_path / "out") == {"facebook/dinov2-base": None}
+    _end_submitted_run(tmp_path / "out")
+    monkeypatch.delenv("HF_HUB_OFFLINE")
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: COMMIT)
+    again = submit_staged_no_detector(tmp_path, n_shards=3)
     assert again.exit_code == RunExitCode.SUBMITTED, again.output
     assert "Continuing" in again.output
     assert read_job_metadata(tmp_path / "out")["embed_revisions"] == {"facebook/dinov2-base": COMMIT}

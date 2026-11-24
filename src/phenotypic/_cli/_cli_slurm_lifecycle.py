@@ -491,8 +491,16 @@ def submit_with_lifecycle(
     active_check: Callable[[], bool] | None = None,
     run_command: Callable[..., subprocess.CompletedProcess[str]] | None = None,
     discover: Callable[[str], str | None] | None = None,
+    extra_args: Sequence[str] = (),
 ) -> str:
-    """Submit exactly once with intent, fence, and job record under one lock."""
+    """Submit exactly once with intent, fence, and job record under one lock.
+
+    ``extra_args`` are ``sbatch`` options placed before the script, where
+    they override its ``#SBATCH`` directives (the staged controller narrows a
+    chunk's ``--array`` to the tasks it resubmits, #282 P5 U15/D5). They do
+    not enter the token or the comment, so a recovered submission is the same
+    job whatever the caller passes.
+    """
     validated_dependency_kind = _validate_dependency_kind(dependency_kind)
     comment = scheduler_comment(generation, token)
     runner = run_command or subprocess.run
@@ -573,6 +581,7 @@ def submit_with_lifecycle(
                     f"{effective_dependency_kind}:{':'.join(dependencies)}",
                 ]
             )
+        command.extend(str(arg) for arg in extra_args)
         command.append(str(script_path))
         last_error = "unknown submission failure"
         for attempt in range(3):

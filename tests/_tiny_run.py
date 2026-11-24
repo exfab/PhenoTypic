@@ -3437,6 +3437,18 @@ def record_slurm_job_metadata(out: Path, **values) -> None:
     atomic_write_json(path, metadata)
 
 
+def record_state_config(out: Path, **values) -> None:
+    """Merge *values* into *out*'s ``processing_state.json`` ``config``."""
+    import json
+
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    path = resolve_processing_state_path(out)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["config"].update(values)
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+
 @pytest.fixture
 def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4SlurmTree:
     """:class:`Stage4SlurmTree`: built by a local run, then handed a live SLURM epoch. [torch]"""
@@ -3463,6 +3475,10 @@ def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Sl
             JobMetadataKey.DETECT_MODE: "gray",
         },
     )
+    # A SLURM submitter writes the U5 revisions into both files from one
+    # `config.embed_revisions`; the worker reads them through
+    # `recorded_embed_revisions`, the state first (P5 review M15).
+    record_state_config(waiting.out, embed_revisions={"facebook/dinov2-base": RECORDED_REVISION})
     worklist = write_stage4_worklist(
         stage4_worklist_path(waiting.out),
         round_index=1,

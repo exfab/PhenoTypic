@@ -1237,6 +1237,10 @@ def _build_controller(
     )
     # What `StagedSlurmStrategy.execute` leaves before the first controller.
     state.update({"phase": "stage1", "stage1_index": 0})
+    if version == 1:
+        # A real #281 state predates Stage 4's counters (P5 review M11).
+        for key in [key for key in state if key.startswith("stage4_")]:
+            del state[key]
     save_orchestration_state(out, state)
     return ControllerV2(out, config_path, epoch)
 
@@ -1338,6 +1342,8 @@ class FakeScheduler:
         self.calls: list[tuple[str, str, str]] = []
         self.active: set[str] = set()
         self.dependencies: list[tuple[str, list[str]]] = []
+        #: ``sbatch`` options each token was submitted with (``--array=...``).
+        self.extra_args: dict[str, tuple[str, ...]] = {}
         self.current = "1000"
         monkeypatch.setenv("SLURM_JOB_ID", self.current)
         monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
@@ -1349,6 +1355,7 @@ class FakeScheduler:
             raise RuntimeError(f"SLURM generation {kwargs['epoch']!r} is inactive or superseded")
         job_id = str(2000 + len(self.calls))
         self.calls.append((kwargs["role"], kwargs["token"], job_id))
+        self.extra_args[kwargs["token"]] = tuple(kwargs.get("extra_args", ()))
         self.active.add(job_id)
         return job_id
 

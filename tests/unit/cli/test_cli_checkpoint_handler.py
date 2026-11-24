@@ -863,3 +863,75 @@ class TestFinalizerBindsPublicationToItsGeneration:
         ):
             _run_finalize(output_dir, progress_dir, epoch="epoch-1")
         assert captured["execution_epoch"] == "epoch-1"
+
+
+class TestStagedReconcileFollowsTheRecordedSlot:
+    """#282 P5 review I2: the finalizer reconciles Stage-2 signals only for a run with a detector.
+
+    It reads the slot the submitter recorded in ``staged_controller.json``
+    (``recorded_detector_slot``) rather than re-deriving one from the pipeline,
+    which raises on a pipeline without a ``GpuDetector``; and the strategy no
+    longer inverts ``stage3_markers_required`` to steer it.
+    """
+
+    @staticmethod
+    def _finalize(tmp_path: Path, controller_config: dict, **state_values: object) -> list:
+        from phenotypic._cli._cli_staged_orchestration import save_orchestration_state
+
+        output_dir = tmp_path / "out"
+        progress_dir = progress_dir_helper(output_dir)
+        _write_job_metadata(progress_dir, NESTED_DATASETS)
+        config_path = progress_dir / "staged_controller.json"
+        config_path.write_text(json.dumps(controller_config), encoding="utf-8")
+        state = initialize_orchestration(
+            output_dir, epoch="epoch-1", mode="fresh", controller_config_path=config_path
+        )
+        state["stage3_markers_required"] = True       # what the strategy now always records
+        state.update(state_values)
+        save_orchestration_state(output_dir, state)
+        calls: list = []
+        with (
+            patch(
+                "phenotypic._cli._cli_staged_resume.reconcile_stage3_publications",
+                side_effect=lambda out, inventory, slot, **kw: calls.append(slot),
+            ),
+            patch(
+                "phenotypic._cli._cli_output_manager.aggregate_measurements",
+                return_value=None,
+            ),
+            pytest.raises(RuntimeError, match="No current-epoch measurements"),
+        ):
+            _run_finalize(output_dir, progress_dir, epoch="epoch-1")
+        return calls
+
+    def test_a_no_detector_slurm_finalize_reconciles_nothing(self, tmp_path: Path) -> None:
+        calls = self._finalize(
+            tmp_path, {"version": 2, "phases": ["stage3", "stage4"], "stage3_role": "single_pass"}
+        )
+        assert calls == []          # and it reached aggregation: no slot was derived
+
+    def test_a_detector_finalize_reconciles_the_recorded_slot(self, tmp_path: Path) -> None:
+        calls = self._finalize(
+            tmp_path,
+            {"version": 2, "phases": ["stage1", "stage2", "stage3", "stage4"],
+             "detector_slot": "FakeGpuDetector__ops-0__abcd1234"},
+        )
+        assert calls == ["FakeGpuDetector__ops-0__abcd1234"]
+
+    def test_an_unreadable_config_fails_closed(self, tmp_path: Path) -> None:
+        from phenotypic._cli._cli_staged_orchestration import recorded_detector_slot
+
+        with pytest.raises(RuntimeError, match="unreadable"):
+            recorded_detector_slot({"controller_config": str(tmp_path / "missing.json")})
+
+    def test_the_finalizer_log_repeats_a_recorded_stall(self, tmp_path: Path, caplog) -> None:
+        """Review M14: the waiter's exit 5 points at the finalizer's log, so the stall is there too."""
+        with caplog.at_level("WARNING"):
+            self._finalize(
+                tmp_path, {"version": 2, "phases": ["stage3", "stage4"]},
+                stage4_zero_progress_rounds=2, stage3_zero_progress_rounds=2,
+            )
+        messages = [record.message for record in caplog.records]
+        assert any("Stage 4 made no progress in two rounds" in m and "--gpu-slurm time=" in m
+                   for m in messages)
+        assert any(m.startswith("stage3: the leftover image(s) died without a result") for m in messages)

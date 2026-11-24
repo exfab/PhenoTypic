@@ -1,11 +1,11 @@
 """The run preflight's view of a GPU Stage-4 run (#282 spec §4.7, plan P5 T3).
 
-Two warnings, both about efficiency or resources and never correctness:
-
-- ``PF-EMBED-SHARD-AMORTIZE``: too few images per GPU shard to pay off the
-  model's cold load (O6, ``shard_amortization.py``);
-- ``PF-EMBED-RESOURCES``: the Stage-4 profile's ``--mem`` is below the
-  loader's modelled peak (``stage4_memory.py``).
+One warning, about resources and never correctness:
+``PF-EMBED-RESOURCES``, the Stage-4 profile's ``--mem`` below the loader's
+modelled peak (``stage4_memory.py``). ``PF-EMBED-SHARD-AMORTIZE`` is gone
+(U13, 2026-11-23): the smoke measured the cold load at 40-300 s, not the 750 s
+it assumed, and it fired falsely on the one live run;
+``test_the_shard_amortisation_warning_is_gone`` pins its removal.
 
 And the cluster checks: a SLURM run that embeds in Stage 4 goes through the
 staged controller with or without a ``GpuDetector``, so ``PF-GPU-PARTITION``
@@ -56,10 +56,6 @@ class _Scheduler:
         if command[:2] == ["sinfo", "-p"] and command[2] in self.gres:
             return subprocess.CompletedProcess(command, 0, self.gres[command[2]], "")
         return subprocess.CompletedProcess(command, 0, "", "")
-
-
-def check_embed_shard_amortization(context: PreflightContext) -> list:
-    return _cli_preflight.check_embed_shard_amortization(context)
 
 
 def check_embed_loader_memory(context: PreflightContext) -> list:
@@ -141,53 +137,18 @@ def _load_script(name: str):
     return module
 
 
-# --- PF-EMBED-SHARD-AMORTIZE (O6) --------------------------------------------------------
+# --- PF-EMBED-SHARD-AMORTIZE, removed (U13) ---------------------------------------------
 
 
-def test_too_few_images_per_shard_warns(tmp_path):
-    findings = preflight_for(tmp_path, n_images=40, gpu_shards=4, embed_stage="gpu")
-    (f,) = [f for f in findings if f.code == "PF-EMBED-SHARD-AMORTIZE"]
-    assert f.severity == "warning" and "10 per shard" in f.message and "correct either way" in f.message
-    assert "439" in f.message and "750 s" in f.message
-    assert "measured for base/large; small and giant use the nearest measured size" in f.message
+def test_the_shard_amortisation_warning_is_gone(tmp_path):
+    """U13: few images per shard is not a finding; the code, its hint and its row are gone."""
+    from phenotypic._cli._cli_preflight import HINTS, FindingCode
 
-
-def test_enough_images_per_shard_is_silent(tmp_path):
-    assert "PF-EMBED-SHARD-AMORTIZE" not in codes(preflight_for(tmp_path, n_images=1000, gpu_shards=2,
-                                                                embed_stage="gpu"))      # 500 >= 439
-
-
-def test_the_threshold_is_the_largest_backbones(tmp_path):
-    """300 per shard is below base's 439 and above large's 297: the large backbone decides."""
-    base_only = _context(tmp_path, n_images=600, gpu_shards=2, embed_stage="gpu")
-    assert [f.code for f in check_embed_shard_amortization(base_only)] == ["PF-EMBED-SHARD-AMORTIZE"]
-
-    with_large = _context(tmp_path, n_images=600, gpu_shards=2, embed_stage="gpu",
-                          meas={"dino": _embedder(), "dino_l": _embedder(size="large")})
-    assert check_embed_shard_amortization(with_large) == []
-
-
-@pytest.mark.parametrize(("size", "threshold"), [("small", 439), ("base", 439), ("large", 297), ("giant", 297)])
-def test_each_size_takes_its_nearest_measured_threshold(tmp_path, size, threshold):
-    def fires(n_images: int) -> bool:
-        context = _context(tmp_path, n_images=n_images, embed_stage="gpu", embedder=_embedder(size=size))
-        return bool(check_embed_shard_amortization(context))
-
-    assert fires(threshold - 1) and not fires(threshold)
-
-
-def test_a_local_gpu_run_gets_no_shard_warning(tmp_path):
-    """``--gpu-shards`` is SLURM-only; a local Stage 4 loads the model once."""
-    context = _context(tmp_path, n_images=4, embed_stage="gpu", slurm=False)
-    assert check_embed_shard_amortization(context) == []
-
-
-def test_the_amortisation_constants_are_the_scripts():
-    script = _load_script("shard_amortization.py")
-    assert _cli_preflight._COLD_LOAD_S == script.COLD_LOAD_S
-    assert _cli_preflight._WARM_GPU_S_PER_IMAGE == script.WARM_GPU_S_PER_IMAGE
-    for size in script.WARM_GPU_S_PER_IMAGE:
-        assert _cli_preflight._amortize_min_images_per_shard(size) == script.amortize_min_images_per_shard(size)
+    assert "PF-EMBED-SHARD-AMORTIZE" not in codes(preflight_for(tmp_path, n_images=40, gpu_shards=4,
+                                                                embed_stage="gpu"))
+    assert "PF-EMBED-SHARD-AMORTIZE" not in set(getattr(FindingCode, "__args__", ())) | set(HINTS)
+    assert not hasattr(_cli_preflight, "check_embed_shard_amortization")
+    assert not hasattr(_cli_preflight, "_COLD_LOAD_S")
 
 
 # --- PF-EMBED-RESOURCES ----------------------------------------------------------------
@@ -275,9 +236,9 @@ def test_a_given_grid_shape_bounds_the_crops(tmp_path):
 
 
 def test_inline_runs_get_neither(tmp_path):
-    assert not codes(preflight_for(tmp_path, n_images=4, gpu_shards=4, embed_stage="inline",
-                                   gpu_slurm={"mem_gb": 1, "slurm_cpus_per_task": 8})) & {
-        "PF-EMBED-SHARD-AMORTIZE", "PF-EMBED-RESOURCES"}
+    assert "PF-EMBED-RESOURCES" not in codes(preflight_for(tmp_path, n_images=4, gpu_shards=4,
+                                                           embed_stage="inline",
+                                                           gpu_slurm={"mem_gb": 1, "slurm_cpus_per_task": 8}))
 
 
 # --- the staged SLURM checks reach a no-detector Stage-4 run (C14 note 7) ---------------

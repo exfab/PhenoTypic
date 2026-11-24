@@ -31,7 +31,7 @@ from phenotypic._cli._cli_staged_orchestration import (
     write_stage4_worklist,
 )
 from phenotypic._cli import _cli_staged_orchestration as orchestration_module
-from phenotypic._cli._cli_wait import RunExitCode, decide_wait_outcome
+from phenotypic._cli._cli_wait import RunExitCode
 from tests._tiny_run import no_stage4_signals
 from tests.unit.cli.conftest import (
     finish_stage3,
@@ -119,9 +119,13 @@ def test_rounds_have_their_own_counters(controller_v2, fake_scheduler):
 
 def test_a_stage2_stall_does_not_count_against_stage4(controller_v2, fake_scheduler):
     # Stage 2 ended on two unchanged rounds; Stage 4 still gets its two.
-    finish_stage3(controller_v2, stage4_pending=2)
+    entries = finish_stage3(controller_v2, stage4_pending=2)
     state = load_orchestration_state(controller_v2.out)
-    state.update(zero_progress_rounds=2)
+    # Review M6: Stage 2's digest is the very digest Stage 4's first
+    # transition computes, so shared counters would read "unchanged" and
+    # stall at once; only Stage-4-owned counters give two rounds.
+    digest, _count = _stage4_progress_digest(controller_v2.config, entries)
+    state.update(zero_progress_rounds=2, last_retryable_digest=digest)
     save_orchestration_state(controller_v2.out, state)
     run_round(controller_v2, fake_scheduler)
     run_round(controller_v2, fake_scheduler)
@@ -199,12 +203,34 @@ def test_one_unchanged_round_is_retried(controller_v2, fake_scheduler):
     assert fake_scheduler.submitted_roles()[-1] == ("stage4", "stage4-round-2")
 
 
-@pytest.mark.parametrize("completion", ["failed", "incomplete"])
-def test_a_stall_reads_5_to_the_waiter(completion):
-    # U7: leftovers have neither a success nor a failure record, so they are unresolved
-    assert decide_wait_outcome(completion, no_live_jobs(), published=True, process_run=False,
-                               unresolved=2) is RunExitCode.ENDED_UNPUBLISHED
-    assert RunExitCode.ENDED_UNPUBLISHED == 5
+def test_a_stall_reads_5_to_the_waiter(controller_v2, fake_scheduler, monkeypatch):
+    """Review I4: from a genuinely stalled run, through the run state, to the waiter's exit 5.
+
+    The leftovers keep a record with only ``stages.stage3`` and no journal
+    row (U7), so ``resolve_run_state`` counts them unresolved, and the
+    waiter, reading the real ``_run_snapshot``, ends ``ENDED_UNPUBLISHED``
+    even though the finalizer published.
+    """
+    from phenotypic._cli import _cli_wait
+    from phenotypic.sdk_ import resolve_run_state
+
+    finish_stage3(controller_v2, stage4_pending=2)
+    for _ in range(3):
+        run_round(controller_v2, fake_scheduler)
+    assert load_orchestration_state(controller_v2.out)["stage4_zero_progress_rounds"] == 2
+
+    diagnostics = resolve_run_state(controller_v2.out, depth="deep").diagnostics
+    assert (diagnostics.accepted, diagnostics.verified, diagnostics.failed) == (2, 0, 0)
+
+    monkeypatch.setattr(_cli_wait, "_live_jobs", lambda d: no_live_jobs())
+    monkeypatch.setattr(_cli_wait, "_ledgered_jobs", lambda d, g: no_live_jobs())
+    monkeypatch.setattr(_cli_wait, "_fence_generation", lambda d: controller_v2.epoch)
+    monkeypatch.setattr(_cli_wait, "_published", lambda d, g: True)      # its finalizer published
+    lines: list[str] = []
+    code = _cli_wait.wait_for_run(controller_v2.out, sleep=lambda s: None, echo=lines.append)
+    assert code is RunExitCode.ENDED_UNPUBLISHED and int(code) == 5
+    assert any("2 accepted image(s) have neither a success nor a terminal failure record" in line
+               for line in lines)
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +280,66 @@ def test_more_shards_than_work_leaves_empty_shards_harmless(controller_v2, fake_
     run_round(controller_v2, fake_scheduler)
     assert fake_scheduler.submitted_roles()[-1] == ("stage4", "stage4-round-2")
     assert [len(load_stage4_worklist(controller_v2.worklist, i).entries) for i in range(4)] == [1, 0, 0, 0]
+
+
+@pytest.mark.parametrize("pending, n_shards, array", [(1, 4, "0-0"), (5, 2, "0-1"), (3, 3, "0-2")])
+def test_only_filled_shards_get_a_gpu(controller_v2, fake_scheduler, pending, n_shards, array):
+    """Review M13: the round's --array covers only the shards the worklist fills."""
+    finish_stage3(controller_v2, stage4_pending=pending, n_shards=n_shards)
+    run_staged_controller(controller_v2.config_path)
+    assert fake_scheduler.extra_args["stage4-round-1"] == (f"--array={array}",)
+
+
+def test_a_round_already_ledgered_keeps_its_worklist(controller_v2, fake_scheduler):
+    """Review M12: a controller that died after sbatch leaves the round's partition in use.
+
+    Its successor re-classifies a different set (one image committed
+    meanwhile) but must not rewrite the worklist the running shards read.
+    """
+    entries = finish_stage3(controller_v2, stage4_pending=3, n_shards=2)
+    write_stage4_worklist(controller_v2.worklist, round_index=1, manifest_path=controller_v2.manifest,
+                          retryable=entries, n_shards=2)
+    before = controller_v2.worklist.read_bytes()
+    append_job_ledger(controller_v2.out, epoch=controller_v2.epoch, token="stage4-round-1",
+                      role="stage4", round_index=1, status="intent")
+    from tests.unit.cli.conftest import _stage4_image
+
+    _stage4_image(controller_v2.out, entries[0].stem, done=True)            # committed meanwhile
+    run_staged_controller(controller_v2.config_path)
+    assert controller_v2.worklist.read_bytes() == before
+    assert fake_scheduler.submitted_roles()[-1] == ("stage4", "stage4-round-1")
+
+
+def test_an_unanswered_stage4_array_keeps_the_controller_waiting(controller_v2, fake_scheduler, monkeypatch):
+    """Review M11: ``scheduler_job_is_active`` answering ``None`` is never read as ended."""
+    finish_stage3(controller_v2, stage4_pending=2)
+    run_staged_controller(controller_v2.config_path)
+    active = fake_scheduler.job_of("stage4-round-1")
+    fake_scheduler.become_next_controller(controller_v2.out)
+    monkeypatch.setattr("phenotypic._cli._cli_staged_controller.scheduler_job_is_active",
+                        lambda job_id: None if job_id == active else False)
+    before = list(fake_scheduler.calls)
+    run_staged_controller(controller_v2.config_path)
+    new = [call for call in fake_scheduler.calls if call not in before]
+    assert [role for role, _, _ in new] == ["controller"]          # only the next recovery controller
+    state = load_orchestration_state(controller_v2.out)
+    assert state["active_job_id"] == active and state["scheduler_query_failed"] is True
+    assert state["stage4_round"] == 1
+
+
+def test_a_timeout_mid_commit_goes_back_into_the_worklist(controller_v2, fake_scheduler):
+    """Review M11, the controller half: a shard killed after writing signals, before the record.
+
+    No record means ``stage4_status`` is ``"pending"``, so the image is in
+    the next round's worklist, and its signals are kept for that round to
+    reuse (the worker half, publish-only with no re-embedding, is P4 T4's).
+    """
+    entries = finish_stage3(controller_v2, stage4_pending=2)
+    signals = write_signals(controller_v2, regions={"objects", "grid"})
+    run_staged_controller(controller_v2.config_path)
+    worklist = {e.stem for e in load_stage4_worklist(controller_v2.worklist, 0).entries}
+    assert worklist == {e.stem for e in entries}
+    assert all(path.is_file() for path in signals)
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +405,19 @@ def test_a_fenced_epoch_submits_no_round(controller_v2, fake_scheduler, monkeypa
     assert fake_scheduler.calls == []
 
 
+def test_a_terminal_incomplete_run_ends_its_trailing_controller_quietly(controller_v2, fake_scheduler):
+    """Review I3, smoke F4: the finalizer closed the run ``terminal_incomplete``.
+
+    The fence is closed, so ``assert_active_epoch`` would raise; the
+    trailing controller must exit 0 and submit nothing.
+    """
+    finish_stage3(controller_v2, stage4_pending=1)
+    assert deactivate_orchestration(controller_v2.out, "terminal_incomplete")
+    assert load_orchestration_state(controller_v2.out)["phase"] == "terminal_incomplete"
+    run_staged_controller(controller_v2.config_path)
+    assert fake_scheduler.calls == []
+
+
 def test_a_cancel_during_the_transition_sweeps_nothing(controller_v2, fake_scheduler):
     # The cancel lands after the controller passed its own epoch check: the
     # sweep's guard refuses, so no signal is deleted and no round is submitted.
@@ -379,6 +478,21 @@ def test_a_failure_from_another_epoch_is_retryable(controller_v2):
     assert [e.stem[:-2] for e in terminal] == ["failed"]
 
 
+def test_the_terminal_images_are_counted_by_cause(controller_v2, fake_scheduler, caplog):
+    """Review M5: the operator is told how many images Stage 4 skips, and which kind."""
+    from phenotypic._cli._cli_staged_orchestration import write_staged_manifest
+    from tests.unit.cli.conftest import _install_stage4_state
+
+    finish_stage3(controller_v2, stage4_pending=1)
+    extra = controller_v2.entries_with(failed=1, no_stage3=2)
+    write_staged_manifest(controller_v2.manifest, [*controller_v2.entries, *extra])
+    _install_stage4_state(controller_v2.out, [*controller_v2.entries, *extra])
+    with caplog.at_level("INFO", logger="phenotypic._cli._cli_staged_controller"):
+        run_staged_controller(controller_v2.config_path)
+    assert any("Stage 4 skips 3 image(s): 1 failed terminally this epoch, 2 never finished" in r.message
+               for r in caplog.records)
+
+
 def test_terminal_images_are_not_in_the_worklist(controller_v2, fake_scheduler):
     finish_stage3(controller_v2, stage4_pending=1)
     extra = controller_v2.entries_with(failed=1, no_stage3=1)
@@ -419,11 +533,10 @@ def test_a_v1_config_drives_stage1_then_stage2(v1_controller_config, fake_schedu
 
 
 def test_a_v1_config_in_phase_stage4_takes_the_stage3_path(v1_controller_config, fake_scheduler):
-    # Unreachable today (phase "stage4" needs embed_stage "gpu" on SLURM, which
-    # the interim gate never resolves, and C14 writes v2 with the lift), so the
-    # controller has no branch for it. Should it happen, the generic path is
-    # safe: every image of an all-Stage-4 plan has stages.stage3, so Stage 2
-    # classifies nothing retryable and the run takes the stage3 path.
+    # Unreachable: only a v2 config's submitter writes phase "stage4", so the
+    # controller has no v1 branch for it. Should it happen, the generic path
+    # is safe: every image of an all-Stage-4 plan has stages.stage3, so Stage
+    # 2 classifies nothing retryable and the run takes the stage3 path.
     finish_stage3(v1_controller_config, stage4_pending=2)
     state = load_orchestration_state(v1_controller_config.out)
     state.update(phase="stage4", stage3_index=0)
@@ -490,16 +603,14 @@ def test_the_cli_starts_an_all_stage4_slurm_continuation_at_stage4(
 ):
     """C12's interim mapping (``"stage4"`` -> ``"stage3"`` on SLURM) is gone.
 
-    Stage 4 on SLURM is still gated off until P5 T2, so the gate is opened
-    here, and the strategy is replaced by one that records the phase.
+    The real, lifted gate admits the run (review M8: no ``stage4_supported``
+    patch), and the strategy is replaced by one that records the phase.
     """
     from datetime import datetime
 
-    from phenotypic._cli import _cli_embed_stage
     from phenotypic._cli._cli_types import ExecutionResults
     from tests._tiny_run import run_cli
 
-    monkeypatch.setattr(_cli_embed_stage, "stage4_supported", lambda config: True)
     observed: dict[str, object] = {}
 
     class _Submitted:

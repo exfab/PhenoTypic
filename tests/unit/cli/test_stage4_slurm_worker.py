@@ -62,7 +62,23 @@ def test_an_unset_cpu_count_does_not_raise(stage4_slurm_tree, stage4_cpu, monkey
     assert run_stage4_shard(**stage4_slurm_tree.shard_kwargs(shard_index=0)) == 0
 
 
-def test_the_loader_workers_come_from_the_allocation(stage4_slurm_tree, stage4_cpu, monkeypatch):
+@pytest.mark.parametrize("allocated, expected", [("1", 0), ("5", 1)])
+def test_the_loader_workers_come_from_the_allocation(stage4_slurm_tree, stage4_cpu, monkeypatch,
+                                                     allocated, expected):
+    """``resolve_local_worker_count(-1, n) - 1`` over the allocation, capped by the shard's images.
+
+    Review M7: both images on one shard, and a host with many more cores
+    than the allocation. ``SLURM_CPUS_PER_TASK=1`` gives 0 workers where an
+    allocation-blind ``os.cpu_count()`` would give 1; ``=5`` gives 1 (two
+    images) where a bare read of the variable would give 4.
+    """
+    import os
+
+    from phenotypic._cli._cli_staged_orchestration import write_stage4_worklist
+
+    tree = stage4_slurm_tree
+    write_stage4_worklist(tree.worklist, round_index=1, manifest_path=tree.out / "manifest.json",
+                          retryable=tree.manifest(), n_shards=1)
     seen = {}
     real = _cli_stage4_worker.run_stage4
 
@@ -71,13 +87,27 @@ def test_the_loader_workers_come_from_the_allocation(stage4_slurm_tree, stage4_c
         return real(*args, **{**kwargs, "num_workers": 0})
 
     monkeypatch.setattr(_cli_stage4_worker, "run_stage4", _spy)
-    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "5")
-    assert run_stage4_shard(**stage4_slurm_tree.shard_kwargs(shard_index=0)) == 0
-    # One image: resolve_local_worker_count(-1, 1) is 1, so 0 workers, in-process.
-    assert seen["num_workers"] == 0
-    assert seen["epoch"] == stage4_slurm_tree.epoch
+    monkeypatch.setattr(os, "cpu_count", lambda: 64)
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", allocated)
+    assert run_stage4_shard(**tree.shard_kwargs(shard_index=0)) == 0
+    assert seen["num_workers"] == expected
+    assert seen["epoch"] == tree.epoch
     assert seen["commit_guard"] is not None and seen["active_check"] is not None
     assert seen["revisions"] == {"facebook/dinov2-base": RECORDED_REVISION}
+
+
+def test_the_shard_reads_the_revisions_through_the_one_reader(stage4_slurm_tree, stage4_cpu, monkeypatch):
+    """Review M15: the worker asks ``recorded_embed_revisions``, the continuation's reader, not job metadata."""
+    from phenotypic._cli import _cli_embed_stage
+
+    seen = {}
+    real = _cli_stage4_worker.run_stage4
+    monkeypatch.setattr(_cli_embed_stage, "recorded_embed_revisions",
+                        lambda out: {"facebook/dinov2-base": RECORDED_REVISION, "sentinel": None})
+    monkeypatch.setattr(_cli_stage4_worker, "run_stage4",
+                        lambda *a, **k: seen.update(k) or real(*a, **{**k, "num_workers": 0}))
+    assert run_stage4_shard(**stage4_slurm_tree.shard_kwargs(shard_index=0)) == 0
+    assert seen["revisions"] == {"facebook/dinov2-base": RECORDED_REVISION, "sentinel": None}
 
 
 def test_every_shard_loads_the_recorded_revision(stage4_slurm_tree, stage4_cpu):

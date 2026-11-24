@@ -61,7 +61,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import click
 
@@ -263,6 +263,58 @@ def refuse_embed_stage_switch(
         f"this run was started with --embed-stage {recorded_stage}; continuing "
         f"it as {resolved} would mix CPU and GPU embeddings. {remedy}"
     )
+
+
+def adopt_recorded_embed_stage(
+    recorded: str | None,
+    requested: EmbedStageRequest,
+    resolved: EmbedStage,
+    *,
+    is_slurm: bool,
+    stage4_available: bool,
+) -> tuple[EmbedStage, str | None]:
+    """The stage a continuation embeds in: the recorded one, unless a flag conflicts (U12).
+
+    Under ``--embed-stage auto`` a continuation **adopts** the run's
+    recorded ``embed_stage``, so a run never switches mid-way (U3's purpose)
+    and its plain re-run command keeps working across an upgrade that changed
+    what ``auto`` resolves to. That is what keeps an in-flight pre-P5 SLURM
+    run, recorded ``inline`` or recording nothing (read as ``inline``),
+    embedding inline (review I1, user decision U12, 2026-11-23). Only an
+    explicit ``--embed-stage`` that conflicts is refused, by
+    :func:`refuse_embed_stage_switch` (R3), as is an ``auto`` that would have
+    to adopt ``gpu`` where no Stage 4 runs this invocation.
+
+    Args:
+        recorded: The state's recorded ``embed_stage``; ``None`` reads as
+            ``"inline"``.
+        requested: This invocation's ``--embed-stage``.
+        resolved: What *requested* resolved to.
+        is_slurm: Passed to the refusal's remedy.
+        stage4_available: :func:`stage4_supported` for this invocation.
+
+    Returns:
+        The stage to run, and the one-line note to print when it differs
+        from *resolved* (``None`` when it does not).
+
+    Raises:
+        click.UsageError: R3, for an explicit conflicting flag, or an
+            ``auto`` that would adopt ``gpu`` where Stage 4 cannot run.
+    """
+    recorded_stage: EmbedStage = (
+        DEFAULT_EMBED_STAGE if recorded is None else cast(EmbedStage, recorded)
+    )
+    if recorded_stage == resolved:
+        return resolved, None
+    if requested == "auto" and (recorded_stage == "inline" or stage4_available):
+        return recorded_stage, (
+            f"this run was started with --embed-stage {recorded_stage}, so "
+            f"--embed-stage auto continues it as {recorded_stage}"
+        )
+    refuse_embed_stage_switch(
+        recorded, resolved, is_slurm=is_slurm, stage4_available=stage4_available
+    )
+    return resolved, None  # pragma: no cover - the refusal always raises here
 
 
 def stage4_supported(config: "ExecutionConfig") -> bool:
@@ -533,7 +585,9 @@ def _hub_offline() -> bool:
     return os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def resolve_embed_revisions(pipeline: "ImagePipeline") -> dict[str, str | None]:
+def resolve_embed_revisions(
+    pipeline: "ImagePipeline", *, known: "Mapping[str, str | None] | None" = None
+) -> dict[str, str | None]:
     """``{hf_id: commit}`` for every unpinned in-scope ``MeasureDinoEmbedding`` (U5).
 
     Called once, in the submitting process, at a Stage-4 run's first
@@ -549,6 +603,8 @@ def resolve_embed_revisions(pipeline: "ImagePipeline") -> dict[str, str | None]:
 
     Args:
         pipeline: The run's pipeline.
+        known: Commits a previous invocation of this run recorded; a model
+            with one here is kept as it is and never asked again.
 
     Returns:
         The map, in ``meas`` order; empty when every embedder is pinned.
@@ -562,6 +618,9 @@ def resolve_embed_revisions(pipeline: "ImagePipeline") -> dict[str, str | None]:
             continue
         hf_id = hf_dino_id(embedder.version, embedder.backbone_key().size)
         if hf_id in revisions:
+            continue
+        if known is not None and known.get(hf_id) is not None:
+            revisions[hf_id] = known[hf_id]
             continue
         if _hub_offline():
             reason = "HF_HUB_OFFLINE is set"
@@ -614,7 +673,8 @@ def pin_embed_revisions(config: "ExecutionConfig", output_dir: Path) -> None:
 
     A run that embeds inline gets ``None``. A ``gpu`` continuation reuses
     what its first invocation recorded; a first invocation (or ``--restart``,
-    which cleared the record) resolves. Called in the mutating half, below
+    which cleared the record) resolves, and so does a continuation for each
+    model recorded ``None`` (resolved offline, so never pinned; review M10). Called in the mutating half, below
     the ``--dry-run`` exit, before the processing state is written, so the
     state and the job metadata record the same map.
     """
@@ -622,8 +682,14 @@ def pin_embed_revisions(config: "ExecutionConfig", output_dir: Path) -> None:
         config.embed_revisions = None
         return
     recorded = recorded_embed_revisions(output_dir) if config.resume else None
-    if recorded is not None:
+    if recorded is not None and all(commit is not None for commit in recorded.values()):
         config.embed_revisions = recorded
         return
     pipeline = load_pipeline_or_none(config.pipeline_json)
-    config.embed_revisions = {} if pipeline is None else resolve_embed_revisions(pipeline)
+    # A recorded None was never a pin, only U5's offline fallback: a
+    # continuation resolves that model again, and keeps every commit it did
+    # record (review M10). Resolved here, at submission, so the shards of
+    # this invocation still share one commit.
+    config.embed_revisions = (
+        {} if pipeline is None else resolve_embed_revisions(pipeline, known=recorded)
+    )

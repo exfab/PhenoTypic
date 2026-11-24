@@ -20,6 +20,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic._cli._cli_embed_stage import (
+    adopt_recorded_embed_stage,
     prepare_stage4_environment,
     refuse_embed_stage_for_process,
     refuse_embed_stage_switch,
@@ -128,6 +129,42 @@ def test_r3_names_the_recorded_flag_and_the_remedy():
     refuse_embed_stage_switch(None, "inline", is_slurm=False, stage4_available=True)   # a pre-#282 state
     with pytest.raises(click.UsageError, match="started with --embed-stage inline"):
         refuse_embed_stage_switch(None, "gpu", is_slurm=False, stage4_available=True)
+
+
+@pytest.mark.parametrize(
+    "recorded, requested, resolved, available, expected",
+    [
+        (None, "auto", "gpu", True, "inline"),        # a pre-#282 state reads inline (U12, review I1)
+        ("inline", "auto", "gpu", True, "inline"),    # a P4-era SLURM run recorded inline
+        ("gpu", "auto", "inline", True, "gpu"),       # e.g. a re-run that dropped --gpu-slurm
+        ("inline", "auto", "inline", True, "inline"),
+        ("gpu", "gpu", "gpu", True, "gpu"),
+        ("inline", "inline", "inline", False, "inline"),
+    ],
+)
+def test_auto_adopts_the_recorded_stage(recorded, requested, resolved, available, expected):
+    stage, note = adopt_recorded_embed_stage(
+        recorded, requested, resolved, is_slurm=True, stage4_available=available
+    )
+    assert stage == expected
+    recorded_stage = recorded or "inline"
+    assert (note is None) is (recorded_stage == resolved)
+    if note is not None:
+        assert f"started with --embed-stage {recorded_stage}" in note and f"as {expected}" in note
+
+
+@pytest.mark.parametrize(
+    "recorded, requested, resolved, available",
+    [
+        ("inline", "gpu", "gpu", True),       # an explicit conflicting flag is still refused
+        (None, "gpu", "gpu", True),
+        ("gpu", "inline", "inline", True),
+        ("gpu", "auto", "inline", False),     # auto cannot adopt a Stage 4 this invocation lacks
+    ],
+)
+def test_only_a_conflicting_flag_is_refused(recorded, requested, resolved, available):
+    with pytest.raises(click.UsageError, match="this run was started with --embed-stage"):
+        adopt_recorded_embed_stage(recorded, requested, resolved, is_slurm=True, stage4_available=available)
 
 
 @pytest.mark.parametrize("recorded, resolved", [("inline", "gpu"), ("gpu", "inline"), (None, "gpu")])

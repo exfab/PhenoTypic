@@ -176,6 +176,36 @@ def initialize_orchestration(
     return state
 
 
+def recorded_detector_slot(state: Mapping[str, Any]) -> str | None:
+    """The Stage-2 detector slot the submitter recorded in the controller config.
+
+    ``staged_controller.json`` carries ``detector_slot`` exactly when the run
+    has a ``GpuDetector`` (phases with ``"stage1"``, or any version-1 config);
+    a run without one (phases ``["stage3", "stage4"]``) has none, read as
+    ``None``. Readers that need the slot take it from here rather than
+    re-deriving it from the pipeline, which raises on a pipeline with no
+    ``GpuDetector`` (#282 P5 review I2).
+
+    Args:
+        state: The orchestration state, whose ``controller_config`` names the
+            config.
+
+    Raises:
+        RuntimeError: The state names no readable controller config: the
+            finalizer cannot tell whether to reconcile, so it fails closed.
+    """
+    path = state.get("controller_config")
+    try:
+        config = json.loads(Path(str(path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            f"Staged controller config {path!r} is unreadable; cannot tell "
+            "whether this run has a GpuDetector to reconcile"
+        ) from exc
+    slot = config.get("detector_slot") if isinstance(config, dict) else None
+    return None if slot is None else str(slot)
+
+
 def load_orchestration_state(output_dir: Path) -> dict[str, Any] | None:
     """Read controller state, returning ``None`` for missing or invalid state."""
     path = orchestration_state_path(output_dir)
@@ -610,8 +640,12 @@ def submit_with_intent(
     round_index: int,
     script_path: Path,
     dependencies: Sequence[str] = (),
+    extra_args: Sequence[str] = (),
 ) -> str:
-    """Idempotently submit an SBATCH script with bounded retry and ledgering."""
+    """Idempotently submit an SBATCH script with bounded retry and ledgering.
+
+    ``extra_args`` go to ``sbatch`` before the script (``submit_with_lifecycle``).
+    """
     return submit_with_lifecycle(
         output_dir,
         generation=epoch,
@@ -623,6 +657,7 @@ def submit_with_intent(
         active_check=lambda: epoch_is_active(output_dir, epoch),
         run_command=subprocess.run,
         discover=_job_from_scheduler_comment,
+        extra_args=extra_args,
     )
 
 
@@ -825,7 +860,6 @@ def live_slurm_job_ids(
     question; ``phenotypic-wait`` passes a memo that remembers an answer of
     ``False``, which is final.
     """
-    query = scheduler_job_is_active if is_active is None else is_active
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and lifecycle.get("active") is False:
         return LiveSlurmJobs()
@@ -833,6 +867,35 @@ def live_slurm_job_ids(
         output_dir,
         epoch=str(lifecycle["generation"]) if lifecycle is not None else None,
     )
+    return _ledger_liveness(rows, is_active)
+
+
+def ledgered_jobs_of_generation(
+    output_dir: Path,
+    generation: str,
+    *,
+    is_active: Callable[[str], bool | None] | None = None,
+) -> LiveSlurmJobs:
+    """The jobs *generation*'s ledger still owns, **whatever the fence says**.
+
+    :func:`live_slurm_job_ids` answers empty once the fence is closed, which
+    is right for "may a new run start?" but not for "has every job of this
+    submission ended?": the finalizer closes the fence, and the recovery
+    controller every controller pre-arms runs after it (#282 smoke F1). So
+    this walks *generation*'s ledger rows and classifies them exactly as
+    :func:`live_slurm_job_ids` does, without the fence short-cut.
+    ``phenotypic-wait`` asks it after the run has ended, so a teardown it
+    triggers cannot race that controller (U15/D4).
+    """
+    return _ledger_liveness(read_job_ledger(output_dir, epoch=generation), is_active)
+
+
+def _ledger_liveness(
+    rows: Sequence[Mapping[str, Any]],
+    is_active: Callable[[str], bool | None] | None,
+) -> LiveSlurmJobs:
+    """Classify ledger *rows* into live, unverified and unresolved (see :func:`live_slurm_job_ids`)."""
+    query = scheduler_job_is_active if is_active is None else is_active
     live: set[str] = set()
     unverified: set[str] = set()
     for job_id in _unterminated_ledger_job_ids(rows):

@@ -256,17 +256,28 @@ def _run_finalize(
         from ._cli_staged_orchestration import (
             load_orchestration_state,
             quarantine_unchanged_restart_parquets,
+            recorded_detector_slot,
         )
 
         with logged_step(logger, "finalize: reconcile staged publications"):
             quarantine_unchanged_restart_parquets(output_dir, epoch)
             orchestration = load_orchestration_state(output_dir) or {}
-            if bool(orchestration.get("stage3_markers_required", False)):
-                from ._cli_stage2_token import staged_detector_slot
+            from ._cli_staged_controller import recorded_stall_lines
+
+            for line in recorded_stall_lines(orchestration):
+                logger.warning(line)
+            slot = (
+                recorded_detector_slot(orchestration)
+                if bool(orchestration.get("stage3_markers_required", False))
+                else None
+            )
+            if slot is not None:
                 from ._cli_staged_resume import reconcile_stage3_publications
 
-                # `stage3_markers_required` is set only by the staged GPU
-                # orchestration, so the recorded pipeline has a GpuDetector.
+                # Only a run with a GpuDetector has Stage-2 signals to
+                # reconcile; the slot its submitter recorded says so, and is
+                # the one producer of it (review I2). A run without one
+                # (phases ["stage3", "stage4"]) records none.
                 reconcile_stage3_publications(
                     output_dir,
                     {
@@ -274,9 +285,7 @@ def _run_finalize(
                         for name, info in datasets_raw.items()
                         if isinstance(info, dict)
                     },
-                    staged_detector_slot(
-                        Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
-                    ),
+                    slot,
                     namespace=epoch,
                 )
         _check_epoch()

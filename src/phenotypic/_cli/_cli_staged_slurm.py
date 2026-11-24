@@ -834,11 +834,6 @@ class StagedSlurmStrategy(ExecutionStrategy):
         if getattr(cfg, "staged_finalizer_only", False):
             state["phase"] = "stage3"
             state["stage3_index"] = len(scripts["stage3"])
-        if not has_detector:
-            # No Stage-2 signal to reconcile at finalization: the finalizer
-            # gates `reconcile_stage3_publications` (which derives the
-            # detector slot) on this flag.
-            state["stage3_markers_required"] = False
         save_orchestration_state(output_dir, state)
         try:
             controller_id = submit_with_intent(

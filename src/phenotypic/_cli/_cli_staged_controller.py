@@ -308,10 +308,267 @@ def _submit_next_stage3_or_finalizer(
         save_orchestration_state(output_dir, state)
         return
 
+    if _resubmit_dead_tasks(config, state, successor_id, current_job_id, "stage3"):
+        return
     if "stage4" in _phases(config):
         _advance_stage4(config, state, successor_id, current_job_id)
         return
     _submit_finalizer(config, state, successor_id, current_job_id, index)
+
+
+#: The array name every image-stage chunk script maps its task ids through
+#: (``SlurmArrayScriptSpec``'s default).
+_TASK_INDICES_ARRAY = "TASK_INDICES"
+
+
+def _chunk_task_indices(script: Path) -> list[int]:
+    """The absolute manifest index of each array task of one Stage-1/3 chunk script.
+
+    Read from the script's own ``TASK_INDICES=( ... )`` block, the mapping its
+    tasks use (``_write_stage_script``), so a resubmission's ``--array``
+    names exactly the tasks of the images it retries.
+
+    Raises:
+        ValueError: The script is unreadable or carries no such block.
+    """
+    try:
+        lines = Path(script).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ValueError(f"cannot read chunk script {script}: {exc}") from exc
+    try:
+        start = lines.index(f"{_TASK_INDICES_ARRAY}=(") + 1
+        end = lines.index(")", start)
+        return [int(line.strip()) for line in lines[start:end] if line.strip()]
+    except ValueError as exc:
+        raise ValueError(f"chunk script {script} has no {_TASK_INDICES_ARRAY} block") from exc
+
+
+def _stage_done_or_terminal(
+    config: dict[str, Any], entry: StagedManifestEntry, failed: set[str]
+) -> bool:
+    """Common to both image stages: journalled under this epoch, published, or re-planned."""
+    from ._cli_completion import valid_image_success
+
+    output_dir = Path(config["output_dir"])
+    if entry.work_id in failed:
+        return True
+    # Re-planned since submission: every stage refuses the pin (see
+    # `_classify_stage2`), so a resubmission would refuse it again.
+    if (
+        reference_digest_for(output_dir, entry.dataset, entry.stem)
+        != entry.reference_digest
+    ):
+        return True
+    # Last, as the one that hashes artifacts: only images the cheaper checks
+    # left (a few dead ones, not the run) reach it.
+    return bool(
+        entry.work_id
+        and valid_image_success(
+            output_dir, dataset=entry.dataset, image_stem=entry.stem, work_id=entry.work_id
+        )
+    )
+
+
+def _dead_stage1_indices(
+    config: dict[str, Any], entries: Sequence[StagedManifestEntry]
+) -> list[int]:
+    """Manifest indices whose Stage-1 task left nothing: no valid store and no journal row.
+
+    A task killed by the host (OOM, node failure) writes neither, so it is
+    node state, not a verdict on the image (U15/D5, smoke F2); a scientific
+    failure is journalled, and stays terminal.
+    """
+    from ._cli_staged_resume import staged_store_matches_work_id
+
+    output_dir = Path(config["output_dir"])
+    failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
+    dead: list[int] = []
+    for index, entry in enumerate(entries):
+        store = zarr_store_path(output_dir, entry.dataset, entry.stem)
+        finished = (
+            staged_store_matches_work_id(store, entry.work_id)
+            if entry.work_id
+            else valid_stage1_store(store)
+        )
+        if finished or _stage_done_or_terminal(config, entry, failed):
+            continue
+        dead.append(index)
+    return dead
+
+
+def _dead_stage3_indices(
+    config: dict[str, Any], entries: Sequence[StagedManifestEntry]
+) -> list[int]:
+    """Manifest indices whose Stage-3 task left nothing: no marker, record or journal row.
+
+    The ``"staged"`` role (a ``GpuDetector`` run) can retry only an image
+    whose Stage-2 signal is still replayable: without it Stage 3 has no input,
+    and Stage 2's own rounds already ended. The ``"single_pass"`` role runs
+    the whole core, so it needs none. Either way an image Stage 4 owns
+    (``stages_1_to_3_done``) is not Stage 3's (U15/D5, smoke F2).
+    """
+    from ._cli_staged_resume import stages_1_to_3_done
+
+    output_dir = Path(config["output_dir"])
+    failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
+    staged = config.get("stage3_role", "staged") != "single_pass"
+    resume = bool(config.get("resume", False))
+    markers_required = bool(config.get("stage3_markers_required", True))
+    dead: list[int] = []
+    for index, entry in enumerate(entries):
+        if stage3_completion_exists(output_dir, entry.dataset, entry.stem):
+            continue
+        if entry.work_id and stages_1_to_3_done(
+            output_dir, entry.dataset, entry.stem, entry.work_id
+        ):
+            continue
+        parquet = dataset_measurements_dir(output_dir, entry.dataset) / f"{entry.stem}.parquet"
+        if resume and not markers_required and parquet.is_file():
+            continue
+        if _stage_done_or_terminal(config, entry, failed):
+            continue
+        if staged and not stage2_result_replayable(
+            output_dir, entry.dataset, entry.stem, str(config["detector_slot"])
+        ):
+            continue
+        dead.append(index)
+    return dead
+
+
+def _resubmit_dead_tasks(
+    config: dict[str, Any],
+    state: dict[str, Any],
+    successor_id: str,
+    current_job_id: str,
+    stage: str,
+) -> bool:
+    """Resubmit the Stage-1 or Stage-3 tasks that died leaving nothing; whether one was (U15/D5).
+
+    Called once *stage*'s chunks are all submitted and the last has ended.
+    The tasks whose images have no result, record or journal row
+    (:func:`_dead_stage1_indices`, :func:`_dead_stage3_indices`) are
+    resubmitted, a chunk at a time and only those tasks (``--array=<ids>``
+    on the command line overrides the chunk's ``#SBATCH --array``), so one
+    work array is active at a time and a finished image is never re-run.
+
+    A **round** walks every chunk that has such a task. It is bounded as
+    Stage 2's and Stage 4's are, on its stage's own counters
+    (``<stage>_retry_round``, ``<stage>_retry_chunk``,
+    ``<stage>_last_retryable_digest``, ``<stage>_zero_progress_rounds``,
+    all read with defaults, so a state written before them, a #281 run's
+    included, starts at zero): before each round the dead set is digested,
+    and the second unchanged digest in a row stops retrying. The leftover
+    images then stay unrecorded, as a Stage-4 stall's do (U7), and the run
+    reads unfinished (exit 5) with a log line naming them. A chunk script
+    whose task map cannot be read is not retried (one warning), which is
+    the behaviour before D5.
+    """
+    scripts = [Path(path) for path in config[f"{stage}_scripts"]]
+    entries = load_staged_manifest(Path(config["manifest_path"]))
+    classify = _dead_stage1_indices if stage == "stage1" else _dead_stage3_indices
+    dead = set(classify(config, entries))
+    chunk_key = f"{stage}_retry_chunk"
+    task_maps: list[list[int]] = []
+    for script in scripts:
+        try:
+            task_maps.append(_chunk_task_indices(script))
+        except ValueError as exc:
+            if dead:
+                logger.warning("%s: not retrying its dead tasks (%s)", stage, exc)
+            task_maps.append([])
+
+    def _next_chunk(start: int) -> tuple[int, list[int]] | None:
+        for index in range(start, len(scripts)):
+            task_ids = [
+                task
+                for task, manifest_index in enumerate(task_maps[index])
+                if manifest_index in dead
+            ]
+            if task_ids:
+                return index, task_ids
+        return None
+
+    chunk = int(state.get(chunk_key, 0))
+    found = _next_chunk(chunk) if chunk > 0 else None
+    if found is None:
+        # A new round: the previous one (if any) has walked every chunk.
+        state[chunk_key] = 0
+        if not _start_retry_round(config, state, stage, entries, dead):
+            return False
+        found = _next_chunk(0)
+        if found is None:
+            return False
+    index, task_ids = found
+    _submit_chunk_retry(
+        config, state, successor_id, current_job_id, stage,
+        scripts[index], index, task_ids,
+    )
+    return True
+
+
+def _start_retry_round(
+    config: dict[str, Any],
+    state: dict[str, Any],
+    stage: str,
+    entries: Sequence[StagedManifestEntry],
+    dead: set[int],
+) -> bool:
+    """Apply the zero-progress rule before a retry round; whether the round runs."""
+    digest, count = retryable_digest([entries[index] for index in sorted(dead)])
+    digest_key = f"{stage}_last_retryable_digest"
+    zero_key = f"{stage}_zero_progress_rounds"
+    if state.get(digest_key) == digest:
+        zero_progress = int(state.get(zero_key, 0)) + 1
+    else:
+        zero_progress = 0
+    state[digest_key] = digest
+    state[zero_key] = zero_progress
+    if not dead:
+        return False
+    if zero_progress >= 2:
+        logger.warning(dead_task_stall_line(stage, count))
+        save_orchestration_state(Path(config["output_dir"]), state)
+        return False
+    state[f"{stage}_retry_round"] = int(state.get(f"{stage}_retry_round", 0)) + 1
+    return True
+
+
+def _submit_chunk_retry(
+    config: dict[str, Any],
+    state: dict[str, Any],
+    successor_id: str,
+    current_job_id: str,
+    stage: str,
+    script: Path,
+    chunk_index: int,
+    task_ids: Sequence[int],
+) -> None:
+    """Submit *script* narrowed to *task_ids*, as ``<stage>-retry-<round>-chunk-<i>``."""
+    output_dir = Path(config["output_dir"])
+    retry_round = int(state.get(f"{stage}_retry_round", 1))
+    logger.info(
+        "%s: resubmitting %d task(s) of chunk %d that died without a result "
+        "(retry round %d)", stage, len(task_ids), chunk_index, retry_round,
+    )
+    job_id = submit_with_intent(
+        output_dir,
+        epoch=str(config["epoch"]),
+        token=f"{stage}-retry-{retry_round}-chunk-{chunk_index}",
+        role=stage,
+        round_index=retry_round,
+        script_path=script,
+        extra_args=[f"--array={','.join(str(task) for task in task_ids)}"],
+    )
+    state.update(
+        {
+            "phase": stage,
+            f"{stage}_retry_chunk": chunk_index + 1,
+            "active_job_id": job_id,
+            "dependency_update_failed": False,
+        }
+    )
+    _retarget_successor(state, successor_id, current_job_id, job_id)
+    save_orchestration_state(output_dir, state)
 
 
 def _submit_finalizer(
@@ -378,6 +635,29 @@ def _classify_stage4(
             continue
         retryable.append(entry)
     return retryable, terminal
+
+
+def _log_stage4_terminal(
+    config: dict[str, Any], terminal: Sequence[StagedManifestEntry]
+) -> None:
+    """Say how many images Stage 4 will not run, and why (review M5).
+
+    A journalled failure under this epoch is a verdict on the image; one
+    that never finished Stages 1-3 (``not_ready``) has no record and no
+    row, so the run ends unfinished (exit 5) and a plain re-run retries it.
+    """
+    if not terminal:
+        return
+    output_dir = Path(config["output_dir"])
+    failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
+    journalled = sum(1 for entry in terminal if entry.work_id in failed)
+    others = len(terminal) - journalled
+    logger.info(
+        "Stage 4 skips %d image(s): %d failed terminally this epoch, %d never "
+        "finished Stages 1-3 or were re-planned (no record and no journal row, "
+        "so the run ends unfinished and a re-run retries them)",
+        len(terminal), journalled, others,
+    )
 
 
 def _stage4_progress_digest(
@@ -450,31 +730,35 @@ def _submit_stage4_round(
     state["stage4_zero_progress_rounds"] = zero_progress
 
     if zero_progress >= 2:
-        logger.warning(
-            "Stage 4 made no progress in two rounds; %d image(s) stay "
-            "unfinished. Re-run the same command to retry them.",
-            count,
-        )
+        logger.warning(stage4_stall_line(count))
         save_orchestration_state(output_dir, state)
         _submit_finalizer(
             config, state, successor_id, current_job_id, next_round - 1
         )
         return
 
-    write_stage4_worklist(
-        Path(config["stage4_worklist"]),
-        round_index=next_round,
-        manifest_path=Path(config["manifest_path"]),
-        retryable=retryable,
-        n_shards=int(config["n_shards"]),
-    )
+    token = f"stage4-round-{next_round}"
+    worklist = Path(config["stage4_worklist"])
+    if not _round_already_submitted(output_dir, epoch, token) or not worklist.is_file():
+        write_stage4_worklist(
+            worklist,
+            round_index=next_round,
+            manifest_path=Path(config["manifest_path"]),
+            retryable=retryable,
+            n_shards=int(config["n_shards"]),
+        )
+    # Review M13: only the shards the worklist fills get a GPU. The
+    # partition is contiguous, so they are shards 0..k-1, and the command
+    # line's --array overrides the script's #SBATCH --array=0-(n_shards-1).
+    filled = _filled_stage4_shards(worklist)
     job_id = submit_with_intent(
         output_dir,
         epoch=epoch,
-        token=f"stage4-round-{next_round}",
+        token=token,
         role="stage4",
         round_index=next_round,
         script_path=Path(config["stage4_script"]),
+        extra_args=[f"--array=0-{max(1, filled) - 1}"],
     )
     state.update(
         {
@@ -486,6 +770,63 @@ def _submit_stage4_round(
     )
     _retarget_successor(state, successor_id, current_job_id, job_id)
     save_orchestration_state(output_dir, state)
+
+
+def stage4_stall_line(count: int | None) -> str:
+    """The one line a Stage-4 stall logs, in the controller and again in the finalizer (M14)."""
+    images = "the leftover image(s)" if count is None else f"{count} image(s)"
+    return (
+        f"Stage 4 made no progress in two rounds; {images} stay "
+        "unfinished (U7). Read the stage4 shard logs for why: a shard that "
+        "never commits its first image within its walltime needs a longer "
+        "--gpu-slurm time=. Then re-run the same command to retry them."
+    )
+
+
+def dead_task_stall_line(stage: str, count: int | None) -> str:
+    """The one line a Stage-1/3 retry stall logs, in the controller and the finalizer (U15/D5)."""
+    images = "the leftover image(s)" if count is None else f"{count} image(s)"
+    return (
+        f"{stage}: {images} died without a result, record or journal row in "
+        f"two unchanged retry rounds; they stay unfinished. Read the {stage} "
+        "task logs for why (an OUT_OF_MEMORY kill needs a larger mem_gb in "
+        "--slurm), then re-run the same command."
+    )
+
+
+def recorded_stall_lines(state: dict[str, Any]) -> list[str]:
+    """Every stall the orchestration state records, as the controller logged it.
+
+    The finalizer prints these, because ``phenotypic-wait``'s exit 5 points
+    at its log, not the controller's (review M14).
+    """
+    lines = [
+        dead_task_stall_line(stage, None)
+        for stage in ("stage1", "stage3")
+        if int(state.get(f"{stage}_zero_progress_rounds", 0) or 0) >= 2
+    ]
+    if int(state.get("stage4_zero_progress_rounds", 0) or 0) >= 2:
+        lines.append(stage4_stall_line(None))
+    return lines
+
+
+def _round_already_submitted(output_dir: Path, epoch: str, token: str) -> bool:
+    """Whether the ledger holds an intent or a submission for *token* under *epoch* (review M12).
+
+    Then a predecessor wrote that round's worklist and may have a job
+    running against it, which a rewritten partition would split under it.
+    """
+    return any(
+        row.get("token") == token
+        and row.get("status") in {"intent", "blocked", "submitted", "recovered"}
+        for row in read_job_ledger(output_dir, epoch=epoch)
+    )
+
+
+def _filled_stage4_shards(worklist: Path) -> int:
+    """The number of non-empty shards in the round's worklist."""
+    payload = json.loads(worklist.read_text(encoding="utf-8"))
+    return sum(1 for shard in payload.get("shards", []) if shard)
 
 
 def _advance_stage4(
@@ -508,7 +849,8 @@ def _advance_stage4(
         output_dir, commit_guard=_controller_commit_guard(output_dir, epoch)
     )
     entries = load_staged_manifest(Path(config["manifest_path"]))
-    retryable, _terminal = _classify_stage4(config, entries)
+    retryable, terminal = _classify_stage4(config, entries)
+    _log_stage4_terminal(config, terminal)
     if retryable:
         _submit_stage4_round(
             config, state, successor_id, current_job_id, retryable
@@ -535,6 +877,10 @@ def _submit_next_stage1(
     scripts = [Path(path) for path in config["stage1_scripts"]]
     index = int(state.get("stage1_index", 0))
     if index >= len(scripts):
+        if _resubmit_dead_tasks(
+            config, state, successor_id, current_job_id, "stage1"
+        ):
+            return True
         state["phase"] = "stage2"
         save_orchestration_state(output_dir, state)
         return False
@@ -559,6 +905,15 @@ def _submit_next_stage1(
     return True
 
 
+#: Phases after which a controller has nothing to do and exits 0. The fence
+#: is closed in each, so ``assert_active_epoch`` would raise. The finalizer
+#: closes a run with a terminal per-image failure, or a Stage-4 stall's
+#: leftovers (U7), as ``"terminal_incomplete"``
+#: (``_cli_checkpoint_handler``); without it here the trailing recovery
+#: controller of every such run ended FAILED in ``sacct`` (review I3, smoke F4).
+_QUIET_PHASES = frozenset({"complete", "cancelled", "failed", "terminal_incomplete"})
+
+
 def run_staged_controller(config_path: Path) -> None:
     """Advance the staged orchestration by one scheduler-controlled transition."""
     config = _load_controller_config(config_path)
@@ -568,7 +923,7 @@ def run_staged_controller(config_path: Path) -> None:
     initial_state = load_orchestration_state(output_dir)
     if initial_state is None or initial_state.get("epoch") != epoch:
         return
-    if initial_state.get("phase") in {"complete", "cancelled", "failed"}:
+    if initial_state.get("phase") in _QUIET_PHASES:
         return
     assert_active_epoch(output_dir, epoch)
 
@@ -578,7 +933,7 @@ def run_staged_controller(config_path: Path) -> None:
         state = load_orchestration_state(output_dir)
         if state is None or state.get("epoch") != epoch:
             return
-        if state.get("phase") in {"complete", "cancelled", "failed"}:
+        if state.get("phase") in _QUIET_PHASES:
             return
 
         expected_controller = state.get("expected_controller_id")

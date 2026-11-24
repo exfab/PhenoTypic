@@ -61,7 +61,6 @@ FindingCode = Literal[
     "PF-TIME-OVER-PARTITION",
     "PF-SLURM-LIMIT",
     "PF-GPU-PARTITION",
-    "PF-EMBED-SHARD-AMORTIZE",
     "PF-EMBED-RESOURCES",
     "PF-HEADER-UNREADABLE",
     "PF-CHANNELS",
@@ -241,10 +240,6 @@ HINTS: dict[str, str] = {
         "Point the GPU job at a partition with GPUs: "
         "--gpu-slurm slurm_partition=<gpu-partition> for a staged run, or "
         "--slurm slurm_partition=<gpu-partition> for --mode process."
-    ),
-    "PF-EMBED-SHARD-AMORTIZE": (
-        "Use fewer --gpu-shards, pre-stage the weights and set HF_HUB_OFFLINE=1, "
-        "or pass --embed-stage inline"
     ),
     "PF-EMBED-RESOURCES": (
         "Raise mem_gb in --gpu-slurm, or lower slurm_cpus_per_task there "
@@ -1106,25 +1101,9 @@ def check_gpu_partition(context: PreflightContext) -> list[PreflightFinding]:
 # GPU Stage 4 (#282 spec §4.7)
 # ---------------------------------------------------------------------------
 
-#: Seconds a Stage-4 shard spends loading a backbone cold (spec §2, the upper
-#: end). Copied from P0 T1's
-#: ``docs/superpowers/logic_validation_scripts/2026-11-12-gpu-embedding-staging/shard_amortization.py``;
-#: ``tests/unit/cli/test_preflight_embed_stage.py`` holds the two together.
-_COLD_LOAD_S = 750.0
-#: GPU-bound seconds per image of spec §2's two embedders (objects plus a
-#: 96-cell grid), per measured size. From ``shard_amortization.py``.
-_WARM_GPU_S_PER_IMAGE = {"base": 0.72 + 0.99, "large": 1.05 + 1.48}
-#: The measured size whose threshold each embedding size takes: only base and
-#: large were measured, so small takes base's and giant large's, the nearest
-#: measurement (a lighter model has a higher threshold and a heavier one a
-#: lower, so this under-warns for small and over-warns for giant).
-_AMORTIZE_MEASURED_SIZE = {"small": "base", "base": "base", "large": "large", "giant": "large"}
-#: Size order, smallest first: the largest in-scope backbone sets the threshold.
-_EMBED_SIZE_ORDER = ("small", "base", "large", "giant")
-
 _GIB = 1 << 30
 #: A Stage-4 shard's peak RSS before loader workers (spec §2, about 6 GB).
-#: From ``stage4_memory.py`` beside ``shard_amortization.py``.
+#: From P0 T1's ``stage4_memory.py`` (``docs/superpowers/logic_validation_scripts/``).
 _LOADER_BASE_BYTES = 6 << 30
 #: ``BatchEncoder``'s in-flight output bound (two DINOv3-7B ``masked_dense``
 #: grids of a 4012 x 6016 plate; conservative under U11). From
@@ -1140,18 +1119,6 @@ _LOADER_CROP_REGIONS = 1536
 #: Bytes per RGB sample by the header's bit depth; an unknown depth counts
 #: float32's 4, the widest a decode holds.
 _SAMPLE_BYTES = {8: 1, 16: 2}
-
-
-def _amortize_min_images_per_shard(size: str) -> int:
-    """Below this many images per shard, the cold load is over half the shard's GPU time.
-
-    ``ceil(_COLD_LOAD_S / _WARM_GPU_S_PER_IMAGE[size])``: 439 for base, 297
-    for large. An efficiency threshold for spec §2's pipeline shape, not a
-    correctness one (O6).
-    """
-    import math
-
-    return math.ceil(_COLD_LOAD_S / _WARM_GPU_S_PER_IMAGE[size])
 
 
 def _loader_per_worker(height: int, width: int, sample_bytes: int, crop_bytes: int) -> int:
@@ -1181,37 +1148,6 @@ def _stage4_profile(context: PreflightContext) -> dict[str, Any]:
     from ._cli_staged_slurm import resolve_stage_slurm_args
 
     return resolve_stage_slurm_args(context.config.gpu_slurm_args, context.config.slurm_args)
-
-
-def check_embed_shard_amortization(context: PreflightContext) -> list[PreflightFinding]:
-    """``PF-EMBED-SHARD-AMORTIZE``: too few images per GPU shard to pay off the cold load.
-
-    #282 spec §4.7, O6. Each Stage-4 shard loads its backbone once per round,
-    so below :func:`_amortize_min_images_per_shard` images per shard the load
-    is over half its GPU time. The largest in-scope backbone sets the
-    threshold, the lowest of them. Efficiency only: the run is correct either
-    way, so a warning. SLURM only, since ``--gpu-shards`` is.
-    """
-    if not _stage4_slurm_run(context):
-        return []
-    sizes = [str(embedder.size) for _, embedder in _stage4_dino_embedders(context)]
-    if not sizes:
-        return []
-    size = max(sizes, key=_EMBED_SIZE_ORDER.index)
-    threshold = _amortize_min_images_per_shard(_AMORTIZE_MEASURED_SIZE[size])
-    n_images = len(_input_paths(context))
-    shards = max(1, int(context.config.gpu_shards))
-    if not n_images or n_images / shards >= threshold:
-        return []
-    plural = "shard" if shards == 1 else "shards"
-    return [PreflightFinding(
-        "PF-EMBED-SHARD-AMORTIZE", "warning",
-        f"{n_images} images over {shards} GPU {plural} is about "
-        f"{round(n_images / shards)} per shard; below about {threshold} for the "
-        f"{size} backbone (measured for base/large; small and giant use the "
-        f"nearest measured size), loading the model (about {_COLD_LOAD_S:.0f} s) takes "
-        "more than half of each shard's GPU time. The run is correct either way",
-    )]
 
 
 def _requested_mem_bytes(profile: dict[str, Any], cpus: int) -> "int | None":
@@ -1944,7 +1880,6 @@ CHECKS: tuple[Check, ...] = (
     check_slurm_profiles,
     check_partition_time,
     check_staged_slurm_limits,
-    check_embed_shard_amortization,
     check_embed_loader_memory,
     check_gpu_partition,
     check_input_headers_readable,

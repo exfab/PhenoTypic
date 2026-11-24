@@ -21,6 +21,14 @@ returned locally (spec C10):
 * ``1`` (``ERROR``) when polling itself kept failing, and ``130`` when the
   waiter is interrupted. Neither cancels anything.
 
+**It returns only once every job of this submission has ended** (U15/D4,
+#282 smoke F1). Once the run's outcome is decided, it keeps polling the
+generation's ledgered jobs, the trailing recovery controller that every
+controller pre-arms included, until none is queued, running or unanswered,
+and then returns that outcome. A teardown it triggers (a DVC stage's
+environment, a venv swap, a worktree cleanup) therefore cannot race that
+controller.
+
 **It is read-only.** It never aggregates, publishes or cancels. Its only write
 is the verification cache that :func:`resolve_run_state` already refreshes, so
 the double publication of the old ``--wait`` cannot come back.
@@ -44,8 +52,8 @@ from a dead one is :func:`live_slurm_job_ids`, which is in ``_cli``, and
 an external control root, so :func:`live_slurm_job_ids` sees none of its jobs.
 
 Every scheduler and state read goes through a module-level wrapper
-(``_run_snapshot``, ``_live_jobs``, ``_fence_generation``, ``_published``,
-``_cancelled``, ``_generation_failures``, ``_is_process_run``). Each imports
+(``_run_snapshot``, ``_live_jobs``, ``_ledgered_jobs``, ``_fence_generation``,
+``_published``, ``_cancelled``, ``_generation_failures``, ``_is_process_run``). Each imports
 lazily, so ``phenotypic-wait --help`` loads no heavy module, and each is a
 seam a test can replace.
 """
@@ -169,6 +177,20 @@ def _live_jobs(output_dir: Path) -> "LiveSlurmJobs":
     from ._cli_staged_orchestration import live_slurm_job_ids
 
     return live_slurm_job_ids(output_dir, is_active=_INACTIVE_JOBS)
+
+
+def _ledgered_jobs(output_dir: Path, generation: str | None) -> "LiveSlurmJobs":
+    """Return the jobs *generation*'s ledger still owns, even after its fence closed.
+
+    No generation (no SLURM submission was bound) owns none.
+    """
+    from ._cli_staged_orchestration import LiveSlurmJobs, ledgered_jobs_of_generation
+
+    if generation is None:
+        return LiveSlurmJobs()
+    return ledgered_jobs_of_generation(
+        output_dir, generation, is_active=_INACTIVE_JOBS
+    )
 
 
 def _fence_generation(output_dir: Path) -> str | None:
@@ -480,6 +502,14 @@ def wait_for_run(
     between the two reads would be judged on the state from before it
     published.
 
+    Once a poll decides the run, that outcome is kept, and the waiter goes on
+    polling the generation's ledgered jobs (``_ledgered_jobs``) until none is
+    live, unverified or unresolved, under the same interval and timeout; then
+    it returns the outcome (U15/D4). Every controller pre-arms a recovery
+    controller, the one after the finalizer included, and the finalizer's
+    fence close makes :func:`live_slurm_job_ids` answer empty while that
+    controller is still queued (#282 smoke F1).
+
     Each poll prints one line: the completion verdict, the live-job groups
     and the elapsed time. A poll that raises prints its reason instead and is
     retried at the next interval. :data:`MAX_CONSECUTIVE_POLL_ERRORS` in a
@@ -506,28 +536,36 @@ def wait_for_run(
     generation: str | None = None
     bound = False
     errors = 0
+    # (outcome, snapshot, generation failures, cancelled), frozen at the
+    # first poll that decides the run; later polls only drain its jobs.
+    ended: tuple[RunExitCode, RunSnapshot, int, bool] | None = None
     while True:
-        outcome = None
+        lingering = None
+        decided_now = False
         try:
             if not bound:
                 generation = _fence_generation(output_dir)
                 bound = True
-            live = _live_jobs(output_dir)
-            snapshot = _run_snapshot(output_dir)
-            failures = 0
-            cancelled = False
-            if not live:
-                failures = _generation_failures(output_dir, generation)
-                cancelled = _cancelled(output_dir, generation)
-                outcome = decide_wait_outcome(
-                    snapshot.completion,
-                    live,
-                    published=_published(output_dir, generation),
-                    process_run=_is_process_run(output_dir),
-                    unresolved=snapshot.unresolved,
-                    generation_failures=failures,
-                    cancelled=cancelled,
-                )
+            if ended is None:
+                live = _live_jobs(output_dir)
+                snapshot = _run_snapshot(output_dir)
+                if not live:
+                    failures = _generation_failures(output_dir, generation)
+                    cancelled = _cancelled(output_dir, generation)
+                    outcome = decide_wait_outcome(
+                        snapshot.completion,
+                        live,
+                        published=_published(output_dir, generation),
+                        process_run=_is_process_run(output_dir),
+                        unresolved=snapshot.unresolved,
+                        generation_failures=failures,
+                        cancelled=cancelled,
+                    )
+                    if outcome is not None:
+                        ended = (outcome, snapshot, failures, cancelled)
+                        decided_now = True
+            if ended is not None:
+                lingering = _ledgered_jobs(output_dir, generation)
         except Exception as exc:  # noqa: BLE001 -- every poll error is retried
             errors += 1
             elapsed = clock() - start
@@ -548,11 +586,15 @@ def wait_for_run(
         else:
             errors = 0
             elapsed = clock() - start
-            echo(
-                f"phenotypic-wait: poll completion={snapshot.completion}; "
-                f"{_describe_jobs(live)}; elapsed={elapsed:.0f}s"
-            )
-            if outcome is not None:
+            if ended is None or decided_now:
+                echo(
+                    f"phenotypic-wait: poll completion={snapshot.completion}; "
+                    f"{_describe_jobs(live)}; elapsed={elapsed:.0f}s"
+                )
+            if ended is None:
+                pass
+            elif not lingering:
+                outcome, snapshot, failures, cancelled = ended
                 return _report_outcome(
                     outcome,
                     snapshot,
@@ -561,6 +603,15 @@ def wait_for_run(
                     echo=echo,
                     output_dir=output_dir,
                     cancelled=cancelled,
+                )
+            else:
+                # The run is over, but a job of this submission (the trailing
+                # recovery controller, U15/D4) has not ended. An unanswered
+                # job keeps it waiting, as it does before the run ends.
+                echo(
+                    f"phenotypic-wait: the run ended ({ended[0].name}); "
+                    "waiting for this submission's ledgered jobs to end: "
+                    f"{_describe_jobs(lingering)}; elapsed={elapsed:.0f}s"
                 )
         if timeout_seconds is not None and elapsed >= timeout_seconds:
             echo(

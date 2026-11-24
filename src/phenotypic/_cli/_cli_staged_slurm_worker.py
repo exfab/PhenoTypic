@@ -798,15 +798,6 @@ def run_single_pass_step(
         raise
 
 
-def _recorded_embed_revisions(output_dir: Path) -> dict[str, str | None] | None:
-    """``JobMetadataKey.EMBED_REVISIONS`` as the submitter recorded it (U5), or ``None``."""
-    metadata = load_job_metadata(progress_dir(output_dir))
-    if not isinstance(metadata, dict):
-        return None
-    revisions = metadata.get(JobMetadataKey.EMBED_REVISIONS)
-    return dict(revisions) if isinstance(revisions, dict) else None
-
-
 def run_stage4_shard(
     pipeline_path: Path,
     output_dir: Path,
@@ -864,6 +855,7 @@ def run_stage4_shard(
     from phenotypic.abc_._measure_embedding import is_out_of_memory
     from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
 
+    from ._cli_embed_stage import recorded_embed_revisions
     from ._cli_stage4_worker import Stage4DeviceError, Stage4ShardError, run_stage4
     from ._cli_staged_orchestration import load_stage4_worklist
     from ._cli_utils import resolve_local_worker_count
@@ -890,7 +882,9 @@ def run_stage4_shard(
             entries,
             image_type=image_type,
             epoch=epoch,
-            revisions=_recorded_embed_revisions(output_dir),
+            # The one reader of the recorded revisions (review M15): the
+            # state first, then the job metadata, as a continuation reads them.
+            revisions=recorded_embed_revisions(output_dir),
             num_workers=resolve_local_worker_count(-1, len(entries)) - 1,
             output_manager=output_manager,
             active_check=check,

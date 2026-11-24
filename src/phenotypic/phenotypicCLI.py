@@ -2511,7 +2511,8 @@ def _print_process_only_dry_run_plan(
     help="Where MeasureDinoEmbedding runs: gpu, in a GPU Stage 4 after each "
     "store is final; inline, beside the other measurers. auto is gpu on SLURM "
     "when the run already has a GPU profile (a GpuDetector, or --gpu-slurm), "
-    "else inline. A continuation must resolve as the run started.",
+    "else inline. Under auto a continuation keeps the stage its run started "
+    "with; an explicit value that differs is refused.",
 )
 @click.option(
     "--force-local",
@@ -3376,20 +3377,25 @@ def phenotypic_cli(
                     err=True,
                 )
                 sys.exit(RunExitCode.ERROR)
-            # R3 (#282 U3): before the compatibility check, which would
+            # R3 (#282 U3, U12): before the compatibility check, which would
             # otherwise report a switched continuation in its own words.
+            # Under `auto` the run's recorded stage is adopted; only an
+            # explicit conflicting --embed-stage is refused.
             from phenotypic._cli._cli_embed_stage import (
                 EMBED_STAGE_CONFIG_KEY,
-                refuse_embed_stage_switch,
+                adopt_recorded_embed_stage,
                 stage4_supported,
             )
 
-            refuse_embed_stage_switch(
+            config.embed_stage, adopted_note = adopt_recorded_embed_stage(
                 resume_state.config.get(EMBED_STAGE_CONFIG_KEY),
+                config.embed_stage_request,
                 config.embed_stage,
                 is_slurm=config.is_slurm_mode(),
                 stage4_available=stage4_supported(config),
             )
+            if adopted_note is not None:
+                click.echo(f"Note: {adopted_note}.", err=True)
             if resume_state.config.get("success_markers_required", False):
                 is_compatible, compatibility_error = (
                     validate_resume_compatibility(resume_state, config)
