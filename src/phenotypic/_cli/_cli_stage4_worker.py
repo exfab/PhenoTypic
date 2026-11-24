@@ -66,6 +66,7 @@ from ._cli_stage4_signal import (
     delete_stage4_signal_keys,
     delete_stage4_signal_temps,
     delete_stage4_signals,
+    stage4_signals_complete,
     write_stage4_signal,
 )
 
@@ -878,7 +879,7 @@ def _classify_image(
         delete_stage4_signal_keys(
             ctx.output_dir, entry.dataset, entry.stem, state.stale, commit_guard=ctx.commit_guard
         )
-    if state.valid == set(keys):
+    if stage4_signals_complete(state, keys):
         return _ImageWork(entry, run.run_id, "commit", reused=dict(state.signals))
     # No publish-only shortcut in republish mode: it always re-embeds, as an
     # inline --mode measure does, and carried embeddings must not satisfy it.
