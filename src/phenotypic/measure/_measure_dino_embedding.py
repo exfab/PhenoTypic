@@ -417,9 +417,9 @@ class MeasureDinoEmbedding(MeasureEmbedding):
                 (:meth:`_inline_entry_descriptor`, #282 review M10).
 
         Returns:
-            ``{model: {family, hf_id, revision, patch_size, device,
-            device_name}, dim, dtype, compute_dtype, pooling, compute}``,
-            where ``revision`` is the commit loaded
+            The descriptor ``{model, dim, dtype, compute_dtype, pooling,
+            compute}``, whose ``model`` is ``{family, hf_id, revision,
+            patch_size, device, device_name}``. ``revision`` is the commit loaded
             (:func:`~phenotypic.detect.nn._helper._dino_support.resolved_revision`),
             and ``device`` (``"cuda"`` or ``"cpu"``) and ``device_name`` (the
             GPU's name on CUDA, ``None`` on the CPU) are copied from
