@@ -113,6 +113,25 @@ def _record_terminal_scientific_failure(
     )
 
 
+def _record_unless_fenced(
+    output_dir: Path,
+    item: StagedManifestEntry,
+    exception: Exception,
+    epoch: str | None,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Raise a fenced generation's cause; otherwise journal *exception* as the image's.
+
+    Called from an ``except`` block: a fence (``slurm_generation_inactive_cause``)
+    stops the worker, and anything else goes to
+    :func:`_record_terminal_scientific_failure`.
+    """
+    inactive = slurm_generation_inactive_cause(exception)
+    if inactive is not None:
+        raise inactive
+    _record_terminal_scientific_failure(output_dir, item, exception, epoch, commit_guard)
+
+
 def _reference_pin(item: StagedManifestEntry) -> ReferencePin:
     """Pin a stage to the digest the entry's work-id was computed from.
 
@@ -455,12 +474,7 @@ def run_stage2_shard(
                     reference_pin=_reference_pin(item),
                 )
         except Exception as exc:
-            inactive = slurm_generation_inactive_cause(exc)
-            if inactive is not None:
-                raise inactive
-            _record_terminal_scientific_failure(
-                output_dir, item, exc, epoch, commit_guard
-            )
+            _record_unless_fenced(output_dir, item, exc, epoch, commit_guard)
 
 
 def run_stage3_step(
@@ -677,12 +691,7 @@ def run_stage3_step(
                 commit_guard=commit_guard,
             )
     except Exception as exc:
-        inactive = slurm_generation_inactive_cause(exc)
-        if inactive is not None:
-            raise inactive
-        _record_terminal_scientific_failure(
-            output_dir, item, exc, epoch, commit_guard
-        )
+        _record_unless_fenced(output_dir, item, exc, epoch, commit_guard)
         raise
 
 
@@ -789,12 +798,7 @@ def run_single_pass_step(
                 defer_embeddings=True,
             )
     except Exception as exc:
-        inactive = slurm_generation_inactive_cause(exc)
-        if inactive is not None:
-            raise inactive
-        _record_terminal_scientific_failure(
-            output_dir, item, exc, epoch, commit_guard
-        )
+        _record_unless_fenced(output_dir, item, exc, epoch, commit_guard)
         raise
 
 
@@ -903,10 +907,7 @@ def run_measure_step(
                     expected_pipeline_sha256=pipeline_sha256,
                 )
     except Exception as exc:
-        inactive = slurm_generation_inactive_cause(exc)
-        if inactive is not None:
-            raise inactive
-        _record_terminal_scientific_failure(output_dir, item, exc, epoch, commit_guard)
+        _record_unless_fenced(output_dir, item, exc, epoch, commit_guard)
         raise
     if check is not None:
         check()
