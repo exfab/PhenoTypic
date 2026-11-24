@@ -749,8 +749,15 @@ published but signals left → swept as orphans
 (`sweep_orphan_stage4_signals`, locally before Stage 4 and in the controller
 before each classification). **`--retry-failures` re-runs only Stage 4 for an
 image whose Stage 4 failed**: the failure kept `stages.stage3`, so the image
-reads `"pending"` again
+reads `"pending"` again. Pinned locally
 (`tests/integration/cli/test_local_stage4.py::test_retry_failures_reruns_only_stage4`).
+On SLURM it holds by trace, not by an end-to-end test: for a run with no
+detector, `get_remaining_images_for_datasets(..., retry_failures)` admits the
+image, `_plan_slurm_no_detector_continuation` → `split_stage4_pending` reads it
+`"pending"` (Stage 4 only; the `single_pass` role returns early on
+`stages_1_to_3_done`), and `_classify_stage4` treats a failure journalled under
+an earlier epoch as retryable (`test_a_failure_from_another_epoch_is_retryable`);
+without the flag the image is left out of the manifest.
 **Every prereq probe tests BOTH halves of the signal** —
 `stage2_result_replayable()` is the one function all **seven call sites in three
 modules** call (`_cli_staged_strategy.py` ×3, `_cli_staged_slurm_worker.py` ×2,

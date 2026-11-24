@@ -536,6 +536,11 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
   round's signals stale, so the image's embeddings are written twice in one
   pass. Sound (the record is written once, last); a provenance stamp of the
   pass epoch in `compute` would let the publish-only shortcut take it.
+- **No end-to-end test of `--retry-failures` for a SLURM Stage-4 failure**
+  (P7 T1): local is pinned (`test_retry_failures_reruns_only_stage4`); SLURM
+  holds by trace (the no-detector continuation plans the image "Stage 4 only",
+  `_classify_stage4` retries an earlier epoch's failure) and by those pieces'
+  unit tests only.
 - **`promote_store`'s two renames:** a walltime kill between them can lose a
   store. Pre-existing; Stage 4 crosses the window once more per image. P7
   documents it as a known limit; a fix belongs to the store writer, not here.

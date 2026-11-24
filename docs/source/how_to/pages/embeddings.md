@@ -150,12 +150,14 @@ anything. DINOv3's ViT-H+ and 7B are not available yet.
 `"bfloat16"` or `"float16"`. Vectors are pooled in float32 and stored as
 float16 whatever it is.
 
-**Use `float32` for every size, `giant` included.** Stage 4's batch-size rule
-finds no DINOv2 size and crop size that does not fit in float32 on any GPU in its
-table (`physical_batch_size.py`, the change's logic-validation script). In the
-batch-invariance measurement (`batch-invariance.md`), which ran giant in
-`bfloat16` only, large in float32 moved by at most 2.27e-7 in cosine distance
-across three GPU models, while giant in `bfloat16` moved by:
+**Use `float32` for every size, `giant` included.** That giant fits in float32 is
+the result of Stage 4's batch-size rule, not a measurement: the rule finds no
+DINOv2 size and crop size that does not fit in float32 on any GPU in its table
+(`physical_batch_size.py`, the change's logic-validation script), but giant in
+float32 was not run on a GPU for this change. The batch-invariance measurement
+(`batch-invariance.md`) ran giant in `bfloat16` only. There, large in float32
+moved by at most 2.27e-7 in cosine distance across three GPU models, while giant
+in `bfloat16` moved by:
 
 - up to 3.16e-4 in cosine distance between two GPU models (median 3.1e-5 to
   3.3e-5), against at most 2.27e-7 in float32;
@@ -250,8 +252,12 @@ Run the same command again; there is no `--resume` flag.
 An image whose Stage 4 fails (a store that does not decode, a grid cell
 outside the image, a non-finite vector) is recorded as a terminal failure at stage
 `stage4`, has no record, and makes the run exit `3`. Its store keeps its
-measurements. A plain re-run skips it, as it skips every terminal failure;
-`--retry-failures` retries it, and only its Stage 4 runs again.
+measurements. A plain re-run skips it, as it skips every terminal failure. In
+a local run, `--retry-failures` retries it and only its Stage 4 runs again: the
+failure kept the image's Stage-3 results, and a test pins this. On SLURM the
+code takes the same path (the image is planned as "Stage 4 only", and the
+controller retries a failure recorded by an earlier submission), but no test
+yet runs it end to end.
 
 ## Re-embed a finished run: `--mode measure`
 
