@@ -21,7 +21,7 @@ from phenotypic._cli._cli_staged_orchestration import (
     load_staged_manifest,
     staged_manifest_republishes,
 )
-from phenotypic.sdk_ import JobMetadataKey
+from phenotypic.sdk_ import JobMetadataKey, read_image_record
 from tests._tiny_run import (
     build_measure_epoch_tree,
     controller_config_path,
@@ -94,6 +94,54 @@ def test_a_record_republished_under_another_epoch_is_still_pending(measure_epoch
     other = {**tree.config, "epoch": "another-epoch"}
     retryable, _terminal = _classify_stage4(other, tree.entries)
     assert len(retryable) == 2
+
+
+def _status(tree, index, *, epoch=None):
+    from phenotypic._cli._cli_staged_resume import stage4_status
+
+    entry = tree.entries[index]
+    return stage4_status(tree.out, entry.dataset, entry.stem, entry.work_id, republish=True,
+                         pipeline_sha256=tree.sha, epoch=tree.epoch if epoch is None else epoch)
+
+
+def test_a_same_pipeline_pass_reads_done_only_once_this_generation_republished(tmp_path, finished_tiny_run):
+    """The predicate's first half (lead ruling on the C17 finding): the epoch, not verification, says done.
+
+    A same-pipeline measure core over a root last written by a table
+    rewrite (here an earlier measure; in the field a Stage-4 commit) leaves
+    the root byte-identical, so the record, stamped with an earlier
+    generation, still verifies and certifies the measure pipeline's own
+    folder. It must read pending, or no Stage-4 round re-embeds it; once
+    this generation republished it, done, so no round re-embeds it twice.
+    """
+    from phenotypic._cli._cli_completion import valid_image_success
+
+    tree = build_measure_epoch_tree(tmp_path, finished_tiny_run, prior_pass=True,
+                                    pipeline=finished_tiny_run.parent / "tiny_run.pht-pipe.json")
+    entry = tree.entries[0]
+    forward_record = read_image_record(tree.out, entry.dataset, entry.stem)
+    assert valid_image_success(tree.out, dataset=entry.dataset, image_stem=entry.stem,
+                               work_id=forward_record["work_id"])          # still verifies: the finding
+    assert forward_record["lifecycle_epoch"] != tree.epoch
+    assert [_status(tree, i) for i in range(2)] == ["pending", "pending"]
+    tree.republish(0)
+    assert [_status(tree, i) for i in range(2)] == ["done", "pending"]
+    assert _status(tree, 0, epoch="an-earlier-generation") == "pending"
+    retryable, _terminal = _classify_stage4(tree.config, tree.entries)
+    assert [e.stem for e in retryable] == [tree.entries[1].stem]
+
+
+def test_a_record_of_this_generation_over_another_folder_is_pending(measure_epoch_tree):
+    """The predicate's second half: stamped with this epoch, verifying, but certifying the forward folder."""
+    from phenotypic.sdk_._table_runs import list_table_runs
+
+    tree = measure_epoch_tree
+    forward = [run for run in list_table_runs(tree.store(0)) if run.pipeline_sha256 != tree.sha]
+    assert len(forward) == 1
+    tree.republish(0, run=forward[0])
+    assert _status(tree, 0) == "pending"
+    tree.republish(0)
+    assert _status(tree, 0) == "done"
 
 
 def test_a_forward_manifest_classifies_in_the_forward_sense(measure_epoch_tree):

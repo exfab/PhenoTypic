@@ -3730,8 +3730,12 @@ class MeasureEpochTree:
         """Entry *index*'s store."""
         return Path(self.entries[index].input_path)
 
-    def republish(self, index: int) -> None:
-        """Republish entry *index*'s record as this pass's Stage 4 does (stamped with the epoch)."""
+    def republish(self, index: int, *, run: "TableRun | None" = None, epoch: str | None = None) -> None:
+        """Republish entry *index*'s record as this pass's Stage 4 does (stamped with the epoch).
+
+        *run* (default: the measure pipeline's own) is the folder whose table
+        the record certifies; *epoch* (default: the tree's) is its stamp.
+        """
         from phenotypic._cli._cli_recompile_tables import _republish_table_marker
         from phenotypic.sdk_ import image_record_path
 
@@ -3740,18 +3744,33 @@ class MeasureEpochTree:
             self.out,
             image_record_path(self.out, entry.dataset, entry.stem),
             commit_guard=None,
-            lifecycle_epoch=self.epoch,
-            measurements=owned_run(self.store(index), self.sha).measurements_path(),
+            lifecycle_epoch=self.epoch if epoch is None else epoch,
+            measurements=(run or owned_run(self.store(index), self.sha)).measurements_path(),
         )
 
 
-def build_measure_epoch_tree(tmp_path: Path, out: Path, *, measure: bool = True) -> MeasureEpochTree:
+def build_measure_epoch_tree(
+    tmp_path: Path,
+    out: Path,
+    *,
+    measure: bool = True,
+    pipeline: Path | None = None,
+    prior_pass: bool = False,
+) -> MeasureEpochTree:
     """A :class:`MeasureEpochTree` over the finished run at *out*.
 
     Args:
         tmp_path: Where the measure pipeline file goes.
         out: A finished run (:func:`finished_tiny_run`).
         measure: Run the measure core over every store (the pass's Stage 3).
+        pipeline: The measure pipeline; default :func:`with_stage4_dino_objects`
+            (another pipeline than the forward one).
+        prior_pass: Run the measure core once more, before the pass, and
+            republish each record as an inline measure does. A root last
+            written by a table rewrite (that, a Stage-4 commit, or an earlier
+            measure) is left byte-identical by a same-pipeline core, so the
+            record still verifies; a forward ``save2zarr`` root is not (the
+            rewrite re-serialises its keys sorted).
     """
     from phenotypic._cli._cli_output_manager import OutputManager
     from phenotypic._cli._cli_process_single import process_single_store_measure_core
@@ -3762,7 +3781,18 @@ def build_measure_epoch_tree(tmp_path: Path, out: Path, *, measure: bool = True)
     )
     from phenotypic.sdk_ import JobMetadataKey, slurm_scripts_dir
 
-    pipeline = with_stage4_dino_objects(tmp_path)
+    pipeline = with_stage4_dino_objects(tmp_path) if pipeline is None else pipeline
+    if prior_pass:
+        from phenotypic._cli._cli_output_manager import OutputManager
+        from phenotypic._cli._cli_process_single import process_single_store_measure_core
+
+        manager = OutputManager.from_config(out, ".tiff", save_overlays=False, durable_writes=False)
+        for store in stores_of(out):
+            process_single_store_measure_core(
+                pipeline_path=pipeline, store_path=store, output_dir=out,
+                dataset_name=store.parent.parent.name, image_type="GridImage",
+                output_manager=manager,
+            )
     entries = [
         StagedManifestEntry(
             dataset=store.parent.parent.name,

@@ -77,6 +77,37 @@ def test_measure_over_a_staged_run_reembeds_and_republishes(tmp_path, tiny_input
     assert state.diagnostics.failed == 0 and all(v.verdict == "verified" for v in state.images.values())
 
 
+def test_a_same_pipeline_measure_reembeds_every_store(tmp_path, tiny_inputs, stage4_cpu):
+    """C17 finding, the local half: the measure core leaves a byte-identical root, re-embedded anyway.
+
+    The forward run, then an inline measure, embed inline; the inline
+    measure's table rewrite leaves each root as a rewrite serialises it. A
+    ``--embed-stage gpu`` measure with the same pipeline file then carries
+    those entries (compute.stage "inline"), and its core leaves every root
+    byte-identical, so each record still verifies. The republish Stage 4
+    must still re-embed every store: a backbone loads, and every entry's
+    compute block is this run's (stage4), in a rewritten file.
+    """
+    out, pipe = tmp_path / "out", with_stage4_dino_objects(tmp_path, fake_gpu=True)
+    forward = run_cli(tiny_inputs, out, pipeline=pipe)                  # inline: auto, locally
+    assert forward.exit_code == 0, forward.output
+    inline = _measure(out, pipe, extra=())
+    assert inline.exit_code == 0, inline.output
+    stores = stores_of(out)
+    assert all(run_entry(s)["embeddings"][DINO_OBJECTS_KEY]["compute"]["stage"] == "inline" for s in stores)
+    inodes = {s: owned_run(s, pipeline_sha(pipe)).embedding_path(DINO_OBJECTS_KEY).stat().st_ino for s in stores}
+    loads = len(stage4_cpu.load_calls)
+    result = _measure(out, pipe)
+    assert result.exit_code == 0, result.output
+    assert len(stage4_cpu.load_calls) > loads
+    for store in stores:
+        run = owned_run(store, pipeline_sha(pipe))
+        entry = run.descriptor["embeddings"][DINO_OBJECTS_KEY]
+        assert entry["compute"]["stage"] == "stage4" and entry["stale"] is False
+        assert run.embedding_path(DINO_OBJECTS_KEY).stat().st_ino != inodes[store]
+        assert record_certifies_root(out, store)
+
+
 def test_republish_never_takes_the_publish_only_shortcut(tmp_path, tiny_inputs, stage4_cpu):
     """Carried embeddings would satisfy the forward shortcut; republish re-embeds anyway."""
     out, pipe = _forward(tmp_path, tiny_inputs)

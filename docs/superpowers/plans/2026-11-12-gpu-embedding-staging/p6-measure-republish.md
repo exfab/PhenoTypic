@@ -97,6 +97,7 @@ failure leaves the previous embeddings and a valid record, and is journalled as
   folder declares a measurement table and the record does not certify the
   current root; `done` = it does. A record with no `artifacts` (never
   forward-published) is `not_ready`.
+  **Amended by C17 (lead ruling, 2026-11-24):** `done` also needs the record's `lifecycle_epoch` to be this pass's generation (`stage4_status(..., epoch=)`; `None` locally, so nothing is done there). A same-pipeline core over a root last written by a table rewrite left the root and table byte-identical, so the old record still verified: measured, exit 0 and 0 backbone loads, no re-embedding.
 - Modify: `src/phenotypic/_cli/_cli_staged_orchestration.py:54-275`.
   `_MANIFEST_VERSION = 5`; `_READABLE_MANIFEST_VERSIONS = (2, 3, 4, 5)`;
   `write_staged_manifest(path, entries, *, republish: bool = False)` writes
