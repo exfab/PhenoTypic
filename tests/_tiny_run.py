@@ -3459,6 +3459,7 @@ def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Sl
         initialize_orchestration,
         stage4_worklist_path,
         write_stage4_worklist,
+        write_staged_manifest,
     )
     from phenotypic.sdk_ import JobMetadataKey
 
@@ -3482,10 +3483,14 @@ def stage4_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Stage4Sl
     # `config.embed_revisions`; the worker reads them through
     # `recorded_embed_revisions`, the state first (P5 review M15).
     record_state_config(waiting.out, embed_revisions={"facebook/dinov2-base": RECORDED_REVISION})
+    # The shard reads republish from the manifest its worklist names (#282 P6
+    # T2, C14), so that manifest must exist, as the controller's always does:
+    # a forward one here.
+    manifest = write_staged_manifest(waiting.out / "manifest.json", waiting.manifest())
     worklist = write_stage4_worklist(
         stage4_worklist_path(waiting.out),
         round_index=1,
-        manifest_path=waiting.out / "manifest.json",
+        manifest_path=manifest,
         retryable=waiting.manifest(),
         n_shards=4,
     )

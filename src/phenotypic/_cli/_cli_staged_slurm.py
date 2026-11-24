@@ -722,7 +722,8 @@ def _staged_plan(cfg: ExecutionConfig) -> tuple[list[str], Stage3Role, bool]:
     from ._cli_validation import pipeline_requires_gpu
 
     gpu_embed = getattr(cfg, "embed_stage", "inline") == "gpu"
-    if cfg.measure_only:
+    # getattr, as for every other config field here: callers hand duck-typed configs.
+    if getattr(cfg, "measure_only", False):
         if not gpu_embed:
             raise ValueError(
                 "the staged SLURM strategy runs --mode measure only when it "

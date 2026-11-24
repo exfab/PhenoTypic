@@ -130,11 +130,16 @@ def test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record(
     out, pipe = _forward(tmp_path, tiny_inputs, faulty=True)
     victim = store_of(out, 0)
     old = embedding_bytes(victim, DINO_OBJECTS_KEY)
+    old_record = record_digest(victim)
     plant_stage4_fault(stem_of(victim))                                         # on disk, not a monkeypatch
     result = _measure(out, pipe)
     assert result.exit_code == 3, result.output                                 # U8
     assert embedding_bytes(victim, DINO_OBJECTS_KEY) == old                     # carried forward
     assert record_certifies_root(out, victim)                                   # a valid record
+    # U8: the failure still REPUBLISHES the record. After a forward Stage-4
+    # run the measure core leaves the root byte-identical (the C17 finding),
+    # so a valid record alone cannot tell; the rewritten record can (M10).
+    assert record_digest(victim) != old_record
     assert [r.failed_stage for r in measure_terminal_failures(out)] == [MEASURE_FAILURE_STAGE]
     other = store_of(out, 1)
     assert record_certifies_root(out, other)
@@ -156,7 +161,7 @@ def test_a_differing_measure_pipeline_carries_matching_entries(
     assert NAMED_GRID_KEY not in new_run.descriptor.get("embeddings", {})       # rule 3: nothing comparable
     assert "dinov2-vitb14/rgb/grid" not in new_run.descriptor.get("embeddings", {})  # not in the measure pipeline
     assert record_certifies_root(out, victim)
-    assert certified_run_id(out, victim) == new_run.run_id
+    assert certified_run_id(out, victim) == new_run.run_id                     # republished over the new folder
     assert [r.failed_stage for r in measure_terminal_failures(out)] == [MEASURE_FAILURE_STAGE]
     # The other plate re-embedded both of the measure pipeline's keys in Stage 4.
     other = owned_run(store_of(out, 1), pipeline_sha(measure))
