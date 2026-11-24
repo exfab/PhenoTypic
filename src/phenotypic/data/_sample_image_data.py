@@ -236,3 +236,40 @@ def load_fungi_plate_full(
         nrows=6,
         ncols=10,
     )
+
+
+def load_bacteria_plate_full(
+    mode: Literal["array", "Image", "GridImage", "filepath"] = "GridImage",
+) -> Union[np.ndarray, Image, GridImage, str]:
+    """Load a full bacterial colony plate image, already color-corrected and denoised.
+
+    Returns a whole 8 x 12 pinned plate of mature bacterial colonies, imaged
+    with the plate holder, the plate wall and color-checker strips at the
+    left and right edges. The colonies vary in size, pigment (cream, yellow,
+    orange) and surface (smooth, wrinkled, rough). Some grid positions are
+    empty by design, so a full detection finds 54 colonies, not 96.
+
+    The image is a 16-bit RGB TIFF (4012 x 6016 pixels, about 100 MB). It is a
+    TIFF rather than a PNG because 16-bit RGB PNGs are read back as 8-bit. It
+    has already been color-corrected and denoised, so it is ready input for
+    :class:`~phenotypic.prefab.BacterSamPipeline`, whose default crop fits
+    this frame. Use it for bacterial detection tutorials and for tests that
+    need a real plate rather than a synthetic one.
+
+    The file is downloaded from the ``data-v1`` GitHub Release on first use
+    and cached; see ``PHENOTYPIC_DATA_DIR`` to change the cache location.
+
+    Args:
+        mode: Return format. ``'GridImage'`` (the default) returns a
+            :class:`GridImage` with an 8 x 12 grid. ``'Image'`` returns a
+            plain :class:`Image`, ``'array'`` the ``uint16`` pixel array of
+            shape ``(4012, 6016, 3)``, and ``'filepath'`` the cached file's
+            path.
+
+    Returns:
+        The full plate image in the requested format.
+    """
+    path = fetch_snp("BacteriaFullPlate.tif")
+    if mode == "GridImage":
+        return _image_loader(path, mode, nrows=8, ncols=12)
+    return _image_loader(path, mode)

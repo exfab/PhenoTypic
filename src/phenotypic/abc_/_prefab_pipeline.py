@@ -54,6 +54,10 @@ class PrefabPipeline(ImagePipeline):
     5. **[FilamentousFungiPipeline](src/phenotypic/prefab/_filamentous_fungi_pipeline.py):** Two-stage filamentous fungi detection
        with optional Dijkstra branch reconnection. For irregular spreading colonies.
 
+    6. **[BacterSamPipeline](src/phenotypic/prefab/_bactersam_pipeline.py):** SAM2 foundation-model
+       detection of bacterial colonies on grid plates, on images already colour-corrected and
+       denoised upstream. Needs a GPU for practical throughput.
+
     **When to use PrefabPipeline vs Custom ImagePipeline**
 
     - **Use PrefabPipeline if:**
