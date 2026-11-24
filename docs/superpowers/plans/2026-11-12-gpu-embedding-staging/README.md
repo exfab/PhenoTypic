@@ -529,6 +529,10 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
 `reports/2026-11-12-gpu-embedding-staging/review-p5.md` and `live-smoke.md`,
 with the user's decisions U12–U15 (spec §3). Applied by cluster C16r:
 - **U12 (D1, I1):** `adopt_recorded_embed_stage` in the continuation load.
+  On SLURM, an `auto` that would adopt a recorded `gpu` with no GPU profile
+  (no `GpuDetector`, no `--gpu-slurm`) is one usage line naming
+  `--gpu-slurm`, so Stage 4 never goes out on the CPU profile; it sits
+  outside `--skip-validation`, which skips `PF-GPU-PARTITION`.
 - **U13 (D2, F6):** `PF-EMBED-SHARD-AMORTIZE` removed; M9 is moot.
 - **U14 (D3):** no code; spec §4.8 and P7 T1.
 - **U15 (D4, D5):** the waiter drains the generation's ledger
