@@ -358,8 +358,10 @@ def test_the_submitter_reuses_precomputed_entries(make_exec_config, tmp_path, mo
 
 
 def test_the_submitter_hashes_the_missing_entries_on_threads(make_exec_config, tmp_path, monkeypatch, submissions):
-    """P6 review M8: entries the CLI did not build are hashed through ``stage4_entries``, in parallel."""
-    from phenotypic._cli import _cli_stage4_worker
+    """P6 review M8: entries the CLI did not build are each ``staged_manifest_entry``'s, hashed on threads."""
+    import threading
+
+    from phenotypic._cli import _cli_staged_slurm, _cli_utils
     from phenotypic._cli._cli_types import Dataset
 
     images = []
@@ -368,14 +370,20 @@ def test_the_submitter_hashes_the_missing_entries_on_threads(make_exec_config, t
         image.parent.mkdir(parents=True, exist_ok=True)
         image.write_bytes(name.encode())
         images.append(image)
-    seen = {}
-    real = _cli_stage4_worker.stage4_entries
+    seen: dict = {"images": [], "main_thread": []}
+    real_entry, real_count = _cli_staged_slurm.staged_manifest_entry, _cli_utils.resolve_local_worker_count
 
-    def _spy(config, tasks, *, n_jobs=1):
-        seen["tasks"], seen["n_jobs"] = [image for _ds, image in tasks], n_jobs
-        return real(config, tasks, n_jobs=n_jobs)
+    def _entry(config, dataset_name, image):
+        seen["images"].append(image)
+        seen["main_thread"].append(threading.current_thread() is threading.main_thread())
+        return real_entry(config, dataset_name, image)
 
-    monkeypatch.setattr(_cli_stage4_worker, "stage4_entries", _spy)
+    def _count(n_jobs, work_items):
+        seen["n_jobs"] = real_count(n_jobs, work_items)
+        return seen["n_jobs"]
+
+    monkeypatch.setattr(_cli_staged_slurm, "staged_manifest_entry", _entry)
+    monkeypatch.setattr(_cli_utils, "resolve_local_worker_count", _count)
     monkeypatch.setenv("SLURM_CPUS_PER_TASK", "4")
     config = dataclasses.replace(
         _slurm_config(make_exec_config, tmp_path), embed_stage="gpu",
@@ -383,16 +391,11 @@ def test_the_submitter_hashes_the_missing_entries_on_threads(make_exec_config, t
     out = tmp_path / "out"
     StagedSlurmStrategy(config, output_manager_for(config)).execute(
         [Dataset(name="ds", images=images, input_dir=images[0].parent, output_dir=out)], out)
-    assert seen["tasks"] == images and seen["n_jobs"] == 3          # min(allocation, images)
+    assert sorted(seen["images"]) == images and seen["n_jobs"] == 3   # once each; min(allocation, images)
+    assert not any(seen["main_thread"])                               # on the pool, not serially
     manifest = load_staged_manifest(out / ".phenotypic" / "slurm_scripts" / "staged_manifest.json")
-    expected = [_cli_staged_slurm_entry(config, image).work_id for image in images]
-    assert [e.work_id for e in manifest] == expected                 # the same identity, in order
-
-
-def _cli_staged_slurm_entry(config, image):
-    from phenotypic._cli._cli_staged_slurm import staged_manifest_entry
-
-    return staged_manifest_entry(config, "ds", image)
+    expected = [real_entry(config, "ds", image).work_id for image in images]
+    assert [e.work_id for e in manifest] == expected                  # the same identity, in order
 
 
 def test_the_job_metadata_records_the_revisions(make_exec_config, tmp_path):

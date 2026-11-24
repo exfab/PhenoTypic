@@ -718,13 +718,24 @@ def _measure_pipeline_sha256(cfg: ExecutionConfig) -> str | None:
 def _staged_manifest_entries(
     cfg: ExecutionConfig, tasks: Sequence[tuple[Dataset, Path]]
 ) -> dict[tuple[str, Path], StagedManifestEntry]:
-    """``stage4_entries`` for the submission: each image's entry, hashed on threads (M8)."""
-    from ._cli_stage4_worker import stage4_entries
+    """Each image's :func:`staged_manifest_entry`, hashed on threads (P6 review M8).
+
+    The same function, called once per image as before, only on a thread
+    pool sized to the allocation: ``hashlib`` releases the GIL. It is not
+    ``stage4_entries``, whose identity function is the failure tracker's
+    rather than this module's, so the submitter keeps its one identity path.
+    """
+    from joblib import Parallel, delayed
+
     from ._cli_utils import resolve_local_worker_count
 
-    return stage4_entries(
-        cfg, tasks, n_jobs=resolve_local_worker_count(getattr(cfg, "n_jobs", 1), len(tasks))
+    n_jobs = resolve_local_worker_count(getattr(cfg, "n_jobs", 1), len(tasks))
+    entries = Parallel(n_jobs=n_jobs, prefer="threads")(
+        delayed(staged_manifest_entry)(cfg, dataset.name, image) for dataset, image in tasks
     )
+    return {
+        (dataset.name, image): entry for (dataset, image), entry in zip(tasks, entries)
+    }
 
 
 def _staged_plan(cfg: ExecutionConfig) -> tuple[list[str], Stage3Role, bool]:
@@ -780,8 +791,7 @@ class StagedSlurmStrategy(ExecutionStrategy):
         # The rest are hashed on threads (P6 review M8): a measure manifest
         # hashes every whole store tree, which serially on the submitting
         # node is the slow half of a submission. `hashlib` releases the GIL;
-        # each identity is still computed once, as `staged_manifest_entry`
-        # would compute it.
+        # each identity is still `staged_manifest_entry`'s, computed once.
         missing = [
             (dataset, image)
             for dataset in datasets
