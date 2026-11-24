@@ -15,6 +15,8 @@ the module skips.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 pytest.importorskip("torch")
@@ -131,11 +133,13 @@ def test_a_stage4_failure_keeps_the_old_embeddings_and_a_valid_record(
     victim = store_of(out, 0)
     old = embedding_bytes(victim, DINO_OBJECTS_KEY)
     old_record = record_digest(victim)
+    old_identity = record_identity(out, victim)
     plant_stage4_fault(stem_of(victim))                                         # on disk, not a monkeypatch
     result = _measure(out, pipe)
     assert result.exit_code == 3, result.output                                 # U8
     assert embedding_bytes(victim, DINO_OBJECTS_KEY) == old                     # carried forward
     assert record_certifies_root(out, victim)                                   # a valid record
+    assert record_identity(out, victim) == old_identity                         # the failure republish keeps it (M9)
     # U8: the failure still REPUBLISHES the record. After a forward Stage-4
     # run the measure core leaves the root byte-identical (the C17 finding),
     # so a valid record alone cannot tell; the rewritten record can (M10).
@@ -200,3 +204,131 @@ def test_measure_stage4_survives_a_real_crash(tmp_path, tiny_inputs, stage4_cpu)
     again = run_cli_subprocess(None, out, pipeline=pipe, extra=["--mode", "measure", *GPU])
     assert again.returncode == 0, again.stdout + again.stderr
     assert all_records_valid(out) and all(record_certifies_root(out, s) for s in stores_of(out))
+
+
+# ---------------------------------------------------------------------------
+# P6 deep review: U16 (local), U17, I2, M3, M9
+# ---------------------------------------------------------------------------
+
+
+def _errors(result) -> list[str]:
+    return [line for line in result.output.splitlines() if line.startswith("Error:")]
+
+
+def test_a_node_state_failure_in_republish_journals_and_republishes_nothing(
+    tmp_path, tiny_inputs, stage4_cpu, stage4_faults
+):
+    """M9: a host out-of-memory in the republish Stage 4 is the node's: no journal row, no republish, exit 1."""
+    out, pipe = _forward(tmp_path, tiny_inputs, faulty=True)
+    victim = store_of(out, 0)
+    before = record_digest(victim)
+    plant_stage4_fault(stem_of(victim), "oom-once")
+    result = _measure(out, pipe, extra=[*GPU, "--njobs", "1"])
+    assert result.exit_code == 1, result.output
+    errors = _errors(result)
+    assert len(errors) == 1 and errors[0].startswith("Error: Stage 4 stopped:"), result.output
+    assert measure_terminal_failures(out) == []
+    assert record_digest(victim) == before                                     # never republished
+    rerun = _measure(out, pipe, extra=[*GPU, "--njobs", "1"])
+    assert rerun.exit_code == 0, rerun.output
+
+
+def test_a_measure_loads_the_runs_recorded_commit_not_the_hubs(tmp_path, tiny_inputs, stage4_cpu, monkeypatch):
+    """U17: an unpinned revision in --mode measure reuses the forward run's recorded commit."""
+    from phenotypic._cli import _cli_embed_stage as embed_stage_module
+
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "c" * 40)
+    out, pipe = _forward(tmp_path, tiny_inputs)
+    assert {c["revision"] for c in stage4_cpu.load_calls} == {"c" * 40}
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "d" * 40)     # the hub moved
+    loads = len(stage4_cpu.load_calls)
+    result = _measure(out, pipe)
+    assert result.exit_code == 0, result.output
+    assert {c["revision"] for c in stage4_cpu.load_calls[loads:]} == {"c" * 40}
+
+
+def test_an_explicit_revision_moves_a_measure_off_the_recorded_commit(
+    tmp_path, tiny_inputs, stage4_cpu, monkeypatch
+):
+    """U17: an explicit ``revision=`` is the way to move; the recorded commit never overrides it."""
+    from phenotypic import ImagePipeline
+    from phenotypic._cli import _cli_embed_stage as embed_stage_module
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+    from tests._tiny_run import _write_pipeline_file
+
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "c" * 40)
+    out, _pipe = _forward(tmp_path, tiny_inputs)
+    pinned = _write_pipeline_file(tmp_path, "pinned_dino", ImagePipeline(
+        name="pinned", ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(revision="e" * 40)},
+    ))
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("asked the hub"))
+    loads = len(stage4_cpu.load_calls)
+    result = _measure(out, pinned)
+    assert result.exit_code == 0, result.output
+    assert {c["revision"] for c in stage4_cpu.load_calls[loads:]} == {"e" * 40}
+
+
+def test_a_missing_embedding_folder_is_re_embedded(tmp_path, tiny_inputs, stage4_cpu):
+    """I2, the E5 remedy: a deleted embedding folder carries nothing, and Stage 4 re-embeds it; exit 0."""
+    import shutil
+
+    out, pipe = _forward(tmp_path, tiny_inputs)
+    victim = store_of(out, 0)
+    run = owned_run(victim, pipeline_sha(pipe))
+    shutil.rmtree(run.embedding_path(DINO_OBJECTS_KEY).parent)
+    result = _measure(out, pipe)
+    assert result.exit_code == 0, result.output
+    entry = owned_run(victim, pipeline_sha(pipe)).descriptor["embeddings"][DINO_OBJECTS_KEY]
+    assert entry["compute"]["stage"] == "stage4" and entry["stale"] is False
+    assert record_certifies_root(out, victim) and measure_terminal_failures(out) == []
+
+
+def _core_once(monkeypatch, victim_name: str, behaviour: str) -> None:
+    """Make the measure core skip (``"skip"``) or fail (``"fail"``) for one store, in this process."""
+    from phenotypic._cli import _cli_process_single
+
+    real = _cli_process_single.process_single_store_measure_core
+
+    def _core(*args, **kwargs):
+        if Path(kwargs["store_path"]).name == victim_name:
+            if behaviour == "skip":
+                return True                      # "succeeded" without writing a run folder
+            raise ValueError("planted measure-core failure")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_cli_process_single, "process_single_store_measure_core", _core)
+
+
+def test_a_measured_image_stage4_cannot_take_ends_the_local_pass_unfinished(
+    tmp_path, tiny_inputs, stage4_cpu, stage4_faults, monkeypatch
+):
+    """U16, local: an image measured but left with no run folder for Stage 4 is exit 1, named."""
+    out, _pipe = _forward(tmp_path, tiny_inputs, faulty=True, grid=True)
+    measure = with_measure_pipeline(tmp_path, keep="objects", add_grid_named="wells")
+    victim = store_of(out, 0)
+    _core_once(monkeypatch, victim.name, "skip")
+    result = _measure(out, measure, extra=[*GPU, "--njobs", "1"])
+    assert result.exit_code == 1, result.output
+    errors = _errors(result)
+    assert len(errors) == 1 and "1 measured image(s) were neither re-embedded" in errors[0], result.output
+    assert victim.name in errors[0]
+    other = store_of(out, 1)
+    assert certified_run_id(out, other) == owned_run(other, pipeline_sha(measure)).run_id
+
+
+def test_a_core_failure_and_a_stage4_failure_count_two(tmp_path, tiny_inputs, stage4_cpu, stage4_faults, monkeypatch):
+    """M9 and M3: one invocation, two failed images, two journal rows (another pipeline), exit 3."""
+    from tests._tiny_run import metrics
+
+    out, _pipe = _forward(tmp_path, tiny_inputs, faulty=True, grid=True)
+    measure = with_measure_pipeline(tmp_path, keep="objects", add_grid_named="wells")
+    core_victim, stage4_victim = store_of(out, 0), store_of(out, 1)
+    _core_once(monkeypatch, core_victim.name, "fail")
+    plant_stage4_fault(stem_of(stage4_victim))
+    result = _measure(out, measure, extra=[*GPU, "--njobs", "1"])
+    assert result.exit_code == 3, result.output
+    assert metrics(out)["failed"] == 2
+    # M3: the measure-step failure is journalled too, under a pipeline unlike the forward one.
+    assert sorted(r.failed_stage for r in measure_terminal_failures(out)) == [MEASURE_FAILURE_STAGE] * 2

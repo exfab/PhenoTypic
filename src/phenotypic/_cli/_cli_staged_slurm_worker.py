@@ -825,6 +825,19 @@ def run_measure_step(
     ``MEASURE_FAILURE_STAGE``, as the ordinary SLURM measure worker journals
     one, and re-raised so the task fails.
 
+    **After the core returns, the step writes this pass's measure-done
+    marker** (U18, :func:`~phenotypic._cli._cli_staged_resume.write_measure_done_marker`).
+    A step killed before it leaves none, so the controller resubmits it
+    (U15), Stage 4 never republishes it, and the finalizer counts it
+    unfinished (U16), even when the forward run folder it would have
+    rewritten is the measure pipeline's own.
+
+    The measure pipeline's sha256 is the submitter's
+    (:func:`~phenotypic._cli._cli_staged_orchestration.recorded_measure_pipeline_sha256`,
+    review M6): a pipeline file edited since submission fails the task with
+    :class:`~phenotypic._cli._cli_process_single.MeasurePipelineChangedError`,
+    journalling nothing.
+
     Args:
         pipeline_path: The measure pipeline file.
         output_dir: Run output root.
@@ -840,14 +853,15 @@ def run_measure_step(
         measure_scientific_boundary,
         process_single_store_measure_core,
     )
-    from ._cli_stage4_worker import _measure_pipeline_sha256
-    from ._cli_staged_resume import stage4_status
+    from ._cli_staged_orchestration import recorded_measure_pipeline_sha256
+    from ._cli_staged_resume import stage4_status, write_measure_done_marker
     from ._cli_state_management import metadata_run_initiation
 
     item = _entry(manifest[index])
+    pipeline_sha256 = recorded_measure_pipeline_sha256(output_dir)
     if stage4_status(
         output_dir, item.dataset, item.stem, item.work_id, republish=True,
-        pipeline_sha256=_measure_pipeline_sha256(pipeline_path), epoch=epoch,
+        pipeline_sha256=pipeline_sha256, epoch=epoch,
     ) == "done":
         return
     check = _active_check(output_dir, epoch)
@@ -886,6 +900,7 @@ def run_measure_step(
                     output_manager=output_manager,
                     commit_guard=commit_guard,
                     defer_embeddings=True,
+                    expected_pipeline_sha256=pipeline_sha256,
                 )
     except Exception as exc:
         inactive = slurm_generation_inactive_cause(exc)
@@ -893,6 +908,12 @@ def run_measure_step(
             raise inactive
         _record_terminal_scientific_failure(output_dir, item, exc, epoch, commit_guard)
         raise
+    if check is not None:
+        check()
+    write_measure_done_marker(
+        output_dir, item.dataset, item.stem, epoch=epoch, work_id=item.work_id,
+        commit_guard=commit_guard,
+    )
 
 
 def _republish_revisions(output_dir: Path) -> "dict[str, str | None] | None":
@@ -974,6 +995,7 @@ def run_stage4_shard(
     from ._cli_stage4_worker import Stage4DeviceError, Stage4ShardError, run_stage4
     from ._cli_staged_orchestration import (
         load_stage4_worklist,
+        recorded_measure_pipeline_sha256,
         staged_manifest_republishes,
     )
     from ._cli_utils import resolve_local_worker_count
@@ -1004,6 +1026,8 @@ def run_stage4_shard(
             epoch=epoch,
             republish=republish,
             republish_epoch=epoch if republish else None,
+            # The submitter's sha (review M6), never a re-hash of the file.
+            pipeline_sha256=recorded_measure_pipeline_sha256(output_dir) if republish else None,
             # The one reader of the recorded revisions (review M15): the
             # state first, then the job metadata, as a continuation reads them.
             # A measure submission's are its own (job metadata only).

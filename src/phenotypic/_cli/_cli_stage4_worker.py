@@ -707,7 +707,25 @@ def _fail_image(
             commit_guard=ctx.commit_guard,
         )
     if ctx.republish and run_id is not None:
-        _republish_record(ctx, entry, run_id)
+        # The failure is journalled already. A republish that cannot hash an
+        # artifact (a missing overlay, or the corrupt store being
+        # journalled) must not escape the commit thread and kill every
+        # image of the shard (P6 review M4): the image stays journalled,
+        # and its record is as the measure core left it. A fence is still
+        # a fence.
+        try:
+            _republish_record(ctx, entry, run_id)
+        except Exception as republish_exc:  # noqa: BLE001 - logged, image stays journalled
+            from ._cli_slurm_lifecycle import slurm_generation_inactive_cause
+
+            inactive = slurm_generation_inactive_cause(republish_exc)
+            if inactive is not None:
+                raise inactive from republish_exc
+            logger.warning(
+                "Stage 4 journalled %s/%s as failed but could not republish its "
+                "record: %s: %s",
+                entry.dataset, entry.image_name, type(republish_exc).__name__, republish_exc,
+            )
     ctx.check()
     delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
     _event(ctx, entry, "failed", f"{type(exc).__name__}: {exc}")
@@ -793,6 +811,8 @@ def _store_holds_fresh_embeddings(
 PENDING_ROOT_CHANGED: Final[str] = "a store changed during the run"
 PENDING_UNREADABLE: Final[str] = "a store could not be read"
 PENDING_NO_ROOT: Final[str] = "a store had no root zarr.json"
+#: Republish on SLURM: the image has no measure-done marker of this pass (U18).
+PENDING_NOT_MEASURED: Final[str] = "a store was not re-measured by this pass"
 
 
 def _classify_image(
@@ -819,6 +839,20 @@ def _classify_image(
         failure already journalled).
     """
     store = zarr_store_path(ctx.output_dir, entry.dataset, entry.stem)
+    if ctx.republish and ctx.republish_epoch is not None:
+        from ._cli_staged_resume import measure_done_marker_exists
+
+        if not measure_done_marker_exists(
+            ctx.output_dir, ctx.republish_epoch, entry.dataset, entry.stem
+        ):
+            # U18, at the writer too: the controller never lists such an
+            # image, so this guards a worklist from an earlier round. Stage
+            # 4 never certifies a table this pass did not rewrite.
+            logger.warning(
+                "Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name,
+                PENDING_NOT_MEASURED,
+            )
+            return PENDING_NOT_MEASURED
     live = _live_root_sha256(store)
     if live is None:
         logger.warning("Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name, PENDING_NO_ROOT)
@@ -1281,6 +1315,7 @@ def run_stage4(
     epoch: str | None,
     republish: bool = False,
     republish_epoch: str | None = None,
+    pipeline_sha256: str | None = None,
     revisions: Mapping[str, str | None] | None = None,
     num_workers: int,
     output_manager: OutputManager,
@@ -1345,6 +1380,11 @@ def run_stage4(
         republish_epoch: The epoch a republished record is stamped with:
             the SLURM generation on SLURM; ``None`` (locally) keeps the
             record's own.
+        pipeline_sha256: Republish only: the pass's one recorded sha256 of
+            the measure pipeline (review M6), the submitter's on SLURM, the
+            CLI's ``pipeline_identity`` locally. When given, a pipeline file
+            that no longer hashes to it raises :class:`Stage4ShardError`
+            before any load; ``None`` hashes the file.
         revisions: ``{hf_id: commit}`` for unpinned embedders, resolved once
             at the run's first submission (U5, P5 T2).
         num_workers: DataLoader workers; 0 prepares in this process.
@@ -1374,6 +1414,15 @@ def run_stage4(
     outcome = Stage4Outcome()
     if not items:
         return outcome
+    if republish:
+        file_sha256 = _measure_pipeline_sha256(pipeline_path)
+        if pipeline_sha256 is not None and file_sha256 != pipeline_sha256:
+            raise Stage4ShardError(
+                f"the measure pipeline {pipeline_path} changed since this pass began "
+                f"(sha256 {str(file_sha256)[:12]}, recorded {pipeline_sha256[:12]}); "
+                "restore it, or re-run the measure with the new file"
+            )
+        pipeline_sha256 = file_sha256
     plan = plan_stage4(ImagePipeline.from_json(pipeline_path), revisions=revisions)
     embedders = {
         embedder.payload_key(): embedder for _, group in plan for _, embedder in group
@@ -1389,7 +1438,7 @@ def run_stage4(
         commit_guard=commit_guard,
         record_lock=record_lock,
         republish=republish,
-        pipeline_sha256=_measure_pipeline_sha256(pipeline_path) if republish else None,
+        pipeline_sha256=pipeline_sha256 if republish else None,
         republish_epoch=republish_epoch,
     )
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage4-commit")
@@ -1512,6 +1561,50 @@ def sweep_orphan_stage4_signals(
                 continue
             removed = delete_stage4_signals(output_dir, dataset, stem, commit_guard=commit_guard)
             removed += delete_stage4_signal_temps(output_dir, dataset, stem, commit_guard=commit_guard)
+            swept += bool(removed)
+    return swept
+
+
+def sweep_republished_stage4_signals(
+    output_dir: Path,
+    entries: Sequence[StagedManifestEntry],
+    *,
+    pipeline_sha256: str | None,
+    epoch: str,
+    commit_guard: CommitGuard | None = None,
+) -> int:
+    """The republish-mode twin of :func:`sweep_orphan_stage4_signals` (#282 P6 review M1).
+
+    Removes the leftover signals of each manifest image that **this pass**
+    republished (``stage4_status(republish=True, epoch=epoch) == "done"``):
+    one whose shard died after its record and before consuming its signals,
+    which no later round reaches. An image this pass has not republished
+    keeps its signals, whatever the forward record says, because a
+    same-pipeline measure leaves that record verifying.
+
+    Returns:
+        How many images lost leftovers.
+    """
+    from ._cli_stage4_signal import stage4_signal_stems
+    from ._cli_staged_resume import stage4_status
+
+    swept = 0
+    by_dataset: dict[str, list[StagedManifestEntry]] = {}
+    for entry in entries:
+        by_dataset.setdefault(entry.dataset, []).append(entry)
+    for dataset, dataset_entries in by_dataset.items():
+        leftovers = stage4_signal_stems(output_dir, dataset)
+        for entry in dataset_entries:
+            if entry.stem not in leftovers:
+                continue
+            status = stage4_status(
+                output_dir, dataset, entry.stem, entry.work_id, republish=True,
+                pipeline_sha256=pipeline_sha256, epoch=epoch,
+            )
+            if status != "done":
+                continue
+            removed = delete_stage4_signals(output_dir, dataset, entry.stem, commit_guard=commit_guard)
+            removed += delete_stage4_signal_temps(output_dir, dataset, entry.stem, commit_guard=commit_guard)
             swept += bool(removed)
     return swept
 
@@ -1688,6 +1781,38 @@ def _local_record_lock(
     return lambda: _local_epoch_ownership(config, output_dir)
 
 
+def _forward_published(output_dir: Path, dataset: str, stem: str) -> bool:
+    """Whether the image's record has ``artifacts``: a forward run published it."""
+    from phenotypic.sdk_._image_record import read_image_record
+
+    record = read_image_record(output_dir, dataset, stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    return isinstance(artifacts, dict) and bool(artifacts)
+
+
+def _refuse_unfinished_measure(unfinished: Sequence[str]) -> None:
+    """End a local measure pass that left measured images un-re-embedded, exit 1 (U16).
+
+    The local twin of the measure finalizer's unfinished close: every
+    image a local ``--mode measure --embed-stage gpu`` measured must end
+    republished or journalled, or the pass is unfinished. Locally that is
+    exit 1 with "run the same command again", as for an image Stage 4 left
+    pending (``phenotypic-wait``'s 5 is SLURM's).
+    """
+    import click
+
+    if not unfinished:
+        return
+    for name in unfinished:
+        logger.warning("  unfinished: %s", name)
+    raise click.ClickException(
+        f"{len(unfinished)} measured image(s) were neither re-embedded nor recorded "
+        f"as failed ({', '.join(unfinished[:5])}{', ...' if len(unfinished) > 5 else ''}): "
+        "the measure core wrote no run folder Stage 4 could find. Run the same "
+        "command again"
+    )
+
+
 def run_local_stage4(
     config: ExecutionConfig,
     output_manager: OutputManager,
@@ -1699,7 +1824,8 @@ def run_local_stage4(
 ) -> dict[str, tuple[int, int]]:
     """Run Stage 4 in this process over *datasets*: ``{dataset: (published, failed)}``.
 
-    Sweeps the whole inventory's orphan signals first, then hands every image
+    Sweeps the whole inventory's orphan signals first (not in republish
+    mode, review M1), then hands every image
     of *datasets* whose ``stage4_status`` is ``"pending"`` to
     :func:`run_stage4`, except one with an exact terminal failure unless
     ``--retry-failures`` (a finished continuation hands this the whole
@@ -1744,14 +1870,43 @@ def run_local_stage4(
     from ._cli_embed_stage import recorded_embed_revisions
     from ._cli_utils import resolve_local_worker_count
 
-    sweep_run_orphan_stage4_signals(output_dir)
-    _core, items = split_stage4_pending(
-        datasets, output_dir, entries, republish=republish,
-        pipeline_sha256=_measure_pipeline_sha256(config.pipeline_json) if republish else None,
+    from ._cli_execution_strategies import recorded_pipeline_sha256
+
+    # The pass's one pipeline digest (review M6): the CLI's, else the file's.
+    pipeline_sha256 = (
+        (recorded_pipeline_sha256(config) or _measure_pipeline_sha256(config.pipeline_json))
+        if republish
+        else None
+    )
+    if not republish:
+        # Republish mode sweeps nothing locally (review M1): the forward
+        # sweep asks the forward record, which a same-pipeline measure
+        # leaves verifying, and no local record is "done" in the republish
+        # sense (it keeps its own epoch), so there is nothing finished to
+        # sweep. A stale leftover is deleted by Stage 4 itself, at the live
+        # root, and a valid one is reused.
+        sweep_run_orphan_stage4_signals(output_dir)
+    core, items = split_stage4_pending(
+        datasets, output_dir, entries, republish=republish, pipeline_sha256=pipeline_sha256,
+    )
+    # U16, the local half: a store this invocation measured that Stage 4
+    # cannot take (no run folder of the measure pipeline where the core just
+    # wrote one) is neither re-embedded nor journalled, and its forward
+    # record still verifies, so the pass must not finish as if it had been.
+    unfinished = (
+        [
+            f"{dataset.name}/{image.name}"
+            for dataset in core
+            for image in dataset.images
+            if _forward_published(output_dir, dataset.name, entries[(dataset.name, image)].stem)
+        ]
+        if republish
+        else []
     )
     if not republish:
         items = without_terminal_failures(config, output_dir, items)
     if not items:
+        _refuse_unfinished_measure(unfinished)
         return {}
     num_workers = resolve_local_worker_count(config.n_jobs, len(items)) - 1
     try:
@@ -1762,8 +1917,10 @@ def run_local_stage4(
             image_type=config.image_type,
             epoch=config.processing_generation,
             republish=republish,
+            pipeline_sha256=pipeline_sha256,
             # Measure mode keeps no run state: its revisions are this
-            # invocation's (pin_embed_revisions), resolved at its start.
+            # invocation's (pin_embed_revisions: the forward run's recorded
+            # commits, U17, resolved only where it recorded none).
             revisions=config.embed_revisions if republish else recorded_embed_revisions(output_dir),
             num_workers=num_workers,
             output_manager=output_manager,
@@ -1791,6 +1948,7 @@ def run_local_stage4(
             f"{len(outcome.pending)} image(s) still need Stage 4 ({why}); run the "
             "same command again"
         )
+    _refuse_unfinished_measure(unfinished)
     counts = {dataset.name: [0, 0] for dataset in datasets}
     by_identity = {entry.identity: entry.dataset for entry in items}
     for identity in outcome.published:

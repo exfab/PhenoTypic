@@ -701,11 +701,30 @@ def manifest_entry_for_identity(
     )
 
 
-def _measure_pipeline_sha256(pipeline_path: Path) -> str | None:
-    """The measure pipeline's sha256, the run folder its measure core writes (P6 T2)."""
+def _measure_pipeline_sha256(cfg: ExecutionConfig) -> str | None:
+    """The measure pipeline's sha256, the run folder its measure core writes (P6 T2).
+
+    The CLI's one digest of the file (``pipeline_identity``, review M6),
+    else the file's own for a hand-built config. The controller config
+    records it; the measure step and every Stage-4 shard read it from there
+    (``recorded_measure_pipeline_sha256``).
+    """
+    from ._cli_execution_strategies import recorded_pipeline_sha256
     from ._cli_stage4_worker import _measure_pipeline_sha256 as sha256_of
 
-    return sha256_of(pipeline_path)
+    return recorded_pipeline_sha256(cfg) or sha256_of(cfg.pipeline_json)
+
+
+def _staged_manifest_entries(
+    cfg: ExecutionConfig, tasks: Sequence[tuple[Dataset, Path]]
+) -> dict[tuple[str, Path], StagedManifestEntry]:
+    """``stage4_entries`` for the submission: each image's entry, hashed on threads (M8)."""
+    from ._cli_stage4_worker import stage4_entries
+    from ._cli_utils import resolve_local_worker_count
+
+    return stage4_entries(
+        cfg, tasks, n_jobs=resolve_local_worker_count(getattr(cfg, "n_jobs", 1), len(tasks))
+    )
 
 
 def _staged_plan(cfg: ExecutionConfig) -> tuple[list[str], Stage3Role, bool]:
@@ -758,15 +777,25 @@ class StagedSlurmStrategy(ExecutionStrategy):
         # A continuation's split already built each image's entry under its
         # one identity for the invocation (#282 review I4): reuse it.
         known = getattr(cfg, "staged_manifest_entries", None) or {}
-        manifest: list[StagedManifestEntry] = []
-        for dataset in datasets:
-            for image in dataset.images:
-                entry = known.get((dataset.name, image))
-                manifest.append(
-                    entry
-                    if entry is not None
-                    else staged_manifest_entry(cfg, dataset.name, image)
-                )
+        # The rest are hashed on threads (P6 review M8): a measure manifest
+        # hashes every whole store tree, which serially on the submitting
+        # node is the slow half of a submission. `hashlib` releases the GIL;
+        # each identity is still computed once, as `staged_manifest_entry`
+        # would compute it.
+        missing = [
+            (dataset, image)
+            for dataset in datasets
+            for image in dataset.images
+            if (dataset.name, image) not in known
+        ]
+        hashed = (
+            _staged_manifest_entries(cfg, missing) if missing else {}
+        )
+        manifest: list[StagedManifestEntry] = [
+            known.get((dataset.name, image)) or hashed[(dataset.name, image)]
+            for dataset in datasets
+            for image in dataset.images
+        ]
 
         # Chunk to the TIGHTER of MaxArraySize and the conservative
         # MaxSubmitJobs estimate. Reserve slots for the running controller and
@@ -832,11 +861,18 @@ class StagedSlurmStrategy(ExecutionStrategy):
             # so the controller and every Stage-4 shard name the run folder the
             # measure step wrote (P6 T2); a forward run records none.
             pipeline_sha256=(
-                _measure_pipeline_sha256(cfg.pipeline_json)
+                _measure_pipeline_sha256(cfg)
                 if stage3_role == "measure"
                 else None
             ),
         )
+        if stage3_role == "measure":
+            # U18: an earlier pass's measure-done markers are never read
+            # again (each reader names its own epoch); clear them before
+            # this epoch exists, so they do not accumulate pass after pass.
+            from ._cli_staged_resume import clear_measure_done_markers
+
+            clear_measure_done_markers(output_dir)
         state = initialize_orchestration(
             output_dir,
             epoch=epoch,
@@ -848,6 +884,9 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 else "fresh"
             ),
             controller_config_path=scripts["controller_config"],
+            # P6 review M11: the forward run's staged-completion marker is not
+            # a measure pass's to delete.
+            keep_completion_marker=stage3_role == "measure",
         )
         _write_staged_job_metadata(
             datasets=datasets,

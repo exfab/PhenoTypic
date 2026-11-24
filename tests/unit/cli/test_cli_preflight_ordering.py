@@ -559,7 +559,7 @@ def test_r3_is_refused_before_the_mutating_half(
 
 
 @pytest.mark.parametrize("extra", [(), ("--gpu-shards", "2")], ids=lambda e: " ".join(e) or "plain")
-def test_the_slurm_measure_stage4_gate_is_refused_before_the_mutating_half(
+def test_a_slurm_measure_with_gpu_slurm_is_submitted_through_the_lifted_gate(
     valid_pipeline: Path, image_tree: Path, tmp_path: Path, submissions, monkeypatch,
     extra: tuple[str, ...],
 ) -> None:
@@ -600,7 +600,7 @@ def test_the_slurm_measure_stage4_gate_is_refused_before_the_mutating_half(
 
 
 @pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
-def test_the_measure_stage4_gate_is_refused_before_the_mutating_half(
+def test_a_local_measure_gpu_without_cuda_stops_before_the_mutating_half(
     valid_pipeline: Path, image_tree: Path, tmp_path: Path, monkeypatch, extra: tuple[str, ...]
 ) -> None:
     """#282 review C1, flipped by P6 T1: local ``--mode measure --embed-stage gpu`` now runs Stage 4.

@@ -858,6 +858,14 @@ DIR_STAGE2_DONE: Final[str] = "stage2_done"
 #: schema gate's directory signals must not name it.
 DIR_STAGE4_PAYLOAD: Final[str] = "stage4_payload"
 
+#: ``<progress>/measure_done/`` -- a SLURM ``--mode measure`` pass's
+#: per-epoch measure-done markers (#282 U18): ``<epoch>/<ds>/<stem>.json``,
+#: one small atomic file per image, written by the measure step after its
+#: table rewrite. An image with no marker under the pass's epoch was not
+#: re-measured by it. A current tree like :data:`DIR_STAGE4_PAYLOAD`, never a
+#: legacy one, so the schema gate's directory signals must not name it.
+DIR_MEASURE_DONE: Final[str] = "measure_done"
+
 #: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
 #: of the verification cache (spec §9.1, as reversed back on by U-11).
 #:

@@ -116,6 +116,18 @@ def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
         yield
 
 
+def recorded_pipeline_sha256(config: ExecutionConfig) -> str | None:
+    """The pipeline file's sha256 as the CLI computed it once (``pipeline_identity``), or ``None``.
+
+    The one producer of a local measure pass's pipeline digest (#282 P6
+    review M6): the measure core and the republish Stage 4 both take it
+    rather than each re-hashing the file.
+    """
+    identity = getattr(config, "pipeline_identity", None)
+    sha = identity.get("sha256") if isinstance(identity, dict) else None
+    return sha if isinstance(sha, str) and sha else None
+
+
 def _record_local_terminal_failure(
     config: ExecutionConfig,
     output_dir: Path,
@@ -127,7 +139,17 @@ def _record_local_terminal_failure(
     *,
     work_identity: tuple[str, str] | None = None,
 ) -> bool:
-    """Commit a caught scientific failure for an exact local computation."""
+    """Commit a caught scientific failure for an exact local computation.
+
+    Under the local epoch ownership, except in ``--mode measure``, which
+    takes only the processing-state lock, as its republish Stage 4 does
+    (#282 P6 review M3). Measure mode keeps no run state, and its
+    content-derived generation is the forward run's only when its pipeline
+    is, so the generation compare refused every measure failure of another
+    pipeline: a measure-step failure went unjournalled while a Stage-4
+    failure of the same invocation was journalled. Fencing is otherwise as
+    #281 left it (U19): no lease against a concurrent invocation.
+    """
     if not isinstance(exception, PerImageScientificError):
         return False
     if work_identity is None:
@@ -142,7 +164,12 @@ def _record_local_terminal_failure(
     try:
         lifecycle_epoch = config.processing_generation
         lifecycle_epoch = lifecycle_epoch or "local-unfenced"
-        with _local_epoch_ownership(config, output_dir):
+        ownership = (
+            _local_state_lock(output_dir)
+            if getattr(config, "measure_only", False)
+            else _local_epoch_ownership(config, output_dir)
+        )
+        with ownership:
             return append_terminal_failure(
                 output_dir,
                 work_id=work_id,
@@ -998,6 +1025,13 @@ class LocalParallelStrategy(ExecutionStrategy):
                     image_type=self.config.image_type,  # type: ignore[arg-type]
                     output_manager=self.output_manager,
                     defer_embeddings=entry is not None,
+                    # Under deferral the core and Stage 4 must name one run
+                    # folder: both take the CLI's one pipeline digest (M6).
+                    expected_pipeline_sha256=(
+                        recorded_pipeline_sha256(self.config)
+                        if entry is not None
+                        else None
+                    ),
                 )
 
             append_completion_event(

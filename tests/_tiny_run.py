@@ -3784,6 +3784,7 @@ def build_measure_epoch_tree(
         initialize_orchestration,
         write_staged_manifest,
     )
+    from phenotypic._cli._cli_staged_resume import write_measure_done_marker
     from phenotypic.sdk_ import JobMetadataKey, slurm_scripts_dir
 
     pipeline = with_stage4_dino_objects(tmp_path) if pipeline is None else pipeline
@@ -3813,8 +3814,10 @@ def build_measure_epoch_tree(
     scripts = slurm_scripts_dir(out)
     scripts.mkdir(parents=True, exist_ok=True)
     manifest = write_staged_manifest(scripts / "staged_manifest.json", entries, republish=True)
+    _write_measure_controller_config(out, manifest, pipeline)
     initialize_orchestration(
-        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json"
+        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json",
+        keep_completion_marker=True,
     )
     record_slurm_job_metadata(
         out,
@@ -3839,7 +3842,41 @@ def build_measure_epoch_tree(
                 output_manager=manager,
                 defer_embeddings=True,
             )
+            # As run_measure_step: the pass's measure-done marker (U18).
+            write_measure_done_marker(
+                out, entry.dataset, entry.stem, epoch=MEASURE_EPOCH, work_id=entry.work_id
+            )
     return MeasureEpochTree(out, pipeline, entries, manifest)
+
+
+def _write_measure_controller_config(out: Path, manifest: Path, pipeline: Path) -> Path:
+    """The fields of a measure pass's ``staged_controller.json`` its workers and finalizer read.
+
+    ``pipeline_sha256`` (the measure step and the shards take it, review
+    M6) and ``manifest_path`` (the finalizer's U16 count); the phases make
+    it a valid version-2 config.
+    """
+    import json
+
+    from phenotypic.sdk_ import slurm_scripts_dir
+
+    path = slurm_scripts_dir(out) / "staged_controller.json"
+    path.write_text(
+        json.dumps({
+            "version": 2,
+            "phases": ["stage3", "stage4"],
+            "stage3_role": "measure",
+            "epoch": MEASURE_EPOCH,
+            "output_dir": str(out),
+            "manifest_path": str(manifest),
+            "pipeline_sha256": pipeline_sha(pipeline),
+            "stage4_script": str(slurm_scripts_dir(out) / "stage4.sh"),
+            "stage4_worklist": str(slurm_scripts_dir(out) / "stage4_worklist.json"),
+            "n_shards": 1,
+        }),
+        encoding="utf-8",
+    )
+    return path
 
 
 def journal_measure_failure(tree: MeasureEpochTree, *, image: int) -> None:
@@ -3945,8 +3982,10 @@ def measured_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> Measur
     scripts = slurm_scripts_dir(out)
     scripts.mkdir(parents=True, exist_ok=True)
     manifest = write_staged_manifest(scripts / "staged_manifest.json", entries, republish=True)
+    _write_measure_controller_config(out, manifest, pipeline)
     initialize_orchestration(
-        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json"
+        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json",
+        keep_completion_marker=True,
     )
     record_slurm_job_metadata(
         out,

@@ -92,8 +92,17 @@ def test_a_record_republished_under_another_epoch_is_still_pending(measure_epoch
     tree = measure_epoch_tree
     tree.republish(0)
     other = {**tree.config, "epoch": "another-epoch"}
+    _mark_measured(tree, "another-epoch")        # that pass measured both, too (U18)
     retryable, _terminal = _classify_stage4(other, tree.entries)
     assert len(retryable) == 2
+
+
+def _mark_measured(tree, epoch):
+    """Every entry's measure-done marker under *epoch* (U18), as that pass's measure steps write it."""
+    from phenotypic._cli._cli_staged_resume import write_measure_done_marker
+
+    for entry in tree.entries:
+        write_measure_done_marker(tree.out, entry.dataset, entry.stem, epoch=epoch, work_id=entry.work_id)
 
 
 def _status(tree, index, *, epoch=None):
@@ -126,6 +135,7 @@ def test_a_same_pipeline_pass_reads_done_only_once_this_generation_republished(t
     assert [_status(tree, i) for i in range(2)] == ["pending", "pending"]
     tree.republish(0)
     assert [_status(tree, i) for i in range(2)] == ["done", "pending"]
+    _mark_measured(tree, "an-earlier-generation")
     assert _status(tree, 0, epoch="an-earlier-generation") == "pending"
     retryable, _terminal = _classify_stage4(tree.config, tree.entries)
     assert [e.stem for e in retryable] == [tree.entries[1].stem]
@@ -165,3 +175,165 @@ def test_a_killed_measure_step_is_resubmitted(tmp_path, finished_tiny_run):
 
 def test_a_measured_store_is_not_a_dead_task(measure_epoch_tree):
     assert _dead_stage3_indices(measure_epoch_tree.config, measure_epoch_tree.entries) == []
+
+
+# ---------------------------------------------------------------------------
+# P6 deep review: U17 on SLURM, M1, M6, M11
+# ---------------------------------------------------------------------------
+
+
+def _record_forward_revisions(out, revisions):
+    """Write *revisions* into the finished run's ``processing_state.json`` as a Stage-4 run records them (U5)."""
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    path = resolve_processing_state_path(out)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    state["config"]["embed_revisions"] = revisions
+    path.write_text(json.dumps(state), encoding="utf-8")
+
+
+def test_a_slurm_measure_reuses_the_runs_recorded_commit(tmp_path, finished_tiny_run, submissions, monkeypatch):
+    """U17: the measure submission records the forward run's commit, never the hub's current one."""
+    _record_forward_revisions(finished_tiny_run, {"facebook/dinov2-base": "c" * 40})
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("re-resolved the hub"))
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True,
+                     pipeline=with_stage4_dino_objects(tmp_path), extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert read_job_metadata(finished_tiny_run)[JobMetadataKey.EMBED_REVISIONS] == {
+        "facebook/dinov2-base": "c" * 40}
+
+
+def test_a_slurm_measure_resolves_only_a_model_the_run_never_recorded(
+    tmp_path, finished_tiny_run, submissions, monkeypatch
+):
+    _record_forward_revisions(finished_tiny_run, {"facebook/dinov2-base": None})        # recorded offline
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "d" * 40)
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True,
+                     pipeline=with_stage4_dino_objects(tmp_path), extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert read_job_metadata(finished_tiny_run)[JobMetadataKey.EMBED_REVISIONS] == {
+        "facebook/dinov2-base": "d" * 40}
+
+
+def test_an_explicit_revision_is_never_overridden_by_the_recorded_one(
+    tmp_path, finished_tiny_run, submissions, monkeypatch
+):
+    """U17: a pinned embedder is not unpinned, so the recorded commit never reaches it."""
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureSize
+    from tests._tiny_run import _write_pipeline_file
+
+    _record_forward_revisions(finished_tiny_run, {"facebook/dinov2-base": "c" * 40})
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: pytest.fail("asked the hub"))
+    pinned = _write_pipeline_file(tmp_path, "pinned_dino", ImagePipeline(
+        name="pinned", ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(revision="e" * 40)},
+    ))
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True, pipeline=pinned,
+                     extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert read_job_metadata(finished_tiny_run)[JobMetadataKey.EMBED_REVISIONS] == {}
+
+
+def test_a_measure_submission_keeps_the_forward_completion_marker(
+    tmp_path, finished_tiny_run, submissions, monkeypatch
+):
+    """M11: the forward run's staged-completion marker is not a measure pass's to delete."""
+    from phenotypic._cli._cli_staged_orchestration import staged_completion_path
+
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "c" * 40)
+    marker = staged_completion_path(finished_tiny_run)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps({"epoch": "the-forward-epoch"}), encoding="utf-8")
+    before = marker.read_bytes()
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True,
+                     pipeline=with_stage4_dino_objects(tmp_path), extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert marker.read_bytes() == before
+
+
+def test_a_measure_submission_clears_an_earlier_passs_markers(
+    tmp_path, finished_tiny_run, submissions, monkeypatch
+):
+    """U18: markers go with their pass; the next submission removes the old ones before its epoch exists."""
+    from phenotypic._cli._cli_staged_resume import measure_done_marker_path, write_measure_done_marker
+
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: "c" * 40)
+    write_measure_done_marker(finished_tiny_run, "ds", "plate", epoch="an-old-pass", work_id="w")
+    assert measure_done_marker_path(finished_tiny_run, "an-old-pass", "ds", "plate").is_file()
+    result = run_cli(None, finished_tiny_run, mode="measure", slurm=True,
+                     pipeline=with_stage4_dino_objects(tmp_path), extra=[*GPU_SLURM, *SKIP])
+    assert result.exit_code == 4, result.output
+    assert not measure_done_marker_path(finished_tiny_run, "an-old-pass", "ds", "plate").exists()
+
+
+def _plant_signal(out, entry):
+    from phenotypic._cli._cli_stage4_signal import stage4_signal_path
+
+    path = stage4_signal_path(out, entry.dataset, "dinov2-vitb14/rgb/objects", entry.stem)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"a leftover signal")
+    return path
+
+
+def test_the_republish_sweep_removes_only_what_this_pass_republished(measure_epoch_tree):
+    """M1: an image republished and then killed before its signals were consumed loses them; a pending one keeps them."""
+    from phenotypic._cli._cli_stage4_worker import sweep_republished_stage4_signals
+
+    tree = measure_epoch_tree
+    done, pending = (_plant_signal(tree.out, entry) for entry in tree.entries)
+    tree.republish(0)
+    swept = sweep_republished_stage4_signals(tree.out, tree.entries, pipeline_sha256=tree.sha, epoch=tree.epoch)
+    assert swept == 1 and not done.exists() and pending.exists()
+
+
+def test_the_controller_sweeps_in_republish_mode(measure_epoch_tree, monkeypatch):
+    """M1: the controller's Stage-4 advance runs the republish sweep, never the forward one."""
+    from phenotypic._cli import _cli_stage4_worker, _cli_staged_controller
+
+    tree = measure_epoch_tree
+    calls = []
+    monkeypatch.setattr(_cli_stage4_worker, "sweep_run_orphan_stage4_signals",
+                        lambda *a, **k: pytest.fail("the forward sweep ran in republish mode"))
+    monkeypatch.setattr(_cli_stage4_worker, "sweep_republished_stage4_signals",
+                        lambda *a, **k: calls.append(k) or 0)
+    monkeypatch.setattr(_cli_staged_controller, "_submit_stage4_round", lambda *a, **k: None)
+    _cli_staged_controller._advance_stage4(
+        {**tree.config, "stage4_worklist": str(tree.out / "w.json"), "n_shards": 1},
+        {"phase": "stage4"}, "successor", "current",
+    )
+    assert calls and calls[0]["epoch"] == tree.epoch and calls[0]["pipeline_sha256"] == tree.sha
+
+
+def test_a_measure_step_refuses_a_pipeline_edited_since_submission(measure_epoch_tree):
+    """M6: the step takes the submitter's sha; an edited file fails the task, journalling and marking nothing."""
+    from phenotypic._cli._cli_failure_tracker import read_terminal_failures
+    from phenotypic._cli._cli_process_single import MeasurePipelineChangedError
+    from phenotypic._cli._cli_staged_resume import measure_done_marker_path
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step
+
+    tree = measure_epoch_tree
+    entry = tree.entries[0]
+    marker = measure_done_marker_path(tree.out, tree.epoch, entry.dataset, entry.stem)
+    marker.unlink()
+    tree.pipeline.write_text(tree.pipeline.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(MeasurePipelineChangedError, match="changed since this pass began"):
+        run_measure_step(tree.pipeline, tree.out, "GridImage", tree.entries, 0, epoch=tree.epoch,
+                         durable_writes=False)
+    assert read_terminal_failures(tree.out) == [] and not marker.exists()
+
+
+def test_a_stage4_shard_refuses_a_pipeline_edited_since_submission(measure_epoch_tree):
+    """M6: Stage 4 checks the recorded sha before any load: node state, nothing journalled."""
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_stage4_worker import Stage4ShardError, run_stage4
+
+    tree = measure_epoch_tree
+    tree.pipeline.write_text(tree.pipeline.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(Stage4ShardError, match="changed since this pass began"):
+        run_stage4(
+            tree.pipeline, tree.out, tree.entries, image_type="GridImage", epoch=tree.epoch,
+            republish=True, republish_epoch=tree.epoch, pipeline_sha256=tree.sha, num_workers=0,
+            output_manager=OutputManager.from_config(tree.out, ".tiff", save_overlays=False),
+        )

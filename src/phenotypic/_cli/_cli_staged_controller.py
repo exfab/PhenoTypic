@@ -46,6 +46,7 @@ from ._cli_staged_orchestration import (
     retryable_digest,
     save_orchestration_state,
     scheduler_job_is_active,
+    deactivated_epoch_phase,
     staged_completion_matches,
     staged_manifest_republishes,
     submit_with_intent,
@@ -441,15 +442,17 @@ def _dead_stage3_indices(
 def _dead_measure_indices(
     config: dict[str, Any], entries: Sequence[StagedManifestEntry], failed: set[str]
 ) -> list[int]:
-    """The measure role's dead tasks: a record but no run folder of the measure pipeline (U15, P6 T2).
+    """The measure role's dead tasks (U15, P6 T2, U18).
 
-    A measure step that ran wrote that folder (or journalled a failure under
-    this epoch), so a store whose record exists and whose root declares no
-    folder of ``config["pipeline_sha256"]`` was killed before its write.
-    With the forward pipeline the folder exists from the forward run, so a
-    killed step is indistinguishable from a finished one; Stage 4 then
-    re-embeds and republishes it over the forward table, which is the
-    table the step would have rewritten.
+    An image with a forward-published record, no journal row under this
+    epoch, and no measure-done marker of this epoch
+    (:func:`~phenotypic._cli._cli_staged_resume.write_measure_done_marker`)
+    reads ``not_ready`` in the republish sense: its measure step was killed
+    before it finished. The marker, not the run folder, is the evidence: with
+    the forward pipeline the folder exists from the forward run, so a step
+    killed before its table rewrite would otherwise look finished, and Stage
+    4 would certify the un-re-measured table (P6 review I1). An image this
+    pass already republished reads ``done`` and is not dead.
     """
     from ._cli_staged_resume import stage4_status
 
@@ -465,6 +468,78 @@ def _dead_measure_indices(
         if status == "not_ready" and _has_published_record(output_dir, entry):
             dead.append(index)
     return dead
+
+
+def unfinished_measure_entries(
+    output_dir: Path,
+    entries: Sequence[StagedManifestEntry],
+    *,
+    pipeline_sha256: str | None,
+    epoch: str,
+) -> list[StagedManifestEntry]:
+    """The images a SLURM ``--mode measure`` pass leaves unfinished (#282 U16).
+
+    Each manifest image with a forward-published record that this pass
+    neither republished (``stage4_status(republish=True, epoch=epoch) ==
+    "done"``) nor journalled under *epoch*: a Stage-4 stall (U7), a measure
+    step killed and given up on (U15, U18), or one Stage 4 never reached.
+    Such an image still holds its forward record, which verifies, so the run
+    state cannot see it; the measure finalizer asks this instead, and any
+    entry here ends the pass unfinished (``phenotypic-wait`` exit 5). An
+    image with no forward record is not this pass's to republish, and the
+    forward run's own state accounts for it.
+    """
+    from ._cli_staged_resume import stage4_status
+
+    failed = terminal_failure_work_ids_under_epoch(output_dir, epoch)
+    unfinished: list[StagedManifestEntry] = []
+    for entry in entries:
+        if entry.work_id in failed or not _has_published_record(output_dir, entry):
+            continue
+        status = stage4_status(
+            output_dir, entry.dataset, entry.stem, entry.work_id, republish=True,
+            pipeline_sha256=pipeline_sha256, epoch=epoch,
+        )
+        if status != "done":
+            unfinished.append(entry)
+    return unfinished
+
+
+def measure_pass_unfinished(output_dir: Path, epoch: str) -> list[StagedManifestEntry]:
+    """:func:`unfinished_measure_entries` over the pass's own manifest, for the finalizer (U16).
+
+    The manifest and the measure pipeline's sha256 are the controller
+    config's, which the orchestration state names.
+
+    Raises:
+        RuntimeError: The state names no readable controller config, so the
+            finalizer cannot tell what the pass covered; it fails closed.
+    """
+    state = load_orchestration_state(output_dir) or {}
+    path = state.get("controller_config")
+    try:
+        config = _load_controller_config(Path(str(path)))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            f"Staged controller config {path!r} is unreadable; cannot tell which "
+            "images this measure pass covered"
+        ) from exc
+    return unfinished_measure_entries(
+        output_dir,
+        load_staged_manifest(Path(config["manifest_path"])),
+        pipeline_sha256=config.get("pipeline_sha256"),
+        epoch=epoch,
+    )
+
+
+def unfinished_measure_line(count: int) -> str:
+    """The one line the measure finalizer logs, and records on the fence, for :func:`unfinished_measure_entries`."""
+    return (
+        f"{count} image(s) were neither re-measured and re-embedded by this "
+        "measure pass nor recorded as failed (named below); the pass ends "
+        "unfinished. Read the measure-step and stage4 logs for why, then "
+        "re-run the same command."
+    )
 
 
 def _has_published_record(output_dir: Path, entry: StagedManifestEntry) -> bool:
@@ -891,23 +966,31 @@ def _advance_stage4(
     current_job_id: str,
 ) -> None:
     """Sweep orphan signals, classify Stage 4, then a GPU round or the finalizer."""
-    from ._cli_stage4_worker import sweep_run_orphan_stage4_signals
+    from ._cli_stage4_worker import (
+        sweep_republished_stage4_signals,
+        sweep_run_orphan_stage4_signals,
+    )
 
     output_dir = Path(config["output_dir"])
     epoch = str(config["epoch"])
     state["phase"] = "stage4"
     save_orchestration_state(output_dir, state)
+    entries = load_staged_manifest(Path(config["manifest_path"]))
     # Before classifying (plan review I7): an image published in an earlier
     # round whose shard died before consuming its signals is done, and only
-    # this sweep reaches its leftovers. Not in republish mode: the sweep asks
-    # the forward record, which a same-pipeline measure leaves verifying, so
-    # it would delete the signals a killed round wrote for an image this
-    # pass has not yet republished.
-    if not staged_manifest_republishes(Path(config["manifest_path"])):
-        sweep_run_orphan_stage4_signals(
-            output_dir, commit_guard=_controller_commit_guard(output_dir, epoch)
+    # this sweep reaches its leftovers. In republish mode the forward sweep
+    # would ask the forward record, which a same-pipeline measure leaves
+    # verifying, and so delete the signals a killed round wrote for an image
+    # this pass has not yet republished; it sweeps the images this pass
+    # republished instead (review M1).
+    guard = _controller_commit_guard(output_dir, epoch)
+    if staged_manifest_republishes(Path(config["manifest_path"])):
+        sweep_republished_stage4_signals(
+            output_dir, entries, pipeline_sha256=config.get("pipeline_sha256"),
+            epoch=epoch, commit_guard=guard,
         )
-    entries = load_staged_manifest(Path(config["manifest_path"]))
+    else:
+        sweep_run_orphan_stage4_signals(output_dir, commit_guard=guard)
     retryable, terminal = _classify_stage4(config, entries)
     _log_stage4_terminal(config, terminal)
     if retryable:
@@ -1035,9 +1118,18 @@ def run_staged_controller(config_path: Path) -> None:
         state["active_job_id"] = None
 
         if state.get("phase") == "finalizing":
+            # The phase the finalizer closed this epoch with, read now, at
+            # the decision (P6 review M5): a measure pass's finalizer writes
+            # no staged-completion marker (U10), and one that closed
+            # `complete` (or `terminal_incomplete`) just after this
+            # controller loaded "finalizing" was otherwise relabelled
+            # `failed`.
+            closed = deactivated_epoch_phase(output_dir, epoch)
             state["phase"] = (
                 "complete"
                 if staged_completion_matches(output_dir, epoch)
+                else closed
+                if closed in ("complete", "terminal_incomplete")
                 else "failed"
             )
             save_orchestration_state(output_dir, state)

@@ -717,12 +717,34 @@ def pin_embed_revisions(config: "ExecutionConfig", output_dir: Path) -> None:
     model recorded ``None`` (resolved offline, so never pinned; review M10). Called in the mutating half, below
     the ``--dry-run`` exit, before the processing state is written, so the
     state and the job metadata record the same map.
+
+    **``--mode measure`` reuses the run's recorded commits too** (#282 U17,
+    U5 extended; P6 review I3). A measure re-embeds a run whose entries name
+    the commit the forward run loaded, and U8 carries an entry forward on
+    ``params_sha256``, which holds ``revision: None`` for an unpinned
+    embedder. Resolving the hub afresh would let a measure whose Stage 4
+    fails for some images leave two commits under one ``params_sha256``. So
+    a measure never re-resolves a model the run recorded (the forward run's
+    ``processing_state.json``, else an earlier measure's
+    ``job_metadata.json``, :func:`recorded_embed_revisions`), and resolves
+    only a model recorded ``None`` or not at all. An explicit ``revision=``
+    on the embedder is the way to move to another commit; it is not
+    unpinned, so this never touches it.
     """
     if not defers_embeddings(config):
         config.embed_revisions = None
         return
-    recorded = recorded_embed_revisions(output_dir) if config.resume else None
-    if recorded is not None and all(commit is not None for commit in recorded.values()):
+    measure = bool(getattr(config, "measure_only", False))
+    recorded = recorded_embed_revisions(output_dir) if config.resume or measure else None
+    # A continuation's pipeline is the run's, so a complete record is its
+    # whole answer. A measure's pipeline may name a model the run never
+    # recorded, so it always goes through the resolver, which keeps every
+    # recorded commit and asks the hub only for the rest.
+    if (
+        not measure
+        and recorded is not None
+        and all(commit is not None for commit in recorded.values())
+    ):
         config.embed_revisions = recorded
         return
     pipeline = load_pipeline_or_none(config.pipeline_json)

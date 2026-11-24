@@ -57,6 +57,9 @@ _MANIFEST_VERSION = 5
 _READABLE_MANIFEST_VERSIONS = (2, 3, 4, _MANIFEST_VERSION)
 #: The first manifest version that records ``"republish"`` (#282 P6 T1).
 _REPUBLISH_MANIFEST_VERSION = 5
+#: What a forward manifest is written as (P6 review M7): version 4, which a
+#: #281/P5 reader accepts; only a republish manifest needs version 5.
+_FORWARD_MANIFEST_VERSION = 4
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
@@ -147,8 +150,23 @@ def initialize_orchestration(
     epoch: str,
     mode: str,
     controller_config_path: Path,
+    keep_completion_marker: bool = False,
 ) -> dict[str, Any]:
-    """Create the active staged controller state for a new submission."""
+    """Create the active staged controller state for a new submission.
+
+    Args:
+        output_dir: Run output root.
+        epoch: The new orchestration epoch, also the fence generation.
+        mode: ``"fresh"``, ``"resume"`` or ``"restart"``.
+        controller_config_path: The submission's controller config.
+        keep_completion_marker: Keep the staged-completion marker
+            (``staged_finalization_complete.json``) a forward run wrote. A
+            ``--mode measure`` pass passes ``True`` (#282 P6 review M11): the
+            marker is the **forward** run's, its epoch never matches the
+            measure epoch, and deleting it made a later plain forward re-run
+            re-finalize, rewriting ``deliverables/`` and dropping the
+            measure pass's failure count from ``metrics.json``.
+    """
     state: dict[str, Any] = {
         "schema_version": 1,
         "epoch": epoch,
@@ -175,7 +193,8 @@ def initialize_orchestration(
         output_dir, generation=epoch, mode=f"staged-{mode}"
     )
     atomic_write_json(orchestration_state_path(output_dir), state)
-    staged_completion_path(output_dir).unlink(missing_ok=True)
+    if not keep_completion_marker:
+        staged_completion_path(output_dir).unlink(missing_ok=True)
     return state
 
 
@@ -209,6 +228,37 @@ def recorded_detector_slot(state: Mapping[str, Any]) -> str | None:
     return None if slot is None else str(slot)
 
 
+def recorded_measure_pipeline_sha256(output_dir: Path) -> str:
+    """The measure pipeline's sha256 its SLURM submitter recorded (#282 P6 review M6).
+
+    ``staged_controller.json``'s ``pipeline_sha256``, named by the
+    orchestration state. The submitter is its one producer; the measure
+    step and every Stage-4 shard read it here, and refuse to run when the
+    pipeline file's bytes no longer hash to it, rather than each re-hashing
+    the file and splitting the run folder they name when it is edited
+    mid-run.
+
+    Raises:
+        RuntimeError: No readable orchestration state or controller config,
+            or the config records no measure pipeline.
+    """
+    state = load_orchestration_state(output_dir)
+    path = None if state is None else state.get("controller_config")
+    try:
+        config = json.loads(Path(str(path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            f"Staged controller config {path!r} is unreadable; cannot tell which "
+            "measure pipeline this pass runs"
+        ) from exc
+    sha = config.get("pipeline_sha256") if isinstance(config, dict) else None
+    if not isinstance(sha, str) or not sha:
+        raise RuntimeError(
+            f"Staged controller config {path} records no measure pipeline sha256"
+        )
+    return sha
+
+
 def load_orchestration_state(output_dir: Path) -> dict[str, Any] | None:
     """Read controller state, returning ``None`` for missing or invalid state."""
     path = orchestration_state_path(output_dir)
@@ -226,6 +276,11 @@ def load_orchestration_state(output_dir: Path) -> dict[str, Any] | None:
     if deactivated_phase is not None:
         payload["phase"] = deactivated_phase
     return payload
+
+
+def deactivated_epoch_phase(output_dir: Path, epoch: str) -> str | None:
+    """The terminal phase the epoch fence journal last recorded for *epoch*, or ``None``."""
+    return _deactivated_epoch_phase(output_dir, epoch)
 
 
 def _deactivated_epoch_phase(output_dir: Path, epoch: str) -> str | None:
@@ -299,14 +354,16 @@ def write_staged_manifest(
             here (:func:`staged_manifest_republishes`), and no config key or
             CLI option repeats it.
     """
-    atomic_write_json(
-        path,
-        {
-            "version": _MANIFEST_VERSION,
-            "republish": bool(republish),
-            "images": [asdict(entry) for entry in entries],
-        },
+    # A forward manifest is written as version 4, which #281/P5 code still
+    # reads, so mixing venvs mid-run fails only a republish pass, the one
+    # whose meaning a v4 reader would get wrong (P6 review M7).
+    payload: dict[str, Any] = (
+        {"version": _REPUBLISH_MANIFEST_VERSION, "republish": True}
+        if republish
+        else {"version": _FORWARD_MANIFEST_VERSION}
     )
+    payload["images"] = [asdict(entry) for entry in entries]
+    atomic_write_json(path, payload)
     return path
 
 

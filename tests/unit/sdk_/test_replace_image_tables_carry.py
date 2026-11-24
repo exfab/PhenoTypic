@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from phenotypic.sdk_ import list_table_runs, ngff_, replace_image_tables
+from phenotypic.sdk_ import ngff_, replace_image_tables
 from phenotypic.sdk_._embedding_tables import read_embedding_table
 from phenotypic.sdk_._table_runs import (
     TableRun,
@@ -102,13 +102,36 @@ def test_without_carry_the_embeddings_go(store_with_crop_entry):
     assert "embeddings" not in latest_measurement_run(store).descriptor          # #281 behaviour, unchanged
 
 
-def test_a_carried_stale_flag_is_kept_as_recorded(store_with_crop_entry):
-    """The measure write writes no objmap, so ``stale`` is never recomputed for a carried entry."""
+@pytest.mark.parametrize("stale", [True, False])
+def test_a_carried_stale_flag_is_kept_as_recorded(store_with_crop_entry, stale):
+    """The measure write writes no objmap, so ``stale`` is never recomputed for a carried entry.
+
+    P6 review M9: planted ``stale: true`` on the source, against an
+    unchanged objmap that a recomputation would call fresh, so "kept" and
+    "recomputed" give different answers.
+    """
     store = store_with_crop_entry
     run = latest_measurement_run(store)
     (key,) = run.descriptor["embeddings"]
-    entries = [r for r in list_table_runs(store) if r.run_id == run.run_id]
-    assert entries[0].descriptor["embeddings"][key]["stale"] is False
+    path = store / ngff_.STORE_ROOT_JSON
+    root = _root(store)
+    root["attributes"]["phenotypic"]["tables"]["runs"][run.run_id]["embeddings"][key]["stale"] = stale
+    path.write_text(json.dumps(root), encoding="utf-8")
     replace_image_tables(store, tables_for_store(store), pipeline_sha256="c" * 64,
                          carry_embeddings=[(run.run_id, key)])
-    assert latest_measurement_run(store).descriptor["embeddings"][key]["stale"] is False
+    assert latest_measurement_run(store).descriptor["embeddings"][key]["stale"] is stale
+
+
+def test_carry_refuses_a_key_the_write_also_embeds(store_with_crop_entry):
+    """P6 review M9: a key both carried and computed is one key written twice, refused in the plan."""
+    store = store_with_crop_entry
+    run = latest_measurement_run(store)
+    (key,) = run.descriptor["embeddings"]
+    root_before = (store / ngff_.STORE_ROOT_JSON).read_bytes()
+    with pytest.raises(ValueError, match="written twice"):
+        replace_image_tables(store, tables_for_store(store), pipeline_sha256=run.pipeline_sha256,
+                             embeddings={key: object()},
+                             carry_embeddings=[(run.run_id, key)])
+    # Refused before any part exists: the store is as it was, and no part is left beside it.
+    assert (store / ngff_.STORE_ROOT_JSON).read_bytes() == root_before
+    assert not [p for p in store.parent.iterdir() if p.name.endswith(".part")]

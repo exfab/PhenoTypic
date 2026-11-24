@@ -202,6 +202,78 @@ def stages_1_to_3_done(
 Stage4Status = Literal["done", "pending", "not_ready"]
 
 
+# ---------------------------------------------------------------------------
+# The measure-done marker (#282 U18)
+# ---------------------------------------------------------------------------
+
+
+def measure_done_marker_path(
+    output_dir: Path, epoch: str, dataset: str, stem: str
+) -> Path:
+    """``<output>/.phenotypic/progress/measure_done/<epoch>/<ds>/<stem>.json`` (U18).
+
+    The segment is :data:`~phenotypic.sdk_.DIR_MEASURE_DONE`. One file per
+    image per SLURM ``--mode measure`` pass, under ``.phenotypic/`` beside
+    the other per-image progress state, never inside the store.
+    """
+    from phenotypic.sdk_ import DIR_MEASURE_DONE
+
+    return progress_dir(output_dir) / DIR_MEASURE_DONE / epoch / dataset / f"{stem}.json"
+
+
+def write_measure_done_marker(
+    output_dir: Path,
+    dataset: str,
+    stem: str,
+    *,
+    epoch: str,
+    work_id: str,
+    commit_guard: CommitGuard | None = None,
+) -> Path:
+    """Atomically record that this pass's measure step rewrote *stem*'s table (U18).
+
+    Written by ``run_measure_step`` after the measure core returns, under the
+    epoch's *commit_guard*. Its absence is the evidence of a killed step: a
+    same-pipeline measure core leaves the forward run folder in place, so the
+    store alone cannot tell a finished step from one killed before its
+    write. Every reader asks for it under the pass's own epoch, so a later
+    pass ignores an earlier pass's markers.
+    """
+    import json
+
+    from phenotypic.sdk_ import atomic_write_with_writer
+
+    final = measure_done_marker_path(output_dir, epoch, dataset, stem)
+    payload = json.dumps({"epoch": epoch, "work_id": work_id, "at": _now()})
+
+    def _write(path: str) -> None:
+        Path(path).write_text(payload, encoding="utf-8")
+
+    atomic_write_with_writer(final, _write, commit_guard=commit_guard)
+    return final
+
+
+def measure_done_marker_exists(
+    output_dir: Path, epoch: str, dataset: str, stem: str
+) -> bool:
+    """Whether this pass's measure step finished *stem* (:func:`write_measure_done_marker`)."""
+    return measure_done_marker_path(output_dir, epoch, dataset, stem).is_file()
+
+
+def clear_measure_done_markers(output_dir: Path) -> None:
+    """Remove every pass's measure-done markers: a new measure submission's first write (U18).
+
+    An earlier pass's markers are never read again (every reader names its
+    own epoch), so they are only disk; the submitter clears them before it
+    publishes the new epoch.
+    """
+    import shutil
+
+    from phenotypic.sdk_ import DIR_MEASURE_DONE
+
+    shutil.rmtree(progress_dir(output_dir) / DIR_MEASURE_DONE, ignore_errors=True)
+
+
 def stage4_status(
     output_dir: Path,
     dataset: str,
@@ -259,9 +331,11 @@ def _republish_stage4_status(
     """:func:`stage4_status` in republish mode.
 
     - ``"not_ready"``: the image's record has no ``artifacts`` (never
-      forward-published), or its store has no run folder of the measure
-      pipeline declaring a measurement table (the measure core has not
-      written one);
+      forward-published); or, on SLURM (*epoch* given), this pass's measure
+      step left no measure-done marker for it (U18,
+      :func:`write_measure_done_marker`: the step was killed, or failed);
+      or its store has no run folder of the measure pipeline declaring a
+      measurement table (the measure core has not written one);
     - ``"done"``: **this pass's** Stage 4 republished it: the record
       verifies against the store as it is (``valid_image_success`` under
       the record's own ``work_id``), certifies that folder's table, and
@@ -289,6 +363,11 @@ def _republish_stage4_status(
     record = read_image_record(output_dir, dataset, stem)
     artifacts = record.get("artifacts") if record is not None else None
     if not isinstance(artifacts, dict) or not artifacts:
+        return "not_ready"
+    if epoch is not None and not measure_done_marker_exists(output_dir, epoch, dataset, stem):
+        # U18: this pass never finished measuring it. With the forward
+        # pipeline its folder exists from the forward run, so the folder
+        # cannot say so; Stage 4 must not certify the un-re-measured table.
         return "not_ready"
     store = zarr_store_path(output_dir, dataset, stem)
     try:

@@ -473,6 +473,17 @@ def process_single_image_core(
     return True
 
 
+class MeasurePipelineChangedError(RuntimeError):
+    """The measure pipeline file no longer hashes to the sha this pass recorded (#282 P6 review M6).
+
+    Not a per-image outcome: the file was edited after submission (or after
+    a local measure began), so this pass's measure core and its Stage 4
+    would name different run folders. It propagates unwrapped through
+    :func:`measure_scientific_boundary`, so nothing is journalled and the
+    image stays unfinished; restore the file, or start a new pass with it.
+    """
+
+
 @contextmanager
 def measure_scientific_boundary() -> Iterator[None]:
     """Make a ``--mode measure`` re-measure's failure a terminal scientific one.
@@ -490,14 +501,19 @@ def measure_scientific_boundary() -> Iterator[None]:
 
     As in the forward core, an inactive SLURM generation, ``MemoryError`` and
     a stale reference plan propagate unwrapped: none of them is the image's
-    own outcome.
+    own outcome. So does :class:`MeasurePipelineChangedError`.
 
     Raises:
         PerImageScientificError: Wrapping any other exception.
     """
     try:
         yield
-    except (SlurmGenerationInactiveError, MemoryError, ReferencePlanStaleError):
+    except (
+        SlurmGenerationInactiveError,
+        MemoryError,
+        ReferencePlanStaleError,
+        MeasurePipelineChangedError,
+    ):
         raise
     except Exception as exc:
         inactive = slurm_generation_inactive_cause(exc)
@@ -518,7 +534,9 @@ def measure_embedding_carry(
 
     For each of the measure pipeline's embedders, with ``key =
     payload_key()`` and ``params = _params_sha256()``, the first run whose
-    entry under ``key`` has ``producer.params_sha256 == params``:
+    entry under ``key`` has ``producer.params_sha256 == params`` **and reads**
+    (``read_embedding_entry``: the file present, its sha256 matching, the
+    entry not stale; P6 review I2):
 
     1. the measure pipeline's own run folder (``owned_table_run_id`` for
        *pipeline_sha256*), when the store has one;
@@ -528,6 +546,15 @@ def measure_embedding_carry(
        write writes no objmap;
     3. otherwise none: there is nothing comparable to keep, and the new run
        folder has no table under ``key`` until Stage 4 writes one.
+
+    An entry a reader would refuse is never carried. Its only purpose is a
+    valid fallback should Stage 4 fail, and an unreadable one is none: a
+    missing folder made the store transaction raise, so the image could
+    never be re-embedded (the documented remedy for an unreadable
+    embedding, parent E5), and a missing file carried a dangling entry that
+    a failed Stage 4 would then certify. **The cost** is one read of each
+    candidate's embedding table per image (hashed once, then parsed);
+    embedding tables are small beside the store.
 
     Args:
         store: The image's promoted store.
@@ -542,6 +569,10 @@ def measure_embedding_carry(
         order.
     """
     from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._embedding_tables import (
+        EmbeddingTableUnreadableError,
+        read_embedding_entry,
+    )
     from phenotypic.sdk_._table_runs import (
         EMBEDDINGS_KEY,
         list_table_runs,
@@ -573,9 +604,18 @@ def measure_embedding_carry(
             entries = run.descriptor.get(EMBEDDINGS_KEY)
             entry = entries.get(key) if isinstance(entries, Mapping) else None
             producer = entry.get("producer") if isinstance(entry, Mapping) else None
-            if isinstance(producer, Mapping) and producer.get("params_sha256") == params:
-                pairs.append((run.run_id, key))
-                break
+            if not (isinstance(producer, Mapping) and producer.get("params_sha256") == params):
+                continue
+            try:
+                read_embedding_entry(Path(store), key, entry)
+            except (EmbeddingTableUnreadableError, OSError) as exc:
+                logger.warning(
+                    "Not carrying %s's %s embedding from run %s: %s",
+                    Path(store).name, key, run.run_id, exc,
+                )
+                continue
+            pairs.append((run.run_id, key))
+            break
     return pairs
 
 
@@ -588,6 +628,7 @@ def process_single_store_measure_core(
     output_manager: OutputManager,
     commit_guard: CommitGuard | None = None,
     defer_embeddings: bool = False,
+    expected_pipeline_sha256: str | None = None,
 ) -> bool:
     """Rerun pipeline.measure() on an already-processed OME-Zarr store.
 
@@ -614,6 +655,13 @@ def process_single_store_measure_core(
             and leave the record's republish to the republish-mode Stage 4,
             which re-embeds and then republishes it. The record therefore
             does not certify the store this call leaves.
+        expected_pipeline_sha256: The pass's one recorded sha256 of the
+            measure pipeline (#282 P6 review M6): the CLI's
+            ``pipeline_identity`` locally, the submitter's on SLURM. When
+            given, a pipeline file that no longer hashes to it raises
+            :class:`MeasurePipelineChangedError` before anything is
+            written, so the core never writes a folder its Stage 4 would
+            not name.
 
     Returns:
         ``True`` on success. Exceptions propagate to the caller, which is
@@ -624,8 +672,16 @@ def process_single_store_measure_core(
         Exception: Any exception from pipeline loading, store loading, or
             measurement will propagate.
     """
-    # Load pipeline
+    # Load pipeline. Its digest names the run folder this call writes, so it
+    # is checked against the pass's recorded one before anything is read.
     pipeline = ImagePipeline.from_json(pipeline_path)
+    pipeline_sha256 = pipeline_source_identity(pipeline_path)["sha256"]
+    if expected_pipeline_sha256 is not None and pipeline_sha256 != expected_pipeline_sha256:
+        raise MeasurePipelineChangedError(
+            f"the measure pipeline {pipeline_path} changed since this pass began "
+            f"(sha256 {pipeline_sha256[:12]}, recorded {expected_pipeline_sha256[:12]}); "
+            "restore it, or re-run the measure with the new file"
+        )
 
     # Dispatch on the store's recorded image_class so a GridImage rehydrates
     # with its grid state intact; ``image_type`` is only the fallback.
@@ -667,7 +723,6 @@ def process_single_store_measure_core(
     # overwritten and its §3a figures kept (spec §1a, revision 14). The
     # folder's date is then that run's; otherwise it is this call's. The
     # run entry's timestamp and pid are always this call's.
-    pipeline_sha256 = pipeline_source_identity(pipeline_path)["sha256"]
     run = name_figure_run(
         pipeline.get_plots(),
         image,

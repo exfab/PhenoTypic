@@ -224,6 +224,13 @@ def _published(output_dir: Path, generation: str | None) -> bool:
     Matching state alone is deliberately not enough: a ``--mode measure``
     resubmission keeps no run state, so an earlier run's aggregate proof
     would still match it after the new finalizer died.
+
+    **A fence of that generation carrying a ``terminal_status`` overrides all
+    three** (#282 U16): the generation itself was declared failed. The
+    measure finalizer closes its fence so when its pass left images neither
+    republished nor journalled, after it has already stamped the aggregate
+    proof with the generation, because those images' forward records still
+    verify and the run state alone would read complete.
     """
     if generation is None:
         return True
@@ -236,6 +243,12 @@ def _published(output_dir: Path, generation: str | None) -> bool:
     )
 
     lifecycle = load_slurm_lifecycle(output_dir)
+    if (
+        lifecycle is not None
+        and lifecycle.get("generation") == generation
+        and lifecycle.get("terminal_status")
+    ):
+        return False
     if (
         lifecycle is not None
         and lifecycle.get("generation") == generation
@@ -437,6 +450,17 @@ def _unpublished_line(output_dir: Path, *, cancelled: bool) -> str:
             "published. Re-run the same command to finish the run."
         )
     from phenotypic.sdk_ import slurm_logs_dir
+
+    from ._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    lifecycle = load_slurm_lifecycle(output_dir) or {}
+    if lifecycle.get("terminal_status") and lifecycle.get("terminal_error"):
+        # A finalizer that ended its own pass unfinished says why (U16).
+        return (
+            f"phenotypic-wait: this submission ended unfinished: "
+            f"{lifecycle['terminal_error']} The finalizer log under "
+            f"{slurm_logs_dir(output_dir)} names each image."
+        )
 
     return (
         "phenotypic-wait: no job is alive and this submission published "

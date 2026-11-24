@@ -344,6 +344,8 @@ def test_the_submitter_reuses_precomputed_entries(make_exec_config, tmp_path, mo
     entry = StagedManifestEntry("ds", image.name, "plate_1", str(image), work_id="w-precomputed")
     monkeypatch.setattr(_cli_staged_slurm, "staged_manifest_entry",
                         lambda *a, **k: pytest.fail("hashed the input again"))
+    monkeypatch.setattr(_cli_staged_slurm, "_staged_manifest_entries",
+                        lambda *a, **k: pytest.fail("hashed the input again"))
     config = dataclasses.replace(
         _slurm_config(make_exec_config, tmp_path), embed_stage="gpu",
         gpu_slurm_args={"slurm_partition": "exfab"},
@@ -353,6 +355,44 @@ def test_the_submitter_reuses_precomputed_entries(make_exec_config, tmp_path, mo
         [Dataset(name="ds", images=[image], input_dir=image.parent, output_dir=out)], out)
     manifest = load_staged_manifest(out / ".phenotypic" / "slurm_scripts" / "staged_manifest.json")
     assert [e.work_id for e in manifest] == ["w-precomputed"]
+
+
+def test_the_submitter_hashes_the_missing_entries_on_threads(make_exec_config, tmp_path, monkeypatch, submissions):
+    """P6 review M8: entries the CLI did not build are hashed through ``stage4_entries``, in parallel."""
+    from phenotypic._cli import _cli_stage4_worker
+    from phenotypic._cli._cli_types import Dataset
+
+    images = []
+    for name in ("plate_1.tif", "plate_2.tif", "plate_3.tif"):
+        image = tmp_path / "in" / "ds" / name
+        image.parent.mkdir(parents=True, exist_ok=True)
+        image.write_bytes(name.encode())
+        images.append(image)
+    seen = {}
+    real = _cli_stage4_worker.stage4_entries
+
+    def _spy(config, tasks, *, n_jobs=1):
+        seen["tasks"], seen["n_jobs"] = [image for _ds, image in tasks], n_jobs
+        return real(config, tasks, n_jobs=n_jobs)
+
+    monkeypatch.setattr(_cli_stage4_worker, "stage4_entries", _spy)
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "4")
+    config = dataclasses.replace(
+        _slurm_config(make_exec_config, tmp_path), embed_stage="gpu",
+        gpu_slurm_args={"slurm_partition": "exfab"}, n_jobs=-1)
+    out = tmp_path / "out"
+    StagedSlurmStrategy(config, output_manager_for(config)).execute(
+        [Dataset(name="ds", images=images, input_dir=images[0].parent, output_dir=out)], out)
+    assert seen["tasks"] == images and seen["n_jobs"] == 3          # min(allocation, images)
+    manifest = load_staged_manifest(out / ".phenotypic" / "slurm_scripts" / "staged_manifest.json")
+    expected = [_cli_staged_slurm_entry(config, image).work_id for image in images]
+    assert [e.work_id for e in manifest] == expected                 # the same identity, in order
+
+
+def _cli_staged_slurm_entry(config, image):
+    from phenotypic._cli._cli_staged_slurm import staged_manifest_entry
+
+    return staged_manifest_entry(config, "ds", image)
 
 
 def test_the_job_metadata_records_the_revisions(make_exec_config, tmp_path):

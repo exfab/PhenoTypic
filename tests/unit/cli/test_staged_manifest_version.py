@@ -8,7 +8,9 @@ message, while this reader still loads versions 2 and 3 (entries without the
 key load with ``reference_digest=None``).
 
 Version 5 (#282 P6 T1) adds the top-level ``"republish"`` flag, measure
-mode's one republish carrier; version 4 and below read as forward.
+mode's one republish carrier; version 4 and below read as forward. Only a
+republish manifest is written as version 5; a forward one stays version 4
+(P6 review M7), so a #281/P5 reader still reads it.
 """
 
 from __future__ import annotations
@@ -41,11 +43,21 @@ def _entry(**overrides) -> StagedManifestEntry:
     return StagedManifestEntry(**fields)
 
 
-def test_a_manifest_carrying_the_digest_key_is_written_as_version_5(tmp_path):
+def test_a_forward_manifest_is_written_as_version_4(tmp_path):
+    """P6 review M7: only a republish manifest needs version 5, so a #281/P5 reader still reads a forward one."""
     path = write_staged_manifest(tmp_path / "manifest.json", [_entry()])
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["version"] == 5 and raw["republish"] is False
+    assert raw["version"] == 4 and "republish" not in raw
+    assert raw["images"][0]["reference_digest"] == "d" * 64
+    assert not staged_manifest_republishes(path) and len(load_staged_manifest(path)) == 1
+
+
+def test_a_republish_manifest_is_written_as_version_5(tmp_path):
+    path = write_staged_manifest(tmp_path / "manifest.json", [_entry()], republish=True)
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    assert raw["version"] == 5 and raw["republish"] is True
     assert raw["images"][0]["reference_digest"] == "d" * 64
 
 
@@ -59,7 +71,7 @@ def test_a_version_3_reader_refuses_what_this_writer_writes(tmp_path):
 
 def test_a_version_5_manifest_round_trips(tmp_path):
     entries = [_entry(), _entry(image_name="t02.tiff", stem="t02")]
-    path = write_staged_manifest(tmp_path / "manifest.json", entries)
+    path = write_staged_manifest(tmp_path / "manifest.json", entries, republish=True)
 
     assert load_staged_manifest(path) == entries
 
@@ -104,7 +116,11 @@ def test_v5_records_republish(tmp_path):
 
 
 def test_a_forward_v5_manifest_does_not_republish(tmp_path):
-    assert not staged_manifest_republishes(write_staged_manifest(tmp_path / "m.json", [_entry()]))
+    """A version-5 manifest as P6 before review M7 wrote a forward one: ``"republish": false``."""
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"version": 5, "republish": False, "images": [asdict(_entry())]}),
+                    encoding="utf-8")
+    assert not staged_manifest_republishes(path) and len(load_staged_manifest(path)) == 1
 
 
 def test_a_v4_manifest_reads_as_forward(tmp_path):

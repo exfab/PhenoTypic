@@ -389,18 +389,49 @@ def _run_finalize(
         # resubmission has no forward run proof to write: the accepted
         # inventory is the forward run's, and asking whether all of it
         # succeeded would answer for a run this submission did not make. So
-        # it closes the fence as its finalizer and marks the orchestration
-        # complete, writing no run proof and no staged-completion marker (the
+        # it writes no run proof and no staged-completion marker (the
         # forward run's continuation reads that one). `measure_failed` is
         # the journal's count under this epoch, which `finalize_run` took
         # from `execution_epoch` above.
-        from ._cli_slurm_lifecycle import FENCE_CLOSED_BY_FINALIZER
+        #
+        # **It closes the pass by its own leftovers (U16).** Each image it
+        # left neither republished under this epoch nor journalled keeps
+        # its forward record, which verifies, so the run state reads
+        # complete; only this count says the pass did not re-measure and
+        # re-embed it. With any, the fence is closed failed by the
+        # finalizer, which `phenotypic-wait` never reads as published, so it
+        # exits 5 ("re-run the same command"); without, complete, exit 0
+        # (or 3 with journalled failures).
+        from ._cli_slurm_lifecycle import (
+            FENCE_CLOSED_BY_FINALIZER,
+            mark_generation_failed,
+        )
+        from ._cli_staged_controller import (
+            measure_pass_unfinished,
+            unfinished_measure_line,
+        )
         from ._cli_staged_orchestration import deactivate_orchestration
 
         with logged_step(logger, "finalize: close the measure orchestration"):
-            deactivate_orchestration(
-                output_dir, "complete", closed_by=FENCE_CLOSED_BY_FINALIZER
-            )
+            unfinished = measure_pass_unfinished(output_dir, epoch)
+            if unfinished:
+                line = unfinished_measure_line(len(unfinished))
+                logger.warning(line)
+                for entry in unfinished:
+                    logger.warning("  unfinished: %s/%s", entry.dataset, entry.image_name)
+                _check_epoch()
+                mark_generation_failed(
+                    output_dir, epoch, line, closed_by=FENCE_CLOSED_BY_FINALIZER
+                )
+                deactivate_orchestration(
+                    output_dir,
+                    "terminal_incomplete",
+                    closed_by=FENCE_CLOSED_BY_FINALIZER,
+                )
+            else:
+                deactivate_orchestration(
+                    output_dir, "complete", closed_by=FENCE_CLOSED_BY_FINALIZER
+                )
     elif epoch is not None:
         from ._cli_completion import (
             _all_accepted_images_succeeded,

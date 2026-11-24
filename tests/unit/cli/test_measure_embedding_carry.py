@@ -2,8 +2,9 @@
 
 For each embedder of the measure pipeline, the first of (1) the measure
 pipeline's own run folder, (2) the run the record certifies, whose entry
-under the embedder's key has the embedder's ``producer.params_sha256``;
-otherwise nothing.
+under the embedder's key has the embedder's ``producer.params_sha256`` and
+reads (P6 review I2: present, its sha256 matching, not stale); otherwise
+nothing.
 """
 
 from __future__ import annotations
@@ -102,3 +103,76 @@ def test_a_run_the_record_does_not_certify_is_not_a_source(tmp_path, store_with_
     store = store_with_crop_entry
     assert _carry(tmp_path, store, tmp_path / "no-record.json",
                   _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS)) == []
+
+
+# ---------------------------------------------------------------------------
+# P6 review I2: only an entry a reader accepts is carried
+# ---------------------------------------------------------------------------
+
+
+def _entry_folder(store, run_id: str):
+    from phenotypic.sdk_._table_runs import embedding_table_relative_path
+
+    return store / embedding_table_relative_path(run_id, OBJECTS_ENTRY_KEY).parent
+
+
+def _entry_file(store, run_id: str):
+    from phenotypic.sdk_._table_runs import list_table_runs
+
+    run = next(r for r in list_table_runs(store) if r.run_id == run_id)
+    return store / run.descriptor["embeddings"][OBJECTS_ENTRY_KEY]["files"][0]["path"]
+
+
+def test_a_missing_own_folder_falls_back_to_the_certified_run(tmp_path, two_runs):
+    import shutil
+
+    store, forward, own, record = two_runs
+    shutil.rmtree(_entry_folder(store, own))
+    assert _carry(tmp_path, store, record, _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS)) == [
+        (forward, OBJECTS_ENTRY_KEY)]
+
+
+def test_a_missing_folder_carries_nothing_and_the_rewrite_succeeds(tmp_path, store_with_crop_entry):
+    """The E5 remedy: the store transaction no longer raises, so Stage 4 can re-embed the image."""
+    import shutil
+
+    store = store_with_crop_entry
+    forward = latest_measurement_run(store).run_id
+    record = _record(tmp_path, store, forward)
+    shutil.rmtree(_entry_folder(store, forward))
+    pairs = _carry(tmp_path, store, record, _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS))
+    assert pairs == []
+    run = replace_image_tables(store, tables_for_store(store), pipeline_sha256=OWN_SHA,
+                               carry_embeddings=pairs)
+    assert OBJECTS_ENTRY_KEY not in (run.descriptor.get("embeddings") or {})
+
+
+def test_a_missing_file_carries_no_dangling_entry(tmp_path, store_with_crop_entry):
+    store = store_with_crop_entry
+    forward = latest_measurement_run(store).run_id
+    record = _record(tmp_path, store, forward)
+    _entry_file(store, forward).unlink()
+    assert _carry(tmp_path, store, record, _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS)) == []
+
+
+def test_a_corrupted_file_is_not_carried(tmp_path, store_with_crop_entry):
+    store = store_with_crop_entry
+    forward = latest_measurement_run(store).run_id
+    record = _record(tmp_path, store, forward)
+    path = _entry_file(store, forward)
+    data = bytearray(path.read_bytes())
+    data[-20] ^= 0xFF                                  # same size, other bytes: the sha256 no longer matches
+    path.unlink()                                      # break any hard link before writing
+    path.write_bytes(bytes(data))
+    assert _carry(tmp_path, store, record, _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS)) == []
+
+
+def test_a_stale_entry_is_not_carried(tmp_path, store_with_crop_entry):
+    store = store_with_crop_entry
+    forward = latest_measurement_run(store).run_id
+    record = _record(tmp_path, store, forward)
+    path = store / ngff_.STORE_ROOT_JSON
+    root = json.loads(path.read_text(encoding="utf-8"))
+    root["attributes"]["phenotypic"]["tables"]["runs"][forward]["embeddings"][OBJECTS_ENTRY_KEY]["stale"] = True
+    path.write_text(json.dumps(root), encoding="utf-8")
+    assert _carry(tmp_path, store, record, _Embedder(OBJECTS_ENTRY_KEY, FORWARD_PARAMS)) == []
