@@ -1,7 +1,15 @@
 """Re-derive the Stage-4 shard amortisation threshold (#282 spec 2, plan P0 T1).
 
-Stdlib only; never imports ``phenotypic``. P5 T3 copies COLD_LOAD_S,
-WARM_GPU_S_PER_IMAGE and the threshold function into ``src/``.
+**Historical record: the preflight no longer uses this** (U13, user decision
+2026-11-23). ``PF-EMBED-SHARD-AMORTIZE`` was dropped with its code, hint, docs
+row and tests, because the P5 live smoke measured the cold load at 39.7-297.9 s
+to the first commit, not the 750 s assumed here, and the warning fired on a run
+whose load was under 5 min. Nothing in ``src/`` copies these constants any more;
+the script is kept, and still runs, as the record of what O6 derived.
+
+Stdlib only; never imports ``phenotypic``. P5 T3 copied COLD_LOAD_S,
+WARM_GPU_S_PER_IMAGE and the threshold function into ``src/``; U13 removed
+them again.
 
 The warm times are the GPU-bound sum of spec section 2's objects (66 crops)
 and 96-cell grid rows: base 0.72 + 0.99, large 1.05 + 1.48. The agar cell

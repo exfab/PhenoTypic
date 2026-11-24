@@ -83,6 +83,9 @@ Renderer: `~/.claude/tools/render_md_artifact.py`.
   (`"embed_stage"`). It is **never** in the work-id digest
   (`processing_configuration_digest_from_values`, `_cli_failure_tracker.py:276`).
   A state without the key reads as `"inline"`.
+- **Under `auto` a continuation adopts the recorded `embed_stage`** (U12,
+  2026-11-23); R3 refuses only an explicit `--embed-stage` that conflicts
+  with it (`adopt_recorded_embed_stage`).
 - **Refusals R1–R3** are each one `click.UsageError` line (exit `2`). They sit in
   the read-only half, outside `--skip-validation`, above `--restart`,
   `--overwrite`, `mint_run_identity` and `--dry-run`. Pinned by
@@ -446,7 +449,11 @@ mid tier. A reviewer is never weaker than its implementer.
 | §4.4 plan, loop, DataLoader, `BatchEncoder`, batch size, determinism, embedder refactor, `entry_descriptor_for` | P1 T1–T2, P2 T2–T3, P4 T3 |
 | §4.5 (as amended by U11) `giant`, size/version validator, hub verification, licence gate twice, `compute` block | P2 T1, P4 T3 (licence at shard start), P5 T3 (licence at preflight is the existing `PF-LICENSE`) |
 | §4.6 done/pending, `ResumeStage` `"stage4"`, gated shortcuts, interrupted states, Stage-1 re-run deletes signals, `--retry-failures`, measure carry and republish, manifest 4 → 5 | P4 T2, P4 T3 (`stage4_status`), P4 T4, P6 T1 |
-| §4.7 R1–R3, `PF-EMBED-SHARD-AMORTIZE`, `PF-EMBED-RESOURCES` | P4 T1, P5 T3 |
+| §4.7 R1–R3, `PF-EMBED-RESOURCES` (`PF-EMBED-SHARD-AMORTIZE` built in P5 T3, dropped by U13) | P4 T1, P5 T3 |
+| U12 auto adopts the recorded stage | P5 review fixes (`adopt_recorded_embed_stage`) |
+| U13 no amortisation warning | P5 review fixes; P7 T1 docs line |
+| U14 slow-prep and poison-image limits | spec §4.8; P7 T1 docs line |
+| U15 waiter drains the ledger; Stage-1/3 dead tasks resubmitted | P5 review fixes (`ledgered_jobs_of_generation`, `_resubmit_dead_tasks`) |
 | §4.8 failure modes (OOM, host OOM, no CUDA, corrupt store, grid outside, non-finite, root changed, walltime, fence, cold load) | P2 T3 (OOM halving), P3 T1 (root changed), P4 T1 (no CUDA at startup), P4 T3 (CUDA, corrupt, non-finite, root change non-terminal, fence on both seams), P4 T4 (walltime by real-crash injection), P5 T1 (rounds), P5 T3 (cold-load warning) |
 | §5 golden; batch invariance on hardware; transaction tests; local e2e with crash injection; controller fake-scheduler tests; live smoke; measure over staged; full regression | P0 T2 + P1 T2; P2 T4; P3 T1; P4 T4; P5 T1; P5 T4; P6 T2; P7 T2 |
 | §6 phases | this README's phase table |
@@ -482,7 +489,7 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
 | O3 | A non-DINO embedder under Stage 4 | **Amended 2026-11-20** (orchestrator): treated as U9 treats a CPU pin. Under `auto` the run resolves **inline**, with a one-line note naming the embedder; only an explicit `--embed-stage gpu` is refused under R2, naming `--embed-stage inline`. (Revision 3 refused it under `auto` too, which would have broken every SLURM detector pipeline carrying such an embedder.) | P4 T1 |
 | O4 | `compute` beside `model.device` | Accepted with a condition: one producer writes both, and a test asserts they agree | P2 T1 |
 | O5 | `--embed-stage gpu` with no embedder | Accepted: resolves inline with a note | P4 T1 |
-| O6 | The amortisation warning | Accepted with conditions: a GPU-only constant (439 / 297), worded as efficiency | P0 T1, P5 T3 |
+| O6 | The amortisation warning | Accepted with conditions: a GPU-only constant (439 / 297), worded as efficiency. **Superseded by U13** (user, 2026-11-23): the warning is dropped | P0 T1, P5 T3 |
 | O7 | SLURM measure on the controller | Became **U10** (user, 2026-11-19), with a measure-mode finalizer | P6 T2 |
 | O8 | Zero-progress leftovers | Became **U7** (user): no record, no journal row, exit 5; revision 1's journalling is removed | P5 T1 |
 | U11 | DINOv3 H+ and 7B (user, 2026-11-20) | **DINOv2 only for now**: the cluster's HF token has expired and the DINOv3 licence is not accepted, so their weights and hub configs cannot be fetched or verified. `giant` is the one new size; existing DINOv3 sizes are untouched | P2 T1, P2 T4, Follow-ups |
@@ -502,10 +509,39 @@ Revision 1 raised O1–O9. All are decided; nothing in the plan is marked pendin
   run and 4× on a continuation, against 1× from the strategy through Stage 4
   (`gate-results/c12r-282/proofs/i4-whole-invocation-hash-count.log`).
   Pre-#282, and #282 does not make it worse; carrying one CLI-computed
-  identity into the strategy is a refactor of its own.
+  identity into the strategy is a refactor of its own. **Measured on real
+  stores by the P5 smoke (F8):** each submission spent 31–37 min before its
+  first controller was ledgered, and `sacct` MaxDiskRead of attempt 1's two
+  waiters was 224947.89M and 221019.87M (about 220 GB) for 77.2 GB of input
+  (400 OME-Zarr stores), since `file_sha256` digests the whole store tree.
+- **No staged event carries a SLURM job or task id** (P5 smoke F5, review
+  M3). `append_event` accepts `slurm_job_id`/`slurm_array_task_id`, but
+  `stage_event` never passes them, in any stage, so an event cannot be tied
+  to a round or a shard without matching time windows against `sacct`.
+  Defaulting both from `SLURM_ARRAY_JOB_ID`/`SLURM_JOB_ID` and
+  `SLURM_ARRAY_TASK_ID` inside `stage_event` is the cheap fix. Pre-#282.
 - **`promote_store`'s two renames:** a walltime kill between them can lose a
   store. Pre-existing; Stage 4 crosses the window once more per image. P7
   documents it as a known limit; a fix belongs to the store writer, not here.
+
+### P5 deep review fixes (2026-11-23)
+
+`reports/2026-11-12-gpu-embedding-staging/review-p5.md` and `live-smoke.md`,
+with the user's decisions U12–U15 (spec §3). Applied by cluster C16r:
+- **U12 (D1, I1):** `adopt_recorded_embed_stage` in the continuation load.
+- **U13 (D2, F6):** `PF-EMBED-SHARD-AMORTIZE` removed; M9 is moot.
+- **U14 (D3):** no code; spec §4.8 and P7 T1.
+- **U15 (D4, D5):** the waiter drains the generation's ledger
+  (`ledgered_jobs_of_generation`); the controller resubmits dead Stage-1/3
+  tasks (`_resubmit_dead_tasks`), with `submit_with_lifecycle(extra_args=)`
+  carrying `--array=<ids>`.
+- **I2:** the finalizer reconciles on `recorded_detector_slot`; the
+  strategy no longer inverts `stage3_markers_required`. **I3:**
+  `terminal_incomplete` is a quiet phase. **I4:** the stall test goes
+  through `resolve_run_state` and the waiter. **F7/M1:** the dry-run label.
+- **Minors:** M5, M6, M7, M8, M10, M11, M12, M13, M14, M15 fixed; M2 and M4
+  documented in `_cli/CLAUDE.md`; M3 is a follow-up (F5, above); M9 moot
+  (U13); M16 stays with P7 T1.
 
 ## Render
 

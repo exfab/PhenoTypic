@@ -117,7 +117,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </table></div>
 <ul>
 <li><strong>The agar cell's time is a CPU resize</strong> of a 3224 × 4836 crop, on either device.</li>
-<li><strong>Cold first call:</strong> 650–750 s (imports plus weights from GPFS). The large model on a warm node took 33 s.</li>
+<li><strong>Cold first call:</strong> 650–750 s (imports plus weights from GPFS), measured 2026-11-19. The large model on a warm node took 33 s. <strong>Corrected 2026-11-23 (U13):</strong> the P5 live smoke measured a Stage-4 shard's model load at <strong>39.7–297.9 s to its first commit</strong> (dinov2-small, cached weights, <code>HF_HUB_OFFLINE=1</code>, four shards on RTX 6000 Ada), so 650–750 s is a worst case for weights read cold from GPFS, not what a shard pays.</li>
 <li><strong>Peak RSS:</strong> about 6 GB.</li>
 </ul>
 <p><strong>Device differences</strong> (DINOv2-base, 198 crops, 288 cells, stored float16 vectors; cosine distance):</p>
@@ -173,7 +173,7 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td>U3</td>
-<td><strong>No switching mid-run.</strong> A continuation whose resolved <code>embed_stage</code> differs from the recorded one is refused, naming the recorded flag, and <code>--mode measure --embed-stage gpu</code> to re-embed.</td>
+<td><strong>No switching mid-run.</strong> A continuation never embeds elsewhere than its run started. Under <code>--embed-stage auto</code> it adopts the recorded <code>embed_stage</code> (amended by U12, 2026-11-23); only an explicit <code>--embed-stage</code> that differs from the recorded one is refused, naming the recorded flag, and <code>--mode measure --embed-stage gpu</code> to re-embed.</td>
 </tr>
 <tr class="even">
 <td>U4</td>
@@ -206,6 +206,22 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <tr class="odd">
 <td>U6</td>
 <td><strong>Mixed GPU models are allowed.</strong> <code>device</code> and <code>device_name</code> are provenance, recorded per entry.</td>
+</tr>
+<tr class="even">
+<td>U12</td>
+<td><strong>A continuation under <code>auto</code> adopts the recorded stage</strong> (2026-11-23, P5 review D1/I1). R3 refuses only an explicit <code>--embed-stage</code> that conflicts with the recorded one, or an <code>auto</code> that would have to adopt <code>gpu</code> where this invocation has no Stage 4. So an in-flight pre-P5 SLURM run that recorded <code>inline</code>, or no <code>embed_stage</code> at all (read as inline), keeps embedding inline and finishes with its plain command. U3's purpose holds, because the recorded stage is the one used.</td>
+</tr>
+<tr class="odd">
+<td>U13</td>
+<td><strong><code>PF-EMBED-SHARD-AMORTIZE</code> is dropped</strong> (2026-11-23, P5 review D2, smoke F6): its code, <code>FindingCode</code>, <code>HINTS</code>, docs row and tests, and the preflight's copy of the amortisation constants. It assumed a 750 s cold load and fired falsely on the one live run, whose loads took 39.7–297.9 s. This supersedes O6. <code>shard_amortization.py</code> stays as a historical record. The docs say instead that each GPU shard pays one model load, 40–300 s with cached weights, so a small run wants few shards.</td>
+</tr>
+<tr class="even">
+<td>U14</td>
+<td><strong>No round cap and no strike rule for Stage 4</strong> (2026-11-23, P5 review D3). Two cases that U7's stall rule does not end well are a documented limitation, out of scope for #282 (§4.8): an image whose preparation is very slow, and a "poison" image that crashes its shard every round.</td>
+</tr>
+<tr class="odd">
+<td>U15</td>
+<td><strong>Fixed in #282 by the user's choice</strong> (2026-11-23, P5 review D4, D5). (a) <code>phenotypic-wait</code> returns only once every job in the generation's ledger is terminal, the trailing pre-armed recovery controller included (smoke F1): after the run's outcome is decided it keeps polling the ledgered job ids, under its poll interval and timeout, and then returns that outcome. (b) The controller re-classifies after the last Stage-1 and the last Stage-3 chunk and resubmits only the tasks whose images have no stage result, record or journal row (an OOM or node failure, smoke F2), a chunk at a time, in rounds bounded by the zero-progress rule on that stage's own counters (§4.3).</td>
 </tr>
 </tbody>
 </table></div>
@@ -314,7 +330,9 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li>terminal on a recorded failure, missing <code>stages.stage3</code>, a store that doesn't match its work id, or a changed reference digest;</li>
 <li>retryable otherwise.</li>
 </ul></li>
-<li><strong>Rounds</strong> use their own counters: two unchanged retryable sets in a row go to the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is <code>stage4</code> and the token <code>stage4-round-&lt;n&gt;</code>, so <code>live_slurm_job_ids</code> sees them.</li>
+<li><strong>Rounds</strong> use their own counters: two unchanged retryable sets in a row go to the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is <code>stage4</code> and the token <code>stage4-round-&lt;n&gt;</code>, so <code>live_slurm_job_ids</code> sees them. A round's <code>--array</code> covers only the shards its worklist fills, and a successor that finds the round already ledgered keeps that round's worklist (P5 review M12, M13).</li>
+<li><strong>Stage-1 and Stage-3 tasks that die leaving nothing are resubmitted</strong> (U15b). After a stage's last chunk, an image with no stage result, record or journal row (no valid Stage-1 store; no <code>stages.stage3</code>, and for a detector run a still-replayable Stage-2 signal) is retryable. Only those tasks are resubmitted, one chunk at a time with <code>--array=&lt;ids&gt;</code> and the token <code>&lt;stage&gt;-retry-&lt;round&gt;-chunk-&lt;i&gt;</code>, so one work array is active at a time. A round walks every chunk; the second unchanged dead set in a row stops retrying, and those images end unrecorded, as in U7. The counters are the stage's own (<code>&lt;stage&gt;_retry_round</code>, <code>&lt;stage&gt;_retry_chunk</code>, <code>&lt;stage&gt;_last_retryable_digest</code>, <code>&lt;stage&gt;_zero_progress_rounds</code>), read with defaults, so a #281 state drives the same way.</li>
+<li><strong>The trailing controller after a <code>terminal_incomplete</code> close exits 0</strong> (P5 review I3, smoke F4).</li>
 <li><strong>A per-round worklist</strong> (<code>stage4_worklist.json</code>) partitions only the retryable set across shards. After a walltime, the leftover work spreads over every GPU.</li>
 <li><strong>Stage 4 is an array over shards and is never chunked.</strong> It has no trigger entries and no sidecar jobs. Its resources are the Stage-2 GPU profile. The script prelude sets <code>CUBLAS_WORKSPACE_CONFIG=:4096:8</code>.</li>
 <li><strong>Progress:</strong> <code>StageTag</code> gains <code>"stage4"</code>, and the terminal stage for event counting becomes per-run.</li>
@@ -377,11 +395,11 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 <li><strong>R2 (U9, O3):</strong> <code>--embed-stage gpu</code> with an in-scope embedder pinned to <code>device="cpu"</code>, or with an in-scope embedder that has no Stage-4 encoder (any <code>MeasureEmbedding</code> but <code>MeasureDinoEmbedding</code>). Under <code>auto</code>, either resolves the run inline instead, with a one-line note naming the embedder (O3 amended 2026-11-20).</li>
 <li><strong>R3 (U3):</strong> a continuation whose <code>embed_stage</code> differs from the recorded one.</li>
 </ul>
-<p>New preflight warnings, each with <code>HINTS</code> and a docs row:</p>
+<p>A new preflight warning, with <code>HINTS</code> and a docs row:</p>
 <ul>
-<li><code>PF-EMBED-SHARD-AMORTIZE</code>: too few images per shard to pay off the cold load;</li>
 <li><code>PF-EMBED-RESOURCES</code>: <code>--mem</code> too low for the loader.</li>
 </ul>
+<p>(<code>PF-EMBED-SHARD-AMORTIZE</code>, a warning for too few images per shard, was built in P5 and dropped by U13.)</p>
 <h3 id="48-failure-modes">4.8 Failure modes</h3>
 <div class="scroll"><table>
 <thead>
@@ -425,10 +443,19 @@ footer { grid-column: 1 / -1; font-size: .84rem; color: var(--muted); border-top
 </tr>
 <tr class="odd">
 <td>Cold load</td>
-<td>Paid once per shard per round; a preflight warning when shards are too small; pre-staged weights and <code>HF_HUB_OFFLINE=1</code> recommended</td>
+<td>Paid once per shard per round: 39.7–297.9 s to the first commit in the P5 smoke, with cached weights. Pre-staged weights and <code>HF_HUB_OFFLINE=1</code> recommended, and few shards for a small run (U13)</td>
+</tr>
+<tr class="even">
+<td>Stage-1 or Stage-3 task killed (host OOM, node failure)</td>
+<td>No result, record or journal row: the controller resubmits that task, in rounds bounded by the zero-progress rule (U15b); a second unchanged round leaves the image unrecorded, exit 5</td>
 </tr>
 </tbody>
 </table></div>
+<p><strong>Known limitations (U14, out of scope for #282).</strong> Two cases end badly under U7's stall rule, and neither has a round cap or a per-image strike count:</p>
+<ol type="1">
+<li><strong>An image whose preparation is very slow.</strong> When the objects sprawl across the plate, each padded crop is thousands of pixels on a side, and cutting and resizing them takes minutes per image (smoke F3: up to about 35 min for one image). Every round commits a few images, so the stall rule never fires, and the run can go on for days. The remedy is the pipeline: refine the objects so the crops are colony-sized.</li>
+<li><strong>A "poison" image that crashes its shard every round</strong>, for example by exhausting the host's memory. Once it is the only image left, its rounds change nothing, so the stall rule ends the run with exit 5, and a plain re-run repeats that. The remedy is to raise the shard's memory, or to remove the image from the run.</li>
+</ol>
 <h2 id="5-verification">5. Verification</h2>
 <ul>
 <li><strong>Byte-identity of the inline path.</strong> A golden of today's inline CPU bytes (objects and grid, stub backbone, and a real small backbone where cached) stays identical through the refactor.</li>

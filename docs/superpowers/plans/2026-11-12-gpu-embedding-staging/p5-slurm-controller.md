@@ -458,6 +458,11 @@ def test_the_params_digest_is_the_inline_one(stage4_slurm_tree, stage4_cpu):
 
 ### Task 3: Preflight codes
 
+> **Superseded in part by U13 (user, 2026-11-23).** `PF-EMBED-SHARD-AMORTIZE`
+> was built as below, then dropped with its code, hint, docs row and tests
+> after the live smoke measured the cold load at 39.7–297.9 s. The text is
+> kept as the record of what this task built; `PF-EMBED-RESOURCES` stands.
+
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_preflight.py`
   - `FindingCode` (`:48-89`) gains `"PF-EMBED-SHARD-AMORTIZE"` and `"PF-EMBED-RESOURCES"`;

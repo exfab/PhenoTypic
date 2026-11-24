@@ -52,7 +52,24 @@ SHA.
   before Stage 1 and exits `1` without one, and that this check imports torch,
   so `--dry-run` with that flag pays the import too; and that
   `CUBLAS_WORKSPACE_CONFIG` may be `:4096:8` (the default the CLI sets) or
-  `:16:8`).
+  `:16:8`). In the same section, from the P5 deep review (2026-11-23):
+  - **U13, one line:** each GPU shard pays one model load, measured at
+    40–300 s with cached weights (P5 smoke: 39.7–297.9 s to the first
+    commit), so prefer few `--gpu-shards` for a small run. Do not write the
+    how-to page for it; the line is the whole of it.
+  - **U14, two cases in plain words** (spec §4.8, "Known limitations"): an
+    image whose preparation is very slow, because sprawling objects give
+    multi-thousand-pixel crops (smoke F3: up to about 35 min for one image),
+    never trips the stall rule, since each round makes some progress; and a
+    "poison" image that crashes its shard (for example a host OOM) every
+    round ends the run with exit `5` once only it remains, and a re-run
+    repeats that.
+  - **U12:** under `auto` a continuation keeps the stage its run started
+    with; an explicit `--embed-stage` that differs is refused (R3).
+  - **U15:** `phenotypic-wait` returns only after every job of the
+    submission, the trailing recovery controller included, has ended; Stage-1
+    and Stage-3 tasks killed without a result are resubmitted, with exit `5`
+    after two unchanged rounds.
 - Create or modify: the embeddings how-to page. If #281 merged none, create
   `docs/source/how_to/pages/embeddings.md` and add it to the how-to toctree.
   It covers model sizes and the size/version pairs, `compute_dtype` (float32

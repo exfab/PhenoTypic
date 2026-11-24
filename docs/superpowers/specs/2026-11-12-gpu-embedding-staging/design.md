@@ -47,8 +47,12 @@ wells), from code at `d1bc6febe`. Logs are in
 
 - **The agar cell's time is a CPU resize** of a 3224 × 4836 crop, on either
   device.
-- **Cold first call:** 650–750 s (imports plus weights from GPFS). The large
-  model on a warm node took 33 s.
+- **Cold first call:** 650–750 s (imports plus weights from GPFS), measured
+  2026-11-19. The large model on a warm node took 33 s. **Corrected
+  2026-11-23 (U13):** the P5 live smoke measured a Stage-4 shard's model load
+  at **39.7–297.9 s to its first commit** (dinov2-small, cached weights,
+  `HF_HUB_OFFLINE=1`, four shards on RTX 6000 Ada), so 650–750 s is a
+  worst case for weights read cold from GPFS, not what a shard pays.
 - **Peak RSS:** about 6 GB.
 
 **Device differences** (DINOv2-base, 198 crops, 288 cells, stored float16
@@ -71,7 +75,7 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 |---|---|
 | U1 | Option C: a GPU Stage 4 after the store is final. |
 | U2 | **Opt-in is `auto`.** A new `--embed-stage {auto,gpu,inline}` defaults to `auto`. On SLURM, `auto` resolves to `gpu` when the run already has a GPU profile (a `GpuDetector`, or `--gpu-slurm` given), otherwise `inline`. A local run resolves `inline` unless `--embed-stage gpu`. |
-| U3 | **No switching mid-run.** A continuation whose resolved `embed_stage` differs from the recorded one is refused, naming the recorded flag, and `--mode measure --embed-stage gpu` to re-embed. |
+| U3 | **No switching mid-run.** A continuation never embeds elsewhere than its run started. Under `--embed-stage auto` it adopts the recorded `embed_stage` (amended by U12, 2026-11-23); only an explicit `--embed-stage` that differs from the recorded one is refused, naming the recorded flag, and `--mode measure --embed-stage gpu` to re-embed. |
 | U4 | **`--mode measure` uses Stage 4 in v1.** It is the documented remedy for an unreadable embedding (parent E5), and re-embedding a GPU run must stay on GPU. |
 | U5 | **An unpinned `revision` is resolved once, at a run's first submission,** and recorded in job metadata, so every shard and round loads the same commit; a continuation reuses the recorded commit rather than re-resolving (2026-11-19). It applies to Stage-4 runs only. Offline, it falls back to per-process resolution with the existing warning. |
 | U7 | **A stalled Stage-4 round ends unfinished** (2026-11-19, plan review O8): after two unchanged retryable sets the finalizer runs, the leftover images keep no record and no journal row, and the run exits 5 ("re-run the same command"); a plain re-run retries them. GPU OOM and a changed root are node or concurrency state, never terminal per-image failures. |
@@ -80,6 +84,10 @@ The device is therefore provenance, not descriptor identity (parent E5, D3).
 | U10 | **SLURM `--mode measure` moves onto the staged controller** (2026-11-19, plan review O7), with a measure step, Stage 4 rounds, and a measure-mode finalizer (`measure_failed`, no forward run proof). |
 | U11 | **DINOv2 only for now** (2026-11-20). The new size this PR adds is DINOv2 `giant` (ViT-g/14). DINOv3 H+ and 7B are deferred to a follow-up, because their gated weights and hub configs need a licence and a valid token, which the cluster does not have; nothing about them could be verified. Existing DINOv3 sizes are untouched. The batch-invariance job (§5) runs DINOv2 models only. |
 | U6 | **Mixed GPU models are allowed.** `device` and `device_name` are provenance, recorded per entry. |
+| U12 | **A continuation under `auto` adopts the recorded stage** (2026-11-23, P5 review D1/I1). R3 refuses only an explicit `--embed-stage` that conflicts with the recorded one, or an `auto` that would have to adopt `gpu` where this invocation has no Stage 4. So an in-flight pre-P5 SLURM run that recorded `inline`, or no `embed_stage` at all (read as inline), keeps embedding inline and finishes with its plain command. U3's purpose holds, because the recorded stage is the one used. |
+| U13 | **`PF-EMBED-SHARD-AMORTIZE` is dropped** (2026-11-23, P5 review D2, smoke F6): its code, `FindingCode`, `HINTS`, docs row and tests, and the preflight's copy of the amortisation constants. It assumed a 750 s cold load and fired falsely on the one live run, whose loads took 39.7–297.9 s. This supersedes O6. `shard_amortization.py` stays as a historical record. The docs say instead that each GPU shard pays one model load, 40–300 s with cached weights, so a small run wants few shards. |
+| U14 | **No round cap and no strike rule for Stage 4** (2026-11-23, P5 review D3). Two cases that U7's stall rule does not end well are a documented limitation, out of scope for #282 (§4.8): an image whose preparation is very slow, and a "poison" image that crashes its shard every round. |
+| U15 | **Fixed in #282 by the user's choice** (2026-11-23, P5 review D4, D5). (a) `phenotypic-wait` returns only once every job in the generation's ledger is terminal, the trailing pre-armed recovery controller included (smoke F1): after the run's outcome is decided it keeps polling the ledgered job ids, under its poll interval and timeout, and then returns that outcome. (b) The controller re-classifies after the last Stage-1 and the last Stage-3 chunk and resubmits only the tasks whose images have no stage result, record or journal row (an OOM or node failure, smoke F2), a chunk at a time, in rounds bounded by the zero-progress rule on that stage's own counters (§4.3). |
 
 ### Defaults taken (the user did not object)
 
@@ -155,6 +163,22 @@ parent D5's writer list, gain the Stage-4 rewrite.
 - **Rounds** use their own counters: two unchanged retryable sets in a row go to
   the finalizer; the leftover images stay unrecorded and the run exits 5 (U7). The ledger role is
   `stage4` and the token `stage4-round-<n>`, so `live_slurm_job_ids` sees them.
+  A round's `--array` covers only the shards its worklist fills, and a
+  successor that finds the round already ledgered keeps that round's worklist
+  (P5 review M12, M13).
+- **Stage-1 and Stage-3 tasks that die leaving nothing are resubmitted**
+  (U15b). After a stage's last chunk, an image with no stage result, record or
+  journal row (no valid Stage-1 store; no `stages.stage3`, and for a detector
+  run a still-replayable Stage-2 signal) is retryable. Only those tasks are
+  resubmitted, one chunk at a time with `--array=<ids>` and the token
+  `<stage>-retry-<round>-chunk-<i>`, so one work array is active at a time. A
+  round walks every chunk; the second unchanged dead set in a row stops
+  retrying, and those images end unrecorded, as in U7. The counters are the
+  stage's own (`<stage>_retry_round`, `<stage>_retry_chunk`,
+  `<stage>_last_retryable_digest`, `<stage>_zero_progress_rounds`), read with
+  defaults, so a #281 state drives the same way.
+- **The trailing controller after a `terminal_incomplete` close exits 0**
+  (P5 review I3, smoke F4).
 - **A per-round worklist** (`stage4_worklist.json`) partitions only the
   retryable set across shards. After a walltime, the leftover work spreads over
   every GPU.
@@ -278,9 +302,11 @@ These are each one usage-error line in the read-only half, outside
 - **R2 (U9, O3):** `--embed-stage gpu` with an in-scope embedder pinned to `device="cpu"`, or with an in-scope embedder that has no Stage-4 encoder (any `MeasureEmbedding` but `MeasureDinoEmbedding`). Under `auto`, either resolves the run inline instead, with a one-line note naming the embedder (O3 amended 2026-11-20).
 - **R3 (U3):** a continuation whose `embed_stage` differs from the recorded one.
 
-New preflight warnings, each with `HINTS` and a docs row:
-- `PF-EMBED-SHARD-AMORTIZE`: too few images per shard to pay off the cold load;
+A new preflight warning, with `HINTS` and a docs row:
 - `PF-EMBED-RESOURCES`: `--mem` too low for the loader.
+
+(`PF-EMBED-SHARD-AMORTIZE`, a warning for too few images per shard, was
+built in P5 and dropped by U13.)
 
 ### 4.8 Failure modes
 
@@ -294,7 +320,23 @@ New preflight warnings, each with `HINTS` and a docs row:
 | Root changed before commit | `StoreRootChangedError`, the part removed; a plain retry next round |
 | Walltime mid-batch | Uncommitted images untouched (root-last); written signals survive; the next round reclassifies |
 | Epoch fenced | Nothing is published after the fence |
-| Cold load | Paid once per shard per round; a preflight warning when shards are too small; pre-staged weights and `HF_HUB_OFFLINE=1` recommended |
+| Cold load | Paid once per shard per round: 39.7–297.9 s to the first commit in the P5 smoke, with cached weights. Pre-staged weights and `HF_HUB_OFFLINE=1` recommended, and few shards for a small run (U13) |
+| Stage-1 or Stage-3 task killed (host OOM, node failure) | No result, record or journal row: the controller resubmits that task, in rounds bounded by the zero-progress rule (U15b); a second unchanged round leaves the image unrecorded, exit 5 |
+
+**Known limitations (U14, out of scope for #282).** Two cases end badly under
+U7's stall rule, and neither has a round cap or a per-image strike count:
+
+1. **An image whose preparation is very slow.** When the objects sprawl across
+   the plate, each padded crop is thousands of pixels on a side, and cutting
+   and resizing them takes minutes per image (smoke F3: up to about 35 min for
+   one image). Every round commits a few images, so the stall rule never
+   fires, and the run can go on for days. The remedy is the pipeline: refine
+   the objects so the crops are colony-sized.
+2. **A "poison" image that crashes its shard every round**, for example by
+   exhausting the host's memory. Once it is the only image left, its rounds
+   change nothing, so the stall rule ends the run with exit 5, and a plain
+   re-run repeats that. The remedy is to raise the shard's memory, or to
+   remove the image from the run.
 
 ## 5. Verification
 

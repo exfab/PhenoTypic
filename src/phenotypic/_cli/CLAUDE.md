@@ -619,16 +619,20 @@ there is no `--resume` flag. Exact terminal failures remain skipped unless
 A missing or invalid store selects Stage 1; a valid store without a complete
 Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
 **Every prereq probe tests BOTH halves of the signal** —
-`stage2_result_replayable()` is the one function all **six call sites in three
+`stage2_result_replayable()` is the one function all **seven call sites in three
 modules** call (`_cli_staged_strategy.py` ×3, `_cli_staged_slurm_worker.py` ×2,
-`_cli_staged_controller.py` ×1) — a count a `grep` can confirm or refute, which
+`_cli_staged_controller.py` ×2: `_classify_stage2`, and `_dead_stage3_indices`
+since #282 U15) — a count a `grep` can confirm or refute, which
 "five sites" could not, because it never said sites of what. The token
 is only a flag; Stage 3's actual input is the raw `.npy`, so a
 token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
 that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
 failure. Stage 3 embeds the authoritative Parquet inside the final store transaction,
 publishes the image marker over both the store root and table, then consumes the
-signal. The output is byte-identical to a
+signal. **A Stage-3 scientific failure keeps both halves**:
+`reconcile_stage3_publications` consumes them only for an image that is complete
+or has a Stage-3 marker, so `--retry-failures` replays Stage 3 from the retained
+raw array with no GPU (#282 P5 smoke: 44 files for 22 failures, review M4). The output is byte-identical to a
 single-pass run, with one exception: a `PlotImage` bound to a pre-GPU `ops`
 entry goes to `pre_pipeline`, so Stage 1 draws it on the image after the
 pre-GPU ops only, where a single-pass run draws it after the whole op chain.
@@ -709,6 +713,15 @@ site, never a bare literal.
   `130`.
 - **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
   run's own code** once the run ends, for a DVC stage or any orchestrator.
+  **It returns only once every job of the bound generation's ledger has
+  ended** (#282 U15, smoke F1): every controller pre-arms a recovery
+  controller, the one after the finalizer included, and the finalizer's fence
+  close makes `live_slurm_job_ids` answer empty while that controller is
+  still queued. So once a poll decides the outcome, the waiter keeps it and
+  polls `ledgered_jobs_of_generation` (the same classification, without the
+  fence short-cut) until nothing is live, unverified or unresolved, under the
+  same interval and `--timeout-seconds`, and then returns it. A teardown the
+  waiter triggers therefore cannot race that controller.
   Read-only: it never aggregates, publishes or cancels, and submits only the
   command given after `--` (below). Each poll
   reads `live_slurm_job_ids` **before** `resolve_run_state(depth="shallow")`.
@@ -785,7 +798,7 @@ site, never a bare literal.
   alone. `_live_jobs` passes a per-process `_InactiveJobMemo` as
   `live_slurm_job_ids(..., is_active=)`, since a job answered not-active
   stays so. The seams tests replace are `_run_snapshot`, `_live_jobs`,
-  `_fence_generation`, `_published`, `_cancelled`, `_generation_failures`
+  `_ledgered_jobs`, `_fence_generation`, `_published`, `_cancelled`, `_generation_failures`
   and `_is_process_run`.
 - **The GUI run console reads `4` as a failed submission**
   (`_gui/run_console/_slurm.py`), a known break #283 fixes before #281 merges.
@@ -879,6 +892,20 @@ persisting the returned ID.
   Stage-3 markers, and terminal failures. Remaining images launch another array round. One unchanged
   retryable-set round is retried; a second unchanged round terminalizes the
   remainder and advances to Stage 3.
+- **A Stage-1 or Stage-3 task killed by the host is resubmitted** (#282 U15,
+  smoke F2: OUT_OF_MEMORY). After a stage's last chunk, `_resubmit_dead_tasks`
+  (`_cli_staged_controller.py`) re-classifies: an image with no stage result
+  (no valid Stage-1 store; no `stages.stage3`, and for a detector run a
+  replayable Stage-2 signal), no record and no journal row under the epoch is
+  retryable. Only those tasks are resubmitted, one chunk at a time, by
+  narrowing the chunk's `--array` on the `sbatch` command line
+  (`submit_with_lifecycle(extra_args=)`), as `<stage>-retry-<round>-chunk-<i>`.
+  The same zero-progress rule as Stage 2, on the stage's own counters (read
+  with defaults, so a #281 state works): the second unchanged round stops,
+  the leftovers stay unrecorded, and the run exits `5`. The finalizer's log
+  repeats every recorded stall (`recorded_stall_lines`), since the waiter's
+  `5` points there. A trailing controller that finds the run
+  `terminal_incomplete` exits 0, like `complete` (review I3).
 - Every worker checks the active epoch immediately before publishing the store,
   the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
