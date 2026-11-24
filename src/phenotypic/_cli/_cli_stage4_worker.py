@@ -902,11 +902,19 @@ def _publish(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
     entry = work.entry
     if ctx.republish:
         _republish_record(ctx, entry, work.run_id)
-        ctx.check()
-        delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
-        delete_stage4_signal_temps(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
-        _event(ctx, entry, "completed")
-        return "published", ""
+    else:
+        _publish_record(ctx, entry)
+    ctx.check()
+    # A temp an earlier crash left mid-write goes too: no writer can hold
+    # this image now, so it goes with the signals rather than at the next
+    # sweep (M4).
+    _consume_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
+    _event(ctx, entry, "completed")
+    return "published", ""
+
+
+def _publish_record(ctx: _Stage4Context, entry: StagedManifestEntry) -> None:
+    """Publish *entry*'s record for the first time (a forward run)."""
     data_key, data_path = image_data_artifact(
         ctx.output_dir, ctx.output_manager, entry.dataset, entry.stem
     )
@@ -932,13 +940,21 @@ def _publish(ctx: _Stage4Context, work: _ImageWork) -> CommitStatus:
             artifacts=artifacts,
             commit_guard=ctx.commit_guard,
         )
-    ctx.check()
-    delete_stage4_signals(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
-    # A temp an earlier crash left mid-write: no writer can hold this image
-    # now, so it goes with the signals rather than at the next sweep (M4).
-    delete_stage4_signal_temps(ctx.output_dir, entry.dataset, entry.stem, commit_guard=ctx.commit_guard)
-    _event(ctx, entry, "completed")
-    return "published", ""
+
+
+def _consume_signals(
+    output_dir: Path, dataset: str, stem: str, *, commit_guard: CommitGuard | None
+) -> int:
+    """Remove every signal of one published image, and its signal temp files.
+
+    Only for an image whose record is valid, so no writer can still hold a
+    temp (``delete_stage4_signal_temps``).
+
+    Returns:
+        How many files were removed.
+    """
+    removed = delete_stage4_signals(output_dir, dataset, stem, commit_guard=commit_guard)
+    return removed + delete_stage4_signal_temps(output_dir, dataset, stem, commit_guard=commit_guard)
 
 
 def _leave_pending(
@@ -1559,9 +1575,7 @@ def sweep_orphan_stage4_signals(
                 output_dir, dataset=dataset, image_stem=stem, work_id=work_id
             ):
                 continue
-            removed = delete_stage4_signals(output_dir, dataset, stem, commit_guard=commit_guard)
-            removed += delete_stage4_signal_temps(output_dir, dataset, stem, commit_guard=commit_guard)
-            swept += bool(removed)
+            swept += bool(_consume_signals(output_dir, dataset, stem, commit_guard=commit_guard))
     return swept
 
 
@@ -1603,9 +1617,9 @@ def sweep_republished_stage4_signals(
             )
             if status != "done":
                 continue
-            removed = delete_stage4_signals(output_dir, dataset, entry.stem, commit_guard=commit_guard)
-            removed += delete_stage4_signal_temps(output_dir, dataset, entry.stem, commit_guard=commit_guard)
-            swept += bool(removed)
+            swept += bool(
+                _consume_signals(output_dir, dataset, entry.stem, commit_guard=commit_guard)
+            )
     return swept
 
 
