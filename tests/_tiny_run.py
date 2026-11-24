@@ -3638,3 +3638,292 @@ def measure_terminal_failures(out: Path) -> list:
     from phenotypic._cli._cli_failure_tracker import read_terminal_failures
 
     return read_terminal_failures(out)
+
+
+# ---------------------------------------------------------------------------
+# #282 P6 T2: SLURM --mode measure on the staged controller
+# ---------------------------------------------------------------------------
+
+
+def controller_config_path(out: Path) -> Path:
+    """The staged controller's config, ``.phenotypic/slurm_scripts/staged_controller.json``."""
+    from phenotypic.sdk_ import slurm_scripts_dir
+
+    return slurm_scripts_dir(out) / "staged_controller.json"
+
+
+def metrics(out: Path) -> dict:
+    """``deliverables/metrics.json``'s ``images`` block (``accepted``/``succeeded``/``failed``)."""
+    import json
+
+    from phenotypic.sdk_ import deliverables_dir
+
+    return json.loads((deliverables_dir(out) / "metrics.json").read_text(encoding="utf-8"))["images"]
+
+
+def fence_of(out: Path) -> dict:
+    """The SLURM lifecycle fence, ``.phenotypic/slurm_lifecycle.json``."""
+    from phenotypic._cli._cli_slurm_lifecycle import load_slurm_lifecycle
+
+    fence = load_slurm_lifecycle(out)
+    assert fence is not None
+    return dict(fence)
+
+
+class _Spy:
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+
+def spy(monkeypatch, name: str, module: str = "phenotypic._cli._cli_completion") -> _Spy:
+    """Record every call of *module*.*name* (it still runs); ``.calls`` holds ``(args, kwargs)``."""
+    import importlib
+
+    target = importlib.import_module(module)
+    original = getattr(target, name)
+    record = _Spy()
+
+    def _spied(*args, **kwargs):
+        record.calls.append((args, kwargs))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(target, name, _spied)
+    return record
+
+
+#: The measure pass's orchestration epoch in :class:`MeasureEpochTree`.
+MEASURE_EPOCH = "p6-measure-epoch"
+
+
+class MeasureEpochTree:
+    """A finished run re-measured by a SLURM ``--mode measure`` pass, under a live epoch (#282 P6 T2).
+
+    Built torch-free: the measure pipeline (:func:`with_stage4_dino_objects`)
+    differs from the forward one (:func:`tiny_pipeline`), so the measure core,
+    run with ``defer_embeddings=True``, writes a new run folder, leaves each
+    record uncertified, and needs no backbone. The manifest is a version-5
+    republish manifest, one entry per store, each with a synthetic measure
+    work id; the job metadata is what the staged submitter writes for a
+    measure pass (``RUN_MODE: "measure"``).
+    """
+
+    def __init__(self, out: Path, pipeline: Path, entries: list, manifest: Path) -> None:
+        self.out = out
+        self.pipeline = pipeline
+        self.entries = entries
+        self.manifest = manifest
+        self.epoch = MEASURE_EPOCH
+        self.sha = pipeline_sha(pipeline)
+
+    @property
+    def config(self) -> dict:
+        """The controller config fields ``_classify_stage4`` and ``_dead_stage3_indices`` read."""
+        return {
+            "output_dir": str(self.out),
+            "epoch": self.epoch,
+            "manifest_path": str(self.manifest),
+            "pipeline_sha256": self.sha,
+            "stage3_role": "measure",
+        }
+
+    def store(self, index: int) -> Path:
+        """Entry *index*'s store."""
+        return Path(self.entries[index].input_path)
+
+    def republish(self, index: int) -> None:
+        """Republish entry *index*'s record as this pass's Stage 4 does (stamped with the epoch)."""
+        from phenotypic._cli._cli_recompile_tables import _republish_table_marker
+        from phenotypic.sdk_ import image_record_path
+
+        entry = self.entries[index]
+        _republish_table_marker(
+            self.out,
+            image_record_path(self.out, entry.dataset, entry.stem),
+            commit_guard=None,
+            lifecycle_epoch=self.epoch,
+            measurements=owned_run(self.store(index), self.sha).measurements_path(),
+        )
+
+
+def build_measure_epoch_tree(tmp_path: Path, out: Path, *, measure: bool = True) -> MeasureEpochTree:
+    """A :class:`MeasureEpochTree` over the finished run at *out*.
+
+    Args:
+        tmp_path: Where the measure pipeline file goes.
+        out: A finished run (:func:`finished_tiny_run`).
+        measure: Run the measure core over every store (the pass's Stage 3).
+    """
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_process_single import process_single_store_measure_core
+    from phenotypic._cli._cli_staged_orchestration import (
+        StagedManifestEntry,
+        initialize_orchestration,
+        write_staged_manifest,
+    )
+    from phenotypic.sdk_ import JobMetadataKey, slurm_scripts_dir
+
+    pipeline = with_stage4_dino_objects(tmp_path)
+    entries = [
+        StagedManifestEntry(
+            dataset=store.parent.parent.name,
+            image_name=store.name,
+            stem=stem_of(store),
+            input_path=str(store),
+            work_id=f"measure-{stem_of(store)}",
+            relative_image_path=f"{store.parent.parent.name}/{store.name}",
+            attempt_id="a" * 32,
+        )
+        for store in stores_of(out)
+    ]
+    scripts = slurm_scripts_dir(out)
+    scripts.mkdir(parents=True, exist_ok=True)
+    manifest = write_staged_manifest(scripts / "staged_manifest.json", entries, republish=True)
+    initialize_orchestration(
+        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json"
+    )
+    record_slurm_job_metadata(
+        out,
+        **{
+            JobMetadataKey.RUN_MODE: "measure",
+            JobMetadataKey.EMBED_STAGE: "gpu",
+            JobMetadataKey.ORCHESTRATION_EPOCH: MEASURE_EPOCH,
+            "slurm_generation": MEASURE_EPOCH,
+            JobMetadataKey.DATASETS: {"ds": {"total": len(entries), "images": [e.image_name for e in entries]}},
+            JobMetadataKey.INCLUDE_DATASET_COLUMN: True,
+        },
+    )
+    if measure:
+        manager = OutputManager.from_config(out, ".tiff", save_overlays=False, durable_writes=False)
+        for entry in entries:
+            process_single_store_measure_core(
+                pipeline_path=pipeline,
+                store_path=Path(entry.input_path),
+                output_dir=out,
+                dataset_name=entry.dataset,
+                image_type="GridImage",
+                output_manager=manager,
+                defer_embeddings=True,
+            )
+    return MeasureEpochTree(out, pipeline, entries, manifest)
+
+
+def journal_measure_failure(tree: MeasureEpochTree, *, image: int) -> None:
+    """Journal entry *image* as a ``MEASURE_FAILURE_STAGE`` failure under the tree's epoch."""
+    from phenotypic._cli._cli_failure_tracker import MEASURE_FAILURE_STAGE, append_terminal_failure
+
+    entry = tree.entries[image]
+    append_terminal_failure(
+        tree.out,
+        work_id=entry.work_id,
+        dataset=entry.dataset,
+        relative_image_path=entry.relative_image_path,
+        failed_stage=MEASURE_FAILURE_STAGE,
+        exception=ValueError("planted measure failure"),
+        attempt_id=entry.attempt_id,
+        lifecycle_epoch=tree.epoch,
+        traceback="",
+    )
+
+
+class MeasuredSlurmTree:
+    """A finished inline run, ready for a SLURM measure pass's workers (#282 P6 T2). [torch]
+
+    The forward run embedded inline (:func:`with_stage4_dino_objects`), so
+    each entry's ``compute.stage`` is ``"inline"``. The measure pipeline
+    keeps the forward embedder's parameters and adds a ``MeasureShape``, so
+    its sha differs: the measure step writes a new run folder and carries
+    the embeddings from the certified one (U8 rule 2). The epoch is live,
+    the manifest is a republish manifest, and the round-1 worklist puts
+    every store in shard 0.
+    """
+
+    def __init__(self, out: Path, pipeline: Path, entries: list, manifest: Path, worklist: Path) -> None:
+        self.out = out
+        self.pipeline = pipeline
+        self.entries = entries
+        self.manifest = manifest
+        self.worklist = worklist
+        self.epoch = MEASURE_EPOCH
+
+    def store(self, index: int) -> Path:
+        return Path(self.entries[index].input_path)
+
+    def measure_kwargs(self, index: int) -> dict:
+        """``run_measure_step``'s arguments for entry *index*."""
+        return {
+            "pipeline_path": self.pipeline,
+            "output_dir": self.out,
+            "image_type": "GridImage",
+            "manifest": self.entries,
+            "index": index,
+            "epoch": self.epoch,
+        }
+
+    def shard_kwargs(self, shard_index: int) -> dict:
+        """``run_stage4_shard``'s arguments for *shard_index*."""
+        return {
+            "pipeline_path": self.pipeline,
+            "output_dir": self.out,
+            "image_type": "GridImage",
+            "worklist_path": self.worklist,
+            "shard_index": shard_index,
+            "epoch": self.epoch,
+        }
+
+
+@pytest.fixture
+def measured_slurm_tree(tmp_path: Path, tiny_inputs: Path, stage4_cpu) -> MeasuredSlurmTree:
+    """:class:`MeasuredSlurmTree`. [torch]"""
+    from phenotypic import ImagePipeline
+    from phenotypic._cli._cli_staged_orchestration import (
+        StagedManifestEntry,
+        initialize_orchestration,
+        stage4_worklist_path,
+        write_stage4_worklist,
+        write_staged_manifest,
+    )
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureDinoEmbedding, MeasureShape, MeasureSize
+    from phenotypic.sdk_ import JobMetadataKey, slurm_scripts_dir
+
+    out = tmp_path / "out"
+    forward = run_cli(tiny_inputs, out, pipeline=with_stage4_dino_objects(tmp_path))
+    assert forward.exit_code == 0, forward.output
+    measure = ImagePipeline(
+        name="stage4-dino-measure",
+        ops=[OtsuDetector()],
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(), "shape": MeasureShape()},
+    )
+    pipeline = _write_pipeline_file(tmp_path, "measure_dino", measure)
+    entries = [
+        StagedManifestEntry(
+            dataset=store.parent.parent.name,
+            image_name=store.name,
+            stem=stem_of(store),
+            input_path=str(store),
+            work_id=f"measure-{stem_of(store)}",
+            relative_image_path=f"{store.parent.parent.name}/{store.name}",
+            attempt_id="a" * 32,
+        )
+        for store in stores_of(out)
+    ]
+    scripts = slurm_scripts_dir(out)
+    scripts.mkdir(parents=True, exist_ok=True)
+    manifest = write_staged_manifest(scripts / "staged_manifest.json", entries, republish=True)
+    initialize_orchestration(
+        out, epoch=MEASURE_EPOCH, mode="fresh", controller_config_path=scripts / "staged_controller.json"
+    )
+    record_slurm_job_metadata(
+        out,
+        **{
+            JobMetadataKey.RUN_MODE: "measure",
+            JobMetadataKey.EMBED_STAGE: "gpu",
+            JobMetadataKey.EMBED_REVISIONS: {"facebook/dinov2-base": STUB_COMMIT},
+            JobMetadataKey.INCLUDE_DATASET_COLUMN: True,
+        },
+    )
+    worklist = write_stage4_worklist(
+        stage4_worklist_path(out), round_index=1, manifest_path=manifest,
+        retryable=entries, n_shards=1,
+    )
+    return MeasuredSlurmTree(out, pipeline, entries, manifest, worklist)

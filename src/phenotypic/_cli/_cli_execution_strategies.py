@@ -1535,7 +1535,10 @@ def uses_staged_controller(config: ExecutionConfig) -> bool:
     A staged GPU run (:func:`uses_staged_gpu_strategy`), or a SLURM run that
     embeds in a GPU Stage 4 (#282 P5 T2, spec §4.1), with or without a
     ``GpuDetector``: without one the controller's phases are ``["stage3",
-    "stage4"]`` and its "stage3" role runs the single-pass core.
+    "stage4"]`` and its "stage3" role runs the single-pass core. That
+    includes a SLURM ``--mode measure`` that embeds on the GPU (#282 P6 T2,
+    U10): its "stage3" role is the measure core, and its Stage 4 runs in
+    republish mode.
     """
     return uses_staged_gpu_strategy(config) or (
         config.is_slurm_mode() and getattr(config, "embed_stage", "inline") == "gpu"

@@ -798,6 +798,118 @@ def run_single_pass_step(
         raise
 
 
+def run_measure_step(
+    pipeline_path: Path,
+    output_dir: Path,
+    image_type: ImageTypeName,
+    manifest: Manifest,
+    index: int,
+    *,
+    epoch: str,
+    durable_writes: bool | None = None,
+) -> None:
+    """The "stage3" role of a SLURM ``--mode measure`` on the staged controller (#282 U10).
+
+    Re-measures one manifest store with
+    ``process_single_store_measure_core(..., defer_embeddings=True)``: the
+    measure pipeline's run folder is rewritten, the image's comparable
+    embeddings are carried forward (U8), and neither ``embed`` nor the
+    record's republish runs; the republish-mode Stage 4 does both.
+
+    It returns at once when this pass's Stage 4 already republished the
+    image (``stage4_status(republish=True) == "done"`` under *epoch*): a
+    resubmitted task (U15) must not rewrite a root Stage 4 certified.
+
+    The core runs inside ``measure_scientific_boundary()``, so a failure is
+    journalled under the entry's measure work id and *epoch* with stage
+    ``MEASURE_FAILURE_STAGE``, as the ordinary SLURM measure worker journals
+    one, and re-raised so the task fails.
+
+    Args:
+        pipeline_path: The measure pipeline file.
+        output_dir: Run output root.
+        image_type: ``"Image"`` or ``"GridImage"``, the fallback for a store
+            whose block names no class.
+        manifest: The staged manifest (one entry per store; ``input_path``
+            is the store).
+        index: The image's absolute manifest index.
+        epoch: The lifecycle epoch, the fence.
+        durable_writes: The transported ``--durable-writes`` tri-state.
+    """
+    from ._cli_process_single import (
+        measure_scientific_boundary,
+        process_single_store_measure_core,
+    )
+    from ._cli_stage4_worker import _measure_pipeline_sha256
+    from ._cli_staged_resume import stage4_status
+    from ._cli_state_management import metadata_run_initiation
+
+    item = _entry(manifest[index])
+    if stage4_status(
+        output_dir, item.dataset, item.stem, item.work_id, republish=True,
+        pipeline_sha256=_measure_pipeline_sha256(pipeline_path), epoch=epoch,
+    ) == "done":
+        return
+    check = _active_check(output_dir, epoch)
+    commit_guard = _commit_guard(output_dir, epoch)
+    if check is not None:
+        check()
+    metadata = load_job_metadata(progress_dir(output_dir))
+    output_manager = OutputManager.from_config(
+        output_dir,
+        ".tiff",
+        include_dataset_column=(
+            metadata.get(JobMetadataKey.INCLUDE_DATASET_COLUMN, True)
+            if isinstance(metadata, dict)
+            else True
+        ),
+        save_overlays=False,
+        durable_writes=durable_writes,
+        run_initiation=metadata_run_initiation(output_dir),
+    )
+    try:
+        with stage_event(
+            event_log_path(output_dir),
+            item.dataset,
+            item.image_name,
+            STAGE_MEASURE,
+            active_check=check,
+            commit_guard=commit_guard,
+        ):
+            with measure_scientific_boundary():
+                process_single_store_measure_core(
+                    pipeline_path=pipeline_path,
+                    store_path=Path(item.input_path),
+                    output_dir=output_dir,
+                    dataset_name=item.dataset,
+                    image_type=image_type,
+                    output_manager=output_manager,
+                    commit_guard=commit_guard,
+                    defer_embeddings=True,
+                )
+    except Exception as exc:
+        inactive = slurm_generation_inactive_cause(exc)
+        if inactive is not None:
+            raise inactive
+        _record_terminal_scientific_failure(output_dir, item, exc, epoch, commit_guard)
+        raise
+
+
+def _republish_revisions(output_dir: Path) -> "dict[str, str | None] | None":
+    """The revisions a SLURM ``--mode measure`` submission resolved (U5, P6 T2).
+
+    Measure mode keeps no processing state, so the state's revisions are the
+    forward run's; the measure submitter recorded its own in
+    ``job_metadata.json`` (``EMBED_REVISIONS``), as a local measure uses its
+    invocation's.
+    """
+    metadata = load_job_metadata(progress_dir(output_dir))
+    recorded = metadata.get(JobMetadataKey.EMBED_REVISIONS) if isinstance(metadata, dict) else None
+    if not isinstance(recorded, dict):
+        return None
+    return {str(k): (None if v is None else str(v)) for k, v in recorded.items()}
+
+
 def run_stage4_shard(
     pipeline_path: Path,
     output_dir: Path,
@@ -830,7 +942,10 @@ def run_stage4_shard(
 
     The device, the determinism settings, the licence and the physical
     batch (from this GPU's total memory) are ``run_stage4``'s, at shard
-    start. Republish (measure mode, U4) is P6 T1's and is not read here.
+    start. **Republish** (``--mode measure``, U4/U10) is read from the
+    worklist's manifest (``staged_manifest_republishes``), the mode's one
+    carrier (C14): then each record is republished stamped with *epoch*,
+    and the revisions are the measure submission's.
 
     Args:
         pipeline_path: The run's pipeline file.
@@ -857,16 +972,21 @@ def run_stage4_shard(
 
     from ._cli_embed_stage import recorded_embed_revisions
     from ._cli_stage4_worker import Stage4DeviceError, Stage4ShardError, run_stage4
-    from ._cli_staged_orchestration import load_stage4_worklist
+    from ._cli_staged_orchestration import (
+        load_stage4_worklist,
+        staged_manifest_republishes,
+    )
     from ._cli_utils import resolve_local_worker_count
 
     check = _active_check(output_dir, epoch)
     commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
-    entries = load_stage4_worklist(worklist_path, shard_index).entries
+    shard = load_stage4_worklist(worklist_path, shard_index)
+    entries = shard.entries
     if not entries:
         return 0
+    republish = staged_manifest_republishes(shard.manifest_path)
     output_manager = OutputManager.from_config(
         output_dir,
         ext,
@@ -882,9 +1002,16 @@ def run_stage4_shard(
             entries,
             image_type=image_type,
             epoch=epoch,
+            republish=republish,
+            republish_epoch=epoch if republish else None,
             # The one reader of the recorded revisions (review M15): the
             # state first, then the job metadata, as a continuation reads them.
-            revisions=recorded_embed_revisions(output_dir),
+            # A measure submission's are its own (job metadata only).
+            revisions=(
+                _republish_revisions(output_dir)
+                if republish
+                else recorded_embed_revisions(output_dir)
+            ),
             num_workers=resolve_local_worker_count(-1, len(entries)) - 1,
             output_manager=output_manager,
             active_check=check,
@@ -919,9 +1046,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")
     parser.add_argument("--stage", type=int, required=True, choices=(1, 2, 3, 4))
     # Stage 3's role (#282 P5 T2): the staged merge-and-measure, or, in a
-    # Stage-4 run without a GpuDetector, the single-pass core.
+    # Stage-4 run without a GpuDetector, the single-pass core, or, in a
+    # SLURM --mode measure on the controller (P6 T2), the measure core.
     parser.add_argument(
-        "--stage3-role", choices=("staged", "single_pass"), default="staged"
+        "--stage3-role", choices=("staged", "single_pass", "measure"), default="staged"
     )
     # Stage 4: the round's worklist; --index is the shard.
     parser.add_argument("--worklist", type=Path, default=None)
@@ -1023,6 +1151,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.n_shards,
             markers_required=args.stage3_markers_required,
             **stage2_common,
+        )
+    elif args.stage3_role == "measure":
+        run_measure_step(
+            args.pipeline,
+            args.output_dir,
+            image_type,
+            manifest,
+            args.index,
+            epoch=args.epoch,
+            durable_writes=args.durable_writes,
         )
     elif args.stage3_role == "single_pass":
         run_single_pass_step(

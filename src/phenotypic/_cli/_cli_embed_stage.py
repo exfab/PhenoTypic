@@ -37,12 +37,11 @@ the read-only half, outside ``--skip-validation`` and above ``--restart``,
 - **R3** (:func:`refuse_embed_stage_switch`): a continuation whose resolved
   stage differs from the recorded one (U3).
 
-**An interim gate** (#282 P3-P4 review C1): :func:`stage4_supported` says
-which runs have a Stage-4 executor today: full runs, local or on SLURM (P5 T2
-lifted SLURM), and local ``--mode measure`` (P6 T1). In a SLURM ``--mode
-measure``, ``auto`` resolves ``inline`` with a one-line note, and an explicit
-``--embed-stage gpu`` is one usage-error line, until P6 T2 widens that one
-predicate for it.
+**The interim gate** (#282 P3-P4 review C1) is lifted: :func:`stage4_supported`
+admits every mode that embeds, full and ``--mode measure``, local and on
+SLURM (P5 T2 lifted SLURM full runs, P6 T1 local measure, P6 T2 SLURM
+measure on the staged controller). It stays the one predicate a future mode
+without a Stage-4 executor would be refused by.
 
 **One revision per run** (U5, #282 P5 T2): :func:`resolve_embed_revisions`
 asks the hub once, in the submitting process at a Stage-4 run's first
@@ -235,7 +234,9 @@ def refuse_embed_stage_switch(
     <recorded>`` when this invocation could honour it, otherwise
     ``--restart``, which starts the run over and re-resolves its stage
     (review C1: a run recorded ``gpu`` where Stage 4 is gated cannot be
-    continued as ``gpu``).
+    continued as ``gpu``). When this invocation asked for ``gpu`` and Stage
+    4 can run, it also names U3's second remedy: re-embed the finished run
+    with ``--mode measure --embed-stage gpu`` (P6).
 
     Args:
         recorded: The state's recorded ``embed_stage``; ``None`` (a state
@@ -260,6 +261,15 @@ def refuse_embed_stage_switch(
         remedy = f"Re-run with --embed-stage {recorded_stage}"
         if recorded_stage == "gpu" and is_slurm:
             remedy += " (on SLURM, also --gpu-slurm)"
+    if resolved == "gpu" and stage4_available:
+        # U3's second remedy, regained with measure mode's Stage 4 (P6): a
+        # finished run is re-embedded on the GPU by a separate invocation.
+        remedy += (
+            "; or, once it has finished, re-embed it on the GPU with "
+            "--mode measure --embed-stage gpu"
+        )
+        if is_slurm:
+            remedy += " (on SLURM, with --gpu-slurm)"
     raise click.UsageError(
         f"this run was started with --embed-stage {recorded_stage}; continuing "
         f"it as {resolved} would mix CPU and GPU embeddings. {remedy}"
@@ -344,30 +354,32 @@ def has_slurm_gpu_profile(config: "ExecutionConfig") -> bool:
 
 
 def stage4_supported(config: "ExecutionConfig") -> bool:
-    """Whether a Stage-4 executor runs this configuration's embeddings today.
+    """Whether a Stage-4 executor runs this configuration's embeddings.
 
-    The interim gate of #282 P3-P4 review C1: a **forward run** (``--mode
-    full``) has one, locally (the local strategies, staged or single-pass)
-    and on SLURM (the staged controller's GPU rounds, P5 T2, which routes a
-    SLURM ``gpu`` run to ``StagedSlurmStrategy`` with or without a
-    ``GpuDetector``). A **local** ``--mode measure`` has one since P6 T1:
-    the republish-mode Stage 4 ``LocalParallelStrategy`` runs after its
-    measure loop. A SLURM ``--mode measure`` would still defer its
-    embeddings to a Stage 4 that nothing on its path runs, so the run could
-    never finish; P6 T2 lifts it with the staged controller's measure role.
+    The interim gate of #282 P3-P4 review C1, now lifted for every mode that
+    embeds:
+
+    - a **forward run** (``--mode full``), locally (the local strategies,
+      staged or single-pass) and on SLURM (the staged controller's GPU
+      rounds, P5 T2, with or without a ``GpuDetector``);
+    - **``--mode measure``**, locally (the republish-mode Stage 4 that
+      ``LocalParallelStrategy`` runs after its measure loop, P6 T1) and on
+      SLURM (the staged controller's ``"measure"`` role, then republish
+      rounds, P6 T2, U10).
+
     ``--mode process`` never reaches this: it resolves ``inline`` and R1
     refuses ``gpu``.
     """
     from ._cli_preflight import run_mode_of
 
-    mode = run_mode_of(config)
-    return mode == "full" or (mode == "measure" and not config.is_slurm_mode())
+    return run_mode_of(config) in ("full", "measure")
 
 
 def stage4_unavailable_reason(config: "ExecutionConfig") -> str:
     """Why :func:`stage4_supported` is false for *config*: the note's and refusal's words."""
-    del config  # only SLURM measure mode is gated now (P6 T1 lifted local measure)
-    return "Stage 4 in SLURM --mode measure is not yet available"
+    from ._cli_preflight import run_mode_of
+
+    return f"Stage 4 in --mode {run_mode_of(config)} is not available"
 
 
 def resolve_embed_stage_for_config(

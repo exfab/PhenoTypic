@@ -558,35 +558,45 @@ def test_r3_is_refused_before_the_mutating_half(
     assert _tree_digest(output_dir) == before
 
 
-@pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
+@pytest.mark.parametrize("extra", [(), ("--gpu-shards", "2")], ids=lambda e: " ".join(e) or "plain")
 def test_the_slurm_measure_stage4_gate_is_refused_before_the_mutating_half(
-    valid_pipeline: Path, image_tree: Path, tmp_path: Path, extra: tuple[str, ...]
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path, submissions, monkeypatch,
+    extra: tuple[str, ...],
 ) -> None:
-    """#282 review C1, flipped by P5 T2: SLURM full runs have Stage 4 now, SLURM measure not yet.
+    """#282 review C1, flipped by P6 T2: SLURM ``--mode measure --gpu-slurm`` now runs Stage 4.
 
-    This test pinned SLURM ``--embed-stage gpu``'s refusal above every
-    mutation; P5 T2 lifted it for ``--mode full``. The gate's one remaining
-    SLURM case, ``--mode measure --gpu-slurm`` (until P6 T1), keeps the same
-    pin, over a real finished run that stays byte-unchanged. Torch-free.
+    The gate refused it above every mutation until the staged controller
+    gained its measure role (U10). Now it is submitted (exit 4) through
+    ``StagedSlurmStrategy`` with the ``"measure"`` Stage-3 role, over a real
+    finished run, and no gate line is printed. Torch-free: validation, which
+    import-checks torch and asks the scheduler, is skipped, and every
+    submission seam is the ``submissions`` fake.
     """
+    import json
+
+    from phenotypic._cli import _cli_embed_stage
+
+    monkeypatch.setattr(_cli_embed_stage, "_hub_commit", lambda hf_id: "c" * 40)
     output_dir = tmp_path / "run"
     first = _invoke(
         "--pipeline", str(valid_pipeline), "--input", str(image_tree),
         "--output", str(output_dir), "--njobs", "1",
     )
     assert first.exit_code == 0, first.output
-    before = _tree_digest(output_dir)
 
     result = _invoke(
         "--mode", "measure", "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
         "--output", str(output_dir), "--slurm", "partition=intel",
-        "--gpu-slurm", "partition=exfab", "--embed-stage", "gpu", *extra,
+        "--gpu-slurm", "partition=exfab", "--embed-stage", "gpu", "--skip-validation", *extra,
     )
 
-    assert result.exit_code == 2, result.output
-    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
-    assert len(errors) == 1 and "Stage 4 in SLURM --mode measure is not yet available" in errors[0], result.output
-    assert _tree_digest(output_dir) == before
+    assert result.exit_code == 4, result.output
+    assert "not yet available" not in result.output
+    assert submissions == ["staged"]
+    config = json.loads(
+        (output_dir / ".phenotypic" / "slurm_scripts" / "staged_controller.json").read_text(encoding="utf-8")
+    )
+    assert config["stage3_role"] == "measure"
 
 
 @pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")

@@ -29,6 +29,7 @@ from tests._tiny_run import (  # noqa: F401
     image_with_two_models,
     input_store_v2,
     measured_image,
+    measured_slurm_tree,
     param_stub_backbone,
     metadata_bytes,
     no_stage4,

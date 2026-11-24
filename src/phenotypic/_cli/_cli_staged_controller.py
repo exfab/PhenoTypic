@@ -47,6 +47,7 @@ from ._cli_staged_orchestration import (
     save_orchestration_state,
     scheduler_job_is_active,
     staged_completion_matches,
+    staged_manifest_republishes,
     submit_with_intent,
     update_job_dependency,
     write_stage4_worklist,
@@ -411,6 +412,8 @@ def _dead_stage3_indices(
 
     output_dir = Path(config["output_dir"])
     failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
+    if config.get("stage3_role") == "measure":
+        return _dead_measure_indices(config, entries, failed)
     staged = config.get("stage3_role", "staged") != "single_pass"
     resume = bool(config.get("resume", False))
     markers_required = bool(config.get("stage3_markers_required", True))
@@ -433,6 +436,44 @@ def _dead_stage3_indices(
             continue
         dead.append(index)
     return dead
+
+
+def _dead_measure_indices(
+    config: dict[str, Any], entries: Sequence[StagedManifestEntry], failed: set[str]
+) -> list[int]:
+    """The measure role's dead tasks: a record but no run folder of the measure pipeline (U15, P6 T2).
+
+    A measure step that ran wrote that folder (or journalled a failure under
+    this epoch), so a store whose record exists and whose root declares no
+    folder of ``config["pipeline_sha256"]`` was killed before its write.
+    With the forward pipeline the folder exists from the forward run, so a
+    killed step is indistinguishable from a finished one; Stage 4 then
+    re-embeds and republishes it over the forward table, which is the
+    table the step would have rewritten.
+    """
+    from ._cli_staged_resume import stage4_status
+
+    output_dir = Path(config["output_dir"])
+    dead: list[int] = []
+    for index, entry in enumerate(entries):
+        if entry.work_id in failed:
+            continue
+        status = stage4_status(
+            output_dir, entry.dataset, entry.stem, entry.work_id, republish=True,
+            pipeline_sha256=config.get("pipeline_sha256"), epoch=str(config["epoch"]),
+        )
+        if status == "not_ready" and _has_published_record(output_dir, entry):
+            dead.append(index)
+    return dead
+
+
+def _has_published_record(output_dir: Path, entry: StagedManifestEntry) -> bool:
+    """Whether *entry*'s image has a record with ``artifacts`` (it was forward-published)."""
+    from phenotypic.sdk_._image_record import read_image_record
+
+    record = read_image_record(output_dir, entry.dataset, entry.stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    return isinstance(artifacts, dict) and bool(artifacts)
 
 
 def _resubmit_dead_tasks(
@@ -615,19 +656,33 @@ def _classify_stage4(
 
     A failure from an earlier epoch is not terminal here: the continuation
     that submitted this epoch chose to retry it.
+
+    **Republish mode** (``--mode measure``, P6 T2) is read from the
+    manifest (:func:`staged_manifest_republishes`, its one carrier), and
+    ``stage4_status`` then asks of the measure pipeline's run folder
+    (``config["pipeline_sha256"]``) and of this epoch, which a republished
+    record carries. Measure mode plans no reference metadata, so the
+    reference check is skipped.
     """
     output_dir = Path(config["output_dir"])
-    failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
+    epoch = str(config["epoch"])
+    failed = terminal_failure_work_ids_under_epoch(output_dir, epoch)
+    republish = staged_manifest_republishes(Path(config["manifest_path"]))
     retryable: list[StagedManifestEntry] = []
     terminal: list[StagedManifestEntry] = []
     for entry in entries:
-        status = stage4_status(output_dir, entry.dataset, entry.stem, entry.work_id)
+        status = stage4_status(
+            output_dir, entry.dataset, entry.stem, entry.work_id,
+            republish=republish,
+            pipeline_sha256=config.get("pipeline_sha256") if republish else None,
+            epoch=epoch if republish else None,
+        )
         if status == "done":
             continue
         if entry.work_id in failed or status == "not_ready":
             terminal.append(entry)
             continue
-        if (
+        if not republish and (
             reference_digest_for(output_dir, entry.dataset, entry.stem)
             != entry.reference_digest
         ):
@@ -844,10 +899,14 @@ def _advance_stage4(
     save_orchestration_state(output_dir, state)
     # Before classifying (plan review I7): an image published in an earlier
     # round whose shard died before consuming its signals is done, and only
-    # this sweep reaches its leftovers.
-    sweep_run_orphan_stage4_signals(
-        output_dir, commit_guard=_controller_commit_guard(output_dir, epoch)
-    )
+    # this sweep reaches its leftovers. Not in republish mode: the sweep asks
+    # the forward record, which a same-pipeline measure leaves verifying, so
+    # it would delete the signals a killed round wrote for an image this
+    # pass has not yet republished.
+    if not staged_manifest_republishes(Path(config["manifest_path"])):
+        sweep_run_orphan_stage4_signals(
+            output_dir, commit_guard=_controller_commit_guard(output_dir, epoch)
+        )
     entries = load_staged_manifest(Path(config["manifest_path"]))
     retryable, terminal = _classify_stage4(config, entries)
     _log_stage4_terminal(config, terminal)

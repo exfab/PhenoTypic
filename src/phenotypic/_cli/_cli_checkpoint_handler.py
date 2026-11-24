@@ -384,7 +384,24 @@ def _run_finalize(
             raise
         logger.warning("Dashboard generation failed", exc_info=True)
 
-    if epoch is not None:
+    if epoch is not None and job_metadata.get(JobMetadataKey.RUN_MODE) == "measure":
+        # The measure-mode finalizer (#282 U10, plan review I9). A measure
+        # resubmission has no forward run proof to write: the accepted
+        # inventory is the forward run's, and asking whether all of it
+        # succeeded would answer for a run this submission did not make. So
+        # it closes the fence as its finalizer and marks the orchestration
+        # complete, writing no run proof and no staged-completion marker (the
+        # forward run's continuation reads that one). `measure_failed` is
+        # the journal's count under this epoch, which `finalize_run` took
+        # from `execution_epoch` above.
+        from ._cli_slurm_lifecycle import FENCE_CLOSED_BY_FINALIZER
+        from ._cli_staged_orchestration import deactivate_orchestration
+
+        with logged_step(logger, "finalize: close the measure orchestration"):
+            deactivate_orchestration(
+                output_dir, "complete", closed_by=FENCE_CLOSED_BY_FINALIZER
+            )
+    elif epoch is not None:
         from ._cli_completion import (
             _all_accepted_images_succeeded,
             publish_run_completion_evidence,

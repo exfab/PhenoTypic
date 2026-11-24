@@ -325,3 +325,92 @@ def test_a_local_continuation_reuses_the_recorded_revision(tmp_path, tiny_inputs
     assert {c["revision"] for c in stage4_cpu.load_calls} == {"c" * 40}
     state = json.loads((out / ".phenotypic" / "processing_state.json").read_text(encoding="utf-8"))
     assert state["config"]["embed_revisions"] == {"facebook/dinov2-base": "c" * 40}
+
+
+# ---------------------------------------------------------------------------
+# #282 P6 T2: the measure role, and republish read from the manifest
+# ---------------------------------------------------------------------------
+
+
+def _objects_entry_of(store, run):
+    return run.descriptor["embeddings"]["dinov2-vitb14/rgb/objects"]
+
+
+def test_the_measure_role_carries_embeddings_and_defers_the_republish(measured_slurm_tree, stage4_cpu):
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step, run_stage4_shard
+    from tests._tiny_run import (
+        certified_run_id,
+        embedding_bytes,
+        owned_run,
+        pipeline_sha,
+        record_certifies_root,
+        record_identity,
+    )
+
+    tree = measured_slurm_tree
+    store = tree.store(0)
+    old = embedding_bytes(store, "dinov2-vitb14/rgb/objects")
+    identity = record_identity(tree.out, store)
+    run_measure_step(**tree.measure_kwargs(index=0))
+    new_run = owned_run(store, pipeline_sha(tree.pipeline))
+    assert embedding_bytes(store, "dinov2-vitb14/rgb/objects", run=new_run) == old   # U8: carried
+    assert _objects_entry_of(store, new_run)["compute"]["stage"] == "inline"
+    assert not record_certifies_root(tree.out, store)                                  # republish deferred
+    loads = len(stage4_cpu.load_calls)
+    assert run_stage4_shard(**tree.shard_kwargs(shard_index=0)) == 0
+    assert len(stage4_cpu.load_calls) == loads + 1
+    assert record_certifies_root(tree.out, store)
+    assert certified_run_id(tree.out, store) == new_run.run_id
+    assert _objects_entry_of(store, owned_run(store, pipeline_sha(tree.pipeline)))["compute"]["stage"] == "stage4"
+    assert record_identity(tree.out, store) == identity
+    # Stamped with the pass's epoch, the one rule that makes "done" mean re-embedded.
+    assert read_image_record(tree.out, "ds", store.name.removesuffix(".ome.zarr"))["lifecycle_epoch"] == tree.epoch
+
+
+def test_the_shard_reads_republish_from_the_manifest(measured_slurm_tree, stage4_cpu, monkeypatch):
+    """C14: the shard's one republish carrier is the manifest the worklist names."""
+    from phenotypic._cli._cli_staged_orchestration import write_staged_manifest
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step, run_stage4_shard
+
+    tree = measured_slurm_tree
+    seen: list = []
+    original = _cli_stage4_worker.run_stage4
+
+    def _spy(*args, **kwargs):
+        seen.append((kwargs["republish"], kwargs["republish_epoch"]))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(_cli_stage4_worker, "run_stage4", _spy)
+    run_measure_step(**tree.measure_kwargs(index=0))
+    run_stage4_shard(**tree.shard_kwargs(shard_index=0))
+    write_staged_manifest(tree.manifest, tree.entries, republish=False)
+    run_stage4_shard(**tree.shard_kwargs(shard_index=0))
+    assert seen == [(True, tree.epoch), (False, None)]
+
+
+def test_the_measure_role_journals_a_failure_under_the_epoch(measured_slurm_tree, stage4_cpu):
+    from phenotypic._cli._cli_failure_tracker import MEASURE_FAILURE_STAGE
+    from phenotypic._cli._cli_staged_slurm_worker import run_measure_step
+    from tests._tiny_run import break_store_for_measure
+
+    tree = measured_slurm_tree
+    break_store_for_measure(tree.out, tree.entries[0].stem)
+    with pytest.raises(Exception):
+        run_measure_step(**tree.measure_kwargs(index=0))
+    rows = read_terminal_failures(tree.out)
+    assert [(r.work_id, r.failed_stage, r.lifecycle_epoch) for r in rows] == [
+        (tree.entries[0].work_id, MEASURE_FAILURE_STAGE, tree.epoch)
+    ]
+
+
+def test_main_dispatches_the_measure_role(measured_slurm_tree, stage4_cpu):
+    from tests._tiny_run import owned_run, pipeline_sha
+
+    tree = measured_slurm_tree
+    code = main([
+        "--stage", "3", "--stage3-role", "measure", "--pipeline", str(tree.pipeline),
+        "--output-dir", str(tree.out), "--image-type", "GridImage",
+        "--manifest", str(tree.manifest), "--index", "1", "--epoch", tree.epoch,
+    ])
+    assert code == 0
+    assert owned_run(tree.store(1), pipeline_sha(tree.pipeline)).has_measurements

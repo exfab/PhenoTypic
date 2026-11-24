@@ -97,13 +97,11 @@ def test_auto_resolves_inline_for_a_non_dino_embedder(make_exec_config, tmp_path
     assert resolve_embed_stage_for_config(config, pipe) == ("inline", [
         f"meas 'toy' ({cls}) has no GPU Stage-4 encoder, so --embed-stage auto resolves to inline"])
     refuse_unstageable_embedders(pipe, "auto", "inline")
-    # The control: the DINO embedder alone resolves gpu on a SLURM full run
-    # (P5 T2 lifted the gate there), so the toy is what decided. Measure mode
-    # stays gated until P6 T1: it resolves inline through the gate instead,
-    # with the gate's note, not the toy's.
+    # The control: the DINO embedder alone resolves gpu on a SLURM run, full
+    # (P5 T2 lifted the gate there) or measure (P6 T2), so the toy is what
+    # decided.
     alone = ImagePipeline(ops=ops, meas={"dino": MeasureDinoEmbedding()})
-    expected = ("inline", [_gate_note(mode)]) if mode == "measure" else ("gpu", [])
-    assert resolve_embed_stage_for_config(config, alone) == expected
+    assert resolve_embed_stage_for_config(config, alone) == ("gpu", [])
     assert resolve_embed_stage("auto", mode=mode, is_slurm=True, has_gpu_detector=gpu_detector,
                                gpu_slurm_given=gpu_slurm, has_embedders=True, cpu_pinned=False,
                                unstageable=True) == "inline"
@@ -120,7 +118,10 @@ def test_explicit_gpu_with_a_non_dino_embedder_resolves_gpu_and_r2_refuses(make_
 
 
 def test_r3_names_the_recorded_flag_and_the_remedy():
-    with pytest.raises(click.UsageError, match=r"started with --embed-stage inline.*Re-run with --embed-stage inline$"):
+    with pytest.raises(click.UsageError, match=(
+        r"started with --embed-stage inline.*Re-run with --embed-stage inline; or, once it has "
+        r"finished, re-embed it on the GPU with --mode measure --embed-stage gpu$"
+    )):
         refuse_embed_stage_switch("inline", "gpu", is_slurm=False, stage4_available=True)
     with pytest.raises(click.UsageError, match=r"Re-run with --embed-stage gpu \(on SLURM, also --gpu-slurm\)$"):
         refuse_embed_stage_switch("gpu", "inline", is_slurm=True, stage4_available=True)
@@ -184,15 +185,24 @@ def test_slurm_auto_does_not_adopt_gpu_without_a_gpu_profile():
 @pytest.mark.parametrize("is_slurm", [False, True], ids=["local", "slurm"])
 @pytest.mark.parametrize("available", [False, True], ids=["gated", "available"])
 def test_r3_never_names_a_command_that_cannot_run(recorded, resolved, is_slurm, available):
-    """Review C1: no remedy names ``--embed-stage gpu`` where Stage 4 cannot run, nor
-    ``--mode measure --embed-stage gpu``, which the gate refuses until P6 T1."""
+    """Review C1: no remedy names ``--embed-stage gpu`` where Stage 4 cannot run.
+
+    P6 restored U3's second remedy: an invocation that asked for ``gpu`` where
+    Stage 4 runs is also told it can re-embed the finished run with ``--mode
+    measure --embed-stage gpu``; nowhere else is that command named.
+    """
     with pytest.raises(click.UsageError) as raised:
         refuse_embed_stage_switch(recorded, resolved, is_slurm=is_slurm, stage4_available=available)
     remedy = raised.value.message.split("would mix CPU and GPU embeddings. ", 1)[1]
-    assert "--mode measure" not in remedy
-    assert ("--embed-stage gpu" in remedy) is (recorded == "gpu" and available)
+    first, _, second = remedy.partition("; or, once it has finished, ")
+    assert ("--embed-stage gpu" in first) is (recorded == "gpu" and available)
     if recorded == "gpu" and not available:
         assert remedy == "Stage 4 cannot run this invocation yet, so start the run over with --restart"
+    reembed = resolved == "gpu" and available
+    assert ("--mode measure --embed-stage gpu" in remedy) is reembed
+    if reembed:
+        assert second.startswith("re-embed it on the GPU with --mode measure --embed-stage gpu")
+        assert ("--gpu-slurm" in second) is is_slurm
 
 
 def test_embed_stage_is_not_in_the_work_id(make_exec_config, tiny_pipeline_file, tmp_path):
@@ -213,15 +223,11 @@ def _slurm_config(make_exec_config, tmp_path: Path, **overrides: Any):
     )
 
 
-def _gate_note(mode: str) -> str:
-    where = "in SLURM --mode measure" if mode == "measure" else "on SLURM"
-    return f"Stage 4 {where} is not yet available, so --embed-stage auto resolves to inline"
-
-
 def test_a_slurm_gpu_detector_pipeline_resolves_gpu_now_the_gate_is_lifted(make_exec_config, tmp_path):
-    """Review C1, flipped by P5 T2: the staged controller runs Stage 4 on SLURM, so ``auto`` is ``gpu``.
+    """Review C1, flipped by P5 T2 and P6 T2: the staged controller runs Stage 4 on SLURM.
 
-    Measure mode stays gated until P6 T1 (the second half).
+    ``auto`` is ``gpu`` for a full run with a ``GpuDetector``, and for a
+    measure run only with ``--gpu-slurm`` (U10).
     """
     from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
@@ -233,16 +239,18 @@ def test_a_slurm_gpu_detector_pipeline_resolves_gpu_now_the_gate_is_lifted(make_
     assert resolve_embed_stage_for_config(measure, pipe) == ("inline", [])   # U10: only --gpu-slurm
     with_profile = _slurm_config(make_exec_config, tmp_path, measure_only=True,
                                  gpu_slurm_args={"slurm_partition": "exfab"})
-    assert resolve_embed_stage_for_config(with_profile, pipe) == ("inline", [_gate_note("measure")])
+    assert stage4_supported(with_profile)
+    assert resolve_embed_stage_for_config(with_profile, pipe) == ("gpu", [])
 
 
 @pytest.mark.parametrize("where", ["slurm-full", "slurm-measure", "local-measure"])
 def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config, tmp_path, where):
-    """Review C1: ``--embed-stage gpu`` in SLURM measure mode is refused.
+    """Review C1, all three flipped: ``--embed-stage gpu`` resolves ``gpu`` with no note.
 
-    P5 T2 flipped ``slurm-full`` and P6 T1 ``local-measure`` (the republish
-    Stage 4 after the local measure loop): both resolve ``gpu`` with no
-    note. P6 T2 flips ``slurm-measure``.
+    P5 T2 flipped ``slurm-full``, P6 T1 ``local-measure`` (the republish
+    Stage 4 after the local measure loop), and P6 T2 ``slurm-measure`` (the
+    staged controller's measure role). The gate's refusal no longer has a
+    case among the modes that embed.
     """
     pipe = ImagePipeline(meas={"emb": MeasureDinoEmbedding()})
     measure = where.endswith("measure")
@@ -251,16 +259,8 @@ def test_an_explicit_gpu_where_no_stage4_runs_is_one_usage_line(make_exec_config
     else:
         config = make_exec_config(pipeline_json=tmp_path / "unused.json", input_path=tmp_path,
                                   measure_only=True, embed_stage_request="gpu")
-    if where in ("slurm-full", "local-measure"):
-        assert stage4_supported(config)
-        assert resolve_embed_stage_for_config(config, pipe) == ("gpu", [])
-        return
-    assert not stage4_supported(config)
-    with pytest.raises(click.UsageError) as raised:
-        resolve_embed_stage_for_config(config, pipe)
-    message = raised.value.message
-    assert "\n" not in message and message.endswith("pass --embed-stage inline to embed inline in Stage 3")
-    assert message.startswith("--embed-stage gpu: Stage 4 in SLURM --mode measure is not yet available")
+    assert stage4_supported(config)
+    assert resolve_embed_stage_for_config(config, pipe) == ("gpu", [])
 
 
 def test_a_local_full_run_is_the_one_supported_stage4_path(make_exec_config, tmp_path):

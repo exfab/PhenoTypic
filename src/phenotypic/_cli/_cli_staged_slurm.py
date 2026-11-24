@@ -65,8 +65,9 @@ _T = TypeVar("_T")
 #: What the staged worker's Stage 3 runs: the staged merge-and-measure
 #: (``"staged"``, a run with a ``GpuDetector``) or the single-pass core with
 #: its embeddings deferred (``"single_pass"``, a Stage-4 run without one,
-#: #282 P5 T2). P6 T1 adds ``"measure"``.
-Stage3Role = Literal["staged", "single_pass"]
+#: #282 P5 T2), or the ``--mode measure`` core over an existing store with its
+#: embeddings carried and deferred (``"measure"``, #282 P6 T2, U10).
+Stage3Role = Literal["staged", "single_pass", "measure"]
 
 #: Every phase of a staged run with a ``GpuDetector`` that embeds on the GPU.
 STAGED_PHASES_WITH_STAGE4 = ("stage1", "stage2", "stage3", "stage4")
@@ -383,7 +384,10 @@ def generate_staged_scripts(
     workspace exported in its prelude; no script pins a GPU type (U6), so
     shards may land on different GPU models and each entry's ``compute``
     block records which ran. *pipeline_sha256* is the measure pipeline's
-    (P6); a forward run passes ``None``.
+    (P6); a forward run passes ``None``. The ``"measure"`` role (``--mode
+    measure``, U10) writes the manifest flagged *republish* (version 5,
+    :func:`~phenotypic._cli._cli_staged_orchestration.staged_manifest_republishes`),
+    the one carrier of republish mode.
 
     Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...],
     "stage4": Path, "finalizer": Path, "controller": Path,
@@ -411,7 +415,9 @@ def generate_staged_scripts(
     log_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = script_dir / "staged_manifest.json"
-    write_staged_manifest(manifest_path, datasets_manifest)
+    write_staged_manifest(
+        manifest_path, datasets_manifest, republish=stage3_role == "measure"
+    )
 
     python_cmd, _ = get_python_command(for_slurm=True)
     python_str = " ".join(python_cmd)
@@ -620,6 +626,11 @@ def _write_staged_job_metadata(
         JobMetadataKey.BIT_DEPTH: getattr(config, "bit_depth", None),
         JobMetadataKey.DETECT_MODE: getattr(config, "detect_mode", "gray"),
         JobMetadataKey.EMBED_STAGE: getattr(config, "embed_stage", "inline"),
+        # U10: the finalizer serves a measure resubmission differently (no
+        # forward run proof), so it is told which run this is.
+        JobMetadataKey.RUN_MODE: (
+            "measure" if getattr(config, "measure_only", False) else "full"
+        ),
         # U5: every shard and round of a Stage-4 run loads these commits.
         JobMetadataKey.EMBED_REVISIONS: getattr(config, "embed_revisions", None),
         JobMetadataKey.SLURM_JOB_IDS: {
@@ -631,6 +642,13 @@ def _write_staged_job_metadata(
             for index, job_id in enumerate(job_ids)
         },
     }
+    if getattr(config, "measure_only", False):
+        # Measure mode keeps no processing state, so its workers read the
+        # invocation's initial call from here, as the ordinary SLURM measure
+        # worker does (figures spec §1a, `metadata_run_initiation`).
+        from ._cli_state_management import run_initiation_config
+
+        metadata |= run_initiation_config(config.run_initiation)
     metadata_path = job_metadata_path(output_dir)
     atomic_write_json(metadata_path, metadata)
     return metadata_path
@@ -683,18 +701,35 @@ def manifest_entry_for_identity(
     )
 
 
+def _measure_pipeline_sha256(pipeline_path: Path) -> str | None:
+    """The measure pipeline's sha256, the run folder its measure core writes (P6 T2)."""
+    from ._cli_stage4_worker import _measure_pipeline_sha256 as sha256_of
+
+    return sha256_of(pipeline_path)
+
+
 def _staged_plan(cfg: ExecutionConfig) -> tuple[list[str], Stage3Role, bool]:
     """``(phases, stage3 role, has a GpuDetector)`` of a staged SLURM run (#282 spec §4.1).
 
     A ``GpuDetector`` run has Stages 1-3, plus Stage 4 when it embeds on the
     GPU; a run without one reaches this strategy only to embed on the GPU
     (``uses_staged_controller``), so it has ``["stage3", "stage4"]`` and its
-    Stage 3 is the single-pass core.
+    Stage 3 is the single-pass core. A ``--mode measure`` run (U10) has
+    ``["stage3", "stage4"]`` whatever its pipeline holds, since measure mode
+    applies no op: its Stage 3 is the measure core, and its Stage 4 runs in
+    republish mode.
     """
     from ._cli_validation import pipeline_requires_gpu
 
-    has_detector = pipeline_requires_gpu(cfg.pipeline_json)
     gpu_embed = getattr(cfg, "embed_stage", "inline") == "gpu"
+    if cfg.measure_only:
+        if not gpu_embed:
+            raise ValueError(
+                "the staged SLURM strategy runs --mode measure only when it "
+                "embeds in a GPU Stage 4"
+            )
+        return list(NO_DETECTOR_PHASES), "measure", False
+    has_detector = pipeline_requires_gpu(cfg.pipeline_json)
     if has_detector:
         phases = STAGED_PHASES_WITH_STAGE4 if gpu_embed else STAGED_PHASES_INLINE
         return list(phases), "staged", True
@@ -791,6 +826,14 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 cfg,
                 "processing_generation",
                 None,
+            ),
+            # The measure pipeline's sha256, as the measure core computes it,
+            # so the controller and every Stage-4 shard name the run folder the
+            # measure step wrote (P6 T2); a forward run records none.
+            pipeline_sha256=(
+                _measure_pipeline_sha256(cfg.pipeline_json)
+                if stage3_role == "measure"
+                else None
             ),
         )
         state = initialize_orchestration(
