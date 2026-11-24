@@ -2491,14 +2491,14 @@ def _print_process_only_dry_run_plan(
     type=int,
     default=1,
     show_default=True,
-    help="Parallel Stage-2 GPU tasks (one whole GPU each; SLURM-only, ignored "
-    "locally). Set to your concurrent-GPU count.",
+    help="Parallel tasks of the GPU stages (Stage 2 and Stage 4), one whole GPU "
+    "each; SLURM-only, ignored locally. Set to your concurrent-GPU count.",
 )
 @click.option(
     "--gpu-slurm",
     "gpu_slurm_args",
     multiple=True,
-    help="GPU-stage (Stage 2) SBATCH resources, e.g. --gpu-slurm "
+    help="SBATCH resources of the GPU stages (Stage 2 and Stage 4), e.g. --gpu-slurm "
     "slurm_partition=gpu --gpu-slurm slurm_account=<acct>. Inherits/deltas over "
     "--slurm (the CPU profile for Stages 1 & 3); auto-adds slurm_gpus_per_node=1.",
 )
