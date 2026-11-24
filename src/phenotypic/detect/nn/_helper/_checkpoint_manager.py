@@ -669,7 +669,7 @@ class Dinov2CheckpointManager:
 
     DINOv2 is Apache-2.0 and ungated — no license-acceptance handshake and no
     token are required. The ``size`` maps to the Hugging Face id
-    (``facebook/dinov2-{small|base|large}``).
+    (``facebook/dinov2-{small|base|large|giant}``).
 
     All ``huggingface_hub`` imports are deferred to
     :func:`snapshot_download`.
@@ -679,6 +679,9 @@ class Dinov2CheckpointManager:
         "small": "facebook/dinov2-small",
         "base": "facebook/dinov2-base",
         "large": "facebook/dinov2-large",
+        # ViT-g/14, for MeasureDinoEmbedding only (#282 U11); DinoSize, the
+        # detectors' size type, does not offer it.
+        "giant": "facebook/dinov2-giant",
     }
 
     def __init__(self, *, size: str = "base") -> None:
@@ -743,6 +746,22 @@ class Dinov3CheckpointManager:
         """The Hugging Face repo id for this manager's ``size``."""
         return self._SIZE_TO_REPO[self.size]
 
+    @classmethod
+    def require_license(cls, *, interactive: bool = True) -> None:
+        """:func:`require_license_acceptance` for the DINOv3 License.
+
+        Args:
+            interactive: As :func:`require_license_acceptance`; a batch worker
+                passes ``False`` so it refuses rather than prompts.
+
+        Raises:
+            RuntimeError: If the license has not been accepted.
+        """
+        require_license_acceptance(
+            cls.license_key, cls.license_name, cls.license_url,
+            interactive=interactive,
+        )
+
     def download(self, *, interactive: bool = True) -> str:
         """Download the DINOv3 snapshot, gated on license acceptance.
 
@@ -758,10 +777,7 @@ class Dinov3CheckpointManager:
             RuntimeError: If the license has not been accepted, or if the pull
                 fails because access was not granted / no token is present.
         """
-        require_license_acceptance(
-            self.license_key, self.license_name, self.license_url,
-            interactive=interactive,
-        )
+        self.require_license(interactive=interactive)
         try:
             return snapshot_download(repo_id=self.repo_id)
         except Exception as exc:

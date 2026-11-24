@@ -59,6 +59,19 @@ def _fresh_inactive_job_memo():
     _cli_wait._INACTIVE_JOBS.clear()
 
 
+@pytest.fixture
+def ledgered_jobs_ended(monkeypatch):
+    """Every ledgered job has ended in SLURM (U15/D4).
+
+    Once a run ends the waiter drains its generation's ledger, which asks
+    the scheduler even after the fence closed; a test whose submission is
+    over says so here rather than reach the real ``squeue``.
+    """
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active", lambda job: False
+    )
+
+
 def _snapshot_seam(completion):
     """A ``_run_snapshot`` stand-in reading *completion*, all images resolved."""
     return lambda d: RunSnapshot(completion)
@@ -522,7 +535,7 @@ def test_measure_resubmission_whose_finalizer_died_exits_5(
     assert "completion=complete" in lines[0]
 
 
-def test_cancelled_resubmission_exits_5(monkeypatch, finished_tiny_run):
+def test_cancelled_resubmission_exits_5(monkeypatch, finished_tiny_run, ledgered_jobs_ended):
     import subprocess
 
     out = finished_tiny_run
@@ -544,7 +557,7 @@ def test_cancelled_resubmission_exits_5(monkeypatch, finished_tiny_run):
     assert "completion=complete" in lines[0]
 
 
-def test_a_finished_resubmission_exits_0(monkeypatch, finished_tiny_run):
+def test_a_finished_resubmission_exits_0(monkeypatch, finished_tiny_run, ledgered_jobs_ended):
     out = finished_tiny_run
     _resubmit(out, "g-done")
     deactivate_generation(out, "g-done", closed_by=FENCE_CLOSED_BY_FINALIZER)
@@ -577,7 +590,7 @@ def test_a_stamped_aggregate_proof_alone_exits_0(
 
 
 def test_a_finalized_resubmission_with_a_failure_exits_3(
-    tiny_inputs_one_bad, tmp_path
+    tiny_inputs_one_bad, tmp_path, ledgered_jobs_ended
 ):
     from tests._tiny_run import run_cli
 
@@ -952,7 +965,7 @@ def test_i1_a_failure_beside_an_unattempted_image_is_5():
 
 
 def test_i1_failed_and_unverified_with_a_finalizer_closed_fence_exits_5(
-    tiny_inputs_one_bad, tmp_path
+    tiny_inputs_one_bad, tmp_path, ledgered_jobs_ended
 ):
     # The review's scenario end to end: {failed: 1, unverified: 1}, and the
     # finalizer found the run incomplete and closed the fence as `finalizer`.
@@ -1014,7 +1027,7 @@ def test_i1_cancelled_reads_only_a_non_finalizer_close_of_this_generation(
 
 
 def test_i1_a_cancelled_process_run_with_a_failure_exits_5_end_to_end(
-    tiny_inputs_one_bad, tmp_path
+    tiny_inputs_one_bad, tmp_path, ledgered_jobs_ended
 ):
     # Before the fix a cancelled process run with one recorded failure exited
     # 3: `process_run` alone licensed the code.
@@ -1604,3 +1617,74 @@ def test_a_cancelled_end_does_not_blame_the_finalizer(monkeypatch, tmp_path):
     )
     assert not [line for line in lines if "finalizer log" in line]
     assert any("cancelled" in line for line in lines)
+
+
+# U15/D4 (#282 smoke F1): the waiter returns only once every ledgered job of
+# the generation has ended, the trailing recovery controller included.
+
+
+def _finalized_with_a_trailing_controller(out, generation="g-trailing"):
+    """A finished resubmission whose finalizer closed the fence, plus its pre-armed controller."""
+    _resubmit(out, generation, finalizer_job="999")
+    append_lifecycle_entry(
+        out, generation=generation, token="controller-after-998",
+        role="controller", status="submitted", job_id="1000",
+    )
+    deactivate_generation(out, generation, closed_by=FENCE_CLOSED_BY_FINALIZER)
+
+
+def test_a_trailing_controller_still_running_delays_the_return(monkeypatch, finished_tiny_run):
+    out = finished_tiny_run
+    _finalized_with_a_trailing_controller(out)
+    answers = {"999": iter([False]), "1000": iter([True, True, False])}
+    asked = []
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active",
+        lambda job: asked.append(job) or next(answers[job]),
+    )
+    sleeps, lines = [], []
+    code = wait_for_run(out, poll_seconds=7, sleep=sleeps.append, echo=lines.append)
+    assert code is RunExitCode.COMPLETE
+    assert sleeps == [7, 7]                      # two polls found the controller running
+    assert asked.count("1000") == 3
+    waiting = [line for line in lines if "waiting for this submission's ledgered jobs" in line]
+    assert len(waiting) == 2 and all("active: 1000" in line and "COMPLETE" in line for line in waiting)
+    assert lines[-1] == "phenotypic-wait: COMPLETE (exit 0)"
+
+
+def test_a_scheduler_that_cannot_answer_keeps_it_waiting_until_the_timeout(monkeypatch, finished_tiny_run):
+    out = finished_tiny_run
+    _finalized_with_a_trailing_controller(out)
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active",
+        lambda job: False if job == "999" else None,
+    )
+    clock = iter([0.0, 0.0, 30.0, 60.0])
+    lines = []
+    code = wait_for_run(out, poll_seconds=30, timeout_seconds=60, sleep=lambda s: None,
+                        clock=lambda: next(clock), echo=lines.append)
+    assert code is RunExitCode.WAIT_TIMEOUT       # never read as "ended"
+    assert any("unverified (the scheduler could not answer for them): 1000" in line for line in lines)
+
+
+def test_an_unanswered_job_that_then_ends_returns_the_frozen_outcome(monkeypatch, finished_tiny_run):
+    out = finished_tiny_run
+    _finalized_with_a_trailing_controller(out)
+    answers = iter([None, False])
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "scheduler_job_is_active",
+        lambda job: False if job == "999" else next(answers),
+    )
+    code, lines = _wait_quietly(out)
+    assert code is RunExitCode.COMPLETE
+    assert sum("waiting for this submission's ledgered jobs" in line for line in lines) == 1
+
+
+def test_a_run_with_no_bound_generation_drains_nothing(monkeypatch, tmp_path):
+    _patch_seams(monkeypatch, completion="complete", jobs=[NONE], generations=(None,),
+                 published=lambda d, g: True)
+    monkeypatch.setattr(
+        _cli_staged_orchestration, "ledgered_jobs_of_generation",
+        lambda *a, **k: pytest.fail("no generation was bound, so there is no ledger to drain"),
+    )
+    assert wait_for_run(tmp_path, sleep=lambda s: None, echo=lambda *_: None) is RunExitCode.COMPLETE

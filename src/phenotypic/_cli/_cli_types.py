@@ -22,6 +22,8 @@ from phenotypic.sdk_.typing_ import (
 if TYPE_CHECKING:
     from phenotypic.sdk_._image_figures import RunInitiation
 
+    from ._cli_embed_stage import EmbedStage, EmbedStageRequest
+
 
 @dataclass
 class Dataset:
@@ -274,6 +276,26 @@ class ExecutionConfig:
     # Stage-2 GPU SBATCH resources; inherits/deltas over slurm_args (the CPU
     # profile used by Stages 1 & 3).
     gpu_slurm_args: Dict[str, Any] = field(default_factory=dict)
+
+    # --- GPU embedding Stage 4 (#282 spec §4.1) -------------------------------
+    # The ``--embed-stage`` value, and what it resolved to
+    # (``_cli_embed_stage.resolve_embed_stage``). The resolved value is
+    # recorded in processing state and job metadata, never in the work id.
+    embed_stage_request: EmbedStageRequest = "auto"
+    embed_stage: EmbedStage = "inline"
+    # U5 (#282 P5 T2): ``{hf_id: commit}`` for every unpinned
+    # ``MeasureDinoEmbedding`` of a Stage-4 run, resolved once at the run's
+    # first submission (``_cli_embed_stage.resolve_embed_revisions``) and
+    # reused by every continuation (``recorded_embed_revisions``). ``None``
+    # for a run that embeds inline. Recorded in processing state and job
+    # metadata; never in the work id.
+    embed_revisions: Optional[Dict[str, Optional[str]]] = None
+    # The manifest entries a SLURM continuation of a no-detector Stage-4 run
+    # already built, ``{(dataset, image path): StagedManifestEntry}``, so the
+    # staged submitter hands each image the identity the CLI's split used
+    # instead of hashing it again (#282 review I4). ``None``: the submitter
+    # computes them.
+    staged_manifest_entries: Optional[Dict[Any, Any]] = None
 
     @property
     def in_place(self) -> bool:

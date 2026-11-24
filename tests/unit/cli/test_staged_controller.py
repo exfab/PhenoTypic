@@ -969,3 +969,46 @@ def test_a_terminal_incomplete_orchestration_can_close_as_finalizer(
     lifecycle = load_slurm_lifecycle(tmp_path)
     assert lifecycle is not None
     assert lifecycle["closed_by"] == "finalizer"
+
+
+def test_a_finalizer_close_racing_the_controller_is_not_relabelled_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#282 P6 review M5: the measure finalizer writes no staged-completion marker.
+
+    The controller loaded "finalizing"; while it asked the scheduler about
+    the finalizer, the finalizer closed the epoch ``complete``. The phase it
+    saves is the one the finalizer recorded, not ``failed``, in the state
+    file itself (the reader's journal override would hide the difference).
+    """
+    from phenotypic._cli._cli_slurm_lifecycle import FENCE_CLOSED_BY_FINALIZER
+    from phenotypic._cli._cli_staged_orchestration import (
+        deactivate_orchestration,
+        orchestration_state_path,
+        save_orchestration_state,
+    )
+
+    config_path = _controller_fixture(tmp_path)
+    state = load_orchestration_state(tmp_path)
+    assert state is not None
+    state.update({"phase": "finalizing", "active_job_id": "finalizer-1"})
+    save_orchestration_state(tmp_path, state)
+    monkeypatch.setenv("SLURM_JOB_ID", "400")
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_controller.submit_with_intent",
+        lambda *args, **kwargs: "controller-401",
+    )
+
+    def _finalizer_closes_meanwhile(job_id):
+        deactivate_orchestration(tmp_path, "complete", closed_by=FENCE_CLOSED_BY_FINALIZER)
+        return False
+
+    monkeypatch.setattr(
+        "phenotypic._cli._cli_staged_controller.scheduler_job_is_active",
+        _finalizer_closes_meanwhile,
+    )
+
+    run_staged_controller(config_path)
+
+    raw = json.loads(orchestration_state_path(tmp_path).read_text(encoding="utf-8"))
+    assert raw["phase"] == "complete"

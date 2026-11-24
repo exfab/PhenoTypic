@@ -66,6 +66,60 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --out
 `--sample` draws N images from *each* dataset (each first-level subdirectory of
 `--input`). Pass `--random-seed` to draw the same subset every time.
 
+## Embedding on GPUs
+
+A pipeline's `MeasureDinoEmbedding` steps can run on GPUs, in a **Stage 4**
+after each image's store is final, instead of beside the other measurers:
+
+```bash
+python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ \
+    --slurm slurm_partition=intel \
+    --gpu-slurm slurm_partition=exfab --gpu-slurm slurm_account=exfab --gpu-shards 2
+```
+
+`--embed-stage {auto,gpu,inline}` chooses, and defaults to `auto`:
+
+| Run | `auto` resolves to |
+|---|---|
+| SLURM, with a `GpuDetector` in the pipeline or `--gpu-slurm` given (`--mode measure`: `--gpu-slurm` only) | `gpu` |
+| SLURM without either, any local run, `--mode process` | `inline` |
+| an embedder pinned to `device="cpu"`, or one that is not a `MeasureDinoEmbedding` | `inline`, with a note |
+
+- **Refusals** (each one usage-error line, exit `2`, before anything is
+  written): `--embed-stage gpu` with `--mode process`; `--embed-stage gpu` with
+  an embedder pinned to the CPU or with no GPU encoder; and a continuation given
+  an explicit `--embed-stage` other than the one its run started with. Under
+  `auto` a continuation keeps the stage its run started with.
+- **Resources:** Stage 4 runs on the `--gpu-slurm` profile, one whole GPU per
+  task, with `--gpu-shards` tasks. Each GPU shard pays one model load, measured
+  at about 40–300 s with cached weights, so prefer few `--gpu-shards` for a small run.
+  Pre-stage the weights and set `HF_HUB_OFFLINE=1`, and pin `revision=` on the
+  embedder.
+- **Locally**, `--embed-stage gpu` checks for a usable CUDA device before Stage 1
+  and exits `1` without one. The check imports torch, so a `--dry-run` with that
+  flag pays the import too. `CUBLAS_WORKSPACE_CONFIG` may be unset (the CLI sets
+  `:4096:8`), `:4096:8` or `:16:8`.
+- **Waiting:** `phenotypic-wait` returns only after every job of the submission
+  has ended, the last recovery controller included. Stage-1 and Stage-3 tasks
+  killed without a result are resubmitted; after two retry rounds that change
+  nothing the run ends with exit `5`.
+- **`--mode measure --embed-stage gpu`** re-embeds a finished run. Exit `0` means
+  every image was re-measured and re-embedded; an image left neither re-embedded
+  nor recorded as failed makes the pass exit `5`, and the finalizer's log names
+  it (locally, exit `1`). An unpinned `revision` reuses the run's recorded
+  commit; pin `revision=` to move. A measure step killed before it finished is
+  re-run, never certified. Concurrent local invocations over one `--output` are
+  unsupported, as before.
+- **Two known limitations:** an image whose objects sprawl across the plate gives
+  multi-thousand-pixel crops whose preparation can take minutes per image (up to
+  about 35 min for one image in the live smoke); every round still makes some
+  progress, so the stall rule never ends such a run. And an image that crashes
+  its shard every round (for example by exhausting the host's memory) ends the
+  run with exit `5` once only it remains, and a re-run repeats that.
+
+The full guide, with the measured repeatability across GPUs and the exit codes,
+is [Embed colonies on GPUs](../../how_to/pages/embeddings.md).
+
 ## Run Preflight Checks
 
 Before any image is processed, and before anything under `--output` is created,
@@ -113,12 +167,13 @@ Earlier releases read any suffix in `--mode full`, so a comma-separated
 | `PF-MISSING-MODULE` | An operation needs a package that is not installed | error | Install the extra the message names |
 | `PF-LICENSE` | A detector needs gated weights whose license the run has not accepted | error | `export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` |
 | `PF-WEIGHTS-UNCACHED` | A detector's weights are not in the local cache | warning | Pre-download them on a node with network access |
-| `PF-EMBED-REVISION-UNPINNED` | A `MeasureDinoEmbedding` the mode runs sets no `revision`, so each process loads the hub's latest weights and vectors may change between runs or workers | warning | Pin `revision` to a commit hash |
+| `PF-EMBED-REVISION-UNPINNED` | A `MeasureDinoEmbedding` the mode runs sets no `revision`, so each process loads the hub's latest weights and vectors may change between runs or workers | warning | Pin `revision` to a commit hash. With pre-staged weights and `HF_HUB_OFFLINE=1`, pinning is the only safe pairing: an online submitter resolves the hub's current commit, which a shard's older offline snapshot may not hold, so every shard fails and the run stalls (exit `5`) |
 | `PF-SBATCH-REJECTED` | `sbatch --test-only` names a configuration fault in a profile the run submits: an invalid partition, account, QoS, GRES or option | error | Fix the option `sbatch` names |
 | `PF-SBATCH-UNAVAILABLE` | A profile could not be confirmed: no `sbatch`, a timeout, a controller fault, or a failure a real submission may queue through (e.g. every node of the partition drained) | warning | Read `sbatch`'s message; a real submission still reports real failures |
 | `PF-TIME-OVER-PARTITION` | The requested time exceeds the partition's `MaxTime` (for a partition list, per the cluster's `EnforcePartLimits`) | warning | Lower the time, or choose another partition |
 | `PF-SLURM-LIMIT` | The staged GPU engine cannot fit the cluster's `MaxSubmitJobs` or array limit | error | Reduce `--gpu-shards`, or ask for a higher limit |
 | `PF-GPU-PARTITION` | `sinfo` lists the GRES of the partition a GPU job runs in, and none is a GPU | error | `--gpu-slurm slurm_partition=<gpu-partition>` (or `--slurm` for `--mode process`) |
+| `PF-EMBED-RESOURCES` | The Stage-4 GPU profile's `--mem` (or `--mem-per-cpu` times its CPUs) is below what its loader workers need for the largest input plate: one plate and its crops per worker, one worker per CPU after the first | warning | Raise `mem_gb` in `--gpu-slurm`, or lower `slurm_cpus_per_task` there |
 | `PF-HEADER-UNREADABLE` | An input file's header cannot be read | by reach | Replace or remove the files listed |
 | `PF-CHANNELS` | An input has 2, or 5 or more, channels, which `Image.imread` refuses | by reach | Convert the files to grayscale or RGB(A) |
 | `PF-DETECT-MODE-GRAY` | A color `--detect-mode` is set, but inputs are grayscale | by reach | `--detect-mode gray`, or supply RGB images |

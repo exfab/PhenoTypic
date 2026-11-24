@@ -16,6 +16,7 @@ import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata, logged_step, parse_study_yaml
+from ._stages import STAGED_TERMINAL_STAGE, StageTag, run_terminal_stage
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     DashboardManifestKey,
@@ -241,6 +242,9 @@ def _run_finalize(
                 generation=job_metadata.get(
                     JobMetadataKey.PROCESSING_GENERATION
                 ),
+                # The submitter recorded EMBED_STAGE in this same file, under
+                # the key processing_state.json's config uses (#282 I8).
+                terminal_stage=run_terminal_stage(job_metadata),
                 timeout=600,
             )
 
@@ -252,17 +256,28 @@ def _run_finalize(
         from ._cli_staged_orchestration import (
             load_orchestration_state,
             quarantine_unchanged_restart_parquets,
+            recorded_detector_slot,
         )
 
         with logged_step(logger, "finalize: reconcile staged publications"):
             quarantine_unchanged_restart_parquets(output_dir, epoch)
             orchestration = load_orchestration_state(output_dir) or {}
-            if bool(orchestration.get("stage3_markers_required", False)):
-                from ._cli_stage2_token import staged_detector_slot
+            from ._cli_staged_controller import recorded_stall_lines
+
+            for line in recorded_stall_lines(orchestration):
+                logger.warning(line)
+            slot = (
+                recorded_detector_slot(orchestration)
+                if bool(orchestration.get("stage3_markers_required", False))
+                else None
+            )
+            if slot is not None:
                 from ._cli_staged_resume import reconcile_stage3_publications
 
-                # `stage3_markers_required` is set only by the staged GPU
-                # orchestration, so the recorded pipeline has a GpuDetector.
+                # Only a run with a GpuDetector has Stage-2 signals to
+                # reconcile; the slot its submitter recorded says so, and is
+                # the one producer of it (review I2). A run without one
+                # (phases ["stage3", "stage4"]) records none.
                 reconcile_stage3_publications(
                     output_dir,
                     {
@@ -270,9 +285,7 @@ def _run_finalize(
                         for name, info in datasets_raw.items()
                         if isinstance(info, dict)
                     },
-                    staged_detector_slot(
-                        Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
-                    ),
+                    slot,
                     namespace=epoch,
                 )
         _check_epoch()
@@ -371,7 +384,55 @@ def _run_finalize(
             raise
         logger.warning("Dashboard generation failed", exc_info=True)
 
-    if epoch is not None:
+    if epoch is not None and job_metadata.get(JobMetadataKey.RUN_MODE) == "measure":
+        # The measure-mode finalizer (#282 U10, plan review I9). A measure
+        # resubmission has no forward run proof to write: the accepted
+        # inventory is the forward run's, and asking whether all of it
+        # succeeded would answer for a run this submission did not make. So
+        # it writes no run proof and no staged-completion marker (the
+        # forward run's continuation reads that one). `measure_failed` is
+        # the journal's count under this epoch, which `finalize_run` took
+        # from `execution_epoch` above.
+        #
+        # **It closes the pass by its own leftovers (U16).** Each image it
+        # left neither republished under this epoch nor journalled keeps
+        # its forward record, which verifies, so the run state reads
+        # complete; only this count says the pass did not re-measure and
+        # re-embed it. With any, the fence is closed failed by the
+        # finalizer, which `phenotypic-wait` never reads as published, so it
+        # exits 5 ("re-run the same command"); without, complete, exit 0
+        # (or 3 with journalled failures).
+        from ._cli_slurm_lifecycle import (
+            FENCE_CLOSED_BY_FINALIZER,
+            mark_generation_failed,
+        )
+        from ._cli_staged_controller import (
+            measure_pass_unfinished,
+            unfinished_measure_line,
+        )
+        from ._cli_staged_orchestration import deactivate_orchestration
+
+        with logged_step(logger, "finalize: close the measure orchestration"):
+            unfinished = measure_pass_unfinished(output_dir, epoch)
+            if unfinished:
+                line = unfinished_measure_line(len(unfinished))
+                logger.warning(line)
+                for entry in unfinished:
+                    logger.warning("  unfinished: %s/%s", entry.dataset, entry.image_name)
+                _check_epoch()
+                mark_generation_failed(
+                    output_dir, epoch, line, closed_by=FENCE_CLOSED_BY_FINALIZER
+                )
+                deactivate_orchestration(
+                    output_dir,
+                    "terminal_incomplete",
+                    closed_by=FENCE_CLOSED_BY_FINALIZER,
+                )
+            else:
+                deactivate_orchestration(
+                    output_dir, "complete", closed_by=FENCE_CLOSED_BY_FINALIZER
+                )
+    elif epoch is not None:
         from ._cli_completion import (
             _all_accepted_images_succeeded,
             publish_run_completion_evidence,
@@ -522,6 +583,7 @@ def _wait_for_completion(
     inventory: dict[str, frozenset[str]] | None,
     total_expected: int,
     generation: str | None,
+    terminal_stage: StageTag = STAGED_TERMINAL_STAGE,
     timeout: int = 600,
 ) -> None:
     """Poll event log until all images are done or timeout.
@@ -533,6 +595,8 @@ def _wait_for_completion(
             ``None`` for legacy count-only metadata.
         total_expected: Total number of expected images.
         generation: Durable processing generation.
+        terminal_stage: The run's terminal stage (``run_terminal_stage``), so
+            a Stage-3 completion of a run that embeds on the GPU is not done.
         timeout: Maximum seconds to wait.
     """
     from ._cli_update_state import aggregate_state_from_events
@@ -545,6 +609,7 @@ def _wait_for_completion(
             event_log,
             inventory=inventory,
             generation=generation,
+            terminal_stage=terminal_stage,
         )
         completed = sum(len(ds.completed) for ds in dataset_states.values())
         failed = sum(len(ds.failed) for ds in dataset_states.values())

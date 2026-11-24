@@ -7,7 +7,7 @@ import os
 import shlex
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Sequence, TypeVar
+from typing import Any, Dict, List, Literal, Mapping, Sequence, TypeVar
 from uuid import uuid4
 
 from phenotypic.sdk_ import (
@@ -34,7 +34,7 @@ from ._cli_execution_strategies import (
     echo_slurm_monitor_commands,
     finalizer_aggregation_options,
 )
-from ._cli_failure_tracker import work_identity_for_image
+from ._cli_failure_tracker import WorkIdentity, work_identity_for_image
 from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
@@ -45,6 +45,7 @@ from ._cli_staged_orchestration import (
     orchestration_lock_path,
     save_orchestration_state,
     snapshot_inventory_parquets,
+    stage4_worklist_path,
     submit_with_intent,
     write_staged_manifest,
 )
@@ -60,6 +61,25 @@ from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
+
+#: What the staged worker's Stage 3 runs: the staged merge-and-measure
+#: (``"staged"``, a run with a ``GpuDetector``) or the single-pass core with
+#: its embeddings deferred (``"single_pass"``, a Stage-4 run without one,
+#: #282 P5 T2), or the ``--mode measure`` core over an existing store with its
+#: embeddings carried and deferred (``"measure"``, #282 P6 T2, U10).
+Stage3Role = Literal["staged", "single_pass", "measure"]
+
+#: Every phase of a staged run with a ``GpuDetector`` that embeds on the GPU.
+STAGED_PHASES_WITH_STAGE4 = ("stage1", "stage2", "stage3", "stage4")
+#: A staged run with a ``GpuDetector`` that embeds inline (a v1 config's phases).
+STAGED_PHASES_INLINE = ("stage1", "stage2", "stage3")
+#: A Stage-4 run without a ``GpuDetector`` (spec §4.1).
+NO_DETECTOR_PHASES = ("stage3", "stage4")
+
+#: The Stage-4 script prelude: the thread pins, then the deterministic cuBLAS
+#: workspace, exported before Python starts so the shard's first cuBLAS handle
+#: sees it (#282 spec §4.3).
+STAGE4_PRELUDE_BASH = SLURM_THREAD_PIN_BASH + "\nexport CUBLAS_WORKSPACE_CONFIG=:4096:8"
 
 def partition_shards(items: List[_T], n_shards: int) -> List[List[_T]]:
     """Split *items* into up to *n_shards* near-even contiguous shards (no loss)."""
@@ -152,6 +172,8 @@ def _stage_worker_body(
     durable_writes: bool | None = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    stage3_role: Stage3Role = "staged",
+    worklist_path: Path | None = None,
 ) -> str:
     """The per-array-task command line that invokes the staged SLURM worker.
 
@@ -159,7 +181,12 @@ def _stage_worker_body(
     Image stages (1 & 3) pass ``$CURRENT_TASK_INDEX`` — the per-chunk
     ``TASK_INDICES`` window maps a 0-based array id to the ABSOLUTE manifest
     index, so a chunked stage never emits an array index above ``MaxArraySize``.
-    Stage 2 keeps ``$SLURM_ARRAY_TASK_ID`` (the shard index; never chunked).
+    Stages 2 and 4 keep ``$SLURM_ARRAY_TASK_ID`` (the shard index; never
+    chunked). Stage 4 reads its shard from ``worklist_path``, the per-round
+    worklist the controller writes (#282 P5 T1). A Stage 3 whose role is not
+    ``"staged"`` names it (``--stage3-role``); the single-pass role reads the
+    input as Stage 1 does, so it carries Stage 1's provenance identity and
+    ``--drop-originals`` too.
     """
     q = shlex.quote
     parts = [
@@ -180,7 +207,8 @@ def _stage_worker_body(
         parts.append("--reuse-existing")
     if markers_required:
         parts.append("--stage3-markers-required")
-    if stage == 1 and pipeline_identity is not None:
+    reads_input = stage == 1 or (stage == 3 and stage3_role == "single_pass")
+    if reads_input and pipeline_identity is not None:
         parts.extend(
             [
                 "--provenance-pipeline-source-path "
@@ -189,12 +217,18 @@ def _stage_worker_body(
                 f"{q(pipeline_identity['sha256'])}",
             ]
         )
-    if stage == 1 and drop_originals:
+    if reads_input and drop_originals:
         parts.append("--drop-originals")
     if stage == 2:
         parts.append(f"--n-shards {n_shards}")
-    if stage == 3:
+    if stage == 3 and stage3_role != "staged":
+        parts.append(f"--stage3-role {stage3_role}")
+    if stage in (3, 4):
         parts.append(f"--overlay-alpha {overlay_alpha}")
+    if stage == 4:
+        if worklist_path is None:
+            raise ValueError("a Stage-4 worker reads its shard from a worklist")
+        parts.append(f"--worklist {q(str(Path(worklist_path).absolute()))}")
     # Tri-state, so ONLY an explicit choice is emitted: an unset flag has to
     # reach the worker unset, where ngff_.durable_writes_enabled re-detects
     # SLURM on the worker's own node. --no-durable-writes, by contrast, exists
@@ -224,6 +258,7 @@ def _write_stage_script(
     slurm_args: Dict[str, Any],
     task_indices: Sequence[int],
     body: str,
+    prelude: str = SLURM_THREAD_PIN_BASH,
 ) -> Path:
     """Render + write one stage SBATCH array script (returns its path).
 
@@ -246,7 +281,7 @@ def _write_stage_script(
             error_log_path=err_log,
             task_indices=list(task_indices) or [0],
             body=body,
-            prelude=SLURM_THREAD_PIN_BASH,
+            prelude=prelude,
             comments=[f"# Stage: {stage_name}"],
         ),
     )
@@ -307,7 +342,7 @@ def _controller_body(python_str: str, config_path: Path) -> str:
 def generate_staged_scripts(
     *,
     pipeline_path: Path,
-    detector_slot: str,
+    detector_slot: str | None,
     datasets_manifest: Sequence[StagedManifestEntry],
     output_dir: Path,
     image_type: ImageTypeName,
@@ -324,28 +359,65 @@ def generate_staged_scripts(
     durable_writes: bool | None = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    phases: Sequence[str] = STAGED_PHASES_INLINE,
+    stage3_role: Stage3Role = "staged",
+    pipeline_sha256: str | None = None,
 ) -> Dict[str, Any]:
-    """Write the per-stage SBATCH array scripts (no submission).
+    """Write the per-stage SBATCH array scripts and the controller config (no submission).
 
-    Stage 1 & 3 are arrays over images (CPU ``cpu_slurm_args``); Stage 2 is an
-    array over shards (GPU args resolved from ``gpu_slurm_args`` over the CPU
-    profile, auto-1-GPU). When the image count exceeds ``array_limit`` (the
-    cluster ``MaxArraySize``, queried when ``None``), the two image stages are
-    split into ``ceil(n_images / array_limit)`` chunk scripts; Stage 2 is never
-    chunked. The manifest is written to disk for the workers to index.
+    Stage 1 & 3 are arrays over images (CPU ``cpu_slurm_args``); Stages 2 and
+    4 are arrays over shards (GPU args resolved from ``gpu_slurm_args`` over
+    the CPU profile, auto-1-GPU). When the image count exceeds
+    ``array_limit`` (the cluster ``MaxArraySize``, queried when ``None``),
+    the two image stages are split into ``ceil(n_images / array_limit)``
+    chunk scripts; Stages 2 and 4 are never chunked. The manifest is written
+    to disk for the workers to index.
+
+    *phases* says which stages the run has (controller config v2, #282 spec
+    §4.3): ``["stage1", "stage2", "stage3"]`` for a ``GpuDetector`` run that
+    embeds inline, plus ``"stage4"`` when it embeds on the GPU, or
+    ``["stage3", "stage4"]`` for a Stage-4 run without a detector, whose
+    Stage 3 runs in *stage3_role* ``"single_pass"`` and which has no
+    *detector_slot*. Stage-1 and Stage-2 scripts are written only when
+    ``"stage1"`` is in *phases*. ``stage4.sh`` is an array of *n_shards*
+    tasks on the Stage-2 GPU profile, with the deterministic cuBLAS
+    workspace exported in its prelude; no script pins a GPU type (U6), so
+    shards may land on different GPU models and each entry's ``compute``
+    block records which ran. *pipeline_sha256* is the measure pipeline's
+    (P6); a forward run passes ``None``. The ``"measure"`` role (``--mode
+    measure``, U10) writes the manifest flagged *republish* (version 5,
+    :func:`~phenotypic._cli._cli_staged_orchestration.staged_manifest_republishes`),
+    the one carrier of republish mode.
 
     Returns ``{"stage1": [Path, ...], "stage2": Path, "stage3": [Path, ...],
-    "finalizer": Path}`` — the image stages are always lists (length 1 when
-    unchunked). The one-task finalizer uses the CPU profile and invokes the same
-    aggregate/finalize entry point as ordinary SLURM runs.
+    "stage4": Path, "finalizer": Path, "controller": Path,
+    "controller_config": Path, "manifest": Path}``; ``stage1``/``stage2``
+    only with ``"stage1"`` in *phases* and ``stage4`` only with ``"stage4"``.
+    The image stages are always lists (length 1 when unchunked). The one-task
+    finalizer uses the CPU profile and invokes the same aggregate/finalize
+    entry point as ordinary SLURM runs.
+
+    Raises:
+        ValueError: *phases* has ``"stage1"`` but no *detector_slot*, or
+            *stage3_role* does not fit *phases*.
     """
+    phases = list(phases)
+    detected = "stage1" in phases
+    if detected and detector_slot is None:
+        raise ValueError("a staged run with Stage 1 needs its detector slot")
+    if (stage3_role == "staged") is not detected:
+        raise ValueError(
+            f"stage3 role {stage3_role!r} does not fit phases {phases!r}"
+        )
     script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
     log_dir = slurm_logs_dir(output_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = script_dir / "staged_manifest.json"
-    write_staged_manifest(manifest_path, datasets_manifest)
+    write_staged_manifest(
+        manifest_path, datasets_manifest, republish=stage3_role == "measure"
+    )
 
     python_cmd, _ = get_python_command(for_slurm=True)
     python_str = " ".join(python_cmd)
@@ -358,7 +430,7 @@ def generate_staged_scripts(
     # and stage-3 chunk resolves its absolute index via $CURRENT_TASK_INDEX.
     chunks = calculate_optimal_array_chunks(n_images, array_limit) if n_images else []
 
-    def _image_stage_body(stage: int) -> str:
+    def _body(stage: int, **kwargs: Any) -> str:
         return _stage_worker_body(
             python_str,
             stage,
@@ -370,54 +442,58 @@ def generate_staged_scripts(
             epoch,
             resume,
             markers_required,
-            index_var="$CURRENT_TASK_INDEX",
             overlay_alpha=overlay_alpha,
             processing_generation=processing_generation,
             durable_writes=durable_writes,
-            drop_originals=drop_originals,
-            pipeline_identity=pipeline_identity,
+            **kwargs,
         )
 
-    stage1 = _write_image_stage_chunks(
-        script_dir=script_dir,
-        log_dir=log_dir,
-        stage=1,
-        slurm_args=cpu_slurm_args,
-        body=_image_stage_body(1),
-        chunks=chunks,
-    )
-    stage2 = _write_stage_script(
-        script_dir,
-        log_dir,
-        "stage2",
-        "phenotypic-stage2",
-        gpu_args,
-        list(range(max(1, n_shards))),
-        _stage_worker_body(
-            python_str,
-            2,
-            pipeline_path,
-            output_dir,
-            image_type,
-            manifest_path,
-            ext,
-            epoch,
-            resume,
-            markers_required,
-            n_shards=n_shards,
-            processing_generation=processing_generation,
-            durable_writes=durable_writes,
-        ),
-    )
-    stage3 = _write_image_stage_chunks(
+    image_stage = {
+        "index_var": "$CURRENT_TASK_INDEX",
+        "drop_originals": drop_originals,
+        "pipeline_identity": pipeline_identity,
+    }
+    shards = list(range(max(1, n_shards)))
+    scripts: Dict[str, Any] = {}
+    if detected:
+        scripts["stage1"] = _write_image_stage_chunks(
+            script_dir=script_dir,
+            log_dir=log_dir,
+            stage=1,
+            slurm_args=cpu_slurm_args,
+            body=_body(1, **image_stage),
+            chunks=chunks,
+        )
+        scripts["stage2"] = _write_stage_script(
+            script_dir,
+            log_dir,
+            "stage2",
+            "phenotypic-stage2",
+            gpu_args,
+            shards,
+            _body(2, n_shards=n_shards),
+        )
+    scripts["stage3"] = _write_image_stage_chunks(
         script_dir=script_dir,
         log_dir=log_dir,
         stage=3,
         slurm_args=cpu_slurm_args,
-        body=_image_stage_body(3),
+        body=_body(3, stage3_role=stage3_role, **image_stage),
         chunks=chunks,
     )
-    finalizer = _write_stage_script(
+    worklist_path = stage4_worklist_path(output_dir)
+    if "stage4" in phases:
+        scripts["stage4"] = _write_stage_script(
+            script_dir,
+            log_dir,
+            "stage4",
+            "phenotypic-stage4",
+            gpu_args,
+            shards,
+            _body(4, worklist_path=worklist_path),
+            prelude=STAGE4_PRELUDE_BASH,
+        )
+    scripts["finalizer"] = _write_stage_script(
         script_dir,
         log_dir,
         "finalizer",
@@ -427,7 +503,7 @@ def generate_staged_scripts(
         _finalizer_body(python_str, output_dir, epoch),
     )
     controller_config = script_dir / "staged_controller.json"
-    controller = _write_stage_script(
+    scripts["controller"] = _write_stage_script(
         script_dir,
         log_dir,
         "controller",
@@ -436,50 +512,51 @@ def generate_staged_scripts(
         [0],
         _controller_body(python_str, controller_config),
     )
-    atomic_write_json(
-        controller_config,
-        {
-            "version": 1,
-            "epoch": epoch,
-            "output_dir": str(output_dir.absolute()),
-            "resume": resume,
-            "stage3_markers_required": markers_required,
-            # The recovery controller probes the Stage-2 signal but never
-            # loads the pipeline, so the slot is recorded here. It arrives as
-            # a parameter rather than being re-derived from `pipeline_path`:
-            # this function WRITES scripts, and `pipeline_path` is a string it
-            # embeds in them, not a file it reads. Parsing here also made
-            # script generation fail on a pipeline that was never written --
-            # see the strategy's preflight for where the parse lives now.
-            "detector_slot": detector_slot,
-            "manifest_path": str(manifest_path.absolute()),
-            "stage1_scripts": [str(path.absolute()) for path in stage1],
-            "stage2_script": str(stage2.absolute()),
-            "stage3_scripts": [str(path.absolute()) for path in stage3],
-            "finalizer_script": str(finalizer.absolute()),
-            "controller_script": str(controller.absolute()),
-        },
-    )
-    return {
-        "stage1": stage1,
-        "stage2": stage2,
-        "stage3": stage3,
-        "finalizer": finalizer,
-        "controller": controller,
-        "controller_config": controller_config,
-        "manifest": manifest_path,
+    config: Dict[str, Any] = {
+        "version": 2,
+        "phases": phases,
+        "epoch": epoch,
+        "output_dir": str(output_dir.absolute()),
+        "resume": resume,
+        "stage3_markers_required": markers_required,
+        "stage3_role": stage3_role,
+        "pipeline_sha256": pipeline_sha256,
+        "manifest_path": str(manifest_path.absolute()),
+        "stage3_scripts": [str(path.absolute()) for path in scripts["stage3"]],
+        "finalizer_script": str(scripts["finalizer"].absolute()),
+        "controller_script": str(scripts["controller"].absolute()),
+        "n_shards": max(1, n_shards),
     }
+    if detected:
+        # The recovery controller probes the Stage-2 signal but never
+        # loads the pipeline, so the slot is recorded here. It arrives as
+        # a parameter rather than being re-derived from `pipeline_path`:
+        # this function WRITES scripts, and `pipeline_path` is a string it
+        # embeds in them, not a file it reads. Parsing here also made
+        # script generation fail on a pipeline that was never written --
+        # see the strategy's preflight for where the parse lives now.
+        config["detector_slot"] = detector_slot
+        config["stage1_scripts"] = [str(path.absolute()) for path in scripts["stage1"]]
+        config["stage2_script"] = str(scripts["stage2"].absolute())
+    if "stage4" in phases:
+        config["stage4_script"] = str(scripts["stage4"].absolute())
+        config["stage4_worklist"] = str(worklist_path.absolute())
+    atomic_write_json(controller_config, config)
+    scripts["controller_config"] = controller_config
+    scripts["manifest"] = manifest_path
+    return scripts
 
 
 def _ordered_staged_scripts(scripts: Dict[str, Any]) -> List[Path]:
-    """Return all scripts in logical lifecycle order."""
-    return [
-        *scripts["stage1"],
-        scripts["controller"],
-        scripts["stage2"],
-        *scripts["stage3"],
-        scripts["finalizer"],
-    ]
+    """Return all scripts in logical lifecycle order (the stages a run has)."""
+    ordered: List[Path] = [*scripts.get("stage1", []), scripts["controller"]]
+    if scripts.get("stage2") is not None:
+        ordered.append(scripts["stage2"])
+    ordered.extend(scripts["stage3"])
+    if scripts.get("stage4") is not None:
+        ordered.append(scripts["stage4"])
+    ordered.append(scripts["finalizer"])
+    return ordered
 
 
 def _write_staged_job_metadata(
@@ -548,6 +625,14 @@ def _write_staged_job_metadata(
         JobMetadataKey.NCOLS: getattr(config, "ncols", None),
         JobMetadataKey.BIT_DEPTH: getattr(config, "bit_depth", None),
         JobMetadataKey.DETECT_MODE: getattr(config, "detect_mode", "gray"),
+        JobMetadataKey.EMBED_STAGE: getattr(config, "embed_stage", "inline"),
+        # U10: the finalizer serves a measure resubmission differently (no
+        # forward run proof), so it is told which run this is.
+        JobMetadataKey.RUN_MODE: (
+            "measure" if getattr(config, "measure_only", False) else "full"
+        ),
+        # U5: every shard and round of a Stage-4 run loads these commits.
+        JobMetadataKey.EMBED_REVISIONS: getattr(config, "embed_revisions", None),
         JobMetadataKey.SLURM_JOB_IDS: {
             str(index): {
                 "job_id": str(job_id),
@@ -557,6 +642,13 @@ def _write_staged_job_metadata(
             for index, job_id in enumerate(job_ids)
         },
     }
+    if getattr(config, "measure_only", False):
+        # Measure mode keeps no processing state, so its workers read the
+        # invocation's initial call from here, as the ordinary SLURM measure
+        # worker does (figures spec §1a, `metadata_run_initiation`).
+        from ._cli_state_management import run_initiation_config
+
+        metadata |= run_initiation_config(config.run_initiation)
     metadata_path = job_metadata_path(output_dir)
     atomic_write_json(metadata_path, metadata)
     return metadata_path
@@ -582,7 +674,21 @@ def staged_manifest_entry(
     Returns:
         The manifest entry the stage workers read.
     """
-    identity = work_identity_for_image(config, dataset_name, image)
+    return manifest_entry_for_identity(
+        dataset_name, image, work_identity_for_image(config, dataset_name, image)
+    )
+
+
+def manifest_entry_for_identity(
+    dataset_name: str, image: Path, identity: WorkIdentity
+) -> StagedManifestEntry:
+    """The manifest entry of *image* under an identity already computed for it.
+
+    Hashes nothing: a caller that holds the image's one identity for the run
+    (a local strategy, Stage 1) builds its entry from it, rather than
+    recomputing a work id after Stages 1-3 (#282 review I4; ``_cli/CLAUDE.md``
+    "Reference metadata").
+    """
     return StagedManifestEntry(
         dataset=dataset_name,
         image_name=image.name,
@@ -595,20 +701,111 @@ def staged_manifest_entry(
     )
 
 
+def _measure_pipeline_sha256(cfg: ExecutionConfig) -> str | None:
+    """The measure pipeline's sha256, the run folder its measure core writes (P6 T2).
+
+    The CLI's one digest of the file (``pipeline_identity``, review M6),
+    else the file's own for a hand-built config. The controller config
+    records it; the measure step and every Stage-4 shard read it from there
+    (``recorded_measure_pipeline_sha256``).
+    """
+    from ._cli_execution_strategies import recorded_pipeline_sha256
+    from ._cli_stage4_worker import _measure_pipeline_sha256 as sha256_of
+
+    return recorded_pipeline_sha256(cfg) or sha256_of(cfg.pipeline_json)
+
+
+def _staged_manifest_entries(
+    cfg: ExecutionConfig, tasks: Sequence[tuple[Dataset, Path]]
+) -> dict[tuple[str, Path], StagedManifestEntry]:
+    """Each image's :func:`staged_manifest_entry`, hashed on threads (P6 review M8).
+
+    The same function, called once per image as before, only on a thread
+    pool sized to the allocation: ``hashlib`` releases the GIL. It is not
+    ``stage4_entries``, whose identity function is the failure tracker's
+    rather than this module's, so the submitter keeps its one identity path.
+    """
+    from joblib import Parallel, delayed
+
+    from ._cli_utils import resolve_local_worker_count
+
+    n_jobs = resolve_local_worker_count(getattr(cfg, "n_jobs", 1), len(tasks))
+    entries = Parallel(n_jobs=n_jobs, prefer="threads")(
+        delayed(staged_manifest_entry)(cfg, dataset.name, image) for dataset, image in tasks
+    )
+    return {
+        (dataset.name, image): entry for (dataset, image), entry in zip(tasks, entries)
+    }
+
+
+def _staged_plan(cfg: ExecutionConfig) -> tuple[list[str], Stage3Role, bool]:
+    """``(phases, stage3 role, has a GpuDetector)`` of a staged SLURM run (#282 spec §4.1).
+
+    A ``GpuDetector`` run has Stages 1-3, plus Stage 4 when it embeds on the
+    GPU; a run without one reaches this strategy only to embed on the GPU
+    (``uses_staged_controller``), so it has ``["stage3", "stage4"]`` and its
+    Stage 3 is the single-pass core. A ``--mode measure`` run (U10) has
+    ``["stage3", "stage4"]`` whatever its pipeline holds, since measure mode
+    applies no op: its Stage 3 is the measure core, and its Stage 4 runs in
+    republish mode.
+    """
+    from ._cli_validation import pipeline_requires_gpu
+
+    gpu_embed = getattr(cfg, "embed_stage", "inline") == "gpu"
+    # getattr, as for every other config field here: callers hand duck-typed configs.
+    if getattr(cfg, "measure_only", False):
+        if not gpu_embed:
+            raise ValueError(
+                "the staged SLURM strategy runs --mode measure only when it "
+                "embeds in a GPU Stage 4"
+            )
+        return list(NO_DETECTOR_PHASES), "measure", False
+    has_detector = pipeline_requires_gpu(cfg.pipeline_json)
+    if has_detector:
+        phases = STAGED_PHASES_WITH_STAGE4 if gpu_embed else STAGED_PHASES_INLINE
+        return list(phases), "staged", True
+    if not gpu_embed:
+        raise ValueError(
+            "the staged SLURM strategy runs a pipeline without a GpuDetector "
+            "only when it embeds in a GPU Stage 4"
+        )
+    return list(NO_DETECTOR_PHASES), "single_pass", False
+
+
 class StagedSlurmStrategy(ExecutionStrategy):
-    """Submit the 3 staged stages as a SLURM ``afterany`` dependency chain."""
+    """Submit the staged stages through the recoverable SLURM controller.
+
+    A ``GpuDetector`` run: Stages 1-3, plus the GPU Stage 4 when it embeds on
+    the GPU. A Stage-4 run without one: the single-pass "stage3" role, then
+    Stage 4 (#282 P5 T2).
+    """
 
     def execute(
         self, datasets: List[Dataset], output_dir: Path
     ) -> ExecutionResults:
         start = datetime.now()
         cfg = self.config
-        manifest: list[StagedManifestEntry] = []
-        for dataset in datasets:
-            for image in dataset.images:
-                manifest.append(
-                    staged_manifest_entry(cfg, dataset.name, image)
-                )
+        # A continuation's split already built each image's entry under its
+        # one identity for the invocation (#282 review I4): reuse it.
+        known = getattr(cfg, "staged_manifest_entries", None) or {}
+        # The rest are hashed on threads (P6 review M8): a measure manifest
+        # hashes every whole store tree, which serially on the submitting
+        # node is the slow half of a submission. `hashlib` releases the GIL;
+        # each identity is still `staged_manifest_entry`'s, computed once.
+        missing = [
+            (dataset, image)
+            for dataset in datasets
+            for image in dataset.images
+            if (dataset.name, image) not in known
+        ]
+        hashed = (
+            _staged_manifest_entries(cfg, missing) if missing else {}
+        )
+        manifest: list[StagedManifestEntry] = [
+            known.get((dataset.name, image)) or hashed[(dataset.name, image)]
+            for dataset in datasets
+            for image in dataset.images
+        ]
 
         # Chunk to the TIGHTER of MaxArraySize and the conservative
         # MaxSubmitJobs estimate. Reserve slots for the running controller and
@@ -641,10 +838,15 @@ class StagedSlurmStrategy(ExecutionStrategy):
         # lived inside `generate_staged_scripts`, so the refusal keeps its
         # ordering against the submit-capacity guard above it. Moving it
         # earlier would pre-empt that guard's error message.
-        staged_slot = staged_detector_slot(cfg.pipeline_json)
+        phases, stage3_role, has_detector = _staged_plan(cfg)
+        staged_slot = (
+            staged_detector_slot(cfg.pipeline_json) if has_detector else None
+        )
         scripts = generate_staged_scripts(
             pipeline_path=cfg.pipeline_json,
             detector_slot=staged_slot,
+            phases=phases,
+            stage3_role=stage3_role,
             datasets_manifest=manifest,
             output_dir=output_dir,
             image_type=cfg.image_type,
@@ -665,7 +867,22 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 "processing_generation",
                 None,
             ),
+            # The measure pipeline's sha256, as the measure core computes it,
+            # so the controller and every Stage-4 shard name the run folder the
+            # measure step wrote (P6 T2); a forward run records none.
+            pipeline_sha256=(
+                _measure_pipeline_sha256(cfg)
+                if stage3_role == "measure"
+                else None
+            ),
         )
+        if stage3_role == "measure":
+            # U18: an earlier pass's measure-done markers are never read
+            # again (each reader names its own epoch); clear them before
+            # this epoch exists, so they do not accumulate pass after pass.
+            from ._cli_staged_resume import clear_measure_done_markers
+
+            clear_measure_done_markers(output_dir)
         state = initialize_orchestration(
             output_dir,
             epoch=epoch,
@@ -677,6 +894,9 @@ class StagedSlurmStrategy(ExecutionStrategy):
                 else "fresh"
             ),
             controller_config_path=scripts["controller_config"],
+            # P6 review M11: the forward run's staged-completion marker is not
+            # a measure pass's to delete.
+            keep_completion_marker=stage3_role == "measure",
         )
         _write_staged_job_metadata(
             datasets=datasets,
@@ -691,7 +911,9 @@ class StagedSlurmStrategy(ExecutionStrategy):
             state["restart_parquet_fingerprints"] = snapshot_inventory_parquets(
                 output_dir, cfg.full_dataset_inventory
             )
-        initial_phase = getattr(cfg, "staged_resume_phase", None) or "stage1"
+        initial_phase = getattr(cfg, "staged_resume_phase", None) or (
+            "stage1" if has_detector else "stage3"
+        )
         state.update(
             {
                 "phase": initial_phase,
@@ -728,10 +950,11 @@ class StagedSlurmStrategy(ExecutionStrategy):
                     current["expected_controller_id"] = controller_id
                     save_orchestration_state(output_dir, current)
         logger.info(
-            "Submitted staged GPU controller lifecycle "
-            "(%d stage-1 chunks -> stage2 rounds -> %d stage-3 chunks -> finalizer): "
-            "initial controller=%s",
-            len(scripts["stage1"]),
+            "Submitted staged controller lifecycle (phases %s; %d stage-1 "
+            "chunk(s), %d stage-3 chunk(s), then the finalizer): initial "
+            "controller=%s",
+            ",".join(phases),
+            len(scripts.get("stage1", [])),
             len(scripts["stage3"]),
             controller_id,
         )

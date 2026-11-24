@@ -491,8 +491,16 @@ def submit_with_lifecycle(
     active_check: Callable[[], bool] | None = None,
     run_command: Callable[..., subprocess.CompletedProcess[str]] | None = None,
     discover: Callable[[str], str | None] | None = None,
+    extra_args: Sequence[str] = (),
 ) -> str:
-    """Submit exactly once with intent, fence, and job record under one lock."""
+    """Submit exactly once with intent, fence, and job record under one lock.
+
+    ``extra_args`` are ``sbatch`` options placed before the script, where
+    they override its ``#SBATCH`` directives (the staged controller narrows a
+    chunk's ``--array`` to the tasks it resubmits, #282 P5 U15/D5). They do
+    not enter the token or the comment, so a recovered submission is the same
+    job whatever the caller passes.
+    """
     validated_dependency_kind = _validate_dependency_kind(dependency_kind)
     comment = scheduler_comment(generation, token)
     runner = run_command or subprocess.run
@@ -573,6 +581,7 @@ def submit_with_lifecycle(
                     f"{effective_dependency_kind}:{':'.join(dependencies)}",
                 ]
             )
+        command.extend(str(arg) for arg in extra_args)
         command.append(str(script_path))
         last_error = "unknown submission failure"
         for attempt in range(3):
@@ -711,18 +720,31 @@ def _deactivate_generation_locked(
 
 
 def mark_generation_failed(
-    output_dir: Path, generation: str, error: str
+    output_dir: Path, generation: str, error: str, *, closed_by: str | None = None
 ) -> bool:
     """Durably mark one owned generation failed and inactive.
 
     The generation comparison prevents a late dispatcher from changing the
     lifecycle state of a newer launch that now owns the output directory.
+
+    *closed_by* is :data:`FENCE_CLOSED_BY_FINALIZER` only when a finalizer
+    ends its own generation unfinished (a ``--mode measure`` pass that left
+    images neither republished nor journalled, #282 U16): one write records
+    both, so ``phenotypic-wait`` never sees the close without the status.
+    A fence a finalizer closed with a ``terminal_status`` never counts as
+    published.
     """
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
         state = load_slurm_lifecycle(output_dir)
         if state is None or state.get("generation") != generation:
             return False
+        if closed_by is not None and state.get("active") is not True:
+            # As `_deactivate_generation_locked`: a late finalizer never
+            # relabels a fence a cancel already closed.
+            return False
         state["active"] = False
+        if closed_by is not None:
+            state["closed_by"] = closed_by
         state["terminal_status"] = "failed"
         state["terminal_error"] = str(error)
         state["updated_at"] = _timestamp()

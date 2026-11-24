@@ -241,6 +241,7 @@ from phenotypic.sdk_.typing_ import (
 from phenotypic._startup_perf import load_runtime_dependencies
 
 if TYPE_CHECKING:
+    from phenotypic._cli._cli_embed_stage import EmbedStageRequest
     from phenotypic._cli._cli_execution_strategies import (
         create_execution_strategy,
         uses_staged_gpu_strategy,
@@ -263,6 +264,7 @@ if TYPE_CHECKING:
     )
     from phenotypic._cli._cli_state_management import (
         create_initial_state,
+        embed_revisions_config,
         exclude_terminal_failures_for_datasets,
         get_remaining_images_for_datasets,
         load_processing_state,
@@ -299,6 +301,7 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
     "phenotypic._cli._cli_output_manager": ("OutputManager",),
     "phenotypic._cli._cli_state_management": (
         "create_initial_state",
+        "embed_revisions_config",
         "exclude_terminal_failures_for_datasets",
         "get_remaining_images_for_datasets",
         "load_processing_state",
@@ -891,6 +894,38 @@ def _refuse_process_meas_it_would_lose(
     skipped = skipped_measurers_warning(pipeline)
     if skipped is not None:
         click.echo(f"Warning: {skipped}.", err=True)
+
+
+def _resolve_embed_stage(config: "ExecutionConfig") -> None:
+    """Resolve ``--embed-stage`` into ``config.embed_stage``, refusing R1 and R2.
+
+    Called in the read-only half, outside ``--skip-validation`` and above
+    ``--restart``/``--overwrite`` handling, ``mint_run_identity`` and the
+    ``--dry-run`` exit (#282 spec §4.7). Prints U9's and O5's notes, one
+    line each. A pipeline that cannot be loaded resolves ``inline`` and is
+    left to the pipeline validation.
+
+    Raises:
+        click.UsageError: R1 (``gpu`` with ``--mode process``) or R2 (an
+            embedder that cannot run in the resolved stage).
+    """
+    from phenotypic._cli._cli_embed_stage import (
+        load_pipeline_or_none,
+        refuse_embed_stage_for_process,
+        refuse_unstageable_embedders,
+        resolve_embed_stage_for_config,
+    )
+    from phenotypic._cli._cli_preflight import run_mode_of
+
+    refuse_embed_stage_for_process(config.embed_stage_request, run_mode_of(config))
+    pipeline = load_pipeline_or_none(config.pipeline_json)
+    config.embed_stage, notes = resolve_embed_stage_for_config(config, pipeline)
+    if pipeline is not None:
+        refuse_unstageable_embedders(
+            pipeline, config.embed_stage_request, config.embed_stage
+        )
+    for note in notes:
+        click.echo(f"Note: {note}.", err=True)
 
 
 def _refuse_in_place_run(
@@ -1518,6 +1553,60 @@ def _run_failure_count(output_dir: Path, failed_now: int = 0) -> int:
     return resolve_run_state(output_dir, depth="shallow").diagnostics.failed
 
 
+def _sweep_finished_run_stage4_orphans(
+    config: ExecutionConfig, output_dir: Path
+) -> None:
+    """Under deferral, sweep the whole inventory's orphan Stage-4 signals (#282 P4 T4).
+
+    A finished continuation exits at "All images already processed!" and
+    never reaches Stage 4, whose own sweep would otherwise remove the signals
+    a crash left between an image's record and their consumption (plan
+    review I7). A no-op for a run that embeds inline.
+    """
+    from phenotypic._cli._cli_embed_stage import defers_embeddings
+
+    if not defers_embeddings(config):
+        return
+    from phenotypic._cli._cli_stage4_worker import (
+        sweep_run_orphan_stage4_signals,
+    )
+
+    sweep_run_orphan_stage4_signals(output_dir)
+
+
+def _plan_slurm_no_detector_continuation(
+    config: ExecutionConfig, datasets: Sequence[Any], output_dir: Path
+) -> None:
+    """Plan a SLURM continuation of a Stage-4 run without a ``GpuDetector`` (#282 P5 T2).
+
+    Content-defined, from each remaining image's ``stage4_status``
+    (``split_stage4_pending``): an image that finished Stages 1-3 waits on
+    Stage 4 only, and the single-pass "stage3" role skips it. When every
+    remaining image is such a one, the controller starts at its ``"stage4"``
+    phase (plan review C1), so no Stage-3 chunk is submitted for nothing.
+
+    Each image's identity is computed once, here, and handed to the staged
+    submitter as ``config.staged_manifest_entries``, which builds the
+    manifest from it rather than hashing the input again (review I4).
+    """
+    from phenotypic._cli._cli_stage4_worker import (
+        split_stage4_pending,
+        stage4_entries,
+    )
+
+    entries = stage4_entries(
+        config,
+        [(dataset, image) for dataset in datasets for image in dataset.images],
+        n_jobs=config.n_jobs,
+    )
+    core, pending = split_stage4_pending(datasets, output_dir, entries)
+    config.staged_manifest_entries = entries
+    if pending:
+        click.echo(f"  - {len(pending)} image(s) need Stage 4 only")
+    if pending and not core:
+        config.staged_resume_phase = "stage4"
+
+
 def _finished_run_exit(failed: int) -> RunExitCode:
     """The exit code of a run that finished in this process (spec #281 C10).
 
@@ -1553,8 +1642,46 @@ def _stage3_less_images(
     }
 
 
+def _unpublished_images(
+    output_dir: Path,
+    inventory: Mapping[str, Sequence[Any]],
+    snapshot: Any = None,
+) -> set[tuple[str, str]]:
+    """The ``(dataset, image stem)`` pairs of a run with no valid per-image record.
+
+    The local completion predicate of a run that embeds on the GPU (#282 plan
+    review C2), in place of :func:`_stage3_less_images`: there Stage 3 writes
+    ``stages.stage3`` and **no** record, and Stage 4 publishes the record, so
+    a Stage-3 marker says nothing about completion. An image counts as
+    published only with a ``verified`` verdict from ``resolve_run_state``,
+    the one producer of that verdict (``valid_image_success`` asks the same
+    ``record_rejection``).
+
+    Args:
+        output_dir: Run output root.
+        inventory: The run's full ``dataset -> images`` inventory.
+        snapshot: ``resolve_run_state(output_dir, depth="deep")`` when the
+            caller holds it, so one deep pass serves this and
+            :func:`_all_current_terminal_failures` (#282 review M5).
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    if snapshot is None:
+        snapshot = resolve_run_state(output_dir, depth="deep")
+    verified = {
+        (image.dataset, image.image_stem)
+        for image in snapshot.images.values()
+        if image.verdict == "verified"
+    }
+    return {
+        (dataset, source_image_stem(Path(image)))
+        for dataset, images in inventory.items()
+        for image in images
+    } - verified
+
+
 def _all_current_terminal_failures(
-    output_dir: Path, images: set[tuple[str, str]]
+    output_dir: Path, images: set[tuple[str, str]], snapshot: Any = None
 ) -> bool:
     """Whether every image in *images* has a current terminal failure record.
 
@@ -1565,13 +1692,17 @@ def _all_current_terminal_failures(
     Args:
         output_dir: Run output root.
         images: ``(dataset, image stem)`` pairs, from
-            :func:`_stage3_less_images`.
+            :func:`_stage3_less_images` or, under deferral,
+            :func:`_unpublished_images`.
+        snapshot: A deep ``resolve_run_state`` the caller already holds.
     """
     from phenotypic.sdk_ import resolve_run_state
 
+    if snapshot is None:
+        snapshot = resolve_run_state(output_dir, depth="deep")
     failed = {
         (image.dataset, image.image_stem)
-        for image in resolve_run_state(output_dir, depth="deep").images.values()
+        for image in snapshot.images.values()
         if image.verdict == "failed"
     }
     return images <= failed
@@ -2360,16 +2491,28 @@ def _print_process_only_dry_run_plan(
     type=int,
     default=1,
     show_default=True,
-    help="Parallel Stage-2 GPU tasks (one whole GPU each; SLURM-only, ignored "
-    "locally). Set to your concurrent-GPU count.",
+    help="Parallel tasks of the GPU stages (Stage 2 and Stage 4), one whole GPU "
+    "each; SLURM-only, ignored locally. Set to your concurrent-GPU count.",
 )
 @click.option(
     "--gpu-slurm",
     "gpu_slurm_args",
     multiple=True,
-    help="GPU-stage (Stage 2) SBATCH resources, e.g. --gpu-slurm "
+    help="SBATCH resources of the GPU stages (Stage 2 and Stage 4), e.g. --gpu-slurm "
     "slurm_partition=gpu --gpu-slurm slurm_account=<acct>. Inherits/deltas over "
     "--slurm (the CPU profile for Stages 1 & 3); auto-adds slurm_gpus_per_node=1.",
+)
+@click.option(
+    "--embed-stage",
+    "embed_stage",
+    type=click.Choice(["auto", "gpu", "inline"]),
+    default="auto",
+    show_default=True,
+    help="Where MeasureDinoEmbedding runs: gpu, in a GPU Stage 4 after each "
+    "store is final; inline, beside the other measurers. auto is gpu on SLURM "
+    "when the run already has a GPU profile (a GpuDetector, or --gpu-slurm), "
+    "else inline. Under auto a continuation keeps the stage its run started "
+    "with; an explicit value that differs is refused.",
 )
 @click.option(
     "--force-local",
@@ -2528,6 +2671,7 @@ def phenotypic_cli(
     gpu_workers_per_gpu: int,
     gpu_shards: int,
     gpu_slurm_args: Sequence[str],
+    embed_stage: str,
     force_local: bool,
     ext: str,
     overlay_alpha: float,
@@ -3155,6 +3299,7 @@ def phenotypic_cli(
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
             gpu_slurm_args=gpu_slurm_args_dict,
+            embed_stage_request=cast("EmbedStageRequest", embed_stage),
         )
         # Refuse an unstageable GpuDetector HERE, before anything touches
         # --output: every later step (overwrite clearing, run identity,
@@ -3183,6 +3328,10 @@ def phenotypic_cli(
             layer=process_only_layer,
             process_format=resolved_process_format,
         )
+        # --embed-stage: resolved once, here, with R1 and R2 beside the other
+        # un-skippable refusals (#282 spec §4.7). R3 needs the recorded state
+        # and sits in the continuation load below.
+        _resolve_embed_stage(config)
         manifest_snapshot = None
         if image_manifest is not None:
             try:
@@ -3228,6 +3377,29 @@ def phenotypic_cli(
                     err=True,
                 )
                 sys.exit(RunExitCode.ERROR)
+            # R3 (#282 U3, U12): before the compatibility check, which would
+            # otherwise report a switched continuation in its own words.
+            # Under `auto` the run's recorded stage is adopted; only an
+            # explicit conflicting --embed-stage is refused.
+            from phenotypic._cli._cli_embed_stage import (
+                EMBED_STAGE_CONFIG_KEY,
+                adopt_recorded_embed_stage,
+                has_slurm_gpu_profile,
+                stage4_supported,
+            )
+
+            config.embed_stage, adopted_note = adopt_recorded_embed_stage(
+                resume_state.config.get(EMBED_STAGE_CONFIG_KEY),
+                config.embed_stage_request,
+                config.embed_stage,
+                is_slurm=config.is_slurm_mode(),
+                stage4_available=stage4_supported(config),
+                gpu_profile=(
+                    not config.is_slurm_mode() or has_slurm_gpu_profile(config)
+                ),
+            )
+            if adopted_note is not None:
+                click.echo(f"Note: {adopted_note}.", err=True)
             if resume_state.config.get("success_markers_required", False):
                 is_compatible, compatibility_error = (
                     validate_resume_compatibility(resume_state, config)
@@ -3250,6 +3422,15 @@ def phenotypic_cli(
                     sys.exit(RunExitCode.ERROR)
 
             click.echo(f"✓ Continuing from {output_dir}")
+
+        # A gpu run's process environment: the cuBLAS workspace variable and,
+        # locally, the CUDA check (exit 1). After the three refusals, so a
+        # refused option reads as one; before any strategy, so nothing has
+        # initialised CUDA yet, and before Stage 1 writes anything (#282 plan
+        # review I4, I16).
+        from phenotypic._cli._cli_embed_stage import prepare_stage4_environment
+
+        prepare_stage4_environment(config)
 
         # Refuse a restart that would exchange the approved image subset while
         # preserving an earlier subset's outputs. Gated on the recorded digest,
@@ -3789,6 +3970,11 @@ def phenotypic_cli(
                         )
                     )
 
+            from phenotypic._cli._cli_embed_stage import (
+                defers_embeddings as _defers_embeddings,
+            )
+
+            resume_defers_embeddings = _defers_embeddings(config)
             staged_gpu_resume = uses_staged_gpu_strategy(config)
             if staged_gpu_resume:
                 if config.retry_failures:
@@ -3826,6 +4012,7 @@ def phenotypic_cli(
                         }
                         for dataset in datasets
                     },
+                    defers_embeddings=resume_defers_embeddings,
                 )
                 if not marker_contract:
                     migrate_legacy_stage3_markers(output_dir, resume_plan)
@@ -3857,6 +4044,8 @@ def phenotypic_cli(
                     namespace="continuation-preflight",
                 )
                 config.staged_stage3_markers = True
+                # On SLURM an all-Stage-4 continuation starts the controller
+                # at its "stage4" phase (#282 P5 T1).
                 config.staged_resume_phase = resume_plan.initial_stage
                 datasets = resume_plan.datasets
                 counts = resume_plan.counts
@@ -3894,6 +4083,7 @@ def phenotypic_cli(
                         _repair_incremental_manifest(
                             config, resume_state, output_dir
                         )
+                        _sweep_finished_run_stage4_orphans(config, output_dir)
                         click.echo("✓ All images already processed!")
                         sys.exit(
                             _finished_run_exit(_run_failure_count(output_dir))
@@ -3913,6 +4103,11 @@ def phenotypic_cli(
                         f"Stage 1 {counts['stage1']}, "
                         f"Stage 2 {counts['stage2']}, "
                         f"Stage 3 {counts['stage3']}"
+                        + (
+                            f", Stage 4 {counts['stage4']}"
+                            if resume_defers_embeddings
+                            else ""
+                        )
                     )
             else:
                 datasets = get_remaining_images_for_datasets(
@@ -3948,6 +4143,7 @@ def phenotypic_cli(
                     _repair_incremental_manifest(
                         config, resume_state, output_dir
                     )
+                    _sweep_finished_run_stage4_orphans(config, output_dir)
                     # The run's own failures, the count its exit code uses,
                     # not the whole journal: since #281 P2 C11d the journal
                     # also holds `--mode measure` rows, keyed by measure work
@@ -3962,9 +4158,20 @@ def phenotypic_cli(
                     else:
                         click.echo("✓ All images already processed!")
                     sys.exit(_finished_run_exit(skipped_failures))
+                # How many of them need Stage 4 only is the local strategy's
+                # to say, from its own split: counting it here re-hashed
+                # every input once more (#282 review I4).
                 click.echo(
                     f"Continuing processing ({remaining_images} images remaining)"
                 )
+                if (
+                    config.is_slurm_mode()
+                    and resume_defers_embeddings
+                    and config.process_only_layer is None
+                ):
+                    _plan_slurm_no_detector_continuation(
+                        config, datasets, output_dir
+                    )
                 if config.retry_failures:
                     click.echo("  - Including previously failed images")
 
@@ -3989,6 +4196,14 @@ def phenotypic_cli(
                     f"Skipping {terminal_skipped} exact terminal failure(s); "
                     "use --retry-failures to retry them."
                 )
+
+        # U5 (#282 P5 T2): a Stage-4 run's unpinned revisions, resolved once at
+        # its first invocation and reused by every continuation. Here, below
+        # the --dry-run exit (it may ask the hub) and before the state and
+        # the job metadata record them.
+        from phenotypic._cli._cli_embed_stage import pin_embed_revisions
+
+        pin_embed_revisions(config, output_dir)
 
         # Create initial state (or update if resuming) — skipped in
         # measure mode, which never mutates processing state.
@@ -4027,6 +4242,13 @@ def phenotypic_cli(
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
                     "no_qc": config.no_qc,
+                    # Kept on resume as `create_initial_state` records it:
+                    # dropping it would make the next continuation read
+                    # "inline" and R3 refuse a GPU run's own command, and the
+                    # event aggregation count Stage-3 completions as done.
+                    "embed_stage": config.embed_stage,
+                    # U5: the first invocation's revisions, reused.
+                    **embed_revisions_config(config),
                     # A RESUME IS NOT A RESTART. Same configuration ->
                     # same generation (D3); only `--restart` bumps the
                     # epoch, and therefore the generation.
@@ -4195,9 +4417,16 @@ def phenotypic_cli(
 
         # Only a local run reaches this point: every SLURM run exited or was
         # refused above.
-        local_staged_publication = (
+        # A local run that defers its embeddings to Stage 4 publishes like a
+        # staged one, detector or not: completion is record-based and the run
+        # is marked staged-complete (#282 P4 T2). Measure mode's deferral is
+        # P6's, so it is not one here.
+        from phenotypic._cli._cli_embed_stage import defers_embeddings
+
+        deferring = defers_embeddings(config)
+        local_staged_publication = config.process_only_layer is None and (
             uses_staged_gpu_strategy(config)
-            and config.process_only_layer is None
+            or (deferring and not measure_only)
         )
 
         # Process-only (apply-only) runs export image layers + a progress
@@ -4261,9 +4490,15 @@ def phenotypic_cli(
             )
         )
         if should_finalize_measurements:
-            if local_staged_publication and config.staged_stage3_markers:
-                # Guarded by `local_staged_publication`, which is only true
-                # for a staged GPU run, so the pipeline has a GpuDetector.
+            if (
+                local_staged_publication
+                and config.staged_stage3_markers
+                and uses_staged_gpu_strategy(config)
+            ):
+                # Its own GpuDetector guard: `local_staged_publication` is
+                # also true for a no-detector run that defers its embeddings
+                # (#282), whose pipeline `staged_detector_slot` refuses and
+                # which has no Stage-2 signal to consume (re-review item 1).
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
@@ -4326,8 +4561,23 @@ def phenotypic_cli(
         staged_complete = False
         staged_terminal_incomplete = False
         if local_staged_publication:
-            unfinished = _stage3_less_images(
-                output_dir, config.full_dataset_inventory
+            # Under deferral the predicate is record-based: a Stage-3 marker
+            # is not completion, and a Stage-4 failure exits 3 rather than 1
+            # (#282 plan review C2).
+            # One deep pass for both questions under deferral (review M5).
+            run_snapshot = None
+            if deferring:
+                from phenotypic.sdk_ import resolve_run_state
+
+                run_snapshot = resolve_run_state(output_dir, depth="deep")
+            unfinished = (
+                _unpublished_images(
+                    output_dir, config.full_dataset_inventory, run_snapshot
+                )
+                if deferring
+                else _stage3_less_images(
+                    output_dir, config.full_dataset_inventory
+                )
             )
             staged_complete = (
                 finalization_succeeded
@@ -4336,13 +4586,16 @@ def phenotypic_cli(
             )
             # The local twin of the SLURM finalizer's `terminal_incomplete`
             # close (#281 spec C10, review I3/F3): every image without a
-            # Stage-3 marker failed terminally, so the run finished with
-            # failures. It is not marked staged-complete, and a re-run, which
-            # skips those images, re-finalizes and ends here again.
+            # Stage-3 marker (under deferral, without a record) failed
+            # terminally, so the run finished with failures. It is not marked
+            # staged-complete, and a re-run, which skips those images,
+            # re-finalizes and ends here again.
             staged_terminal_incomplete = (
                 finalization_succeeded
                 and bool(unfinished)
-                and _all_current_terminal_failures(output_dir, unfinished)
+                and _all_current_terminal_failures(
+                    output_dir, unfinished, run_snapshot
+                )
             )
         if staged_complete:
             from phenotypic._cli._cli_staged_orchestration import (

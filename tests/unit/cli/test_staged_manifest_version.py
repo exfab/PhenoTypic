@@ -6,6 +6,11 @@ unexpected-keyword ``TypeError``. Writing version 4 makes that reader stop at
 its own version check instead, with the "Unsupported staged manifest version"
 message, while this reader still loads versions 2 and 3 (entries without the
 key load with ``reference_digest=None``).
+
+Version 5 (#282 P6 T1) adds the top-level ``"republish"`` flag, measure
+mode's one republish carrier; version 4 and below read as forward. Only a
+republish manifest is written as version 5; a forward one stays version 4
+(P6 review M7), so a #281/P5 reader still reads it.
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ import pytest
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     load_staged_manifest,
+    staged_manifest_republishes,
     write_staged_manifest,
 )
 
@@ -37,11 +43,21 @@ def _entry(**overrides) -> StagedManifestEntry:
     return StagedManifestEntry(**fields)
 
 
-def test_a_manifest_carrying_the_digest_key_is_written_as_version_4(tmp_path):
+def test_a_forward_manifest_is_written_as_version_4(tmp_path):
+    """P6 review M7: only a republish manifest needs version 5, so a #281/P5 reader still reads a forward one."""
     path = write_staged_manifest(tmp_path / "manifest.json", [_entry()])
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["version"] == 4
+    assert raw["version"] == 4 and "republish" not in raw
+    assert raw["images"][0]["reference_digest"] == "d" * 64
+    assert not staged_manifest_republishes(path) and len(load_staged_manifest(path)) == 1
+
+
+def test_a_republish_manifest_is_written_as_version_5(tmp_path):
+    path = write_staged_manifest(tmp_path / "manifest.json", [_entry()], republish=True)
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    assert raw["version"] == 5 and raw["republish"] is True
     assert raw["images"][0]["reference_digest"] == "d" * 64
 
 
@@ -53,9 +69,9 @@ def test_a_version_3_reader_refuses_what_this_writer_writes(tmp_path):
     assert raw.get("version") not in (2, 3)
 
 
-def test_a_version_4_manifest_round_trips(tmp_path):
+def test_a_version_5_manifest_round_trips(tmp_path):
     entries = [_entry(), _entry(image_name="t02.tiff", stem="t02")]
-    path = write_staged_manifest(tmp_path / "manifest.json", entries)
+    path = write_staged_manifest(tmp_path / "manifest.json", entries, republish=True)
 
     assert load_staged_manifest(path) == entries
 
@@ -73,7 +89,7 @@ def test_older_manifests_still_load_without_the_digest(tmp_path, version):
     assert loaded.reference_digest is None
 
 
-@pytest.mark.parametrize("version", [1, 5, None])
+@pytest.mark.parametrize("version", [1, 6, None])
 def test_an_unknown_version_is_refused_cleanly(tmp_path, version):
     path = tmp_path / "manifest.json"
     path.write_text(
@@ -82,3 +98,46 @@ def test_an_unknown_version_is_refused_cleanly(tmp_path, version):
 
     with pytest.raises(ValueError, match="Unsupported staged manifest version"):
         load_staged_manifest(path)
+
+
+def _write_v4_manifest(path, entries):
+    """A manifest as the version-4 writer wrote it: no ``"republish"`` key."""
+    path.write_text(
+        json.dumps({"version": 4, "images": [asdict(entry) for entry in entries]}),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_v5_records_republish(tmp_path):
+    path = write_staged_manifest(tmp_path / "m.json", [_entry()], republish=True)
+    assert json.loads(path.read_text(encoding="utf-8"))["version"] == 5
+    assert staged_manifest_republishes(path) and len(load_staged_manifest(path)) == 1
+
+
+def test_a_forward_v5_manifest_does_not_republish(tmp_path):
+    """A version-5 manifest as P6 before review M7 wrote a forward one: ``"republish": false``."""
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"version": 5, "republish": False, "images": [asdict(_entry())]}),
+                    encoding="utf-8")
+    assert not staged_manifest_republishes(path) and len(load_staged_manifest(path)) == 1
+
+
+def test_a_v4_manifest_reads_as_forward(tmp_path):
+    path = _write_v4_manifest(tmp_path / "m.json", [_entry()])
+    assert not staged_manifest_republishes(path)
+    assert load_staged_manifest(path) == [_entry()]
+
+
+def test_a_v4_manifest_carrying_a_republish_key_still_reads_as_forward(tmp_path):
+    """The flag means nothing below version 5: only the version decides."""
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"version": 4, "republish": True, "images": []}), encoding="utf-8")
+    assert not staged_manifest_republishes(path)
+
+
+def test_republishes_refuses_an_unknown_version(tmp_path):
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"version": 6, "republish": True, "images": []}), encoding="utf-8")
+    with pytest.raises(ValueError, match="Unsupported staged manifest version"):
+        staged_manifest_republishes(path)

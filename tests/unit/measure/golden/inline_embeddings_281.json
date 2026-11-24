@@ -1,0 +1,281 @@
+{
+  "gray_objects": {
+    "dinov2-vitb14/gray/objects-g": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "gray",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "crop_cls",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "8f8ba805fa78aa8d3c65f71d40b773844df4dd0074d9174c11e2e909b620a549"
+        }
+      },
+      "table_sha256": "4e7fc9ec68966f3a8d7dd10b3097a91e647b7bf7dc9600277ffcbfce6f6a9cc0",
+      "vectors_sha256": "b498d953166499b836fcb7ff1497b8237879e3c1c3f42952e9199a5ec1076570"
+    }
+  },
+  "grid_cls": {
+    "dinov2-vitb14/rgb/grid": {
+      "descriptor": {
+        "binds": {
+          "array_sha256": "05a24cc110813f5b2ed9e989dbea182ce5d9d0371aa7c2536bcc80ce2034c1de",
+          "grid_sha256": "28a45bc5af132c5c66252c8ac98f61cfd8f26f7d9ce0f30b02f881c492d1b717"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Grid_RowMajorIdx",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "crop_cls",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "422af009821ca4edc69bf004b5e8a281c465ba2212fb297aee39e1bc5c582170"
+        }
+      },
+      "table_sha256": "8c50ab0f58476ddab3f981cad0e90cffd529748ea83a29f105da434bf454b994",
+      "vectors_sha256": "632363fe6202faf76e5703da54d86ca045bf62c81743b142cc03cc93b2672a0b"
+    }
+  },
+  "objects_cls": {
+    "dinov2-vitb14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "crop_cls",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "b97d1974e054b43bd1115d34abe571f119557a2774f93935e4b69050ee7e85d6"
+        }
+      },
+      "table_sha256": "2efc678a7a7678e5c96e4102b07e8413d48dd78388e536f09011aa85282f8202",
+      "vectors_sha256": "f602bd6441b7bb1e7881ccc832f69dda83629ebc85260890b71f1692b42e4201"
+    }
+  },
+  "objects_dense": {
+    "dinov2-vitb14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "masked_dense",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "bc911e19d55ac0f5034a7ed0502313c14d76e486cc85e9cee18d23d5c5bca2c9"
+        }
+      },
+      "table_sha256": "f8dae4129de3978d69935a6def83dc90b9c6301df49754d91afea4551799e75d",
+      "vectors_sha256": "0d9bac906bb3d10f0c014e4821bfbf8e171407f23c2cfbbcd99c3cec5bcbc0a2"
+    }
+  },
+  "objects_mean_masked": {
+    "dinov2-vitb14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "crop_mean",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "ea2cefaeb1f45e99b50d5ea2fb6743d243d546fdfb5e78a7bc074f36295bc1fe"
+        }
+      },
+      "table_sha256": "e4dcb3f7c8b0c525afce4a49c78a5d2b1938caa1a2c98ec878e2d60fe39f8a25",
+      "vectors_sha256": "0b48284daa483dddc92ed4c5015a51307ea680a3e9a6664c042fcfd7190d577c"
+    }
+  },
+  "real_small_objects_cls": {
+    "dinov2-vits14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 384,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-small",
+          "patch_size": 14,
+          "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056"
+        },
+        "pooling": "crop_cls",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "0fe20a89f376ca234e8c6e73a9868c960dc18133a587d21474bd544bee8af5d7"
+        }
+      },
+      "table_sha256": "7fd694b261f9ff0369af6d82c7165c65ea81aba734f0758d77b68855146a8324",
+      "vectors_sha256": "878537e0c341a8528bf2fe952442b2ef06955ad483dfc31b3c3dd99dd995cfb3"
+    }
+  },
+  "real_small_objects_dense": {
+    "dinov2-vits14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 384,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-small",
+          "patch_size": 14,
+          "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056"
+        },
+        "pooling": "masked_dense",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "3e775f9c5a044ae345225d7d44471de3c8cc2fa19e7c03c0620b6862c62c92d7"
+        }
+      },
+      "table_sha256": "9e635e292e27263a79d10541f438d04d8366797eb73f04c5b80f71e4314940d7",
+      "vectors_sha256": "967f0fc3ab324c2829539e115f5e7dbb5ce7029fb6a96addb6d83eaca5f1bf17"
+    }
+  },
+  "real_small_objects_mean_masked": {
+    "dinov2-vits14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 384,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-small",
+          "patch_size": 14,
+          "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056"
+        },
+        "pooling": "crop_mean",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "6ea2fb4533912c5287a25049e1fa6d37640ff6ca65413986457b9d8c10ecf0f5"
+        }
+      },
+      "table_sha256": "8c4cdf555fc7bce66de3cb7208d357f1903751258f4b46d8533180069e972cb1",
+      "vectors_sha256": "f71d4f08f99de589f2af0c73346de4cbbf7bceb7b6b72a761ba2a836be588a84"
+    }
+  },
+  "registers_mean": {
+    "dinov2-vitb14/rgb/objects": {
+      "descriptor": {
+        "binds": {
+          "objmap_path": "rgb/labels/objmap",
+          "objmap_sha256": "05f7f0f6b4da3594be559e4036e642ae44ed4769adba7f394c63317a78dc2d0d"
+        },
+        "dim": 8,
+        "dtype": "float16",
+        "input": {
+          "layer": "rgb",
+          "level": 0,
+          "series": "rgb"
+        },
+        "key": "Object_Label",
+        "model": {
+          "family": "dinov2",
+          "hf_id": "facebook/dinov2-base",
+          "patch_size": 14,
+          "revision": "0000000000000000000000000000000000000000"
+        },
+        "pooling": "crop_mean",
+        "producer": {
+          "class": "MeasureDinoEmbedding",
+          "params_sha256": "093f6b63827d1ceac28bf011852820cab868d5f5176f306cb80b659138e9a49c"
+        }
+      },
+      "table_sha256": "df4db3ebed92a59116aa128556627b97e75dee28535a76e9941ce173ef2e3465",
+      "vectors_sha256": "d92c0e5569f5befe9b2027e62d0e27a6372c6f4a3c0e09db3c58e8db772538be"
+    }
+  }
+}

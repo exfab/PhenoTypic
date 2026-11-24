@@ -29,6 +29,7 @@ from .._cli_update_state import (
     aggregate_state_from_events_with_diagnostics,
     append_event,
 )
+from .._stages import StageTag
 from phenotypic.sdk_ import (
     MANIFEST_JSON,
     DashboardManifestKey,
@@ -309,6 +310,13 @@ def query_sacct_chunk_states(
 # ---------------------------------------------------------------------------
 
 
+def _terminal_stage(output_dir: Path) -> StageTag:
+    """The run's terminal stage, from its recorded processing state (#282 I8)."""
+    from .._cli_state_management import recorded_terminal_stage
+
+    return recorded_terminal_stage(output_dir)
+
+
 def detect_silent_failures(
     output_dir: Path,
     progress_dir: Path,
@@ -334,7 +342,9 @@ def detect_silent_failures(
         Returns an empty list if ``sacct`` is unavailable.
     """
     event_log = resolve_event_log_path(output_dir)
-    dataset_states = aggregate_state_from_events(event_log)
+    dataset_states = aggregate_state_from_events(
+        event_log, terminal_stage=_terminal_stage(output_dir)
+    )
 
     # Collect all in-progress images across datasets.
     in_progress_images: Dict[str, List[str]] = {}  # dataset -> [images]
@@ -527,6 +537,7 @@ def build_manifest(
         event_log,
         inventory=dataset_inventory,
         generation=processing_generation,
+        terminal_stage=_terminal_stage(output_dir),
     )
     dataset_states = aggregation.datasets
     diagnostics = aggregation.diagnostics

@@ -23,6 +23,7 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     dataset_measurements_dir,
     progress_dir,
+    slurm_scripts_dir,
     source_image_stem,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -50,14 +51,22 @@ from ._cli_slurm_lifecycle import (
 
 # 4 added ``StagedManifestEntry.reference_digest``. The bump is what makes a
 # version-3 reader stop at its own version check instead of failing on an
-# unexpected keyword; 2 and 3 still load, with the digest ``None``.
-_MANIFEST_VERSION = 4
-_READABLE_MANIFEST_VERSIONS = (2, 3, _MANIFEST_VERSION)
+# unexpected keyword; 2 and 3 still load, with the digest ``None``. 5 adds
+# the top-level ``"republish"`` flag (#282 P6 T1); 4 and below read forward.
+_MANIFEST_VERSION = 5
+_READABLE_MANIFEST_VERSIONS = (2, 3, 4, _MANIFEST_VERSION)
+#: The first manifest version that records ``"republish"`` (#282 P6 T1).
+_REPUBLISH_MANIFEST_VERSION = 5
+#: What a forward manifest is written as (P6 review M7): version 4, which a
+#: #281/P5 reader accepts; only a republish manifest needs version 5.
+_FORWARD_MANIFEST_VERSION = 4
 _STATE_FILENAME = "staged_orchestration.json"
 _FAILURES_FILENAME = "stage2_terminal_failures.jsonl"
 _DEACTIVATIONS_FILENAME = "staged_epoch_deactivations.jsonl"
 _COMPLETION_FILENAME = "staged_finalization_complete.json"
 _LOCK_FILENAME = ".staged_orchestration.lock"
+_STAGE4_WORKLIST_FILENAME = "stage4_worklist.json"
+_STAGE4_WORKLIST_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -141,8 +150,23 @@ def initialize_orchestration(
     epoch: str,
     mode: str,
     controller_config_path: Path,
+    keep_completion_marker: bool = False,
 ) -> dict[str, Any]:
-    """Create the active staged controller state for a new submission."""
+    """Create the active staged controller state for a new submission.
+
+    Args:
+        output_dir: Run output root.
+        epoch: The new orchestration epoch, also the fence generation.
+        mode: ``"fresh"``, ``"resume"`` or ``"restart"``.
+        controller_config_path: The submission's controller config.
+        keep_completion_marker: Keep the staged-completion marker
+            (``staged_finalization_complete.json``) a forward run wrote. A
+            ``--mode measure`` pass passes ``True`` (#282 P6 review M11): the
+            marker is the **forward** run's, its epoch never matches the
+            measure epoch, and deleting it made a later plain forward re-run
+            re-finalize, rewriting ``deliverables/`` and dropping the
+            measure pass's failure count from ``metrics.json``.
+    """
     state: dict[str, Any] = {
         "schema_version": 1,
         "epoch": epoch,
@@ -154,6 +178,11 @@ def initialize_orchestration(
         "last_retryable_digest": None,
         "last_retryable_count": None,
         "zero_progress_rounds": 0,
+        # Stage 4's rounds have their own counters (#282 spec §4.3): a GPU
+        # embedding round never inherits Stage 2's zero-progress count.
+        "stage4_round": 0,
+        "stage4_last_progress_digest": None,
+        "stage4_zero_progress_rounds": 0,
         "active_job_id": None,
         "expected_controller_id": None,
         "controller_config": str(controller_config_path),
@@ -164,8 +193,70 @@ def initialize_orchestration(
         output_dir, generation=epoch, mode=f"staged-{mode}"
     )
     atomic_write_json(orchestration_state_path(output_dir), state)
-    staged_completion_path(output_dir).unlink(missing_ok=True)
+    if not keep_completion_marker:
+        staged_completion_path(output_dir).unlink(missing_ok=True)
     return state
+
+
+def recorded_detector_slot(state: Mapping[str, Any]) -> str | None:
+    """The Stage-2 detector slot the submitter recorded in the controller config.
+
+    ``staged_controller.json`` carries ``detector_slot`` exactly when the run
+    has a ``GpuDetector`` (phases with ``"stage1"``, or any version-1 config);
+    a run without one (phases ``["stage3", "stage4"]``) has none, read as
+    ``None``. Readers that need the slot take it from here rather than
+    re-deriving it from the pipeline, which raises on a pipeline with no
+    ``GpuDetector`` (#282 P5 review I2).
+
+    Args:
+        state: The orchestration state, whose ``controller_config`` names the
+            config.
+
+    Raises:
+        RuntimeError: The state names no readable controller config: the
+            finalizer cannot tell whether to reconcile, so it fails closed.
+    """
+    path = state.get("controller_config")
+    try:
+        config = json.loads(Path(str(path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            f"Staged controller config {path!r} is unreadable; cannot tell "
+            "whether this run has a GpuDetector to reconcile"
+        ) from exc
+    slot = config.get("detector_slot") if isinstance(config, dict) else None
+    return None if slot is None else str(slot)
+
+
+def recorded_measure_pipeline_sha256(output_dir: Path) -> str:
+    """The measure pipeline's sha256 its SLURM submitter recorded (#282 P6 review M6).
+
+    ``staged_controller.json``'s ``pipeline_sha256``, named by the
+    orchestration state. The submitter is its one producer; the measure
+    step and every Stage-4 shard read it here, and refuse to run when the
+    pipeline file's bytes no longer hash to it, rather than each re-hashing
+    the file and splitting the run folder they name when it is edited
+    mid-run.
+
+    Raises:
+        RuntimeError: No readable orchestration state or controller config,
+            or the config records no measure pipeline.
+    """
+    state = load_orchestration_state(output_dir)
+    path = None if state is None else state.get("controller_config")
+    try:
+        config = json.loads(Path(str(path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(
+            f"Staged controller config {path!r} is unreadable; cannot tell which "
+            "measure pipeline this pass runs"
+        ) from exc
+    sha = config.get("pipeline_sha256") if isinstance(config, dict) else None
+    if not isinstance(sha, str) or not sha:
+        raise RuntimeError(
+            f"Staged controller config {path} records no measure pipeline sha256"
+        )
+    return sha
 
 
 def load_orchestration_state(output_dir: Path) -> dict[str, Any] | None:
@@ -185,6 +276,11 @@ def load_orchestration_state(output_dir: Path) -> dict[str, Any] | None:
     if deactivated_phase is not None:
         payload["phase"] = deactivated_phase
     return payload
+
+
+def deactivated_epoch_phase(output_dir: Path, epoch: str) -> str | None:
+    """The terminal phase the epoch fence journal last recorded for *epoch*, or ``None``."""
+    return _deactivated_epoch_phase(output_dir, epoch)
 
 
 def _deactivated_epoch_phase(output_dir: Path, epoch: str) -> str | None:
@@ -243,17 +339,52 @@ def epoch_is_active(output_dir: Path, epoch: str) -> bool:
 
 
 def write_staged_manifest(
-    path: Path, entries: Sequence[StagedManifestEntry]
+    path: Path, entries: Sequence[StagedManifestEntry], *, republish: bool = False
 ) -> Path:
-    """Write the versioned staged manifest atomically."""
-    atomic_write_json(
-        path,
-        {
-            "version": _MANIFEST_VERSION,
-            "images": [asdict(entry) for entry in entries],
-        },
+    """Write the versioned staged manifest atomically.
+
+    Args:
+        path: The manifest file.
+        entries: One entry per image.
+        republish: Whether the run's Stage 4 runs in measure mode's
+            *republish* mode (#282 P6 T1, spec §4.6): it re-embeds an
+            already-certified store and then republishes its record. The
+            manifest's top-level ``"republish"`` is that mode's **one
+            carrier**: the controller and the Stage-4 shard both read it
+            here (:func:`staged_manifest_republishes`), and no config key or
+            CLI option repeats it.
+    """
+    # A forward manifest is written as version 4, which #281/P5 code still
+    # reads, so mixing venvs mid-run fails only a republish pass, the one
+    # whose meaning a v4 reader would get wrong (P6 review M7).
+    payload: dict[str, Any] = (
+        {"version": _REPUBLISH_MANIFEST_VERSION, "republish": True}
+        if republish
+        else {"version": _FORWARD_MANIFEST_VERSION}
     )
+    payload["images"] = [asdict(entry) for entry in entries]
+    atomic_write_json(path, payload)
     return path
+
+
+def staged_manifest_republishes(path: Path) -> bool:
+    """Whether the manifest at *path* flags a republish-mode Stage 4 (#282 P6 T1).
+
+    ``False`` below version 5, which predates the flag: every such manifest
+    is a forward run's.
+
+    Raises:
+        ValueError: As :func:`load_staged_manifest`, for a manifest of a
+            version this build does not read.
+    """
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("version") not in _READABLE_MANIFEST_VERSIONS:
+        raise ValueError(
+            f"Unsupported staged manifest version in {path}; expected one of "
+            f"{', '.join(map(str, _READABLE_MANIFEST_VERSIONS))}"
+        )
+    version = raw["version"]
+    return version >= _REPUBLISH_MANIFEST_VERSION and raw.get("republish") is True
 
 
 def load_staged_manifest(path: Path) -> list[StagedManifestEntry]:
@@ -280,6 +411,91 @@ def retryable_digest(
     identities = sorted(entry.identity for entry in entries)
     digest = hashlib.sha256("\n".join(identities).encode("utf-8")).hexdigest()
     return digest, len(identities)
+
+
+def stage4_worklist_path(output_dir: Path) -> Path:
+    """``<output>/.phenotypic/slurm_scripts/stage4_worklist.json``: the current round's worklist."""
+    return slurm_scripts_dir(output_dir) / _STAGE4_WORKLIST_FILENAME
+
+
+@dataclass(frozen=True)
+class Stage4Shard:
+    """One GPU shard's slice of a Stage-4 round's worklist (#282 spec §4.3).
+
+    Attributes:
+        round_index: The round the worklist was written for.
+        manifest_path: The staged manifest the entries come from.
+        entries: The images this shard embeds; empty for a shard with no
+            work, which exits ``0``.
+    """
+
+    round_index: int
+    manifest_path: Path
+    entries: list[StagedManifestEntry]
+
+
+def write_stage4_worklist(
+    path: Path,
+    *,
+    round_index: int,
+    manifest_path: Path,
+    retryable: Sequence[StagedManifestEntry],
+    n_shards: int,
+) -> Path:
+    """Atomically write one Stage-4 round's worklist over *n_shards* GPU shards.
+
+    Only the *retryable* set is partitioned, so after a walltime the leftover
+    work spreads over every GPU rather than staying on the shard that held it.
+    The set is sorted by identity before the split, so the partition does
+    not depend on the order the classifier produced it in; ``partition_shards``
+    keeps every image exactly once, and shard sizes differ by at most one.
+    Shards beyond the work are written empty.
+
+    Payload: ``{"version": 1, "round": n, "manifest": path, "shards": [[entry, ...], ...]}``.
+
+    Returns:
+        *path*.
+    """
+    from ._cli_staged_slurm import partition_shards
+
+    ordered = sorted(retryable, key=lambda entry: entry.identity)
+    shards = partition_shards(ordered, max(1, int(n_shards)))
+    atomic_write_json(
+        path,
+        {
+            "version": _STAGE4_WORKLIST_VERSION,
+            "round": int(round_index),
+            "manifest": str(manifest_path),
+            "shards": [[asdict(entry) for entry in shard] for shard in shards],
+        },
+    )
+    return path
+
+
+def load_stage4_worklist(path: Path, shard_index: int) -> Stage4Shard:
+    """Read shard *shard_index* of the Stage-4 worklist at *path*.
+
+    Raises:
+        ValueError: If the worklist is of another version or malformed, or
+            *shard_index* names no shard: a script and a worklist written
+            for different shard counts are a submitter skew, never "no work".
+    """
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("version") != _STAGE4_WORKLIST_VERSION:
+        raise ValueError(f"Unsupported Stage-4 worklist version in {path}")
+    shards = raw.get("shards")
+    if not isinstance(shards, list) or not all(isinstance(s, list) for s in shards):
+        raise ValueError(f"Stage-4 worklist {path} has no shard list")
+    if not 0 <= shard_index < len(shards):
+        raise ValueError(
+            f"Stage-4 worklist {path} has {len(shards)} shards; "
+            f"shard {shard_index} does not exist"
+        )
+    return Stage4Shard(
+        round_index=int(raw["round"]),
+        manifest_path=Path(raw["manifest"]),
+        entries=[StagedManifestEntry(**entry) for entry in shards[shard_index]],
+    )
 
 
 def snapshot_inventory_parquets(
@@ -517,8 +733,12 @@ def submit_with_intent(
     round_index: int,
     script_path: Path,
     dependencies: Sequence[str] = (),
+    extra_args: Sequence[str] = (),
 ) -> str:
-    """Idempotently submit an SBATCH script with bounded retry and ledgering."""
+    """Idempotently submit an SBATCH script with bounded retry and ledgering.
+
+    ``extra_args`` go to ``sbatch`` before the script (``submit_with_lifecycle``).
+    """
     return submit_with_lifecycle(
         output_dir,
         generation=epoch,
@@ -530,6 +750,7 @@ def submit_with_intent(
         active_check=lambda: epoch_is_active(output_dir, epoch),
         run_command=subprocess.run,
         discover=_job_from_scheduler_comment,
+        extra_args=extra_args,
     )
 
 
@@ -732,7 +953,6 @@ def live_slurm_job_ids(
     question; ``phenotypic-wait`` passes a memo that remembers an answer of
     ``False``, which is final.
     """
-    query = scheduler_job_is_active if is_active is None else is_active
     lifecycle = load_slurm_lifecycle(output_dir)
     if lifecycle is not None and lifecycle.get("active") is False:
         return LiveSlurmJobs()
@@ -740,6 +960,35 @@ def live_slurm_job_ids(
         output_dir,
         epoch=str(lifecycle["generation"]) if lifecycle is not None else None,
     )
+    return _ledger_liveness(rows, is_active)
+
+
+def ledgered_jobs_of_generation(
+    output_dir: Path,
+    generation: str,
+    *,
+    is_active: Callable[[str], bool | None] | None = None,
+) -> LiveSlurmJobs:
+    """The jobs *generation*'s ledger still owns, **whatever the fence says**.
+
+    :func:`live_slurm_job_ids` answers empty once the fence is closed, which
+    is right for "may a new run start?" but not for "has every job of this
+    submission ended?": the finalizer closes the fence, and the recovery
+    controller every controller pre-arms runs after it (#282 smoke F1). So
+    this walks *generation*'s ledger rows and classifies them exactly as
+    :func:`live_slurm_job_ids` does, without the fence short-cut.
+    ``phenotypic-wait`` asks it after the run has ended, so a teardown it
+    triggers cannot race that controller (U15/D4).
+    """
+    return _ledger_liveness(read_job_ledger(output_dir, epoch=generation), is_active)
+
+
+def _ledger_liveness(
+    rows: Sequence[Mapping[str, Any]],
+    is_active: Callable[[str], bool | None] | None,
+) -> LiveSlurmJobs:
+    """Classify ledger *rows* into live, unverified and unresolved (see :func:`live_slurm_job_ids`)."""
+    query = scheduler_job_is_active if is_active is None else is_active
     live: set[str] = set()
     unverified: set[str] = set()
     for job_id in _unterminated_ledger_job_ids(rows):
@@ -985,6 +1234,7 @@ def current_slurm_job_id() -> str:
 
 __all__ = [
     "LiveSlurmJobs",
+    "Stage4Shard",
     "StagedManifestEntry",
     "active_ledger_job_ids",
     "append_job_ledger",
@@ -998,6 +1248,7 @@ __all__ = [
     "initialize_orchestration",
     "live_slurm_job_ids",
     "load_orchestration_state",
+    "load_stage4_worklist",
     "load_staged_manifest",
     "mark_local_staged_complete",
     "mark_staged_complete",
@@ -1013,11 +1264,13 @@ __all__ = [
     "scheduler_job_is_active",
     "snapshot_inventory_parquets",
     "stage2_failure_journal_path",
+    "stage4_worklist_path",
     "staged_completion_path",
     "staged_completion_matches",
     "staged_job_ledger_path",
     "submit_with_intent",
     "terminal_stage2_identities",
     "update_job_dependency",
+    "write_stage4_worklist",
     "write_staged_manifest",
 ]

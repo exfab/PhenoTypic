@@ -635,7 +635,10 @@ scalar measurements do, so both live in the pipeline's own folder under `tables/
   and the `upstream` block, unchanged. The writers are:
   - save2zarr (full, Stage 1, Stage 3);
   - process `_save_store`;
-  - the measure/recompile rewrite.
+  - the measure/recompile rewrite;
+  - Stage 4's `replace_run_embeddings` (#282 spec §4.2), which rewrites only
+    its own run's `embeddings` block and carries every other file, every other
+    run folder and `upstream` unchanged.
 
   Further rules:
   - The measure rewrite's `rmtree(part/tables)` (`_measurement_tables.py:694`)

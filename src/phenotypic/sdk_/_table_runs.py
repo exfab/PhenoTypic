@@ -279,20 +279,17 @@ def embedding_table_relative_path(run_id: str, key: str) -> PurePosixPath:
 
 @dataclass(frozen=True)
 class TableRun:
-    """One run folder of one store, as its root descriptor declares it.
+    """One run folder of one store, as its root descriptor declares it."""
 
-    Attributes:
-        store: The ``*.ome.zarr`` directory.
-        run_id: The folder name, ``<order>-<sha12>`` or ``<order>-unknown``.
-        order: The store-local call-order number (spec D2).
-        pipeline_sha256: The pipeline file's sha256, or ``None`` when unknown.
-        descriptor: The run's entry in ``attributes.phenotypic.tables.runs``.
-    """
-
+    #: The ``*.ome.zarr`` directory.
     store: Path
+    #: The folder name, ``<order>-<sha12>`` or ``<order>-unknown``.
     run_id: str
+    #: The store-local call-order number (spec D2).
     order: int
+    #: The pipeline file's sha256, or ``None`` when unknown.
     pipeline_sha256: str | None
+    #: The run's entry in ``attributes.phenotypic.tables.runs``.
     descriptor: Mapping[str, object]
 
     @property

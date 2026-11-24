@@ -1014,4 +1014,441 @@ def submissions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         return real_popen(args, *popen_args, **popen_kwargs)
 
     monkeypatch.setattr(subprocess, "Popen", _refuse_scheduler)
+
+    # U5's hub lookup (#282 P5 T2): a SLURM Stage-4 submission resolves the
+    # unpinned revisions in this process. A unit test never reaches the hub;
+    # unanswered, each model falls back to per-process resolution, with its
+    # warning. A test that needs an answer patches `_hub_commit` itself.
+    from phenotypic._cli import _cli_embed_stage
+
+    def _no_hub(hf_id: str) -> str:
+        raise RuntimeError(f"a unit test does not query the hub for {hf_id}")
+
+    monkeypatch.setattr(_cli_embed_stage, "_hub_commit", _no_hub)
     return seen
+
+
+# ---------------------------------------------------------------------------
+# #282 P5 T1: the staged controller v2 and a fake scheduler
+# ---------------------------------------------------------------------------
+#
+# The controller never loads a pipeline: it reads its config, the manifest and
+# the artifacts on disk. These fixtures build exactly that, without torch: a
+# store bound to the entry's work id with a measurement table and
+# ``stages.stage3`` is ``stage4_status == "pending"``; publishing its record
+# makes it ``"done"``. The scheduler is faked at the controller's own seams
+# (``submit_with_intent``, ``scheduler_job_is_active``,
+# ``update_job_dependency``), the pattern of
+# ``tests/unit/cli/test_staged_controller.py:108-129``.
+
+#: The key a test's signals go under, and its regions.
+STAGE4_TEST_MODEL, STAGE4_TEST_LAYER = "dinov2-vitb14", "rgb"
+
+
+class ControllerV2:
+    """A staged output root whose controller config is version 2 (or 1)."""
+
+    def __init__(self, out: Path, config_path: Path, epoch: str) -> None:
+        from phenotypic._cli._cli_staged_orchestration import stage4_worklist_path
+
+        self.out = out
+        self.config_path = config_path
+        self.epoch = epoch
+        self.manifest = out / "manifest.json"
+        self.worklist = stage4_worklist_path(out)
+        self.entries: list = []
+        self.done_identities: set[str] = set()
+
+    @property
+    def config(self) -> dict:
+        import json
+
+        return json.loads(self.config_path.read_text(encoding="utf-8"))
+
+    def update_config(self, **values: Any) -> None:
+        import json
+
+        config = self.config
+        config.update(values)
+        self.config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    def entries_with(self, **counts: int) -> list:
+        """Entries classifying as asked: ``failed``, ``old_epoch_failed``,
+        ``no_stage3``, ``wrong_work_id``, ``reference_changed``, ``pending``,
+        ``done``. Each is built on disk; the list is returned in that order."""
+        from dataclasses import replace
+
+        from phenotypic._cli._cli_failure_tracker import (
+            PerImageScientificError,
+            append_terminal_failure,
+        )
+
+        entries = []
+        for kind in (
+            "failed", "old_epoch_failed", "no_stage3", "wrong_work_id",
+            "reference_changed", "pending", "done",
+        ):
+            for _ in range(counts.pop(kind, 0)):
+                entry = _stage4_image(
+                    self.out,
+                    f"{kind}{len(entries):02d}",
+                    stage3=kind != "no_stage3",
+                    store_work_id="another-work-id" if kind == "wrong_work_id" else None,
+                    done=kind == "done",
+                )
+                if kind in {"failed", "old_epoch_failed"}:
+                    assert append_terminal_failure(
+                        self.out,
+                        work_id=entry.work_id,
+                        dataset=entry.dataset,
+                        relative_image_path=entry.relative_image_path,
+                        failed_stage="stage4",
+                        exception=PerImageScientificError("stage4", ValueError("a corrupt store")),
+                        attempt_id="attempt",
+                        lifecycle_epoch=self.epoch if kind == "failed" else "an-earlier-epoch",
+                    )
+                if kind == "reference_changed":
+                    entry = replace(entry, reference_digest="a-digest-since-replaced")
+                entries.append(entry)
+        assert not counts, f"unknown kinds {sorted(counts)}"
+        _install_stage4_state(self.out, entries)
+        return entries
+
+
+def _stage4_image(
+    out: Path,
+    stem: str,
+    *,
+    stage3: bool = True,
+    store_work_id: str | None = None,
+    done: bool = False,
+):
+    """One image's Stage-3 artifacts, and its manifest entry (work id ``work-<stem>``)."""
+    import json
+
+    from phenotypic._cli._cli_staged_orchestration import StagedManifestEntry
+    from phenotypic.sdk_ import ngff_
+
+    work_id = f"work-{stem}"
+    store = zarr_store_path(out, DATASET, stem)
+    store.parent.mkdir(parents=True, exist_ok=True)
+    Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(store)
+    root = store / "zarr.json"
+    payload = json.loads(root.read_text(encoding="utf-8"))
+    payload["attributes"]["phenotypic"][ngff_.PhenotypicAttr.WORK_ID] = store_work_id or work_id
+    root.write_text(json.dumps(payload), encoding="utf-8")
+    plant_measurement_table(store)
+    if stage3:
+        write_stage3_completion_marker(out, DATASET, f"{stem}.tif", stem)
+    if done:
+        publish_image_success(
+            out,
+            work_id=work_id,
+            dataset=DATASET,
+            relative_image_path=f"{DATASET}/{stem}.tif",
+            image_stem=stem,
+            mode="full",
+            attempt_id="attempt",
+            lifecycle_epoch="epoch-1",
+            artifacts={"measurements": image_measurement_artifact(out, DATASET, stem)},
+        )
+    return StagedManifestEntry(
+        dataset=DATASET,
+        image_name=f"{stem}.tif",
+        stem=stem,
+        input_path=f"/in/{DATASET}/{stem}.tif",
+        work_id=work_id,
+        relative_image_path=f"{DATASET}/{stem}.tif",
+    )
+
+
+def _install_stage4_state(out: Path, entries: list) -> None:
+    """``processing_state.json`` with these entries' work ids: the sweep's inventory."""
+    now = datetime.now()
+    work_ids: dict[str, dict[str, str]] = {}
+    for entry in entries:
+        work_ids.setdefault(entry.dataset, {})[entry.image_name] = entry.work_id
+    save_processing_state(
+        ProcessingState(
+            version="3.0.0",
+            pipeline_path=out / "pipeline.json",
+            input_path=out / "input",
+            output_dir=out,
+            timestamp=now,
+            execution_mode="slurm",
+            last_updated=now,
+            datasets={
+                dataset: DatasetState(initial_images=set(images))
+                for dataset, images in work_ids.items()
+            },
+            config={"work_ids": work_ids, "embed_stage": "gpu"},
+        ),
+        out,
+    )
+
+
+def _build_controller(
+    tmp_path: Path, *, version: int = 2, phases: list[str] | None = None, epoch: str = "epoch-1"
+) -> ControllerV2:
+    """A config, an empty manifest and an initialised orchestration state."""
+    import json
+
+    from phenotypic._cli._cli_staged_orchestration import (
+        initialize_orchestration,
+        save_orchestration_state,
+        stage4_worklist_path,
+        write_staged_manifest,
+    )
+
+    out = tmp_path / "out"
+    out.mkdir(parents=True, exist_ok=True)
+    phases = ["stage1", "stage2", "stage3", "stage4"] if phases is None else phases
+    write_staged_manifest(out / "manifest.json", [])
+    config: dict[str, Any] = {
+        "version": version,
+        "epoch": epoch,
+        "output_dir": str(out),
+        "resume": False,
+        "stage3_markers_required": True,
+        "manifest_path": str(out / "manifest.json"),
+        "stage3_scripts": [str(out / "stage3.sh")],
+        "finalizer_script": str(out / "finalizer.sh"),
+        "controller_script": str(out / "controller.sh"),
+    }
+    if version == 1 or "stage1" in phases:
+        config.update(
+            detector_slot=STAGE2_SLOT,
+            stage1_scripts=[str(out / "stage1.sh")],
+            stage2_script=str(out / "stage2.sh"),
+        )
+    if version == 2:
+        config.update(
+            phases=phases,
+            stage4_script=str(out / "stage4.sh"),
+            stage4_worklist=str(stage4_worklist_path(out)),
+            n_shards=1,
+            stage3_role="staged" if "stage1" in phases else "single_pass",
+            pipeline_sha256=None,
+        )
+    config_path = out / "staged_controller.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    state = initialize_orchestration(
+        out, epoch=epoch, mode="fresh", controller_config_path=config_path
+    )
+    # What `StagedSlurmStrategy.execute` leaves before the first controller.
+    state.update({"phase": "stage1", "stage1_index": 0})
+    if version == 1:
+        # A real #281 state predates Stage 4's counters (P5 review M11).
+        for key in [key for key in state if key.startswith("stage4_")]:
+            del state[key]
+    save_orchestration_state(out, state)
+    return ControllerV2(out, config_path, epoch)
+
+
+@pytest.fixture
+def controller_v2(tmp_path: Path) -> ControllerV2:
+    """A staged run with a GpuDetector, config v2, phases stage1-stage4."""
+    return _build_controller(tmp_path)
+
+
+@pytest.fixture
+def controller_v2_no_detector(tmp_path: Path) -> ControllerV2:
+    """A run without a GpuDetector: config v2, phases ``["stage3", "stage4"]``."""
+    return _build_controller(tmp_path, phases=["stage3", "stage4"])
+
+
+@pytest.fixture
+def v1_controller_config(tmp_path: Path) -> ControllerV2:
+    """A config written before Stage 4 existed (version 1, no ``phases``)."""
+    return _build_controller(tmp_path, version=1)
+
+
+def finish_stage3(
+    fixture: ControllerV2,
+    *,
+    stage4_pending: int,
+    done: int = 0,
+    n_shards: int = 1,
+) -> list:
+    """Leave *fixture* as its last Stage-3 chunk does: images waiting on Stage 4, or done.
+
+    Writes the stores, records and markers (``done`` images first, then the
+    ``stage4_pending`` ones), the manifest, the processing state, the config's
+    ``n_shards``, and an orchestration state whose Stage-3 chunks are
+    exhausted, so the next transition is the one after the last chunk.
+    """
+    from phenotypic._cli._cli_staged_orchestration import (
+        load_orchestration_state,
+        save_orchestration_state,
+        write_staged_manifest,
+    )
+
+    entries = [
+        _stage4_image(fixture.out, f"img{i:02d}", done=i < done)
+        for i in range(done + stage4_pending)
+    ]
+    write_staged_manifest(fixture.manifest, entries)
+    _install_stage4_state(fixture.out, entries)
+    if fixture.config["version"] == 2:
+        fixture.update_config(n_shards=n_shards)
+    state = load_orchestration_state(fixture.out)
+    assert state is not None
+    state.update(
+        {"phase": "stage3", "stage1_index": 1, "stage3_index": len(fixture.config["stage3_scripts"])}
+    )
+    save_orchestration_state(fixture.out, state)
+    fixture.entries = entries
+    fixture.done_identities = {entry.identity for entry in entries[:done]}
+    return entries
+
+
+def write_signals(
+    fixture: ControllerV2, *, regions, entries=None, mtime_ns: int | None = None
+) -> list[Path]:
+    """Write placeholder signal files for *regions* of each waiting image.
+
+    The controller's progress probe stats signals and never opens one, so
+    the bytes are a placeholder; ``mtime_ns`` pins the file time, so a test
+    of "rewritten" never depends on the filesystem's clock granularity.
+    """
+    import os
+
+    from phenotypic._cli._cli_stage4_signal import stage4_signal_path
+
+    chosen = [e for e in fixture.entries if e.identity not in fixture.done_identities] if entries is None else entries
+    paths = []
+    for entry in chosen:
+        for region in sorted(regions):
+            key = f"{STAGE4_TEST_MODEL}/{STAGE4_TEST_LAYER}/{region}"
+            path = stage4_signal_path(fixture.out, entry.dataset, key, entry.stem)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"signal")
+            if mtime_ns is not None:
+                os.utime(path, ns=(mtime_ns, mtime_ns))
+            paths.append(path)
+    return paths
+
+
+class FakeScheduler:
+    """The controller's scheduler seams, recorded.
+
+    ``submit_with_intent`` refuses an inactive epoch as the real one does
+    (its ``active_check``), records ``(role, token)`` and returns a new job id
+    that it reports active until a test says otherwise.
+    """
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.monkeypatch = monkeypatch
+        self.calls: list[tuple[str, str, str]] = []
+        self.active: set[str] = set()
+        self.dependencies: list[tuple[str, list[str]]] = []
+        #: ``sbatch`` options each token was submitted with (``--array=...``).
+        self.extra_args: dict[str, tuple[str, ...]] = {}
+        self.current = "1000"
+        monkeypatch.setenv("SLURM_JOB_ID", self.current)
+        monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
+
+    def submit(self, output_dir, **kwargs: Any) -> str:
+        from phenotypic._cli._cli_staged_orchestration import epoch_is_active
+
+        if not epoch_is_active(Path(output_dir), kwargs["epoch"]):
+            raise RuntimeError(f"SLURM generation {kwargs['epoch']!r} is inactive or superseded")
+        job_id = str(2000 + len(self.calls))
+        self.calls.append((kwargs["role"], kwargs["token"], job_id))
+        self.extra_args[kwargs["token"]] = tuple(kwargs.get("extra_args", ()))
+        self.active.add(job_id)
+        return job_id
+
+    def is_active(self, job_id: str) -> bool:
+        return job_id in self.active
+
+    def update_dependency(self, job_id: str, dependencies) -> bool:
+        self.dependencies.append((job_id, list(dependencies)))
+        return True
+
+    def submitted_roles(self) -> list[tuple[str, str]]:
+        return [(role, token) for role, token, _ in self.calls]
+
+    def active_roles(self) -> list[str]:
+        return [role for role, _, job_id in self.calls if job_id in self.active]
+
+    def set_active(self, job_id: str, active: bool = True) -> None:
+        (self.active.add if active else self.active.discard)(job_id)
+
+    def job_of(self, token: str) -> str:
+        return next(job_id for _, t, job_id in reversed(self.calls) if t == token)
+
+    def become_next_controller(self, out: Path) -> None:
+        """End the running controller; the pre-armed successor starts."""
+        from phenotypic._cli._cli_staged_orchestration import load_orchestration_state
+
+        state = load_orchestration_state(out) or {}
+        self.active.discard(self.current)
+        successor = state.get("expected_controller_id")
+        if successor:
+            self.current = str(successor)
+            self.active.discard(self.current)  # it is running, not queued
+        self.monkeypatch.setenv("SLURM_JOB_ID", self.current)
+
+
+@pytest.fixture
+def fake_scheduler(monkeypatch: pytest.MonkeyPatch) -> FakeScheduler:
+    """Patch the controller's scheduler seams with a :class:`FakeScheduler`."""
+    fake = FakeScheduler(monkeypatch)
+    target = "phenotypic._cli._cli_staged_controller"
+    monkeypatch.setattr(f"{target}.submit_with_intent", fake.submit)
+    monkeypatch.setattr(f"{target}.scheduler_job_is_active", fake.is_active)
+    monkeypatch.setattr(f"{target}.update_job_dependency", fake.update_dependency)
+    return fake
+
+
+def run_round(
+    fixture: ControllerV2,
+    scheduler: FakeScheduler,
+    *,
+    write_signals_for=(),
+) -> None:
+    """The active Stage-4 round ends, then the controller's next transition runs.
+
+    If a Stage-4 job is active, it optionally writes signals for
+    *write_signals_for* (its work: a backbone embedded, nothing committed)
+    and then ends. With no active Stage-4 job, this is the transition that
+    submits round 1.
+    """
+    from phenotypic._cli._cli_staged_controller import run_staged_controller
+    from phenotypic._cli._cli_staged_orchestration import load_orchestration_state
+
+    state = load_orchestration_state(fixture.out) or {}
+    active = state.get("active_job_id")
+    if active and any(job_id == active and role == "stage4" for role, _, job_id in scheduler.calls):
+        if write_signals_for:
+            write_signals(fixture, regions=set(write_signals_for))
+        scheduler.set_active(str(active), False)
+        scheduler.become_next_controller(fixture.out)
+    elif scheduler.calls:
+        scheduler.become_next_controller(fixture.out)
+    run_staged_controller(fixture.config_path)
+
+
+def record_of(out: Path, entry) -> dict | None:
+    """*entry*'s per-image record, or ``None``."""
+    return read_image_record(out, entry.dataset, entry.stem)
+
+
+def plant_signals_for_done_image(fixture: ControllerV2) -> list[Path]:
+    """Leftover signals of a published image: a shard died after the record."""
+    from phenotypic._cli._cli_staged_orchestration import write_staged_manifest
+
+    entry = _stage4_image(fixture.out, "published", done=True)
+    fixture.entries = [*fixture.entries, entry]
+    fixture.done_identities.add(entry.identity)
+    write_staged_manifest(fixture.manifest, fixture.entries)
+    _install_stage4_state(fixture.out, fixture.entries)
+    return write_signals(fixture, regions={"objects", "grid"}, entries=[entry])
+
+
+def no_live_jobs():
+    """``live_slurm_job_ids`` with nothing live, unverified or unresolved."""
+    from phenotypic._cli._cli_staged_orchestration import LiveSlurmJobs
+
+    return LiveSlurmJobs()

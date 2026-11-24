@@ -82,7 +82,10 @@ import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
+
+from phenotypic.sdk_.typing_ import COMPUTE_DTYPE_DEFAULT
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pyarrow as pa  # type: ignore[import-untyped]
@@ -99,8 +102,19 @@ EMBEDDINGS_MANIFEST_SCHEMA_VERSION: Final[int] = 1
 EMBEDDINGS_MANIFEST_PROOF_NAME: Final[str] = "embeddings_manifest"
 
 #: Entry fields that describe one store's file rather than the table's kind;
-#: the manifest's ``descriptors`` leave them out (spec D3).
-_PER_STORE_FIELDS: Final[frozenset[str]] = frozenset({"binds", "files", "stale"})
+#: the manifest's ``descriptors`` leave them out (spec D3). ``compute``
+#: (#282) records where and how one store's entry was computed: provenance.
+_PER_STORE_FIELDS: Final[frozenset[str]] = frozenset({"binds", "compute", "files", "stale"})
+
+#: Descriptor fields added after entries were written, per producer class,
+#: and the value an entry without one was computed with (#282 H7:
+#: ``MeasureDinoEmbedding.compute_dtype``), so a #281 entry groups with a new
+#: one computed the same way. Scoped to the producer that has the field
+#: (#282 review M8): another embedder's entry, which has no torch backbone,
+#: never gains a ``compute_dtype`` it was not computed with.
+_ABSENT_DESCRIPTOR_DEFAULTS: Final[Mapping[str, Mapping[str, object]]] = MappingProxyType(
+    {"MeasureDinoEmbedding": MappingProxyType({"compute_dtype": COMPUTE_DTYPE_DEFAULT})}
+)
 
 #: ``model`` fields that record where an entry ran, not what it is: provenance
 #: (#281, user decision 2026-11-19). The manifest's ``descriptors``, the
@@ -311,11 +325,19 @@ def _plan_keys(
 def _shared_descriptor(entry: Mapping[str, object]) -> dict[str, object]:
     """*entry* as its key's stores share it: no per-store fields, no device.
 
-    The entry minus :data:`_PER_STORE_FIELDS`, and its ``model`` minus
-    :data:`_PROVENANCE_MODEL_FIELDS`, so stores that differ only in the
-    device they ran on share one descriptor.
+    The entry minus :data:`_PER_STORE_FIELDS` (the ``compute`` block among
+    them), and its ``model`` minus :data:`_PROVENANCE_MODEL_FIELDS`, so
+    stores that differ only in the device or stage they ran on share one
+    descriptor. A field an older entry of a producer lacks reads as
+    :data:`_ABSENT_DESCRIPTOR_DEFAULTS` gives it for that producer
+    (``MeasureDinoEmbedding``'s ``compute_dtype``, ``"float32"``), so a #281
+    entry groups with an identical #282 one.
     """
     shared = {n: v for n, v in entry.items() if n not in _PER_STORE_FIELDS}
+    producer = shared.get("producer")
+    producer_class = producer.get("class") if isinstance(producer, Mapping) else None
+    for name, default in _ABSENT_DESCRIPTOR_DEFAULTS.get(str(producer_class), {}).items():
+        shared.setdefault(name, default)
     model = shared.get("model")
     if isinstance(model, Mapping):
         shared["model"] = {

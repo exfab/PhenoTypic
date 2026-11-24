@@ -102,7 +102,7 @@ run-level proofs are re-verified on every call regardless of depth.
 
 **Four things are written down.** The last column is load-bearing: if a
 proposed fifth entry cannot fill it, the value is derived and belongs in
-section **(c) Derived, and by what**.
+section **\(c) Derived, and by what**.
 
 | # | State | Path helper | Writer | Why it cannot be derived |
 |---|---|---|---|---|
@@ -114,6 +114,26 @@ section **(c) Derived, and by what**.
 **Entry 2 is the one to read twice.** `completion == "failed"` has exactly one
 source: an image verdict of `failed`, which comes only from this journal. Every
 other fact about a run can be re-derived by looking at the tree; this cannot.
+
+### Under entry 3: the measure-done marker (#282 U18)
+
+A SLURM `--mode measure` pass writes down one more fact of entry 3's kind,
+scoped to the pass:
+
+| State | Path helper | Writer | Why it cannot be derived |
+|---|---|---|---|
+| Measure-done marker, one per image per pass | `measure_done_marker_path(output_dir, epoch, dataset, stem)` → `.phenotypic/progress/measure_done/<epoch>/<ds>/<stem>.json` (`DIR_MEASURE_DONE`) | `write_measure_done_marker` (`_cli/_cli_staged_resume.py`), called by `run_measure_step` after the measure core returns, under the epoch's commit guard | A same-pipeline measure core can leave the store root and table byte-identical, so the store cannot tell a finished step from one the scheduler killed before its table rewrite. As with entry 3, a killed worker leaves no trace of having run. |
+
+An image with no marker under the pass's epoch is not measure-done:
+`_republish_stage4_status` reads it `not_ready`, so the controller resubmits
+it (U15), Stage 4 never takes it (and its worker refuses it,
+`PENDING_NOT_MEASURED`), and the measure finalizer counts it unfinished (U16).
+**`resolve_run_state` never reads it**: it is not a verdict input, only the
+measure pass's own question of which images it finished. Every reader names
+its own epoch, so an earlier pass's markers mean nothing; the next measure
+submission deletes them (`clear_measure_done_markers`) before it publishes its
+epoch, and `--restart` clears them with the rest of `progress/`. A local
+measure writes none: one process sees its own measure loop.
 
 ### What survives `--restart`
 
@@ -141,7 +161,7 @@ restart for that reason. Written by `snapshot_reference_metadata`
 run preflight and by startup when it plans the reference manifest.
 
 `reference_manifest.json` beside it is **not** preserved: it is derived (see
-**(c)**), and the next startup derives it again.
+**\(c)**), and the next startup derives it again.
 
 ### Configuration recorded beside the inventory is not tracked state
 
@@ -219,10 +239,15 @@ cannot answer that: a `--mode measure` resubmission keeps no run state, so an
 earlier run's proofs still match it after its own finalizer dies. Neither field
 is a verdict input: `resolve_run_state` never reads them. An aggregate proof or
 fence written before the fields existed reads as "not this submission".
+A fence of the generation that carries a `terminal_status` is never "this
+submission published", whichever proof names it: the `--mode measure`
+finalizer writes `closed_by: "finalizer"` and `terminal_status` together when
+its pass left images neither republished nor journalled (#282 U16), after it
+has already stamped the aggregate proof.
 
 ---
 
-## (c) Derived, and by what
+## \(c) Derived, and by what
 
 One row per fact, naming the function. This is the table that stops the next
 contributor writing a counter.
@@ -237,6 +262,16 @@ contributor writing a counter.
 | the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
 | *how many verified images the published master does not carry* | the aggregate proof's `source_image_count` vs. the live verified count | `resolve_run_state` → `RunState.advisories` (count clause) |
 | *which store a re-finalization will exclude again* | each verified image's record (does it declare a `measurements` artifact?) and its store root (does it declare a projectable `measurement_columns`?) | `resolve_run_state` → `RunState.advisories` (naming clause) |
+| *does this image wait for Stage 4?* (Stage-4 pending, #282) | `stages.stage3` in the per-image record file, a store bound to the image's work id, a measurement table in its journal run, and no valid record | `stage4_status` → `stages_1_to_3_done` (`_cli/_cli_staged_resume.py`); `"done"` is `valid_image_success`, the same record check as every other image |
+| the run's terminal stage: which stage's `completed` event is an image's overall completion | the recorded `embed_stage` config value (`"gpu"` → `"stage4"`, anything else or absent → `"stage3"`) | `run_terminal_stage` (`_cli/_stages.py`), passed as `aggregate_state_from_events(..., terminal_stage=)` by every caller |
+
+**Stage-4 pending is derived, not a new tracked state.** A run that embeds on
+the GPU writes nothing that says "waiting for Stage 4": Stage 3 records
+`stages.stage3` and writes no record, and the absence of a valid record is the
+rest of the answer. `resolve_run_state` therefore reads such an image as not
+yet verified, which is what it is, and needs no Stage-4 branch. The recorded
+`embed_stage` is configuration (see **Configuration recorded beside the
+inventory**), outside the work-id digest.
 
 **The reference manifest is written down only so other processes read one
 derivation.** Stage-3 and SLURM workers know the run root and a dataset name,
@@ -343,6 +378,27 @@ to measurement outputs, never to configuration identity.
 `processing_state.datasets.{completed,failed,started}` as live state;
 `manifest.json` as evidence; the event log as a completion source.
 
+### Stage-4 work in progress (#282)
+
+A run that embeds on the GPU adds resume work and controller bookkeeping under
+`.phenotypic/`. **None of it is tracked state**: `resolve_run_state` reads none
+of it, and no verdict comes from it: a lost signal costs re-embedding that
+key, never a wrong verdict. It is listed here because it is written and branched on,
+like the Stage-2 signal it mirrors.
+
+| Artifact | Path helper | Writer | Read by, and for what | Deleted |
+|---|---|---|---|---|
+| Stage-4 signal, one per image per embedder key | `stage4_signal_path(output_dir, dataset, key, stem)` → `.phenotypic/progress/stage4_payload/<ds>/<model>/<layer>/<region>/<stem>.parquet` (`DIR_STAGE4_PAYLOAD`) | `write_stage4_signal` (`_cli/_cli_stage4_signal.py`), atomic, from `run_stage4` as each key drains; its Parquet footer fences it with `work_id`, `run_id`, `root_sha256` and `key` | `classify_stage4_signals`: a key's signal is reused only at the **live** store root, so a round killed after one backbone commits without re-embedding; `stage4_signal_mtimes`, one `stat` per key, for the controller's progress digest | `delete_stage4_signals` after the image's record (the consume); every stale key at classification; a published image's leftovers by `sweep_orphan_stage4_signals` (locally before Stage 4, and by the controller before each classification; `sweep_republished_stage4_signals` in a measure pass); a core re-run (`drop_stages_1_to_3_done`) and a Stage-1 re-run (`clear_downstream_artifacts_for_stage1`); a per-image Stage-4 failure; `--restart` with `progress/` |
+| Stage-4 round worklist | `stage4_worklist_path(output_dir)` → `.phenotypic/slurm_scripts/stage4_worklist.json` | `write_stage4_worklist` (`_cli/_cli_staged_orchestration.py`), atomic, by the controller once per round: the retryable set only, sorted, split over the shards | `load_stage4_worklist`: each Stage-4 shard's slice by array index; the controller keeps it when the round's token is already ledgered | Rewritten by the next round; cleared with `slurm_scripts/` by `--restart` |
+| Stage-4 round counters | `orchestration_state_path(output_dir)` → `.phenotypic/staged_orchestration.json`: `stage4_round`, `stage4_last_progress_digest`, `stage4_zero_progress_rounds` | `initialize_orchestration` (zeros) and `_submit_stage4_round` (`_cli/_cli_staged_controller.py`) | The controller's zero-progress rule: two unchanged rounds submit the finalizer and record nothing for the leftovers (U7); `recorded_stall_lines`, for the finalizer's log | With the orchestration state, by the next submission |
+| Stage-1/3 retry counters | the same file: `<stage>_retry_round`, `<stage>_retry_chunk`, `<stage>_last_retryable_digest`, `<stage>_zero_progress_rounds` for `stage1` and `stage3` | `_resubmit_dead_tasks` and `_start_retry_round` | The same rule for tasks that died without a result (U15); read with defaults, so a state written before #282 drives as before | As above |
+
+The counters are entry 3's kind of fact, about scheduler jobs, and Stage 4's are
+separate from Stage 2's (`round`, `last_retryable_digest`,
+`zero_progress_rounds`) so a GPU embedding round never inherits a detection
+stall. The measure-done marker (#282 U18) is the one Stage-4-era file that is
+documented under (a) instead: a killed measure step leaves no other trace.
+
 ---
 
 ## (d) Retained, and read by nothing
@@ -439,6 +495,7 @@ here when you add a consumer.
 |---|---|---|---|
 | `phenotypicCLI.py:2590` | `diagnostics.verified`, `diagnostics.accepted` | `deep` | Whether startup must refresh publication |
 | `phenotypicCLI.py:3063` | `diagnostics.verified` | `deep` | Whether to finalize measurements |
+| `phenotypicCLI.py` (`_unpublished_images`) | each image's `verdict` | `deep` | Under `--embed-stage gpu`, which images a local run has not published: its staged-complete mark and exit code (`1`, or `3` when every one failed terminally). Stage 3 writes `stages.stage3` and no record there, so a Stage-3 marker is not completion (#282) |
 | `phenotypicCLI.py:714` (`_output_was_migrated`) | `migration_manifest.json` | — | Whether to refuse continuation and name `--restart` |
 | `_cli/_cli_checkpoint_handler.py:310` | `diagnostics.verified` | `deep` | Raise vs. close a terminal-incomplete lifecycle |
 | `_cli/_cli_completion.py` | the three proofs | — | Publishes them; the writer side |
@@ -447,7 +504,10 @@ here when you add a consumer.
 | `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
 | `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
-| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with |
+| `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by` and `terminal_status`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with. A fence of the generation carrying a `terminal_status` is never published, whatever the proofs say: the measure finalizer closes so when its pass left images neither republished nor journalled, whose forward records still verify (#282 U16) |
+| `_cli/_cli_staged_controller.py` (`unfinished_measure_entries`, `_dead_measure_indices`, `_classify_stage4`) | the measure-done marker; each record's `artifacts` and `lifecycle_epoch`; the terminal journal under the epoch | — | Which images a SLURM measure pass resubmits (U15), hands to Stage 4, and leaves unfinished, which closes the pass failed (U16) |
+| `_cli/_cli_staged_controller.py` (`_classify_stage4`, `_stage4_progress_digest`, `_dead_stage1_indices`, `_dead_stage3_indices`) | `stage4_status` (each record, `stages.stage3`, the store's work id); the terminal journal under the epoch; the reference digest; the Stage-4 signals' `st_mtime_ns` | — | Which images a forward SLURM Stage-4 round embeds, which are terminal, and whether a round or a Stage-1/3 retry round made progress (U7, U15) (#282) |
+| `_cli/_cli_stage4_worker.py` (`split_stage4_pending`, `_classify_image`) | `stage4_status`; the Stage-4 signals against the live store root | — | Which images a local Stage 4 takes, and per image whether to commit only, publish only or embed (#282) |
 
 ### Consumers that deliberately ask something else
 
@@ -508,7 +568,7 @@ A fifth tracked value appearing is a design regression, and the burden of proof
 is on the addition. Before adding one:
 
 1. **Try to derive it.** Can it be recomputed from artifacts plus (a) 1–4? If
-   yes, it belongs in section **(c)** as a function, not on disk.
+   yes, it belongs in section **\(c)** as a function, not on disk.
 2. **Fill in the last column of (a).** State why it cannot be derived. If you
    cannot, it is derived.
 3. **Apply (d)'s test.** If nothing branches on it and no verdict comes from
@@ -521,7 +581,7 @@ is on the addition. Before adding one:
 
 Then, **in the same change**:
 
-- Add a row to the relevant table on this page — (a), (b), (c) or (d).
+- Add a row to the relevant table on this page — (a), (b), \(c) or (d).
 - Add a row to the **Known consumers** table for every site that reads it.
 - If it changes the status vocabulary, run
   `test_every_status_vocabulary_in_the_gui_agrees_with_the_registry`.

@@ -445,3 +445,196 @@ def test_an_in_place_refusal_comes_before_the_mutating_half(
     errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
     assert len(errors) == 1 and needle in errors[0], result.output
     assert _tree_digest(image_tree) == before
+
+
+def _dino_pipeline(tmp_path: Path, *, device: str) -> Path:
+    """A pipeline whose ``meas`` holds a DINO embedder on *device*; nothing loads it."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    path = tmp_path / f"dino-{device}.json"
+    pipeline = ImagePipeline(
+        ops={"det": OtsuDetector()},
+        meas={"size": MeasureSize(), "emb": MeasureDinoEmbedding(device=device)},
+    )
+    path.write_text(pipeline.to_json(), encoding="utf-8")
+    return path
+
+
+_REFUSAL_FLAGS = [
+    ("--overwrite",), ("--restart",), ("--dry-run",), ("--skip-validation",),
+    ("--overwrite", "--dry-run"),
+]
+
+
+@pytest.mark.parametrize("extra", _REFUSAL_FLAGS, ids=" ".join)
+def test_r1_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 R1: ``--embed-stage gpu`` with ``--mode process``, above every mutation."""
+    from tests._tiny_run import grid_embedder, with_meas
+
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(previous_run)
+
+    result = _invoke(
+        "--mode", "process", "--layer", "rgb", "--process-format", "zarr",
+        "--pipeline", str(with_meas(tmp_path, grid=grid_embedder())),
+        "--input", str(image_tree), "--output", str(previous_run),
+        "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "does not apply to --mode process" in errors[0], result.output
+    assert _tree_digest(previous_run) == before
+
+
+@pytest.mark.parametrize("extra", _REFUSAL_FLAGS, ids=" ".join)
+def test_r2_is_refused_before_the_mutating_half(
+    image_tree: Path, previous_run: Path, tmp_path: Path, extra: tuple[str, ...]
+) -> None:
+    """#282 R2 (U9): ``--embed-stage gpu`` over a ``device="cpu"`` pin, above every mutation.
+
+    Torch-free: the refusal comes before the CUDA check, which imports torch.
+    """
+    state = previous_run / ".phenotypic" / "processing_state.json"
+    state.parent.mkdir()
+    state.write_text("{}", encoding="utf-8")
+    before = _tree_digest(previous_run)
+
+    result = _invoke(
+        "--pipeline", str(_dino_pipeline(tmp_path, device="cpu")),
+        "--input", str(image_tree), "--output", str(previous_run),
+        "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "is pinned to device='cpu'" in errors[0], result.output
+    assert _tree_digest(previous_run) == before
+
+
+@pytest.mark.parametrize("recorded", ["inline", None], ids=["recorded", "pre-282-state"])
+@pytest.mark.parametrize("extra", [(), ("--dry-run",), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
+def test_r3_is_refused_before_the_mutating_half(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path,
+    recorded: str | None, extra: tuple[str, ...],
+) -> None:
+    """#282 R3 (U3): a continuation switched to ``gpu`` is refused, the run byte-unchanged.
+
+    A real finished run records ``embed_stage: "inline"``; a state written before
+    #282 has no key, which reads as ``"inline"``. Torch-free: the refusal comes
+    before the CUDA check.
+    """
+    import json
+
+    from phenotypic.sdk_ import processing_state_path
+
+    output_dir = tmp_path / "run"
+    first = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(output_dir), "--njobs", "1",
+    )
+    assert first.exit_code == 0, first.output
+    state_path = processing_state_path(output_dir)
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["config"]["embed_stage"] == "inline"
+    if recorded is None:
+        del state["config"]["embed_stage"]
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+    before = _tree_digest(output_dir)
+
+    result = _invoke(
+        "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--input", str(image_tree), "--output", str(output_dir),
+        "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 2, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "started with --embed-stage inline" in errors[0], result.output
+    assert _tree_digest(output_dir) == before
+
+
+@pytest.mark.parametrize("extra", [(), ("--gpu-shards", "2")], ids=lambda e: " ".join(e) or "plain")
+def test_a_slurm_measure_with_gpu_slurm_is_submitted_through_the_lifted_gate(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path, submissions, monkeypatch,
+    extra: tuple[str, ...],
+) -> None:
+    """#282 review C1, flipped by P6 T2: SLURM ``--mode measure --gpu-slurm`` now runs Stage 4.
+
+    The gate refused it above every mutation until the staged controller
+    gained its measure role (U10). Now it is submitted (exit 4) through
+    ``StagedSlurmStrategy`` with the ``"measure"`` Stage-3 role, over a real
+    finished run, and no gate line is printed. Torch-free: validation, which
+    import-checks torch and asks the scheduler, is skipped, and every
+    submission seam is the ``submissions`` fake.
+    """
+    import json
+
+    from phenotypic._cli import _cli_embed_stage
+
+    monkeypatch.setattr(_cli_embed_stage, "_hub_commit", lambda hf_id: "c" * 40)
+    output_dir = tmp_path / "run"
+    first = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(output_dir), "--njobs", "1",
+    )
+    assert first.exit_code == 0, first.output
+
+    result = _invoke(
+        "--mode", "measure", "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--output", str(output_dir), "--slurm", "partition=intel",
+        "--gpu-slurm", "partition=exfab", "--embed-stage", "gpu", "--skip-validation", *extra,
+    )
+
+    assert result.exit_code == 4, result.output
+    assert "not yet available" not in result.output
+    assert submissions == ["staged"]
+    config = json.loads(
+        (output_dir / ".phenotypic" / "slurm_scripts" / "staged_controller.json").read_text(encoding="utf-8")
+    )
+    assert config["stage3_role"] == "measure"
+
+
+@pytest.mark.parametrize("extra", [(), ("--skip-validation",)], ids=lambda e: " ".join(e) or "plain")
+def test_a_local_measure_gpu_without_cuda_stops_before_the_mutating_half(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path, monkeypatch, extra: tuple[str, ...]
+) -> None:
+    """#282 review C1, flipped by P6 T1: local ``--mode measure --embed-stage gpu`` now runs Stage 4.
+
+    The gate refused it above every mutation; P6 T1 built its executor (the
+    republish Stage 4 after the measure loop), so the gate admits it. What
+    stops it now on a machine with no usable CUDA is the CUDA check
+    (``prepare_stage4_environment``), one line and exit 1, still above every
+    mutation: over a real finished run that stays byte-unchanged. Torch-free:
+    the check is the stub below, whatever this node has.
+    """
+    from phenotypic._cli import _cli_stage4_worker
+
+    def _no_cuda() -> None:
+        raise _cli_stage4_worker.Stage4DeviceError("no CUDA device is usable (stubbed)")
+
+    output_dir = tmp_path / "run"
+    first = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(output_dir), "--njobs", "1",
+    )
+    assert first.exit_code == 0, first.output
+    before = _tree_digest(output_dir)
+
+    monkeypatch.delenv("PHENOTYPIC_STAGE4_DEVICE", raising=False)
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":4096:8")   # restored after the test
+    monkeypatch.setattr(_cli_stage4_worker, "check_cuda_usable", _no_cuda)
+    result = _invoke(
+        "--mode", "measure", "--pipeline", str(_dino_pipeline(tmp_path, device="auto")),
+        "--output", str(output_dir), "--njobs", "1", "--embed-stage", "gpu", *extra,
+    )
+
+    assert result.exit_code == 1, result.output
+    errors = [line for line in result.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "--embed-stage gpu runs Stage 4 on this machine" in errors[0], result.output
+    assert "not yet available" not in result.output
+    assert _tree_digest(output_dir) == before

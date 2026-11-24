@@ -22,7 +22,7 @@ import click
 from joblib import Parallel, delayed
 
 if TYPE_CHECKING:
-    pass
+    from ._cli_staged_orchestration import StagedManifestEntry
 
 from ._cli_types import (
     Dataset,
@@ -53,11 +53,14 @@ from ._cli_update_state import (
 )
 from ._cli_failure_tracker import (
     PerImageScientificError,
+    WorkIdentity,
     append_failure,
     append_terminal_failure,
     work_id_for_image,
     work_identity_for_image,
 )
+from ._cli_embed_stage import apply_stage4_counts, defers_embeddings
+from ._stages import STAGE_MEASURE
 from ._cli_reference import ReferencePin
 from ._cli_completion import (
     image_data_artifact,
@@ -83,14 +86,22 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
-    """Fence a local authoritative write against later invocations."""
-    from ._cli_state_management import load_processing_state
+def _local_state_lock(output_dir: Path):
+    """Hold the run's processing-state lock: the serialisation every local record write takes."""
     from phenotypic.sdk_ import resolve_processing_state_path
 
     state_path = resolve_processing_state_path(output_dir)
     lock_path = state_path.with_name(f".{state_path.name}.lock")
     with exclusive_path_lock(lock_path, timeout=60.0):
+        yield
+
+
+@contextmanager
+def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
+    """Fence a local authoritative write against later invocations."""
+    from ._cli_state_management import load_processing_state
+
+    with _local_state_lock(output_dir):
         state = load_processing_state(output_dir)
         expected = config.processing_generation
         if state is None and not expected:
@@ -105,6 +116,18 @@ def _local_epoch_ownership(config: ExecutionConfig, output_dir: Path):
         yield
 
 
+def recorded_pipeline_sha256(config: ExecutionConfig) -> str | None:
+    """The pipeline file's sha256 as the CLI computed it once (``pipeline_identity``), or ``None``.
+
+    The one producer of a local measure pass's pipeline digest (#282 P6
+    review M6): the measure core and the republish Stage 4 both take it
+    rather than each re-hashing the file.
+    """
+    identity = getattr(config, "pipeline_identity", None)
+    sha = identity.get("sha256") if isinstance(identity, dict) else None
+    return sha if isinstance(sha, str) and sha else None
+
+
 def _record_local_terminal_failure(
     config: ExecutionConfig,
     output_dir: Path,
@@ -116,7 +139,17 @@ def _record_local_terminal_failure(
     *,
     work_identity: tuple[str, str] | None = None,
 ) -> bool:
-    """Commit a caught scientific failure for an exact local computation."""
+    """Commit a caught scientific failure for an exact local computation.
+
+    Under the local epoch ownership, except in ``--mode measure``, which
+    takes only the processing-state lock, as its republish Stage 4 does
+    (#282 P6 review M3). Measure mode keeps no run state, and its
+    content-derived generation is the forward run's only when its pipeline
+    is, so the generation compare refused every measure failure of another
+    pipeline: a measure-step failure went unjournalled while a Stage-4
+    failure of the same invocation was journalled. Fencing is otherwise as
+    #281 left it (U19): no lease against a concurrent invocation.
+    """
     if not isinstance(exception, PerImageScientificError):
         return False
     if work_identity is None:
@@ -131,7 +164,12 @@ def _record_local_terminal_failure(
     try:
         lifecycle_epoch = config.processing_generation
         lifecycle_epoch = lifecycle_epoch or "local-unfenced"
-        with _local_epoch_ownership(config, output_dir):
+        ownership = (
+            _local_state_lock(output_dir)
+            if getattr(config, "measure_only", False)
+            else _local_epoch_ownership(config, output_dir)
+        )
+        with ownership:
             return append_terminal_failure(
                 output_dir,
                 work_id=work_id,
@@ -418,6 +456,62 @@ class LocalParallelStrategy(ExecutionStrategy):
             f"[bold]{len(datasets)} datasets[/bold]\n"
         )
 
+        # Under deferral (#282) every image gets its one identity for this
+        # invocation here, once (review I4): the core is handed it, and so is
+        # Stage 4 after the core, so no input is hashed twice and no work id
+        # is recomputed after Stages 1-3.
+        #
+        # The no-detector continuation (#282 P4 T4, plan review C1): an image
+        # that finished Stages 1-3 skips the core, which would re-measure it
+        # and drop its Stage-4 signals; Stage 4 below picks it up. It counts
+        # as the core's success, as the staged strategy's Stage 3 counts it,
+        # only when Stage 4 will take it (review M5): an image already done,
+        # or a skipped terminal failure, is not this invocation's work.
+        deferring_run = (
+            defers_embeddings(self.config)
+            and not measure_only
+            and not self.config.process_only_layer
+        )
+        # Measure mode under deferral (#282 P6 T1, U8): the core carries the
+        # old embeddings and defers the republish; Stage 4 below re-embeds
+        # and republishes every store it measured. Each store's measure work
+        # id is computed once, here, so a measure-step failure and a Stage-4
+        # failure of one invocation journal under the same id.
+        republishing = defers_embeddings(self.config) and measure_only
+        stage4_entries: dict = {}
+        core_tasks = all_tasks
+        core_done: list[tuple[str, str, bool, str]] = []
+        if deferring_run or republishing:
+            from . import _cli_stage4_worker
+
+            stage4_entries = _cli_stage4_worker.stage4_entries(
+                self.config, all_tasks, n_jobs=self.config.n_jobs
+            )
+        if deferring_run and self.config.resume:
+            core_datasets, stage4_only = _cli_stage4_worker.split_stage4_pending(
+                datasets, output_dir, stage4_entries
+            )
+            needs_core = {
+                (dataset.name, image_path)
+                for dataset in core_datasets
+                for image_path in dataset.images
+            }
+            core_done = [
+                (entry.dataset, entry.image_name, True, "")
+                for entry in _cli_stage4_worker.without_terminal_failures(
+                    self.config, output_dir, stage4_only
+                )
+            ]
+            core_tasks = [
+                (dataset, image_path)
+                for dataset, image_path in all_tasks
+                if (dataset.name, image_path) in needs_core
+            ]
+            if stage4_only:
+                console.print(
+                    f"  {len(stage4_only)} image(s) need Stage 4 only"
+                )
+
         from ._cli_validation import pipeline_requires_gpu
 
         # Measure mode skips detection entirely; no pipeline ops are applied,
@@ -448,12 +542,67 @@ class LocalParallelStrategy(ExecutionStrategy):
         else:
             worker = self._process_single_local
         results = Parallel(n_jobs=effective_n_jobs, verbose=11)(
-            delayed(worker)(dataset, image_path, output_dir, event_log)
-            for dataset, image_path in all_tasks
+            delayed(worker)(
+                dataset,
+                image_path,
+                output_dir,
+                event_log,
+                **(
+                    {"entry": stage4_entries[(dataset.name, image_path)]}
+                    if stage4_entries
+                    else {}
+                ),
+            )
+            for dataset, image_path in core_tasks
         )
+        results = [*results, *core_done]
 
         # Aggregate results by dataset
         dataset_results = self._aggregate_results(datasets, results)
+        stage4: dict[str, tuple[int, int]] | None = None
+        if deferring_run:
+            # Stage 4 (#282 P4 T3): this loop was the run's Stage 3. An image
+            # counts completed only once Stage 4 published its record.
+            stage4 = _cli_stage4_worker.run_local_stage4(
+                self.config,
+                self.output_manager,
+                output_dir,
+                datasets,
+                stage4_entries,
+            )
+        elif republishing:
+            # Stage 4 over the stores this loop measured; its failures join
+            # the measure failures, which become the CLI's `measure_failed`.
+            measured = {(name, image) for name, image, ok, _ in results if ok}
+            stage4 = _cli_stage4_worker.run_local_stage4(
+                self.config,
+                self.output_manager,
+                output_dir,
+                [
+                    Dataset(
+                        name=dataset.name,
+                        images=[
+                            image
+                            for image in dataset.images
+                            if (dataset.name, image.name) in measured
+                        ],
+                        input_dir=dataset.input_dir,
+                        output_dir=dataset.output_dir,
+                    )
+                    for dataset in datasets
+                ],
+                stage4_entries,
+                republish=True,
+            )
+        if stage4 is not None:
+            counts = {
+                name: {"completed": r.completed, "failed": r.failed}
+                for name, r in dataset_results.items()
+            }
+            apply_stage4_counts(counts, stage4)
+            for name, r in dataset_results.items():
+                r.completed = counts[name]["completed"]
+                r.failed = counts[name]["failed"]
 
         end_time = datetime.now()
 
@@ -528,16 +677,28 @@ class LocalParallelStrategy(ExecutionStrategy):
         image_path: Path,
         output_dir: Path,
         event_log: Path,
+        entry: "StagedManifestEntry | None" = None,
     ) -> tuple[str, str, bool, str]:
         """
         Process single image locally.
+
+        *entry*, under deferral, carries the image's one identity for the
+        invocation (#282 review I4); without it the identity is computed
+        here, once, before the apply.
 
         Returns:
             Tuple of (dataset_name, image_name, success, error_message)
         """
         attempt_id = uuid4().hex
+        # Under deferral this core is the run's Stage 3: it writes no record,
+        # and its events are tagged so a Stage-3 completion is progress, not
+        # completion (#282 P4 T2). An inline run's events stay untagged.
+        deferring = defers_embeddings(self.config)
+        stage = STAGE_MEASURE if deferring else None
         # Log "started" event
-        append_event(event_log, dataset.name, image_path.name, "started")
+        append_event(
+            event_log, dataset.name, image_path.name, "started", stage=stage
+        )
 
         work_identity: tuple[str, str] | None = None
 
@@ -548,9 +709,16 @@ class LocalParallelStrategy(ExecutionStrategy):
 
             # Process. One identity per image, before the apply: its reference
             # digest pins the context, and its work-id is what is published.
-            identity = work_identity_for_image(
-                self.config, dataset.name, image_path
-            )
+            if entry is not None:
+                identity = WorkIdentity(
+                    entry.work_id,
+                    entry.relative_image_path,
+                    entry.reference_digest,
+                )
+            else:
+                identity = work_identity_for_image(
+                    self.config, dataset.name, image_path
+                )
             work_identity = (identity.work_id, identity.relative_path)
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
@@ -569,21 +737,28 @@ class LocalParallelStrategy(ExecutionStrategy):
                     source_image_stem(image_path), identity.reference_digest
                 ),
                 input_root=self.config.input_path,
+                defer_embeddings=deferring,
             )
 
-            _publish_local_image_success(
-                self.config,
-                self.output_manager,
-                output_dir,
-                dataset.name,
-                image_path,
-                attempt_id,
-                work_identity=work_identity,
-            )
+            if not deferring:
+                # Under deferral Stage 4 publishes the record (spec §4.2).
+                _publish_local_image_success(
+                    self.config,
+                    self.output_manager,
+                    output_dir,
+                    dataset.name,
+                    image_path,
+                    attempt_id,
+                    work_identity=work_identity,
+                )
 
             # Log success
             append_completion_event(
-                event_log, dataset.name, image_path.name, "completed"
+                event_log,
+                dataset.name,
+                image_path.name,
+                "completed",
+                stage=stage,
             )
             return (dataset.name, image_path.name, True, "")
 
@@ -621,6 +796,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 image_path.name,
                 "failed",
                 truncated_msg,
+                stage=stage,
             )
 
             # Write structured failure record
@@ -790,6 +966,7 @@ class LocalParallelStrategy(ExecutionStrategy):
         image_path: Path,
         output_dir: Path,
         event_log: Path,
+        entry: "StagedManifestEntry | None" = None,
     ) -> tuple[str, str, bool, str]:
         """
         Rerun ``pipeline.measure()`` on one already-processed image store.
@@ -808,6 +985,10 @@ class LocalParallelStrategy(ExecutionStrategy):
             output_dir: Base output directory (passed through; measure path
                 does not use it directly).
             event_log: Path to the processing event log.
+            entry: Under deferral (#282 P6 T1), the store's one measure
+                identity for the invocation; the core then defers its
+                embeddings and its republish to Stage 4, and a failure is
+                journalled under the entry's work id.
 
         Returns:
             Tuple of ``(dataset_name, store_name, success, error_or_tb)``
@@ -837,6 +1018,14 @@ class LocalParallelStrategy(ExecutionStrategy):
                     dataset_name=dataset.name,
                     image_type=self.config.image_type,  # type: ignore[arg-type]
                     output_manager=self.output_manager,
+                    defer_embeddings=entry is not None,
+                    # Under deferral the core and Stage 4 must name one run
+                    # folder: both take the CLI's one pipeline digest (M6).
+                    expected_pipeline_sha256=(
+                        recorded_pipeline_sha256(self.config)
+                        if entry is not None
+                        else None
+                    ),
                 )
 
             append_completion_event(
@@ -862,6 +1051,11 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=(
+                    None
+                    if entry is None
+                    else (entry.work_id, entry.relative_image_path)
+                ),
             ) and isinstance(e, PerImageScientificError):
                 logger.warning(
                     "Measure failure for %s/%s was not journalled as terminal",
@@ -1166,6 +1360,7 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             JobMetadataKey.PROCESSING_GENERATION: (
                 self.config.processing_generation
             ),
+            JobMetadataKey.EMBED_STAGE: self.config.embed_stage,
             **finalizer_aggregation_options(self.config),
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
@@ -1362,6 +1557,22 @@ def uses_staged_gpu_strategy(config: ExecutionConfig) -> bool:
     return config.process_only_layer in (None, "objmap")
 
 
+def uses_staged_controller(config: ExecutionConfig) -> bool:
+    """Whether *config* runs through ``StagedSlurmStrategy``'s recoverable controller.
+
+    A staged GPU run (:func:`uses_staged_gpu_strategy`), or a SLURM run that
+    embeds in a GPU Stage 4 (#282 P5 T2, spec §4.1), with or without a
+    ``GpuDetector``: without one the controller's phases are ``["stage3",
+    "stage4"]`` and its "stage3" role runs the single-pass core. That
+    includes a SLURM ``--mode measure`` that embeds on the GPU (#282 P6 T2,
+    U10): its "stage3" role is the measure core, and its Stage 4 runs in
+    republish mode.
+    """
+    return uses_staged_gpu_strategy(config) or (
+        config.is_slurm_mode() and getattr(config, "embed_stage", "inline") == "gpu"
+    )
+
+
 def prepare_store_run_environment(
     output_dir: Path, *, durable_writes: bool | None = None
 ) -> int:
@@ -1425,7 +1636,9 @@ def create_execution_strategy(
         # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).
         # measure-only and process-layer exports keep the per-image
         # AutonomousSLURMStrategy (the staged SLURM path is forward-only).
-        if uses_staged_gpu_strategy(config):
+        # A run that embeds in a GPU Stage 4 takes the staged controller too,
+        # detector or not (#282 P5 T2).
+        if uses_staged_controller(config):
             from ._cli_staged_slurm import StagedSlurmStrategy
 
             return StagedSlurmStrategy(config, output_manager)

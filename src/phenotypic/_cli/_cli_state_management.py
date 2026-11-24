@@ -15,6 +15,7 @@ from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
+from ._stages import StageTag, run_terminal_stage
 from phenotypic.sdk_ import (
     JobMetadataKey,
     ProcessingStateKey,
@@ -209,6 +210,21 @@ def recorded_run_initiation(output_dir: Path) -> "RunInitiation | None":
     return run_initiation_from_config(config)
 
 
+def recorded_terminal_stage(output_dir: Path) -> StageTag:
+    """The run's terminal stage, from its processing state (``_stages.run_terminal_stage``).
+
+    A plain read-only JSON read, like :func:`recorded_run_initiation`, for a
+    reader that holds only the output root (the dashboard manifest). A run
+    with no readable state reads ``"stage3"``, as a pre-#282 state does.
+
+    Args:
+        output_dir: The run's output root.
+    """
+    state = _read_json(resolve_processing_state_path(Path(output_dir)))
+    config = state.get(ProcessingStateKey.CONFIG) if isinstance(state, dict) else None
+    return run_terminal_stage(config if isinstance(config, dict) else None)
+
+
 def metadata_run_initiation(output_dir: Path) -> "RunInitiation | None":
     """A measure-mode SLURM invocation's initial call, from ``job_metadata.json``.
 
@@ -263,9 +279,8 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
             )
             for dataset_name, dataset_state in datasets_raw.items()
         }
-        generation_raw = state_dict.get(ProcessingStateKey.CONFIG, {}).get(
-            "processing_generation"
-        )
+        state_config = state_dict.get(ProcessingStateKey.CONFIG, {})
+        generation_raw = state_config.get("processing_generation")
         latest_states = aggregate_state_from_events(
             event_log,
             inventory=inventory,
@@ -274,6 +289,7 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
                 if isinstance(generation_raw, str) and generation_raw
                 else None
             ),
+            terminal_stage=run_terminal_stage(state_config),
         )
     else:
         latest_states = {}
@@ -382,6 +398,12 @@ def create_initial_state(
             ),
             "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
+            # Where the run embeds (#282 spec §4.1): configuration, not
+            # tracked state, and never in the work id. A state without it
+            # reads as "inline". A continuation under `auto` adopts it, and
+            # an explicit --embed-stage that differs is refused (U12, R3,
+            # `_cli_embed_stage.adopt_recorded_embed_stage`).
+            "embed_stage": config.embed_stage,
             "success_markers_required": True,
             # D3: content-derived, not `uuid4().hex`. Same inputs -> same
             # token, so a worker starting cold fences itself correctly
@@ -404,10 +426,26 @@ def create_initial_state(
             # stage writes one folder (figures spec §1a). Configuration, not
             # tracked progress state.
             **run_initiation_config(config.run_initiation),
+            **embed_revisions_config(config),
         }
     )
     
     return state
+
+
+def embed_revisions_config(config: ExecutionConfig) -> dict:
+    """``{"embed_revisions": {hf_id: commit}}`` for a Stage-4 run, else ``{}`` (U5, #282 P5 T2).
+
+    The revisions resolved at the run's first invocation
+    (``_cli_embed_stage.pin_embed_revisions``). Recorded so a continuation,
+    local or on SLURM, reuses them (``recorded_embed_revisions``) and every
+    local Stage 4 loads them. Configuration, never in the work id. A run
+    that embeds inline records nothing.
+    """
+    revisions = getattr(config, "embed_revisions", None)
+    if revisions is None:
+        return {}
+    return {"embed_revisions": dict(revisions)}
 
 
 def update_state_from_events(state: ProcessingState, output_dir: Path) -> ProcessingState:
@@ -436,6 +474,7 @@ def update_state_from_events(state: ProcessingState, output_dir: Path) -> Proces
                 if state.config.get("processing_generation")
                 else None
             ),
+            terminal_stage=run_terminal_stage(state.config),
         )
         
         # Update dataset states

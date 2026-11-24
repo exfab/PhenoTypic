@@ -94,7 +94,7 @@ def append_event(
 
     Trailing SLURM fields are omitted when empty for backward compatibility.
     Old lines with 4-5 fields still parse correctly. The optional ``stage``
-    (``"stage1"``/``"stage2"``/``"stage3"`` for the staged GPU engine) is field 8;
+    (``"stage1"`` to ``"stage4"``, ``_stages.VALID_STAGE_TAGS``) is field 8;
     when present, the SLURM fields 6-7 are always emitted (possibly empty) so the
     positional parser can locate it. The optional durable processing generation
     is field 9. ``status`` stays the closed 3-value set.
@@ -186,7 +186,7 @@ def append_completion_event(
         image: Image filename.
         status: ``"completed"`` or ``"failed"``.
         error_msg: Error message if status is ``"failed"``.
-        stage: Optional staged-engine stage tag (``"stage1"``/``"stage2"``/``"stage3"``).
+        stage: Optional staged-engine stage tag (``"stage1"`` to ``"stage4"``).
         generation: Optional durable processing generation.
     """
     append_event(
@@ -268,6 +268,7 @@ def aggregate_state_from_events(
     *,
     inventory: Mapping[str, Collection[str]] | None = None,
     generation: str | None = None,
+    terminal_stage: StageTag = STAGED_TERMINAL_STAGE,
 ) -> Dict[str, DatasetState]:
     """
     Read event log and build complete processing state.
@@ -282,6 +283,11 @@ def aggregate_state_from_events(
         generation: Current durable processing generation. Tagged events from
             other generations are ignored. Legacy generationless events remain
             eligible and are fenced by ``inventory``.
+        terminal_stage: The stage whose completion is overall completion:
+            ``run_terminal_stage(state.config)`` (``_stages.py``), which is
+            ``"stage4"`` for a run that embeds on the GPU (#282) and
+            ``"stage3"`` otherwise. Every caller passes it, so a run whose
+            Stage 3 defers its record never reads complete at Stage 3.
 
     Returns:
         Dictionary mapping dataset names to their current state
@@ -290,6 +296,7 @@ def aggregate_state_from_events(
         event_log,
         inventory=inventory,
         generation=generation,
+        terminal_stage=terminal_stage,
     ).datasets
 
 
@@ -298,8 +305,12 @@ def aggregate_state_from_events_with_diagnostics(
     *,
     inventory: Mapping[str, Collection[str]] | None = None,
     generation: str | None = None,
+    terminal_stage: StageTag = STAGED_TERMINAL_STAGE,
 ) -> EventAggregation:
-    """Aggregate latest per-image status and report excluded log records."""
+    """Aggregate latest per-image status and report excluded log records.
+
+    ``terminal_stage`` is as in :func:`aggregate_state_from_events`.
+    """
     authorized = (
         {dataset: frozenset(images) for dataset, images in inventory.items()}
         if inventory is not None
@@ -362,14 +373,16 @@ def aggregate_state_from_events_with_diagnostics(
             ds = datasets[event.dataset]
 
             # Staged GPU events carry a ``stage`` tag. Overall completion
-            # requires the TERMINAL stage (stage3): an intermediate-stage
-            # completion means the image is still in progress, not done — so it
-            # is counted as ``started`` for the overall view (and cleared from
-            # ``failed`` on a retry-success). Legacy events (stage is None)
-            # keep the original semantics exactly.
+            # requires the run's TERMINAL stage (stage3, or stage4 for a run
+            # that embeds on the GPU): an intermediate-stage completion means
+            # the image is still in progress, not done — so it is counted as
+            # ``started`` for the overall view (and cleared from ``failed`` on
+            # a retry-success). Legacy events (stage is None) keep the
+            # original semantics exactly, which is why a deferring
+            # single-pass core tags its events ``stage3``.
             intermediate_stage = (
                 event.stage is not None
-                and event.stage != STAGED_TERMINAL_STAGE
+                and event.stage != terminal_stage
             )
 
             # Update state based on event
@@ -425,7 +438,7 @@ def aggregate_stage_state_from_events(
     """Per-(dataset, stage) processing state for the staged GPU engine (OQ5).
 
     Returns ``{dataset: {stage: DatasetState}}`` where *stage* is one of
-    ``"stage1"``/``"stage2"``/``"stage3"``. Only stage-tagged events contribute;
+    ``"stage1"`` to ``"stage4"``. Only stage-tagged events contribute;
     legacy (``stage is None``) events are ignored. This is additive — the
     overall per-dataset view from :func:`aggregate_state_from_events` is
     unchanged — and lets a dashboard show how far each image has progressed

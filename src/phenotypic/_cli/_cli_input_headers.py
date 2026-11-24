@@ -55,6 +55,10 @@ class InputHeader:
             into the image when read (a PhenoTypic store, or a file carrying
             the ``phenotypic`` metadata key).
         error: Why the header could not be read, or ``None``.
+        height: Rows of the decoded plate, or ``None`` when the header does
+            not say cheaply (RAW, a store). Read by the Stage-4 loader-memory
+            estimate (``PF-EMBED-RESOURCES``, #282).
+        width: Columns of the decoded plate, or ``None`` as for ``height``.
     """
 
     path: str
@@ -63,6 +67,8 @@ class InputHeader:
     bits: Optional[int] = None
     carries_phenotypic_metadata: bool = False
     error: Optional[str] = None
+    height: Optional[int] = None
+    width: Optional[int] = None
 
 
 def read_input_headers(paths: Iterable[Path | str]) -> list[InputHeader]:
@@ -108,14 +114,16 @@ def _pillow_header(path: Path) -> InputHeader:
         mode = image.mode
         image_format = image.format
         carries = IO.PHENOTYPIC_METADATA_KEY in (image.info or {})
+        width, height = image.size
     bits = _png_bit_depth(path) if image_format == "PNG" else 8 if image_format == "JPEG" else None
+    shape = {"height": height, "width": width}
     if mode in _PIL_SINGLE_CHANNEL_MODES:
-        return InputHeader(str(path), channels=1, bits=bits, carries_phenotypic_metadata=carries)
+        return InputHeader(str(path), channels=1, bits=bits, carries_phenotypic_metadata=carries, **shape)
     if mode in _PIL_RGB_MODES:
-        return InputHeader(str(path), channels=3, bits=bits, carries_phenotypic_metadata=carries)
+        return InputHeader(str(path), channels=3, bits=bits, carries_phenotypic_metadata=carries, **shape)
     if mode in _PIL_TWO_CHANNEL_MODES:
-        return InputHeader(str(path), raw_channels=2, carries_phenotypic_metadata=carries)
-    return InputHeader(str(path), carries_phenotypic_metadata=carries)
+        return InputHeader(str(path), raw_channels=2, carries_phenotypic_metadata=carries, **shape)
+    return InputHeader(str(path), carries_phenotypic_metadata=carries, **shape)
 
 
 def _png_bit_depth(path: Path) -> Optional[int]:
@@ -154,13 +162,18 @@ def _tiff_header(path: Path) -> InputHeader:
         description = tif.pages[0].tags.get("ImageDescription")
         carries = bool(description) and IO.PHENOTYPIC_METADATA_KEY in str(description.value)
     bits = {1: 8, 2: 16}.get(itemsize or 0)
-    channels, raw_channels = _channels_for_shape(_skimage_axis_order(shape))
+    decoded = _skimage_axis_order(shape)
+    channels, raw_channels = _channels_for_shape(decoded)
+    # A 2-D or (H, W, C) result has its plane first; a stack's is unknown.
+    plane = decoded[:2] if len(decoded) in (2, 3) else (None, None)
     return InputHeader(
         str(path),
         channels=channels,
         raw_channels=raw_channels,
         bits=bits,
         carries_phenotypic_metadata=carries,
+        height=plane[0],
+        width=plane[1],
     )
 
 

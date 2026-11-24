@@ -2092,6 +2092,7 @@ class OutputManager:
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
         embeddings: Mapping[str, EmbeddingPayload] | None = None,
+        carry_embeddings: Sequence[tuple[str, str]] = (),
     ) -> Path:
         """Replace an existing store's authoritative measurement and metadata
         tables, in the run folder of the pipeline that measured them.
@@ -2126,6 +2127,10 @@ class OutputManager:
                 entry describes this write whole, so ``None`` **drops** the
                 folder's embeddings (review OQ5): ``--mode measure`` passes
                 its pipeline's payloads, so a pipeline that embeds keeps them.
+            carry_embeddings: ``(source_run_id, key)`` pairs carried into the
+                folder as they are (#282 U8): a measure core that defers its
+                embeddings to Stage 4 keeps the image's comparable ones. See
+                :func:`~phenotypic.sdk_.replace_image_tables`.
 
         Returns:
             The ``measurements/table.parquet`` of the run folder written, the
@@ -2156,6 +2161,7 @@ class OutputManager:
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
             embeddings=embeddings,
+            carry_embeddings=carry_embeddings,
         )
         return run.measurements_path()
 

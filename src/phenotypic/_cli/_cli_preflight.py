@@ -61,6 +61,7 @@ FindingCode = Literal[
     "PF-TIME-OVER-PARTITION",
     "PF-SLURM-LIMIT",
     "PF-GPU-PARTITION",
+    "PF-EMBED-RESOURCES",
     "PF-HEADER-UNREADABLE",
     "PF-CHANNELS",
     "PF-DETECT-MODE-GRAY",
@@ -239,6 +240,10 @@ HINTS: dict[str, str] = {
         "Point the GPU job at a partition with GPUs: "
         "--gpu-slurm slurm_partition=<gpu-partition> for a staged run, or "
         "--slurm slurm_partition=<gpu-partition> for --mode process."
+    ),
+    "PF-EMBED-RESOURCES": (
+        "Raise mem_gb in --gpu-slurm, or lower slurm_cpus_per_task there "
+        "(fewer loader workers)"
     ),
     "PF-OUTPUT-UNWRITABLE": (
         "Choose an --output you can write to, or fix the directory's permissions."
@@ -728,8 +733,28 @@ def _run_scheduler_command(
     )
 
 
+def _stage4_slurm_run(context: PreflightContext) -> bool:
+    """Whether the run embeds in a GPU Stage 4 on SLURM (#282 spec §4.1).
+
+    ``config.embed_stage`` is the resolved stage (``resolve_embed_stage_for_config``
+    runs before the preflight). Such a run goes through the staged controller
+    with or without a ``GpuDetector`` (``uses_staged_controller``), and its
+    Stage-4 array submits the GPU profile.
+    """
+    return context.config.is_slurm_mode() and context.config.embed_stage == "gpu"
+
+
 def _staged_slurm_run(context: PreflightContext) -> bool:
-    """Whether the run takes the staged GPU SLURM path (``StagedSlurmStrategy``)."""
+    """Whether the run takes the staged GPU SLURM path (``StagedSlurmStrategy``).
+
+    A ``full`` run with a ``GpuDetector``, or any run that embeds in a GPU
+    Stage 4 on SLURM (:func:`_stage4_slurm_run`), which the same strategy
+    submits without one (#282 P5 T2). So ``PF-SLURM-LIMIT`` and
+    ``PF-GPU-PARTITION`` check a no-detector Stage-4 run's GPU profile
+    before ``staged_slurm_limit_errors`` refuses it at submission.
+    """
+    if _stage4_slurm_run(context):
+        return True
     if context.mode != "full" or not context.config.is_slurm_mode():
         return False
     from ._cli_validation import find_gpu_detectors
@@ -1070,6 +1095,163 @@ def check_gpu_partition(context: PreflightContext) -> list[PreflightFinding]:
     if message is None:
         return []
     return [PreflightFinding("PF-GPU-PARTITION", "error", f"{which} {message}")]
+
+
+# ---------------------------------------------------------------------------
+# GPU Stage 4 (#282 spec §4.7)
+# ---------------------------------------------------------------------------
+
+_GIB = 1 << 30
+#: A Stage-4 shard's peak RSS before loader workers (spec §2, about 6 GB).
+#: From P0 T1's ``stage4_memory.py`` (``docs/superpowers/logic_validation_scripts/``).
+_LOADER_BASE_BYTES = 6 << 30
+#: ``BatchEncoder``'s in-flight output bound (two DINOv3-7B ``masked_dense``
+#: grids of a 4012 x 6016 plate; conservative under U11). From
+#: ``stage4_memory.py``; the same value as
+#: ``detect.nn._helper._batch_encoder.MAX_IN_FLIGHT_OUTPUT_BYTES``, copied so
+#: the preflight imports nothing under ``detect.nn``.
+_MAX_IN_FLIGHT_OUTPUT_BYTES = 2 * (4012 // 16) * (6016 // 16) * 4096 * 4
+#: Crops one loader worker is assumed to hold for a crop pipeline when the
+#: run gives no ``--nrows``/``--ncols``: the preflight reads no pixels, so it
+#: cannot count colonies, and 1536 is the densest standard pinning format. A
+#: bound, not an estimate.
+_LOADER_CROP_REGIONS = 1536
+#: Bytes per RGB sample by the header's bit depth; an unknown depth counts
+#: float32's 4, the widest a decode holds.
+_SAMPLE_BYTES = {8: 1, 16: 2}
+
+
+def _loader_per_worker(height: int, width: int, sample_bytes: int, crop_bytes: int) -> int:
+    """One loader worker's bytes: a decoded plate, its crops and 1 GiB of interpreter.
+
+    ``rgb`` at *sample_bytes* per channel plus ``gray``, ``detect_mat`` and
+    ``objmap`` at 4 bytes each. From ``stage4_memory.py``.
+    """
+    return height * width * (3 * sample_bytes + 12) + crop_bytes + _GIB
+
+
+def _stage4_dino_embedders(context: PreflightContext) -> list[tuple[str, Any]]:
+    """The in-scope ``MeasureDinoEmbedding`` steps Stage 4 runs, as ``(meas key, embedder)``."""
+    from phenotypic.measure import MeasureDinoEmbedding
+
+    from ._cli_embed_stage import pipeline_embedders
+
+    return [
+        (key, embedder)
+        for key, embedder in pipeline_embedders(context.pipeline)
+        if isinstance(embedder, MeasureDinoEmbedding)
+    ]
+
+
+def _stage4_profile(context: PreflightContext) -> dict[str, Any]:
+    """The SBATCH profile the Stage-4 array submits: ``--gpu-slurm`` over ``--slurm``."""
+    from ._cli_staged_slurm import resolve_stage_slurm_args
+
+    return resolve_stage_slurm_args(context.config.gpu_slurm_args, context.config.slurm_args)
+
+
+def _requested_mem_bytes(profile: dict[str, Any], cpus: int) -> "int | None":
+    """The job memory *profile* asks for, or ``None`` when it sets none (DefMemPerCPU applies)."""
+    from phenotypic.sdk_.slurm._slurm_headroom import parse_slurm_value
+
+    def mib(value: "str | None") -> "float | None":
+        if value is None:
+            return None
+        try:
+            parsed = parse_slurm_value(value)
+        except ValueError:
+            return None
+        return None if parsed == float("inf") else parsed
+
+    per_node = mib(_effective_option(profile, "mem", "SBATCH_MEM_PER_NODE"))
+    if per_node is not None:
+        return int(per_node * (1 << 20))
+    per_cpu = mib(_effective_option(profile, "mem-per-cpu", "SBATCH_MEM_PER_CPU"))
+    if per_cpu is not None:
+        return int(per_cpu * (1 << 20)) * cpus
+    return None
+
+
+def check_embed_loader_memory(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-EMBED-RESOURCES``: the Stage-4 profile's memory is below the loader's peak.
+
+    #282 spec §4.7, ``stage4_memory.py``. A shard runs ``cpus_per_task - 1``
+    DataLoader workers, each holding one decoded plate and its crops, beside
+    the shard's own peak; a ``masked_dense`` embedder adds the encoder's
+    in-flight output bound. The need is
+    ``_LOADER_BASE_BYTES + (cpus - 1) * _loader_per_worker(H, W, sample_bytes, crops)``
+    ``[+ _MAX_IN_FLIGHT_OUTPUT_BYTES]`` for the largest plate whose header
+    gives a shape, and the embedder whose crops are largest. A crop pipeline
+    counts ``nrows * ncols`` crops when the run gives both, else
+    :data:`_LOADER_CROP_REGIONS`; ``masked_dense`` counts the plate as float32
+    tiles. A warning: a host OOM kills the shard, and the next round retries.
+
+    Reads headers only, never a pixel. Skipped, with a debug line saying why,
+    when no header gives a shape or the profile sets no ``--mem`` or
+    ``--mem-per-cpu`` (the cluster default is not read).
+    """
+    if not _stage4_slurm_run(context):
+        return []
+    embedders = [embedder for _, embedder in _stage4_dino_embedders(context)]
+    plates = [
+        (h.height * h.width, h.height, h.width, _SAMPLE_BYTES.get(h.bits or 0, 4))
+        for h in _input_headers(context)
+        if h.height and h.width
+    ]
+    if not embedders:
+        return []
+    if not plates:
+        logger.debug(
+            "PF-EMBED-RESOURCES skipped: no input header gives a plate shape "
+            "(RAW files and stores do not), so the loader's need is unknown"
+        )
+        return []
+    profile = _stage4_profile(context)
+    from phenotypic.sdk_.slurm import effective_sbatch_option
+
+    # sbatch has no SBATCH_* input variable for --cpus-per-task, so the script decides.
+    cpus_value = effective_sbatch_option(profile, "cpus-per-task")
+    try:
+        cpus = max(1, int(str(cpus_value))) if cpus_value is not None else 1
+    except ValueError:
+        cpus = 1
+    requested = _requested_mem_bytes(profile, cpus)
+    if requested is None:
+        logger.debug(
+            "PF-EMBED-RESOURCES skipped: the Stage-4 GPU profile sets neither "
+            "--mem nor --mem-per-cpu, and the cluster's DefMemPerCPU is not read"
+        )
+        return []
+    config = context.config
+    regions = (
+        int(config.nrows) * int(config.ncols)
+        if config.nrows and config.ncols
+        else _LOADER_CROP_REGIONS
+    )
+
+    def crop_bytes(embedder: Any, height: int, width: int) -> int:
+        if embedder.pooling == "masked_dense":
+            return height * width * 3 * 4  # the plate as float32 tiles
+        return regions * 3 * int(embedder.crop_px) ** 2 * 4
+
+    _, height, width, sample_bytes = max(plates, key=lambda plate: (plate[0], plate[3]))
+    per_worker = max(
+        _loader_per_worker(height, width, sample_bytes, crop_bytes(embedder, height, width))
+        for embedder in embedders
+    )
+    needed = _LOADER_BASE_BYTES + (cpus - 1) * per_worker
+    if any(embedder.pooling == "masked_dense" for embedder in embedders):
+        needed += _MAX_IN_FLIGHT_OUTPUT_BYTES
+    if requested >= needed:
+        return []
+    return [PreflightFinding(
+        "PF-EMBED-RESOURCES", "warning",
+        f"the Stage-4 GPU profile requests {requested / _GIB:.1f} GiB, but its "
+        f"loader needs about {needed / _GIB:.1f} GiB ({cpus - 1} loader "
+        f"worker(s) on {cpus} CPUs, each holding a {height} x {width} plate at "
+        f"{8 * sample_bytes} bits and its crops); a shard that runs out of host "
+        "memory is killed and retried next round",
+    )]
 
 
 def _input_paths(context: PreflightContext) -> list[str]:
@@ -1698,6 +1880,7 @@ CHECKS: tuple[Check, ...] = (
     check_slurm_profiles,
     check_partition_time,
     check_staged_slurm_limits,
+    check_embed_loader_memory,
     check_gpu_partition,
     check_input_headers_readable,
     check_input_channels,

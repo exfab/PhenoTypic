@@ -170,11 +170,13 @@ signal/self-requeue behavior. Dynamic controller, array, Stage-3, and finalizer
 job IDs are recorded in the run ledger for monitoring and cancellation.
 
 ``--gpu-slurm KEY=VALUE``
-   Stage-2 SBATCH resources. Inherits and deltas over ``--slurm`` (the CPU
-   profile for Stages 1 and 3); auto-adds ``slurm_gpus_per_node=1``.
+   SBATCH resources of the GPU stages (Stage 2 and Stage 4). Inherits and
+   deltas over ``--slurm`` (the CPU profile for Stages 1 and 3); auto-adds
+   ``slurm_gpus_per_node=1``.
 
 ``--gpu-shards N``
-   Parallel Stage-2 GPU tasks, one whole GPU each. SLURM-only; ignored locally.
+   Parallel tasks of the GPU stages (Stage 2 and Stage 4), one whole GPU each.
+   SLURM-only; ignored locally.
    Default: 1.
 
 ``--gpu-workers-per-gpu W``

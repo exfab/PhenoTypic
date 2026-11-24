@@ -46,8 +46,31 @@ def _display_execution_backend(config: ExecutionConfig) -> str:
     is_slurm = config.is_slurm_mode()
     click.echo(f"  - SLURM args provided: {'Yes' if config.slurm_args else 'No'}")
     click.echo(f"  - Force local flag: {'Yes' if config.force_local else 'No'}")
-    click.echo(f"  → Selected backend: {'SLURM (autonomous)' if is_slurm else 'Local Parallel (joblib)'}")
+    if is_slurm:
+        label = (
+            "SLURM (staged controller)"
+            if _uses_staged_controller(config)
+            else "SLURM (autonomous)"
+        )
+    else:
+        label = "Local Parallel (joblib)"
+    click.echo(f"  → Selected backend: {label}")
     return "slurm" if is_slurm else "local"
+
+
+def _uses_staged_controller(config: ExecutionConfig) -> bool:
+    """Whether the SLURM run submits through the staged controller (smoke F7).
+
+    The same predicate the strategy dispatch uses, so the preview names the
+    backend the run will take. A pipeline that cannot be read or placed was
+    already reported by the validation above, so it previews as autonomous.
+    """
+    from ._cli_execution_strategies import uses_staged_controller
+
+    try:
+        return uses_staged_controller(config)
+    except Exception:  # noqa: BLE001 - reported by the pipeline validation
+        return False
 
 
 def _submitted_slurm_profiles(config: ExecutionConfig) -> list[tuple[str, dict]]:
