@@ -497,16 +497,10 @@ class MeasureDinoEmbedding(MeasureEmbedding):
         if int(self.version) == 3:
             from phenotypic.detect.nn._helper._checkpoint_manager import (
                 Dinov3CheckpointManager,
-                require_license_acceptance,
             )
 
             # A batch worker has no terminal: refuse rather than prompt.
-            require_license_acceptance(
-                Dinov3CheckpointManager.license_key,
-                Dinov3CheckpointManager.license_name,
-                Dinov3CheckpointManager.license_url,
-                interactive=False,
-            )
+            Dinov3CheckpointManager.require_license(interactive=False)
         from phenotypic.detect.nn._helper._dino_support import resolve_backbone_device
 
         device = resolve_backbone_device(self.device)

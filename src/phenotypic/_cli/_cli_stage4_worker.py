@@ -590,16 +590,10 @@ def _require_licences(plan: Sequence[tuple[BackboneKey, Any]]) -> None:
         return
     from phenotypic.detect.nn._helper._checkpoint_manager import (
         Dinov3CheckpointManager,
-        require_license_acceptance,
     )
 
     try:
-        require_license_acceptance(
-            Dinov3CheckpointManager.license_key,
-            Dinov3CheckpointManager.license_name,
-            Dinov3CheckpointManager.license_url,
-            interactive=False,
-        )
+        Dinov3CheckpointManager.require_license(interactive=False)
     except RuntimeError as exc:
         raise Stage4ShardError(f"Stage 4 loads no DINOv3 backbone: {exc}") from exc
 
