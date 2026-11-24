@@ -101,10 +101,15 @@ def pipeline_embedders(pipeline: "ImagePipeline") -> list[tuple[str, "MeasureEmb
     ]
 
 
+def _cpu_pinned(embedder: "MeasureEmbedding") -> bool:
+    """Whether *embedder* is pinned to ``device="cpu"``, which Stage 4 never honours (U9)."""
+    return getattr(embedder, "device", None) == "cpu"
+
+
 def _cpu_pinned_key(pipeline: "ImagePipeline") -> str | None:
     """The first in-scope embedder's ``meas`` key pinned to ``device="cpu"``, or ``None``."""
     for key, embedder in pipeline_embedders(pipeline):
-        if getattr(embedder, "device", None) == "cpu":
+        if _cpu_pinned(embedder):
             return key
     return None
 
@@ -208,7 +213,7 @@ def refuse_unstageable_embedders(
         return
     for key, embedder in pipeline_embedders(pipeline):
         cls = type(embedder).__name__
-        if getattr(embedder, "device", None) == "cpu":
+        if _cpu_pinned(embedder):
             raise click.UsageError(
                 f"--embed-stage gpu was given, but meas '{key}' ({cls}) is "
                 "pinned to device='cpu'; set device='auto' or 'cuda', or drop "
