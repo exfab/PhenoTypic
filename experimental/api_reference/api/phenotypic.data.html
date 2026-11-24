@@ -646,6 +646,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_fungi_plate.html">phenotypic.data.load_fungi_plate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_yeast_plate_full.html">phenotypic.data.load_yeast_plate_full</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_fungi_plate_full.html">phenotypic.data.load_fungi_plate_full</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.data.load_bacteria_plate_full.html">phenotypic.data.load_bacteria_plate_full</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.detect.html">phenotypic.detect</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1288,11 +1289,12 @@
                   
   <section id="phenotypic-data">
 <h1>phenotypic.data<a class="headerlink" href="#phenotypic-data" title="Link to this heading">#</a></h1>
-<p>Sample and synthetic agar plate images for fungal colony testing.</p>
+<p>Sample and synthetic agar plate images for microbial colony testing.</p>
 <p>Provides loaders and generators for representative plate scenes used in demos,
 benchmarks, and tests: synthetic single colonies, synthetic full plates, time-course
-captures at 12–72 hours, early low-contrast crops, and smear-plate examples. Utilities
-return arrays or ready-to-use <cite>Image</cite>/<cite>GridImage</cite> objects for rapid pipeline trials.</p>
+captures at 12–72 hours, early low-contrast crops, smear-plate examples, and a
+color-corrected bacterial plate. Utilities return arrays or ready-to-use
+<cite>Image</cite>/<cite>GridImage</cite> objects for rapid pipeline trials.</p>
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -1338,9 +1340,46 @@ return arrays or ready-to-use <cite>Image</cite>/<cite>GridImage</cite> objects 
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_fungi_plate_full.html#phenotypic.data.load_fungi_plate_full" title="phenotypic.data.load_fungi_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_fungi_plate_full</span></code></a></p></td>
 <td><p>Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_bacteria_plate_full.html#phenotypic.data.load_bacteria_plate_full" title="phenotypic.data.load_bacteria_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_bacteria_plate_full</span></code></a></p></td>
+<td><p>Load a full bacterial colony plate image, already color-corrected and denoised.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_bacteria_plate_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'filepath'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'GridImage'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_sample_image_data.html#load_bacteria_plate_full"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Load a full bacterial colony plate image, already color-corrected and denoised.</p>
+<p>Returns a whole 8 x 12 pinned plate of mature bacterial colonies, imaged
+with the plate holder, the plate wall and color-checker strips at the
+left and right edges. The colonies vary in size, pigment (cream, yellow,
+orange) and surface (smooth, wrinkled, rough). Some grid positions are
+empty by design, so a full detection finds 54 colonies, not 96.</p>
+<p>The image is a 16-bit RGB TIFF (4012 x 6016 pixels, about 100 MB). It is a
+TIFF rather than a PNG because 16-bit RGB PNGs are read back as 8-bit. It
+has already been color-corrected and denoised, so it is ready input for
+<a class="reference internal" href="phenotypic.prefab.BacterSamPipeline.html#phenotypic.prefab.BacterSamPipeline" title="phenotypic.prefab.BacterSamPipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">BacterSamPipeline</span></code></a>, whose default crop fits
+this frame. Use it for bacterial detection tutorials and for tests that
+need a real plate rather than a synthetic one.</p>
+<p>The file is downloaded from the <code class="docutils literal notranslate"><span class="pre">data-v1</span></code> GitHub Release on first use
+and cached; see <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_DATA_DIR</span></code> to change the cache location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>'array'</em><em>, </em><em>'Image'</em><em>, </em><em>'GridImage'</em><em>, </em><em>'filepath'</em><em>]</em>) – Return format. <code class="docutils literal notranslate"><span class="pre">'GridImage'</span></code> (the default) returns a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">GridImage</span></code> with an 8 x 12 grid. <code class="docutils literal notranslate"><span class="pre">'Image'</span></code> returns a
+plain <code class="xref py py-class docutils literal notranslate"><span class="pre">Image</span></code>, <code class="docutils literal notranslate"><span class="pre">'array'</span></code> the <code class="docutils literal notranslate"><span class="pre">uint16</span></code> pixel array of
+shape <code class="docutils literal notranslate"><span class="pre">(4012,</span> <span class="pre">6016,</span> <span class="pre">3)</span></code>, and <code class="docutils literal notranslate"><span class="pre">'filepath'</span></code> the cached file’s
+path.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The full plate image in the requested format.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[np.ndarray, Image, GridImage, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.data.</span></span><span class="sig-name descname"><span class="pre">load_colony</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'array'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Image'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GridImage'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'array'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">np.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">GridImage</span></span></span><a class="reference internal" href="../../_modules/phenotypic/data/_sample_image_data.html#load_colony"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>

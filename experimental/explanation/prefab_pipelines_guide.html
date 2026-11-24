@@ -712,6 +712,17 @@ MeasureIntensity, MeasureColor, and MeasureTexture at 10, 20, 30 and 40 px</p>
 large late ones, and a GPU is available. The CLI splits the run into CPU
 preprocessing, GPU detection and CPU measurement on its own. The crop
 defaults fit one imager, so check them against your plates first.</p>
+<p>To try it, use the bacterial sample plate. It is already colour-corrected and
+denoised, and the default crop fits it. The first call downloads the image
+(about 100 MB) and caches it.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_bacteria_plate_full</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.prefab</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacterSamPipeline</span>
+
+<span class="n">plate</span> <span class="o">=</span> <span class="n">load_bacteria_plate_full</span><span class="p">()</span>  <span class="c1"># GridImage, 8 x 12</span>
+<span class="n">measurements</span> <span class="o">=</span> <span class="n">BacterSamPipeline</span><span class="p">()</span><span class="o">.</span><span class="n">apply_and_measure</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="nb">len</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>  <span class="c1"># 54 colonies; some grid positions are empty</span>
+</pre></div>
+</div>
 <p>The GUI pipeline builder cannot load this prefab yet, because it does not
 offer GPU detectors. Use it from Python or the CLI.</p>
 </section>

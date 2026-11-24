@@ -30,6 +30,7 @@
       load_fungi_plate
       load_yeast_plate_full
       load_fungi_plate_full
+      load_bacteria_plate_full
    
    
 

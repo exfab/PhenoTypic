@@ -1,0 +1,6 @@
+phenotypic.data.load\_bacteria\_plate\_full
+===========================================
+
+.. currentmodule:: phenotypic.data
+
+.. autofunction:: load_bacteria_plate_full
