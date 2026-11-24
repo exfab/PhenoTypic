@@ -66,6 +66,60 @@ python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --out
 `--sample` draws N images from *each* dataset (each first-level subdirectory of
 `--input`). Pass `--random-seed` to draw the same subset every time.
 
+## Embedding on GPUs
+
+A pipeline's `MeasureDinoEmbedding` steps can run on GPUs, in a **Stage 4**
+after each image's store is final, instead of beside the other measurers:
+
+```bash
+python -m phenotypic --mode full --pipeline pipeline.json --input /plates/ --output /output/ \
+    --slurm slurm_partition=intel \
+    --gpu-slurm slurm_partition=exfab --gpu-slurm slurm_account=exfab --gpu-shards 2
+```
+
+`--embed-stage {auto,gpu,inline}` chooses, and defaults to `auto`:
+
+| Run | `auto` resolves to |
+|---|---|
+| SLURM, with a `GpuDetector` in the pipeline or `--gpu-slurm` given (`--mode measure`: `--gpu-slurm` only) | `gpu` |
+| SLURM without either, any local run, `--mode process` | `inline` |
+| an embedder pinned to `device="cpu"`, or one that is not a `MeasureDinoEmbedding` | `inline`, with a note |
+
+- **Refusals** (each one usage-error line, exit `2`, before anything is
+  written): `--embed-stage gpu` with `--mode process`; `--embed-stage gpu` with
+  an embedder pinned to the CPU or with no GPU encoder; and a continuation given
+  an explicit `--embed-stage` other than the one its run started with. Under
+  `auto` a continuation keeps the stage its run started with.
+- **Resources:** Stage 4 runs on the `--gpu-slurm` profile, one whole GPU per
+  task, with `--gpu-shards` tasks. Each GPU shard pays one model load, measured
+  at about 40–300 s with cached weights, so prefer few `--gpu-shards` for a small run.
+  Pre-stage the weights and set `HF_HUB_OFFLINE=1`, and pin `revision=` on the
+  embedder.
+- **Locally**, `--embed-stage gpu` checks for a usable CUDA device before Stage 1
+  and exits `1` without one. The check imports torch, so a `--dry-run` with that
+  flag pays the import too. `CUBLAS_WORKSPACE_CONFIG` may be unset (the CLI sets
+  `:4096:8`), `:4096:8` or `:16:8`.
+- **Waiting:** `phenotypic-wait` returns only after every job of the submission
+  has ended, the last recovery controller included. Stage-1 and Stage-3 tasks
+  killed without a result are resubmitted; after two retry rounds that change
+  nothing the run ends with exit `5`.
+- **`--mode measure --embed-stage gpu`** re-embeds a finished run. Exit `0` means
+  every image was re-measured and re-embedded; an image left neither re-embedded
+  nor recorded as failed makes the pass exit `5`, and the finalizer's log names
+  it (locally, exit `1`). An unpinned `revision` reuses the run's recorded
+  commit; pin `revision=` to move. A measure step killed before it finished is
+  re-run, never certified. Concurrent local invocations over one `--output` are
+  unsupported, as before.
+- **Two known limitations:** an image whose objects sprawl across the plate gives
+  multi-thousand-pixel crops whose preparation can take minutes per image (up to
+  about 35 min for one image in the live smoke); every round still makes some
+  progress, so the stall rule never ends such a run. And an image that crashes
+  its shard every round (for example by exhausting the host's memory) ends the
+  run with exit `5` once only it remains, and a re-run repeats that.
+
+The full guide, with the measured repeatability across GPUs and the exit codes,
+is [Embed colonies on GPUs](../../how_to/pages/embeddings.md).
+
 ## Run Preflight Checks
 
 Before any image is processed, and before anything under `--output` is created,

@@ -221,7 +221,14 @@ isolation before attributing it — most of them pass.
   Today the only such plot is `CalibrateColorRpcc`, whose overlay comes from its
   own `apply()`. Continuation is content-defined (valid store → complete
   Stage-2 signal → atomic Stage-3 completion marker) and progress is
-  stage-tagged.
+  stage-tagged. A run whose `--embed-stage {auto,gpu,inline}` resolves `gpu`
+  (`auto` does so only on SLURM with a GPU profile, a `GpuDetector` or
+  `--gpu-slurm`; a run with no detector then still takes the staged
+  controller) adds a **Stage 4**: every
+  `MeasureDinoEmbedding` on GPUs after the store is final, Stage 3 deferring the
+  embeddings and the per-image record to it — see
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) "Stage 4" and
+  `docs/source/how_to/pages/embeddings.md`.
 - **A `GpuDetector` may sit anywhere in the operation tree** — nested inside a
   `CompositeDetector`, a `CompositeEnhance`, or a branch `ImagePipeline` — not
   only at top level. Detection is tree-wide (`find_gpu_detectors`), the detector
@@ -292,10 +299,10 @@ isolation before attributing it — most of them pass.
   included: `python -m phenotypic.sdk_.generate_report <output>` writes it on
   demand.
   Staged GPU flags (Spec 1 §10):
-    - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
+    - `--gpu-slurm key=value` — Stage-2 (and Stage-4) GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
       `slurm_gpus_per_node=1` (explicit `=0` runs the GPU stage on a CPU partition).
-    - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
+    - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 (and Stage-4) tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — reserved for future replica packing;
       the current staged worker runs one resident model per GPU shard.
 - `uv run phenotypic-tune run spec.json -i <images> -o <out>` —

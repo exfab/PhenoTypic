@@ -262,6 +262,16 @@ contributor writing a counter.
 | the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
 | *how many verified images the published master does not carry* | the aggregate proof's `source_image_count` vs. the live verified count | `resolve_run_state` → `RunState.advisories` (count clause) |
 | *which store a re-finalization will exclude again* | each verified image's record (does it declare a `measurements` artifact?) and its store root (does it declare a projectable `measurement_columns`?) | `resolve_run_state` → `RunState.advisories` (naming clause) |
+| *does this image wait for Stage 4?* (Stage-4 pending, #282) | `stages.stage3` in the per-image record file, a store bound to the image's work id, a measurement table in its journal run, and no valid record | `stage4_status` → `stages_1_to_3_done` (`_cli/_cli_staged_resume.py`); `"done"` is `valid_image_success`, the same record check as every other image |
+| the run's terminal stage: which stage's `completed` event is an image's overall completion | the recorded `embed_stage` config value (`"gpu"` → `"stage4"`, anything else or absent → `"stage3"`) | `run_terminal_stage` (`_cli/_stages.py`), passed as `aggregate_state_from_events(..., terminal_stage=)` by every caller |
+
+**Stage-4 pending is derived, not a new tracked state.** A run that embeds on
+the GPU writes nothing that says "waiting for Stage 4": Stage 3 records
+`stages.stage3` and writes no record, and the absence of a valid record is the
+rest of the answer. `resolve_run_state` therefore reads such an image as not
+yet verified, which is what it is, and needs no Stage-4 branch. The recorded
+`embed_stage` is configuration (see **Configuration recorded beside the
+inventory**), outside the work-id digest.
 
 **The reference manifest is written down only so other processes read one
 derivation.** Stage-3 and SLURM workers know the run root and a dataset name,
@@ -367,6 +377,27 @@ to measurement outputs, never to configuration identity.
 **Deleted, and must not come back:**
 `processing_state.datasets.{completed,failed,started}` as live state;
 `manifest.json` as evidence; the event log as a completion source.
+
+### Stage-4 work in progress (#282)
+
+A run that embeds on the GPU adds resume work and controller bookkeeping under
+`.phenotypic/`. **None of it is tracked state**: `resolve_run_state` reads none
+of it, and no verdict comes from it: a lost signal costs re-embedding that
+key, never a wrong verdict. It is listed here because it is written and branched on,
+like the Stage-2 signal it mirrors.
+
+| Artifact | Path helper | Writer | Read by, and for what | Deleted |
+|---|---|---|---|---|
+| Stage-4 signal, one per image per embedder key | `stage4_signal_path(output_dir, dataset, key, stem)` → `.phenotypic/progress/stage4_payload/<ds>/<model>/<layer>/<region>/<stem>.parquet` (`DIR_STAGE4_PAYLOAD`) | `write_stage4_signal` (`_cli/_cli_stage4_signal.py`), atomic, from `run_stage4` as each key drains; its Parquet footer fences it with `work_id`, `run_id`, `root_sha256` and `key` | `classify_stage4_signals`: a key's signal is reused only at the **live** store root, so a round killed after one backbone commits without re-embedding; `stage4_signal_mtimes`, one `stat` per key, for the controller's progress digest | `delete_stage4_signals` after the image's record (the consume); every stale key at classification; a published image's leftovers by `sweep_orphan_stage4_signals` (locally before Stage 4, and by the controller before each classification; `sweep_republished_stage4_signals` in a measure pass); a core re-run (`drop_stages_1_to_3_done`) and a Stage-1 re-run (`clear_downstream_artifacts_for_stage1`); a per-image Stage-4 failure; `--restart` with `progress/` |
+| Stage-4 round worklist | `stage4_worklist_path(output_dir)` → `.phenotypic/slurm_scripts/stage4_worklist.json` | `write_stage4_worklist` (`_cli/_cli_staged_orchestration.py`), atomic, by the controller once per round: the retryable set only, sorted, split over the shards | `load_stage4_worklist`: each Stage-4 shard's slice by array index; the controller keeps it when the round's token is already ledgered | Rewritten by the next round; cleared with `slurm_scripts/` by `--restart` |
+| Stage-4 round counters | `orchestration_state_path(output_dir)` → `.phenotypic/staged_orchestration.json`: `stage4_round`, `stage4_last_progress_digest`, `stage4_zero_progress_rounds` | `initialize_orchestration` (zeros) and `_submit_stage4_round` (`_cli/_cli_staged_controller.py`) | The controller's zero-progress rule: two unchanged rounds submit the finalizer and record nothing for the leftovers (U7); `recorded_stall_lines`, for the finalizer's log | With the orchestration state, by the next submission |
+| Stage-1/3 retry counters | the same file: `<stage>_retry_round`, `<stage>_retry_chunk`, `<stage>_last_retryable_digest`, `<stage>_zero_progress_rounds` for `stage1` and `stage3` | `_resubmit_dead_tasks` and `_start_retry_round` | The same rule for tasks that died without a result (U15); read with defaults, so a state written before #282 drives as before | As above |
+
+The counters are entry 3's kind of fact, about scheduler jobs, and Stage 4's are
+separate from Stage 2's (`round`, `last_retryable_digest`,
+`zero_progress_rounds`) so a GPU embedding round never inherits a detection
+stall. The measure-done marker (#282 U18) is the one Stage-4-era file that is
+documented under (a) instead: a killed measure step leaves no other trace.
 
 ---
 
@@ -475,6 +506,8 @@ here when you add a consumer.
 | `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
 | `_cli/_cli_wait.py` (`_completion`, `_published`; `phenotypic-wait`) | `.completion`; the fence's `closed_by` and `terminal_status`, both proofs' `execution_epoch` | `shallow` | Whether a SLURM submission has ended, and which exit code it ends with. A fence of the generation carrying a `terminal_status` is never published, whatever the proofs say: the measure finalizer closes so when its pass left images neither republished nor journalled, whose forward records still verify (#282 U16) |
 | `_cli/_cli_staged_controller.py` (`unfinished_measure_entries`, `_dead_measure_indices`, `_classify_stage4`) | the measure-done marker; each record's `artifacts` and `lifecycle_epoch`; the terminal journal under the epoch | — | Which images a SLURM measure pass resubmits (U15), hands to Stage 4, and leaves unfinished, which closes the pass failed (U16) |
+| `_cli/_cli_staged_controller.py` (`_classify_stage4`, `_stage4_progress_digest`, `_dead_stage1_indices`, `_dead_stage3_indices`) | `stage4_status` (each record, `stages.stage3`, the store's work id); the terminal journal under the epoch; the reference digest; the Stage-4 signals' `st_mtime_ns` | — | Which images a forward SLURM Stage-4 round embeds, which are terminal, and whether a round or a Stage-1/3 retry round made progress (U7, U15) (#282) |
+| `_cli/_cli_stage4_worker.py` (`split_stage4_pending`, `_classify_image`) | `stage4_status`; the Stage-4 signals against the live store root | — | Which images a local Stage 4 takes, and per image whether to commit only, publish only or embed (#282) |
 
 ### Consumers that deliberately ask something else
 

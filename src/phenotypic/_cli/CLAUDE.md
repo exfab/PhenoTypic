@@ -9,19 +9,25 @@ The batch-processing engine behind `python -m phenotypic`. `../phenotypicCLI.py`
 ## Execution strategies (the dispatch)
 
 `create_execution_strategy` picks by `(is_slurm_mode, measure_only,
-process_only_layer, pipeline_requires_gpu)`:
+process_only_layer, pipeline_requires_gpu, embed_stage)`:
 
 | Strategy | When | File |
 |---|---|---|
-| `LocalParallelStrategy` | local CPU run (joblib) | `_cli_execution_strategies.py` |
-| `AutonomousSLURMStrategy` | SLURM CPU run (array + drip-feed chunk chain) | `_cli_execution_strategies.py` |
-| `StagedGpuStrategy` | **local** forward GPU run, or `--mode process --layer objmap` | `_cli_staged_strategy.py` |
-| `StagedSlurmStrategy` | **SLURM** forward GPU run (`process_only_layer is None`) | `_cli_staged_slurm.py` |
+| `LocalParallelStrategy` | local run with no `GpuDetector` (joblib), `--mode measure` included; under `--embed-stage gpu` it runs the local Stage 4 after its loop (`run_local_stage4`), in republish mode for measure | `_cli_execution_strategies.py` |
+| `AutonomousSLURMStrategy` | SLURM run that embeds inline and has no `GpuDetector` (array + drip-feed chunk chain), measure and process included | `_cli_execution_strategies.py` |
+| `StagedGpuStrategy` | **local** forward run with a `GpuDetector`, or `--mode process --layer objmap`; under `--embed-stage gpu` it runs the local Stage 4 after Stage 3 | `_cli_staged_strategy.py` |
+| `StagedSlurmStrategy` | **SLURM**: `uses_staged_controller` — a forward run with a `GpuDetector` (`process_only_layer is None`), or any run whose `embed_stage` resolved `gpu` (#282), with or without a detector, `--mode measure` included | `_cli_staged_slurm.py` |
 
-A "GPU run" = the pipeline contains a `GpuDetector` (`pipeline_requires_gpu`),
-**at any depth in the operation tree**. The staged strategies are
-forward-oriented; measure-only and non-objmap process-layer exports stay on the
-Local/Autonomous strategies.
+A "staged GPU run" (`uses_staged_gpu_strategy`) = the pipeline contains a
+`GpuDetector` (`pipeline_requires_gpu`), **at any depth in the operation tree**,
+outside `--mode measure`. On SLURM that is no longer the only way onto the
+staged controller: `uses_staged_controller` (`_cli_execution_strategies.py`) is
+`uses_staged_gpu_strategy(config) or (is_slurm_mode and embed_stage == "gpu")`,
+so a SLURM run with no detector that embeds in a GPU Stage 4 runs the
+controller with phases `["stage3", "stage4"]` (see **Stage 4 on SLURM** below).
+Locally a run with no detector stays on `LocalParallelStrategy`, which runs
+Stage 4 itself. Non-objmap process-layer exports always stay on the
+Local/Autonomous strategies, since `--mode process` embeds inline (R1).
 
 **`--mode process --layer objmap` runs the post-detector op chain.**
 `_export_objmap_layer` (`_cli_staged_strategy.py`) runs after Stages 1–2 and
@@ -83,7 +89,14 @@ affected, a warning listing the subset otherwise. A check that raises becomes a
 the whole validation block (execution-config validation, the pipeline load
 check, and the run preflight) and none of the refusals listed above. Every `FindingCode` needs a `HINTS` entry
 and a row in the table in `docs/source/tutorials/pages/cli_batch_processing.md`;
-`tests/unit/test_docs_preflight_codes.py` fails on drift.
+`tests/unit/test_docs_preflight_codes.py` fails on drift. Stage 4 (#282) adds one
+code, `PF-EMBED-RESOURCES` (`check_embed_loader_memory`: the Stage-4 GPU
+profile's memory against its loader workers' need for the largest plate, a
+warning, run only for a SLURM Stage-4 run). `PF-EMBED-SHARD-AMORTIZE` was built
+and then dropped with its hint, docs row and tests (U13): it assumed a 750 s
+cold load and fired falsely on the live smoke, whose loads took 39.7–297.9 s.
+The R1–R3 `--embed-stage` refusals are refusals, not findings, and
+`--skip-validation` does not skip them.
 
 **Mode scoping.** A requirement check iterates `operations_in_scope(context)`,
 never the whole operation tree: `MODE_SLOTS` says which root slots each mode
@@ -419,6 +432,12 @@ and runs three content-defined stages. The per-image stage cores live in
    Stage 3 re-promotes over it, so a retry would refine already-refined labels.
    Then apply post-ops + `measure(apply_post=False)`, re-promote the store, and
    consume the signal — **token first, then the raw array** (mandatory).
+4. **Stage 4** (#282, only when `--embed-stage` resolved `gpu`) — every
+   `MeasureDinoEmbedding` of the run, on a GPU, after the store is final. Stage
+   3 (or the single-pass core, in a run with no `GpuDetector`) then **defers**
+   `embed()` and the per-image record: it writes the store with its
+   measurements and `stages.stage3`, and no embeddings and no record. See
+   **Stage 4: GPU embedding** below.
 
 **Stage 1 reads an input exactly as a single-pass run does.** Every forward
 reader builds its kwargs from the same two helpers in `_cli_utils.py`: the
@@ -441,6 +460,100 @@ grid is not 8 x 12, or a staged SLURM run given `--bit-depth` or a
 `--detect-mode` other than `gray`, must be re-run with `--restart` (or
 `--overwrite`). Pinned by
 `tests/unit/cli/test_staged_stage1_reads_like_single_pass.py`.
+
+### Stage 4: GPU embedding (#282)
+
+Spec `docs/superpowers/specs/2026-11-12-gpu-embedding-staging/design.md`;
+user-facing guide `docs/source/how_to/pages/embeddings.md`.
+
+- **Where it runs is resolved once** (`_cli_embed_stage.py`,
+  `resolve_embed_stage_for_config`), in the read-only half, from
+  `--embed-stage {auto,gpu,inline}`. `auto` is `gpu` only on SLURM with a GPU
+  profile (a `GpuDetector` in `--mode full`, or `--gpu-slurm`); every local
+  `auto`, `--mode process`, an in-scope embedder pinned to `device="cpu"` (U9)
+  and an embedder that is not a `MeasureDinoEmbedding` (O3, `_has_stage4_encoder`)
+  resolve `inline`. The refusals R1 (`gpu` with `--mode process`), R2 (`gpu` over
+  a CPU pin or an unstageable embedder) and R3 (a continuation's explicit
+  `--embed-stage` that differs from the recorded one) are one `click.UsageError`
+  line each, outside `--skip-validation`, above `--restart`, `--overwrite`,
+  `mint_run_identity` and `--dry-run`. A continuation under `auto` **adopts** the
+  recorded stage (`adopt_recorded_embed_stage`, U12), and refuses a SLURM `auto`
+  that would adopt `gpu` with no GPU profile, since its Stage 4 would go out on
+  the CPU profile. The value is `processing_state.json` config `embed_stage` and
+  `JobMetadataKey.EMBED_STAGE`; it is never in the work-id digest, and a state
+  without it reads `"inline"`. `defers_embeddings(config)` is the one predicate.
+- **Startup** (`prepare_stage4_environment`, after the refusals and before any
+  strategy): `CUBLAS_WORKSPACE_CONFIG` is `setdefault` to `:4096:8` (a preset
+  `:16:8` is kept; any other value is exit `1` locally, and anywhere once CUDA is
+  already initialised in the process), and a **local** `gpu` run checks CUDA
+  (`stage4_device` → `check_cuda_usable`, which also checks the torch build has
+  kernels for the device, `has_kernels_for`) and exits `1` with one line before
+  Stage 1. That check imports torch, so a `--dry-run` with the flag pays it.
+- **The signal.** One atomic Parquet per embedder key,
+  `.phenotypic/progress/stage4_payload/<ds>/<model>/<layer>/<region>/<stem>.parquet`
+  (`_cli_stage4_signal.py`, `DIR_STAGE4_PAYLOAD`), whose key-value footer
+  carries `{work_id, run_id, root_sha256, key, descriptor}`. A signal is valid
+  only at the **live** store root and for its own key (`classify_stage4_signals`);
+  a stale one is deleted and that key re-embedded. Validity is per key, so a
+  round killed after one backbone keeps that backbone's keys.
+- **The commit order, per image, never another** (`_cli_stage4_worker.py`):
+  signals → the store transaction `replace_run_embeddings(store, run_id,
+  payloads, expected_root_sha256=<the signals' root>)` (root last, only that
+  run's `embeddings` block rewritten, `stale` recomputed from the live store's
+  digests) → the record, published once → the signals consumed. One commit
+  thread overlaps the GPU work. A `StoreRootChangedError` leaves the image
+  pending, never failed.
+- **Backbone-major** (`plan_stage4`): the `(meas key, embedder)` pairs group by
+  `BackboneKey(version, size, revision, compute_dtype)`; one model is resident at
+  a time, and embedders sharing a backbone share one load. One DataLoader per
+  backbone (`spawn`, not persistent, identity `collate_fn`) cuts and resizes the
+  crops on the CPU through the embedder's own `prepare_regions`, with
+  `resolve_local_worker_count(config.n_jobs, n) - 1` workers locally and
+  `resolve_local_worker_count(-1, n) - 1` on a SLURM shard.
+- **Determinism** (`configure_determinism`, `_batch_encoder.py`): cuDNN
+  deterministic and no benchmark, TF32 off for matmul and cuDNN,
+  `set_float32_matmul_precision("highest")`,
+  `use_deterministic_algorithms(True, warn_only=True)`.
+- **The physical batch** `m = min(batch_size, pow2floor((0.8·total GPU memory −
+  weights − 1 GiB) / per_sample))`, from `physical_batch_for` only, per queue
+  geometry, never from free memory. A GPU OOM halves that queue's `m` once for the
+  shard; a second OOM, or `m = 1`, raises `Stage4OutOfMemory`. Any failed forward
+  pass poisons the `BatchEncoder` and fails the shard. Each entry's `compute`
+  block records every pass size its rows ran at (`physical_batch`, or `null` plus
+  `physical_batches`). Batch invariance holds **within one GPU model and
+  physical batch** (S1), measured bit-identical on Ada, A100 and Blackwell
+  (`reports/2026-11-12-gpu-embedding-staging/batch-invariance.md`).
+- **Node or model state is never an image's failure:** no CUDA, a GPU or host
+  OOM, a poisoned encoder, a refused licence (`Stage4DeviceError`,
+  `Stage4OutOfMemory`, `Stage4ShardError`, `MemoryError`) journal nothing. A
+  SLURM shard returns `1` and the next round retries; a local Stage 4 exits `1`
+  with "run the same command again". Neither is a transient `OSError` reading
+  the store at commit, or a changed root: the image stays pending with its
+  signals. A per-image failure (a store that does not decode, a grid cell
+  outside the image, a non-finite vector, a payload bound to another image) is
+  journalled at stage `stage4` (`MEASURE_FAILURE_STAGE` in republish
+  mode) and gives exit `3`.
+- **`PHENOTYPIC_STAGE4_DEVICE=cpu` is test-only**: it runs Stage 4 on the CPU so
+  a CPU node can exercise it. Inside Stage 4 an embedder's device is otherwise
+  `cuda`, and a missing CUDA never falls back to the CPU.
+- **Measure mode** runs Stage 4 in *republish* mode (U4, U8): the measure core
+  carries each image's readable embeddings forward
+  (`measure_embedding_carry`), defers `embed` and the record republish, and
+  Stage 4 rewrites the measure pipeline's run folder's embeddings and then
+  republishes the existing record (identity kept). A per-image Stage-4 failure
+  still republishes, certifying what the core carried, and journals
+  `MEASURE_FAILURE_STAGE` (exit `3`). Republish has one carrier, the staged
+  manifest's flag (version 5; a forward manifest stays version 4). Locally
+  `LocalParallelStrategy` runs it over the stores its measure loop measured; a
+  measured image Stage 4 cannot take ends the invocation with exit `1`, named
+  (`_refuse_unfinished_measure`, U16's local half).
+- **Revisions** (U5, U17): `pin_embed_revisions` resolves every unpinned
+  `MeasureDinoEmbedding`'s hub commit once, at a Stage-4 run's first
+  submission (`resolve_embed_revisions`), records it (`embed_revisions` in the
+  processing state and in job metadata), and every shard, round and
+  continuation reuses it (`recorded_embed_revisions`); a recorded `None`
+  (resolved offline) is resolved again. `--mode measure` reuses the run's
+  recorded commits and resolves only a model with none.
 
 ### Nested detectors: found tree-wide, cut at the top-level ancestor
 
@@ -618,6 +731,26 @@ there is no `--resume` flag. Exact terminal failures remain skipped unless
 `--retry-failures` is supplied.
 A missing or invalid store selects Stage 1; a valid store without a complete
 Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
+**In a run that embeds on the GPU, an image that has finished Stages 1–3
+selects Stage 4** (`ResumeStage` `"stage4"`): `stages_1_to_3_done`
+(`_cli_staged_resume.py`) is `stages.stage3` in the record file, a store bound
+to the image's work id, and a measurement table in its journal run, and
+`stage4_status` reads it `"pending"` until its record is valid (`"done"`).
+That one predicate is the "done" of every recovery shortcut under deferral:
+each returns early on it and publishes nothing (local `_terminal_output_exists`,
+SLURM `run_stage3_step`, Stage 3's own publish), since publishing would certify
+an image with no embeddings; and every core that re-runs an image drops
+`stages.stage3` and its Stage-4 signals first (`drop_stages_1_to_3_done`), as a
+Stage-1 re-run does (`clear_downstream_artifacts_for_stage1`). The three
+interrupted Stage-4 states resume from disk (`_classify_image`,
+`_cli_stage4_worker.py`): signals valid for every key but no commit → commit
+only; store promoted with fresh embeddings but no record → publish only; record
+published but signals left → swept as orphans
+(`sweep_orphan_stage4_signals`, locally before Stage 4 and in the controller
+before each classification). **`--retry-failures` re-runs only Stage 4 for an
+image whose Stage 4 failed**: the failure kept `stages.stage3`, so the image
+reads `"pending"` again
+(`tests/integration/cli/test_local_stage4.py::test_retry_failures_reruns_only_stage4`).
 **Every prereq probe tests BOTH halves of the signal** —
 `stage2_result_replayable()` is the one function all **seven call sites in three
 modules** call (`_cli_staged_strategy.py` ×3, `_cli_staged_slurm_worker.py` ×2,
@@ -653,14 +786,24 @@ the image pending), but both can publish one image's record. Concurrent local
 invocations over one `--output` are unsupported; a local run lease would be a
 separate change (P3–P4 review M1). **The same holds for local `--mode measure`
 (#282 U19), by decision, with no lease:** its republish Stage 4 records and
-its failure journal take only the processing-state lock, with no generation
-compare, because measure mode keeps no run state and its content-derived
-generation is the forward run's only when its pipeline is.
+failure journal entries (`_local_record_lock(republish=True)`), and since the
+P6 review the measure core's own failure journal
+(`_record_local_terminal_failure` under `measure_only`, review M3), take only
+the processing-state lock, with no generation compare, because measure mode
+keeps no run state and its content-derived generation is the forward run's
+only when its pipeline is. A concurrent rewrite still leaves the image pending
+(exit `1`): `replace_run_embeddings` is root-fenced.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
-the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
-`status` stays the closed `{started, completed, failed}` set;
-`aggregate_state_from_events` counts overall completion at Stage 3 only, and
+the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3|4")`,
+`_stages.py` `VALID_STAGE_TAGS`). `status` stays the closed
+`{started, completed, failed}` set. **The terminal stage is per run** (#282):
+`aggregate_state_from_events(..., terminal_stage=)` counts overall completion at
+`run_terminal_stage(state.config)`, which is `"stage4"` for a run whose recorded
+`embed_stage` is `gpu` and `"stage3"` (`STAGED_TERMINAL_STAGE`) otherwise,
+including a state recorded before the key existed. Every caller passes it, so a
+deferring run never reads complete at Stage 3. Under deferral the single-pass
+core's events are tagged `stage="stage3"`; an inline run's stay untagged.
 `aggregate_stage_state_from_events` gives the per-`(dataset, stage)` breakdown.
 Use the shared `stage_event` context manager + `emit_missing_prereq` helpers in
 `_cli_staged_workers.py` rather than hand-writing the started/completed/failed
@@ -681,7 +824,7 @@ site, never a bare literal.
 | `2` | — | a refused option: a `click.UsageError`, Click's own code. Includes an option value the CLI checks after parsing (`--slurm`/`--gpu-slurm` `KEY=VALUE` pairs and `time=`, `--ext`) |
 | `3` | `COMPLETE_WITH_FAILURES` | finished, some images failed terminally |
 | `4` | `SUBMITTED` | submitted to SLURM, not finished |
-| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing (nothing published, or accepted images never attempted); re-run the same command (spec C3/C10, fork F5) |
+| `5` | `ENDED_UNPUBLISHED` | `phenotypic-wait`: no job alive, and the run ended without finishing (nothing published, or accepted images never attempted: a Stage-4 stall, #282 U7; Stage-1/3 tasks that kept dying, U15; a measure pass that left images neither republished nor journalled, U16); re-run the same command (spec C3/C10, fork F5) |
 | `6` | `WAIT_TIMEOUT` | `phenotypic-wait` gave up after `--timeout-seconds` |
 
 - **Every SLURM submission exits `4`**: full, measure, staged and process
@@ -713,6 +856,19 @@ site, never a bare literal.
   (`--retry-failures`), not "Run the same command again". A real publication
   failure, or an unfinished image with no terminal record, still prints
   `STAGED FINALIZATION FAILED ... Run the same command again` and exits `1`.
+  **Under `--embed-stage gpu` the predicate is record-based**
+  (`_unpublished_images`, in place of `_stage3_less_images`): Stage 3 writes
+  `stages.stage3` and no record, so a Stage-3 marker is not completion. A
+  Stage-4 per-image failure is a terminal failure, so the same `3` follows.
+- **A local Stage 4 exits `1`, one line, journalling no image** (#282): no usable
+  CUDA at startup, before Stage 1 (`prepare_stage4_environment`, a
+  `click.ClickException`, an environment error rather than a refused option);
+  node or model state during Stage 4 (`run_local_stage4`: "Stage 4 stopped …
+  No image was recorded as failed"); any image left pending ("N image(s) still
+  need Stage 4 (<why>)"); and a local `--mode measure` that left a measured
+  image neither re-embedded nor journalled (`_refuse_unfinished_measure`, U16).
+  Each says "run the same command again". On SLURM the same cases are a shard's
+  exit `1` and a next round, and, if the rounds stall, the waiter's `5`.
 - A forward `--dry-run` submits nothing and exits `0`; an interrupt exits
   `130`.
 - **`phenotypic-wait --output <out>` (`_cli_wait.py`) turns a `4` into the
@@ -841,7 +997,8 @@ trigger must:
   parallel submission.
 
 This scheduler rule is unrelated to the staged GPU Stage-2 **signal files**
-(the retained raw `.npy` and its token). It also does not convert a terminal `afterany` finalizer into an array
+(the retained raw `.npy` and its token) and to the Stage-4 signal files and
+round worklist (#282). It also does not convert a terminal `afterany` finalizer into an array
 entry: a finalizer runs after the array becomes terminal and is not a parallel
 sidecar. The existing staged-GPU controller topology is a specialized,
 explicitly capacity-reserved design; do not generalize it into new ordinary
@@ -867,14 +1024,16 @@ It creates an orchestration UUID, versioned image manifest, atomic controller
 state, and append-only job ledger before submitting Controller 0. That controller
 pre-arms its recovery controller before submitting Stage-1 chunk 0. Each controller
 thereafter pre-submits its recovery
-controller, then either launches the next Stage-1/Stage-3 chunk, launches a
-Stage-2 round, or launches the finalizer. Deterministic SLURM comments let a
+controller, then either launches the next Stage-1/Stage-3 chunk, a retry of a
+chunk's dead tasks, a Stage-2 round or a Stage-4 round, or launches the
+finalizer (see **Stage 4 on SLURM** below for the phases a run has). Deterministic SLURM comments let a
 successor discover a job when its predecessor died after `sbatch` but before
 persisting the returned ID.
 
-- Stage 1 / Stage 3 = arrays over **images**; Stage 2 = an array over
+- Stage 1 / Stage 3 = arrays over **images**; Stage 2 and Stage 4 = arrays over
   **shards** (`--gpu-shards`, `partition_shards`), each a resident-model
-  `run_stage2_shard`. Controller jobs run on `config.slurm_args` (CPU).
+  `run_stage2_shard` / `run_stage4_shard`. Controller jobs run on
+  `config.slurm_args` (CPU).
 - **Array chunking (`min(MaxArraySize, MaxSubmitJobs - 2)`):** the image count is
   split into `ceil(n_images / chunk_limit)` chunk scripts. The two reserved slots
   are for the running controller and its dependent recovery controller.
@@ -896,16 +1055,17 @@ persisting the returned ID.
   aggregate/finalize path as ordinary SLURM, including named analysis and plot
   publication. The controller records every dynamically submitted ID and keeps
   only one work array plus its recovery controller active at a time.
-- Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stage 2 uses
-  `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
+- Per-stage resources: Stages 1 & 3 use `config.slurm_args` (CPU); Stages 2 and
+  4 use `resolve_stage_slurm_args(gpu_slurm_args, slurm_args)` — inherit/delta over the
   CPU profile, auto-add `slurm_gpus_per_node=1` (explicit `=0` **omits** the
   directive so a CPU partition can run the GPU stage, e.g. tests).
-- **Walltime survival:** Stage 2 does not install a signal handler or self-requeue.
+- **Walltime survival:** neither Stage 2 nor Stage 4 installs a signal handler or self-requeues.
   After each array reaches a terminal scheduler state, its dependent controller
   reclassifies the manifest from valid stores, complete Stage-2 signals,
   Stage-3 markers, and terminal failures. Remaining images launch another array round. One unchanged
   retryable-set round is retried; a second unchanged round terminalizes the
-  remainder and advances to Stage 3.
+  remainder and advances to Stage 3. Stage 4's rounds follow the same rule on
+  their own counters, except that a stall terminalizes nothing (U7, below).
 - **A Stage-1 or Stage-3 task killed by the host is resubmitted** (#282 U15,
   smoke F2: OUT_OF_MEMORY). After a stage's last chunk, `_resubmit_dead_tasks`
   (`_cli_staged_controller.py`) re-classifies: an image with no stage result
@@ -921,7 +1081,7 @@ persisting the returned ID.
   `5` points there. A trailing controller that finds the run
   `terminal_incomplete` exits 0, like `complete` (review I3).
 - Every worker checks the active epoch immediately before publishing the store,
-  the Stage-2 signal, parquet, plot, or deletion changes. Restart and cancellation fence
+  the Stage-2 or Stage-4 signal, parquet, plot, or deletion changes. Restart and cancellation fence
   stale workers before clearing or cancelling ledgered jobs.
 - Staged submission returns `PROCESSING SUBMITTED` and exits `4`
   (`SUBMITTED`), like every SLURM run (0.21.0 removed `--wait`). The CLI writes the README at submission; remote
@@ -929,6 +1089,87 @@ persisting the returned ID.
   Nothing writes `processing_report.html` automatically.
 - Per-image isolation: a missing prereq (S6) is recorded and skipped, never an
   unhandled raise that aborts a shard.
+
+### Stage 4 on SLURM (#282 P5, P6)
+
+- **Controller config version 2** (`staged_controller.json`,
+  `generate_staged_scripts`) adds a `phases` list and a `stage3_role`;
+  `_load_controller_config` reads a version-1 config as `["stage1", "stage2",
+  "stage3"]`, so a run submitted before the bump drives as before. The plan is
+  `_staged_plan` (`_cli_staged_slurm.py`):
+
+  | Run | `phases` | `stage3_role` |
+  |---|---|---|
+  | `GpuDetector`, embeds on the GPU | `["stage1", "stage2", "stage3", "stage4"]` | `staged` |
+  | `GpuDetector`, embeds inline | `["stage1", "stage2", "stage3"]` | `staged` |
+  | no `GpuDetector`, embeds on the GPU | `["stage3", "stage4"]` | `single_pass`: the single-pass core with `defer_embeddings` |
+  | `--mode measure`, embeds on the GPU (U10) | `["stage3", "stage4"]` | `measure`: the measure core, embeddings carried and deferred |
+
+  A run with no `stage1` phase writes no `stage1.sh`/`stage2.sh`, records no
+  `detector_slot` (`recorded_detector_slot` answers `None`), and its controller
+  jumps from `submitted` to `stage3_starting`. A `"stage4"` config must carry
+  `stage4_script`, `stage4_worklist` and `n_shards`.
+- **After the last Stage-3 chunk** (and its dead-task retries), a `"stage4"`
+  config goes to `_advance_stage4`: sweep orphan signals (in republish mode,
+  `sweep_republished_stage4_signals`, which asks of this pass's epoch rather than
+  the forward record), then `_classify_stage4`: **done** when `stage4_status` is
+  `"done"`; **terminal** on a failure journalled under this epoch, on
+  `"not_ready"` (no `stages.stage3`, a store that does not match the work id, no
+  measurement table), or on a changed reference digest; **retryable** otherwise.
+  A failure from an earlier epoch is retryable: the continuation chose to retry
+  it. `_log_stage4_terminal` says how many terminal entries are journalled and
+  how many never finished Stages 1–3.
+- **Rounds** (`_submit_stage4_round`): Stage 2's zero-progress rule on Stage 4's
+  **own** counters in `staged_orchestration.json`: `stage4_round`,
+  `stage4_last_progress_digest`, `stage4_zero_progress_rounds`. The progress
+  digest (`_stage4_progress_digest`) covers each retryable image's identity and
+  each of its signal files' `st_mtime_ns`, one `stat` per key and no Parquet
+  read, so a round that wrote signals and committed nothing still progressed.
+  The ledger role is `stage4` and the token `stage4-round-<n>`, so
+  `live_slurm_job_ids` sees the round.
+- **The worklist** (`.phenotypic/slurm_scripts/stage4_worklist.json`,
+  `write_stage4_worklist`, version 1): one per round, the retryable set only,
+  sorted by identity and split contiguously over `n_shards`, so after a
+  walltime the leftover work spreads over every GPU. A shard reads its slice by
+  `$SLURM_ARRAY_TASK_ID` (`load_stage4_worklist`); an empty shard exits `0`. A
+  round whose token the ledger already holds (`intent`, `blocked`, `submitted`,
+  `recovered`) keeps its worklist rather than re-partitioning under a running
+  job (review M12), and only the filled shards get a GPU: the round is submitted
+  with `--array=0-<filled-1>` on the command line, overriding the script's
+  `#SBATCH --array` (review M13).
+- **`stage4.sh`** is one array over shards on the GPU profile, never chunked,
+  with no trigger entries; it adds no scheduler sidecar job beside the array. Its
+  prelude (`STAGE4_PRELUDE_BASH`) is the thread pins plus
+  `export CUBLAS_WORKSPACE_CONFIG=:4096:8`, before Python starts. The worker is
+  `--stage 4 --worklist <path> --index $SLURM_ARRAY_TASK_ID`
+  (`run_stage4_shard`), which prints `<n> published, <n> failed, <n> left for the
+  next round, <n> signal(s) written`.
+- **A stall ends unfinished (U7).** At two unchanged rounds the controller logs
+  `stage4_stall_line` and submits the finalizer; the leftover images keep no
+  record and no journal row, so `phenotypic-wait` exits `5` and a plain re-run
+  retries them. GPU OOM and a changed root are never per-image failures. The
+  finalizer repeats the stall line (`recorded_stall_lines`), since the waiter's
+  `5` points at its log.
+- **Measure mode** (U10, U16–U18). The `measure` role's steps
+  (`run_measure_step`) write a per-epoch **measure-done marker**,
+  `progress/measure_done/<epoch>/<ds>/<stem>.json` (`write_measure_done_marker`),
+  after the table rewrite. `_republish_stage4_status` reads an image without one
+  `not_ready`, so the controller resubmits it as a dead task
+  (`_dead_measure_indices`), Stage 4 never lists it, and the worker refuses it
+  (`PENDING_NOT_MEASURED`). "Done" is a record this pass republished: it carries
+  the measure epoch as its `lifecycle_epoch`. The submitter clears earlier
+  passes' markers (`clear_measure_done_markers`) before it publishes the epoch,
+  and passes `initialize_orchestration(keep_completion_marker=True)`, since the
+  staged-completion marker is the forward run's. The measure pipeline's sha256
+  has one producer, the CLI's `pipeline_identity`, carried in the controller
+  config (`pipeline_sha256`, `recorded_measure_pipeline_sha256`); the measure
+  step and Stage 4 refuse a file that no longer hashes to it. The
+  **measure-mode finalizer** publishes no forward run proof, counts
+  `measure_failed` from the journal under the epoch, and, when
+  `unfinished_measure_entries` finds a forward-published image neither
+  republished under the epoch nor journalled, logs each by name
+  (`unfinished_measure_line`) and closes the fence failed, `closed_by:
+  finalizer` and a `terminal_status` in one write (U16).
 
 ### One live SLURM run per output
 
@@ -1200,8 +1441,14 @@ worker on a different node then reuses.
 Durability lives on the **`OutputManager`**, not on each call.
 `save_image_store(durable=None)` defers to `self.durable_writes`, which is what
 makes it structurally impossible for a write site to be silently inert. There
-are exactly **three** write sites — `_cli_process_single.py`,
-`_cli_staged_workers.py` Stage 1 and Stage 3. Everything else that appears in a
+are exactly **four** forward write sites — `_cli_process_single.py`,
+`_cli_staged_workers.py` Stage 1 and Stage 3, all through `save_image_store`,
+and Stage 4's `replace_run_embeddings` (`_cli_stage4_worker.py`
+`_commit_image_once`, #282). The fourth is an `sdk_` function, not an
+`OutputManager` method, so it cannot defer to `self.durable_writes` and is
+handed `durable=ctx.output_manager.durable_writes` explicitly, the same
+unresolved tri-state (P3–P4 review I2); the Stage-4 SLURM shard builds its
+`OutputManager` from the transported flag. Everything else that appears in a
 grep is a **transport** site: a fresh process that must be handed the flag on
 its command line, namely the staged SLURM worker, the ordinary per-image SLURM
 array (`_cli_slurm_array_scripts.py` → `python -m phenotypic._cli._cli_process_single`),
@@ -1225,28 +1472,44 @@ run from zero.
 Rejected with `--mode recompile` and `migrate`: those
 modes write no image store from a pipeline, so the flag could only mislead.
 
-## One writer per artifact, one producer per derived value
+## The record is the last write; one producer per derived value
 
 **The rule the state-tracking design rests on, and it is load-bearing in two
 different places.** Both were learned the expensive way in the
 `cli-gui-state-tracking` change; the reasoning is in
 `docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/`.
 
-### One writer per artifact, per pass
+### Nothing is rewritten after the record that certifies it
 
-**Each worker owns exactly one image and writes its artifacts once.** No path
-rewrites a tracked artifact within a pass. Retries, `--restart` and `--mode
-measure` are separate invocations, seconds to hours apart.
+**Each worker owns exactly one image, and within a pass nothing it certifies is
+written after the per-image record that certifies it.** The record is the
+pass's last write for its image. Retries, `--restart` and `--mode measure` are
+separate invocations, seconds to hours apart.
+
+This section used to read "one writer per artifact, per pass", and #282 is why
+it was restated (plan review). In a run that embeds on the GPU the store root
+is written **twice** in one pass: Stage 3 (or the single-pass core) promotes
+it with the measurements, Stage 4 promotes it again through
+`replace_run_embeddings`, and only then is the record written. After a
+walltime between Stage 4's commit and its record, the next round may write the
+image's embeddings a second time (P6 review M2, a recorded follow-up). Both
+rewrites happen **before** the record exists, and the record digests the bytes
+they left, so neither can leave a stale verdict. A `--mode measure` pass does
+the same over an already-certified store (measure core, then Stage 4, then the
+republished record). There the forward record may go on verifying throughout,
+since a same-pipeline pass can leave the root byte-identical (#282
+`live-smoke.md`, M1); that is why a measure pass's "done" is a record stamped
+with its own epoch, never a record that merely verifies.
 
 That is not a convention — **it is what makes the verification cache correct.**
 The cache fences on `(size, mtime_ns)`, which cannot detect a same-size rewrite
-landing inside one filesystem `mtime` tick. It does not have to, because no such
-rewrite occurs. Measured on GPFS `/bigdata`: 0 of 200 back-to-back same-size
+landing inside one filesystem `mtime` tick. It does not have to, because no
+rewrite lands after the record whose digests it caches. Measured on GPFS `/bigdata`: 0 of 200 back-to-back same-size
 writes shared an `mtime_ns` (~81 µs resolution); node-local scratch is 181/200 at
 ~1 ms, which is one more reason run output may never live there.
 
-**So a change that makes any component rewrite a tracked artifact twice within a
-pass silently invalidates the cache's soundness argument** — and nothing will
+**So a change that makes any component rewrite a tracked artifact after its
+record within a pass silently invalidates the cache's soundness argument** — and nothing will
 fail, because the cache will simply keep answering from a stale verdict. If you
 need a second write, say so where the cache is defined, not only where you write.
 
@@ -1473,6 +1736,20 @@ remove.
   that refusal is ever relaxed, this becomes live again.
 - **O-3 and O-4** are recorded in
   `docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/OPEN-QUESTIONS.md`.
+- **A walltime kill between `promote_store`'s two renames can lose a store**
+  (`sdk_/ngff_.py` `promote_store`, "Known weakening"): the old store has been
+  moved aside and the new one not yet renamed into place, so the image is absent
+  and an orphaned `.trash` is left; absence reclassifies the image to the stage
+  that rebuilds it, and `sweep_orphan_parts` clears the leftovers. Pre-existing,
+  and a fix belongs to the store writer. **A Stage-4 run crosses that window
+  once more per image than an inline run**, since `replace_run_embeddings` is a
+  second promote after Stage 3's (#282 plan review, Minor).
+- **#282 Stage 4's own limits** (spec §4.8, U14): there is no round cap and no
+  per-image strike count. An image whose crops are huge (sprawling objects;
+  smoke F3: up to about 35 min of preparation for one image) commits slowly
+  but every round progresses, so the stall rule never fires; and a "poison"
+  image that crashes its shard every round (a host OOM) ends the run with exit
+  `5` once only it remains, and a plain re-run repeats that.
 
 ### Process trees, and the one target kind that is not a tree
 
@@ -1525,6 +1802,18 @@ supported however old. `ConversionVerdict` has deliberately no `BELOW_FLOOR`
 member (`sdk_/_schema_shape.py:192`).
 
 ## Environment variables (important for future work)
+
+- `PHENOTYPIC_STAGE4_DEVICE` — **test-only**: `cpu` runs Stage 4 on the CPU
+  (`stage4_device`, `_cli_stage4_worker.py`), so a CPU node can exercise it;
+  `stage4_cpu` and the subprocess crash runner set it. Without it Stage 4 is
+  `cuda` and never falls back.
+- `CUBLAS_WORKSPACE_CONFIG` — deterministic cuBLAS needs `:4096:8` or `:16:8`
+  (`DETERMINISTIC_CUBLAS_WORKSPACE_CONFIGS`, `_batch_encoder.py`). The CLI
+  `setdefault`s `:4096:8` right after `--embed-stage` resolves `gpu`
+  (`prepare_stage4_environment`), before any strategy can create a cuBLAS
+  handle, and keeps a preset `:16:8`; `stage4.sh`'s prelude exports `:4096:8`
+  before Python starts; `configure_determinism` refuses any other value on CUDA
+  (`check_cublas_workspace`).
 
 - `PHENOTYPIC_PRELOAD_MODULES` — comma list of self-registering modules that
   **every process that deserializes a pipeline** imports:
@@ -1602,8 +1891,8 @@ like the master, naming every such store, and the image stays `verified`
 which re-embeds every image (user decision Q2: no scoped remedy; on SLURM,
 `phenotypic-wait`'s exit `5` points at `slurm_logs_dir`, where the
 finalizer's log says this). A key whose stores carry **different entry
-descriptors** (entry minus `binds`/`files`/`stale` and minus
-`model.device`/`model.device_name`: an unpinned `revision` resolving to
+descriptors** (entry minus `binds`/`files`/`stale` and the `compute` block
+(#282), and minus `model.device`/`model.device_name`: an unpinned `revision` resolving to
 different commits, a partly re-measured tree) still publishes,
 with one warning per key, and every row carries an `int16`
 `descriptor_index` into the key's manifest `descriptors`, listed in order
@@ -1613,7 +1902,10 @@ data (Q1). **The device is provenance, not descriptor** (user decision
 2026-11-19, measured: CPU vs GPU ~1e-6 cosine distance, two GPU models ~one
 float16 bit): each store entry records `model.device` and, on CUDA,
 `model.device_name`, and `_shared_descriptor` drops both before grouping, so a
-run mixing CPU and GPU publishes one descriptor with no warning. The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
+run mixing CPU and GPU, or several GPU models (#282 U6), publishes one
+descriptor with no warning. `compute_dtype` is **not** dropped: tables computed
+in different dtypes never group (an entry without it reads `"float32"`,
+`_ABSENT_DESCRIPTOR_DEFAULTS`). The preflight's `PF-EMBED-REVISION-UNPINNED` warns on an
 in-scope `MeasureDinoEmbedding(revision=None)`. On the `shard_paths` branch only the
 sources the projection kept contribute. Paths are compared unresolved, so a
 symlinked `results/` and a DVC symlink cache work. Parquet only, never
@@ -1621,7 +1913,9 @@ joined to metadata. The aggregate proof declares `manifest.json` and each
 published table (no GUI writer touches them). A finalization deletes only
 the `*.parquet` and `manifest.json` a previous one wrote and it does not,
 then empty directories. Every per-image writer passes `pipeline.embed(image)`
-beside `measure()`, measure mode included:
+beside `measure()`, measure mode included, unless the run defers its
+embeddings to Stage 4 (`defers_embeddings`, #282), when Stage 4's
+`replace_run_embeddings` writes them instead:
 `replace_image_tables(embeddings=None)` drops the run's embeddings; an
 embedder's `MemoryError` or torch `OutOfMemoryError` propagates unwrapped,
 so it is never a terminal failure),

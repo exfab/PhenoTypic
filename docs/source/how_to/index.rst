@@ -32,6 +32,7 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    notebooks/correct_edge_effects
    notebooks/fit_logistic_growth
    notebooks/assess_image_quality
+   pages/embeddings
 
 .. toctree::
    :maxdepth: 1
