@@ -989,11 +989,8 @@ def run_stage4_shard(
     Raises:
         SlurmGenerationInactiveError: The epoch was fenced.
     """
-    from phenotypic.abc_._measure_embedding import is_out_of_memory
-    from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
-
     from ._cli_embed_stage import recorded_embed_revisions
-    from ._cli_stage4_worker import Stage4DeviceError, Stage4ShardError, run_stage4
+    from ._cli_stage4_worker import is_stage4_node_state, run_stage4
     from ._cli_staged_orchestration import (
         load_stage4_worklist,
         recorded_measure_pipeline_sha256,
@@ -1046,12 +1043,7 @@ def run_stage4_shard(
         inactive = slurm_generation_inactive_cause(exc)
         if inactive is not None:
             raise inactive
-        if not (
-            isinstance(
-                exc, (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError, MemoryError)
-            )
-            or is_out_of_memory(exc)
-        ):
+        if not is_stage4_node_state(exc):
             raise
         print(
             f"Stage 4 shard {shard_index} stopped: {type(exc).__name__}: {exc}. "

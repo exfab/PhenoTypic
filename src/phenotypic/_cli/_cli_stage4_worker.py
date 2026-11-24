@@ -195,6 +195,23 @@ class Stage4ShardError(RuntimeError):
     """
 
 
+def is_stage4_node_state(exc: BaseException) -> bool:
+    """Whether *exc* stopping Stage 4 is node or model state, never an image's (spec §4.8).
+
+    No usable CUDA, a queue that cannot halve again, a shard failure, or a
+    host or GPU out of memory. A torch ``OutOfMemoryError`` is a
+    ``RuntimeError``, so it is told by ``is_out_of_memory``, not by type
+    (review M3). Its callers journal nothing for it: a local Stage 4 exits
+    ``1``, a SLURM shard returns ``1`` for the next round.
+    """
+    from phenotypic.abc_._measure_embedding import is_out_of_memory
+    from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
+
+    return isinstance(
+        exc, (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError)
+    ) or is_out_of_memory(exc)
+
+
 @dataclass
 class Stage4Outcome:
     """What one :func:`run_stage4` call did.
@@ -1859,8 +1876,6 @@ def run_local_stage4(
     """
     import click
 
-    from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
-
     from ._cli_embed_stage import recorded_embed_revisions
     from ._cli_execution_strategies import recorded_pipeline_sha256
     from ._cli_staged_resume import forward_published
@@ -1922,14 +1937,7 @@ def run_local_stage4(
         )
     except Exception as exc:
         # Node or model state, never an image's (spec §4.8): one line, exit 1.
-        # A torch OutOfMemoryError is a RuntimeError, so it is classified by
-        # is_out_of_memory, not by type (review M3).
-        from phenotypic.abc_._measure_embedding import is_out_of_memory
-
-        if not (
-            isinstance(exc, (Stage4DeviceError, Stage4OutOfMemory, Stage4ShardError))
-            or is_out_of_memory(exc)
-        ):
+        if not is_stage4_node_state(exc):
             raise
         detail = str(exc) or type(exc).__name__
         raise click.ClickException(
