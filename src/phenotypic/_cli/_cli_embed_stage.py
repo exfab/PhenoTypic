@@ -272,6 +272,7 @@ def adopt_recorded_embed_stage(
     *,
     is_slurm: bool,
     stage4_available: bool,
+    gpu_profile: bool = True,
 ) -> tuple[EmbedStage, str | None]:
     """The stage a continuation embeds in: the recorded one, unless a flag conflicts (U12).
 
@@ -292,6 +293,9 @@ def adopt_recorded_embed_stage(
         resolved: What *requested* resolved to.
         is_slurm: Passed to the refusal's remedy.
         stage4_available: :func:`stage4_supported` for this invocation.
+        gpu_profile: Whether this invocation has a GPU profile
+            (:func:`has_slurm_gpu_profile`); consulted only for a SLURM
+            ``auto`` that would adopt ``gpu``.
 
     Returns:
         The stage to run, and the one-line note to print when it differs
@@ -299,7 +303,10 @@ def adopt_recorded_embed_stage(
 
     Raises:
         click.UsageError: R3, for an explicit conflicting flag, or an
-            ``auto`` that would adopt ``gpu`` where Stage 4 cannot run.
+            ``auto`` that would adopt ``gpu`` where Stage 4 cannot run; and
+            a SLURM ``auto`` that would adopt ``gpu`` with no GPU profile
+            (no ``GpuDetector`` and no ``--gpu-slurm``), which would put
+            Stage 4 on the CPU profile without a word.
     """
     recorded_stage: EmbedStage = (
         DEFAULT_EMBED_STAGE if recorded is None else cast(EmbedStage, recorded)
@@ -307,6 +314,13 @@ def adopt_recorded_embed_stage(
     if recorded_stage == resolved:
         return resolved, None
     if requested == "auto" and (recorded_stage == "inline" or stage4_available):
+        if recorded_stage == "gpu" and is_slurm and not gpu_profile:
+            raise click.UsageError(
+                "this run was started with --embed-stage gpu, and this "
+                "continuation has no GPU profile, so its Stage 4 would be "
+                "submitted on the --slurm CPU profile; re-run with the run's "
+                "--gpu-slurm options"
+            )
         return recorded_stage, (
             f"this run was started with --embed-stage {recorded_stage}, so "
             f"--embed-stage auto continues it as {recorded_stage}"
@@ -315,6 +329,17 @@ def adopt_recorded_embed_stage(
         recorded, resolved, is_slurm=is_slurm, stage4_available=stage4_available
     )
     return resolved, None  # pragma: no cover - the refusal always raises here
+
+
+def has_slurm_gpu_profile(config: "ExecutionConfig") -> bool:
+    """U2's GPU profile: ``--gpu-slurm`` given, or a ``GpuDetector`` in the pipeline.
+
+    A pipeline that cannot be loaded has none; the validation reports it.
+    """
+    if config.gpu_slurm_args:
+        return True
+    pipeline = load_pipeline_or_none(config.pipeline_json)
+    return pipeline is not None and _has_gpu_detector(pipeline)
 
 
 def stage4_supported(config: "ExecutionConfig") -> bool:

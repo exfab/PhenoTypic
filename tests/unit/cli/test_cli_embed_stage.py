@@ -167,6 +167,19 @@ def test_only_a_conflicting_flag_is_refused(recorded, requested, resolved, avail
         adopt_recorded_embed_stage(recorded, requested, resolved, is_slurm=True, stage4_available=available)
 
 
+def test_slurm_auto_does_not_adopt_gpu_without_a_gpu_profile():
+    """U12 edge: adopting gpu on SLURM needs a GpuDetector or --gpu-slurm; locally it needs neither."""
+    with pytest.raises(click.UsageError, match=r"no GPU profile.*--gpu-slurm"):
+        adopt_recorded_embed_stage("gpu", "auto", "inline", is_slurm=True, stage4_available=True,
+                                   gpu_profile=False)
+    assert adopt_recorded_embed_stage("gpu", "auto", "inline", is_slurm=True, stage4_available=True,
+                                      gpu_profile=True)[0] == "gpu"
+    assert adopt_recorded_embed_stage("gpu", "auto", "inline", is_slurm=False, stage4_available=True,
+                                      gpu_profile=False)[0] == "gpu"
+    assert adopt_recorded_embed_stage("inline", "auto", "gpu", is_slurm=True, stage4_available=True,
+                                      gpu_profile=False)[0] == "inline"
+
+
 @pytest.mark.parametrize("recorded, resolved", [("inline", "gpu"), ("gpu", "inline"), (None, "gpu")])
 @pytest.mark.parametrize("is_slurm", [False, True], ids=["local", "slurm"])
 @pytest.mark.parametrize("available", [False, True], ids=["gated", "available"])

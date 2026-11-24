@@ -3384,6 +3384,7 @@ def phenotypic_cli(
             from phenotypic._cli._cli_embed_stage import (
                 EMBED_STAGE_CONFIG_KEY,
                 adopt_recorded_embed_stage,
+                has_slurm_gpu_profile,
                 stage4_supported,
             )
 
@@ -3393,6 +3394,9 @@ def phenotypic_cli(
                 config.embed_stage,
                 is_slurm=config.is_slurm_mode(),
                 stage4_available=stage4_supported(config),
+                gpu_profile=(
+                    not config.is_slurm_mode() or has_slurm_gpu_profile(config)
+                ),
             )
             if adopted_note is not None:
                 click.echo(f"Note: {adopted_note}.", err=True)

@@ -252,6 +252,29 @@ def test_a_continuation_resolves_a_revision_first_recorded_offline(tmp_path, mon
     assert recorded_embed_revisions(tmp_path / "out") == {"facebook/dinov2-base": COMMIT}
 
 
+def test_auto_never_adopts_gpu_onto_the_cpu_profile(tmp_path, monkeypatch, submissions):
+    """U12 edge: a recorded-gpu no-detector SLURM run re-run without --gpu-slurm.
+
+    ``auto`` would adopt ``gpu``, but this continuation has no GPU profile,
+    so its Stage 4 would go out on the ``--slurm`` CPU profile. It is one
+    usage line naming ``--gpu-slurm``, before anything is submitted, and
+    ``--skip-validation`` (which skips ``PF-GPU-PARTITION``) cannot bypass it.
+    """
+    from tests._tiny_run import run_cli
+
+    monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: COMMIT)
+    first = submit_staged_no_detector(tmp_path, n_shards=2)
+    assert first.exit_code == RunExitCode.SUBMITTED, first.output
+    assert read_job_metadata(tmp_path / "out")["embed_stage"] == "gpu"
+    _end_submitted_run(tmp_path / "out")
+    again = run_cli(tmp_path / "in", tmp_path / "out", pipeline=dino_pipeline_path(tmp_path), slurm=True,
+                    extra=["--skip-validation"])
+    assert again.exit_code == 2, again.output
+    errors = [line for line in again.output.splitlines() if line.startswith("Error:")]
+    assert len(errors) == 1 and "--gpu-slurm" in errors[0] and "CPU profile" in errors[0], again.output
+    assert submissions == ["staged"]                       # the refused re-run submitted nothing
+
+
 def test_a_restart_resolves_again(tmp_path, monkeypatch, submissions):
     monkeypatch.setattr(embed_stage_module, "_hub_commit", lambda hf_id: COMMIT)
     assert submit_staged_no_detector(tmp_path).exit_code == RunExitCode.SUBMITTED
