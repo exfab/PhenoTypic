@@ -364,7 +364,6 @@ def configure_determinism(*, device: str | None = None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-
 #: One queued row: its ticket, its index in that ticket's inputs, its pixels.
 _Row = tuple[Hashable, int, np.ndarray]
 #: A queue's geometry: ``(kind, h, w, pooling)``.

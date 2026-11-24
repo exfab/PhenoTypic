@@ -37,8 +37,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Iterable, Mapping
-import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -97,7 +96,7 @@ class Stage4SignalState:
 
     valid: frozenset[str]
     stale: frozenset[str]
-    signals: Mapping[str, Stage4Signal] = dataclasses.field(default_factory=dict, compare=False)
+    signals: Mapping[str, Stage4Signal] = field(default_factory=dict, compare=False)
 
 
 def _stage4_dataset_dir(output_dir: Path, dataset: str) -> Path:
@@ -197,9 +196,9 @@ def _read_footer(table: pa.Table) -> dict[str, Any] | str:
         return f"its footer is not JSON ({exc})"
     if not isinstance(footer, dict):
         return "its footer is not a JSON object"
-    for field in _FOOTER_STRING_FIELDS:
-        if not isinstance(footer.get(field), str):
-            return f"its footer has no string {field!r}"
+    for name in _FOOTER_STRING_FIELDS:
+        if not isinstance(footer.get(name), str):
+            return f"its footer has no string {name!r}"
     if not isinstance(footer.get("descriptor"), dict):
         return "its footer has no descriptor object"
     return footer
@@ -463,10 +462,11 @@ def stage4_signal_mtimes(
     for stem in stems:
         mtimes: dict[str, int] = {}
         for region in key_dirs:
+            path = region / f"{stem}{_SIGNAL_SUFFIX}"
             try:
-                stat = (region / f"{stem}{_SIGNAL_SUFFIX}").stat()
+                stat = path.stat()
             except FileNotFoundError:
                 continue
-            mtimes[_key_of_signal_path(region / f"{stem}{_SIGNAL_SUFFIX}")] = stat.st_mtime_ns
+            mtimes[_key_of_signal_path(path)] = stat.st_mtime_ns
         found[stem] = mtimes
     return found

@@ -4587,8 +4587,9 @@ def phenotypic_cli(
             # The local twin of the SLURM finalizer's `terminal_incomplete`
             # close (#281 spec C10, review I3/F3): every image without a
             # Stage-3 marker (under deferral, without a record) failed
-            # terminally, so the run finished with failures. It is not marked staged-complete, and a re-run, which
-            # skips those images, re-finalizes and ends here again.
+            # terminally, so the run finished with failures. It is not marked
+            # staged-complete, and a re-run, which skips those images,
+            # re-finalizes and ends here again.
             staged_terminal_incomplete = (
                 finalization_succeeded
                 and bool(unfinished)

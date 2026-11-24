@@ -1058,6 +1058,7 @@ def run_stage4_shard(
     )
     return 0
 
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Dispatch one SLURM array task to its staged worker."""
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")

@@ -866,10 +866,11 @@ class MeasureEmbedding(MeasureFeatures, ABC):
         """Embed *image* and describe the table, for a store writer (spec D3).
 
         :meth:`ImagePipeline.embed` calls this for each embedder. It is
-        :meth:`prepare_regions` (through :meth:`_prepare_inline`), then :meth:`encode` with
-        :meth:`inline_encoder`, then :meth:`payload_from` with
-        :meth:`entry_descriptor` (through :meth:`_inline_entry_descriptor`); see :meth:`_prepared` for the descriptor's
-        ``binds`` and ``input``.
+        :meth:`prepare_regions` (through :meth:`_prepare_inline`), then
+        :meth:`encode` with :meth:`inline_encoder`, then :meth:`payload_from`
+        with :meth:`entry_descriptor` (through
+        :meth:`_inline_entry_descriptor`); see :meth:`_prepared` for the
+        descriptor's ``binds`` and ``input``.
 
         Args:
             image: The image to embed.

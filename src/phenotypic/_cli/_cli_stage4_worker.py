@@ -171,8 +171,6 @@ def has_kernels_for(major: int, minor: int, arches: Sequence[str]) -> bool:
     return False
 
 
-
-
 # ---------------------------------------------------------------------------
 # The loop (#282 P4 T3; spec §4.2, §4.4, §4.8)
 # ---------------------------------------------------------------------------
@@ -1830,13 +1828,12 @@ def run_local_stage4(
     """Run Stage 4 in this process over *datasets*: ``{dataset: (published, failed)}``.
 
     Sweeps the whole inventory's orphan signals first (not in republish
-    mode, review M1), then hands every image
-    of *datasets* whose ``stage4_status`` is ``"pending"`` to
+    mode, review M1), then hands every image of *datasets* whose ``stage4_status`` is ``"pending"`` to
     :func:`run_stage4`, except one with an exact terminal failure unless
     ``--retry-failures`` (a finished continuation hands this the whole
     inventory, the failed image included; its Stage-4 failure kept
-    ``stages.stage3``, so it reads ``"pending"``), with ``resolve_local_worker_count(config.n_jobs, n) - 1``
-    loader workers, so ``--njobs`` is honoured and ``--njobs 1`` prepares
+    ``stages.stage3``, so it reads ``"pending"``), with
+    ``resolve_local_worker_count(config.n_jobs, n) - 1`` loader workers, so ``--njobs`` is honoured and ``--njobs 1`` prepares
     in-process (re-review item 2a). Every image it is handed ends published
     or journalled (plan review C2), or this raises. The revisions are the
     ones this run recorded in ``processing_state.json`` at its first

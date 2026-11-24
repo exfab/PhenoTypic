@@ -33,6 +33,8 @@ from ._cli_staged_resume import (
     forward_published,
     stage3_completion_exists,
     stage4_status,
+    staged_store_matches_work_id,
+    stages_1_to_3_done,
     valid_stage1_store,
 )
 from ._cli_staged_orchestration import (
@@ -381,8 +383,6 @@ def _dead_stage1_indices(
     node state, not a verdict on the image (U15/D5, smoke F2); a scientific
     failure is journalled, and stays terminal.
     """
-    from ._cli_staged_resume import staged_store_matches_work_id
-
     output_dir = Path(config["output_dir"])
     failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
     dead: list[int] = []
@@ -410,8 +410,6 @@ def _dead_stage3_indices(
     the whole core, so it needs none. Either way an image Stage 4 owns
     (``stages_1_to_3_done``) is not Stage 3's (U15/D5, smoke F2).
     """
-    from ._cli_staged_resume import stages_1_to_3_done
-
     output_dir = Path(config["output_dir"])
     failed = terminal_failure_work_ids_under_epoch(output_dir, str(config["epoch"]))
     if config.get("stage3_role") == "measure":
@@ -455,8 +453,6 @@ def _dead_measure_indices(
     4 would certify the un-re-measured table (P6 review I1). An image this
     pass already republished reads ``done`` and is not dead.
     """
-    from ._cli_staged_resume import stage4_status
-
     output_dir = Path(config["output_dir"])
     dead: list[int] = []
     for index, entry in enumerate(entries):
@@ -490,8 +486,6 @@ def unfinished_measure_entries(
     image with no forward record is not this pass's to republish, and the
     forward run's own state accounts for it.
     """
-    from ._cli_staged_resume import stage4_status
-
     failed = terminal_failure_work_ids_under_epoch(output_dir, epoch)
     unfinished: list[StagedManifestEntry] = []
     for entry in entries:
@@ -534,7 +528,10 @@ def measure_pass_unfinished(output_dir: Path, epoch: str) -> list[StagedManifest
 
 
 def unfinished_measure_line(count: int) -> str:
-    """The one line the measure finalizer logs, and records on the fence, for :func:`unfinished_measure_entries`."""
+    """The line the measure finalizer logs, and records on the fence, for unfinished images.
+
+    *count* is the length of :func:`unfinished_measure_entries`.
+    """
     return (
         f"{count} image(s) were neither re-measured and re-embedded by this "
         "measure pass nor recorded as failed (named below); the pass ends "

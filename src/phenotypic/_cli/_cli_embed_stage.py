@@ -719,9 +719,10 @@ def pin_embed_revisions(config: "ExecutionConfig", output_dir: Path) -> None:
     A run that embeds inline gets ``None``. A ``gpu`` continuation reuses
     what its first invocation recorded; a first invocation (or ``--restart``,
     which cleared the record) resolves, and so does a continuation for each
-    model recorded ``None`` (resolved offline, so never pinned; review M10). Called in the mutating half, below
-    the ``--dry-run`` exit, before the processing state is written, so the
-    state and the job metadata record the same map.
+    model recorded ``None`` (resolved offline, so never pinned; review M10).
+    Called in the mutating half, below the ``--dry-run`` exit, before the
+    processing state is written, so the state and the job metadata record
+    the same map.
 
     **``--mode measure`` reuses the run's recorded commits too** (#282 U17,
     U5 extended; P6 review I3). A measure re-embeds a run whose entries name
