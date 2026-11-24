@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from phenotypic.sdk_ import STORE_SUFFIX
+
 from ._remote_registry import fetch_example_file, fetch_example_plate
 
 #: The replicate plates in the example time series.
@@ -35,9 +37,13 @@ def load_example_metadata() -> pd.DataFrame:
 
     Examples:
         >>> from phenotypic.data import load_example_metadata
+        >>> from phenotypic.schema import GENETIC, GRID, IMAGE
         >>> meta = load_example_metadata()  # doctest: +SKIP
-        >>> meta.columns.tolist()  # doctest: +SKIP
-        ['Metadata_ImageName', 'Grid_RowNum', 'Grid_ColNum', 'Metadata_Strain']
+        >>> meta.columns.tolist() == [  # doctest: +SKIP
+        ...     str(IMAGE.IMAGE_NAME), str(GRID.ROW_NUM),
+        ...     str(GRID.COL_NUM), str(GENETIC.STRAIN),
+        ... ]
+        True
     """
     return pd.read_csv(fetch_example_file("example-metadata.tsv"), sep="\t")
 
@@ -55,10 +61,11 @@ def load_example_measurements() -> pd.DataFrame:
 
     Examples:
         >>> from phenotypic.data import load_example_measurements, load_example_metadata
+        >>> from phenotypic.schema import GRID, IMAGE
         >>> m = load_example_measurements()  # doctest: +SKIP
         >>> with_strain = m.merge(  # doctest: +SKIP
         ...     load_example_metadata(),
-        ...     on=["Metadata_ImageName", "Grid_RowNum", "Grid_ColNum"],
+        ...     on=[str(IMAGE.IMAGE_NAME), str(GRID.ROW_NUM), str(GRID.COL_NUM)],
         ... )
     """
     return pd.read_csv(fetch_example_file("example-measurements.tsv"), sep="\t")
@@ -93,5 +100,5 @@ def load_example_images(plates: Iterable[int] | None = None) -> list[Path]:
         raise ValueError(f"unknown example plate(s) {unknown}; choose from {list(EXAMPLE_PLATES)}")
     stores: list[Path] = []
     for plate in sorted(set(wanted)):
-        stores.extend(Path(fetch_example_plate(plate)).glob("*.ome.zarr"))
+        stores.extend(Path(fetch_example_plate(plate)).glob(f"*{STORE_SUFFIX}"))
     return sorted(stores, key=lambda p: p.name)
