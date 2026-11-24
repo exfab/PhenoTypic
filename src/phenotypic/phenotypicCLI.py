@@ -163,6 +163,7 @@ from phenotypic._cli._cli_directory_scanner import (
 )
 from phenotypic._cli._cli_failure_tracker import (
     file_sha256,
+    launch_digest_cache,
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
@@ -2729,11 +2730,16 @@ def phenotypic_cli(
         # the probe raises is left to the pipeline validation further down,
         # which reports it as a clean "Pipeline loading failed" line.
         try:
-            uses_staged_gpu_strategy(config)
+            staged_gpu = uses_staged_gpu_strategy(config)
         except UnstageableGpuDetectorError as exc:
             raise click.UsageError(str(exc)) from exc
         except Exception:  # noqa: BLE001
             pass
+        else:
+            # Ordinary SLURM workers re-hash against the submitted digests.
+            # Keep selection and worklist generation in the same cache scope.
+            if config.is_slurm_mode() and not staged_gpu and not measure_only:
+                ctx.with_resource(launch_digest_cache())
         # Likewise above every mutation, and regardless of --skip-validation:
         # a grid preset the flags contradict fails every image.
         _refuse_grid_preset_unlike_cli_grid(

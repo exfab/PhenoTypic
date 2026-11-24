@@ -1123,6 +1123,15 @@ member (`sdk_/_schema_shape.py:192`).
   `polars[rtcompat]` (a runtime-CPU-dispatch build that runs on pre-AVX2 nodes without a
   per-node wheel swap); numpy/scipy use runtime SIMD dispatch and are unaffected. See
   `docs/source/how_to/pages/polars_cpu_build.md`. Stage 2's GPU work runs on GPU nodes.
+- **Input digests are memoized during ordinary forward SLURM submission**
+  (`launch_digest_cache`, `_cli_failure_tracker.py`). The CLI opens the cache
+  before input selection and keeps it through worklist generation. Repeated
+  hashes of an unchanged regular file reuse its digest (key: resolved path,
+  device, inode, size, mtime_ns, ctime_ns). Ordinary SLURM workers run in separate
+  processes and stream the input bytes to verify the submitted digest, including
+  after a same-size edit within one timestamp tick. Local and staged GPU
+  launches bypass the cache. OME-Zarr stores are never cached, and Windows
+  bypasses the cache because `st_ctime_ns` reports creation time there.
 
 ---
 
