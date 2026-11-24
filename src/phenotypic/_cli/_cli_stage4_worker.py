@@ -733,23 +733,6 @@ def _fail_image(
     return type(exc).__name__
 
 
-def _republish_run(store: Path, pipeline_sha256: str | None) -> Any:
-    """The measure pipeline's own run folder in *store* (republish), or ``None``.
-
-    ``owned_table_run_id(block, pipeline_sha256=...)`` over the live root:
-    the folder the measure core just wrote (plan review I10).
-    """
-    from phenotypic.sdk_ import ngff_
-    from phenotypic.sdk_._table_runs import _run_of_block, owned_table_run_id
-
-    try:
-        block = ngff_.read_phenotypic_attributes(store)
-    except (OSError, KeyError, ValueError):
-        return None
-    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
-    return None if run_id is None else _run_of_block(store, block, run_id)
-
-
 def _republish_record(ctx: _Stage4Context, entry: StagedManifestEntry, run_id: str) -> None:
     """Republish *entry*'s record over run *run_id*'s measurements (republish mode, U8).
 
@@ -858,7 +841,12 @@ def _classify_image(
     if live is None:
         logger.warning("Stage 4 left %s/%s pending: %s", entry.dataset, entry.image_name, PENDING_NO_ROOT)
         return PENDING_NO_ROOT
-    run = _republish_run(store, ctx.pipeline_sha256) if ctx.republish else journal_table_run(store)
+    if ctx.republish:
+        from ._cli_staged_resume import measure_table_run
+
+        run = measure_table_run(store, ctx.pipeline_sha256)
+    else:
+        run = journal_table_run(store)
     if run is None:
         _fail_image(ctx, entry, Stage4ImageError(
             f"{store} holds no run folder of the measure pipeline, so the measure "
@@ -1796,15 +1784,6 @@ def _local_record_lock(
     return lambda: _local_epoch_ownership(config, output_dir)
 
 
-def _forward_published(output_dir: Path, dataset: str, stem: str) -> bool:
-    """Whether the image's record has ``artifacts``: a forward run published it."""
-    from phenotypic.sdk_._image_record import read_image_record
-
-    record = read_image_record(output_dir, dataset, stem)
-    artifacts = record.get("artifacts") if record is not None else None
-    return isinstance(artifacts, dict) and bool(artifacts)
-
-
 def _refuse_unfinished_measure(unfinished: Sequence[str]) -> None:
     """End a local measure pass that left measured images un-re-embedded, exit 1 (U16).
 
@@ -1883,9 +1862,9 @@ def run_local_stage4(
     from phenotypic.detect.nn._helper._batch_encoder import Stage4OutOfMemory
 
     from ._cli_embed_stage import recorded_embed_revisions
-    from ._cli_utils import resolve_local_worker_count
-
     from ._cli_execution_strategies import recorded_pipeline_sha256
+    from ._cli_staged_resume import forward_published
+    from ._cli_utils import resolve_local_worker_count
 
     # The pass's one pipeline digest (review M6): the CLI's, else the file's.
     pipeline_sha256 = (
@@ -1913,7 +1892,7 @@ def run_local_stage4(
             f"{dataset.name}/{image.name}"
             for dataset in core
             for image in dataset.images
-            if _forward_published(output_dir, dataset.name, entries[(dataset.name, image)].stem)
+            if forward_published(output_dir, dataset.name, entries[(dataset.name, image)].stem)
         ]
         if republish
         else []

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Literal, Mapping, Sequence
 
 from phenotypic.sdk_ import (
     CommitGuard,
@@ -32,6 +32,9 @@ from ._cli_stage2_token import (
     stage2_token_exists,
 )
 from ._cli_types import Dataset
+
+if TYPE_CHECKING:
+    from phenotypic.sdk_._table_runs import TableRun
 
 #: ``"stage4"`` (#282 P4 T4): Stages 1-3 are done and the record is not, in a
 #: run that defers its embeddings to Stage 4 (spec §4.6).
@@ -274,6 +277,37 @@ def clear_measure_done_markers(output_dir: Path) -> None:
     shutil.rmtree(progress_dir(output_dir) / DIR_MEASURE_DONE, ignore_errors=True)
 
 
+def forward_published(output_dir: Path, dataset: str, stem: str) -> bool:
+    """Whether the image's record has ``artifacts``: a forward run published it.
+
+    A record without them (a partial record, a bare Stage-3 entry) certifies
+    nothing, so a measure pass has nothing of the image's to republish.
+    """
+    return _has_artifacts(read_image_record(output_dir, dataset, stem))
+
+
+def _has_artifacts(record: Mapping[str, object] | None) -> bool:
+    artifacts = record.get("artifacts") if record is not None else None
+    return isinstance(artifacts, dict) and bool(artifacts)
+
+
+def measure_table_run(store: Path, pipeline_sha256: str | None) -> TableRun | None:
+    """The measure pipeline's own run folder in *store*, or ``None``.
+
+    ``owned_table_run_id(block, pipeline_sha256=...)`` over the live root:
+    the folder the measure core writes (#282 plan review I10). ``None`` when
+    the root cannot be read, or holds no folder of that pipeline.
+    """
+    from phenotypic.sdk_._table_runs import _run_of_block, owned_table_run_id
+
+    try:
+        block = read_phenotypic_attributes(store)
+    except (OSError, KeyError, ValueError):
+        return None
+    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
+    return None if run_id is None else _run_of_block(store, block, run_id)
+
+
 def stage4_status(
     output_dir: Path,
     dataset: str,
@@ -353,29 +387,20 @@ def _republish_stage4_status(
     ``"done"``: a local Stage 4 takes exactly the stores its invocation
     measured.
     """
-    from phenotypic.sdk_ import image_record_path, ngff_, zarr_store_path
-    from phenotypic.sdk_._image_record import read_image_record
-    from phenotypic.sdk_._table_runs import _run_of_block, owned_table_run_id
+    from phenotypic.sdk_ import image_record_path
 
     from ._cli_completion import valid_image_success
     from ._cli_recompile_recovery import certified_table_run
 
     record = read_image_record(output_dir, dataset, stem)
-    artifacts = record.get("artifacts") if record is not None else None
-    if not isinstance(artifacts, dict) or not artifacts:
+    if record is None or not _has_artifacts(record):
         return "not_ready"
     if epoch is not None and not measure_done_marker_exists(output_dir, epoch, dataset, stem):
         # U18: this pass never finished measuring it. With the forward
         # pipeline its folder exists from the forward run, so the folder
         # cannot say so; Stage 4 must not certify the un-re-measured table.
         return "not_ready"
-    store = zarr_store_path(output_dir, dataset, stem)
-    try:
-        block = ngff_.read_phenotypic_attributes(store)
-    except (OSError, KeyError, ValueError):
-        return "not_ready"
-    run_id = owned_table_run_id(block, pipeline_sha256=pipeline_sha256)
-    run = None if run_id is None else _run_of_block(store, block, run_id)
+    run = measure_table_run(zarr_store_path(output_dir, dataset, stem), pipeline_sha256)
     if run is None or not run.has_measurements:
         return "not_ready"
     work_id = record.get("work_id")

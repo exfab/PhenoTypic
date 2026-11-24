@@ -30,6 +30,7 @@ from ._cli_reference import reference_digest_for
 from ._cli_slurm_lifecycle import generation_publication_guard
 from ._cli_stage2_token import stage2_result_replayable
 from ._cli_staged_resume import (
+    forward_published,
     stage3_completion_exists,
     stage4_status,
     valid_stage1_store,
@@ -465,7 +466,7 @@ def _dead_measure_indices(
             output_dir, entry.dataset, entry.stem, entry.work_id, republish=True,
             pipeline_sha256=config.get("pipeline_sha256"), epoch=str(config["epoch"]),
         )
-        if status == "not_ready" and _has_published_record(output_dir, entry):
+        if status == "not_ready" and forward_published(output_dir, entry.dataset, entry.stem):
             dead.append(index)
     return dead
 
@@ -494,7 +495,7 @@ def unfinished_measure_entries(
     failed = terminal_failure_work_ids_under_epoch(output_dir, epoch)
     unfinished: list[StagedManifestEntry] = []
     for entry in entries:
-        if entry.work_id in failed or not _has_published_record(output_dir, entry):
+        if entry.work_id in failed or not forward_published(output_dir, entry.dataset, entry.stem):
             continue
         status = stage4_status(
             output_dir, entry.dataset, entry.stem, entry.work_id, republish=True,
@@ -540,15 +541,6 @@ def unfinished_measure_line(count: int) -> str:
         "unfinished. Read the measure-step and stage4 logs for why, then "
         "re-run the same command."
     )
-
-
-def _has_published_record(output_dir: Path, entry: StagedManifestEntry) -> bool:
-    """Whether *entry*'s image has a record with ``artifacts`` (it was forward-published)."""
-    from phenotypic.sdk_._image_record import read_image_record
-
-    record = read_image_record(output_dir, entry.dataset, entry.stem)
-    artifacts = record.get("artifacts") if record is not None else None
-    return isinstance(artifacts, dict) and bool(artifacts)
 
 
 def _resubmit_dead_tasks(
