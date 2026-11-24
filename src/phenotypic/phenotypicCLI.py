@@ -2228,9 +2228,6 @@ def phenotypic_cli(
             f"{exc}. Fix the module name or unset the variable."
         ) from exc
     _load_cli_runtime()
-    # One digest per unchanged input for this launch; closed with the click
-    # context. Workers are separate processes and still re-hash their input.
-    ctx.with_resource(launch_digest_cache())
     try:
         _reject_unexpected_positional_args(ctx.args)
 
@@ -2733,11 +2730,16 @@ def phenotypic_cli(
         # the probe raises is left to the pipeline validation further down,
         # which reports it as a clean "Pipeline loading failed" line.
         try:
-            uses_staged_gpu_strategy(config)
+            staged_gpu = uses_staged_gpu_strategy(config)
         except UnstageableGpuDetectorError as exc:
             raise click.UsageError(str(exc)) from exc
         except Exception:  # noqa: BLE001
             pass
+        else:
+            # Ordinary SLURM workers re-hash against the submitted digests.
+            # Keep selection and worklist generation in the same cache scope.
+            if config.is_slurm_mode() and not staged_gpu and not measure_only:
+                ctx.with_resource(launch_digest_cache())
         # Likewise above every mutation, and regardless of --skip-validation:
         # a grid preset the flags contradict fails every image.
         _refuse_grid_preset_unlike_cli_grid(

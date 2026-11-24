@@ -92,7 +92,7 @@ _LAUNCH_DIGESTS: tuple[int, dict[tuple, str]] | None = None
 
 @contextlib.contextmanager
 def launch_digest_cache() -> Iterator[None]:
-    """Hash each unchanged input file once for the duration of one CLI launch.
+    """Memoize unchanged file digests during ordinary SLURM submission.
 
     A forward launch derives every image's digest several times over -- the
     work ID during selection, the state/manifest pass, and again (twice) while
@@ -103,13 +103,13 @@ def launch_digest_cache() -> Iterator[None]:
     file whose ``(resolved path, st_dev, st_ino, st_size, st_mtime_ns,
     st_ctime_ns)`` is unchanged, so each image is read once per launch.
 
-    The guarantee is unchanged where it matters: a worker runs in its own
-    process (``python -m phenotypic._cli._cli_process_single``), where no
-    cache is active, so its "input changed after SLURM worklist creation"
-    check still streams the bytes. The memo is bound to the process that
-    opened it, so a forked pool worker that inherits the dict ignores it.
-    OME-Zarr store directories are never memoized: no single stat covers a
-    tree. Nesting is a no-op; the outermost context owns the memo.
+    Ordinary SLURM workers run in separate processes and stream the input
+    bytes to check the submitted digest. The cache is bound to the process
+    that opened it, so a forked child also ignores the memo. Local execution
+    and staged GPU launches do not open this context. OME-Zarr directories
+    are never memoized because no single stat covers a tree. Windows uses
+    creation time for ``st_ctime_ns`` on supported Python versions, so the
+    context leaves hashing uncached there. The outermost context owns the memo.
 
     **Limit.** File timestamps are coarse-grained (the kernel's coarse clock,
     ~1-10 ms), so a same-size rewrite inside the same tick as the hash it
@@ -120,6 +120,9 @@ def launch_digest_cache() -> Iterator[None]:
     rather than processing it under a stale identity.
     """
     global _LAUNCH_DIGESTS
+    if sys.platform == "win32":
+        yield
+        return
     if _LAUNCH_DIGESTS is not None and _LAUNCH_DIGESTS[0] == os.getpid():
         yield
         return
