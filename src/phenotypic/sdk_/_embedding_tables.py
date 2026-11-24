@@ -63,30 +63,27 @@ PAYLOAD_DESCRIPTOR_FIELDS: Final[frozenset[str]] = frozenset(
 class EmbeddingPayload:
     """One embedding table a pipeline produced for one image, not yet written.
 
-    Attributes:
-        key: ``"<model>/<layer>/<region>"``, the entry's key in the run's
-            ``embeddings`` block and its folders under ``embeddings/``
-            (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
-        frame: The table: its key columns (``Object_Label`` for objects, the
-            ``Grid_*`` keys for a grid) and ``embedding``, one 1-D
-            ``float16`` vector per row.
-        descriptor: The entry fields the producer knows (spec D3): ``model``,
-            ``dim``, ``dtype``, ``pooling``, ``key`` (the index column),
-            ``input`` (``{series, level, layer}``, the layer the key's),
-            ``producer``
-            (``{class, params_sha256}``) and ``binds`` -- for objects
-            ``{objmap_path, objmap_sha256}``, for a grid
-            ``{array_sha256, grid_sha256}``, digests of the image the vectors
-            were computed from. The writer adds ``stale`` and ``files``.
-
     Raises:
         ValueError: If *key* is not ``"<model>/<layer>/<region>"``
             (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`), or
             *descriptor* lacks a required field.
     """
 
+    #: ``"<model>/<layer>/<region>"``, the entry's key in the run's
+    #: ``embeddings`` block and its folders under ``embeddings/``
+    #: (:func:`~phenotypic.sdk_._table_runs.split_embedding_key`).
     key: str
+    #: The table: its key columns (``Object_Label`` for objects, the
+    #: ``Grid_*`` keys for a grid) and ``embedding``, one 1-D ``float16``
+    #: vector per row.
     frame: pd.DataFrame
+    #: The entry fields the producer knows (spec D3): ``model``, ``dim``,
+    #: ``dtype``, ``pooling``, ``key`` (the index column), ``input``
+    #: (``{series, level, layer}``, the layer the key's), ``producer``
+    #: (``{class, params_sha256}``) and ``binds`` -- for objects
+    #: ``{objmap_path, objmap_sha256}``, for a grid
+    #: ``{array_sha256, grid_sha256}``, digests of the image the vectors were
+    #: computed from. The writer adds ``stale`` and ``files``.
     descriptor: Mapping[str, object]
 
     def __post_init__(self) -> None:

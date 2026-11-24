@@ -152,29 +152,25 @@ class PreparedRegions:
     model loaded, and :meth:`MeasureEmbedding.payload_from` turns it and the
     encoder's vectors into the table's payload. It pickles, so a DataLoader
     worker process can build it for a GPU encoder in another process.
-
-    Attributes:
-        key: The payload key, ``<model>/<layer>/<region>``
-            (:meth:`MeasureEmbedding.payload_key`).
-        keys: The table's key columns, one row per region, in table order
-            (``Object_Label``, or the ``Grid_*`` columns), index ``0..N-1``.
-        key_column: The entry's ``key``: ``Object_Label`` or
-            ``Grid_RowMajorIdx``.
-        inputs: What the encoder runs on.
-        binds: The digests binding the vectors to this image (spec D7).
-        input: The series, level and layer the regions were read from.
-        pool_plan: What :meth:`MeasureEmbedding.vectors_from` needs after the
-            backbone, for an embedder that pools patch grids (tile offsets,
-            the plate's feature-grid shape, the regions' masks); ``None``
-            otherwise.
     """
 
+    #: The payload key, ``<model>/<layer>/<region>``
+    #: (:meth:`MeasureEmbedding.payload_key`).
     key: str
+    #: The table's key columns, one row per region, in table order
+    #: (``Object_Label``, or the ``Grid_*`` columns), index ``0..N-1``.
     keys: pd.DataFrame
+    #: The entry's ``key``: ``Object_Label`` or ``Grid_RowMajorIdx``.
     key_column: str
+    #: What the encoder runs on.
     inputs: BackboneInputs
+    #: The digests binding the vectors to this image (spec D7).
     binds: dict[str, Any]
+    #: The series, level and layer the regions were read from.
     input: dict[str, Any]
+    #: What :meth:`MeasureEmbedding.vectors_from` needs after the backbone,
+    #: for an embedder that pools patch grids (tile offsets, the plate's
+    #: feature-grid shape, the regions' masks); ``None`` otherwise.
     pool_plan: Mapping[str, Any] | None = None
 
     @property
