@@ -102,7 +102,7 @@ run-level proofs are re-verified on every call regardless of depth.
 
 **Four things are written down.** The last column is load-bearing: if a
 proposed fifth entry cannot fill it, the value is derived and belongs in
-section **(c) Derived, and by what**.
+section **\(c) Derived, and by what**.
 
 | # | State | Path helper | Writer | Why it cannot be derived |
 |---|---|---|---|---|
@@ -161,7 +161,7 @@ restart for that reason. Written by `snapshot_reference_metadata`
 run preflight and by startup when it plans the reference manifest.
 
 `reference_manifest.json` beside it is **not** preserved: it is derived (see
-**(c)**), and the next startup derives it again.
+**\(c)**), and the next startup derives it again.
 
 ### Configuration recorded beside the inventory is not tracked state
 
@@ -247,7 +247,7 @@ has already stamped the aggregate proof.
 
 ---
 
-## (c) Derived, and by what
+## \(c) Derived, and by what
 
 One row per fact, naming the function. This is the table that stops the next
 contributor writing a counter.
@@ -568,7 +568,7 @@ A fifth tracked value appearing is a design regression, and the burden of proof
 is on the addition. Before adding one:
 
 1. **Try to derive it.** Can it be recomputed from artifacts plus (a) 1–4? If
-   yes, it belongs in section **(c)** as a function, not on disk.
+   yes, it belongs in section **\(c)** as a function, not on disk.
 2. **Fill in the last column of (a).** State why it cannot be derived. If you
    cannot, it is derived.
 3. **Apply (d)'s test.** If nothing branches on it and no verdict comes from
@@ -581,7 +581,7 @@ is on the addition. Before adding one:
 
 Then, **in the same change**:
 
-- Add a row to the relevant table on this page — (a), (b), (c) or (d).
+- Add a row to the relevant table on this page — (a), (b), \(c) or (d).
 - Add a row to the **Known consumers** table for every site that reads it.
 - If it changes the status vocabulary, run
   `test_every_status_vocabulary_in_the_gui_agrees_with_the_registry`.
